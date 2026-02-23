@@ -1,0 +1,12 @@
+django>=4.2,<5.0
+djangorestframework
+django-cors-headers
+djangorestframework-simplejwt
+django-filter
+django-celery-beat
+python-dotenv
+celery[redis]
+psycopg2-binary
+weasyprint
+pillow
+redis
