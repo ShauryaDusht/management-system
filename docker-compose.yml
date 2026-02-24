@@ -24,15 +24,12 @@ services:
 
   backend:
     build: ./backend
-    restart: always
+    restart: no
     volumes:
       - ./backend:/app
       - media_files:/app/media
     env_file:
       - .env
-    environment:
-      DB_HOST: db
-      REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
     depends_on:
