@@ -3,4 +3,4 @@ from django.apps import AppConfig
 
 class HorticultureConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "horticulture"
+    name = "horticulture.users"
