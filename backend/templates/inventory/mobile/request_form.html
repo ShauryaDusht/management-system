@@ -1,0 +1,50 @@
+{% extends 'inventory/mobile/base_mobile.html' %}
+{% block title %}Request Item{% endblock %}
+{% block header_title %}Request Item{% endblock %}
+{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white">←</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <p style="color:#888;margin-bottom:16px">Fill out the details...</p>
+  <form method="POST" action="{% url 'mobile_request_form' %}">
+    {% csrf_token %}
+    <div style="margin-bottom:14px">
+      <label style="font-weight:600;display:block;margin-bottom:6px">Name of Inventory</label>
+      <select name="item" required style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px"
+        onchange="document.getElementById('units_remaining').value=this.options[this.selectedIndex].dataset.available">
+        <option value="">-- Select Item --</option>
+        {% for item in items %}
+        <option value="{{ item.id }}" data-available="{{ item.available_quantity }}">
+          {{ item.name }} ({{ item.available_quantity }} {{ item.unit }} available)
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-weight:600;display:block;margin-bottom:6px">Quantity Needed</label>
+      <input type="number" name="quantity_requested" min="1" required
+        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px">
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-weight:600;display:block;margin-bottom:6px">No. of Units Remaining</label>
+      <input type="number" name="units_remaining" id="units_remaining" readonly
+        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px;background:#f5f5f5">
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-weight:600;display:block;margin-bottom:6px">Reason for Request</label>
+      <textarea name="reason" required rows="3"
+        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px"></textarea>
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-weight:600;display:block;margin-bottom:6px">Additional Notes (Optional)</label>
+      <textarea name="notes" rows="2"
+        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px"></textarea>
+    </div>
+    <div style="display:flex;gap:10px">
+      <a href="{% url 'mobile_dashboard' %}" style="flex:1">
+        <button type="button" style="width:100%;background:#e5e7eb;padding:12px;border-radius:8px;border:none;font-size:15px">Cancel</button>
+      </a>
+      <button type="submit" class="btn-primary" style="flex:2">✓ Submit Request</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Campus Inventory{% endblock %}</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #f5f0eb; font-family: sans-serif; }
+        .card { background: white; border-radius: 12px; padding: 16px; margin: 8px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+        .btn-primary { background: #c2622a; color: white; padding: 12px 20px; border-radius: 8px; border: none; font-size: 15px; width: 100%; cursor: pointer; }
+        .btn-secondary { background: #2d4a3e; color: white; padding: 12px 20px; border-radius: 8px; border: none; font-size: 15px; cursor: pointer; }
+        .badge-low { background: #f97316; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+        .badge-out { background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+        .badge-ok { background: #22c55e; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+        .stat-card { border-radius: 12px; padding: 16px; color: white; }
+        .header { background: #2d4a3e; color: white; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="display:flex;align-items:center;gap:12px">
+            {% block back_button %}{% endblock %}
+            <span style="font-weight:700;letter-spacing:1px">{% block header_title %}INVENTORY{% endblock %}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+            {% block header_right %}{% endblock %}
+        </div>
+    </div>
+    <div style="padding:12px;max-width:480px;margin:0 auto">
+        {% block content %}{% endblock %}
+    </div>
+    <div style="height:80px"></div>
+    {% block bottom_bar %}{% endblock %}
+</body>
+</html>

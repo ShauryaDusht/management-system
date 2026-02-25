@@ -1,0 +1,139 @@
+from django.contrib.auth import authenticate, login as auth_login
+from django.contrib.auth.decorators import login_required
+from django.db.models import F
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+
+from .models import Category, Item, ItemRequest
+
+
+def mobile_login(request):
+    if request.user.is_authenticated:
+        return redirect('/inventory/mobile/')
+
+    error = ''
+    next_url = request.GET.get('next') or '/inventory/mobile/'
+
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        next_url = request.POST.get('next') or '/inventory/mobile/'
+
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            auth_login(request, user)
+            return redirect(next_url)
+
+        error = 'Invalid username or password.'
+
+    return render(request, 'inventory/mobile/login.html', {
+        'error': error,
+        'next': next_url,
+    })
+
+
+@login_required
+def mobile_dashboard(request):
+    items = Item.objects.all()
+    low_stock = items.filter(available_quantity__lte=F('threshold_quantity'))
+    pending = ItemRequest.objects.filter(status='pending')
+
+    context = {
+        'total_items': items.count(),
+        'low_stock_items': low_stock[:3],
+        'low_stock_count': low_stock.count(),
+        'out_of_stock_count': items.filter(available_quantity=0).count(),
+        'pending_requests': pending.select_related('requested_by', 'item')[:5],
+        'pending_count': pending.count(),
+    }
+    return render(request, 'inventory/mobile/dashboard.html', context)
+
+
+@login_required
+def mobile_inventory_list(request):
+    category_id = request.GET.get('category', '')
+    categories = Category.objects.all()
+    items = Item.objects.select_related('category').all()
+    if category_id:
+        items = items.filter(category_id=category_id)
+
+    for item in items:
+        item.is_low_stock = item.available_quantity <= item.threshold_quantity
+
+    return render(request, 'inventory/mobile/list.html', {
+        'items': items,
+        'categories': categories,
+        'selected_category': category_id,
+        'total_count': Item.objects.count(),
+    })
+
+
+@login_required
+def mobile_request_form(request):
+    if request.method == 'POST':
+        item_id = request.POST.get('item')
+        quantity = int(request.POST.get('quantity_requested', 1))
+        reason = request.POST.get('reason', '')
+        notes = request.POST.get('notes', '')
+
+        item = get_object_or_404(Item, id=item_id)
+        ItemRequest.objects.create(
+            requested_by=request.user,
+            item=item,
+            quantity_requested=quantity,
+            units_remaining=item.available_quantity,
+            purpose=reason,
+            notes=notes,
+            status='pending',
+        )
+        return redirect('mobile_dashboard')
+
+    items = Item.objects.all().order_by('name')
+    return render(request, 'inventory/mobile/request_form.html', {'items': items})
+
+
+@login_required
+def mobile_my_requests(request):
+    requests = ItemRequest.objects.filter(
+        requested_by=request.user
+    ).select_related('item').order_by('-requested_at')
+    return render(request, 'inventory/mobile/my_requests.html', {'requests': requests})
+
+
+@login_required
+def mobile_manager_requests(request):
+    user = request.user
+    if getattr(user, 'role', '') not in ['admin', 'inventory_manager', 'manager']:
+        return redirect('mobile_dashboard')
+
+    pending = ItemRequest.objects.filter(
+        status='pending'
+    ).select_related('requested_by', 'item').order_by('-requested_at')
+    return render(request, 'inventory/mobile/manager_requests.html', {'requests': pending})
+
+
+@login_required
+def mobile_approve_request(request, pk):
+    if request.method == 'POST':
+        item_request = get_object_or_404(ItemRequest, pk=pk)
+        item = item_request.item
+        if item.available_quantity >= item_request.quantity_requested and item_request.status == 'pending':
+            item.available_quantity -= item_request.quantity_requested
+            item.save(update_fields=['available_quantity'])
+            item_request.status = 'approved'
+            item_request.approved_by = request.user
+            item_request.reviewed_at = timezone.now()
+            item_request.save(update_fields=['status', 'approved_by', 'reviewed_at'])
+    return redirect('mobile_manager_requests')
+
+
+@login_required
+def mobile_reject_request(request, pk):
+    if request.method == 'POST':
+        item_request = get_object_or_404(ItemRequest, pk=pk)
+        if item_request.status == 'pending':
+            item_request.status = 'rejected'
+            item_request.approved_by = request.user
+            item_request.reviewed_at = timezone.now()
+            item_request.save(update_fields=['status', 'approved_by', 'reviewed_at'])
+    return redirect('mobile_manager_requests')

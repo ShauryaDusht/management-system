@@ -17,6 +17,7 @@ class ItemSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     status = serializers.ReadOnlyField()
     is_below_threshold = serializers.ReadOnlyField()
+    is_low_stock = serializers.SerializerMethodField()
 
     class Meta:
         model = Item
@@ -24,9 +25,12 @@ class ItemSerializer(serializers.ModelSerializer):
             'id', 'name', 'category', 'category_name', 'item_type', 'unit',
             'total_quantity', 'available_quantity', 'threshold_quantity',
             'unit_cost', 'description', 'location', 'status',
-            'is_below_threshold', 'created_at', 'updated_at',
+            'is_below_threshold', 'is_low_stock', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'available_quantity', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_is_low_stock(self, obj):
+        return obj.available_quantity <= obj.threshold_quantity
 
 
 # ── NEW: StockEntry serializer ───────────────────────────────────────────────
@@ -49,24 +53,71 @@ class StockEntrySerializer(serializers.ModelSerializer):
 # ── Unchanged from Phase 1 ───────────────────────────────────────────────────
 
 class ItemRequestSerializer(serializers.ModelSerializer):
-    requested_by_name = serializers.CharField(source='requested_by.get_full_name', read_only=True)
-    approved_by_name = serializers.CharField(source='approved_by.get_full_name', read_only=True)
+    requester = serializers.PrimaryKeyRelatedField(source='requested_by', read_only=True)
+    requester_name = serializers.SerializerMethodField()
+    requester_phone = serializers.SerializerMethodField()
+    requester_role = serializers.CharField(source='requested_by.role', read_only=True)
     item_name = serializers.CharField(source='item.name', read_only=True)
+    item_available = serializers.IntegerField(source='item.available_quantity', read_only=True)
+    item_threshold = serializers.IntegerField(source='item.threshold_quantity', read_only=True)
     item_unit = serializers.CharField(source='item.unit', read_only=True)
     item_type = serializers.CharField(source='item.item_type', read_only=True)
+    item_description = serializers.CharField(source='item.description', read_only=True)
+    is_low_stock = serializers.SerializerMethodField()
+    reviewed_by = serializers.PrimaryKeyRelatedField(source='approved_by', read_only=True)
+    reviewed_by_name = serializers.SerializerMethodField()
+
+    # Backward-compatible aliases
+    requested_by_name = serializers.SerializerMethodField()
+    approved_by_name = serializers.SerializerMethodField()
+    reason = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(source='requested_at', read_only=True)
+    updated_at = serializers.SerializerMethodField()
+
+    def to_internal_value(self, data):
+        payload = data.copy()
+        if payload.get('reason') and not payload.get('purpose'):
+            payload['purpose'] = payload.get('reason')
+        if payload.get('requester') and not payload.get('requested_by'):
+            payload['requested_by'] = payload.get('requester')
+        if payload.get('reviewed_by') and not payload.get('approved_by'):
+            payload['approved_by'] = payload.get('reviewed_by')
+        payload.pop('reason', None)
+        payload.pop('requester', None)
+        payload.pop('reviewed_by', None)
+        return super().to_internal_value(payload)
+
+    def get_requester_name(self, obj):
+        return obj.requested_by.get_full_name() or obj.requested_by.username
+
+    def get_requester_phone(self, obj):
+        return getattr(obj.requested_by, 'phone', '') or ''
+
+    def get_is_low_stock(self, obj):
+        return obj.item.available_quantity <= obj.item.threshold_quantity
+
+    def get_reviewed_by_name(self, obj):
+        if obj.approved_by:
+            return obj.approved_by.get_full_name() or obj.approved_by.username
+        return None
+
+    def get_requested_by_name(self, obj):
+        return self.get_requester_name(obj)
+
+    def get_approved_by_name(self, obj):
+        return self.get_reviewed_by_name(obj)
+
+    def get_reason(self, obj):
+        return obj.purpose
+
+    def get_updated_at(self, obj):
+        return obj.reviewed_at or obj.requested_at
 
     class Meta:
         model = ItemRequest
-        fields = [
-            'id', 'item', 'item_name', 'item_unit', 'item_type',
-            'requested_by', 'requested_by_name',
-            'approved_by', 'approved_by_name',
-            'quantity_requested', 'purpose', 'status',
-            'rejection_reason', 'requested_at', 'reviewed_at',
-        ]
+        fields = '__all__'
         read_only_fields = [
-            'id', 'requested_by', 'approved_by', 'status',
-            'rejection_reason', 'requested_at', 'reviewed_at',
+            'id', 'requested_by', 'approved_by', 'requested_at', 'reviewed_at',
         ]
 
 

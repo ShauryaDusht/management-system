@@ -1,0 +1,33 @@
+{% extends 'inventory/mobile/base_mobile.html' %}
+{% block title %}My Requests{% endblock %}
+{% block header_title %}MY REQUESTS{% endblock %}
+{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white">←</a>{% endblock %}
+{% block content %}
+<h3 style="font-weight:700;margin:8px 0 4px">My Requests</h3>
+<p style="color:#888;font-size:13px;margin-bottom:12px">Track approval status for submitted requests.</p>
+
+{% for req in requests %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div style="font-weight:600">{{ req.item.name }}</div>
+    <div style="font-size:12px;color:#888">{{ req.quantity_requested }} {{ req.item.unit }}</div>
+  </div>
+  <div style="font-size:13px;color:#555;margin-top:6px">{{ req.reason }}</div>
+  <div style="margin-top:8px;font-size:12px;color:#888">{{ req.created_at|timesince }} ago</div>
+  <div style="margin-top:8px">
+    {% if req.status == 'approved' %}
+      <span class="badge-ok">Approved</span>
+    {% elif req.status == 'rejected' %}
+      <span class="badge-out">Rejected</span>
+      {% if req.rejection_reason %}<div style="font-size:12px;color:#b91c1c;margin-top:6px">{{ req.rejection_reason }}</div>{% endif %}
+    {% elif req.status == 'issued' %}
+      <span class="badge-ok">Issued</span>
+    {% else %}
+      <span class="badge-low">Pending</span>
+    {% endif %}
+  </div>
+</div>
+{% empty %}
+<div style="color:#aaa;text-align:center;padding:40px">No requests yet</div>
+{% endfor %}
+{% endblock %}

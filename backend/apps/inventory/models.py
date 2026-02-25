@@ -118,8 +118,11 @@ class ItemRequest(models.Model):
         limit_choices_to={'role': 'manager'},
     )
     quantity_requested = models.PositiveIntegerField()
+    units_remaining = models.PositiveIntegerField(default=0)
     purpose = models.TextField(help_text='What will this item be used for?')
+    notes = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    is_urgent = models.BooleanField(default=False)
     rejection_reason = models.TextField(blank=True)
     requested_at = models.DateTimeField(auto_now_add=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
@@ -129,6 +132,26 @@ class ItemRequest(models.Model):
 
     def __str__(self):
         return f"{self.requested_by} → {self.item.name} x{self.quantity_requested} [{self.status}]"
+
+    @property
+    def requester(self):
+        return self.requested_by
+
+    @property
+    def reviewed_by(self):
+        return self.approved_by
+
+    @property
+    def reason(self):
+        return self.purpose
+
+    @property
+    def created_at(self):
+        return self.requested_at
+
+    @property
+    def updated_at(self):
+        return self.reviewed_at or self.requested_at
 
 
 class ItemIssue(models.Model):

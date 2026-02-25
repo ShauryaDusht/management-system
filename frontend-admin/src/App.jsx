@@ -9,6 +9,7 @@ import ItemHistoryPage   from './pages/ItemHistoryPage'
 import RequestsPage      from './pages/RequestsPage'
 import MyRequestsPage    from './pages/MyRequestsPage'
 import IssuesPage        from './pages/IssuesPage'
+import Reports           from './pages/Reports'
 import UsersPage         from './pages/UsersPage'
 import UserActivityPage  from './pages/UserActivityPage'
 import StockEntriesPage  from './pages/StockEntriesPage'
@@ -18,7 +19,9 @@ function RoleRedirect() {
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />
   if (user.role === 'admin')   return <Navigate to="/dashboard" replace />
+  if (user.role === 'inventory_manager') return <Navigate to="/requests" replace />
   if (user.role === 'manager') return <Navigate to="/requests" replace />
+  if (user.role === 'caretaker') return <Navigate to="/requests" replace />
   return <Navigate to="/my-requests" replace />
 }
 
@@ -61,10 +64,13 @@ export default function App() {
 
           {/* Admin + Manager */}
           <Route path="/requests" element={
-            <ProtectedRoute allowedRoles={['admin', 'manager']}><RequestsPage /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'inventory_manager', 'caretaker', 'supervisor']}><RequestsPage /></ProtectedRoute>
           } />
           <Route path="/issues" element={
             <ProtectedRoute allowedRoles={['admin', 'manager', 'supervisor']}><IssuesPage /></ProtectedRoute>
+          } />
+          <Route path="/reports" element={
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'inventory_manager']}><Reports /></ProtectedRoute>
           } />
 
           {/* All roles */}

@@ -16,11 +16,11 @@ export const inventoryAPI = {
   updateItem: (id, data) => api.patch(`/inventory/items/${id}/`, data),
   deleteItem: (id) => api.delete(`/inventory/items/${id}/`),
 
-  // NEW — Item history & stock entries
+  // Item history and stock entries
   getItemHistory: (id) => api.get(`/inventory/items/${id}/history/`),
   getItemStockEntries: (id) => api.get(`/inventory/items/${id}/stock-entries/`),
 
-  // NEW — Stock entries (replenishment)
+  // Stock entries (replenishment)
   getStockEntries: (params = {}) => api.get('/inventory/stock-entries/', { params }),
   createStockEntry: (data) => api.post('/inventory/stock-entries/', data),
 
@@ -33,12 +33,30 @@ export const inventoryAPI = {
   // Issues
   getIssues: () => api.get('/inventory/issues/'),
 
-  // NEW — Return asset (manager)
+  // Return asset (manager)
   returnAsset: (issueId, data) => api.post(`/inventory/issues/${issueId}/return/`, data),
 
-  // NEW — Finalize consumable (supervisor)
+  // Finalize consumable (supervisor)
   finalizeConsumable: (issueId, data) => api.post(`/inventory/issues/${issueId}/finalize/`, data),
 
-  // NEW — User activity (admin)
+  // User activity (admin)
   getUserActivity: (userId) => api.get(`/inventory/activity/users/${userId}/`),
 }
+
+export const getItems = (params = {}) => api.get('/inventory/api/items/', { params })
+export const createItem = (data) => api.post('/inventory/api/items/', data)
+export const updateItem = (id, data) => api.put(`/inventory/api/items/${id}/`, data)
+export const deleteItem = (id) => api.delete(`/inventory/api/items/${id}/`)
+export const adjustStock = (id, action, quantity) =>
+  api.post(`/inventory/api/items/${id}/adjust-stock/`, { action, quantity })
+export const getStats = () => api.get('/inventory/api/stats/')
+export const getCategories = () => api.get('/inventory/api/categories/')
+export const getRequests = (params = {}) => api.get('/inventory/api/requests/', { params })
+export const createRequest = (data) => api.post('/inventory/api/requests/', data)
+export const approveRequest = (id) => api.post(`/inventory/api/requests/${id}/approve/`)
+export const rejectRequest = (id, reason) =>
+  api.post(`/inventory/api/requests/${id}/reject/`, { rejection_reason: reason })
+export const markUrgent = (id, isUrgent) =>
+  api.post(`/inventory/api/requests/${id}/mark-urgent/`, { is_urgent: isUrgent })
+export const getInventoryReport = () => api.get('/reports/inventory/')
+export const getRequestsReport = (params = {}) => api.get('/reports/requests/', { params })

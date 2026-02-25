@@ -1,4 +1,11 @@
-from django.urls import path
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
+
+from .api_views import (
+    ItemViewSet, CategoryViewSet, ItemRequestViewSet,
+    AdjustStockView, InventoryStatsView,
+    ApproveRequestView, RejectRequestView, MarkUrgentView,
+)
 from .views import (
     CategoryListCreateView, CategoryDetailView,
     ItemListCreateView, ItemDetailView, LowStockItemsView,
@@ -11,6 +18,11 @@ from .views import (
     UserActivityView,
     DashboardSummaryView,
 )
+
+router = DefaultRouter()
+router.register('items', ItemViewSet, basename='inventory-api-item')
+router.register('categories', CategoryViewSet, basename='inventory-api-category')
+router.register('requests', ItemRequestViewSet, basename='item-requests')
 
 urlpatterns = [
     # Categories
@@ -43,4 +55,12 @@ urlpatterns = [
 
     # Dashboard
     path('dashboard/', DashboardSummaryView.as_view(), name='dashboard-summary'),
+
+    # API ViewSet routes
+    path('api/', include(router.urls)),
+    path('api/items/<int:pk>/adjust-stock/', AdjustStockView.as_view(), name='item-adjust-stock'),
+    path('api/stats/', InventoryStatsView.as_view(), name='inventory-stats'),
+    path('api/requests/<int:pk>/approve/', ApproveRequestView.as_view(), name='api-request-approve'),
+    path('api/requests/<int:pk>/reject/', RejectRequestView.as_view(), name='api-request-reject'),
+    path('api/requests/<int:pk>/mark-urgent/', MarkUrgentView.as_view(), name='api-request-mark-urgent'),
 ]

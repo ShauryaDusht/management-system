@@ -24,4 +24,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('apps.users.urls')),
     path('api/inventory/', include('apps.inventory.urls')),
+    path('api/reports/', include('apps.reports.urls')),
+    path('inventory/', include('apps.inventory.htmx_urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

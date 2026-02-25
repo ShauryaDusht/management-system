@@ -7,17 +7,19 @@ const NAV = {
     { to: '/dashboard',    label: 'Dashboard',     icon: 'chart'     },
     { to: '/items',        label: 'Inventory',      icon: 'box'       },
     { to: '/requests',     label: 'All Requests',   icon: 'clipboard' },
+    { to: '/reports',      label: 'Reports',        icon: 'report'    },
     { to: '/issues',       label: 'Issued Items',   icon: 'arrows'    },
     { to: '/stock-entries',label: 'Stock Log',      icon: 'stack'     },
     { to: '/users',        label: 'Users',          icon: 'users'     },
   ],
   manager: [
     { to: '/requests',     label: 'Requests',       icon: 'clipboard' },
+    { to: '/reports',      label: 'Reports',        icon: 'report'    },
     { to: '/issues',       label: 'Issued Items',   icon: 'arrows'    },
     { to: '/items',        label: 'Inventory',      icon: 'box'       },
   ],
   supervisor: [
-    { to: '/my-requests',  label: 'My Requests',    icon: 'clipboard' },
+    { to: '/requests',     label: 'My Requests',    icon: 'clipboard' },
     { to: '/issues',       label: 'My Issues',      icon: 'arrows'    },
     { to: '/items',        label: 'Browse Items',   icon: 'box'       },
   ],
@@ -58,6 +60,12 @@ const ICONS = {
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
         d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+  ),
+  report: (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M9 17v-2m3 2v-4m3 4v-6m2 10H5a2 2 0 01-2-2V7a2 2 0 012-2h4.586A2 2 0 0111 5.586l1.414 1.414A2 2 0 0013.828 8H19a2 2 0 012 2v9a2 2 0 01-2 2z" />
     </svg>
   ),
   logout: (

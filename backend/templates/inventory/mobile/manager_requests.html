@@ -1,0 +1,45 @@
+{% extends 'inventory/mobile/base_mobile.html' %}
+{% block title %}Pending Requests{% endblock %}
+{% block header_title %}INVENTORY LIST{% endblock %}
+{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white">←</a>{% endblock %}
+{% block content %}
+<h3 style="font-weight:700;margin:8px 0 4px">Pending Requests <span style="color:#c2622a">{{ requests.count }}</span></h3>
+<p style="color:#888;font-size:13px;margin-bottom:12px">Review pending item requests from caretakers and supervisors.</p>
+
+{% for req in requests %}
+<div class="card" style="margin-bottom:12px">
+  <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+    <div>
+      <div style="font-weight:700">{{ req.requested_by.get_full_name|default:req.requested_by.username }}</div>
+      <div style="color:#888;font-size:13px">{{ req.requested_by.phone|default:'' }}</div>
+    </div>
+    <div style="color:#aaa;font-size:12px">{{ req.created_at|timesince }} ago ›</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+    <div style="width:32px;height:32px;background:#e5e7eb;border-radius:6px"></div>
+    <div>
+      <div style="font-weight:600">{{ req.item.name }}</div>
+      <div style="color:#888;font-size:12px">Requested: {{ req.quantity_requested }} {{ req.item.unit }}</div>
+    </div>
+  </div>
+  {% if req.item.available_quantity <= req.item.threshold_quantity %}
+  <div style="color:#c2622a;font-size:12px;margin-bottom:6px">
+    — Low Stock — {{ req.item.available_quantity }} of {{ req.item.total_quantity }} Units
+  </div>
+  {% endif %}
+  <div style="color:#555;font-size:13px;margin-bottom:10px">{{ req.reason }}</div>
+  <div style="display:flex;gap:8px">
+    <form method="POST" action="{% url 'mobile_reject_request' req.id %}" style="flex:1">
+      {% csrf_token %}
+      <button type="submit" style="width:100%;background:#e5e7eb;padding:10px;border-radius:8px;border:none">Reject</button>
+    </form>
+    <form method="POST" action="{% url 'mobile_approve_request' req.id %}" style="flex:2">
+      {% csrf_token %}
+      <button type="submit" style="width:100%;background:#2d4a3e;color:white;padding:10px;border-radius:8px;border:none;font-weight:700">Issue</button>
+    </form>
+  </div>
+</div>
+{% empty %}
+<div style="color:#aaa;text-align:center;padding:40px">No pending requests</div>
+{% endfor %}
+{% endblock %}
