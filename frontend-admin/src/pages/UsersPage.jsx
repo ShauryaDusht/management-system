@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { authAPI } from '../api/auth'
 import Layout from '../layout/Layout'
 import {
@@ -12,6 +13,7 @@ const EMPTY_FORM = {
 }
 
 export default function UsersPage() {
+  const navigate = useNavigate()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null) // 'add' | 'edit' | 'toggle'
@@ -124,6 +126,7 @@ export default function UsersPage() {
       key: 'actions', label: '', align: 'right',
       render: (r) => (
         <div className="flex items-center justify-end gap-2">
+          <Button size="sm" variant="ghost" onClick={() => navigate('/users/' + r.id + '/activity')}>Activity</Button>
           <Button size="sm" variant="ghost" onClick={() => openEdit(r)}>Edit</Button>
           <Button
             size="sm"

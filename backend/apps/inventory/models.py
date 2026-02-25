@@ -40,8 +40,7 @@ class Item(models.Model):
     )
     unit_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     description = models.TextField(blank=True)
-    # Asset-specific
-    location = models.CharField(max_length=200, blank=True, help_text='Physical location of asset')
+    location = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -62,6 +61,39 @@ class Item(models.Model):
         if self.is_below_threshold:
             return 'low_stock'
         return 'in_stock'
+
+
+class StockEntry(models.Model):
+    """
+    Records every time new stock arrives for an item (replenishment).
+    Gives admin full audit trail of all stock additions.
+    When saved, automatically increases item.available_quantity and item.total_quantity.
+    """
+    item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name='stock_entries')
+    quantity_added = models.PositiveIntegerField()
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='stock_entries_made',
+    )
+    added_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True, help_text='e.g. Received from contractor, 5th March')
+
+    class Meta:
+        ordering = ['-added_at']
+
+    def __str__(self):
+        return f"+{self.quantity_added} {self.item.unit} → {self.item.name} ({self.added_at.date()})"
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+        if is_new:
+            # Update item stock counts atomically
+            Item.objects.filter(pk=self.item_id).update(
+                available_quantity=models.F('available_quantity') + self.quantity_added,
+                total_quantity=models.F('total_quantity') + self.quantity_added,
+            )
 
 
 class ItemRequest(models.Model):
@@ -100,6 +132,13 @@ class ItemRequest(models.Model):
 
 
 class ItemIssue(models.Model):
+    """
+    Phase 2 additions to existing model:
+      - actual_quantity_used   : consumables — how much was really consumed
+      - usage_finalized        : supervisor marks consumable usage as complete
+      - usage_finalized_at     : timestamp of finalization
+      - return_recorded_by     : manager who recorded the asset return
+    """
     request = models.OneToOneField(ItemRequest, on_delete=models.PROTECT, related_name='issue')
     issued_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -108,11 +147,24 @@ class ItemIssue(models.Model):
     )
     issued_quantity = models.PositiveIntegerField()
     issued_at = models.DateTimeField(auto_now_add=True)
-    # For assets — return tracking
+
+    # ── Asset return tracking ──────────────────────────────────
     expected_return_date = models.DateField(null=True, blank=True)
     returned_quantity = models.PositiveIntegerField(null=True, blank=True)
     returned_at = models.DateTimeField(null=True, blank=True)
     condition_on_return = models.TextField(blank=True)
+    return_recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='returns_recorded',
+    )
+
+    # ── Consumable finalization ────────────────────────────────
+    actual_quantity_used = models.PositiveIntegerField(null=True, blank=True)
+    usage_finalized = models.BooleanField(default=False)
+    usage_finalized_at = models.DateTimeField(null=True, blank=True)
+
     notes = models.TextField(blank=True)
 
     class Meta:

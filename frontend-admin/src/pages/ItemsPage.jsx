@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { inventoryAPI } from '../api/inventory'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../layout/Layout'
@@ -146,6 +147,7 @@ export default function ItemsPage() {
       key: 'actions', label: '', align: 'right',
       render: (r) => (
         <div className="flex items-center justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate(`/items/${r.id}/history`)}>History</Button>
           <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>Edit</Button>
           <Button variant="ghost" size="sm" onClick={() => openDelete(r)} className="text-red-500 hover:text-red-700">Delete</Button>
         </div>
