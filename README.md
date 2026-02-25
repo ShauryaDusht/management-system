@@ -30,8 +30,8 @@ docker compose exec backend python manage.py createsuperuser
 | Service | URL |
 |---|---|
 | React Admin | http://localhost:5173 |
-| Mobile Web (HTMX) | http://localhost:8000/mobile/ |
-| API | http://localhost:8000/api/ |
+| Mobile Web (HTMX) | http://localhost:8000/inventory/mobile/ |
+| API | http://localhost:8000/api/inventory/ |
 | Django Admin | http://localhost:8000/admin/ |
 
 ## Stop
