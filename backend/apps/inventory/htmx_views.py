@@ -1,4 +1,4 @@
-from django.contrib.auth import authenticate, login as auth_login
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.db.models import F
 from django.shortcuts import get_object_or_404, redirect, render
@@ -106,10 +106,20 @@ def mobile_manager_requests(request):
     if getattr(user, 'role', '') not in ['admin', 'inventory_manager', 'manager']:
         return redirect('mobile_dashboard')
 
-    pending = ItemRequest.objects.filter(
+    from django.core.paginator import Paginator
+
+    all_pending = ItemRequest.objects.filter(
         status='pending'
     ).select_related('requested_by', 'item').order_by('-requested_at')
-    return render(request, 'inventory/mobile/manager_requests.html', {'requests': pending})
+    paginator = Paginator(all_pending, 5)
+    page_num = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_num)
+
+    return render(request, 'inventory/mobile/manager_requests.html', {
+        'requests': page_obj,
+        'page_obj': page_obj,
+        'total_pending': all_pending.count(),
+    })
 
 
 @login_required
@@ -134,6 +144,70 @@ def mobile_reject_request(request, pk):
         if item_request.status == 'pending':
             item_request.status = 'rejected'
             item_request.approved_by = request.user
+            item_request.rejection_reason = request.POST.get('rejection_reason', '')
             item_request.reviewed_at = timezone.now()
-            item_request.save(update_fields=['status', 'approved_by', 'reviewed_at'])
+            item_request.save(update_fields=['status', 'approved_by', 'rejection_reason', 'reviewed_at'])
     return redirect('mobile_manager_requests')
+
+
+@login_required
+def mobile_issue_request(request, pk):
+    if request.method == 'POST':
+        item_request = get_object_or_404(ItemRequest, pk=pk)
+        item = item_request.item
+        qty = int(request.POST.get('quantity', item_request.quantity_requested))
+
+        if item_request.status == 'pending' and item.available_quantity >= qty:
+            item.available_quantity -= qty
+            item.save(update_fields=['available_quantity'])
+            item_request.status = 'issued'
+            item_request.approved_by = request.user
+            item_request.reviewed_at = timezone.now()
+            item_request.quantity_requested = qty
+            item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'quantity_requested'])
+    return redirect('mobile_manager_requests')
+
+
+@login_required
+def mobile_profile(request):
+    return render(request, 'inventory/mobile/profile.html', {
+        'user': request.user,
+    })
+
+
+@login_required
+def mobile_change_password(request):
+    if request.method == 'POST':
+        current = request.POST.get('current_password')
+        new_pass = request.POST.get('new_password')
+        confirm = request.POST.get('confirm_password')
+        error = None
+
+        if not request.user.check_password(current):
+            error = 'Current password is incorrect.'
+        elif new_pass != confirm:
+            error = 'New passwords do not match.'
+        elif len(new_pass) < 6:
+            error = 'Password must be at least 6 characters.'
+
+        if error:
+            return render(request, 'inventory/mobile/profile.html', {
+                'user': request.user,
+                'error': error,
+                'show_password_form': True,
+            })
+
+        request.user.set_password(new_pass)
+        request.user.save()
+        update_session_auth_hash(request, request.user)
+        return render(request, 'inventory/mobile/profile.html', {
+            'user': request.user,
+            'success': 'Password changed successfully.',
+        })
+
+    return redirect('mobile_profile')
+
+
+def mobile_logout(request):
+    auth_logout(request)
+    return redirect('mobile_login')

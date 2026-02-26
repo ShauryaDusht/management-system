@@ -1,0 +1,91 @@
+{% extends 'inventory/mobile/base_mobile.html' %}
+{% block title %}Profile{% endblock %}
+{% block header_title %}PROFILE{% endblock %}
+{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white;font-size:20px">&larr;</a>{% endblock %}
+
+{% block content %}
+{% if success %}
+<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:8px;padding:10px 14px;
+  margin-bottom:14px;color:#065f46;font-size:14px">
+  &#10003; {{ success }}
+</div>
+{% endif %}
+{% if error %}
+<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;
+  margin-bottom:14px;color:#991b1b;font-size:14px">
+  &#10005; {{ error }}
+</div>
+{% endif %}
+
+<div class="card">
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+    <div style="width:80px;height:80px;border-radius:50%;background:#2d4a3e;color:white;
+      display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;flex-shrink:0">
+      {{ user.first_name|default:user.username|first|upper }}
+    </div>
+    <div>
+      <div style="font-size:22px;font-weight:700;color:#1a1a1a">
+        {{ user.get_full_name|default:user.username }}
+      </div>
+      <div style="color:#888;font-size:14px;margin-top:2px">
+        {{ user.phone|default:'No phone number' }}
+      </div>
+    </div>
+  </div>
+
+  <hr style="border:none;border-top:1px solid #eee;margin-bottom:16px">
+
+  <div style="margin-bottom:20px">
+    <div style="font-weight:600;color:#2d4a3e;margin-bottom:8px">Inventory Blocks In Charge</div>
+    <div style="color:#333;font-size:14px;line-height:1.8">
+      {% if user.role == 'admin' %}
+        All Categories
+      {% elif user.role == 'manager' or user.role == 'inventory_manager' %}
+        Tools &amp; Equipment<br>
+        Consumables<br>
+        Cleaning Supplies<br>
+        Garden &amp; Horticulture Equipment<br>
+        Housekeeping Supplies
+      {% elif user.role == 'supervisor' %}
+        Consumables<br>
+        Cleaning Supplies
+      {% else %}
+        Housekeeping Supplies<br>
+        Cleaning Supplies
+      {% endif %}
+    </div>
+  </div>
+
+  <hr style="border:none;border-top:1px solid #eee;margin-bottom:16px">
+
+  <div style="margin-bottom:20px">
+    <div style="font-weight:600;color:#2d4a3e;margin-bottom:12px">Change Password</div>
+    <form method="POST" action="{% url 'mobile_change_password' %}">
+      {% csrf_token %}
+      <input type="password" name="current_password" placeholder="Current Password" required
+        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;
+        font-size:14px;box-sizing:border-box;margin-bottom:8px">
+      <input type="password" name="new_password" placeholder="New Password" required
+        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;
+        font-size:14px;box-sizing:border-box;margin-bottom:8px">
+      <input type="password" name="confirm_password" placeholder="Confirm New Password" required
+        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;
+        font-size:14px;box-sizing:border-box;margin-bottom:12px">
+      <button type="submit"
+        style="width:100%;background:#2d4a3e;color:white;border:none;padding:12px;
+        border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">
+        Update Password
+      </button>
+    </form>
+  </div>
+
+  <hr style="border:none;border-top:1px solid #eee;margin-bottom:16px">
+
+  <a href="{% url 'mobile_logout' %}">
+    <button type="button" style="width:100%;background:#c2622a;color:white;border:none;padding:14px;
+      border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">
+      Logout
+    </button>
+  </a>
+</div>
+{% endblock %}

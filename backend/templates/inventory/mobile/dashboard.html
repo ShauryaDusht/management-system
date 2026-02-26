@@ -1,54 +1,118 @@
 {% extends 'inventory/mobile/base_mobile.html' %}
 {% block title %}Inventory Dashboard{% endblock %}
 {% block header_title %}INVENTORY DASHBOARD{% endblock %}
+
 {% block content %}
   {% if low_stock_items %}
   <div style="background:#fff3e0;border:1px solid #f97316;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
     <div>
-      <div style="color:#c2622a;font-weight:700">⚠ Low Stock Alert: {{ low_stock_items.0.name }}</div>
+      <div style="color:#c2622a;font-weight:700">Low Stock Alert: {{ low_stock_items.0.name }}</div>
       <div style="color:#666;font-size:13px">Only {{ low_stock_items.0.available_quantity }} units left, reorder needed!</div>
     </div>
-    <span style="color:#c2622a">›</span>
+    <span style="color:#c2622a">&#8250;</span>
   </div>
   {% endif %}
 
   <h3 style="font-weight:700;margin:12px 0 8px">Inventory Overview</h3>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
     <div class="stat-card" style="background:#2d4a3e">
-      <div style="font-size:13px;opacity:0.8">📋 Total Items</div>
+      <div style="font-size:13px;opacity:0.8">Total Items</div>
       <div style="font-size:32px;font-weight:800">{{ total_items }}</div>
     </div>
     <div class="stat-card" style="background:#1e6b7a">
-      <div style="font-size:13px;opacity:0.8">⚠ Low Stock</div>
+      <div style="font-size:13px;opacity:0.8">Low Stock</div>
       <div style="font-size:32px;font-weight:800">{{ low_stock_count }}</div>
     </div>
     <div class="stat-card" style="background:#c2622a">
-      <div style="font-size:13px;opacity:0.8">🕐 Pending Requests</div>
+      <div style="font-size:13px;opacity:0.8">Pending Requests</div>
       <div style="font-size:32px;font-weight:800">{{ pending_count }}</div>
     </div>
     <div class="stat-card" style="background:#8b5e3c">
-      <div style="font-size:13px;opacity:0.8">📦 Out of Stock</div>
+      <div style="font-size:13px;opacity:0.8">Out of Stock</div>
       <div style="font-size:32px;font-weight:800">{{ out_of_stock_count }}</div>
     </div>
   </div>
 
   <h3 style="font-weight:700;margin:12px 0 8px">Pending Requests</h3>
-  {% for req in pending_requests %}
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="font-weight:600">{{ req.item.name }}</div>
-      <div style="color:#888;font-size:12px">{{ req.quantity_requested }} Units Needed ›</div>
-    </div>
-    <div style="color:#888;font-size:12px">by {{ req.requested_by.get_full_name|default:req.requested_by.username }}</div>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <button id="tab-caretaker" type="button" onclick="setRoleTab('caretaker')"
+      style="flex:1;background:white;color:#555;border:1px solid #ddd;padding:8px 10px;border-radius:8px;font-size:12px;cursor:pointer">
+      Caretakers (Hostels)
+    </button>
+    <button id="tab-supervisor" type="button" onclick="setRoleTab('supervisor')"
+      style="flex:1;background:#2d4a3e;color:white;border:1px solid #2d4a3e;padding:8px 10px;border-radius:8px;font-size:12px;cursor:pointer">
+      Supervisors
+    </button>
   </div>
-  {% empty %}
-  <div style="color:#aaa;text-align:center;padding:20px">No pending requests</div>
-  {% endfor %}
+
+  <div id="pending-requests-list">
+    {% for req in pending_requests %}
+    <div class="card mobile-pending-request" data-role="{{ req.requested_by.role }}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:600">{{ req.item.name }}</div>
+        <div style="color:#888;font-size:12px">{{ req.quantity_requested }} Units Needed &#8250;</div>
+      </div>
+      <div style="color:#888;font-size:12px">by {{ req.requested_by.get_full_name|default:req.requested_by.username }}</div>
+    </div>
+    {% empty %}
+    <div style="color:#aaa;text-align:center;padding:20px">No pending requests</div>
+    {% endfor %}
+  </div>
+
+  <div id="pending-empty-message" style="display:none;color:#aaa;text-align:center;padding:20px">
+    No requests found for selected role
+  </div>
+
+  <script>
+    function setRoleTab(role) {
+      const tabCaretaker = document.getElementById('tab-caretaker');
+      const tabSupervisor = document.getElementById('tab-supervisor');
+      const cards = document.querySelectorAll('.mobile-pending-request');
+      const emptyState = document.getElementById('pending-empty-message');
+      let visibleCount = 0;
+
+      if (tabCaretaker && tabSupervisor) {
+        if (role === 'caretaker') {
+          tabCaretaker.style.background = '#2d4a3e';
+          tabCaretaker.style.color = 'white';
+          tabCaretaker.style.borderColor = '#2d4a3e';
+          tabSupervisor.style.background = 'white';
+          tabSupervisor.style.color = '#555';
+          tabSupervisor.style.borderColor = '#ddd';
+        } else {
+          tabSupervisor.style.background = '#2d4a3e';
+          tabSupervisor.style.color = 'white';
+          tabSupervisor.style.borderColor = '#2d4a3e';
+          tabCaretaker.style.background = 'white';
+          tabCaretaker.style.color = '#555';
+          tabCaretaker.style.borderColor = '#ddd';
+        }
+      }
+
+      cards.forEach((card) => {
+        const cardRole = card.getAttribute('data-role');
+        const show = cardRole === role;
+        card.style.display = show ? 'block' : 'none';
+        if (show) {
+          visibleCount += 1;
+        }
+      });
+
+      if (emptyState) {
+        emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const hasCaretaker = document.querySelector('.mobile-pending-request[data-role="caretaker"]');
+      setRoleTab(hasCaretaker ? 'caretaker' : 'supervisor');
+    });
+  </script>
 {% endblock %}
 
 {% block bottom_bar %}
 <div style="position:fixed;bottom:0;left:0;right:0;background:white;padding:12px 16px;display:flex;gap:10px;box-shadow:0 -2px 8px rgba(0,0,0,0.1)">
-  <a href="{% url 'mobile_inventory_list' %}" style="flex:1"><button class="btn-secondary" style="width:100%">📋 Inventory List</button></a>
+  <a href="{% url 'mobile_inventory_list' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Inventory List</button></a>
   <a href="{% url 'mobile_request_form' %}" style="flex:1"><button class="btn-primary" style="width:100%">+ Request Item</button></a>
 </div>
 {% endblock %}
