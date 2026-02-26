@@ -40,6 +40,21 @@
         {% block content %}{% endblock %}
     </div>
     <div style="height:80px"></div>
-    {% block bottom_bar %}{% endblock %}
+    {% block bottom_bar %}
+    {% if request.user.is_authenticated %}
+    <div style="position:fixed;bottom:0;left:0;right:0;background:white;padding:10px 12px;display:flex;gap:8px;box-shadow:0 -2px 8px rgba(0,0,0,0.1)">
+        {% if request.user.role == 'admin' or request.user.role == 'manager' or request.user.role == 'inventory_manager' %}
+        <a href="{% url 'mobile_dashboard' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">Dashboard</button></a>
+        <a href="{% url 'mobile_inventory_list' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">Inventory</button></a>
+        <a href="{% url 'mobile_reports' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">Reports</button></a>
+        <a href="{% url 'mobile_issued_items' %}" style="flex:1"><button class="btn-primary" style="width:100%;padding:10px 8px;font-size:13px">Issued</button></a>
+        {% else %}
+        <a href="{% url 'mobile_dashboard' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">Dashboard</button></a>
+        <a href="{% url 'mobile_my_requests' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">My Requests</button></a>
+        <a href="{% url 'mobile_inventory_list' %}" style="flex:1"><button class="btn-primary" style="width:100%;padding:10px 8px;font-size:13px">Inventory</button></a>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% endblock %}
 </body>
 </html>

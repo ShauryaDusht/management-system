@@ -1,0 +1,36 @@
+{% extends 'inventory/mobile/base_mobile.html' %}
+{% block title %}Stock Log{% endblock %}
+{% block header_title %}STOCK LOG{% endblock %}
+{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white;font-size:20px">&larr;</a>{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:14px">
+  <h3 style="font-weight:700;font-size:18px;margin:0">Stock Log</h3>
+  <p style="color:#888;font-size:13px;margin-top:4px">Recent stock addition activity</p>
+</div>
+
+{% for entry in entries %}
+<div class="card" style="margin-bottom:10px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <div style="font-weight:700;font-size:15px">{{ entry.item.name }}</div>
+      <div style="color:#888;font-size:12px">{{ entry.item.category.name }}</div>
+    </div>
+    <span style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700">
+      +{{ entry.quantity_added }} {{ entry.item.unit }}
+    </span>
+  </div>
+  <div style="font-size:12px;color:#888;margin-top:8px">
+    Added by: <strong style="color:#333">{{ entry.added_by.get_full_name|default:entry.added_by.username }}</strong>
+  </div>
+  <div style="font-size:12px;color:#888;margin-top:2px">
+    Date: {{ entry.added_at|date:"d M Y, h:i A" }}
+  </div>
+  {% if entry.notes %}
+  <div style="font-size:12px;color:#6b7280;margin-top:6px;font-style:italic">{{ entry.notes }}</div>
+  {% endif %}
+</div>
+{% empty %}
+<div style="text-align:center;padding:40px;color:#aaa">No stock log entries found</div>
+{% endfor %}
+{% endblock %}

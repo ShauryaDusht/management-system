@@ -69,3 +69,32 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAdmin]
+
+
+class ChangePasswordView(APIView):
+    """
+    POST /api/auth/change-password/
+    Change password for the currently authenticated user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        current = request.data.get('current_password')
+        new_pass = request.data.get('new_password')
+
+        if not user.check_password(current):
+            return Response(
+                {'error': 'Current password incorrect'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not new_pass or len(new_pass) < 6:
+            return Response(
+                {'error': 'Password too short'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(new_pass)
+        user.save(update_fields=['password'])
+        return Response({'detail': 'Password changed successfully'})

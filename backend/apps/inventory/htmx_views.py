@@ -1,10 +1,11 @@
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import F
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .models import Category, Item, ItemRequest
+from .models import Category, Item, ItemIssue, ItemRequest, StockEntry
 
 
 def mobile_login(request):
@@ -45,8 +46,46 @@ def mobile_dashboard(request):
         'out_of_stock_count': items.filter(available_quantity=0).count(),
         'pending_requests': pending.select_related('requested_by', 'item')[:5],
         'pending_count': pending.count(),
+        'role': getattr(request.user, 'role', ''),
     }
     return render(request, 'inventory/mobile/dashboard.html', context)
+
+
+@login_required
+def mobile_reports(request):
+    role = getattr(request.user, 'role', '')
+    if role not in ['admin', 'inventory_manager', 'manager']:
+        return redirect('mobile_dashboard')
+
+    from apps.reports.generators import generate_inventory_report, generate_requests_report
+
+    report_type = request.GET.get('type', 'inventory')
+    status_filter = request.GET.get('filter', 'all')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+
+    inventory_data = None
+    requests_data = None
+
+    if report_type == 'requests':
+        requests_data = generate_requests_report(date_from or None, date_to or None)
+    else:
+        inventory_data = generate_inventory_report()
+        if status_filter and status_filter != 'all':
+            filtered_items = [item for item in inventory_data['items'] if item.get('status') == status_filter]
+            inventory_data = {
+                **inventory_data,
+                'items': filtered_items,
+            }
+
+    return render(request, 'inventory/mobile/reports.html', {
+        'report_type': report_type,
+        'inventory_data': inventory_data,
+        'requests_data': requests_data,
+        'status_filter': status_filter or 'all',
+        'date_from': date_from,
+        'date_to': date_to,
+    })
 
 
 @login_required
@@ -123,6 +162,45 @@ def mobile_manager_requests(request):
 
 
 @login_required
+def mobile_issued_items(request):
+    role = getattr(request.user, 'role', '')
+    is_manager = role in ['admin', 'inventory_manager', 'manager']
+
+    issues_qs = ItemIssue.objects.select_related(
+        'request',
+        'request__item',
+        'request__item__category',
+        'request__requested_by',
+        'issued_by',
+    ).order_by('-issued_at')
+
+    if not is_manager:
+        issues_qs = issues_qs.filter(request__requested_by=request.user)
+
+    from django.core.paginator import Paginator
+    paginator = Paginator(issues_qs, 10)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    return render(request, 'inventory/mobile/issued_items.html', {
+        'issues': page_obj,
+        'page_obj': page_obj,
+        'is_manager': is_manager,
+    })
+
+
+@login_required
+def mobile_stock_log(request):
+    role = getattr(request.user, 'role', '')
+    if role not in ['admin', 'inventory_manager', 'manager']:
+        return redirect('mobile_dashboard')
+
+    entries = StockEntry.objects.select_related('item', 'added_by').order_by('-added_at')[:50]
+    return render(request, 'inventory/mobile/stock_log.html', {
+        'entries': entries,
+    })
+
+
+@login_required
 def mobile_approve_request(request, pk):
     if request.method == 'POST':
         item_request = get_object_or_404(ItemRequest, pk=pk)
@@ -151,9 +229,10 @@ def mobile_reject_request(request, pk):
 
 
 @login_required
+@transaction.atomic
 def mobile_issue_request(request, pk):
     if request.method == 'POST':
-        item_request = get_object_or_404(ItemRequest, pk=pk)
+        item_request = get_object_or_404(ItemRequest.objects.select_related('item'), pk=pk)
         item = item_request.item
         qty = int(request.POST.get('quantity', item_request.quantity_requested))
 
@@ -164,7 +243,18 @@ def mobile_issue_request(request, pk):
             item_request.approved_by = request.user
             item_request.reviewed_at = timezone.now()
             item_request.quantity_requested = qty
-            item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'quantity_requested'])
+            item_request.units_remaining = item.available_quantity
+            item_request.save(
+                update_fields=['status', 'approved_by', 'reviewed_at', 'quantity_requested', 'units_remaining']
+            )
+            ItemIssue.objects.update_or_create(
+                request=item_request,
+                defaults={
+                    'issued_by': request.user,
+                    'issued_quantity': qty,
+                    'notes': request.POST.get('notes', ''),
+                },
+            )
     return redirect('mobile_manager_requests')
 
 

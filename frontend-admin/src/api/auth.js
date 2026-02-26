@@ -8,6 +8,11 @@ export const authAPI = {
     api.post('/auth/logout/', { refresh: refresh_token }),
 
   me: () => api.get('/auth/me/'),
+  changePassword: (currentPassword, newPassword) =>
+    api.post('/auth/change-password/', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
 
   getUsers: () => api.get('/auth/users/'),
   createUser: (data) => api.post('/auth/users/', data),
