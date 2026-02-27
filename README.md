@@ -21,7 +21,7 @@ This repository contains a Dockerized management system with:
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repository-url>
+   git clone https://github.com/ShauryaDusht/management-system/
    cd management-system
    ```
 
@@ -32,15 +32,37 @@ This repository contains a Dockerized management system with:
 
 3. **Update database values in `.env`**
    ```env
-   DB_NAME=your_db_name
-   DB_USER=your_db_user
-   DB_PASSWORD=your_secure_password
+   SECRET_KEY=atleast-64-length-bit-string-using-base-64-characters
+   # for development purpose only
+   DEBUG=True 
+   ALLOWED_HOSTS=localhost,127.0.0.1
+
+   # Database setting
+   DB_NAME=my_db
+   DB_USER=postgres
+   DB_PASSWORD=postgres
+   DB_PORT=5432
+   DB_HOST=localhost
+   DB_ENGINE=django.db.backends.postgresql
+   
+   CORS_ALLOWED_ORIGINS=http://localhost:5173
    ```
 
 4. **Build and start all services**
+   To view which container are running currently
    ```bash
-   docker compose up --build
+   docker compose ps
    ```
+   To only build docker container
+   ```bash
+   docker compose build
+   ```
+
+   To run docker container only in detached mode (background)
+   ```bash
+   docker compose up -d
+   ```
+   
 
 5. **Create first admin user** (first run only)
    ```bash
@@ -58,21 +80,27 @@ This repository contains a Dockerized management system with:
 | Inventory Mobile (HTMX) | http://localhost:8000/inventory/mobile/ |
 
 ## Useful Commands
+- **To run docker container**
+   ```bash
+   docker compose up
+   ```
+- **To run and build together docker container**
+   ```bash
+   docker compose up -d --build
+   ```
+- **To view logs of a container**
+   ```bash
+   docker compose logs <container-name>
+   ```
+- **To stop the containers**
+   ```bash
+   docker compose down
+   ```
 
-- **Stop containers**
-  ```bash
-  docker compose down
-  ```
-
-- **Stop + remove volumes (reset DB/data)**
-  ```bash
-  docker compose down -v
-  ```
-
-- **View logs**
-  ```bash
-  docker compose logs -f
-  ```
+- **To stop containers and delete db(redis/postgre)**
+   ```bash
+   docker compose down -v
+   ```
 
 ## Notes
 
