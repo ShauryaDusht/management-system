@@ -2,33 +2,599 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{% block title %}Campus Inventory{% endblock %}</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lato:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { background: #f5f0eb; font-family: sans-serif; }
-        .card { background: white; border-radius: 12px; padding: 16px; margin: 8px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-        .btn-primary { background: #c2622a; color: white; padding: 12px 20px; border-radius: 8px; border: none; font-size: 15px; width: 100%; cursor: pointer; }
-        .btn-secondary { background: #2d4a3e; color: white; padding: 12px 20px; border-radius: 8px; border: none; font-size: 15px; cursor: pointer; }
-        .badge-low { background: #f97316; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-        .badge-out { background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-        .badge-ok { background: #22c55e; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-        .stat-card { border-radius: 12px; padding: 16px; color: white; }
-        .header { background: #2d4a3e; color: white; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #e8e0d5;
+            --bg-secondary: #f0ebe3;
+            --bg-card: rgba(245, 240, 230, 0.92);
+            --bg-card-solid: #f5f0e6;
+            --header-bg: #3a4e45;
+            --green-dark: #2d4a3e;
+            --green-mid: #3a5a4a;
+            --teal-dark: #1e5a6a;
+            --orange-btn: #c2622a;
+            --orange-warm: #d4722f;
+            --text-primary: #2a2a2a;
+            --text-secondary: #6b6560;
+            --text-muted: #9a9390;
+            --border-light: rgba(180, 160, 130, 0.3);
+            --shadow-card: 0 2px 12px rgba(80, 60, 30, 0.12);
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: var(--bg-primary);
+            min-height: 100vh;
+            color: var(--text-primary);
+            position: relative;
+        }
+
+        /* Painterly watercolor background texture */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 20% 30%, rgba(180, 200, 180, 0.25) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(160, 180, 170, 0.2) 0%, transparent 45%),
+                radial-gradient(ellipse at 50% 80%, rgba(200, 190, 160, 0.3) 0%, transparent 55%),
+                radial-gradient(ellipse at 10% 70%, rgba(170, 185, 165, 0.2) 0%, transparent 40%),
+                radial-gradient(ellipse at 90% 90%, rgba(210, 200, 175, 0.25) 0%, transparent 50%),
+                linear-gradient(160deg, #c8d4c0 0%, #b8c8b0 20%, #d4c8a8 50%, #c8bca0 75%, #b4c0ac 100%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Subtle sea/landscape at bottom like the images */
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 180px;
+            background: linear-gradient(180deg,
+                transparent 0%,
+                rgba(140, 160, 145, 0.15) 30%,
+                rgba(120, 145, 135, 0.35) 60%,
+                rgba(100, 130, 120, 0.5) 100%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .page-wrapper {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .mobile-header {
+            background: linear-gradient(135deg, #3a4e45 0%, #2d3e36 100%);
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.25);
+        }
+
+        /* Subtle paint texture on header */
+        .mobile-header::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='60'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        .header-title {
+            font-family: 'Lato', sans-serif;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 2px;
+            color: white;
+            text-transform: uppercase;
+        }
+
+        .avatar-circle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: white;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .avatar-circle img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Search icon */
+        .icon-btn {
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.12);
+            border: none;
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .icon-btn:hover { background: rgba(255,255,255,0.2); }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border-radius: 14px;
+            padding: 14px 16px;
+            margin: 0 0 10px;
+            box-shadow: var(--shadow-card);
+            border: 1px solid rgba(210, 190, 155, 0.4);
+            backdrop-filter: blur(4px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Subtle paper texture on cards */
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .card > * { position: relative; z-index: 1; }
+
+        /* Stat cards */
+        .stat-card {
+            border-radius: 14px;
+            padding: 14px 16px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='120'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.06'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        .stat-card .icon-area {
+            width: 38px;
+            height: 38px;
+            background: rgba(255,255,255,0.18);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+
+        .stat-card .label {
+            font-size: 12px;
+            opacity: 0.85;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+        }
+
+        .stat-card .value {
+            font-size: 34px;
+            font-weight: 800;
+            line-height: 1;
+            margin-top: 2px;
+        }
+
+        /* Low stock alert banner */
+        .alert-banner {
+            background: linear-gradient(135deg, rgba(255, 245, 230, 0.95), rgba(255, 238, 215, 0.9));
+            border: 1px solid rgba(210, 120, 60, 0.35);
+            border-radius: 12px;
+            padding: 13px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 10px rgba(194, 98, 42, 0.1);
+        }
+
+        .alert-icon {
+            width: 34px;
+            height: 34px;
+            background: #c2622a;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-right: 12px;
+        }
+
+        /* Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, #c2622a, #b85820);
+            color: white;
+            padding: 12px 18px;
+            border-radius: 10px;
+            border: none;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Lato', sans-serif;
+            letter-spacing: 0.3px;
+            transition: all 0.2s;
+            box-shadow: 0 3px 10px rgba(194, 98, 42, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn-primary:hover { background: linear-gradient(135deg, #d47030, #c2622a); }
+        .btn-primary:active { transform: scale(0.97); }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #2d4a3e, #243d33);
+            color: white;
+            padding: 12px 18px;
+            border-radius: 10px;
+            border: none;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Lato', sans-serif;
+            letter-spacing: 0.3px;
+            transition: all 0.2s;
+            box-shadow: 0 3px 10px rgba(45, 74, 62, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn-secondary:hover { background: linear-gradient(135deg, #3a5a4a, #2d4a3e); }
+        .btn-secondary:active { transform: scale(0.97); }
+
+        .btn-ghost {
+            background: rgba(245, 240, 230, 0.9);
+            color: #555;
+            padding: 11px 18px;
+            border-radius: 10px;
+            border: 1px solid rgba(180, 160, 130, 0.4);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Lato', sans-serif;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn-ghost:hover { background: rgba(230, 222, 210, 0.95); }
+
+        /* Badges */
+        .badge-low {
+            background: linear-gradient(135deg, #c2622a, #b85820);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .badge-out {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .badge-ok {
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .badge-pending {
+            background: linear-gradient(135deg, #d97706, #b45309);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        /* Tab buttons */
+        .tab-btn {
+            flex: 1;
+            padding: 9px 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid rgba(180, 160, 130, 0.35);
+            font-family: 'Lato', sans-serif;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #2d4a3e, #243d33);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 3px 10px rgba(45, 74, 62, 0.3);
+        }
+        .tab-btn.inactive {
+            background: rgba(245, 240, 230, 0.85);
+            color: #555;
+        }
+
+        /* Category sidebar items */
+        .cat-item {
+            background: rgba(245, 240, 230, 0.85);
+            border-radius: 12px;
+            padding: 10px 12px;
+            text-align: center;
+            border: 1px solid rgba(210, 190, 155, 0.35);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+            font-weight: 600;
+            color: #555;
+        }
+        .cat-item.active {
+            background: linear-gradient(135deg, #2d4a3e, #243d33);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 3px 10px rgba(45, 74, 62, 0.3);
+        }
+
+        /* Checkbox styled */
+        .custom-check {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .custom-check input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #aaa;
+            border-radius: 4px;
+            cursor: pointer;
+            accent-color: #2d4a3e;
+        }
+
+        /* Item row in list */
+        .item-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(180, 160, 130, 0.2);
+        }
+        .item-row:last-child { border-bottom: none; }
+
+        .item-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+            margin-right: 12px;
+            margin-top: 2px;
+        }
+
+        /* Bottom bar */
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 252, 245, 0.97);
+            padding: 10px 14px;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 -4px 20px rgba(80, 60, 30, 0.15);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            border-top: 1px solid rgba(210, 190, 155, 0.4);
+        }
+
+        /* Section titles */
+        .section-title {
+            font-family: 'Lato', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a1a1a;
+            letter-spacing: -0.2px;
+        }
+
+        /* Scrollable content area */
+        .content-area {
+            padding: 14px 14px 100px;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* Avatar for requesters */
+        .requester-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 17px;
+            color: white;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #3a5a4a, #2d4a3e);
+            border: 2px solid rgba(255,255,255,0.3);
+            box-shadow: 0 2px 8px rgba(45, 74, 62, 0.3);
+        }
+
+        /* Low stock divider line in request cards */
+        .low-stock-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            color: #b05820;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .low-stock-line::before, .low-stock-line::after {
+            content: '';
+            height: 1px;
+            flex: 1;
+            background: rgba(194, 98, 42, 0.3);
+        }
+
+        /* Form inputs */
+        .form-input {
+            width: 100%;
+            border: 1px solid rgba(180, 160, 130, 0.45);
+            border-radius: 10px;
+            padding: 11px 14px;
+            font-size: 15px;
+            font-family: 'Lato', sans-serif;
+            background: rgba(255, 252, 245, 0.85);
+            color: var(--text-primary);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        .form-input:focus {
+            border-color: rgba(45, 74, 62, 0.5);
+            box-shadow: 0 0 0 3px rgba(45, 74, 62, 0.1);
+            background: rgba(255, 252, 245, 0.98);
+        }
+        .form-input::placeholder { color: #aaa; }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 7px;
+        }
+
+        /* Qty adjuster */
+        .qty-adjuster {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .qty-btn {
+            width: 34px;
+            height: 34px;
+            border: 1px solid rgba(180, 160, 130, 0.45);
+            border-radius: 8px;
+            background: rgba(245, 240, 230, 0.85);
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #444;
+            transition: all 0.15s;
+        }
+        .qty-btn:hover { background: rgba(230, 222, 210, 0.95); }
+
+        .qty-display {
+            background: rgba(245, 240, 230, 0.85);
+            border: 1px solid rgba(180, 160, 130, 0.45);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-weight: 700;
+            font-size: 14px;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        /* Chevron */
+        .chevron { color: #aaa; font-size: 16px; }
+
+        /* Pulse animation for low stock */
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .pulse { animation: pulse-soft 2s ease-in-out infinite; }
+
+        /* Slide-up animation */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in { animation: slideUp 0.3s ease forwards; }
+
+        select.form-input {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23888' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+            padding-right: 36px;
+        }
     </style>
 </head>
 <body>
-    <div class="header">
+<div class="page-wrapper">
+    <div class="mobile-header">
         <div style="display:flex;align-items:center;gap:12px">
             {% block back_button %}{% endblock %}
-            <span style="font-weight:700;letter-spacing:1px">{% block header_title %}INVENTORY{% endblock %}</span>
+            <span class="header-title">{% block header_title %}INVENTORY{% endblock %}</span>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
             {% block header_right %}
+            <button class="icon-btn" onclick="toggleSearch()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+            </button>
             {% if request.user.is_authenticated %}
-            <a href="/inventory/mobile/profile/">
-                <div style="width:36px;height:36px;border-radius:50%;background:#1a3a2e;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;border:2px solid rgba(255,255,255,0.3)">
+            <a href="{% url 'mobile_profile' %}">
+                <div class="avatar-circle">
                     {{ request.user.first_name|default:request.user.username|first|upper }}
                 </div>
             </a>
@@ -36,25 +602,81 @@
             {% endblock %}
         </div>
     </div>
-    <div style="padding:12px;max-width:480px;margin:0 auto">
+
+    <!-- Search overlay -->
+    <div id="search-overlay" style="display:none;background:rgba(0,0,0,0.5);position:fixed;inset:0;z-index:200;padding:60px 16px 20px">
+        <div style="background:white;border-radius:14px;padding:14px;box-shadow:0 8px 30px rgba(0,0,0,0.2)">
+            <div style="display:flex;gap:10px;align-items:center">
+                <input type="text" id="search-input" placeholder="Search inventory..." class="form-input" style="flex:1" oninput="handleSearch(this.value)">
+                <button onclick="toggleSearch()" class="btn-ghost" style="padding:11px 14px">✕</button>
+            </div>
+            <div id="search-results" style="margin-top:10px;max-height:60vh;overflow-y:auto"></div>
+        </div>
+    </div>
+
+    <div class="content-area">
         {% block content %}{% endblock %}
     </div>
-    <div style="height:80px"></div>
+
     {% block bottom_bar %}
     {% if request.user.is_authenticated %}
-    <div style="position:fixed;bottom:0;left:0;right:0;background:white;padding:10px 12px;display:flex;gap:8px;box-shadow:0 -2px 8px rgba(0,0,0,0.1)">
+    <div class="bottom-bar">
         {% if request.user.role == 'admin' or request.user.role == 'manager' or request.user.role == 'inventory_manager' %}
-        <a href="{% url 'mobile_dashboard' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">Dashboard</button></a>
-        <a href="{% url 'mobile_inventory_list' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">Inventory</button></a>
-        <a href="{% url 'mobile_reports' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">Reports</button></a>
-        <a href="{% url 'mobile_issued_items' %}" style="flex:1"><button class="btn-primary" style="width:100%;padding:10px 8px;font-size:13px">Issued</button></a>
+        <a href="{% url 'mobile_inventory_list' %}" style="flex:1">
+            <button class="btn-secondary" style="width:100%;padding:11px 8px;font-size:13px">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                Inventory
+            </button>
+        </a>
+        <a href="{% url 'mobile_manager_requests' %}" style="flex:1">
+            <button class="btn-ghost" style="width:100%;padding:11px 8px;font-size:13px">
+                Requests
+            </button>
+        </a>
+        <a href="{% url 'mobile_reports' %}" style="flex:1">
+            <button class="btn-primary" style="width:100%;padding:11px 8px;font-size:13px">Reports</button>
+        </a>
         {% else %}
-        <a href="{% url 'mobile_dashboard' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">Dashboard</button></a>
-        <a href="{% url 'mobile_my_requests' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">My Requests</button></a>
-        <a href="{% url 'mobile_inventory_list' %}" style="flex:1"><button class="btn-primary" style="width:100%;padding:10px 8px;font-size:13px">Inventory</button></a>
+        <a href="{% url 'mobile_inventory_list' %}" style="flex:1">
+            <button class="btn-secondary" style="width:100%">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                Inventory List
+            </button>
+        </a>
+        <a href="{% url 'mobile_request_form' %}" style="flex:1">
+            <button class="btn-primary" style="width:100%">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Request Item
+            </button>
+        </a>
         {% endif %}
     </div>
     {% endif %}
     {% endblock %}
+</div>
+
+<script>
+function toggleSearch() {
+    const overlay = document.getElementById('search-overlay');
+    const isHidden = overlay.style.display === 'none';
+    overlay.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) document.getElementById('search-input').focus();
+}
+
+async function handleSearch(query) {
+    const results = document.getElementById('search-results');
+    if (!query.trim()) { results.innerHTML = ''; return; }
+    results.innerHTML = '<div style="color:#aaa;text-align:center;padding:16px">Searching...</div>';
+    // Basic client-side filtering could go here; for now navigate
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const overlay = document.getElementById('search-overlay');
+        if (overlay.style.display !== 'none') overlay.style.display = 'none';
+    }
+});
+</script>
+{% block extra_scripts %}{% endblock %}
 </body>
 </html>

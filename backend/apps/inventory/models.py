@@ -30,7 +30,11 @@ class Item(models.Model):
 
     name = models.CharField(max_length=200)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='items')
-    item_type = models.CharField(max_length=20, choices=ItemType.choices)
+    item_type = models.CharField(
+    max_length=20,
+    choices=ItemType.choices,
+    default=ItemType.CONSUMABLE
+    )
     unit = models.CharField(max_length=20, choices=Unit.choices, default=Unit.PIECES)
     total_quantity = models.PositiveIntegerField(default=0)
     available_quantity = models.PositiveIntegerField(default=0)

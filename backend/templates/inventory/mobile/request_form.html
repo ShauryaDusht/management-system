@@ -1,50 +1,135 @@
 {% extends 'inventory/mobile/base_mobile.html' %}
 {% block title %}Request Item{% endblock %}
 {% block header_title %}Request Item{% endblock %}
-{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white">←</a>{% endblock %}
+{% block back_button %}
+<a href="{% url 'mobile_dashboard' %}" style="color:white;display:flex;align-items:center">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+</a>
+{% endblock %}
+
 {% block content %}
-<div class="card">
-  <p style="color:#888;margin-bottom:16px">Fill out the details...</p>
+<div class="card animate-in" style="padding:20px">
+  <p style="color:var(--text-secondary);margin-bottom:20px;font-size:15px">Fill out the details...</p>
+
   <form method="POST" action="{% url 'mobile_request_form' %}">
     {% csrf_token %}
-    <div style="margin-bottom:14px">
-      <label style="font-weight:600;display:block;margin-bottom:6px">Name of Inventory</label>
-      <select name="item" required style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px"
-        onchange="document.getElementById('units_remaining').value=this.options[this.selectedIndex].dataset.available">
+
+    {# Item selector #}
+    <div style="margin-bottom:16px">
+      <label class="form-label">
+        <span id="selected-item-emoji" style="font-size:18px;margin-right:6px">📦</span>
+        Name of Inventory
+      </label>
+      <select name="item" id="item-select" required class="form-input"
+        onchange="onItemChange(this)">
         <option value="">-- Select Item --</option>
         {% for item in items %}
-        <option value="{{ item.id }}" data-available="{{ item.available_quantity }}">
-          {{ item.name }} ({{ item.available_quantity }} {{ item.unit }} available)
+        <option value="{{ item.id }}"
+          data-available="{{ item.available_quantity }}"
+          data-unit="{{ item.unit }}"
+          data-name="{{ item.name }}"
+          data-type="{{ item.item_type }}">
+          {{ item.name }}{% if item.category %} ({{ item.category.name }}){% endif %}
         </option>
         {% endfor %}
       </select>
     </div>
-    <div style="margin-bottom:14px">
-      <label style="font-weight:600;display:block;margin-bottom:6px">Quantity Needed</label>
-      <input type="number" name="quantity_requested" min="1" required
-        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px">
+
+    {# Units remaining (read-only, auto-filled) #}
+    <div style="margin-bottom:16px">
+      <label class="form-label">No. of Units Remaining</label>
+      <input type="number" id="units-remaining-display" class="form-input"
+        readonly placeholder="Select an item first"
+        style="background:rgba(240,235,225,0.7);color:#666">
     </div>
-    <div style="margin-bottom:14px">
-      <label style="font-weight:600;display:block;margin-bottom:6px">No. of Units Remaining</label>
-      <input type="number" name="units_remaining" id="units_remaining" readonly
-        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px;background:#f5f5f5">
+
+    {# Quantity #}
+    <div style="margin-bottom:16px">
+      <label class="form-label">Quantity Needed</label>
+      <input type="number" name="quantity_requested" id="qty-input"
+        min="1" required class="form-input" placeholder="e.g. 5">
     </div>
-    <div style="margin-bottom:14px">
-      <label style="font-weight:600;display:block;margin-bottom:6px">Reason for Request</label>
-      <textarea name="reason" required rows="3"
-        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px"></textarea>
+
+    {# Reason #}
+    <div style="margin-bottom:16px">
+      <label class="form-label">Reason for Request</label>
+      <textarea name="reason" required rows="3" class="form-input"
+        placeholder="Explain why you need this item..."></textarea>
     </div>
-    <div style="margin-bottom:20px">
-      <label style="font-weight:600;display:block;margin-bottom:6px">Additional Notes (Optional)</label>
-      <textarea name="notes" rows="2"
-        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px"></textarea>
+
+    {# Additional Notes #}
+    <div style="margin-bottom:24px">
+      <label class="form-label" style="color:#999">Additional Notes <span style="font-weight:400">(Optional)</span></label>
+      <textarea name="notes" rows="2" class="form-input"
+        placeholder="Any additional details or instructions..."></textarea>
     </div>
+
+    {# Actions #}
     <div style="display:flex;gap:10px">
       <a href="{% url 'mobile_dashboard' %}" style="flex:1">
-        <button type="button" style="width:100%;background:#e5e7eb;padding:12px;border-radius:8px;border:none;font-size:15px">Cancel</button>
+        <button type="button" class="btn-ghost" style="width:100%;padding:13px">Cancel</button>
       </a>
-      <button type="submit" class="btn-primary" style="flex:2">✓ Submit Request</button>
+      <button type="submit" class="btn-primary" style="flex:2;padding:13px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Submit Request
+      </button>
     </div>
   </form>
 </div>
+
+{# My recent requests below #}
+<div style="margin-top:16px">
+  <h3 class="section-title" style="font-size:16px;margin-bottom:10px">My Recent Requests</h3>
+  {% for req in my_recent_requests %}
+  <div class="card animate-in" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;animation-delay:{{ forloop.counter0 }}1s">
+    <div>
+      <div style="font-weight:700;font-size:14px">{{ req.item.name }}</div>
+      <div style="font-size:12px;color:#888">{{ req.quantity_requested }} {{ req.item.unit }} · {{ req.requested_at|timesince }} ago</div>
+    </div>
+    <div>
+      {% if req.status == 'approved' %}<span class="badge-ok">Approved</span>
+      {% elif req.status == 'rejected' %}<span class="badge-out">Rejected</span>
+      {% elif req.status == 'issued' %}<span class="badge-ok">Issued</span>
+      {% else %}<span class="badge-pending">Pending</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const itemEmojis = {
+  'towel': '🛏', 'sheet': '🛏',
+  'detergent': '🧴', 'soap': '🧼', 'liquid': '🧴',
+  'vacuum': '🧹', 'mop': '🧹', 'brush': '🧹',
+  'pipe': '🪣', 'garden': '🌿', 'fertiliz': '🌿',
+  'glove': '🧤', 'battery': '🔋', 'bulb': '💡',
+  'spray': '🧴', 'cleaner': '🧴', 'phenyl': '🧪',
+};
+
+function onItemChange(select) {
+  const opt = select.options[select.selectedIndex];
+  const available = opt.dataset.available;
+  const name = opt.dataset.name || '';
+  const qtyInput = document.getElementById('units-remaining-display');
+
+  if (available !== undefined && available !== '') {
+    qtyInput.value = available;
+  } else {
+    qtyInput.value = '';
+    qtyInput.placeholder = 'Select an item first';
+  }
+
+  // Update emoji
+  const emoji = document.getElementById('selected-item-emoji');
+  const nameLower = name.toLowerCase();
+  let icon = '📦';
+  for (const [keyword, em] of Object.entries(itemEmojis)) {
+    if (nameLower.includes(keyword)) { icon = em; break; }
+  }
+  emoji.textContent = icon;
+}
+</script>
 {% endblock %}

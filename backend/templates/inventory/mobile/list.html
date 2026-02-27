@@ -1,45 +1,110 @@
 {% extends 'inventory/mobile/base_mobile.html' %}
 {% block title %}Inventory List{% endblock %}
 {% block header_title %}INVENTORY LIST{% endblock %}
-{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white">&larr;</a>{% endblock %}
+{% block back_button %}
+<a href="{% url 'mobile_dashboard' %}" style="color:white;display:flex;align-items:center">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+</a>
+{% endblock %}
+
 {% block content %}
-  <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto">
-    <a href="?"><div style="background:{% if not selected_category %}#2d4a3e;color:white{% else %}white;color:#333{% endif %};padding:8px 16px;border-radius:8px;font-size:13px;white-space:nowrap">All {{ total_count }}</div></a>
+<div style="display:flex;gap:10px">
+
+  {# Left: Category sidebar #}
+  <div style="width:90px;flex-shrink:0">
+    <a href="?">
+      <div class="cat-item {% if not selected_category %}active{% endif %}" style="margin-bottom:8px">
+        All<br>
+        <span style="font-size:14px;font-weight:800">{{ total_count }}</span>
+      </div>
+    </a>
     {% for cat in categories %}
-    <a href="?category={{ cat.id }}"><div style="background:{% if selected_category == cat.id|stringformat:'s' %}#2d4a3e;color:white{% else %}white;color:#333{% endif %};padding:8px 16px;border-radius:8px;font-size:13px;white-space:nowrap">{{ cat.name }}</div></a>
+    <a href="?category={{ cat.id }}">
+      <div class="cat-item {% if selected_category == cat.id|stringformat:'s' %}active{% endif %}" style="margin-bottom:8px;font-size:11px;padding:8px 6px">
+        {{ cat.name }}<br>
+        <span style="font-size:13px;font-weight:800">{{ cat.items.count }}</span>
+      </div>
+    </a>
     {% endfor %}
   </div>
 
-  {% for item in items %}
-  <div class="card" style="display:flex;justify-content:space-between;align-items:center">
-    <div style="display:flex;align-items:center;gap:10px">
-      <div style="width:28px;height:28px;background:{% if item.is_low_stock %}#f97316{% else %}#22c55e{% endif %};border-radius:4px"></div>
-      <div>
-        <div style="font-weight:600">{{ item.name }}</div>
-        <div style="color:#888;font-size:12px">{{ item.category.name }}</div>
-        {% if item.is_low_stock %}<span class="badge-low">Low Stock</span>{% endif %}
+  {# Right: Item list #}
+  <div style="flex:1">
+    <div class="card" style="padding:0">
+      {# Header row #}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid rgba(180,160,130,0.2)">
+        <span style="font-weight:700;font-size:15px">Inventory List</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="color:#888;font-size:14px">{{ total_count }}</span>
+          <span class="chevron">›</span>
+        </div>
       </div>
-    </div>
-    <div style="text-align:right">
-      <div style="font-size:22px;font-weight:800">{{ item.available_quantity }}</div>
-      <div style="font-size:12px;color:#888">{{ item.unit }}</div>
+
+      {# Items #}
+      {% for item in items %}
+      <div class="item-row animate-in" style="padding:12px 16px;animation-delay:{{ forloop.counter0 }}00ms">
+        {# Checkbox #}
+        <div style="display:flex;align-items:flex-start;gap:12px;flex:1">
+          <div style="margin-top:2px">
+            <div style="width:22px;height:22px;border-radius:5px;background:{% if item.is_low_stock %}#c2622a{% elif item.available_quantity == 0 %}#dc2626{% else %}#2d4a3e{% endif %};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-weight:700;font-size:14px;color:#1a1a1a">{{ item.name }}</span>
+              {% if item.is_low_stock %}
+                <span class="badge-low">Low Stock</span>
+              {% endif %}
+            </div>
+            <div style="color:#888;font-size:12px;margin-top:2px">
+              ({{ item.category.name }})
+            </div>
+            {% if item.is_low_stock %}
+            <div style="color:#888;font-size:12px">{{ item.available_quantity }} {{ item.unit }}</div>
+            {% endif %}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          {% if not item.is_low_stock %}
+          <div style="font-size:26px;font-weight:800;color:#1a1a1a;line-height:1">{{ item.available_quantity }}</div>
+          <div style="font-size:11px;color:#888">{{ item.unit }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <div style="padding:40px;text-align:center;color:#aaa">No items found</div>
+      {% endfor %}
     </div>
   </div>
-  {% empty %}
-  <div style="color:#aaa;text-align:center;padding:40px">No items found</div>
-  {% endfor %}
+</div>
 {% endblock %}
 
 {% block bottom_bar %}
-<div style="position:fixed;bottom:0;left:0;right:0;background:white;padding:12px 16px;display:flex;gap:10px;box-shadow:0 -2px 8px rgba(0,0,0,0.1)">
+<div class="bottom-bar">
   {% if request.user.role == 'admin' or request.user.role == 'manager' or request.user.role == 'inventory_manager' %}
-  <a href="{% url 'mobile_dashboard' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Dashboard</button></a>
-  <a href="{% url 'mobile_reports' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Reports</button></a>
-  <a href="{% url 'mobile_issued_items' %}" style="flex:1"><button class="btn-primary" style="width:100%">Issued Items</button></a>
+  <a href="{% url 'mobile_manager_requests' %}" style="flex:1">
+    <button class="btn-secondary" style="width:100%;padding:12px 8px;font-size:13px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Pending Requests
+    </button>
+  </a>
+  <a href="{% url 'mobile_reports' %}" style="flex:1">
+    <button class="btn-primary" style="width:100%;padding:12px 8px;font-size:13px">Reports</button>
+  </a>
   {% else %}
-  <a href="{% url 'mobile_dashboard' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Dashboard</button></a>
-  <a href="{% url 'mobile_my_requests' %}" style="flex:1"><button class="btn-secondary" style="width:100%">My Requests</button></a>
-  <a href="{% url 'mobile_request_form' %}" style="flex:1"><button class="btn-primary" style="width:100%">+ Request Item</button></a>
+  <a href="{% url 'mobile_my_requests' %}" style="flex:1">
+    <button class="btn-secondary" style="width:100%;padding:12px 8px;font-size:13px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Pending Requests
+    </button>
+  </a>
+  <a href="{% url 'mobile_request_form' %}" style="flex:1">
+    <button class="btn-primary" style="width:100%">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Request Item
+    </button>
+  </a>
   {% endif %}
 </div>
 {% endblock %}

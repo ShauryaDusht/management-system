@@ -3,152 +3,212 @@
 {% block header_title %}INVENTORY DASHBOARD{% endblock %}
 
 {% block content %}
+<div style="padding-top:2px">
+
+  {# ── Low Stock Alert Banner ── #}
   {% if low_stock_items %}
-  <div style="background:#fff3e0;border:1px solid #f97316;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-    <div>
-      <div style="color:#c2622a;font-weight:700">Low Stock Alert: {{ low_stock_items.0.name }}</div>
-      <div style="color:#666;font-size:13px">Only {{ low_stock_items.0.available_quantity }} units left, reorder needed!</div>
+  <a href="{% url 'mobile_inventory_list' %}?low_stock=1" style="text-decoration:none">
+    <div class="alert-banner animate-in" style="animation-delay:0.05s">
+      <div style="display:flex;align-items:center;flex:1">
+        <div class="alert-icon pulse">⚠</div>
+        <div>
+          <div style="font-weight:700;color:#c2622a;font-size:15px">Low Stock Alert: {{ low_stock_items.0.name }}</div>
+          <div style="color:#8a6a50;font-size:13px;margin-top:2px">
+            Only {{ low_stock_items.0.available_quantity }} units left, reorder needed!
+          </div>
+        </div>
+      </div>
+      <span style="color:#c2622a;font-size:22px;font-weight:300">›</span>
     </div>
-    <span style="color:#c2622a">&#8250;</span>
-  </div>
+  </a>
   {% endif %}
 
-  <h3 style="font-weight:700;margin:12px 0 8px">Inventory Overview</h3>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-    <div class="stat-card" style="background:#2d4a3e">
-      <div style="font-size:13px;opacity:0.8">Total Items</div>
-      <div style="font-size:32px;font-weight:800">{{ total_items }}</div>
-    </div>
-    <div class="stat-card" style="background:#1e6b7a">
-      <div style="font-size:13px;opacity:0.8">Low Stock</div>
-      <div style="font-size:32px;font-weight:800">{{ low_stock_count }}</div>
-    </div>
-    <div class="stat-card" style="background:#c2622a">
-      <div style="font-size:13px;opacity:0.8">Pending Requests</div>
-      <div style="font-size:32px;font-weight:800">{{ pending_count }}</div>
-    </div>
-    <div class="stat-card" style="background:#8b5e3c">
-      <div style="font-size:13px;opacity:0.8">Out of Stock</div>
-      <div style="font-size:32px;font-weight:800">{{ out_of_stock_count }}</div>
-    </div>
-  </div>
+  {# ── Inventory Overview ── #}
+  <h2 class="section-title animate-in" style="margin-bottom:12px;animation-delay:0.1s">Inventory Overview</h2>
 
-  {% if role == 'admin' or role == 'manager' or role == 'inventory_manager' %}
-  <h3 style="font-weight:700;margin:10px 0 8px">Quick Links</h3>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+
+    <div class="stat-card animate-in" style="background:linear-gradient(135deg,#2d4a3e,#1e3530);animation-delay:0.12s">
+      <div class="icon-area">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <div class="label">Total Items</div>
+      <div class="value">{{ total_items }}</div>
+    </div>
+
+    <a href="{% url 'mobile_inventory_list' %}?low_stock=1" style="text-decoration:none">
+      <div class="stat-card animate-in" style="background:linear-gradient(135deg,#1e5a6a,#164858);animation-delay:0.15s">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between">
+          <div>
+            <div class="icon-area">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div class="label">Low Stock<br>Items</div>
+          </div>
+          <div class="value" style="font-size:40px;line-height:1;margin-top:6px">{{ low_stock_count }}</div>
+        </div>
+      </div>
+    </a>
+
+    {% if role == 'admin' or role == 'manager' or role == 'inventory_manager' %}
     <a href="{% url 'mobile_manager_requests' %}" style="text-decoration:none">
-      <div class="card" style="margin:0;padding:12px;border:1px solid #e5e7eb">
-        <div style="font-weight:700;color:#2d4a3e;font-size:14px">Pending Requests</div>
-        <div style="font-size:12px;color:#888;margin-top:2px">Review approvals</div>
+      <div class="stat-card animate-in" style="background:linear-gradient(135deg,#c2622a,#a85020);animation-delay:0.18s">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between">
+          <div>
+            <div class="icon-area">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="label">Pending<br>Requests</div>
+          </div>
+          <div class="value" style="font-size:40px;line-height:1;margin-top:6px">{{ pending_count }}</div>
+        </div>
       </div>
     </a>
-    <a href="{% url 'mobile_reports' %}" style="text-decoration:none">
-      <div class="card" style="margin:0;padding:12px;border:1px solid #e5e7eb">
-        <div style="font-weight:700;color:#2d4a3e;font-size:14px">Reports</div>
-        <div style="font-size:12px;color:#888;margin-top:2px">Inventory & requests</div>
+    {% else %}
+    <a href="{% url 'mobile_my_requests' %}" style="text-decoration:none">
+      <div class="stat-card animate-in" style="background:linear-gradient(135deg,#c2622a,#a85020);animation-delay:0.18s">
+        <div class="icon-area">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="label">My Requests</div>
+        <div class="value">{{ my_requests_count|default:"0" }}</div>
       </div>
     </a>
-    <a href="{% url 'mobile_issued_items' %}" style="text-decoration:none">
-      <div class="card" style="margin:0;padding:12px;border:1px solid #e5e7eb">
-        <div style="font-weight:700;color:#2d4a3e;font-size:14px">Issued Items</div>
-        <div style="font-size:12px;color:#888;margin-top:2px">Track issued stock</div>
-      </div>
-    </a>
-    <a href="{% url 'mobile_stock_log' %}" style="text-decoration:none">
-      <div class="card" style="margin:0;padding:12px;border:1px solid #e5e7eb">
-        <div style="font-weight:700;color:#2d4a3e;font-size:14px">Stock Log</div>
-        <div style="font-size:12px;color:#888;margin-top:2px">Recent additions</div>
-      </div>
-    </a>
-  </div>
-  {% endif %}
+    {% endif %}
 
-  <h3 style="font-weight:700;margin:12px 0 8px">Pending Requests</h3>
-  <div style="display:flex;gap:8px;margin-bottom:10px">
-    <button id="tab-caretaker" type="button" onclick="setRoleTab('caretaker')"
-      style="flex:1;background:white;color:#555;border:1px solid #ddd;padding:8px 10px;border-radius:8px;font-size:12px;cursor:pointer">
+    <div class="stat-card animate-in" style="background:linear-gradient(135deg,#8b5e3c,#704a2a);animation-delay:0.21s">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div class="icon-area">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+          </div>
+          <div class="label">Out of<br>Stock</div>
+        </div>
+        <div class="value" style="font-size:40px;line-height:1;margin-top:6px">{{ out_of_stock_count }}</div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Pending Requests Section ── #}
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px" class="animate-in" style="animation-delay:0.24s">
+    <h2 class="section-title">Pending Requests</h2>
+    {% if role == 'admin' or role == 'manager' or role == 'inventory_manager' %}
+    <a href="{% url 'mobile_manager_requests' %}" style="color:#c2622a;font-size:13px;font-weight:700;text-decoration:none">
+      See all ›
+    </a>
+    {% endif %}
+  </div>
+
+  {# Tab Bar #}
+  <div style="display:flex;gap:8px;margin-bottom:12px" class="animate-in" style="animation-delay:0.26s">
+    <button id="tab-caretaker" type="button" class="tab-btn active" onclick="setRoleTab('caretaker')">
       Caretakers (Hostels)
     </button>
-    <button id="tab-supervisor" type="button" onclick="setRoleTab('supervisor')"
-      style="flex:1;background:#2d4a3e;color:white;border:1px solid #2d4a3e;padding:8px 10px;border-radius:8px;font-size:12px;cursor:pointer">
-      Supervisors
+    <button id="tab-supervisor" type="button" class="tab-btn inactive" onclick="setRoleTab('supervisor')">
+      Supervisors ›
     </button>
   </div>
 
-  <div id="pending-requests-list">
+  {# Request items list #}
+  <div id="pending-requests-list" class="card animate-in" style="padding:0;animation-delay:0.28s">
     {% for req in pending_requests %}
-    <div class="card mobile-pending-request" data-role="{{ req.requested_by.role }}">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-weight:600">{{ req.item.name }}</div>
-        <div style="color:#888;font-size:12px">{{ req.quantity_requested }} Units Needed &#8250;</div>
+    {% with user_role=req.requested_by.role %}
+    <div class="mobile-pending-request" data-role="{{ user_role }}"
+      style="display:{% if user_role == 'caretaker' %}flex{% else %}none{% endif %};align-items:center;padding:13px 16px;border-bottom:1px solid rgba(180,160,130,0.18)">
+      <div style="font-size:26px;width:38px;flex-shrink:0;margin-right:12px">
+        {% if 'towel' in req.item.name|lower %}🛏
+        {% elif 'detergent' in req.item.name|lower or 'cleaner' in req.item.name|lower %}🧴
+        {% elif 'pipe' in req.item.name|lower or 'garden' in req.item.name|lower %}🪣
+        {% elif 'soap' in req.item.name|lower %}🧼
+        {% elif 'vacuum' in req.item.name|lower %}🧹
+        {% elif 'mop' in req.item.name|lower %}🧹
+        {% elif 'glove' in req.item.name|lower %}🧤
+        {% else %}📦
+        {% endif %}
       </div>
-      <div style="color:#888;font-size:12px">by {{ req.requested_by.get_full_name|default:req.requested_by.username }}</div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px;color:#1a1a1a">{{ req.item.name }}</div>
+        <div style="color:var(--text-muted);font-size:12px">{{ req.item.category.name }}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="color:#555;font-size:13px">{{ req.quantity_requested }} {{ req.item.unit }} Needed</span>
+        <span class="chevron">›</span>
+      </div>
     </div>
+    {% endwith %}
     {% empty %}
-    <div style="color:#aaa;text-align:center;padding:20px">No pending requests</div>
+    <div style="padding:30px;text-align:center;color:#aaa;font-size:14px">
+      No pending requests
+    </div>
     {% endfor %}
   </div>
 
-  <div id="pending-empty-message" style="display:none;color:#aaa;text-align:center;padding:20px">
-    No requests found for selected role
+  <div id="pending-empty-message" style="display:none;padding:30px;text-align:center;color:#aaa;font-size:14px">
+    No requests found for this group
   </div>
 
-  <script>
-    function setRoleTab(role) {
-      const tabCaretaker = document.getElementById('tab-caretaker');
-      const tabSupervisor = document.getElementById('tab-supervisor');
-      const cards = document.querySelectorAll('.mobile-pending-request');
-      const emptyState = document.getElementById('pending-empty-message');
-      let visibleCount = 0;
+</div>
 
-      if (tabCaretaker && tabSupervisor) {
-        if (role === 'caretaker') {
-          tabCaretaker.style.background = '#2d4a3e';
-          tabCaretaker.style.color = 'white';
-          tabCaretaker.style.borderColor = '#2d4a3e';
-          tabSupervisor.style.background = 'white';
-          tabSupervisor.style.color = '#555';
-          tabSupervisor.style.borderColor = '#ddd';
-        } else {
-          tabSupervisor.style.background = '#2d4a3e';
-          tabSupervisor.style.color = 'white';
-          tabSupervisor.style.borderColor = '#2d4a3e';
-          tabCaretaker.style.background = 'white';
-          tabCaretaker.style.color = '#555';
-          tabCaretaker.style.borderColor = '#ddd';
-        }
-      }
+<script>
+function setRoleTab(role) {
+  const tabC = document.getElementById('tab-caretaker');
+  const tabS = document.getElementById('tab-supervisor');
+  const cards = document.querySelectorAll('.mobile-pending-request');
+  const emptyMsg = document.getElementById('pending-empty-message');
+  let shown = 0;
 
-      cards.forEach((card) => {
-        const cardRole = card.getAttribute('data-role');
-        const show = cardRole === role;
-        card.style.display = show ? 'block' : 'none';
-        if (show) {
-          visibleCount += 1;
-        }
-      });
+  tabC.className = 'tab-btn ' + (role === 'caretaker' ? 'active' : 'inactive');
+  tabS.className = 'tab-btn ' + (role === 'supervisor' ? 'active' : 'inactive');
+  tabC.textContent = 'Caretakers (Hostels)';
+  tabS.textContent = 'Supervisors ›';
 
-      if (emptyState) {
-        emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
-      }
-    }
+  cards.forEach(card => {
+    const cr = card.getAttribute('data-role');
+    const match = cr === role || (role === 'supervisor' && ['supervisor'].includes(cr));
+    card.style.display = match ? 'flex' : 'none';
+    if (match) shown++;
+  });
 
-    document.addEventListener('DOMContentLoaded', function () {
-      const hasCaretaker = document.querySelector('.mobile-pending-request[data-role="caretaker"]');
-      setRoleTab(hasCaretaker ? 'caretaker' : 'supervisor');
-    });
-  </script>
+  if (emptyMsg) emptyMsg.style.display = shown === 0 ? 'block' : 'none';
+  const listCard = document.getElementById('pending-requests-list');
+  if (listCard) listCard.style.display = shown === 0 ? 'none' : 'block';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const hasCaretaker = document.querySelector('.mobile-pending-request[data-role="caretaker"]');
+  setRoleTab(hasCaretaker ? 'caretaker' : 'supervisor');
+});
+</script>
 {% endblock %}
 
 {% block bottom_bar %}
-<div style="position:fixed;bottom:0;left:0;right:0;background:white;padding:12px 16px;display:flex;gap:10px;box-shadow:0 -2px 8px rgba(0,0,0,0.1)">
+<div class="bottom-bar">
   {% if role == 'admin' or role == 'manager' or role == 'inventory_manager' %}
-  <a href="{% url 'mobile_inventory_list' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Inventory List</button></a>
-  <a href="{% url 'mobile_manager_requests' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Pending Requests</button></a>
-  <a href="{% url 'mobile_reports' %}" style="flex:1"><button class="btn-primary" style="width:100%">Reports</button></a>
+  <a href="{% url 'mobile_inventory_list' %}" style="flex:1">
+    <button class="btn-secondary" style="width:100%;padding:12px 8px;font-size:13px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Inventory List
+    </button>
+  </a>
+  <a href="{% url 'mobile_manager_requests' %}" style="flex:1">
+    <button class="btn-ghost" style="width:100%;padding:12px 8px;font-size:13px">Requests</button>
+  </a>
+  <a href="{% url 'mobile_reports' %}" style="flex:1">
+    <button class="btn-primary" style="width:100%;padding:12px 8px;font-size:13px">Reports</button>
+  </a>
   {% else %}
-  <a href="{% url 'mobile_inventory_list' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Inventory List</button></a>
-  <a href="{% url 'mobile_request_form' %}" style="flex:1"><button class="btn-primary" style="width:100%">+ Request Item</button></a>
+  <a href="{% url 'mobile_inventory_list' %}" style="flex:1">
+    <button class="btn-secondary" style="width:100%">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Inventory List
+    </button>
+  </a>
+  <a href="{% url 'mobile_request_form' %}" style="flex:1">
+    <button class="btn-primary" style="width:100%">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Request Item
+    </button>
+  </a>
   {% endif %}
 </div>
 {% endblock %}
