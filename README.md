@@ -107,3 +107,49 @@ This repository contains a Dockerized management system with:
 - Backend runs DB migrations automatically at startup.
 - Static files are collected automatically at startup.
 - See inventory-specific documentation here: [`backend/apps/inventory/README.md`](backend/apps/inventory/README.md)
+
+---
+
+## Team Sync — Get Everyone's Data Updated
+
+When someone pushes new code or data, every teammate runs:
+
+**Step 1 — Pull latest code**
+```bash
+git pull origin main
+```
+
+**Step 2 — Rebuild Docker containers**
+```bash
+docker compose down
+docker compose up --build -d
+```
+
+**Step 3 — Run setup script (one command does everything)**
+```bash
+docker compose exec backend sh setup_team.sh
+```
+
+This runs migrations + loads all inventory data + seeds 74 real items. ✅
+
+**Default Login:**
+URL:      http://localhost:5173
+Username: admin
+Password: admin12345
+
+**If setup script fails, run manually:**
+```bash
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py loaddata backend/fixtures/inventory.json
+docker compose exec backend python manage.py seed_inventory
+docker compose exec backend python manage.py createsuperuser
+```
+
+**Complete reset (if everything is broken):**
+```bash
+docker compose down -v
+docker compose up --build -d
+docker compose exec backend sh setup_team.sh
+docker compose exec backend python manage.py createsuperuser
+```
+> ⚠️ down -v deletes your local database. Only use as last resort.
