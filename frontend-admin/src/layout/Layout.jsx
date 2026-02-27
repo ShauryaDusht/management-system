@@ -6,7 +6,7 @@ import { authAPI } from '../api/auth'
 const NAV = {
   admin: [
     { to: '/dashboard',    label: 'Dashboard',     icon: 'chart'     },
-    { to: '/items',        label: 'Inventory',      icon: 'box'       },
+    { to: '/inventory',    label: 'Inventory',      icon: 'box'       },
     { to: '/requests',     label: 'All Requests',   icon: 'clipboard' },
     { to: '/reports',      label: 'Reports',        icon: 'report'    },
     { to: '/issues',       label: 'Issued Items',   icon: 'arrows'    },
@@ -21,7 +21,7 @@ const NAV = {
     { to: '/requests',     label: 'Requests',       icon: 'clipboard' },
     { to: '/reports',      label: 'Reports',        icon: 'report'    },
     { to: '/issues',       label: 'Issued Items',   icon: 'arrows'    },
-    { to: '/items',        label: 'Inventory',      icon: 'box'       },
+    { to: '/inventory',    label: 'Inventory',      icon: 'box'       },
   ],
   supervisor: [
     { to: '/requests',     label: 'My Requests',    icon: 'clipboard' },

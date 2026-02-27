@@ -2,17 +2,18 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 
-import LoginPage         from './pages/LoginPage'
-import DashboardPage     from './pages/DashboardPage'
-import ItemsPage         from './pages/ItemsPage'
-import ItemHistoryPage   from './pages/ItemHistoryPage'
-import RequestsPage      from './pages/RequestsPage'
-import MyRequestsPage    from './pages/MyRequestsPage'
-import IssuesPage        from './pages/IssuesPage'
-import Reports           from './pages/Reports'
-import UsersPage         from './pages/UsersPage'
-import UserActivityPage  from './pages/UserActivityPage'
-import StockEntriesPage  from './pages/StockEntriesPage'
+import LoginPage            from './pages/LoginPage'
+import DashboardPage        from './pages/DashboardPage'
+import ItemsPage            from './pages/ItemsPage'
+import InventoryAdminPage   from './pages/InventoryAdminPage'
+import ItemHistoryPage      from './pages/ItemHistoryPage'
+import RequestsPage         from './pages/RequestsPage'
+import MyRequestsPage       from './pages/MyRequestsPage'
+import IssuesPage           from './pages/IssuesPage'
+import Reports              from './pages/Reports'
+import UsersPage            from './pages/UsersPage'
+import UserActivityPage     from './pages/UserActivityPage'
+import StockEntriesPage     from './pages/StockEntriesPage'
 
 function RoleRedirect() {
   const { user, loading } = useAuth()
@@ -60,6 +61,11 @@ export default function App() {
           } />
           <Route path="/items/:id/history" element={
             <ProtectedRoute allowedRoles={['admin']}><ItemHistoryPage /></ProtectedRoute>
+          } />
+
+          {/* Full Inventory Admin UI */}
+          <Route path="/inventory" element={
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'inventory_manager']}><InventoryAdminPage /></ProtectedRoute>
           } />
 
           {/* Admin + Manager */}
