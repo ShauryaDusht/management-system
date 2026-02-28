@@ -1,0 +1,40 @@
+{% extends 'housekeeping/mobile/base_hk_mobile.html' %}
+{% block title %}Complaints{% endblock %}
+{% block header_title %}Complaints{% endblock %}
+{% block back_button %}<a href="{% url 'hk_dashboard' %}" style="color:white;font-size:20px;">←</a>{% endblock %}
+
+{% block content %}
+<div style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;">
+  <a href="?status=all" style="text-decoration:none;"><button class="{% if status_filter == 'all' %}hk-btn-primary{% else %}hk-btn-secondary{% endif %}" style="padding:8px 10px;font-size:12px;">All</button></a>
+  <a href="?status=open" style="text-decoration:none;"><button class="{% if status_filter == 'open' %}hk-btn-primary{% else %}hk-btn-secondary{% endif %}" style="padding:8px 10px;font-size:12px;">Open</button></a>
+  <a href="?status=in_progress" style="text-decoration:none;"><button class="{% if status_filter == 'in_progress' %}hk-btn-primary{% else %}hk-btn-secondary{% endif %}" style="padding:8px 10px;font-size:12px;">In Progress</button></a>
+  <a href="?status=resolved" style="text-decoration:none;"><button class="{% if status_filter == 'resolved' %}hk-btn-primary{% else %}hk-btn-secondary{% endif %}" style="padding:8px 10px;font-size:12px;">Resolved</button></a>
+</div>
+
+{% for complaint in complaints %}
+<div class="hk-card">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+    <div>
+      <div style="font-weight:800;color:#1f2937;">{{ complaint.title }}</div>
+      <div style="font-size:12px;color:#6b7280;">📍 {{ complaint.location.name|default:'No location' }} · {{ complaint.created_at|timesince }} ago</div>
+      <div style="font-size:12px;color:#6b7280;margin-top:2px;">Assigned to: {{ complaint.assigned_to.name|default:'Unassigned' }}</div>
+    </div>
+    <span class="hk-badge"
+      style="text-transform:uppercase;
+      {% if complaint.priority == 'urgent' %}background:#fee2e2;color:#991b1b
+      {% elif complaint.priority == 'high' %}background:#ffedd5;color:#9a3412
+      {% elif complaint.priority == 'medium' %}background:#fef3c7;color:#92400e
+      {% else %}background:#dcfce7;color:#166534{% endif %};">
+      {{ complaint.priority }}
+    </span>
+  </div>
+  <a href="{% url 'hk_complaint_detail' complaint.id %}" style="display:inline-block;margin-top:10px;color:#2d6a4f;font-weight:700;text-decoration:none;">View Details</a>
+</div>
+{% empty %}
+<div class="hk-card" style="text-align:center;color:#6b7280;">No complaints found.</div>
+{% endfor %}
+
+<a href="{% url 'hk_add_complaint' %}" style="position:fixed;right:14px;bottom:92px;">
+  <button class="hk-btn-primary" style="width:auto;padding:12px 14px;border-radius:999px;">＋</button>
+</a>
+{% endblock %}

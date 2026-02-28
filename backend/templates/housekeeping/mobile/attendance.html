@@ -1,0 +1,80 @@
+{% extends 'housekeeping/mobile/base_hk_mobile.html' %}
+{% block title %}Attendance{% endblock %}
+{% block header_title %}Attendance{% endblock %}
+{% block back_button %}<a href="{% url 'hk_dashboard' %}" style="color:white;font-size:20px;">←</a>{% endblock %}
+
+{% block content %}
+<div class="hk-card" style="position:sticky;top:62px;z-index:30;">
+  <div style="font-size:17px;font-weight:800;color:#2d6a4f;">Today's Attendance</div>
+  <div style="font-size:12px;color:#6b7280;margin-top:2px;">📅 {{ selected_date|date:"d M Y" }}</div>
+  <div style="margin-top:8px;font-size:13px;color:#374151;font-weight:600;">
+    Present: <span id="sum-present">{{ present_count }}</span> |
+    Absent: <span id="sum-absent">{{ absent_count }}</span> |
+    Late: <span id="sum-late">{{ late_count }}</span> |
+    Total: <span id="sum-total">{{ total_count }}</span>
+  </div>
+</div>
+
+{% for worker in workers %}
+<div class="hk-card worker-status-wrap" id="worker-card-{{ worker.id }}">
+  <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+    <div>
+      <div style="font-weight:800;color:#1f2937;">👤 {{ worker.name }}</div>
+      <div style="font-size:12px;color:#6b7280;">Punching: {{ worker.punching_no|default:'-' }}</div>
+      <div style="font-size:12px;color:#6b7280;">📱 {{ worker.phone|default:'-' }} · {{ worker.location.name|default:'No location' }}</div>
+    </div>
+    <span class="hk-badge"
+      style="background:
+      {% if worker.attendance_status == 'present' %}#dcfce7;color:#166534
+      {% elif worker.attendance_status == 'absent' %}#fee2e2;color:#991b1b
+      {% elif worker.attendance_status == 'late' %}#ffedd5;color:#9a3412
+      {% elif worker.attendance_status == 'leave' %}#dbeafe;color:#1d4ed8
+      {% elif worker.attendance_status == 'half_day' %}#fef3c7;color:#92400e
+      {% else %}#f3f4f6;color:#4b5563{% endif %};text-transform:uppercase;">
+      {{ worker.attendance_status }}
+    </span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px;">
+    <form hx-post="{% url 'hk_attendance' %}?date={{ selected_date|date:'Y-m-d' }}" hx-target="#worker-card-{{ worker.id }}" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="worker_id" value="{{ worker.id }}">
+      <input type="hidden" name="status" value="present">
+      <button type="submit" class="hk-btn-secondary" style="padding:8px 4px;font-size:11px;">✅ Present</button>
+    </form>
+    <form hx-post="{% url 'hk_attendance' %}?date={{ selected_date|date:'Y-m-d' }}" hx-target="#worker-card-{{ worker.id }}" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="worker_id" value="{{ worker.id }}">
+      <input type="hidden" name="status" value="absent">
+      <button type="submit" class="hk-btn-secondary" style="padding:8px 4px;font-size:11px;">❌ Absent</button>
+    </form>
+    <form hx-post="{% url 'hk_attendance' %}?date={{ selected_date|date:'Y-m-d' }}" hx-target="#worker-card-{{ worker.id }}" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="worker_id" value="{{ worker.id }}">
+      <input type="hidden" name="status" value="late">
+      <button type="submit" class="hk-btn-secondary" style="padding:8px 4px;font-size:11px;">🕐 Late</button>
+    </form>
+    <form hx-post="{% url 'hk_attendance' %}?date={{ selected_date|date:'Y-m-d' }}" hx-target="#worker-card-{{ worker.id }}" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="worker_id" value="{{ worker.id }}">
+      <input type="hidden" name="status" value="leave">
+      <button type="submit" class="hk-btn-secondary" style="padding:8px 4px;font-size:11px;">🏖 Leave</button>
+    </form>
+    <form hx-post="{% url 'hk_attendance' %}?date={{ selected_date|date:'Y-m-d' }}" hx-target="#worker-card-{{ worker.id }}" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="worker_id" value="{{ worker.id }}">
+      <input type="hidden" name="status" value="half_day">
+      <button type="submit" class="hk-btn-secondary" style="padding:8px 4px;font-size:11px;">◐ Half</button>
+    </form>
+  </div>
+</div>
+{% empty %}
+<div class="hk-card" style="text-align:center;color:#6b7280;">No workers found for your scope.</div>
+{% endfor %}
+
+<div style="position:sticky;bottom:84px;">
+  <a href="{% url 'hk_attendance_history' %}">
+    <button class="hk-btn-primary">📜 View Attendance History</button>
+  </a>
+</div>
+{% endblock %}
