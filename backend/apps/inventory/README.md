@@ -21,9 +21,6 @@ When you start any task:
 3. Move status as you complete work.
 4. Link PR/commit in notes.
 
-Suggested note format:
-- `Owner: <name> | Date: YYYY-MM-DD | PR: #123 | Notes: ...`
-
 ---
 
 ## Phase Progress Snapshot
@@ -50,7 +47,7 @@ Suggested note format:
 - ✅ Users management page
 - ✅ Sidebar layout
 
-**Phase 1 overall:** ✅ **Done**
+**Phase 1:** ✅ **Done**
 
 ---
 
@@ -75,11 +72,11 @@ Suggested note format:
 - ✅ Activity button in Users
 - ✅ Supervisor sees My Issues (via role-filtered Issues page)
 
-**Phase 2 overall:** ✅ **Done**
+**Phase 2:** ✅ **Done**
 
 ---
 
-## Phase 3 — Manual Reporting & Procurement (No Celery)
+## Phase 3 — Manual Reporting & Procurement
 
 ### Backend
 - ⬜ MonthlyReport model with snapshot/file paths
@@ -105,12 +102,10 @@ Suggested note format:
 ## Phase 4 — Analytics & UX Upgrade
 
 ### Admin Dashboard
-- ⬜ Top 10 consumed items bar chart
-- ⬜ 6-month trend line chart
+- ⬜ 6-month trend line chart (for each consumable and asset)
 - ⬜ Category-wise consumption pie chart
 - ⬜ Total monthly consumption value
 - ⬜ Most active supervisor
-- ⬜ Dead stock (no movement 30+ days)
 
 ### Inventory UX
 - ⬜ Visual stock bar per item
