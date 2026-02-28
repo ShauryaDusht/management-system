@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'apps.inventory',
     'apps.core',
     'apps.reports',
+    'apps.housekeeping',
 ]
 
 MIDDLEWARE = [

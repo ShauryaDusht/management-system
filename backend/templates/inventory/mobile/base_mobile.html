@@ -636,6 +636,11 @@
         <a href="{% url 'mobile_reports' %}" style="flex:1">
             <button class="btn-primary" style="width:100%;padding:11px 8px;font-size:13px">Reports</button>
         </a>
+        {% if request.user.role == 'admin' or request.user.role == 'manager' %}
+        <a href="/housekeeping/" style="flex:1">
+            <button class="btn-ghost" style="width:100%;padding:11px 8px;font-size:13px">🏢 Housekeeping</button>
+        </a>
+        {% endif %}
         {% else %}
         <a href="{% url 'mobile_inventory_list' %}" style="flex:1">
             <button class="btn-secondary" style="width:100%">

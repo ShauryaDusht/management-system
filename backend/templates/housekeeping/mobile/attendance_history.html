@@ -1,0 +1,35 @@
+{% extends 'housekeeping/mobile/base_hk_mobile.html' %}
+{% block title %}Attendance History{% endblock %}
+{% block header_title %}Attendance History{% endblock %}
+{% block back_button %}<a href="{% url 'hk_attendance' %}" style="color:white;font-size:20px;">←</a>{% endblock %}
+
+{% block content %}
+<div class="hk-card">
+  <form method="GET" style="display:grid;grid-template-columns:1fr;gap:8px;">
+    <select name="worker" style="padding:10px;border:1px solid #d1d5db;border-radius:8px;">
+      <option value="">All Workers</option>
+      {% for worker in workers %}
+      <option value="{{ worker.id }}" {% if selected_worker|stringformat:'s' == worker.id|stringformat:'s' %}selected{% endif %}>{{ worker.name }}</option>
+      {% endfor %}
+    </select>
+    <input type="date" name="date_from" value="{{ date_from|date:'Y-m-d' }}" style="padding:10px;border:1px solid #d1d5db;border-radius:8px;">
+    <input type="date" name="date_to" value="{{ date_to|date:'Y-m-d' }}" style="padding:10px;border:1px solid #d1d5db;border-radius:8px;">
+    <button type="submit" class="hk-btn-primary">Apply</button>
+  </form>
+</div>
+
+<div class="hk-card">
+  <div style="font-weight:700;color:#2d6a4f;margin-bottom:6px;">Summary</div>
+  <div style="font-size:13px;color:#4b5563;">Present: {{ summary.present }} | Absent: {{ summary.absent }} | Late: {{ summary.late }} | Half Day: {{ summary.half_day }} | Leave: {{ summary.leave }}</div>
+</div>
+
+{% for record in attendances %}
+<div class="hk-card">
+  <div style="font-weight:700;">{{ record.worker.name }}</div>
+  <div style="font-size:12px;color:#6b7280;">{{ record.date }} · {{ record.status|upper }}</div>
+  {% if record.note %}<div style="font-size:12px;margin-top:4px;color:#374151;">{{ record.note }}</div>{% endif %}
+</div>
+{% empty %}
+<div class="hk-card" style="text-align:center;color:#6b7280;">No attendance records found.</div>
+{% endfor %}
+{% endblock %}

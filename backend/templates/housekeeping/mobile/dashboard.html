@@ -1,0 +1,89 @@
+{% extends 'housekeeping/mobile/base_hk_mobile.html' %}
+{% block title %}Housekeeping Dashboard{% endblock %}
+{% block header_title %}IITGN Housekeeping{% endblock %}
+
+{% block content %}
+<div class="hk-card" style="background:linear-gradient(135deg,#2d6a4f,#52b788);color:white;">
+  <div style="font-size:20px;font-weight:800;">
+    {% now "H" as current_hour %}
+    {% if current_hour|add:0 < 12 %}Good Morning{% elif current_hour|add:0 < 17 %}Good Afternoon{% else %}Good Evening{% endif %}
+    {{ request.user.first_name|default:request.user.username }}
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+    <span class="hk-badge" style="background:rgba(255,255,255,0.2);color:white;text-transform:capitalize;">{{ role|default:request.user.role }}</span>
+    <span style="font-size:12px;opacity:0.9;">📅 {{ today|date:"d M Y" }}</span>
+    {% if location_name %}<span style="font-size:12px;opacity:0.9;">📍 {{ location_name }}</span>{% endif %}
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+  <div class="hk-card" style="border-left:4px solid #2d6a4f;">
+    <div style="font-size:26px;font-weight:900;color:#2d6a4f;">{{ total_workers }}</div>
+    <div style="font-size:12px;color:#4b5563;">👷 Total Workers</div>
+  </div>
+  <div class="hk-card" style="border-left:4px solid #52b788;">
+    <div style="font-size:26px;font-weight:900;color:#2d6a4f;">{{ present_today }}</div>
+    <div style="font-size:12px;color:#4b5563;">✅ Present Today</div>
+  </div>
+  <div class="hk-card" style="border-left:4px solid #16a34a;">
+    <div style="font-size:26px;font-weight:900;color:#2d6a4f;">{{ tasks_done_percent }}%</div>
+    <div style="font-size:12px;color:#4b5563;">📋 Tasks Done %</div>
+  </div>
+  <div class="hk-card" style="border-left:4px solid #dc2626;">
+    <div style="font-size:26px;font-weight:900;color:#2d6a4f;">{{ open_complaints }}</div>
+    <div style="font-size:12px;color:#4b5563;">⚠️ Open Issues</div>
+  </div>
+</div>
+
+{% if request.user.role == 'admin' or request.user.role == 'manager' or request.user.role == 'supervisor' %}
+<h3 style="font-size:15px;font-weight:800;margin:4px 0 8px;">Department Status</h3>
+{% for card in department_cards %}
+<div class="hk-card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+    <div style="font-weight:800;color:#2d6a4f;">🏢 {{ card.department.name }}</div>
+    <div style="font-size:12px;color:#4b5563;">{{ card.tasks_done }}/{{ card.tasks_total }} tasks</div>
+  </div>
+  <div style="height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+    <div style="height:8px;width:{{ card.completion }}%;
+      background:{% if card.completion_color == 'green' %}#16a34a{% elif card.completion_color == 'orange' %}#f59e0b{% else %}#dc2626{% endif %};"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:#4b5563;margin-top:6px;">
+    <span>{{ card.completion }}% complete</span>
+    <span>Attendance: {{ card.workers_present }}/{{ card.workers_total }}</span>
+  </div>
+</div>
+{% empty %}
+<div class="hk-card" style="color:#6b7280;">No department data available.</div>
+{% endfor %}
+{% endif %}
+
+<h3 style="font-size:15px;font-weight:800;margin:10px 0 8px;">Quick Actions</h3>
+<div style="display:grid;grid-template-columns:1fr;gap:8px;">
+  {% if request.user.role == 'caretaker' %}
+  <a href="{% url 'hk_attendance' %}"><button class="hk-btn-primary">✅ Attendance</button></a>
+  <a href="{% url 'hk_worker_tasks' %}"><button class="hk-btn-secondary">📋 Workers Tasks</button></a>
+  <a href="{% url 'hk_worker_tasks' %}"><button class="hk-btn-secondary">➕ Add Extra Work</button></a>
+  {% elif request.user.role == 'supervisor' %}
+  <a href="{% url 'hk_attendance' %}"><button class="hk-btn-primary">✅ Mark Attendance</button></a>
+  <a href="{% url 'hk_worker_tasks' %}"><button class="hk-btn-secondary">📋 View Tasks</button></a>
+  <a href="{% url 'hk_add_complaint' %}"><button class="hk-btn-secondary">⚠️ Report Issue</button></a>
+  <a href="{% url 'hk_reports' %}"><button class="hk-btn-secondary">📊 Today's Report</button></a>
+  {% else %}
+  <a href="{% url 'hk_attendance' %}"><button class="hk-btn-primary">✅ Attendance</button></a>
+  <a href="{% url 'hk_worker_tasks' %}"><button class="hk-btn-secondary">📋 Tasks</button></a>
+  <a href="{% url 'hk_reports' %}"><button class="hk-btn-secondary">📊 Reports</button></a>
+  <a href="{% url 'hk_complaints' %}"><button class="hk-btn-secondary">🔧 Complaints</button></a>
+  {% endif %}
+</div>
+
+<h3 style="font-size:15px;font-weight:800;margin:10px 0 8px;">Recent Activity</h3>
+{% for task in recent_activity %}
+<div class="hk-card">
+  <div style="font-weight:700;color:#2d6a4f;">{{ task.worker.name }}</div>
+  <div style="font-size:13px;color:#374151;">{{ task.task_name }}</div>
+  <div style="font-size:12px;color:#6b7280;">⏰ {{ task.completed_at|date:"h:i A" }}</div>
+</div>
+{% empty %}
+<div class="hk-card" style="color:#6b7280;">No recent task completion found.</div>
+{% endfor %}
+{% endblock %}

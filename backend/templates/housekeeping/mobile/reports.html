@@ -1,0 +1,123 @@
+{% extends 'housekeeping/mobile/base_hk_mobile.html' %}
+{% block title %}Housekeeping Reports{% endblock %}
+{% block header_title %}Reports{% endblock %}
+{% block back_button %}<a href="{% url 'hk_dashboard' %}" style="color:white;font-size:20px;">←</a>{% endblock %}
+
+{% block content %}
+<div style="display:flex;gap:8px;margin-bottom:10px;">
+  <a href="?tab=daily" style="flex:1;text-decoration:none;">
+    <button class="{% if tab == 'daily' %}hk-btn-primary{% else %}hk-btn-secondary{% endif %}" style="padding:9px 8px;font-size:12px;">Today's Summary</button>
+  </a>
+  <a href="?tab=attendance" style="flex:1;text-decoration:none;">
+    <button class="{% if tab == 'attendance' %}hk-btn-primary{% else %}hk-btn-secondary{% endif %}" style="padding:9px 8px;font-size:12px;">Attendance</button>
+  </a>
+  <a href="?tab=performance" style="flex:1;text-decoration:none;">
+    <button class="{% if tab == 'performance' %}hk-btn-primary{% else %}hk-btn-secondary{% endif %}" style="padding:9px 8px;font-size:12px;">Performance</button>
+  </a>
+</div>
+
+{% if tab == 'daily' %}
+<div class="hk-card">
+  <form method="GET" style="display:flex;gap:8px;align-items:center;">
+    <input type="hidden" name="tab" value="daily">
+    <input type="date" name="date" value="{{ report_date|date:'Y-m-d' }}"
+      style="flex:1;padding:10px;border:1px solid #d1d5db;border-radius:8px;">
+    <button type="submit" class="hk-btn-primary" style="width:auto;padding:10px 14px;">Apply</button>
+  </form>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+  <div class="hk-card"><div style="font-size:26px;font-weight:900;color:#2d6a4f;">{{ total_tasks }}</div><div style="font-size:12px;color:#6b7280;">Total Tasks</div></div>
+  <div class="hk-card"><div style="font-size:26px;font-weight:900;color:#2d6a4f;">{{ completed_tasks }}</div><div style="font-size:12px;color:#6b7280;">Completed</div></div>
+  <div class="hk-card"><div style="font-size:26px;font-weight:900;color:#2d6a4f;">{{ attendance_percent }}%</div><div style="font-size:12px;color:#6b7280;">Attendance %</div></div>
+  <div class="hk-card"><div style="font-size:26px;font-weight:900;color:#2d6a4f;">{{ open_issues }}</div><div style="font-size:12px;color:#6b7280;">Open Issues</div></div>
+</div>
+
+<button class="hk-btn-secondary" style="margin:8px 0 10px;" onclick="window.print()">Export CSV</button>
+
+{% for card in department_cards %}
+<div class="hk-card">
+  <div style="display:flex;justify-content:space-between;">
+    <div style="font-weight:700;color:#2d6a4f;">{{ card.name }}</div>
+    <div style="font-size:12px;color:#6b7280;">{{ card.done }}/{{ card.total }}</div>
+  </div>
+  <div style="height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin-top:6px;">
+    <div style="height:8px;background:#52b788;width:{{ card.percent }}%;"></div>
+  </div>
+</div>
+{% empty %}
+<div class="hk-card" style="color:#6b7280;">No department report data.</div>
+{% endfor %}
+{% endif %}
+
+{% if tab == 'attendance' %}
+<div class="hk-card">
+  <form method="GET" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;">
+    <input type="hidden" name="tab" value="attendance">
+    <input type="date" name="date_from" value="{{ date_from|date:'Y-m-d' }}" style="padding:10px;border:1px solid #d1d5db;border-radius:8px;">
+    <input type="date" name="date_to" value="{{ date_to|date:'Y-m-d' }}" style="padding:10px;border:1px solid #d1d5db;border-radius:8px;">
+    <button type="submit" class="hk-btn-primary" style="width:auto;padding:10px 14px;">Apply</button>
+  </form>
+</div>
+
+<div class="hk-card" style="overflow-x:auto;">
+  <table style="min-width:600px;width:100%;border-collapse:collapse;font-size:12px;">
+    <thead>
+      <tr>
+        <th style="text-align:left;padding:6px;border-bottom:1px solid #e5e7eb;">Worker</th>
+        {% for day in days %}
+        <th style="padding:6px;border-bottom:1px solid #e5e7eb;">{{ day|date:"D" }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in attendance_grid %}
+      <tr>
+        <td style="padding:6px;border-bottom:1px solid #f3f4f6;font-weight:700;">{{ row.worker.name }}</td>
+        {% for status in row.statuses %}
+        <td style="padding:6px;border-bottom:1px solid #f3f4f6;text-align:center;">
+          <span class="hk-badge"
+            style="padding:2px 6px;
+            {% if status == 'present' %}background:#dcfce7;color:#166534
+            {% elif status == 'absent' %}background:#fee2e2;color:#991b1b
+            {% elif status == 'late' %}background:#ffedd5;color:#9a3412
+            {% elif status == 'leave' %}background:#dbeafe;color:#1d4ed8
+            {% else %}background:#f3f4f6;color:#6b7280{% endif %};">
+            {{ status|slice:":1"|upper }}
+          </span>
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if tab == 'performance' %}
+<div class="hk-card">
+  <form method="GET" style="display:flex;gap:8px;">
+    <input type="hidden" name="tab" value="performance">
+    <select name="period" style="flex:1;padding:10px;border:1px solid #d1d5db;border-radius:8px;">
+      <option value="week" {% if period == 'week' %}selected{% endif %}>Week</option>
+      <option value="month" {% if period == 'month' %}selected{% endif %}>Month</option>
+    </select>
+    <button type="submit" class="hk-btn-primary" style="width:auto;padding:10px 14px;">Apply</button>
+  </form>
+</div>
+
+{% for row in performance_rows %}
+<div class="hk-card">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div style="font-weight:800;color:#1f2937;">{{ row.worker.name }}</div>
+    <div style="font-weight:800;color:#2d6a4f;">{{ row.avg_completion }}%</div>
+  </div>
+  <div style="font-size:12px;color:#6b7280;margin-top:4px;">
+    Avg Completion % | Present Days: {{ row.present_days }} | Late Days: {{ row.late_days }}
+  </div>
+</div>
+{% empty %}
+<div class="hk-card" style="color:#6b7280;">No performance data found.</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

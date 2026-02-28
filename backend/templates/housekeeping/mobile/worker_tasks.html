@@ -1,0 +1,50 @@
+{% extends 'housekeeping/mobile/base_hk_mobile.html' %}
+{% block title %}Worker Tasks{% endblock %}
+{% block header_title %}Worker Tasks{% endblock %}
+{% block back_button %}<a href="{% url 'hk_dashboard' %}" style="color:white;font-size:20px;">←</a>{% endblock %}
+
+{% block content %}
+<div class="hk-card">
+  <div style="font-size:18px;font-weight:800;color:#2d6a4f;">Today's Task Status</div>
+  <div style="font-size:12px;color:#6b7280;">{{ today|date:"d M Y" }}</div>
+  <input id="worker-filter" type="text" placeholder="Search worker name..."
+    style="margin-top:8px;width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;"
+    oninput="filterWorkers(this.value)">
+</div>
+
+<div id="worker-list">
+{% for card in worker_cards %}
+<div class="hk-card worker-card" data-name="{{ card.worker.name|lower }}"
+  style="border-left:5px solid {% if card.color == 'green' %}#16a34a{% elif card.color == 'orange' %}#f59e0b{% else %}#dc2626{% endif %};">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div style="font-weight:800;color:#1f2937;">👤 {{ card.worker.name }}</div>
+      <div style="font-size:12px;color:#6b7280;">{{ card.worker.location.name|default:'No location' }}</div>
+    </div>
+    <a href="{% url 'hk_worker_task_detail' card.worker.id %}" style="font-size:12px;color:#2d6a4f;font-weight:700;text-decoration:none;">View Tasks →</a>
+  </div>
+  <div style="margin-top:8px;">
+    <div style="height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+      <div style="height:8px;width:{{ card.percent }}%;background:{% if card.color == 'green' %}#16a34a{% elif card.color == 'orange' %}#f59e0b{% else %}#dc2626{% endif %};"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:#4b5563;margin-top:6px;">
+      <span>{{ card.done }}/{{ card.total }} Tasks ({{ card.percent }}%)</span>
+      <span>🟢 {{ card.done }} Done · 🔴 {{ card.pending }} Pending</span>
+    </div>
+  </div>
+</div>
+{% empty %}
+<div class="hk-card" style="text-align:center;color:#6b7280;">No workers found.</div>
+{% endfor %}
+</div>
+
+<script>
+function filterWorkers(query) {
+  const value = query.trim().toLowerCase();
+  document.querySelectorAll('.worker-card').forEach((card) => {
+    const name = card.getAttribute('data-name') || '';
+    card.style.display = name.includes(value) ? 'block' : 'none';
+  });
+}
+</script>
+{% endblock %}

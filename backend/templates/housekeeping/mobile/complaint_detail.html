@@ -1,0 +1,48 @@
+{% extends 'housekeeping/mobile/base_hk_mobile.html' %}
+{% block title %}Complaint Detail{% endblock %}
+{% block header_title %}Complaint Detail{% endblock %}
+{% block back_button %}<a href="{% url 'hk_complaints' %}" style="color:white;font-size:20px;">←</a>{% endblock %}
+
+{% block content %}
+<div class="hk-card">
+  <div style="font-size:18px;font-weight:800;color:#2d6a4f;">{{ complaint.title }}</div>
+  <div style="font-size:12px;color:#6b7280;margin-top:4px;">📍 {{ complaint.location.name|default:'No location' }} · {{ complaint.created_at|date:"d M Y h:i A" }}</div>
+  <p style="font-size:14px;color:#374151;margin-top:10px;line-height:1.5;">{{ complaint.description }}</p>
+  <div style="margin-top:8px;font-size:12px;color:#4b5563;">Raised by: {{ complaint.raised_by.get_full_name|default:complaint.raised_by.username|default:'Unknown' }}</div>
+</div>
+
+{% if request.user.role == 'admin' or request.user.role == 'manager' or request.user.role == 'supervisor' %}
+<div class="hk-card">
+  <form method="POST">
+    {% csrf_token %}
+    <label style="display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px;">Status</label>
+    <select name="status" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:10px;">
+      <option value="open" {% if complaint.status == 'open' %}selected{% endif %}>Open</option>
+      <option value="in_progress" {% if complaint.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+      <option value="resolved" {% if complaint.status == 'resolved' %}selected{% endif %}>Resolved</option>
+      <option value="closed" {% if complaint.status == 'closed' %}selected{% endif %}>Closed</option>
+    </select>
+
+    <label style="display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px;">Priority</label>
+    <select name="priority" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:10px;">
+      <option value="low" {% if complaint.priority == 'low' %}selected{% endif %}>Low</option>
+      <option value="medium" {% if complaint.priority == 'medium' %}selected{% endif %}>Medium</option>
+      <option value="high" {% if complaint.priority == 'high' %}selected{% endif %}>High</option>
+      <option value="urgent" {% if complaint.priority == 'urgent' %}selected{% endif %}>Urgent</option>
+    </select>
+
+    <label style="display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px;">Assign To</label>
+    <select name="assigned_to" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:12px;">
+      <option value="">Unassigned</option>
+      {% for worker in workers %}
+      <option value="{{ worker.id }}" {% if complaint.assigned_to and complaint.assigned_to.id == worker.id %}selected{% endif %}>
+        {{ worker.name }}
+      </option>
+      {% endfor %}
+    </select>
+
+    <button type="submit" class="hk-btn-primary">Update Complaint</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

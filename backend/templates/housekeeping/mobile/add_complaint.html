@@ -1,0 +1,43 @@
+{% extends 'housekeeping/mobile/base_hk_mobile.html' %}
+{% block title %}Add Complaint{% endblock %}
+{% block header_title %}Add Complaint{% endblock %}
+{% block back_button %}<a href="{% url 'hk_complaints' %}" style="color:white;font-size:20px;">←</a>{% endblock %}
+
+{% block content %}
+<div class="hk-card">
+  <form method="POST">
+    {% csrf_token %}
+    <label style="display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px;">Title</label>
+    <input type="text" name="title" required style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:10px;">
+
+    <label style="display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px;">Location</label>
+    <select name="location" required style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:10px;">
+      <option value="">Select location</option>
+      {% for location in locations %}
+      <option value="{{ location.id }}">{{ location.department.name }} - {{ location.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label style="display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px;">Description</label>
+    <textarea name="description" rows="4" required style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:10px;"></textarea>
+
+    <label style="display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:6px;">Priority</label>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;">
+      <label><input type="radio" name="priority" value="low" required> Low</label>
+      <label><input type="radio" name="priority" value="medium" checked> Medium</label>
+      <label><input type="radio" name="priority" value="high"> High</label>
+      <label><input type="radio" name="priority" value="urgent"> Urgent</label>
+    </div>
+
+    <label style="display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px;">Assign To (Optional)</label>
+    <select name="assigned_to" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-bottom:12px;">
+      <option value="">Unassigned</option>
+      {% for worker in workers %}
+      <option value="{{ worker.id }}">{{ worker.name }} ({{ worker.worker_type }})</option>
+      {% endfor %}
+    </select>
+
+    <button type="submit" class="hk-btn-primary">Submit Complaint</button>
+  </form>
+</div>
+{% endblock %}
