@@ -1,0 +1,29 @@
+version: 2
+
+updates:
+  # Backend - Python (Django)
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "backend"
+
+  # Frontend - Node (React/Vite)
+  - package-ecosystem: "npm"
+    directory: "/frontend-admin"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "frontend"
+
+  # Docker images (postgres, redis, etc.)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "docker"
