@@ -83,27 +83,6 @@ Direct commits to protected branches are not allowed. Every change must go throu
 - Include a clear PR description (what changed, why, how tested).
 - Resolve bot comments before requesting final review.
 
-### Repository settings to enable (one-time)
-
-In GitHub branch protection rules for `main`, enable:
-
-- **Require a pull request before merging**
-- **Require approvals** (set to at least 1)
-- **Require status checks to pass before merging** and select:
-  - `reviewdog / reviewdog (pull_request)`
-- Optional but recommended: **Dismiss stale approvals when new commits are pushed**
-
-## CI Bot
-
-This repository uses an open-source, free GitHub Action bot powered by [reviewdog](https://github.com/reviewdog/reviewdog).
-
-- Workflow file: `.github/workflows/reviewdog.yml`
-- Trigger: every Pull Request
-- Current automated review:
-  - Misspell checks with inline PR comments
-
-You can extend the bot later with additional reviewdog integrations (for example, ESLint, Ruff, or Hadolint).
-
 ## Notes
 
 - Backend runs DB migrations automatically at startup.
