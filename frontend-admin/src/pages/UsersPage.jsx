@@ -16,7 +16,7 @@ export default function UsersPage() {
   const navigate = useNavigate()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState(null) // 'add' | 'edit' | 'toggle'
+  const [modal, setModal] = useState(null)
   const [selected, setSelected] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
@@ -34,11 +34,7 @@ export default function UsersPage() {
 
   useEffect(() => { load() }, [load])
 
-  const openAdd = () => {
-    setForm(EMPTY_FORM)
-    setError('')
-    setModal('add')
-  }
+  const openAdd = () => { setForm(EMPTY_FORM); setError(''); setModal('add') }
 
   const openEdit = (u) => {
     setSelected(u)
@@ -51,10 +47,7 @@ export default function UsersPage() {
     setModal('edit')
   }
 
-  const openToggle = (u) => {
-    setSelected(u)
-    setModal('toggle')
-  }
+  const openToggle = (u) => { setSelected(u); setModal('toggle') }
 
   const closeModal = () => { setModal(null); setSelected(null); setError('') }
 
@@ -92,9 +85,11 @@ export default function UsersPage() {
     }
   }
 
+  // count inventory_manager separately so the subtitle is accurate
   const counts = {
     admin: users.filter((u) => u.role === 'admin').length,
     manager: users.filter((u) => u.role === 'manager').length,
+    inventory_manager: users.filter((u) => u.role === 'inventory_manager').length,
     supervisor: users.filter((u) => u.role === 'supervisor').length,
   }
 
@@ -129,8 +124,7 @@ export default function UsersPage() {
           <Button size="sm" variant="ghost" onClick={() => navigate('/users/' + r.id + '/activity')}>Activity</Button>
           <Button size="sm" variant="ghost" onClick={() => openEdit(r)}>Edit</Button>
           <Button
-            size="sm"
-            variant="ghost"
+            size="sm" variant="ghost"
             onClick={() => openToggle(r)}
             className={r.is_active ? 'text-red-500' : 'text-emerald-600'}
           >
@@ -146,15 +140,14 @@ export default function UsersPage() {
       <div className="p-6 max-w-6xl mx-auto">
         <PageHeader
           title="Users"
-          subtitle={`${counts.supervisor} supervisors · ${counts.manager} managers · ${counts.admin} admins`}
+          subtitle={`${counts.supervisor} supervisors · ${counts.manager} managers · ${counts.inventory_manager} inv. managers · ${counts.admin} admins`}
           action={<Button onClick={openAdd}>+ Add User</Button>}
         />
 
-        {loading ? (
-          <div className="flex justify-center py-20"><Spinner /></div>
-        ) : (
-          <Table columns={columns} data={users} emptyMessage="No users found." />
-        )}
+        {loading
+          ? <div className="flex justify-center py-20"><Spinner /></div>
+          : <Table columns={columns} data={users} emptyMessage="No users found." />
+        }
       </div>
 
       {/* Add / Edit Modal */}
@@ -195,6 +188,7 @@ export default function UsersPage() {
               <Select name="role" value={form.role} onChange={handleChange}>
                 <option value="supervisor">Supervisor</option>
                 <option value="manager">Manager</option>
+                <option value="inventory_manager">Inventory Manager</option>
                 <option value="admin">Admin</option>
               </Select>
             </Field>
@@ -224,7 +218,8 @@ export default function UsersPage() {
         }
       >
         <p className="text-slate-600 text-sm">
-          Are you sure you want to {selected?.is_active ? 'deactivate' : 'activate'} <strong>{selected?.first_name} {selected?.last_name}</strong>?
+          Are you sure you want to {selected?.is_active ? 'deactivate' : 'activate'}{' '}
+          <strong>{selected?.first_name} {selected?.last_name}</strong>?
           {selected?.is_active && ' They will not be able to log in.'}
         </p>
       </Modal>

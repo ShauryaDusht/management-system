@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../layout/Layout'
@@ -29,29 +29,24 @@ const EMPTY_FORM = {
 function statusMeta(item) {
   const available = Number(item.available_quantity || 0)
   const threshold = Number(item.threshold_quantity || 0)
-
-  if (available === 0) {
-    return {
-      label: 'Out of Stock',
-      classes: 'bg-red-100 text-red-700 border border-red-200',
-    }
-  }
-
-  if (available <= threshold) {
-    return {
-      label: 'Low Stock',
-      classes: 'bg-amber-100 text-amber-700 border border-amber-200',
-    }
-  }
-
-  return {
-    label: 'In Stock',
-    classes: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
-  }
+  if (available === 0) return { label: 'Out of Stock', classes: 'bg-red-100 text-red-700 border border-red-200' }
+  if (available <= threshold) return { label: 'Low Stock', classes: 'bg-amber-100 text-amber-700 border border-amber-200' }
+  return { label: 'In Stock', classes: 'bg-emerald-100 text-emerald-700 border border-emerald-200' }
 }
 
 function normalizeList(payload) {
+  // handle paginated responses ({ results: [...] }) AND plain arrays
   return payload?.results ?? payload ?? []
+}
+
+// simple debounce hook to avoid firing a search request on every keystroke
+function useDebounce(value, delay = 350) {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(timer)
+  }, [value, delay])
+  return debounced
 }
 
 export default function ItemsPage() {
@@ -63,7 +58,9 @@ export default function ItemsPage() {
   const [totalCount, setTotalCount] = useState(0)
   const [categories, setCategories] = useState([])
 
-  const [search, setSearch] = useState('')
+  // separate raw input state from debounced search value
+  const [searchInput, setSearchInput] = useState('')
+  const debouncedSearch = useDebounce(searchInput, 350)
   const [typeFilter, setTypeFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
 
@@ -74,7 +71,7 @@ export default function ItemsPage() {
   const [adjustingId, setAdjustingId] = useState(null)
   const [saving, setSaving] = useState(false)
 
-  const [modalMode, setModalMode] = useState(null) // null | add | edit | delete
+  const [modalMode, setModalMode] = useState(null)
   const [selectedItem, setSelectedItem] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [formError, setFormError] = useState('')
@@ -91,10 +88,9 @@ export default function ItemsPage() {
   const loadItems = useCallback(async () => {
     setLoading(true)
     setError('')
-
     try {
       const params = {}
-      if (search.trim()) params.search = search.trim()
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim()
       if (typeFilter) params.item_type = typeFilter
       if (categoryFilter) params.category = categoryFilter
 
@@ -109,15 +105,10 @@ export default function ItemsPage() {
     } finally {
       setLoading(false)
     }
-  }, [categoryFilter, search, typeFilter])
+  }, [categoryFilter, debouncedSearch, typeFilter])
 
-  useEffect(() => {
-    loadCategories()
-  }, [loadCategories])
-
-  useEffect(() => {
-    loadItems()
-  }, [loadItems])
+  useEffect(() => { loadCategories() }, [loadCategories])
+  useEffect(() => { loadItems() }, [loadItems])
 
   const openAddModal = () => {
     setSelectedItem(null)
@@ -144,6 +135,7 @@ export default function ItemsPage() {
     setModalMode('edit')
   }
 
+  // delete now opens a confirmation modal before proceeding
   const openDeleteModal = (item) => {
     setSelectedItem(item)
     setModalMode('delete')
@@ -163,7 +155,6 @@ export default function ItemsPage() {
   const saveItem = async () => {
     setSaving(true)
     setFormError('')
-
     try {
       const payload = {
         name: form.name.trim(),
@@ -177,13 +168,11 @@ export default function ItemsPage() {
         description: form.description,
         location: form.location,
       }
-
       if (modalMode === 'add') {
         await createItem(payload)
       } else if (selectedItem) {
         await updateItem(selectedItem.id, payload)
       }
-
       closeModal()
       await loadItems()
     } catch (err) {
@@ -196,7 +185,6 @@ export default function ItemsPage() {
 
   const confirmDelete = async () => {
     if (!selectedItem) return
-
     setSaving(true)
     try {
       await deleteItem(selectedItem.id)
@@ -209,12 +197,12 @@ export default function ItemsPage() {
     }
   }
 
+  // buttons are disabled while the action is in flight,
+  // preventing double-clicks from firing duplicate API calls
   const onAdjustStock = async (item, action) => {
     if (!isAdmin) return
-
     setAdjustingId(`${item.id}:${action}`)
     setActionError('')
-
     try {
       const response = await adjustStock(item.id, action, 1)
       const updated = response.data
@@ -239,9 +227,10 @@ export default function ItemsPage() {
 
         <div className="bg-white border border-slate-200 rounded-xl p-4 mb-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* search bound to searchInput, API call uses debounced value */}
             <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
               placeholder="Search by item name"
             />
             <Select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
@@ -267,9 +256,7 @@ export default function ItemsPage() {
         )}
 
         {loading ? (
-          <div className="py-20 flex justify-center">
-            <Spinner />
-          </div>
+          <div className="py-20 flex justify-center"><Spinner /></div>
         ) : error ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
             <p className="text-red-700 text-sm">{error}</p>
@@ -306,7 +293,15 @@ export default function ItemsPage() {
                     const increaseBusy = adjustingId === `${item.id}:increase`
                     return (
                       <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50 transition">
-                        <td className="px-4 py-3 font-medium text-slate-900">{item.name}</td>
+                        <td className="px-4 py-3 font-medium text-slate-900">
+                          {item.name}
+                          {/* warn when cost data is missing */}
+                          {item.unit_cost_missing && (
+                            <span className="ml-2 text-xs text-amber-500" title="Unit cost not set — report totals will show ₹0">
+                              ⚠ no cost
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-slate-600">{item.category_name}</td>
                         <td className="px-4 py-3 text-slate-700 capitalize">{item.item_type}</td>
                         <td className="px-4 py-3 text-slate-700">{item.unit}</td>
@@ -316,11 +311,13 @@ export default function ItemsPage() {
                             {isAdmin && (
                               <button
                                 type="button"
-                                className="w-7 h-7 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                                className="w-7 h-7 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
                                 onClick={() => onAdjustStock(item, 'decrease')}
+                                // disabled while any adjust is in flight
                                 disabled={decreaseBusy || increaseBusy || Number(item.available_quantity) <= 0}
+                                title="Decrease stock by 1"
                               >
-                                -
+                                {decreaseBusy ? '…' : '-'}
                               </button>
                             )}
                             <span className="min-w-[2rem] text-right font-semibold text-slate-900">
@@ -329,11 +326,12 @@ export default function ItemsPage() {
                             {isAdmin && (
                               <button
                                 type="button"
-                                className="w-7 h-7 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                                className="w-7 h-7 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
                                 onClick={() => onAdjustStock(item, 'increase')}
                                 disabled={decreaseBusy || increaseBusy}
+                                title="Increase stock by 1"
                               >
-                                +
+                                {increaseBusy ? '…' : '+'}
                               </button>
                             )}
                           </div>
@@ -353,6 +351,7 @@ export default function ItemsPage() {
                               <Button variant="ghost" size="sm" onClick={() => openEditModal(item)}>
                                 Edit
                               </Button>
+                              {/* opens confirmation modal, not direct delete */}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -376,6 +375,7 @@ export default function ItemsPage() {
         )}
       </div>
 
+      {/* Add / Edit Modal */}
       <Modal
         open={modalMode === 'add' || modalMode === 'edit'}
         onClose={closeModal}
@@ -395,23 +395,18 @@ export default function ItemsPage() {
               {formError}
             </div>
           )}
-
           <Field label="Name">
             <Input name="name" value={form.name} onChange={onFormChange} />
           </Field>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Category">
               <Select name="category" value={form.category} onChange={onFormChange}>
                 <option value="">Select category</option>
                 {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
+                  <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
               </Select>
             </Field>
-
             <Field label="Type">
               <Select name="item_type" value={form.item_type} onChange={onFormChange}>
                 <option value="asset">Asset</option>
@@ -419,72 +414,39 @@ export default function ItemsPage() {
               </Select>
             </Field>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Unit">
               <Select name="unit" value={form.unit} onChange={onFormChange}>
                 {UNIT_OPTIONS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
+                  <option key={unit} value={unit}>{unit}</option>
                 ))}
               </Select>
             </Field>
-
             <Field label="Unit Cost">
-              <Input
-                name="unit_cost"
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.unit_cost}
-                onChange={onFormChange}
-              />
+              <Input name="unit_cost" type="number" min="0" step="0.01" value={form.unit_cost} onChange={onFormChange} />
             </Field>
           </div>
-
           <Field label="Location">
             <Input name="location" value={form.location} onChange={onFormChange} />
           </Field>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Field label="Total Qty">
-              <Input
-                name="total_quantity"
-                type="number"
-                min="0"
-                value={form.total_quantity}
-                onChange={onFormChange}
-              />
+              <Input name="total_quantity" type="number" min="0" value={form.total_quantity} onChange={onFormChange} />
             </Field>
-
             <Field label="Available Qty">
-              <Input
-                name="available_quantity"
-                type="number"
-                min="0"
-                value={form.available_quantity}
-                onChange={onFormChange}
-              />
+              <Input name="available_quantity" type="number" min="0" value={form.available_quantity} onChange={onFormChange} />
             </Field>
-
             <Field label="Threshold">
-              <Input
-                name="threshold_quantity"
-                type="number"
-                min="0"
-                value={form.threshold_quantity}
-                onChange={onFormChange}
-              />
+              <Input name="threshold_quantity" type="number" min="0" value={form.threshold_quantity} onChange={onFormChange} />
             </Field>
           </div>
-
           <Field label="Description">
             <Textarea name="description" rows={3} value={form.description} onChange={onFormChange} />
           </Field>
         </div>
       </Modal>
 
+      {/* Delete confirmation modal */}
       <Modal
         open={modalMode === 'delete'}
         onClose={closeModal}
@@ -493,13 +455,15 @@ export default function ItemsPage() {
           <>
             <Button variant="outline" onClick={closeModal}>Cancel</Button>
             <Button variant="danger" onClick={confirmDelete} disabled={saving}>
-              {saving ? 'Deleting...' : 'Delete'}
+              {saving ? 'Deleting...' : 'Yes, Delete'}
             </Button>
           </>
         )}
       >
         <p className="text-sm text-slate-600">
-          Are you sure you want to delete <span className="font-semibold text-slate-900">{selectedItem?.name}</span>?
+          Are you sure you want to delete{' '}
+          <span className="font-semibold text-slate-900">{selectedItem?.name}</span>?
+          This cannot be undone.
         </p>
       </Modal>
     </Layout>

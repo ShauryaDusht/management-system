@@ -28,7 +28,6 @@ const PAGE_SIZE = 10
 const EMPTY_FORM = {
   item: '',
   quantity_requested: '',
-  units_remaining: '',
   reason: '',
   notes: '',
 }
@@ -73,20 +72,19 @@ export default function RequestsPage() {
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
 
+  // confirmation state for reject
+  const [rejectConfirmId, setRejectConfirmId] = useState(null)
+
   const loadData = useCallback(async () => {
     setLoading(true)
     setError('')
-
     try {
       const [requestsRes, itemsRes] = await Promise.all([
         getRequests(),
         getItems(),
       ])
-
-      const requestList = normalizeList(requestsRes.data)
-      const itemList = normalizeList(itemsRes.data)
-      setRequests(requestList)
-      setItems(itemList)
+      setRequests(normalizeList(requestsRes.data))
+      setItems(normalizeList(itemsRes.data))
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to load requests.')
       setRequests([])
@@ -96,13 +94,8 @@ export default function RequestsPage() {
     }
   }, [])
 
-  useEffect(() => {
-    loadData()
-  }, [loadData])
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [tab])
+  useEffect(() => { loadData() }, [loadData])
+  useEffect(() => { setCurrentPage(1) }, [tab])
 
   const openNewRequestModal = () => {
     setForm(EMPTY_FORM)
@@ -112,15 +105,6 @@ export default function RequestsPage() {
 
   const onFormChange = (event) => {
     const { name, value } = event.target
-    if (name === 'item') {
-      const selected = items.find((item) => String(item.id) === String(value))
-      setForm((prev) => ({
-        ...prev,
-        item: value,
-        units_remaining: selected ? String(selected.available_quantity) : '',
-      }))
-      return
-    }
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
@@ -131,20 +115,17 @@ export default function RequestsPage() {
       setFormError('Item, quantity, and reason are required.')
       return
     }
-
     const requestedQty = Number(form.quantity_requested)
     if (requestedQty <= 0) {
       setFormError('Quantity must be greater than 0.')
       return
     }
-
     setSaving(true)
     setFormError('')
     try {
       await createRequest({
         item: Number(form.item),
         quantity_requested: requestedQty,
-        units_remaining: Number(form.units_remaining || 0),
         reason: form.reason.trim(),
         notes: form.notes.trim(),
       })
@@ -159,6 +140,8 @@ export default function RequestsPage() {
     }
   }
 
+  // approve button is disabled (busyId set) until API responds
+  // prevents race conditions where manager clicks approve, then quickly clicks reject before first response arrives
   const onApprove = async (id) => {
     setBusyId(`approve:${id}`)
     setNotice('')
@@ -173,9 +156,14 @@ export default function RequestsPage() {
     }
   }
 
-  const onReject = async (id) => {
+  // reject now requires opening a confirmation step
+  // this prevents the common mistake of clicking reject, then immediately clicking approve (or another reject) before the first API response arrives, which causes confusion and incorrect request status
+  const onRejectConfirm = async () => {
+    const id = rejectConfirmId
+    if (!id) return
     setBusyId(`reject:${id}`)
     setNotice('')
+    setRejectConfirmId(null)
     try {
       await rejectRequest(id, rejectReasons[id] || '')
       setRejectReasons((prev) => ({ ...prev, [id]: '' }))
@@ -193,9 +181,9 @@ export default function RequestsPage() {
     setBusyId(`urgent:${itemRequest.id}`)
     try {
       await markUrgent(itemRequest.id, next)
-      setRequests((prev) => prev.map((req) => (
+      setRequests((prev) => prev.map((req) =>
         req.id === itemRequest.id ? { ...req, is_urgent: next } : req
-      )))
+      ))
     } finally {
       setBusyId(null)
     }
@@ -280,6 +268,9 @@ export default function RequestsPage() {
                 <div className="space-y-3">
                   {pendingRequests.map((req) => {
                     const lowStock = req.item_available <= req.item_threshold
+                    const approving = busyId === `approve:${req.id}`
+                    const rejecting = busyId === `reject:${req.id}`
+                    const busy = approving || rejecting
                     return (
                       <div key={req.id} className="rounded-xl border border-slate-200 bg-white p-4">
                         <div className="flex items-start justify-between gap-4">
@@ -320,21 +311,23 @@ export default function RequestsPage() {
                             value={rejectReasons[req.id] || ''}
                             onChange={(event) => setRejectReasons((prev) => ({ ...prev, [req.id]: event.target.value }))}
                           />
+                          {/* clicking REJECT opens a confirmation modal */}
                           <Button
                             variant="outline"
                             className="md:w-28"
-                            disabled={busyId === `reject:${req.id}` || busyId === `approve:${req.id}`}
-                            onClick={() => onReject(req.id)}
+                            disabled={busy}
+                            onClick={() => setRejectConfirmId(req.id)}
                           >
-                            REJECT
+                            {rejecting ? '…' : 'REJECT'}
                           </Button>
+                          {/* APPROVE is disabled while any action is in flight preventing race conditions*/}
                           <Button
                             variant="success"
                             className="md:w-32"
-                            disabled={busyId === `reject:${req.id}` || busyId === `approve:${req.id}`}
+                            disabled={busy}
                             onClick={() => onApprove(req.id)}
                           >
-                            APPROVE
+                            {approving ? '…' : 'APPROVE'}
                           </Button>
                         </div>
                       </div>
@@ -403,21 +396,11 @@ export default function RequestsPage() {
 
               {filteredRequests.length > PAGE_SIZE && (
                 <div className="flex items-center justify-end gap-2 mt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage <= 1}
-                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                  >
+                  <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}>
                     Prev
                   </Button>
                   <span className="text-sm text-slate-500">Page {currentPage} of {totalPages}</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                  >
+                  <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}>
                     Next
                   </Button>
                 </div>
@@ -427,6 +410,7 @@ export default function RequestsPage() {
         )}
       </div>
 
+      {/* New Request Modal */}
       <Modal
         open={newModalOpen}
         onClose={() => setNewModalOpen(false)}
@@ -452,44 +436,45 @@ export default function RequestsPage() {
               ))}
             </Select>
           </Field>
-
+          {selectedItem && (
+            <p className="text-xs text-slate-500">
+              Available: <span className="font-semibold">{selectedItem.available_quantity} {selectedItem.unit}</span>
+            </p>
+          )}
           <Field label="Quantity Needed">
-            <Input
-              type="number"
-              name="quantity_requested"
-              min="1"
-              value={form.quantity_requested}
-              onChange={onFormChange}
-            />
+            <Input type="number" name="quantity_requested" min="1" value={form.quantity_requested} onChange={onFormChange} />
           </Field>
-
-          <Field label="Units Remaining">
-            <Input
-              name="units_remaining"
-              value={form.units_remaining || (selectedItem ? selectedItem.available_quantity : '')}
-              readOnly
-            />
-          </Field>
-
           <Field label="Reason for Request">
-            <Textarea
-              name="reason"
-              rows={3}
-              required
-              value={form.reason}
-              onChange={onFormChange}
-            />
+            <Textarea name="reason" rows={3} required value={form.reason} onChange={onFormChange} />
           </Field>
-
           <Field label="Additional Notes">
-            <Textarea
-              name="notes"
-              rows={2}
-              value={form.notes}
-              onChange={onFormChange}
-            />
+            <Textarea name="notes" rows={2} value={form.notes} onChange={onFormChange} />
           </Field>
         </div>
+      </Modal>
+
+      {/* Reject confirmation modal */}
+      <Modal
+        open={!!rejectConfirmId}
+        onClose={() => setRejectConfirmId(null)}
+        title="Confirm Rejection"
+        footer={(
+          <>
+            <Button variant="outline" onClick={() => setRejectConfirmId(null)}>Cancel</Button>
+            <Button variant="danger" onClick={onRejectConfirm}>
+              Yes, Reject
+            </Button>
+          </>
+        )}
+      >
+        <p className="text-sm text-slate-600">
+          Are you sure you want to reject this request?
+          {rejectReasons[rejectConfirmId] && (
+            <span className="block mt-2 text-slate-500">
+              Reason: <span className="italic">{rejectReasons[rejectConfirmId]}</span>
+            </span>
+          )}
+        </p>
       </Modal>
     </Layout>
   )

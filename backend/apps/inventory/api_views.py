@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from rest_framework import viewsets
 from rest_framework.viewsets import ModelViewSet
 
-from apps.users.permissions import IsAdmin
+from apps.users.permissions import IsAdmin, IsAdminOrManager
 from .models import Category, Item, ItemRequest
 from .serializers import CategorySerializer, ItemSerializer, ItemRequestSerializer
 
@@ -72,6 +72,9 @@ class AdjustStockView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             item.available_quantity -= quantity
+            # Previously only available_quantity was updated, causing permanent drift
+            # between total_quantity and actual stock on hand.
+            item.total_quantity -= quantity
         else:
             return Response(
                 {'detail': "Invalid action. Use 'increase' or 'decrease'."},
@@ -89,9 +92,9 @@ class ItemRequestViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        role = getattr(user, 'role', '')
         queryset = ItemRequest.objects.all().select_related('requested_by', 'item', 'approved_by')
-        if role in ['admin', 'inventory_manager', 'manager']:
+        # use model properties instead of raw role string comparisons
+        if user.is_admin or user.is_manager:
             return queryset
         return queryset.filter(requested_by=user)
 
@@ -110,7 +113,7 @@ class ApproveRequestView(APIView):
     @transaction.atomic
     def post(self, request, pk):
         user = request.user
-        if getattr(user, 'role', '') not in ['admin', 'inventory_manager', 'manager']:
+        if not (user.is_admin or user.is_manager):
             return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -124,19 +127,18 @@ class ApproveRequestView(APIView):
         item = item_request.item
         qty = item_request.quantity_requested
 
+        # Verify stock is available before approving, but do NOT deduct yet.
+        # Deduction happens in IssueItemView when item is physically handed out.
         if item.available_quantity < qty:
             return Response(
                 {'error': f'Not enough stock. Available: {item.available_quantity}, Requested: {qty}'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        item.available_quantity -= qty
-        item.save(update_fields=['available_quantity'])
-
         item_request.status = ItemRequest.Status.APPROVED
         item_request.approved_by = user
         item_request.reviewed_at = timezone.now()
-        item_request.units_remaining = item.available_quantity
+        item_request.units_remaining = item.available_quantity  # snapshot at approval time
         item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'units_remaining'])
 
         return Response(ItemRequestSerializer(item_request).data, status=status.HTTP_200_OK)
@@ -145,13 +147,15 @@ class ApproveRequestView(APIView):
 class RejectRequestView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @transaction.atomic
     def post(self, request, pk):
         user = request.user
-        if getattr(user, 'role', '') not in ['admin', 'inventory_manager', 'manager']:
+        if not (user.is_admin or user.is_manager):
             return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            item_request = ItemRequest.objects.get(pk=pk)
+            # BUG 14 FIX: added select_for_update() — was missing, causing race condition
+            item_request = ItemRequest.objects.select_for_update().get(pk=pk)
         except ItemRequest.DoesNotExist:
             return Response({'error': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -173,11 +177,22 @@ class MarkUrgentView(APIView):
 
     def post(self, request, pk):
         item_request = get_object_or_404(ItemRequest, pk=pk)
+        user = request.user
+
+        is_owner = item_request.requested_by == user
+        is_privileged = user.is_admin or user.is_manager
+        if not (is_owner or is_privileged):
+            return Response(
+                {'error': 'Only the requester or a manager can change urgency.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         is_urgent_raw = request.data.get('is_urgent', True)
         if isinstance(is_urgent_raw, str):
             is_urgent_value = is_urgent_raw.strip().lower() in ['1', 'true', 'yes', 'on']
         else:
             is_urgent_value = bool(is_urgent_raw)
+
         item_request.is_urgent = is_urgent_value
         item_request.save(update_fields=['is_urgent'])
         return Response({'status': 'updated', 'is_urgent': item_request.is_urgent}, status=status.HTTP_200_OK)

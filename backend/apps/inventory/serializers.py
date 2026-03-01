@@ -2,15 +2,26 @@ from rest_framework import serializers
 from .models import Category, Item, ItemRequest, ItemIssue, StockEntry
 
 
+# Standard pagination class used by all list views
+# Set in each ViewSet/ListAPIView via pagination_class = StandardPagination.
+# Returns: { count, next, previous, results: [...] }
+from rest_framework.pagination import PageNumberPagination
+
+class StandardPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 200
+
+
 class CategorySerializer(serializers.ModelSerializer):
-    item_count = serializers.SerializerMethodField()
+    # IMPROVEMENT 19 FIX: replaced SerializerMethodField (N+1 query per category)
+    # with an annotated IntegerField. The view must annotate the queryset with
+    # annotate(item_count=Count('items')) for this to work without extra queries.
+    item_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = Category
         fields = ['id', 'name', 'description', 'item_count']
-
-    def get_item_count(self, obj):
-        return obj.items.count()
 
 
 class ItemSerializer(serializers.ModelSerializer):
@@ -18,13 +29,15 @@ class ItemSerializer(serializers.ModelSerializer):
     status = serializers.ReadOnlyField()
     is_below_threshold = serializers.ReadOnlyField()
     is_low_stock = serializers.SerializerMethodField()
+    # show the user that cost data is missing rather than silently showing ₹0.00
+    unit_cost_missing = serializers.SerializerMethodField()
 
     class Meta:
         model = Item
         fields = [
             'id', 'name', 'category', 'category_name', 'item_type', 'unit',
             'total_quantity', 'available_quantity', 'threshold_quantity',
-            'unit_cost', 'description', 'location', 'status',
+            'unit_cost', 'unit_cost_missing', 'description', 'location', 'status',
             'is_below_threshold', 'is_low_stock', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -32,8 +45,12 @@ class ItemSerializer(serializers.ModelSerializer):
     def get_is_low_stock(self, obj):
         return obj.available_quantity <= obj.threshold_quantity
 
+    def get_unit_cost_missing(self, obj):
+        # True when unit_cost is null — frontend/reports can display a warning
+        return obj.unit_cost is None
 
-# ── NEW: StockEntry serializer ───────────────────────────────────────────────
+
+# ── StockEntry serializer ──────────────────────────────────────────────────────
 
 class StockEntrySerializer(serializers.ModelSerializer):
     added_by_name = serializers.CharField(source='added_by.get_full_name', read_only=True)
@@ -49,8 +66,6 @@ class StockEntrySerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'added_by', 'added_at']
 
-
-# ── Unchanged from Phase 1 ───────────────────────────────────────────────────
 
 class ItemRequestSerializer(serializers.ModelSerializer):
     requester = serializers.PrimaryKeyRelatedField(source='requested_by', read_only=True)
@@ -145,10 +160,8 @@ class ItemIssueSerializer(serializers.ModelSerializer):
             'id', 'request', 'item_name', 'item_type', 'item_unit',
             'requested_by_name', 'issued_by', 'issued_by_name',
             'issued_quantity', 'issued_at',
-            # Asset return
             'expected_return_date', 'returned_quantity', 'returned_at',
             'condition_on_return', 'return_recorded_by', 'return_recorded_by_name',
-            # Consumable finalization
             'actual_quantity_used', 'usage_finalized', 'usage_finalized_at',
             'notes',
         ]
@@ -158,8 +171,6 @@ class ItemIssueSerializer(serializers.ModelSerializer):
             'usage_finalized_at',
         ]
 
-
-# ── NEW: Action serializers for Phase 2 workflows ────────────────────────────
 
 class ReturnAssetSerializer(serializers.Serializer):
     """Manager records return of an asset."""
@@ -190,21 +201,13 @@ class FinalizeConsumableSerializer(serializers.Serializer):
         return value
 
 
-# ── NEW: Item History serializer (used in item detail/history view) ───────────
-
 class ItemHistorySerializer(serializers.Serializer):
-    """
-    Combines stock entries and issue records for a single item
-    into a unified chronological history list.
-    """
-    type = serializers.CharField()       # 'stock_added' | 'issued' | 'returned' | 'finalized'
+    type = serializers.CharField()
     date = serializers.DateTimeField()
     quantity = serializers.IntegerField()
     person = serializers.CharField()
     detail = serializers.CharField()
 
-
-# ── NEW: User activity serializer (admin views per-user history) ─────────────
 
 class UserActivitySerializer(serializers.ModelSerializer):
     item_name = serializers.CharField(source='item.name', read_only=True)
