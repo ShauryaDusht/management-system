@@ -3,7 +3,7 @@ djangorestframework==3.14.0
 djangorestframework-simplejwt==5.3.1
 django-cors-headers==4.3.1
 django-filter==23.5
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.11
 python-dotenv==1.0.0
 celery==5.6.2
 redis==5.0.1
