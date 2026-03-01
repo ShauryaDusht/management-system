@@ -32,9 +32,18 @@ This repository contains a Dockerized management system with:
 
 3. **Update database values in `.env`**
    ```env
-   DB_NAME=your_db_name
-   DB_USER=your_db_user
-   DB_PASSWORD=your_secure_password
+   SECRET_KEY=any-random-string-here
+   DEBUG=True
+   ALLOWED_HOSTS=localhost,127.0.0.1
+
+   DB_NAME=mydb
+   DB_USER=postgres
+   DB_PASSWORD=postgres
+   DB_PORT=5432
+   DB_HOST=localhost
+   DB_ENGINE=django.db.backends.postgresql
+
+   CORS_ALLOWED_ORIGINS=http://localhost:5173
    ```
 
 4. **Build and start all services**
@@ -57,36 +66,46 @@ This repository contains a Dockerized management system with:
 | React Admin Frontend | http://localhost:5173 |
 | Inventory Mobile (HTMX) | http://localhost:8000/inventory/mobile/ |
 
-## Useful Commands
+## Contribution Workflow (Required)
 
-- **Stop containers**
-  ```bash
-  docker compose down
-  ```
+Direct commits to protected branches are not allowed. Every change must go through a Pull Request.
+1. Create a feature/fix branch from `main`.
+2. Push your branch and open a Pull Request.
+3. The CI review bot runs automatically and leaves PR feedback.
+4. Address all bot feedback and failing checks.
+5. Repository owner reviews the PR.
+6. After owner approval, the PR is merged.
 
-- **Stop + remove volumes (reset DB/data)**
-  ```bash
-  docker compose down -v
-  ```
+### Rules for contributors
 
-- **View logs**
-  ```bash
-  docker compose logs -f
-  ```
+- Never push directly to `main`.
+- Keep PRs focused and small where possible.
+- Include a clear PR description (what changed, why, how tested).
+- Resolve bot comments before requesting final review.
+
+### Repository settings to enable (one-time)
+
+In GitHub branch protection rules for `main`, enable:
+
+- **Require a pull request before merging**
+- **Require approvals** (set to at least 1)
+- **Require status checks to pass before merging** and select:
+  - `reviewdog / reviewdog (pull_request)`
+- Optional but recommended: **Dismiss stale approvals when new commits are pushed**
+
+## CI Bot
+
+This repository uses an open-source, free GitHub Action bot powered by [reviewdog](https://github.com/reviewdog/reviewdog).
+
+- Workflow file: `.github/workflows/reviewdog.yml`
+- Trigger: every Pull Request
+- Current automated review:
+  - Misspell checks with inline PR comments
+
+You can extend the bot later with additional reviewdog integrations (for example, ESLint, Ruff, or Hadolint).
 
 ## Notes
 
 - Backend runs DB migrations automatically at startup.
 - Static files are collected automatically at startup.
 - See inventory-specific documentation here: [`backend/apps/inventory/README.md`](backend/apps/inventory/README.md)
-
-## Delivery Checklist Tracking
-
-Use this file as the entry point and maintain implementation progress in:
-- [`backend/apps/inventory/README.md`](backend/apps/inventory/README.md)
-
-That file includes:
-- Phase-wise checklists (Phase 1–4)
-- Role-wise API matrix
-- Current completion snapshot (Done / Partial / Not Started)
-- A handoff-friendly format to avoid duplicate work
