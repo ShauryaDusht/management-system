@@ -6,24 +6,24 @@ updates:
     directory: "/backend"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: "backend"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Frontend - Node (React/Vite)
   - package-ecosystem: "npm"
     directory: "/frontend-admin"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: "frontend"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Docker images (postgres, redis, etc.)
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 3
-    commit-message:
-      prefix: "docker"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
