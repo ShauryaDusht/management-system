@@ -60,3 +60,23 @@ export const markUrgent = (id, isUrgent) =>
   api.post(`/inventory/api/requests/${id}/mark-urgent/`, { is_urgent: isUrgent })
 export const getInventoryReport = () => api.get('/reports/inventory/')
 export const getRequestsReport = (params = {}) => api.get('/reports/requests/', { params })
+
+// Monthly procurement reports
+export const reportsAPI = {
+  // List all saved monthly reports
+  listMonthly: () => api.get('/reports/monthly/'),
+
+  // Generate a new monthly report
+  generateMonthly: (month, year, overwrite = false) =>
+    api.post('/reports/monthly/generate/', { month, year, overwrite }),
+
+  // Get a single report (with full snapshot rows)
+  getMonthly: (id) => api.get(`/reports/monthly/${id}/`),
+
+  // Delete a saved report
+  deleteMonthly: (id) => api.delete(`/reports/monthly/${id}/`),
+
+  // Download URLs — open directly in browser to trigger file download
+  csvUrl: (id) => `${api.defaults.baseURL}/reports/monthly/${id}/csv/`,
+  pdfUrl: (id) => `${api.defaults.baseURL}/reports/monthly/${id}/pdf/`,
+}
