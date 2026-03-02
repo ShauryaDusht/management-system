@@ -1,0 +1,73 @@
+{% extends 'housekeeping/mobile/base_hk.html' %}
+{% block title %}Stock{% endblock %}
+{% block hdr_title %}STOCK{% endblock %}
+{% block n4 %}on{% endblock %}
+
+{% block content %}
+{% if requested %}
+<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:11px;margin-bottom:10px;color:#065f46;font-weight:700">✓ Request submitted! Inventory manager will see it.</div>
+{% endif %}
+{% if user_areas.count > 1 %}
+<div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px">
+  {% for area in user_areas %}<a href="?area={{ area.id }}" class="atab {% if selected_area.id == area.id %}on{% endif %}">{{ area.name }}</a>{% endfor %}
+</div>
+{% endif %}
+
+<div class="card" style="background:linear-gradient(135deg,#2d4a3e,#1e3a30);color:#fff;border:none">
+  <div style="font-size:12px;opacity:.8">{% if selected_area %}{{ selected_area.name }}{% endif %} — Stock</div>
+  <div style="font-size:26px;font-weight:900;margin:2px 0">{{ area_stocks|length }} Items</div>
+  {% if low_stocks %}<div style="font-size:13px;color:#fde68a;margin-top:3px">⚠ {{ low_stocks|length }} item(s) running low</div>
+  {% else %}<div style="font-size:12px;opacity:.7;margin-top:3px">All stocks sufficient</div>{% endif %}
+</div>
+
+{% for stock in low_stocks %}
+<div class="card" style="border-left:4px solid #f97316;background:#fff7ed">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div><div style="font-weight:700;color:#9a3412">⚠ {{ stock.item_name }}</div>
+    <div style="font-size:12px;color:#c2622a">{{ stock.quantity }} {{ stock.unit }} left (threshold: {{ stock.low_stock_threshold }})</div></div>
+    <a href="/housekeeping/stock/request/?area={{ selected_area.id }}&item={{ stock.item_name }}">
+      <button style="background:#c2622a;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">Request</button>
+    </a>
+  </div>
+</div>
+{% endfor %}
+
+{% for stock in area_stocks %}{% if not stock.is_low %}
+<div class="card" style="padding:11px">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div><div style="font-weight:700;font-size:14px">{{ stock.item_name }}</div></div>
+    <div style="text-align:right"><div style="font-size:22px;font-weight:900;color:#2d4a3e">{{ stock.quantity }}</div><div style="font-size:11px;color:#6b7280">{{ stock.unit }}</div></div>
+  </div>
+</div>
+{% endif %}{% endfor %}
+
+{% if not area_stocks %}
+<div class="card" style="text-align:center;color:#9ca3af;padding:24px">No stock items for this area.<br><small>Admin can add via admin panel.</small></div>
+{% endif %}
+
+{% if my_requests %}
+<div class="sec">Recent Requests</div>
+{% for req in my_requests %}
+<div class="card" style="padding:10px">
+  <div style="display:flex;justify-content:space-between">
+    <div><div style="font-weight:700;font-size:13px">{{ req.item_name }}</div>
+    <div style="font-size:12px;color:#6b7280">{{ req.quantity }} {{ req.unit }} · {{ req.created_at|date:"d M" }} · {{ req.area.name|default:"" }}</div></div>
+    <span class="bdg {% if req.status == 'issued' or req.status == 'approved' %}g{% elif req.status == 'rejected' %}r{% else %}gr{% endif %}">{{ req.status|title }}{% if req.is_urgent %} ⚡{% endif %}</span>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}
+
+{% block bottom %}
+{% if request.user.is_authenticated %}
+<div class="bottom">
+  <a href="/housekeeping/stock/request/{% if selected_area %}?area={{ selected_area.id }}{% endif %}" style="flex:2">
+    <button class="btn-p" style="padding:11px">📋 Request Item</button>
+  </a>
+  <a href="/housekeeping/dashboard/" style="flex:1">
+    <button class="btn-g" style="padding:11px">🏠 Home</button>
+  </a>
+</div>
+{% endif %}
+{% endblock %}

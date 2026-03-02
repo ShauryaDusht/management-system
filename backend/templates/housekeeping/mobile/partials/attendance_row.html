@@ -1,0 +1,36 @@
+<div class="card" id="att-{{ worker.id }}">
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+    <div style="width:42px;height:42px;border-radius:50%;background:#2d4a3e;color:#fff;
+      display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;flex-shrink:0;overflow:hidden">
+      {% if worker.photo %}<img src="{{ worker.photo.url }}" style="width:100%;height:100%;object-fit:cover">{% else %}{{ worker.name|first|upper }}{% endif %}
+    </div>
+    <div><div style="font-weight:700;font-size:14px">{{ worker.name }}</div><div style="font-size:11px;color:#6b7280">📱 {{ worker.phone|default:'—' }}</div></div>
+  </div>
+
+  {% for half_key, half_label, att_obj in half_data %}
+  <div style="background:#fafafa;border-radius:9px;padding:9px;{% if not forloop.last %}margin-bottom:7px;{% endif %}border:1px solid #efefef">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+      <span style="font-size:12px;font-weight:700">{{ half_label }}</span>
+      {% if att_obj %}<span class="bdg {% if att_obj.status == 'present' %}g{% elif att_obj.status == 'absent' %}r{% elif att_obj.status == 'late' %}y{% else %}b{% endif %}">{{ att_obj.status|title }}{% if att_obj.is_submitted %} ✓{% endif %}</span>
+      {% else %}<span class="bdg gr">Not Marked</span>{% endif %}
+    </div>
+    {% if att_obj and att_obj.is_submitted %}
+    <div style="font-size:11px;color:#16a34a">✅ Submitted</div>
+    {% elif not is_today or cur_half == half_key %}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+      {% for sv, sl, bg, clr in attn_choices %}
+      <form hx-post="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}"
+            hx-target="#att-{{ worker.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="mark">
+        <input type="hidden" name="half" value="{{ half_key }}">
+        <input type="hidden" name="worker_id" value="{{ worker.id }}">
+        <input type="hidden" name="status" value="{{ sv }}">
+        <button type="submit" style="width:100%;border:none;border-radius:6px;padding:7px 3px;font-size:10px;font-weight:700;cursor:pointer;background:{{ bg }};color:{{ clr }}">{{ sl }}</button>
+      </form>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
