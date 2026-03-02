@@ -95,7 +95,7 @@ When you start any task:
 - ✅ View/download historical monthly reports
 - ✅ Reports page supports inventory, requests, and monthly procurement history
 
-**Phase 3 overall:** ✅ **Done**
+**Phase 3:** ✅ **Done**
 
 ---
 
@@ -187,23 +187,7 @@ Base path: `/api/auth/`
 
 ---
 
-## Copy Box — Updated Completion Checklist
-
-```md
-## Completion Checklist (Updated)
-
-- [x] Phase 1 complete
-- [x] Phase 2 complete
-- [x] Phase 3 complete (monthly report model, generation, CSV/PDF download, history UI/API)
-- [ ] Phase 4 analytics complete
-  - [ ] 6-month trend charts
-  - [ ] category consumption pie
-  - [ ] manager-specific dashboard widgets
-  - [ ] supervisor-specific dashboard widgets
-  - [ ] stock bar UX polish
-```
-
-## Immediate Next Actions (Recommended)
+## TODO
 
 1. Build **Phase 4 analytics APIs** (trend and category consumption datasets).
 2. Wire **admin dashboard charts** for trends + category pie.
