@@ -1,6 +1,6 @@
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Sum, F
+from django.db.models import Sum, F, Count
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -14,17 +14,22 @@ from .serializers import (
     ItemIssueSerializer,
     ReturnAssetSerializer, FinalizeConsumableSerializer,
     UserActivitySerializer,
+    StandardPagination,
 )
 from apps.users.permissions import IsAdmin, IsAdminOrManager, IsManager, IsSupervisor
 
 
 # ─────────────────────────────────────────────────
-# CATEGORY VIEWS  (unchanged)
+# CATEGORY VIEWS
 # ─────────────────────────────────────────────────
 
 class CategoryListCreateView(generics.ListCreateAPIView):
-    queryset = Category.objects.all()
     serializer_class = CategorySerializer
+
+    def get_queryset(self):
+        # CategorySerializer reads it as a single JOIN instead of N separate COUNT queries
+        # This solve N+1 issue when listing categories with item counts
+        return Category.objects.annotate(item_count=Count('items')).all()
 
     def get_permissions(self):
         if self.request.method == 'POST':
@@ -33,17 +38,21 @@ class CategoryListCreateView(generics.ListCreateAPIView):
 
 
 class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Category.objects.all()
+    def get_queryset(self):
+        return Category.objects.annotate(item_count=Count('items')).all()
+
     serializer_class = CategorySerializer
     permission_classes = [IsAdmin]
 
 
 # ─────────────────────────────────────────────────
-# ITEM VIEWS  (unchanged from Phase 1)
+# ITEM VIEWS
 # ─────────────────────────────────────────────────
 
 class ItemListCreateView(generics.ListCreateAPIView):
     serializer_class = ItemSerializer
+    # paginate item list — returns { count, next, previous, results }
+    pagination_class = StandardPagination
 
     def get_queryset(self):
         qs = Item.objects.select_related('category').all()
@@ -89,10 +98,7 @@ class LowStockItemsView(APIView):
 
 
 # ─────────────────────────────────────────────────
-# NEW — ITEM HISTORY VIEW
-# GET /api/inventory/items/<id>/history/
-# Admin sees full chronological timeline for one item:
-# stock additions, issues, returns, finalization events
+# ITEM HISTORY VIEW
 # ─────────────────────────────────────────────────
 
 class ItemHistoryView(APIView):
@@ -106,17 +112,15 @@ class ItemHistoryView(APIView):
 
         events = []
 
-        # Stock entries
         for entry in StockEntry.objects.filter(item=item).select_related('added_by'):
             events.append({
                 'type': 'stock_added',
-                'date': entry.added_at,
+                'date': entry.added_at.isoformat(),
                 'quantity': entry.quantity_added,
                 'person': entry.added_by.get_full_name() or entry.added_by.username,
                 'detail': entry.notes or 'Stock replenished',
             })
 
-        # Issues + returns + finalizations
         issues = ItemIssue.objects.filter(
             request__item=item
         ).select_related('request__requested_by', 'issued_by', 'return_recorded_by')
@@ -125,7 +129,7 @@ class ItemHistoryView(APIView):
             supervisor = issue.request.requested_by.get_full_name() or issue.request.requested_by.username
             events.append({
                 'type': 'issued',
-                'date': issue.issued_at,
+                'date': issue.issued_at.isoformat(),
                 'quantity': issue.issued_quantity,
                 'person': supervisor,
                 'detail': f"Issued for: {issue.request.purpose}",
@@ -133,7 +137,7 @@ class ItemHistoryView(APIView):
             if issue.returned_at:
                 events.append({
                     'type': 'returned',
-                    'date': issue.returned_at,
+                    'date': issue.returned_at.isoformat(),
                     'quantity': issue.returned_quantity,
                     'person': supervisor,
                     'detail': f"Condition: {issue.condition_on_return or 'Not noted'}",
@@ -141,13 +145,12 @@ class ItemHistoryView(APIView):
             if issue.usage_finalized and issue.usage_finalized_at:
                 events.append({
                     'type': 'finalized',
-                    'date': issue.usage_finalized_at,
+                    'date': issue.usage_finalized_at.isoformat(),
                     'quantity': issue.actual_quantity_used,
                     'person': supervisor,
                     'detail': f"Actual quantity used: {issue.actual_quantity_used}",
                 })
 
-        # Sort all events newest first
         events.sort(key=lambda e: e['date'], reverse=True)
 
         return Response({
@@ -157,15 +160,13 @@ class ItemHistoryView(APIView):
 
 
 # ─────────────────────────────────────────────────
-# NEW — STOCK ENTRY VIEWS
-# GET  /api/inventory/stock-entries/          → admin, list all
-# POST /api/inventory/stock-entries/          → admin, add stock
-# GET  /api/inventory/items/<id>/stock-entries/ → admin, per-item entries
+# STOCK ENTRY VIEWS
 # ─────────────────────────────────────────────────
 
 class StockEntryListCreateView(generics.ListCreateAPIView):
     serializer_class = StockEntrySerializer
     permission_classes = [IsAdmin]
+    pagination_class = StandardPagination
 
     def get_queryset(self):
         qs = StockEntry.objects.select_related('item', 'added_by').all()
@@ -179,7 +180,6 @@ class StockEntryListCreateView(generics.ListCreateAPIView):
 
 
 class ItemStockEntriesView(generics.ListAPIView):
-    """GET /api/inventory/items/<pk>/stock-entries/ — per-item stock history"""
     serializer_class = StockEntrySerializer
     permission_classes = [IsAdmin]
 
@@ -190,11 +190,12 @@ class ItemStockEntriesView(generics.ListAPIView):
 
 
 # ─────────────────────────────────────────────────
-# ITEM REQUEST VIEWS  (unchanged from Phase 1)
+# ITEM REQUEST VIEWS
 # ─────────────────────────────────────────────────
 
 class ItemRequestListCreateView(generics.ListCreateAPIView):
     serializer_class = ItemRequestSerializer
+    pagination_class = StandardPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -209,6 +210,7 @@ class ItemRequestListCreateView(generics.ListCreateAPIView):
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
+        # units_remaining not set at creation — it's a review-time snapshot
         serializer.save(requested_by=self.request.user)
 
 
@@ -228,9 +230,12 @@ class ItemRequestDetailView(generics.RetrieveAPIView):
 class ReviewRequestView(APIView):
     permission_classes = [IsManager]
 
+    @transaction.atomic
     def post(self, request, pk):
         try:
-            item_request = ItemRequest.objects.get(pk=pk, status=ItemRequest.Status.PENDING)
+            item_request = ItemRequest.objects.select_related('item').select_for_update().get(
+                pk=pk, status=ItemRequest.Status.PENDING
+            )
         except ItemRequest.DoesNotExist:
             return Response({'detail': 'Request not found or already reviewed.'}, status=404)
 
@@ -253,6 +258,8 @@ class ReviewRequestView(APIView):
 
         item_request.approved_by = request.user
         item_request.reviewed_at = timezone.now()
+        # set units_remaining at review time (the meaningful moment)
+        item_request.units_remaining = item_request.item.available_quantity
         item_request.save()
 
         return Response(ItemRequestSerializer(item_request).data)
@@ -283,8 +290,9 @@ class IssueItemView(APIView):
                 status=400
             )
 
-        item.available_quantity -= issued_qty
-        item.save()
+        Item.objects.filter(pk=item.pk).update(
+            available_quantity=F('available_quantity') - issued_qty
+        )
 
         issue = ItemIssue.objects.create(
             request=item_request,
@@ -307,6 +315,7 @@ class IssueItemView(APIView):
 class ItemIssueListView(generics.ListAPIView):
     serializer_class = ItemIssueSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -319,10 +328,7 @@ class ItemIssueListView(generics.ListAPIView):
 
 
 # ─────────────────────────────────────────────────
-# NEW — RETURN ASSET
-# POST /api/inventory/issues/<id>/return/
-# Manager records return of an issued asset.
-# Adds returned_quantity back to available_quantity.
+# RETURN ASSET
 # ─────────────────────────────────────────────────
 
 class ReturnAssetView(APIView):
@@ -348,10 +354,13 @@ class ReturnAssetView(APIView):
             return Response(serializer.errors, status=400)
 
         returned_qty = serializer.validated_data['returned_quantity']
+        lost_qty = issue.issued_quantity - returned_qty
 
-        # Add back to available stock
-        issue.request.item.available_quantity = F('available_quantity') + returned_qty
-        issue.request.item.save()
+        update_kwargs = {'available_quantity': F('available_quantity') + returned_qty}
+        if lost_qty > 0:
+            update_kwargs['total_quantity'] = F('total_quantity') - lost_qty
+
+        Item.objects.filter(pk=issue.request.item_id).update(**update_kwargs)
 
         issue.returned_quantity = returned_qty
         issue.returned_at = timezone.now()
@@ -360,28 +369,28 @@ class ReturnAssetView(APIView):
         issue.notes = serializer.validated_data.get('notes', issue.notes)
         issue.save()
 
-        # Refresh from db to get computed F() value
-        issue.request.item.refresh_from_db()
-
         return Response(ItemIssueSerializer(issue).data)
 
 
 # ─────────────────────────────────────────────────
-# NEW — FINALIZE CONSUMABLE USAGE
-# POST /api/inventory/issues/<id>/finalize/
-# Supervisor records actual quantity used for consumable.
-# Unused quantity (issued - used) is added back to stock.
+# FINALIZE CONSUMABLE
 # ─────────────────────────────────────────────────
 
 class FinalizeConsumableView(APIView):
-    permission_classes = [IsSupervisor]
+    permission_classes = [IsAuthenticated]
 
     @transaction.atomic
     def post(self, request, pk):
+        user = request.user
+
         try:
-            issue = ItemIssue.objects.select_for_update().select_related(
+            base_qs = ItemIssue.objects.select_for_update().select_related(
                 'request__item', 'request__requested_by'
-            ).get(pk=pk, request__requested_by=request.user)
+            )
+            if user.is_admin or user.is_manager:
+                issue = base_qs.get(pk=pk)
+            else:
+                issue = base_qs.get(pk=pk, request__requested_by=user)
         except ItemIssue.DoesNotExist:
             return Response({'detail': 'Issue record not found.'}, status=404)
 
@@ -398,7 +407,6 @@ class FinalizeConsumableView(APIView):
         actual_used = serializer.validated_data['actual_quantity_used']
         unused = issue.issued_quantity - actual_used
 
-        # Return unused quantity to stock
         if unused > 0:
             Item.objects.filter(pk=issue.request.item_id).update(
                 available_quantity=F('available_quantity') + unused
@@ -414,9 +422,7 @@ class FinalizeConsumableView(APIView):
 
 
 # ─────────────────────────────────────────────────
-# NEW — USER ACTIVITY VIEW
-# GET /api/inventory/activity/users/<id>/
-# Admin views all requests made by or reviewed by a specific user.
+# USER ACTIVITY VIEW
 # ─────────────────────────────────────────────────
 
 class UserActivityView(APIView):
@@ -434,14 +440,12 @@ class UserActivityView(APIView):
                 requested_by=user
             ).select_related('item').order_by('-requested_at')
         else:
-            # manager — show what they've approved/rejected/issued
             requests_qs = ItemRequest.objects.filter(
                 approved_by=user
             ).select_related('item').order_by('-reviewed_at')
 
         serializer = UserActivitySerializer(requests_qs, many=True)
 
-        # Summary stats
         total = requests_qs.count()
         issued = requests_qs.filter(status='issued').count()
         rejected = requests_qs.filter(status='rejected').count()
@@ -465,11 +469,11 @@ class UserActivityView(APIView):
 
 
 # ─────────────────────────────────────────────────
-# DASHBOARD SUMMARY  (extended in Phase 2)
+# DASHBOARD SUMMARY
 # ─────────────────────────────────────────────────
 
 class DashboardSummaryView(APIView):
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrManager]
 
     def get(self, request):
         total_items = Item.objects.count()
@@ -479,16 +483,21 @@ class DashboardSummaryView(APIView):
         out_of_stock = Item.objects.filter(available_quantity=0).count()
         pending_requests = ItemRequest.objects.filter(status='pending').count()
 
-        # NEW: outstanding asset returns (issued assets not yet returned)
         unreturned_assets = ItemIssue.objects.filter(
             request__item__item_type='asset',
             returned_at__isnull=True,
         ).count()
 
-        # NEW: consumables pending finalization
         unfinalized_consumables = ItemIssue.objects.filter(
             request__item__item_type='consumable',
             usage_finalized=False,
+        ).count()
+
+        # surface overdue asset returns on the dashboard
+        overdue_returns = ItemIssue.objects.filter(
+            request__item__item_type='asset',
+            returned_at__isnull=True,
+            expected_return_date__lt=timezone.now().date(),
         ).count()
 
         return Response({
@@ -498,4 +507,5 @@ class DashboardSummaryView(APIView):
             'pending_requests': pending_requests,
             'unreturned_assets': unreturned_assets,
             'unfinalized_consumables': unfinalized_consumables,
+            'overdue_returns': overdue_returns,
         })

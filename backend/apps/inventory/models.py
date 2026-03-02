@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import MinValueValidator
 from django.conf import settings
 
 
@@ -70,7 +71,9 @@ class StockEntry(models.Model):
     When saved, automatically increases item.available_quantity and item.total_quantity.
     """
     item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name='stock_entries')
-    quantity_added = models.PositiveIntegerField()
+    quantity_added = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)]
+    )
     added_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -89,7 +92,8 @@ class StockEntry(models.Model):
         is_new = self._state.adding
         super().save(*args, **kwargs)
         if is_new:
-            # Update item stock counts atomically
+            # This is a single atomic SQL UPDATE and avoids any possibility of
+            # double-incrementing from stale in-memory item instances.
             Item.objects.filter(pk=self.item_id).update(
                 available_quantity=models.F('available_quantity') + self.quantity_added,
                 total_quantity=models.F('total_quantity') + self.quantity_added,
@@ -115,10 +119,17 @@ class ItemRequest(models.Model):
         on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name='requests_reviewed',
-        limit_choices_to={'role': 'manager'},
+        limit_choices_to={'role__in': ['manager', 'inventory_manager']},
     )
-    quantity_requested = models.PositiveIntegerField()
-    units_remaining = models.PositiveIntegerField(default=0)
+    # Enforce minimum quantity of 1
+    quantity_requested = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)]
+    )
+    
+    units_remaining = models.PositiveIntegerField(
+        default=0,
+        help_text='Snapshot of available stock at the time the request was reviewed (approved/rejected).'
+    )
     purpose = models.TextField(help_text='What will this item be used for?')
     notes = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
@@ -133,6 +144,7 @@ class ItemRequest(models.Model):
     def __str__(self):
         return f"{self.requested_by} → {self.item.name} x{self.quantity_requested} [{self.status}]"
 
+    # Convenience aliases kept for backward compatibility
     @property
     def requester(self):
         return self.requested_by
@@ -156,11 +168,7 @@ class ItemRequest(models.Model):
 
 class ItemIssue(models.Model):
     """
-    Phase 2 additions to existing model:
-      - actual_quantity_used   : consumables — how much was really consumed
-      - usage_finalized        : supervisor marks consumable usage as complete
-      - usage_finalized_at     : timestamp of finalization
-      - return_recorded_by     : manager who recorded the asset return
+    Tracks the physical issuing of items, asset returns, and consumable finalization.
     """
     request = models.OneToOneField(ItemRequest, on_delete=models.PROTECT, related_name='issue')
     issued_by = models.ForeignKey(
@@ -168,7 +176,9 @@ class ItemIssue(models.Model):
         on_delete=models.PROTECT,
         related_name='issues_made',
     )
-    issued_quantity = models.PositiveIntegerField()
+    issued_quantity = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)]
+    )
     issued_at = models.DateTimeField(auto_now_add=True)
 
     # ── Asset return tracking ──────────────────────────────────
