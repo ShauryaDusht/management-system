@@ -26,4 +26,5 @@ urlpatterns = [
     path('api/inventory/', include('apps.inventory.urls')),
     path('api/reports/', include('apps.reports.urls')),
     path('inventory/', include('apps.inventory.htmx_urls')),
+    path('housekeeping/', include('apps.housekeeping.htmx_urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

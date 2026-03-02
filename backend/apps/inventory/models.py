@@ -112,7 +112,7 @@ class ItemRequest(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='requests_made',
-        limit_choices_to={'role': 'supervisor'},
+        limit_choices_to={'role__in': ['supervisor', 'caretaker']},
     )
     approved_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

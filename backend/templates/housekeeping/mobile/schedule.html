@@ -1,0 +1,50 @@
+{% extends 'housekeeping/mobile/base_hk.html' %}
+{% block title %}Schedule{% endblock %}
+{% block hdr_title %}SCHEDULE{% endblock %}
+{% block n2 %}on{% endblock %}
+
+{% block content %}
+{% if user_areas.count > 1 %}
+<div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px">
+  {% for area in user_areas %}<a href="?area={{ area.id }}" class="atab {% if selected_area.id == area.id %}on{% endif %}">{{ area.name }}</a>{% endfor %}
+</div>
+{% endif %}
+
+{% if selected_area %}
+<div style="font-size:12px;color:#6b7280;margin-bottom:10px;font-weight:600">📍 {{ selected_area.name }} · Same schedule every day</div>
+{% for day_data in weekly %}
+<details {% if day_data.day_idx == today_dow %}open{% endif %} style="margin-bottom:7px">
+  <summary style="background:{% if day_data.day_idx == today_dow %}#2d4a3e{% else %}rgba(255,255,255,.88){% endif %};
+    color:{% if day_data.day_idx == today_dow %}#fff{% else %}#1f2937{% endif %};
+    padding:13px 15px;border-radius:12px;cursor:pointer;font-weight:700;font-size:14px;list-style:none;
+    display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 6px rgba(0,0,0,.07)">
+    <span>{{ day_data.day }}{% if day_data.day_idx == today_dow %} <span style="font-size:10px;opacity:.7">(Today)</span>{% endif %}{% if day_data.day_idx == 6 %} <span style="font-size:11px;opacity:.7">+ Sunday Extras</span>{% endif %}</span>
+    <span>{{ day_data.tasks|length }} tasks {% if day_data.day_idx == today_dow %}−{% else %}+{% endif %}</span>
+  </summary>
+  <div style="background:#fff;border-radius:0 0 12px 12px;box-shadow:0 3px 8px rgba(0,0,0,.06);margin-top:-4px">
+    {% regroup day_data.tasks by worker_tag as tag_list %}
+    {% for tgrp in tag_list %}
+    <div style="background:#f8f8f8;padding:6px 14px;font-size:11px;font-weight:800;color:#2d4a3e;border-top:1px solid #eee">
+      {% if tgrp.grouper == 'room' %}🛏 Room Staff{% elif tgrp.grouper == 'floor' %}🧹 Floor Staff{% elif tgrp.grouper == 'washroom' %}🚿 Washroom Staff{% elif tgrp.grouper == 'all' %}☀️ Sunday Extra{% else %}📋 General{% endif %}
+    </div>
+    {% for task in tgrp.list %}
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 15px;
+      border-bottom:{% if not forloop.last %}1px solid #f3f4f6{% else %}none{% endif %}">
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">{{ task.task_name }}</div>
+        {% if task.task_description %}<div style="font-size:11px;color:#6b7280;margin-top:1px">{{ task.task_description }}</div>{% endif %}
+        {% if task.requires_photo %}<div style="font-size:11px;color:#c2622a;margin-top:1px">📷 Photo required</div>{% endif %}
+      </div>
+      <div style="text-align:right;font-size:11px;color:#6b7280;flex-shrink:0;margin-left:10px;white-space:nowrap">
+        {{ task.start_time|time:"g:i A" }}<br><span style="color:#ccc">↓</span><br>{{ task.end_time|time:"g:i A" }}
+      </div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+  </div>
+</details>
+{% endfor %}
+{% else %}
+<div class="card" style="text-align:center;color:#9ca3af;padding:24px">No area assigned.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends 'housekeeping/mobile/base_hk.html' %}
+{% block title %}Profile{% endblock %}
+{% block hdr_title %}PROFILE{% endblock %}
+{% block back_btn %}<a href="/housekeeping/dashboard/" class="bk">←</a>{% endblock %}
+
+{% block content %}
+{% if success %}<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:11px;margin-bottom:12px;color:#065f46;font-weight:700">✓ {{ success }}</div>{% endif %}
+{% if error %}<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:11px;margin-bottom:12px;color:#991b1b;font-weight:700">⚠ {{ error }}</div>{% endif %}
+
+<div class="card" style="text-align:center;padding:22px">
+  <div style="width:88px;height:88px;border-radius:50%;background:#2d4a3e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;border:3px solid #c2622a;overflow:hidden;margin:0 auto 12px">
+    {% if user.profile_photo %}<img src="{{ user.profile_photo.url }}" style="width:100%;height:100%;object-fit:cover">{% else %}{{ user.first_name|default:user.username|first|upper }}{% endif %}
+  </div>
+  <div style="font-size:20px;font-weight:800">{{ user.get_full_name|default:user.username }}</div>
+  <div style="color:#2d4a3e;font-size:13px;margin-top:3px">📞 {{ user.phone|default:'No phone registered' }}</div>
+  <span class="bdg g" style="margin-top:8px;font-size:12px">{{ user.get_role_display }}</span>
+</div>
+
+<div class="card"><div style="font-weight:700;color:#2d4a3e;margin-bottom:10px">📷 Update Photo</div>
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    <input type="hidden" name="action" value="upload_photo">
+    <input type="file" name="profile_photo" accept="image/*" capture="user" style="margin-bottom:10px;font-size:13px">
+    <button type="submit" class="btn-g">Upload Photo</button>
+  </form>
+</div>
+
+<div class="card"><div style="font-weight:700;color:#2d4a3e;margin-bottom:10px">🏢 Areas In Charge</div>
+  {% for area in user_areas %}
+  <div style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px">📍 {{ area.name }} <span style="font-size:11px;color:#9ca3af">({{ area.get_area_type_display }})</span></div>
+  {% empty %}<div style="color:#9ca3af;font-size:13px">No areas assigned.</div>{% endfor %}
+</div>
+
+<div class="card"><div style="font-weight:700;color:#2d4a3e;margin-bottom:12px">🔒 Change Password</div>
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="action" value="change_password">
+    <div class="fg"><label>Current Password</label><input type="password" name="current_password" required></div>
+    <div class="fg"><label>New Password (min 6 chars)</label><input type="password" name="new_password" required></div>
+    <div class="fg"><label>Confirm Password</label><input type="password" name="confirm_password" required></div>
+    <button type="submit" class="btn-s">Update Password</button>
+  </form>
+</div>
+
+<a href="/housekeeping/logout/"><button class="btn-p" style="margin-top:4px">Logout</button></a>
+{% endblock %}

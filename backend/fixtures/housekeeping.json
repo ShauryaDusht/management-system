@@ -1,0 +1,8832 @@
+[
+{
+  "model": "housekeeping.hkarea",
+  "pk": 1,
+  "fields": {
+    "name": "Aibaan",
+    "area_type": "hostel",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 2,
+  "fields": {
+    "name": "Beuaki",
+    "area_type": "hostel",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 3,
+  "fields": {
+    "name": "Chimair",
+    "area_type": "hostel",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 4,
+  "fields": {
+    "name": "Duven",
+    "area_type": "hostel",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 5,
+  "fields": {
+    "name": "Emiet",
+    "area_type": "hostel",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 6,
+  "fields": {
+    "name": "Firpeal",
+    "area_type": "hostel",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 7,
+  "fields": {
+    "name": "Griwiksh",
+    "area_type": "hostel",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 8,
+  "fields": {
+    "name": "Hiqom",
+    "area_type": "hostel",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 9,
+  "fields": {
+    "name": "Ijokha",
+    "area_type": "hostel",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 10,
+  "fields": {
+    "name": "Jurqia",
+    "area_type": "hostel",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 11,
+  "fields": {
+    "name": "Kyzeel",
+    "area_type": "hostel",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 12,
+  "fields": {
+    "name": "Lekhaag",
+    "area_type": "hostel",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 13,
+  "fields": {
+    "name": "Research Park",
+    "area_type": "research_park",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 14,
+  "fields": {
+    "name": "Central Arcade",
+    "area_type": "central_arcade",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 15,
+  "fields": {
+    "name": "Sports Complex",
+    "area_type": "sports",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 16,
+  "fields": {
+    "name": "Roads & Outdoor",
+    "area_type": "roads",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 17,
+  "fields": {
+    "name": "Solid Waste Management",
+    "area_type": "swm",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 18,
+  "fields": {
+    "name": "Guest House New",
+    "area_type": "guesthouse",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 19,
+  "fields": {
+    "name": "Guest House Old RB",
+    "area_type": "guesthouse",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 20,
+  "fields": {
+    "name": "Director Bungalow",
+    "area_type": "director",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 21,
+  "fields": {
+    "name": "Academic Blocks 1-9",
+    "area_type": "academic",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 22,
+  "fields": {
+    "name": "Academic Blocks 10-13",
+    "area_type": "academic",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkarea",
+  "pk": 23,
+  "fields": {
+    "name": "Common Area",
+    "area_type": "other",
+    "description": "",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 1,
+  "fields": {
+    "user": 21,
+    "area": 1
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 2,
+  "fields": {
+    "user": 22,
+    "area": 2
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 3,
+  "fields": {
+    "user": 22,
+    "area": 3
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 4,
+  "fields": {
+    "user": 23,
+    "area": 9
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 5,
+  "fields": {
+    "user": 24,
+    "area": 4
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 6,
+  "fields": {
+    "user": 24,
+    "area": 5
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 7,
+  "fields": {
+    "user": 19,
+    "area": 6
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 8,
+  "fields": {
+    "user": 19,
+    "area": 7
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 9,
+  "fields": {
+    "user": 20,
+    "area": 8
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 10,
+  "fields": {
+    "user": 25,
+    "area": 10
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 11,
+  "fields": {
+    "user": 25,
+    "area": 12
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 12,
+  "fields": {
+    "user": 26,
+    "area": 11
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 13,
+  "fields": {
+    "user": 27,
+    "area": 23
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 14,
+  "fields": {
+    "user": 6,
+    "area": 18
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 15,
+  "fields": {
+    "user": 6,
+    "area": 20
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 16,
+  "fields": {
+    "user": 7,
+    "area": 22
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 17,
+  "fields": {
+    "user": 8,
+    "area": 22
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 18,
+  "fields": {
+    "user": 9,
+    "area": 13
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 19,
+  "fields": {
+    "user": 10,
+    "area": 15
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 20,
+  "fields": {
+    "user": 10,
+    "area": 14
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 21,
+  "fields": {
+    "user": 11,
+    "area": 21
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 22,
+  "fields": {
+    "user": 12,
+    "area": 21
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 23,
+  "fields": {
+    "user": 13,
+    "area": 16
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 24,
+  "fields": {
+    "user": 13,
+    "area": 19
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 25,
+  "fields": {
+    "user": 14,
+    "area": 17
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 1,
+  "fields": {
+    "name": "Reeta Ben",
+    "phone": "9574379477",
+    "punching_no": "357",
+    "worker_type": "room",
+    "shift": "day",
+    "area": 1,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 2,
+  "fields": {
+    "name": "Meena Ben",
+    "phone": "9909679865",
+    "punching_no": "76",
+    "worker_type": "floor",
+    "shift": "day",
+    "area": 1,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 3,
+  "fields": {
+    "name": "Kailash B",
+    "phone": "7265921026",
+    "punching_no": "143",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 1,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 4,
+  "fields": {
+    "name": "Shilpa Ben",
+    "phone": "6356046585",
+    "punching_no": "419",
+    "worker_type": "room",
+    "shift": "day",
+    "area": 2,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 5,
+  "fields": {
+    "name": "Bhanu Ben",
+    "phone": "7567371788",
+    "punching_no": "332",
+    "worker_type": "floor",
+    "shift": "day",
+    "area": 2,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 6,
+  "fields": {
+    "name": "Surya Ben",
+    "phone": "9725963299",
+    "punching_no": "233",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 2,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 7,
+  "fields": {
+    "name": "Kailashben M",
+    "phone": "8490053837",
+    "punching_no": "98",
+    "worker_type": "room",
+    "shift": "day",
+    "area": 3,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 8,
+  "fields": {
+    "name": "Geeta Ben",
+    "phone": "7041016942",
+    "punching_no": "230",
+    "worker_type": "floor",
+    "shift": "day",
+    "area": 3,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 9,
+  "fields": {
+    "name": "Manisha Ben",
+    "phone": "9157691322",
+    "punching_no": "356",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 3,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 10,
+  "fields": {
+    "name": "Sangeeta Ben",
+    "phone": "8866941201",
+    "punching_no": "219",
+    "worker_type": "room",
+    "shift": "day",
+    "area": 9,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 11,
+  "fields": {
+    "name": "Sonal Ben",
+    "phone": "7359834672",
+    "punching_no": "415",
+    "worker_type": "floor",
+    "shift": "day",
+    "area": 9,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 12,
+  "fields": {
+    "name": "Champa Ben",
+    "phone": "8140558882",
+    "punching_no": "249",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 9,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 13,
+  "fields": {
+    "name": "Shailesh Rathod",
+    "phone": "9081107066",
+    "punching_no": "239",
+    "worker_type": "room",
+    "shift": "day",
+    "area": 4,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 14,
+  "fields": {
+    "name": "Rajnikant",
+    "phone": "6355825476",
+    "punching_no": "153",
+    "worker_type": "floor",
+    "shift": "day",
+    "area": 4,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 15,
+  "fields": {
+    "name": "Harish",
+    "phone": "7698462575",
+    "punching_no": "122",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 4,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 16,
+  "fields": {
+    "name": "Nikul Solanki",
+    "phone": "8238759843",
+    "punching_no": "446",
+    "worker_type": "room",
+    "shift": "day",
+    "area": 5,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 17,
+  "fields": {
+    "name": "Jagdish",
+    "phone": "9662312505",
+    "punching_no": "157",
+    "worker_type": "floor",
+    "shift": "day",
+    "area": 5,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 18,
+  "fields": {
+    "name": "Mahendra Makwana",
+    "phone": "7041143190",
+    "punching_no": "148",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 5,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 19,
+  "fields": {
+    "name": "Anand",
+    "phone": "9023393753",
+    "punching_no": "310",
+    "worker_type": "room",
+    "shift": "day",
+    "area": 6,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 20,
+  "fields": {
+    "name": "Satish",
+    "phone": "9558903676",
+    "punching_no": "113",
+    "worker_type": "floor",
+    "shift": "day",
+    "area": 6,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 21,
+  "fields": {
+    "name": "Jaydeep Solanki",
+    "phone": "9727981188",
+    "punching_no": "259",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 6,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 22,
+  "fields": {
+    "name": "Karan",
+    "phone": "7016522113",
+    "punching_no": "260",
+    "worker_type": "room",
+    "shift": "day",
+    "area": 7,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 23,
+  "fields": {
+    "name": "Jignesh",
+    "phone": "8401617156",
+    "punching_no": "115",
+    "worker_type": "floor",
+    "shift": "day",
+    "area": 7,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 24,
+  "fields": {
+    "name": "Sailesh Vaghela",
+    "phone": "8734987012",
+    "punching_no": "109",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 7,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 25,
+  "fields": {
+    "name": "Mukesh",
+    "phone": "8141885315",
+    "punching_no": "121",
+    "worker_type": "room",
+    "shift": "day",
+    "area": 8,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 26,
+  "fields": {
+    "name": "Jaykesh",
+    "phone": "8401531547",
+    "punching_no": "449",
+    "worker_type": "room",
+    "shift": "day",
+    "area": 8,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 27,
+  "fields": {
+    "name": "Chandrakant",
+    "phone": "7201863872",
+    "punching_no": "283",
+    "worker_type": "floor",
+    "shift": "day",
+    "area": 8,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 28,
+  "fields": {
+    "name": "Jitendra",
+    "phone": "9723216455",
+    "punching_no": "95",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 8,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 29,
+  "fields": {
+    "name": "Ravi",
+    "phone": "7383342914",
+    "punching_no": "245",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 8,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 30,
+  "fields": {
+    "name": "Rakesh",
+    "phone": "9316531354",
+    "punching_no": "438",
+    "worker_type": "room",
+    "shift": "day",
+    "area": 10,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 31,
+  "fields": {
+    "name": "Shailesh Talvadi",
+    "phone": "8866886040",
+    "punching_no": "97",
+    "worker_type": "floor",
+    "shift": "day",
+    "area": 10,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 32,
+  "fields": {
+    "name": "Pravin Vaghela",
+    "phone": "8511376344",
+    "punching_no": "246",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 10,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 33,
+  "fields": {
+    "name": "Banshi",
+    "phone": "9023507559",
+    "punching_no": "149",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 10,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 34,
+  "fields": {
+    "name": "Suresh Solanki",
+    "phone": "9687317660",
+    "punching_no": "73",
+    "worker_type": "room",
+    "shift": "day",
+    "area": 12,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 35,
+  "fields": {
+    "name": "Naresh",
+    "phone": "7284086230",
+    "punching_no": "89",
+    "worker_type": "floor",
+    "shift": "day",
+    "area": 12,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 36,
+  "fields": {
+    "name": "Nitin Makwana",
+    "phone": "9157708871",
+    "punching_no": "261",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 12,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 37,
+  "fields": {
+    "name": "Pravin Maida",
+    "phone": "9265530235",
+    "punching_no": "91",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 12,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 38,
+  "fields": {
+    "name": "Prahlad Parmar",
+    "phone": "8734949909",
+    "punching_no": "242",
+    "worker_type": "room",
+    "shift": "day",
+    "area": 11,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 39,
+  "fields": {
+    "name": "Amit",
+    "phone": "7779004437",
+    "punching_no": "110",
+    "worker_type": "room",
+    "shift": "day",
+    "area": 11,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 40,
+  "fields": {
+    "name": "Mehul Rathod",
+    "phone": "6353451489",
+    "punching_no": "256",
+    "worker_type": "floor",
+    "shift": "day",
+    "area": 11,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 41,
+  "fields": {
+    "name": "Rajesh",
+    "phone": "7046510026",
+    "punching_no": "104",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 11,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 42,
+  "fields": {
+    "name": "Mehul Jadeja",
+    "phone": "7096229284",
+    "punching_no": "106",
+    "worker_type": "washroom",
+    "shift": "day",
+    "area": 11,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 43,
+  "fields": {
+    "name": "Yogesh Vaghela",
+    "phone": "9998100804",
+    "punching_no": "80",
+    "worker_type": "general",
+    "shift": "day",
+    "area": 23,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 44,
+  "fields": {
+    "name": "Vinayak Solanki",
+    "phone": "9023271834",
+    "punching_no": "240",
+    "worker_type": "general",
+    "shift": "day",
+    "area": 23,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 45,
+  "fields": {
+    "name": "Anil Thakur",
+    "phone": "9265665289",
+    "punching_no": "542",
+    "worker_type": "general",
+    "shift": "day",
+    "area": 23,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 46,
+  "fields": {
+    "name": "Suresh",
+    "phone": "",
+    "punching_no": "",
+    "worker_type": "general",
+    "shift": "day",
+    "area": 23,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 47,
+  "fields": {
+    "name": "Krunal",
+    "phone": "",
+    "punching_no": "",
+    "worker_type": "general",
+    "shift": "day",
+    "area": 23,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 48,
+  "fields": {
+    "name": "Ketan Gujjar",
+    "phone": "8347139138",
+    "punching_no": "100",
+    "worker_type": "general",
+    "shift": "day",
+    "area": 23,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": false
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 49,
+  "fields": {
+    "name": "Deepika Ben",
+    "phone": "7383512108",
+    "punching_no": "418",
+    "worker_type": "reliever",
+    "shift": "day",
+    "area": null,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": true
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 50,
+  "fields": {
+    "name": "Mital Ben",
+    "phone": "7383619204",
+    "punching_no": "386",
+    "worker_type": "reliever",
+    "shift": "day",
+    "area": null,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": true
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 51,
+  "fields": {
+    "name": "Vinay",
+    "phone": "8758388061",
+    "punching_no": "136",
+    "worker_type": "reliever",
+    "shift": "day",
+    "area": null,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": true
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 52,
+  "fields": {
+    "name": "Lala",
+    "phone": "9726303104",
+    "punching_no": "154",
+    "worker_type": "reliever",
+    "shift": "day",
+    "area": null,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": true
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 53,
+  "fields": {
+    "name": "Hasmukhbhai",
+    "phone": "9714466201",
+    "punching_no": "75",
+    "worker_type": "reliever",
+    "shift": "day",
+    "area": null,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": true
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 54,
+  "fields": {
+    "name": "Umesh Babariya",
+    "phone": "9313230372",
+    "punching_no": "435",
+    "worker_type": "reliever",
+    "shift": "day",
+    "area": null,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": true
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 55,
+  "fields": {
+    "name": "Rajendra",
+    "phone": "9924301124",
+    "punching_no": "121",
+    "worker_type": "reliever",
+    "shift": "day",
+    "area": null,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": true
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 56,
+  "fields": {
+    "name": "Dhiraj",
+    "phone": "9979030157",
+    "punching_no": "131",
+    "worker_type": "reliever",
+    "shift": "day",
+    "area": null,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": true
+  }
+},
+{
+  "model": "housekeeping.hkworker",
+  "pk": 57,
+  "fields": {
+    "name": "Mayur",
+    "phone": "9099743600",
+    "punching_no": "258",
+    "worker_type": "reliever",
+    "shift": "day",
+    "area": null,
+    "supervisor": null,
+    "photo": "",
+    "is_active": true,
+    "is_reliever": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 1,
+  "fields": {
+    "area": 1,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "2nd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 2,
+  "fields": {
+    "area": 1,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 3,
+  "fields": {
+    "area": 1,
+    "order": 3,
+    "start_time": "09:00:00",
+    "end_time": "09:30:00",
+    "task_name": "Room Cleaning — 5 rooms",
+    "task_description": "First round of room cleaning",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 4,
+  "fields": {
+    "area": 1,
+    "order": 4,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 5,
+  "fields": {
+    "area": 1,
+    "order": 5,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6,
+  "fields": {
+    "area": 1,
+    "order": 6,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "Room Round — 15 rooms",
+    "task_description": "Main room cleaning round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 7,
+  "fields": {
+    "area": 1,
+    "order": 7,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "Pantry Cleaning — 4 pantries",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 8,
+  "fields": {
+    "area": 1,
+    "order": 8,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 9,
+  "fields": {
+    "area": 1,
+    "order": 9,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting / Admin Work",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 10,
+  "fields": {
+    "area": 1,
+    "order": 10,
+    "start_time": "14:00:00",
+    "end_time": "16:00:00",
+    "task_name": "Room & Extra Work — 10 rooms",
+    "task_description": "Afternoon room round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 11,
+  "fields": {
+    "area": 1,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "Common Cleaning & Pantry Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 12,
+  "fields": {
+    "area": 1,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "3rd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 13,
+  "fields": {
+    "area": 1,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Dry Mop",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 14,
+  "fields": {
+    "area": 1,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break / Inside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 15,
+  "fields": {
+    "area": 1,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 16,
+  "fields": {
+    "area": 1,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "11:30:00",
+    "task_name": "Common Room + Staircase + Ground Floor",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 17,
+  "fields": {
+    "area": 1,
+    "order": 6,
+    "start_time": "11:30:00",
+    "end_time": "13:00:00",
+    "task_name": "3rd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 18,
+  "fields": {
+    "area": 1,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 19,
+  "fields": {
+    "area": 1,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 20,
+  "fields": {
+    "area": 1,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "2nd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 21,
+  "fields": {
+    "area": 1,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:30:00",
+    "task_name": "1st Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 22,
+  "fields": {
+    "area": 1,
+    "order": 11,
+    "start_time": "16:20:00",
+    "end_time": "16:50:00",
+    "task_name": "Ground Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 23,
+  "fields": {
+    "area": 1,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "1st Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 24,
+  "fields": {
+    "area": 1,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 25,
+  "fields": {
+    "area": 1,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 26,
+  "fields": {
+    "area": 1,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 27,
+  "fields": {
+    "area": 1,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "3rd Floor — 2 Washroom Deep Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 28,
+  "fields": {
+    "area": 1,
+    "order": 6,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "2nd Floor — 2 Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 29,
+  "fields": {
+    "area": 1,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 30,
+  "fields": {
+    "area": 1,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 31,
+  "fields": {
+    "area": 1,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "6 Washroom Rounds Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 32,
+  "fields": {
+    "area": 1,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:00:00",
+    "task_name": "1st Floor Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 33,
+  "fields": {
+    "area": 1,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "All Washroom Touch Up & Final Round",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 34,
+  "fields": {
+    "area": 1,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "09:00:00",
+    "task_name": "Dustbin Cleaning — All Floors",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 35,
+  "fields": {
+    "area": 1,
+    "order": 2,
+    "start_time": "09:00:00",
+    "end_time": "10:30:00",
+    "task_name": "Terrace Cleaning",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 36,
+  "fields": {
+    "area": 1,
+    "order": 3,
+    "start_time": "10:30:00",
+    "end_time": "12:00:00",
+    "task_name": "Fridge Cleaning (Every 15 Days)",
+    "task_description": "Check with caretaker if due today",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 37,
+  "fields": {
+    "area": 1,
+    "order": 4,
+    "start_time": "13:00:00",
+    "end_time": "14:00:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": false,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 38,
+  "fields": {
+    "area": 1,
+    "order": 5,
+    "start_time": "14:00:00",
+    "end_time": "15:30:00",
+    "task_name": "Common Area Deep Clean",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 39,
+  "fields": {
+    "area": 1,
+    "order": 6,
+    "start_time": "15:30:00",
+    "end_time": "16:50:00",
+    "task_name": "Window Cleaning + Cobweb Removal",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 40,
+  "fields": {
+    "area": 2,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "2nd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 41,
+  "fields": {
+    "area": 2,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 42,
+  "fields": {
+    "area": 2,
+    "order": 3,
+    "start_time": "09:00:00",
+    "end_time": "09:30:00",
+    "task_name": "Room Cleaning — 5 rooms",
+    "task_description": "First round of room cleaning",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 43,
+  "fields": {
+    "area": 2,
+    "order": 4,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 44,
+  "fields": {
+    "area": 2,
+    "order": 5,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 45,
+  "fields": {
+    "area": 2,
+    "order": 6,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "Room Round — 15 rooms",
+    "task_description": "Main room cleaning round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 46,
+  "fields": {
+    "area": 2,
+    "order": 7,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "Pantry Cleaning — 4 pantries",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 47,
+  "fields": {
+    "area": 2,
+    "order": 8,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 48,
+  "fields": {
+    "area": 2,
+    "order": 9,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting / Admin Work",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 49,
+  "fields": {
+    "area": 2,
+    "order": 10,
+    "start_time": "14:00:00",
+    "end_time": "16:00:00",
+    "task_name": "Room & Extra Work — 10 rooms",
+    "task_description": "Afternoon room round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 50,
+  "fields": {
+    "area": 2,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "Common Cleaning & Pantry Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 51,
+  "fields": {
+    "area": 2,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "3rd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 52,
+  "fields": {
+    "area": 2,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Dry Mop",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 53,
+  "fields": {
+    "area": 2,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break / Inside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 54,
+  "fields": {
+    "area": 2,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 55,
+  "fields": {
+    "area": 2,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "11:30:00",
+    "task_name": "Common Room + Staircase + Ground Floor",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 56,
+  "fields": {
+    "area": 2,
+    "order": 6,
+    "start_time": "11:30:00",
+    "end_time": "13:00:00",
+    "task_name": "3rd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 57,
+  "fields": {
+    "area": 2,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 58,
+  "fields": {
+    "area": 2,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 59,
+  "fields": {
+    "area": 2,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "2nd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 60,
+  "fields": {
+    "area": 2,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:30:00",
+    "task_name": "1st Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 61,
+  "fields": {
+    "area": 2,
+    "order": 11,
+    "start_time": "16:20:00",
+    "end_time": "16:50:00",
+    "task_name": "Ground Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 62,
+  "fields": {
+    "area": 2,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "1st Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 63,
+  "fields": {
+    "area": 2,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 64,
+  "fields": {
+    "area": 2,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 65,
+  "fields": {
+    "area": 2,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 66,
+  "fields": {
+    "area": 2,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "3rd Floor — 2 Washroom Deep Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 67,
+  "fields": {
+    "area": 2,
+    "order": 6,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "2nd Floor — 2 Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 68,
+  "fields": {
+    "area": 2,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 69,
+  "fields": {
+    "area": 2,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 70,
+  "fields": {
+    "area": 2,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "6 Washroom Rounds Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 71,
+  "fields": {
+    "area": 2,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:00:00",
+    "task_name": "1st Floor Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 72,
+  "fields": {
+    "area": 2,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "All Washroom Touch Up & Final Round",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 73,
+  "fields": {
+    "area": 2,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "09:00:00",
+    "task_name": "Dustbin Cleaning — All Floors",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 74,
+  "fields": {
+    "area": 2,
+    "order": 2,
+    "start_time": "09:00:00",
+    "end_time": "10:30:00",
+    "task_name": "Terrace Cleaning",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 75,
+  "fields": {
+    "area": 2,
+    "order": 3,
+    "start_time": "10:30:00",
+    "end_time": "12:00:00",
+    "task_name": "Fridge Cleaning (Every 15 Days)",
+    "task_description": "Check with caretaker if due today",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 76,
+  "fields": {
+    "area": 2,
+    "order": 4,
+    "start_time": "13:00:00",
+    "end_time": "14:00:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": false,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 77,
+  "fields": {
+    "area": 2,
+    "order": 5,
+    "start_time": "14:00:00",
+    "end_time": "15:30:00",
+    "task_name": "Common Area Deep Clean",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 78,
+  "fields": {
+    "area": 2,
+    "order": 6,
+    "start_time": "15:30:00",
+    "end_time": "16:50:00",
+    "task_name": "Window Cleaning + Cobweb Removal",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 79,
+  "fields": {
+    "area": 3,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "2nd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 80,
+  "fields": {
+    "area": 3,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 81,
+  "fields": {
+    "area": 3,
+    "order": 3,
+    "start_time": "09:00:00",
+    "end_time": "09:30:00",
+    "task_name": "Room Cleaning — 5 rooms",
+    "task_description": "First round of room cleaning",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 82,
+  "fields": {
+    "area": 3,
+    "order": 4,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 83,
+  "fields": {
+    "area": 3,
+    "order": 5,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 84,
+  "fields": {
+    "area": 3,
+    "order": 6,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "Room Round — 15 rooms",
+    "task_description": "Main room cleaning round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 85,
+  "fields": {
+    "area": 3,
+    "order": 7,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "Pantry Cleaning — 4 pantries",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 86,
+  "fields": {
+    "area": 3,
+    "order": 8,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 87,
+  "fields": {
+    "area": 3,
+    "order": 9,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting / Admin Work",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 88,
+  "fields": {
+    "area": 3,
+    "order": 10,
+    "start_time": "14:00:00",
+    "end_time": "16:00:00",
+    "task_name": "Room & Extra Work — 10 rooms",
+    "task_description": "Afternoon room round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 89,
+  "fields": {
+    "area": 3,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "Common Cleaning & Pantry Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 90,
+  "fields": {
+    "area": 3,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "3rd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 91,
+  "fields": {
+    "area": 3,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Dry Mop",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 92,
+  "fields": {
+    "area": 3,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break / Inside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 93,
+  "fields": {
+    "area": 3,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 94,
+  "fields": {
+    "area": 3,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "11:30:00",
+    "task_name": "Common Room + Staircase + Ground Floor",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 95,
+  "fields": {
+    "area": 3,
+    "order": 6,
+    "start_time": "11:30:00",
+    "end_time": "13:00:00",
+    "task_name": "3rd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 96,
+  "fields": {
+    "area": 3,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 97,
+  "fields": {
+    "area": 3,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 98,
+  "fields": {
+    "area": 3,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "2nd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 99,
+  "fields": {
+    "area": 3,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:30:00",
+    "task_name": "1st Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 100,
+  "fields": {
+    "area": 3,
+    "order": 11,
+    "start_time": "16:20:00",
+    "end_time": "16:50:00",
+    "task_name": "Ground Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 101,
+  "fields": {
+    "area": 3,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "1st Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 102,
+  "fields": {
+    "area": 3,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 103,
+  "fields": {
+    "area": 3,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 104,
+  "fields": {
+    "area": 3,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 105,
+  "fields": {
+    "area": 3,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "3rd Floor — 2 Washroom Deep Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 106,
+  "fields": {
+    "area": 3,
+    "order": 6,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "2nd Floor — 2 Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 107,
+  "fields": {
+    "area": 3,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 108,
+  "fields": {
+    "area": 3,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 109,
+  "fields": {
+    "area": 3,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "6 Washroom Rounds Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 110,
+  "fields": {
+    "area": 3,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:00:00",
+    "task_name": "1st Floor Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 111,
+  "fields": {
+    "area": 3,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "All Washroom Touch Up & Final Round",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 112,
+  "fields": {
+    "area": 3,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "09:00:00",
+    "task_name": "Dustbin Cleaning — All Floors",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 113,
+  "fields": {
+    "area": 3,
+    "order": 2,
+    "start_time": "09:00:00",
+    "end_time": "10:30:00",
+    "task_name": "Terrace Cleaning",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 114,
+  "fields": {
+    "area": 3,
+    "order": 3,
+    "start_time": "10:30:00",
+    "end_time": "12:00:00",
+    "task_name": "Fridge Cleaning (Every 15 Days)",
+    "task_description": "Check with caretaker if due today",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 115,
+  "fields": {
+    "area": 3,
+    "order": 4,
+    "start_time": "13:00:00",
+    "end_time": "14:00:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": false,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 116,
+  "fields": {
+    "area": 3,
+    "order": 5,
+    "start_time": "14:00:00",
+    "end_time": "15:30:00",
+    "task_name": "Common Area Deep Clean",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 117,
+  "fields": {
+    "area": 3,
+    "order": 6,
+    "start_time": "15:30:00",
+    "end_time": "16:50:00",
+    "task_name": "Window Cleaning + Cobweb Removal",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 118,
+  "fields": {
+    "area": 4,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "2nd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 119,
+  "fields": {
+    "area": 4,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 120,
+  "fields": {
+    "area": 4,
+    "order": 3,
+    "start_time": "09:00:00",
+    "end_time": "09:30:00",
+    "task_name": "Room Cleaning — 5 rooms",
+    "task_description": "First round of room cleaning",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 121,
+  "fields": {
+    "area": 4,
+    "order": 4,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 122,
+  "fields": {
+    "area": 4,
+    "order": 5,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 123,
+  "fields": {
+    "area": 4,
+    "order": 6,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "Room Round — 15 rooms",
+    "task_description": "Main room cleaning round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 124,
+  "fields": {
+    "area": 4,
+    "order": 7,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "Pantry Cleaning — 4 pantries",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 125,
+  "fields": {
+    "area": 4,
+    "order": 8,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 126,
+  "fields": {
+    "area": 4,
+    "order": 9,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting / Admin Work",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 127,
+  "fields": {
+    "area": 4,
+    "order": 10,
+    "start_time": "14:00:00",
+    "end_time": "16:00:00",
+    "task_name": "Room & Extra Work — 10 rooms",
+    "task_description": "Afternoon room round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 128,
+  "fields": {
+    "area": 4,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "Common Cleaning & Pantry Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 129,
+  "fields": {
+    "area": 4,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "3rd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 130,
+  "fields": {
+    "area": 4,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Dry Mop",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 131,
+  "fields": {
+    "area": 4,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break / Inside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 132,
+  "fields": {
+    "area": 4,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 133,
+  "fields": {
+    "area": 4,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "11:30:00",
+    "task_name": "Common Room + Staircase + Ground Floor",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 134,
+  "fields": {
+    "area": 4,
+    "order": 6,
+    "start_time": "11:30:00",
+    "end_time": "13:00:00",
+    "task_name": "3rd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 135,
+  "fields": {
+    "area": 4,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 136,
+  "fields": {
+    "area": 4,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 137,
+  "fields": {
+    "area": 4,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "2nd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 138,
+  "fields": {
+    "area": 4,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:30:00",
+    "task_name": "1st Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 139,
+  "fields": {
+    "area": 4,
+    "order": 11,
+    "start_time": "16:20:00",
+    "end_time": "16:50:00",
+    "task_name": "Ground Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 140,
+  "fields": {
+    "area": 4,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "1st Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 141,
+  "fields": {
+    "area": 4,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 142,
+  "fields": {
+    "area": 4,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 143,
+  "fields": {
+    "area": 4,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 144,
+  "fields": {
+    "area": 4,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "3rd Floor — 2 Washroom Deep Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 145,
+  "fields": {
+    "area": 4,
+    "order": 6,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "2nd Floor — 2 Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 146,
+  "fields": {
+    "area": 4,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 147,
+  "fields": {
+    "area": 4,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 148,
+  "fields": {
+    "area": 4,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "6 Washroom Rounds Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 149,
+  "fields": {
+    "area": 4,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:00:00",
+    "task_name": "1st Floor Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 150,
+  "fields": {
+    "area": 4,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "All Washroom Touch Up & Final Round",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 151,
+  "fields": {
+    "area": 4,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "09:00:00",
+    "task_name": "Dustbin Cleaning — All Floors",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 152,
+  "fields": {
+    "area": 4,
+    "order": 2,
+    "start_time": "09:00:00",
+    "end_time": "10:30:00",
+    "task_name": "Terrace Cleaning",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 153,
+  "fields": {
+    "area": 4,
+    "order": 3,
+    "start_time": "10:30:00",
+    "end_time": "12:00:00",
+    "task_name": "Fridge Cleaning (Every 15 Days)",
+    "task_description": "Check with caretaker if due today",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 154,
+  "fields": {
+    "area": 4,
+    "order": 4,
+    "start_time": "13:00:00",
+    "end_time": "14:00:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": false,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 155,
+  "fields": {
+    "area": 4,
+    "order": 5,
+    "start_time": "14:00:00",
+    "end_time": "15:30:00",
+    "task_name": "Common Area Deep Clean",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 156,
+  "fields": {
+    "area": 4,
+    "order": 6,
+    "start_time": "15:30:00",
+    "end_time": "16:50:00",
+    "task_name": "Window Cleaning + Cobweb Removal",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 157,
+  "fields": {
+    "area": 5,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "2nd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 158,
+  "fields": {
+    "area": 5,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 159,
+  "fields": {
+    "area": 5,
+    "order": 3,
+    "start_time": "09:00:00",
+    "end_time": "09:30:00",
+    "task_name": "Room Cleaning — 5 rooms",
+    "task_description": "First round of room cleaning",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 160,
+  "fields": {
+    "area": 5,
+    "order": 4,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 161,
+  "fields": {
+    "area": 5,
+    "order": 5,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 162,
+  "fields": {
+    "area": 5,
+    "order": 6,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "Room Round — 15 rooms",
+    "task_description": "Main room cleaning round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 163,
+  "fields": {
+    "area": 5,
+    "order": 7,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "Pantry Cleaning — 4 pantries",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 164,
+  "fields": {
+    "area": 5,
+    "order": 8,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 165,
+  "fields": {
+    "area": 5,
+    "order": 9,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting / Admin Work",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 166,
+  "fields": {
+    "area": 5,
+    "order": 10,
+    "start_time": "14:00:00",
+    "end_time": "16:00:00",
+    "task_name": "Room & Extra Work — 10 rooms",
+    "task_description": "Afternoon room round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 167,
+  "fields": {
+    "area": 5,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "Common Cleaning & Pantry Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 168,
+  "fields": {
+    "area": 5,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "3rd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 169,
+  "fields": {
+    "area": 5,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Dry Mop",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 170,
+  "fields": {
+    "area": 5,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break / Inside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 171,
+  "fields": {
+    "area": 5,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 172,
+  "fields": {
+    "area": 5,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "11:30:00",
+    "task_name": "Common Room + Staircase + Ground Floor",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 173,
+  "fields": {
+    "area": 5,
+    "order": 6,
+    "start_time": "11:30:00",
+    "end_time": "13:00:00",
+    "task_name": "3rd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 174,
+  "fields": {
+    "area": 5,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 175,
+  "fields": {
+    "area": 5,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 176,
+  "fields": {
+    "area": 5,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "2nd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 177,
+  "fields": {
+    "area": 5,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:30:00",
+    "task_name": "1st Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 178,
+  "fields": {
+    "area": 5,
+    "order": 11,
+    "start_time": "16:20:00",
+    "end_time": "16:50:00",
+    "task_name": "Ground Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 179,
+  "fields": {
+    "area": 5,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "1st Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 180,
+  "fields": {
+    "area": 5,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 181,
+  "fields": {
+    "area": 5,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 182,
+  "fields": {
+    "area": 5,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 183,
+  "fields": {
+    "area": 5,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "3rd Floor — 2 Washroom Deep Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 184,
+  "fields": {
+    "area": 5,
+    "order": 6,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "2nd Floor — 2 Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 185,
+  "fields": {
+    "area": 5,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 186,
+  "fields": {
+    "area": 5,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 187,
+  "fields": {
+    "area": 5,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "6 Washroom Rounds Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 188,
+  "fields": {
+    "area": 5,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:00:00",
+    "task_name": "1st Floor Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 189,
+  "fields": {
+    "area": 5,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "All Washroom Touch Up & Final Round",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 190,
+  "fields": {
+    "area": 5,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "09:00:00",
+    "task_name": "Dustbin Cleaning — All Floors",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 191,
+  "fields": {
+    "area": 5,
+    "order": 2,
+    "start_time": "09:00:00",
+    "end_time": "10:30:00",
+    "task_name": "Terrace Cleaning",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 192,
+  "fields": {
+    "area": 5,
+    "order": 3,
+    "start_time": "10:30:00",
+    "end_time": "12:00:00",
+    "task_name": "Fridge Cleaning (Every 15 Days)",
+    "task_description": "Check with caretaker if due today",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 193,
+  "fields": {
+    "area": 5,
+    "order": 4,
+    "start_time": "13:00:00",
+    "end_time": "14:00:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": false,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 194,
+  "fields": {
+    "area": 5,
+    "order": 5,
+    "start_time": "14:00:00",
+    "end_time": "15:30:00",
+    "task_name": "Common Area Deep Clean",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 195,
+  "fields": {
+    "area": 5,
+    "order": 6,
+    "start_time": "15:30:00",
+    "end_time": "16:50:00",
+    "task_name": "Window Cleaning + Cobweb Removal",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 196,
+  "fields": {
+    "area": 6,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "2nd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 197,
+  "fields": {
+    "area": 6,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 198,
+  "fields": {
+    "area": 6,
+    "order": 3,
+    "start_time": "09:00:00",
+    "end_time": "09:30:00",
+    "task_name": "Room Cleaning — 5 rooms",
+    "task_description": "First round of room cleaning",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 199,
+  "fields": {
+    "area": 6,
+    "order": 4,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 200,
+  "fields": {
+    "area": 6,
+    "order": 5,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 201,
+  "fields": {
+    "area": 6,
+    "order": 6,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "Room Round — 15 rooms",
+    "task_description": "Main room cleaning round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 202,
+  "fields": {
+    "area": 6,
+    "order": 7,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "Pantry Cleaning — 4 pantries",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 203,
+  "fields": {
+    "area": 6,
+    "order": 8,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 204,
+  "fields": {
+    "area": 6,
+    "order": 9,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting / Admin Work",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 205,
+  "fields": {
+    "area": 6,
+    "order": 10,
+    "start_time": "14:00:00",
+    "end_time": "16:00:00",
+    "task_name": "Room & Extra Work — 10 rooms",
+    "task_description": "Afternoon room round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 206,
+  "fields": {
+    "area": 6,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "Common Cleaning & Pantry Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 207,
+  "fields": {
+    "area": 6,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "3rd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 208,
+  "fields": {
+    "area": 6,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Dry Mop",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 209,
+  "fields": {
+    "area": 6,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break / Inside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 210,
+  "fields": {
+    "area": 6,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 211,
+  "fields": {
+    "area": 6,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "11:30:00",
+    "task_name": "Common Room + Staircase + Ground Floor",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 212,
+  "fields": {
+    "area": 6,
+    "order": 6,
+    "start_time": "11:30:00",
+    "end_time": "13:00:00",
+    "task_name": "3rd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 213,
+  "fields": {
+    "area": 6,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 214,
+  "fields": {
+    "area": 6,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 215,
+  "fields": {
+    "area": 6,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "2nd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 216,
+  "fields": {
+    "area": 6,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:30:00",
+    "task_name": "1st Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 217,
+  "fields": {
+    "area": 6,
+    "order": 11,
+    "start_time": "16:20:00",
+    "end_time": "16:50:00",
+    "task_name": "Ground Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 218,
+  "fields": {
+    "area": 6,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "1st Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 219,
+  "fields": {
+    "area": 6,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 220,
+  "fields": {
+    "area": 6,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 221,
+  "fields": {
+    "area": 6,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 222,
+  "fields": {
+    "area": 6,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "3rd Floor — 2 Washroom Deep Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 223,
+  "fields": {
+    "area": 6,
+    "order": 6,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "2nd Floor — 2 Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 224,
+  "fields": {
+    "area": 6,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 225,
+  "fields": {
+    "area": 6,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 226,
+  "fields": {
+    "area": 6,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "6 Washroom Rounds Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 227,
+  "fields": {
+    "area": 6,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:00:00",
+    "task_name": "1st Floor Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 228,
+  "fields": {
+    "area": 6,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "All Washroom Touch Up & Final Round",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 229,
+  "fields": {
+    "area": 6,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "09:00:00",
+    "task_name": "Dustbin Cleaning — All Floors",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 230,
+  "fields": {
+    "area": 6,
+    "order": 2,
+    "start_time": "09:00:00",
+    "end_time": "10:30:00",
+    "task_name": "Terrace Cleaning",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 231,
+  "fields": {
+    "area": 6,
+    "order": 3,
+    "start_time": "10:30:00",
+    "end_time": "12:00:00",
+    "task_name": "Fridge Cleaning (Every 15 Days)",
+    "task_description": "Check with caretaker if due today",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 232,
+  "fields": {
+    "area": 6,
+    "order": 4,
+    "start_time": "13:00:00",
+    "end_time": "14:00:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": false,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 233,
+  "fields": {
+    "area": 6,
+    "order": 5,
+    "start_time": "14:00:00",
+    "end_time": "15:30:00",
+    "task_name": "Common Area Deep Clean",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 234,
+  "fields": {
+    "area": 6,
+    "order": 6,
+    "start_time": "15:30:00",
+    "end_time": "16:50:00",
+    "task_name": "Window Cleaning + Cobweb Removal",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 235,
+  "fields": {
+    "area": 7,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "2nd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 236,
+  "fields": {
+    "area": 7,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 237,
+  "fields": {
+    "area": 7,
+    "order": 3,
+    "start_time": "09:00:00",
+    "end_time": "09:30:00",
+    "task_name": "Room Cleaning — 5 rooms",
+    "task_description": "First round of room cleaning",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 238,
+  "fields": {
+    "area": 7,
+    "order": 4,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 239,
+  "fields": {
+    "area": 7,
+    "order": 5,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 240,
+  "fields": {
+    "area": 7,
+    "order": 6,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "Room Round — 15 rooms",
+    "task_description": "Main room cleaning round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 241,
+  "fields": {
+    "area": 7,
+    "order": 7,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "Pantry Cleaning — 4 pantries",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 242,
+  "fields": {
+    "area": 7,
+    "order": 8,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 243,
+  "fields": {
+    "area": 7,
+    "order": 9,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting / Admin Work",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 244,
+  "fields": {
+    "area": 7,
+    "order": 10,
+    "start_time": "14:00:00",
+    "end_time": "16:00:00",
+    "task_name": "Room & Extra Work — 10 rooms",
+    "task_description": "Afternoon room round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 245,
+  "fields": {
+    "area": 7,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "Common Cleaning & Pantry Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 246,
+  "fields": {
+    "area": 7,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "3rd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 247,
+  "fields": {
+    "area": 7,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Dry Mop",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 248,
+  "fields": {
+    "area": 7,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break / Inside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 249,
+  "fields": {
+    "area": 7,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 250,
+  "fields": {
+    "area": 7,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "11:30:00",
+    "task_name": "Common Room + Staircase + Ground Floor",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 251,
+  "fields": {
+    "area": 7,
+    "order": 6,
+    "start_time": "11:30:00",
+    "end_time": "13:00:00",
+    "task_name": "3rd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 252,
+  "fields": {
+    "area": 7,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 253,
+  "fields": {
+    "area": 7,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 254,
+  "fields": {
+    "area": 7,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "2nd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 255,
+  "fields": {
+    "area": 7,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:30:00",
+    "task_name": "1st Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 256,
+  "fields": {
+    "area": 7,
+    "order": 11,
+    "start_time": "16:20:00",
+    "end_time": "16:50:00",
+    "task_name": "Ground Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 257,
+  "fields": {
+    "area": 7,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "1st Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 258,
+  "fields": {
+    "area": 7,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 259,
+  "fields": {
+    "area": 7,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 260,
+  "fields": {
+    "area": 7,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 261,
+  "fields": {
+    "area": 7,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "3rd Floor — 2 Washroom Deep Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 262,
+  "fields": {
+    "area": 7,
+    "order": 6,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "2nd Floor — 2 Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 263,
+  "fields": {
+    "area": 7,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 264,
+  "fields": {
+    "area": 7,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 265,
+  "fields": {
+    "area": 7,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "6 Washroom Rounds Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 266,
+  "fields": {
+    "area": 7,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:00:00",
+    "task_name": "1st Floor Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 267,
+  "fields": {
+    "area": 7,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "All Washroom Touch Up & Final Round",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 268,
+  "fields": {
+    "area": 7,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "09:00:00",
+    "task_name": "Dustbin Cleaning — All Floors",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 269,
+  "fields": {
+    "area": 7,
+    "order": 2,
+    "start_time": "09:00:00",
+    "end_time": "10:30:00",
+    "task_name": "Terrace Cleaning",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 270,
+  "fields": {
+    "area": 7,
+    "order": 3,
+    "start_time": "10:30:00",
+    "end_time": "12:00:00",
+    "task_name": "Fridge Cleaning (Every 15 Days)",
+    "task_description": "Check with caretaker if due today",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 271,
+  "fields": {
+    "area": 7,
+    "order": 4,
+    "start_time": "13:00:00",
+    "end_time": "14:00:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": false,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 272,
+  "fields": {
+    "area": 7,
+    "order": 5,
+    "start_time": "14:00:00",
+    "end_time": "15:30:00",
+    "task_name": "Common Area Deep Clean",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 273,
+  "fields": {
+    "area": 7,
+    "order": 6,
+    "start_time": "15:30:00",
+    "end_time": "16:50:00",
+    "task_name": "Window Cleaning + Cobweb Removal",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 274,
+  "fields": {
+    "area": 8,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "2nd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 275,
+  "fields": {
+    "area": 8,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 276,
+  "fields": {
+    "area": 8,
+    "order": 3,
+    "start_time": "09:00:00",
+    "end_time": "09:30:00",
+    "task_name": "Room Cleaning — 5 rooms",
+    "task_description": "First round of room cleaning",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 277,
+  "fields": {
+    "area": 8,
+    "order": 4,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 278,
+  "fields": {
+    "area": 8,
+    "order": 5,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 279,
+  "fields": {
+    "area": 8,
+    "order": 6,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "Room Round — 15 rooms",
+    "task_description": "Main room cleaning round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 280,
+  "fields": {
+    "area": 8,
+    "order": 7,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "Pantry Cleaning — 4 pantries",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 281,
+  "fields": {
+    "area": 8,
+    "order": 8,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 282,
+  "fields": {
+    "area": 8,
+    "order": 9,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting / Admin Work",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 283,
+  "fields": {
+    "area": 8,
+    "order": 10,
+    "start_time": "14:00:00",
+    "end_time": "16:00:00",
+    "task_name": "Room & Extra Work — 10 rooms",
+    "task_description": "Afternoon room round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 284,
+  "fields": {
+    "area": 8,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "Common Cleaning & Pantry Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 285,
+  "fields": {
+    "area": 8,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "3rd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 286,
+  "fields": {
+    "area": 8,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Dry Mop",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 287,
+  "fields": {
+    "area": 8,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break / Inside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 288,
+  "fields": {
+    "area": 8,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 289,
+  "fields": {
+    "area": 8,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "11:30:00",
+    "task_name": "Common Room + Staircase + Ground Floor",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 290,
+  "fields": {
+    "area": 8,
+    "order": 6,
+    "start_time": "11:30:00",
+    "end_time": "13:00:00",
+    "task_name": "3rd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 291,
+  "fields": {
+    "area": 8,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 292,
+  "fields": {
+    "area": 8,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 293,
+  "fields": {
+    "area": 8,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "2nd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 294,
+  "fields": {
+    "area": 8,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:30:00",
+    "task_name": "1st Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 295,
+  "fields": {
+    "area": 8,
+    "order": 11,
+    "start_time": "16:20:00",
+    "end_time": "16:50:00",
+    "task_name": "Ground Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 296,
+  "fields": {
+    "area": 8,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "1st Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 297,
+  "fields": {
+    "area": 8,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 298,
+  "fields": {
+    "area": 8,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 299,
+  "fields": {
+    "area": 8,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 300,
+  "fields": {
+    "area": 8,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "3rd Floor — 2 Washroom Deep Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 301,
+  "fields": {
+    "area": 8,
+    "order": 6,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "2nd Floor — 2 Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 302,
+  "fields": {
+    "area": 8,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 303,
+  "fields": {
+    "area": 8,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 304,
+  "fields": {
+    "area": 8,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "6 Washroom Rounds Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 305,
+  "fields": {
+    "area": 8,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:00:00",
+    "task_name": "1st Floor Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 306,
+  "fields": {
+    "area": 8,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "All Washroom Touch Up & Final Round",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 307,
+  "fields": {
+    "area": 8,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "09:00:00",
+    "task_name": "Dustbin Cleaning — All Floors",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 308,
+  "fields": {
+    "area": 8,
+    "order": 2,
+    "start_time": "09:00:00",
+    "end_time": "10:30:00",
+    "task_name": "Terrace Cleaning",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 309,
+  "fields": {
+    "area": 8,
+    "order": 3,
+    "start_time": "10:30:00",
+    "end_time": "12:00:00",
+    "task_name": "Fridge Cleaning (Every 15 Days)",
+    "task_description": "Check with caretaker if due today",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 310,
+  "fields": {
+    "area": 8,
+    "order": 4,
+    "start_time": "13:00:00",
+    "end_time": "14:00:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": false,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 311,
+  "fields": {
+    "area": 8,
+    "order": 5,
+    "start_time": "14:00:00",
+    "end_time": "15:30:00",
+    "task_name": "Common Area Deep Clean",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 312,
+  "fields": {
+    "area": 8,
+    "order": 6,
+    "start_time": "15:30:00",
+    "end_time": "16:50:00",
+    "task_name": "Window Cleaning + Cobweb Removal",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 313,
+  "fields": {
+    "area": 9,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "2nd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 314,
+  "fields": {
+    "area": 9,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 315,
+  "fields": {
+    "area": 9,
+    "order": 3,
+    "start_time": "09:00:00",
+    "end_time": "09:30:00",
+    "task_name": "Room Cleaning — 5 rooms",
+    "task_description": "First round of room cleaning",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 316,
+  "fields": {
+    "area": 9,
+    "order": 4,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 317,
+  "fields": {
+    "area": 9,
+    "order": 5,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 318,
+  "fields": {
+    "area": 9,
+    "order": 6,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "Room Round — 15 rooms",
+    "task_description": "Main room cleaning round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 319,
+  "fields": {
+    "area": 9,
+    "order": 7,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "Pantry Cleaning — 4 pantries",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 320,
+  "fields": {
+    "area": 9,
+    "order": 8,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 321,
+  "fields": {
+    "area": 9,
+    "order": 9,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting / Admin Work",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 322,
+  "fields": {
+    "area": 9,
+    "order": 10,
+    "start_time": "14:00:00",
+    "end_time": "16:00:00",
+    "task_name": "Room & Extra Work — 10 rooms",
+    "task_description": "Afternoon room round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 323,
+  "fields": {
+    "area": 9,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "Common Cleaning & Pantry Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 324,
+  "fields": {
+    "area": 9,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "3rd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 325,
+  "fields": {
+    "area": 9,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Dry Mop",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 326,
+  "fields": {
+    "area": 9,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break / Inside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 327,
+  "fields": {
+    "area": 9,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 328,
+  "fields": {
+    "area": 9,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "11:30:00",
+    "task_name": "Common Room + Staircase + Ground Floor",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 329,
+  "fields": {
+    "area": 9,
+    "order": 6,
+    "start_time": "11:30:00",
+    "end_time": "13:00:00",
+    "task_name": "3rd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 330,
+  "fields": {
+    "area": 9,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 331,
+  "fields": {
+    "area": 9,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 332,
+  "fields": {
+    "area": 9,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "2nd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 333,
+  "fields": {
+    "area": 9,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:30:00",
+    "task_name": "1st Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 334,
+  "fields": {
+    "area": 9,
+    "order": 11,
+    "start_time": "16:20:00",
+    "end_time": "16:50:00",
+    "task_name": "Ground Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 335,
+  "fields": {
+    "area": 9,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "1st Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 336,
+  "fields": {
+    "area": 9,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 337,
+  "fields": {
+    "area": 9,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 338,
+  "fields": {
+    "area": 9,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 339,
+  "fields": {
+    "area": 9,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "3rd Floor — 2 Washroom Deep Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 340,
+  "fields": {
+    "area": 9,
+    "order": 6,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "2nd Floor — 2 Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 341,
+  "fields": {
+    "area": 9,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 342,
+  "fields": {
+    "area": 9,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 343,
+  "fields": {
+    "area": 9,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "6 Washroom Rounds Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 344,
+  "fields": {
+    "area": 9,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:00:00",
+    "task_name": "1st Floor Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 345,
+  "fields": {
+    "area": 9,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "All Washroom Touch Up & Final Round",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 346,
+  "fields": {
+    "area": 9,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "09:00:00",
+    "task_name": "Dustbin Cleaning — All Floors",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 347,
+  "fields": {
+    "area": 9,
+    "order": 2,
+    "start_time": "09:00:00",
+    "end_time": "10:30:00",
+    "task_name": "Terrace Cleaning",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 348,
+  "fields": {
+    "area": 9,
+    "order": 3,
+    "start_time": "10:30:00",
+    "end_time": "12:00:00",
+    "task_name": "Fridge Cleaning (Every 15 Days)",
+    "task_description": "Check with caretaker if due today",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 349,
+  "fields": {
+    "area": 9,
+    "order": 4,
+    "start_time": "13:00:00",
+    "end_time": "14:00:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": false,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 350,
+  "fields": {
+    "area": 9,
+    "order": 5,
+    "start_time": "14:00:00",
+    "end_time": "15:30:00",
+    "task_name": "Common Area Deep Clean",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 351,
+  "fields": {
+    "area": 9,
+    "order": 6,
+    "start_time": "15:30:00",
+    "end_time": "16:50:00",
+    "task_name": "Window Cleaning + Cobweb Removal",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 352,
+  "fields": {
+    "area": 10,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "2nd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 353,
+  "fields": {
+    "area": 10,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 354,
+  "fields": {
+    "area": 10,
+    "order": 3,
+    "start_time": "09:00:00",
+    "end_time": "09:30:00",
+    "task_name": "Room Cleaning — 5 rooms",
+    "task_description": "First round of room cleaning",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 355,
+  "fields": {
+    "area": 10,
+    "order": 4,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 356,
+  "fields": {
+    "area": 10,
+    "order": 5,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 357,
+  "fields": {
+    "area": 10,
+    "order": 6,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "Room Round — 15 rooms",
+    "task_description": "Main room cleaning round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 358,
+  "fields": {
+    "area": 10,
+    "order": 7,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "Pantry Cleaning — 4 pantries",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 359,
+  "fields": {
+    "area": 10,
+    "order": 8,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 360,
+  "fields": {
+    "area": 10,
+    "order": 9,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting / Admin Work",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 361,
+  "fields": {
+    "area": 10,
+    "order": 10,
+    "start_time": "14:00:00",
+    "end_time": "16:00:00",
+    "task_name": "Room & Extra Work — 10 rooms",
+    "task_description": "Afternoon room round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 362,
+  "fields": {
+    "area": 10,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "Common Cleaning & Pantry Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 363,
+  "fields": {
+    "area": 10,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "3rd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 364,
+  "fields": {
+    "area": 10,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Dry Mop",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 365,
+  "fields": {
+    "area": 10,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break / Inside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 366,
+  "fields": {
+    "area": 10,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 367,
+  "fields": {
+    "area": 10,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "11:30:00",
+    "task_name": "Common Room + Staircase + Ground Floor",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 368,
+  "fields": {
+    "area": 10,
+    "order": 6,
+    "start_time": "11:30:00",
+    "end_time": "13:00:00",
+    "task_name": "3rd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 369,
+  "fields": {
+    "area": 10,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 370,
+  "fields": {
+    "area": 10,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 371,
+  "fields": {
+    "area": 10,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "2nd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 372,
+  "fields": {
+    "area": 10,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:30:00",
+    "task_name": "1st Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 373,
+  "fields": {
+    "area": 10,
+    "order": 11,
+    "start_time": "16:20:00",
+    "end_time": "16:50:00",
+    "task_name": "Ground Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 374,
+  "fields": {
+    "area": 10,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "1st Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 375,
+  "fields": {
+    "area": 10,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 376,
+  "fields": {
+    "area": 10,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 377,
+  "fields": {
+    "area": 10,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 378,
+  "fields": {
+    "area": 10,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "3rd Floor — 2 Washroom Deep Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 379,
+  "fields": {
+    "area": 10,
+    "order": 6,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "2nd Floor — 2 Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 380,
+  "fields": {
+    "area": 10,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 381,
+  "fields": {
+    "area": 10,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 382,
+  "fields": {
+    "area": 10,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "6 Washroom Rounds Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 383,
+  "fields": {
+    "area": 10,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:00:00",
+    "task_name": "1st Floor Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 384,
+  "fields": {
+    "area": 10,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "All Washroom Touch Up & Final Round",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 385,
+  "fields": {
+    "area": 10,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "09:00:00",
+    "task_name": "Dustbin Cleaning — All Floors",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 386,
+  "fields": {
+    "area": 10,
+    "order": 2,
+    "start_time": "09:00:00",
+    "end_time": "10:30:00",
+    "task_name": "Terrace Cleaning",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 387,
+  "fields": {
+    "area": 10,
+    "order": 3,
+    "start_time": "10:30:00",
+    "end_time": "12:00:00",
+    "task_name": "Fridge Cleaning (Every 15 Days)",
+    "task_description": "Check with caretaker if due today",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 388,
+  "fields": {
+    "area": 10,
+    "order": 4,
+    "start_time": "13:00:00",
+    "end_time": "14:00:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": false,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 389,
+  "fields": {
+    "area": 10,
+    "order": 5,
+    "start_time": "14:00:00",
+    "end_time": "15:30:00",
+    "task_name": "Common Area Deep Clean",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 390,
+  "fields": {
+    "area": 10,
+    "order": 6,
+    "start_time": "15:30:00",
+    "end_time": "16:50:00",
+    "task_name": "Window Cleaning + Cobweb Removal",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 391,
+  "fields": {
+    "area": 11,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "2nd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 392,
+  "fields": {
+    "area": 11,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 393,
+  "fields": {
+    "area": 11,
+    "order": 3,
+    "start_time": "09:00:00",
+    "end_time": "09:30:00",
+    "task_name": "Room Cleaning — 5 rooms",
+    "task_description": "First round of room cleaning",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 394,
+  "fields": {
+    "area": 11,
+    "order": 4,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 395,
+  "fields": {
+    "area": 11,
+    "order": 5,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 396,
+  "fields": {
+    "area": 11,
+    "order": 6,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "Room Round — 15 rooms",
+    "task_description": "Main room cleaning round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 397,
+  "fields": {
+    "area": 11,
+    "order": 7,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "Pantry Cleaning — 4 pantries",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 398,
+  "fields": {
+    "area": 11,
+    "order": 8,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 399,
+  "fields": {
+    "area": 11,
+    "order": 9,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting / Admin Work",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 400,
+  "fields": {
+    "area": 11,
+    "order": 10,
+    "start_time": "14:00:00",
+    "end_time": "16:00:00",
+    "task_name": "Room & Extra Work — 10 rooms",
+    "task_description": "Afternoon room round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 401,
+  "fields": {
+    "area": 11,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "Common Cleaning & Pantry Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 402,
+  "fields": {
+    "area": 11,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "3rd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 403,
+  "fields": {
+    "area": 11,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Dry Mop",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 404,
+  "fields": {
+    "area": 11,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break / Inside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 405,
+  "fields": {
+    "area": 11,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 406,
+  "fields": {
+    "area": 11,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "11:30:00",
+    "task_name": "Common Room + Staircase + Ground Floor",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 407,
+  "fields": {
+    "area": 11,
+    "order": 6,
+    "start_time": "11:30:00",
+    "end_time": "13:00:00",
+    "task_name": "3rd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 408,
+  "fields": {
+    "area": 11,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 409,
+  "fields": {
+    "area": 11,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 410,
+  "fields": {
+    "area": 11,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "2nd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 411,
+  "fields": {
+    "area": 11,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:30:00",
+    "task_name": "1st Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 412,
+  "fields": {
+    "area": 11,
+    "order": 11,
+    "start_time": "16:20:00",
+    "end_time": "16:50:00",
+    "task_name": "Ground Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 413,
+  "fields": {
+    "area": 11,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "1st Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 414,
+  "fields": {
+    "area": 11,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 415,
+  "fields": {
+    "area": 11,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 416,
+  "fields": {
+    "area": 11,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 417,
+  "fields": {
+    "area": 11,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "3rd Floor — 2 Washroom Deep Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 418,
+  "fields": {
+    "area": 11,
+    "order": 6,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "2nd Floor — 2 Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 419,
+  "fields": {
+    "area": 11,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 420,
+  "fields": {
+    "area": 11,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 421,
+  "fields": {
+    "area": 11,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "6 Washroom Rounds Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 422,
+  "fields": {
+    "area": 11,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:00:00",
+    "task_name": "1st Floor Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 423,
+  "fields": {
+    "area": 11,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "All Washroom Touch Up & Final Round",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 424,
+  "fields": {
+    "area": 11,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "09:00:00",
+    "task_name": "Dustbin Cleaning — All Floors",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 425,
+  "fields": {
+    "area": 11,
+    "order": 2,
+    "start_time": "09:00:00",
+    "end_time": "10:30:00",
+    "task_name": "Terrace Cleaning",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 426,
+  "fields": {
+    "area": 11,
+    "order": 3,
+    "start_time": "10:30:00",
+    "end_time": "12:00:00",
+    "task_name": "Fridge Cleaning (Every 15 Days)",
+    "task_description": "Check with caretaker if due today",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 427,
+  "fields": {
+    "area": 11,
+    "order": 4,
+    "start_time": "13:00:00",
+    "end_time": "14:00:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": false,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 428,
+  "fields": {
+    "area": 11,
+    "order": 5,
+    "start_time": "14:00:00",
+    "end_time": "15:30:00",
+    "task_name": "Common Area Deep Clean",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 429,
+  "fields": {
+    "area": 11,
+    "order": 6,
+    "start_time": "15:30:00",
+    "end_time": "16:50:00",
+    "task_name": "Window Cleaning + Cobweb Removal",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 430,
+  "fields": {
+    "area": 12,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "2nd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 431,
+  "fields": {
+    "area": 12,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 432,
+  "fields": {
+    "area": 12,
+    "order": 3,
+    "start_time": "09:00:00",
+    "end_time": "09:30:00",
+    "task_name": "Room Cleaning — 5 rooms",
+    "task_description": "First round of room cleaning",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 433,
+  "fields": {
+    "area": 12,
+    "order": 4,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 434,
+  "fields": {
+    "area": 12,
+    "order": 5,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 435,
+  "fields": {
+    "area": 12,
+    "order": 6,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "Room Round — 15 rooms",
+    "task_description": "Main room cleaning round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 436,
+  "fields": {
+    "area": 12,
+    "order": 7,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "Pantry Cleaning — 4 pantries",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 437,
+  "fields": {
+    "area": 12,
+    "order": 8,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 438,
+  "fields": {
+    "area": 12,
+    "order": 9,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting / Admin Work",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 439,
+  "fields": {
+    "area": 12,
+    "order": 10,
+    "start_time": "14:00:00",
+    "end_time": "16:00:00",
+    "task_name": "Room & Extra Work — 10 rooms",
+    "task_description": "Afternoon room round",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 440,
+  "fields": {
+    "area": 12,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "Common Cleaning & Pantry Round",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 441,
+  "fields": {
+    "area": 12,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "3rd Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 442,
+  "fields": {
+    "area": 12,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Dry Mop",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 443,
+  "fields": {
+    "area": 12,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break / Inside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 444,
+  "fields": {
+    "area": 12,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Outside Round",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 445,
+  "fields": {
+    "area": 12,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "11:30:00",
+    "task_name": "Common Room + Staircase + Ground Floor",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 446,
+  "fields": {
+    "area": 12,
+    "order": 6,
+    "start_time": "11:30:00",
+    "end_time": "13:00:00",
+    "task_name": "3rd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 447,
+  "fields": {
+    "area": 12,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 448,
+  "fields": {
+    "area": 12,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 449,
+  "fields": {
+    "area": 12,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "2nd Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 450,
+  "fields": {
+    "area": 12,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:30:00",
+    "task_name": "1st Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 451,
+  "fields": {
+    "area": 12,
+    "order": 11,
+    "start_time": "16:20:00",
+    "end_time": "16:50:00",
+    "task_name": "Ground Floor Cleaning",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 452,
+  "fields": {
+    "area": 12,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "08:45:00",
+    "task_name": "1st Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 453,
+  "fields": {
+    "area": 12,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Ground Floor Washroom Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 454,
+  "fields": {
+    "area": 12,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 455,
+  "fields": {
+    "area": 12,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:00:00",
+    "task_name": "Staircase Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 456,
+  "fields": {
+    "area": 12,
+    "order": 5,
+    "start_time": "10:00:00",
+    "end_time": "12:00:00",
+    "task_name": "3rd Floor — 2 Washroom Deep Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 457,
+  "fields": {
+    "area": 12,
+    "order": 6,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "2nd Floor — 2 Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 458,
+  "fields": {
+    "area": 12,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 459,
+  "fields": {
+    "area": 12,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "14:00:00",
+    "task_name": "Paper Cutting",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 460,
+  "fields": {
+    "area": 12,
+    "order": 9,
+    "start_time": "14:00:00",
+    "end_time": "15:00:00",
+    "task_name": "6 Washroom Rounds Touch Up",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 461,
+  "fields": {
+    "area": 12,
+    "order": 10,
+    "start_time": "15:00:00",
+    "end_time": "16:00:00",
+    "task_name": "1st Floor Washroom Cleaning",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 462,
+  "fields": {
+    "area": 12,
+    "order": 11,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "All Washroom Touch Up & Final Round",
+    "task_description": "",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 463,
+  "fields": {
+    "area": 12,
+    "order": 1,
+    "start_time": "08:10:00",
+    "end_time": "09:00:00",
+    "task_name": "Dustbin Cleaning — All Floors",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 464,
+  "fields": {
+    "area": 12,
+    "order": 2,
+    "start_time": "09:00:00",
+    "end_time": "10:30:00",
+    "task_name": "Terrace Cleaning",
+    "task_description": "Every Sunday",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 465,
+  "fields": {
+    "area": 12,
+    "order": 3,
+    "start_time": "10:30:00",
+    "end_time": "12:00:00",
+    "task_name": "Fridge Cleaning (Every 15 Days)",
+    "task_description": "Check with caretaker if due today",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 466,
+  "fields": {
+    "area": 12,
+    "order": 4,
+    "start_time": "13:00:00",
+    "end_time": "14:00:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": false,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 467,
+  "fields": {
+    "area": 12,
+    "order": 5,
+    "start_time": "14:00:00",
+    "end_time": "15:30:00",
+    "task_name": "Common Area Deep Clean",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 468,
+  "fields": {
+    "area": 12,
+    "order": 6,
+    "start_time": "15:30:00",
+    "end_time": "16:50:00",
+    "task_name": "Window Cleaning + Cobweb Removal",
+    "task_description": "",
+    "worker_tag": "all",
+    "requires_photo": true,
+    "frequency": "sunday_extra",
+    "is_active": true
+  }
+}
+]
