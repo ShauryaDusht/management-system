@@ -79,23 +79,23 @@ When you start any task:
 ## Phase 3 — Manual Reporting & Procurement
 
 ### Backend
-- ⬜ MonthlyReport model with snapshot/file paths
-- ⬜ Manual report generation endpoint by month
-- ⬜ Consumption logic per spec (consumable actual used + asset issued)
-- ⬜ Recommended order formula (consumption + 10% buffer, rounded up)
-- ⬜ Threshold-gap fallback when usage is zero
-- 🟡 CSV export (currently basic report export exists, not monthly procurement snapshot)
-- ⬜ PDF export (purchase-style)
-- ⬜ Report history persistence
+- ✅ MonthlyReport model with snapshot + csv/pdf file fields (reports app)
+- ✅ Manual report generation endpoint by month (`/api/reports/monthly/generate/`)
+- ✅ Consumption logic per spec (consumable actual used + asset issued)
+- ✅ Recommended order formula (consumption + 10% buffer, rounded up)
+- ✅ Threshold-gap fallback when usage is zero
+- ✅ CSV export endpoint (`/api/reports/monthly/<id>/csv/`)
+- ✅ PDF export endpoint (`/api/reports/monthly/<id>/pdf/`)
+- ✅ Report history persistence (monthly list/detail/delete)
 
 ### Frontend
-- ⬜ Admin month-based report generation page (procurement flow)
-- ⬜ Download CSV from backend-generated monthly report
-- ⬜ Download PDF from backend-generated monthly report
-- ⬜ View/download historical monthly reports
-- 🟡 Reports page exists for current inventory/requests summary only
+- ✅ Admin month-based report generation UI (`/reports` monthly tab)
+- ✅ Download CSV from backend-generated monthly report
+- ✅ Download PDF from backend-generated monthly report
+- ✅ View/download historical monthly reports
+- ✅ Reports page supports inventory, requests, and monthly procurement history
 
-**Phase 3 overall:** 🟡 **Partial / In Progress**
+**Phase 3 overall:** ✅ **Done**
 
 ---
 
@@ -112,7 +112,7 @@ When you start any task:
 - 🟡 Color-coded threshold states (implemented as badges, no stock bar yet)
 
 ### Manager Dashboard
-- ⬜ Pending requests count (manager-focused dashboard view)
+- 🟡 Pending requests count exists in dashboard API, but no dedicated manager dashboard UI
 - ⬜ Weekly issued count
 - ⬜ Unreturned assets summary
 - ⬜ Quick action links
@@ -122,7 +122,7 @@ When you start any task:
 - ⬜ Issued but unreturned items summary dashboard
 - ⬜ Quick new request button in dedicated supervisor dashboard
 
-**Phase 4 overall:** ⬜ **Not Started (except minor UX coloring)**
+**Phase 4 overall:** 🟡 **Partially Started**
 
 ---
 
@@ -183,13 +183,29 @@ Base path: `/api/auth/`
 - `/stock-entries` (admin)
 - `/users` (admin)
 - `/users/:id/activity` (admin)
-- `/reports` (existing generic reports)
+- `/reports` (inventory + requests + monthly procurement history)
 
 ---
 
+## Copy Box — Updated Completion Checklist
+
+```md
+## Completion Checklist (Updated)
+
+- [x] Phase 1 complete
+- [x] Phase 2 complete
+- [x] Phase 3 complete (monthly report model, generation, CSV/PDF download, history UI/API)
+- [ ] Phase 4 analytics complete
+  - [ ] 6-month trend charts
+  - [ ] category consumption pie
+  - [ ] manager-specific dashboard widgets
+  - [ ] supervisor-specific dashboard widgets
+  - [ ] stock bar UX polish
+```
+
 ## Immediate Next Actions (Recommended)
 
-1. Build **Phase 3 backend** first (MonthlyReport model + generation + storage).
-2. Add **CSV/PDF server-side generation** and downloadable file endpoints.
-3. Add **Phase 3 frontend report history UI** (month filter + past reports table).
-4. Start **Phase 4 analytics APIs**, then wire charts in admin dashboard.
+1. Build **Phase 4 analytics APIs** (trend and category consumption datasets).
+2. Wire **admin dashboard charts** for trends + category pie.
+3. Add **manager dashboard summary widgets** (pending, weekly issued, unreturned, quick actions).
+4. Add **supervisor dashboard** (active requests, unreturned issued items, quick request action).
