@@ -5,6 +5,7 @@ from django.db import models
 class User(AbstractUser):
     class Role(models.TextChoices):
         ADMIN = 'admin', 'Admin'
+        INVENTORY_MANAGER = 'inventory_manager', 'Inventory Manager'
         MANAGER = 'manager', 'Manager'
         SUPERVISOR = 'supervisor', 'Supervisor'
         CARETAKER = 'caretaker', 'Caretaker'
@@ -18,5 +19,19 @@ class User(AbstractUser):
         return f"{self.get_full_name() or self.username} ({self.role})"
 
     @property
+<<<<<<< HEAD
     def is_hk_staff(self):
         return self.role in [self.Role.SUPERVISOR, self.Role.CARETAKER]
+=======
+    def is_inventory_manager(self):
+        return self.role == self.Role.INVENTORY_MANAGER
+
+    @property
+    def is_manager(self):
+        # using user.is_manager work correctly for both manager roles
+        return self.role in (self.Role.MANAGER, self.Role.INVENTORY_MANAGER)
+
+    @property
+    def is_supervisor(self):
+        return self.role == self.Role.SUPERVISOR
+>>>>>>> e770440a1f4429d9845884131c9746d211c7b496

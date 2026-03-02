@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from rest_framework import viewsets
 from rest_framework.viewsets import ModelViewSet
 
-from apps.users.permissions import IsAdmin
+from apps.users.permissions import IsAdmin, IsAdminOrManager
 from .models import Category, Item, ItemRequest
 from .serializers import CategorySerializer, ItemSerializer, ItemRequestSerializer
 
@@ -63,22 +63,29 @@ class AdjustStockView(APIView):
         item = get_object_or_404(Item.objects.select_for_update(), pk=pk)
 
         if action == 'increase':
-            item.available_quantity += quantity
-            item.total_quantity += quantity
+            Item.objects.filter(pk=item.pk).update(
+                available_quantity=F('available_quantity') + quantity,
+                total_quantity=F('total_quantity') + quantity,
+            )
         elif action == 'decrease':
-            if item.available_quantity - quantity < 0:
+            # Re-read the locked value to do the guard check accurately.
+            item.refresh_from_db()
+            if item.available_quantity < quantity:
                 return Response(
                     {'detail': 'Cannot reduce stock below 0.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            item.available_quantity -= quantity
+            Item.objects.filter(pk=item.pk).update(
+                available_quantity=F('available_quantity') - quantity,
+                total_quantity=F('total_quantity') - quantity,
+            )
         else:
             return Response(
                 {'detail': "Invalid action. Use 'increase' or 'decrease'."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        item.save()
+        item.refresh_from_db()
         return Response(ItemSerializer(item).data, status=status.HTTP_200_OK)
 
 
@@ -89,18 +96,15 @@ class ItemRequestViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        role = getattr(user, 'role', '')
         queryset = ItemRequest.objects.all().select_related('requested_by', 'item', 'approved_by')
-        if role in ['admin', 'inventory_manager', 'manager']:
+        if user.is_admin or user.is_manager:
             return queryset
         return queryset.filter(requested_by=user)
 
     def perform_create(self, serializer):
-        item = serializer.validated_data['item']
         serializer.save(
             requested_by=self.request.user,
             status=ItemRequest.Status.PENDING,
-            units_remaining=item.available_quantity,
         )
 
 
@@ -110,7 +114,7 @@ class ApproveRequestView(APIView):
     @transaction.atomic
     def post(self, request, pk):
         user = request.user
-        if getattr(user, 'role', '') not in ['admin', 'inventory_manager', 'manager']:
+        if not (user.is_admin or user.is_manager):
             return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -130,9 +134,6 @@ class ApproveRequestView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        item.available_quantity -= qty
-        item.save(update_fields=['available_quantity'])
-
         item_request.status = ItemRequest.Status.APPROVED
         item_request.approved_by = user
         item_request.reviewed_at = timezone.now()
@@ -145,13 +146,14 @@ class ApproveRequestView(APIView):
 class RejectRequestView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @transaction.atomic
     def post(self, request, pk):
         user = request.user
-        if getattr(user, 'role', '') not in ['admin', 'inventory_manager', 'manager']:
+        if not (user.is_admin or user.is_manager):
             return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            item_request = ItemRequest.objects.get(pk=pk)
+            item_request = ItemRequest.objects.select_for_update().get(pk=pk)
         except ItemRequest.DoesNotExist:
             return Response({'error': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -171,13 +173,37 @@ class RejectRequestView(APIView):
 class MarkUrgentView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @transaction.atomic
     def post(self, request, pk):
-        item_request = get_object_or_404(ItemRequest, pk=pk)
+        # FIX BUG-06: use select_for_update() to prevent concurrent modifications,
+        # and add a status guard so only PENDING requests can be marked urgent.
+        try:
+            item_request = ItemRequest.objects.select_for_update().get(pk=pk)
+        except ItemRequest.DoesNotExist:
+            return Response({'error': 'Request not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        user = request.user
+
+        is_owner = item_request.requested_by == user
+        is_privileged = user.is_admin or user.is_manager
+        if not (is_owner or is_privileged):
+            return Response(
+                {'error': 'Only the requester or a manager can change urgency.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if item_request.status != ItemRequest.Status.PENDING:
+            return Response(
+                {'error': 'Urgency can only be changed on pending requests.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         is_urgent_raw = request.data.get('is_urgent', True)
         if isinstance(is_urgent_raw, str):
             is_urgent_value = is_urgent_raw.strip().lower() in ['1', 'true', 'yes', 'on']
         else:
             is_urgent_value = bool(is_urgent_raw)
+
         item_request.is_urgent = is_urgent_value
         item_request.save(update_fields=['is_urgent'])
         return Response({'status': 'updated', 'is_urgent': item_request.is_urgent}, status=status.HTTP_200_OK)
@@ -190,7 +216,7 @@ class InventoryStatsView(APIView):
         stats = {
             'total_items': Item.objects.count(),
             'low_stock_count': Item.objects.filter(
-                available_quantity__lte=F('threshold_quantity')
+                available_quantity__lt=F('threshold_quantity')
             ).count(),
             'out_of_stock_count': Item.objects.filter(available_quantity=0).count(),
             'pending_requests_count': ItemRequest.objects.filter(status='pending').count(),

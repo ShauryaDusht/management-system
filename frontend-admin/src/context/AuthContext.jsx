@@ -5,9 +5,8 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)  // true on initial load
+  const [loading, setLoading] = useState(true)
 
-  // On mount, check if we have a valid token and fetch user
   useEffect(() => {
     const token = localStorage.getItem('access_token')
     if (token) {
@@ -28,7 +27,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem('access_token', data.access)
     localStorage.setItem('refresh_token', data.refresh)
     setUser(data.user)
-    return data.user  // return so caller can redirect based on role
+    return data.user
   }, [])
 
   const logout = useCallback(async () => {
@@ -40,7 +39,12 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
-  const value = { user, loading, login, logout, isAdmin: user?.role === 'admin' }
+  // isManager now includes inventory_manager to match the backend role
+  const isAdmin = user?.role === 'admin'
+  const isManager = user?.role === 'manager' || user?.role === 'inventory_manager'
+  const isSupervisor = user?.role === 'supervisor'
+
+  const value = { user, loading, login, logout, isAdmin, isManager, isSupervisor }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

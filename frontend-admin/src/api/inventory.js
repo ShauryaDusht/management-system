@@ -1,14 +1,15 @@
 import api from './client'
 
 export const inventoryAPI = {
-  // Dashboard
+  // ── Dashboard ──────────────────────────────────────────────────────────────
   getDashboard: () => api.get('/inventory/dashboard/'),
+  getStats: () => api.get('/inventory/dashboard/'),   // alias — same endpoint as getDashboard
 
-  // Categories
+  // ── Categories ─────────────────────────────────────────────────────────────
   getCategories: () => api.get('/inventory/categories/'),
   createCategory: (data) => api.post('/inventory/categories/', data),
 
-  // Items
+  // ── Items ──────────────────────────────────────────────────────────────────
   getItems: (params = {}) => api.get('/inventory/items/', { params }),
   getLowStockItems: () => api.get('/inventory/items/low-stock/'),
   getItem: (id) => api.get(`/inventory/items/${id}/`),
@@ -16,21 +17,34 @@ export const inventoryAPI = {
   updateItem: (id, data) => api.patch(`/inventory/items/${id}/`, data),
   deleteItem: (id) => api.delete(`/inventory/items/${id}/`),
 
-  // Item history and stock entries
+  // Stock adjust — maps to the /api/ route which is the only remaining
+  // endpoint from the legacy api_views.py set that has no equivalent in views.py
+  adjustStock: (id, action, quantity) =>
+    api.post(`/inventory/api/items/${id}/adjust-stock/`, { action, quantity }),
+
+  // ── Item history and stock entries ─────────────────────────────────────────
   getItemHistory: (id) => api.get(`/inventory/items/${id}/history/`),
   getItemStockEntries: (id) => api.get(`/inventory/items/${id}/stock-entries/`),
 
-  // Stock entries (replenishment)
+  // ── Stock entries (replenishment) ──────────────────────────────────────────
   getStockEntries: (params = {}) => api.get('/inventory/stock-entries/', { params }),
   createStockEntry: (data) => api.post('/inventory/stock-entries/', data),
 
-  // Requests
-  getRequests: () => api.get('/inventory/requests/'),
+  // ── Requests ───────────────────────────────────────────────────────────────
+  getRequests: (params = {}) => api.get('/inventory/requests/', { params }),
   createRequest: (data) => api.post('/inventory/requests/', data),
   reviewRequest: (id, data) => api.post(`/inventory/requests/${id}/review/`, data),
   issueRequest: (id, data) => api.post(`/inventory/requests/${id}/issue/`, data),
 
-  // Issues
+  // approve / reject use the /api/ legacy routes because those are the ones
+  // the frontend has always called and they work correctly after BUG-05 was fixed.
+  approveRequest: (id) => api.post(`/inventory/api/requests/${id}/approve/`),
+  rejectRequest: (id, reason) =>
+    api.post(`/inventory/api/requests/${id}/reject/`, { rejection_reason: reason }),
+  markUrgent: (id, isUrgent) =>
+    api.post(`/inventory/api/requests/${id}/mark-urgent/`, { is_urgent: isUrgent }),
+
+  // ── Issues ─────────────────────────────────────────────────────────────────
   getIssues: () => api.get('/inventory/issues/'),
 
   // Return asset (manager)
@@ -39,44 +53,22 @@ export const inventoryAPI = {
   // Finalize consumable (supervisor)
   finalizeConsumable: (issueId, data) => api.post(`/inventory/issues/${issueId}/finalize/`, data),
 
-  // User activity (admin)
+  // ── User activity (admin) ──────────────────────────────────────────────────
   getUserActivity: (userId) => api.get(`/inventory/activity/users/${userId}/`),
 }
 
-export const getItems = (params = {}) => api.get('/inventory/api/items/', { params })
-export const createItem = (data) => api.post('/inventory/api/items/', data)
-export const updateItem = (id, data) => api.put(`/inventory/api/items/${id}/`, data)
-export const deleteItem = (id) => api.delete(`/inventory/api/items/${id}/`)
-export const adjustStock = (id, action, quantity) =>
-  api.post(`/inventory/api/items/${id}/adjust-stock/`, { action, quantity })
-export const getStats = () => api.get('/inventory/api/stats/')
-export const getCategories = () => api.get('/inventory/api/categories/')
-export const getRequests = (params = {}) => api.get('/inventory/api/requests/', { params })
-export const createRequest = (data) => api.post('/inventory/api/requests/', data)
-export const approveRequest = (id) => api.post(`/inventory/api/requests/${id}/approve/`)
-export const rejectRequest = (id, reason) =>
-  api.post(`/inventory/api/requests/${id}/reject/`, { rejection_reason: reason })
-export const markUrgent = (id, isUrgent) =>
-  api.post(`/inventory/api/requests/${id}/mark-urgent/`, { is_urgent: isUrgent })
-export const getInventoryReport = () => api.get('/reports/inventory/')
-export const getRequestsReport = (params = {}) => api.get('/reports/requests/', { params })
-
-// Monthly procurement reports
+// ── Reports API ────────────────────────────────────────────────────────────
+// Kept as a separate export since it belongs to the reports domain, not inventory.
 export const reportsAPI = {
-  // List all saved monthly reports
-  listMonthly: () => api.get('/reports/monthly/'),
+  getInventoryReport: () => api.get('/reports/inventory/'),
+  getRequestsReport: (params = {}) => api.get('/reports/requests/', { params }),
 
-  // Generate a new monthly report
+  // Monthly procurement reports (Phase 3 — backend not yet wired)
+  listMonthly: () => api.get('/reports/monthly/'),
   generateMonthly: (month, year, overwrite = false) =>
     api.post('/reports/monthly/generate/', { month, year, overwrite }),
-
-  // Get a single report (with full snapshot rows)
   getMonthly: (id) => api.get(`/reports/monthly/${id}/`),
-
-  // Delete a saved report
   deleteMonthly: (id) => api.delete(`/reports/monthly/${id}/`),
-
-  // Download URLs — open directly in browser to trigger file download
   csvUrl: (id) => `${api.defaults.baseURL}/reports/monthly/${id}/csv/`,
   pdfUrl: (id) => `${api.defaults.baseURL}/reports/monthly/${id}/pdf/`,
 }

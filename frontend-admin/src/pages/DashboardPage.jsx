@@ -1,14 +1,17 @@
-import { useEffect, useState } from 'react'
-import { getStats, inventoryAPI } from '../api/inventory'
+import { useEffect, useState, useCallback } from 'react'
+import { inventoryAPI } from '../api/inventory'
 import Layout from '../layout/Layout'
 import { StatusBadge, Spinner } from '../components/ui'
 
+const REFRESH_INTERVAL_MS = 60_000
+
 function StatCard({ label, value, color, icon }) {
   const colors = {
-    blue: 'text-blue-700',
+    blue:   'text-blue-700',
     orange: 'text-orange-700',
     yellow: 'text-amber-700',
-    red: 'text-red-700',
+    red:    'text-red-700',
+    purple: 'text-purple-700',
   }
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 flex items-center gap-4">
@@ -42,42 +45,87 @@ export default function DashboardPage() {
   const [lowStock, setLowStock] = useState([])
   const [statsLoading, setStatsLoading] = useState(true)
   const [lowStockLoading, setLowStockLoading] = useState(true)
+  const [lastRefreshed, setLastRefreshed] = useState(null)
+
+  const fetchData = useCallback(async (isInitial = false) => {
+    if (isInitial) {
+      setStatsLoading(true)
+      setLowStockLoading(true)
+    }
+    try {
+      const [dashRes, lowStockRes] = await Promise.all([
+        inventoryAPI.getDashboard(),
+        inventoryAPI.getLowStockItems(),
+      ])
+      setStats(dashRes.data)
+      setLowStock(lowStockRes.data.items || [])
+      setLastRefreshed(new Date())
+    } finally {
+      setStatsLoading(false)
+      setLowStockLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchData(true) }, [fetchData])
 
   useEffect(() => {
-    getStats()
-      .then((response) => setStats(response.data))
-      .finally(() => setStatsLoading(false))
-
-    inventoryAPI.getLowStockItems()
-      .then((response) => setLowStock(response.data.items || []))
-      .finally(() => setLowStockLoading(false))
-  }, [])
+    const timer = setInterval(() => fetchData(false), REFRESH_INTERVAL_MS)
+    return () => clearInterval(timer)
+  }, [fetchData])
 
   return (
     <Layout>
       <div className="p-6 max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Inventory overview</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Dashboard</h1>
+            <p className="text-sm text-slate-500 mt-0.5">Inventory overview</p>
+          </div>
+          {lastRefreshed && (
+            <p className="text-xs text-slate-400">
+              Last updated {lastRefreshed.toLocaleTimeString('en-IN')}
+            </p>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
           {statsLoading ? (
-            <>
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-            </>
+            <><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /></>
           ) : (
             <>
-              <StatCard label="Total Items" value={stats?.total_items} color="blue" icon="📦" />
-              <StatCard label="Low Stock Items" value={stats?.low_stock_count} color="orange" icon="⚠️" />
-              <StatCard label="Pending Requests" value={stats?.pending_requests_count} color="yellow" icon="🕐" />
-              <StatCard label="Out of Stock" value={stats?.out_of_stock_count} color="red" icon="📭" />
+              <StatCard label="Total Items"      value={stats?.total_items}         color="blue"   icon="📦" />
+              <StatCard label="Low Stock Items"  value={stats?.low_stock_count}     color="orange" icon="⚠️" />
+              {/* NOTE: dashboard endpoint uses `pending_requests` (not pending_requests_count) */}
+              <StatCard label="Pending Requests" value={stats?.pending_requests}    color="yellow" icon="🕐" />
+              <StatCard label="Out of Stock"     value={stats?.out_of_stock_count}  color="red"    icon="📭" />
             </>
           )}
         </div>
+
+        {/* Overdue returns alert — data now available from the unified dashboard endpoint */}
+        {!statsLoading && stats?.overdue_returns > 0 && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4 flex items-center gap-3">
+            <span className="text-xl">🔴</span>
+            <div>
+              <p className="font-semibold text-red-800 text-sm">
+                {stats.overdue_returns} asset{stats.overdue_returns > 1 ? 's' : ''} overdue for return
+              </p>
+              <p className="text-xs text-red-600 mt-0.5">
+                These assets have passed their expected return date and have not been returned.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Unreturned assets summary */}
+        {!statsLoading && stats?.unreturned_assets > 0 && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 flex items-center gap-3">
+            <span className="text-xl">📤</span>
+            <p className="text-sm text-amber-800">
+              <span className="font-semibold">{stats.unreturned_assets}</span> asset{stats.unreturned_assets > 1 ? 's' : ''} currently issued and not yet returned.
+            </p>
+          </div>
+        )}
 
         <div className="bg-white rounded-xl border border-slate-200">
           <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
