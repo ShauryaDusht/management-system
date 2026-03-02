@@ -24,8 +24,12 @@ class IsAdminOrManager(BasePermission):
 
 
 class IsAdminOrManagerOrSupervisor(BasePermission):
-    """Essentially any logged-in user with a known role."""
+    """Any authenticated user with a recognised role."""
+
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in [
-            'admin', 'inventory_manager', 'manager', 'supervisor'
-        ]
+
+        return request.user.is_authenticated and (
+            request.user.is_admin
+            or request.user.is_manager
+            or request.user.is_supervisor
+        )

@@ -17,6 +17,29 @@ from .views import (
     DashboardSummaryView,
 )
 
+# ─── BUG-02 FIX: Route audit ─────────────────────────────────────────────────
+#
+# The old file had two overlapping route families:
+#
+#   PRIMARY (views.py)       /inventory/items/           paginated, uses ItemSerializer
+#   LEGACY  (api_views.py)   /inventory/api/items/       no pagination, same serializer
+#
+#   PRIMARY (views.py)       /inventory/requests/        full workflow endpoint
+#   LEGACY  (api_views.py)   /inventory/api/requests/    same, via ViewSet
+#
+# The LEGACY /api/items/ and /api/requests/ routes have been REMOVED.
+# Every frontend page has been updated to use the PRIMARY routes via inventoryAPI.*.
+#
+# The five /api/ routes below are KEPT because they have NO equivalent in views.py:
+#   - adjust-stock   → AdjustStockView   (no equivalent ItemAdjustView in views.py)
+#   - stats          → InventoryStatsView (lightweight public stats, now fixed BUG-03)
+#   - approve        → ApproveRequestView (separate from ReviewRequestView by design)
+#   - reject         → RejectRequestView
+#   - mark-urgent    → MarkUrgentView
+#
+# These five are the ONLY remaining api_views.py routes. Everything else is primary.
+# ─────────────────────────────────────────────────────────────────────────────
+
 urlpatterns = [
     # ── Categories ──────────────────────────────────────────────────────────
     path('categories/', CategoryListCreateView.as_view(), name='category-list'),
@@ -49,9 +72,9 @@ urlpatterns = [
     # ── Dashboard ────────────────────────────────────────────────────────────
     path('dashboard/', DashboardSummaryView.as_view(), name='dashboard-summary'),
 
-    # ── React admin API endpoints ────────────────────────────────────────────
-    # These serve the React frontend and use slightly different serialization.
-    # They are kept separate to avoid breaking the frontend during migration.
+    # ── Retained /api/ routes (no primary equivalent exists for these) ────────
+    # These five endpoints have no counterpart in views.py and are still actively
+    # used by the frontend. They are kept intentionally and are NOT duplicates.
     path('api/items/<int:pk>/adjust-stock/', AdjustStockView.as_view(), name='item-adjust-stock'),
     path('api/stats/', InventoryStatsView.as_view(), name='inventory-stats'),
     path('api/requests/<int:pk>/approve/', ApproveRequestView.as_view(), name='api-request-approve'),

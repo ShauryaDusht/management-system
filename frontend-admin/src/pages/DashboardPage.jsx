@@ -1,10 +1,8 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
-import { getStats, inventoryAPI } from '../api/inventory'
+import { useEffect, useState, useCallback } from 'react'
+import { inventoryAPI } from '../api/inventory'
 import Layout from '../layout/Layout'
 import { StatusBadge, Spinner } from '../components/ui'
 
-// dashboard auto-refreshes every 60 seconds so threshold alerts
-// update without requiring a manual page reload.
 const REFRESH_INTERVAL_MS = 60_000
 
 function StatCard({ label, value, color, icon }) {
@@ -47,7 +45,6 @@ export default function DashboardPage() {
   const [lowStock, setLowStock] = useState([])
   const [statsLoading, setStatsLoading] = useState(true)
   const [lowStockLoading, setLowStockLoading] = useState(true)
-  // track last refresh time so the user can see it's current
   const [lastRefreshed, setLastRefreshed] = useState(null)
 
   const fetchData = useCallback(async (isInitial = false) => {
@@ -56,11 +53,11 @@ export default function DashboardPage() {
       setLowStockLoading(true)
     }
     try {
-      const [statsRes, lowStockRes] = await Promise.all([
-        getStats(),
+      const [dashRes, lowStockRes] = await Promise.all([
+        inventoryAPI.getDashboard(),
         inventoryAPI.getLowStockItems(),
       ])
-      setStats(statsRes.data)
+      setStats(dashRes.data)
       setLowStock(lowStockRes.data.items || [])
       setLastRefreshed(new Date())
     } finally {
@@ -69,12 +66,8 @@ export default function DashboardPage() {
     }
   }, [])
 
-  // Initial load
-  useEffect(() => {
-    fetchData(true)
-  }, [fetchData])
+  useEffect(() => { fetchData(true) }, [fetchData])
 
-  // auto-refresh interval
   useEffect(() => {
     const timer = setInterval(() => fetchData(false), REFRESH_INTERVAL_MS)
     return () => clearInterval(timer)
@@ -100,15 +93,16 @@ export default function DashboardPage() {
             <><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /></>
           ) : (
             <>
-              <StatCard label="Total Items"       value={stats?.total_items}              color="blue"   icon="📦" />
-              <StatCard label="Low Stock Items"   value={stats?.low_stock_count}          color="orange" icon="⚠️" />
-              <StatCard label="Pending Requests"  value={stats?.pending_requests_count}   color="yellow" icon="🕐" />
-              <StatCard label="Out of Stock"      value={stats?.out_of_stock_count}       color="red"    icon="📭" />
+              <StatCard label="Total Items"      value={stats?.total_items}         color="blue"   icon="📦" />
+              <StatCard label="Low Stock Items"  value={stats?.low_stock_count}     color="orange" icon="⚠️" />
+              {/* NOTE: dashboard endpoint uses `pending_requests` (not pending_requests_count) */}
+              <StatCard label="Pending Requests" value={stats?.pending_requests}    color="yellow" icon="🕐" />
+              <StatCard label="Out of Stock"     value={stats?.out_of_stock_count}  color="red"    icon="📭" />
             </>
           )}
         </div>
 
-        {/* show overdue returns if any */}
+        {/* Overdue returns alert — data now available from the unified dashboard endpoint */}
         {!statsLoading && stats?.overdue_returns > 0 && (
           <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4 flex items-center gap-3">
             <span className="text-xl">🔴</span>
@@ -120,6 +114,16 @@ export default function DashboardPage() {
                 These assets have passed their expected return date and have not been returned.
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Unreturned assets summary */}
+        {!statsLoading && stats?.unreturned_assets > 0 && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 flex items-center gap-3">
+            <span className="text-xl">📤</span>
+            <p className="text-sm text-amber-800">
+              <span className="font-semibold">{stats.unreturned_assets}</span> asset{stats.unreturned_assets > 1 ? 's' : ''} currently issued and not yet returned.
+            </p>
           </div>
         )}
 

@@ -12,14 +12,8 @@ import {
   StatusBadge,
   Textarea,
 } from '../components/ui'
-import {
-  approveRequest,
-  createRequest,
-  getItems,
-  getRequests,
-  markUrgent,
-  rejectRequest,
-} from '../api/inventory'
+
+import { inventoryAPI } from '../api/inventory'
 
 const REQUESTER_ROLES = ['caretaker', 'supervisor']
 const MANAGER_ROLES = ['admin', 'inventory_manager', 'manager']
@@ -72,7 +66,6 @@ export default function RequestsPage() {
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  // confirmation state for reject
   const [rejectConfirmId, setRejectConfirmId] = useState(null)
 
   const loadData = useCallback(async () => {
@@ -80,8 +73,8 @@ export default function RequestsPage() {
     setError('')
     try {
       const [requestsRes, itemsRes] = await Promise.all([
-        getRequests(),
-        getItems(),
+        inventoryAPI.getRequests(),
+        inventoryAPI.getItems(),
       ])
       setRequests(normalizeList(requestsRes.data))
       setItems(normalizeList(itemsRes.data))
@@ -123,7 +116,7 @@ export default function RequestsPage() {
     setSaving(true)
     setFormError('')
     try {
-      await createRequest({
+      await inventoryAPI.createRequest({
         item: Number(form.item),
         quantity_requested: requestedQty,
         reason: form.reason.trim(),
@@ -140,13 +133,11 @@ export default function RequestsPage() {
     }
   }
 
-  // approve button is disabled (busyId set) until API responds
-  // prevents race conditions where manager clicks approve, then quickly clicks reject before first response arrives
   const onApprove = async (id) => {
     setBusyId(`approve:${id}`)
     setNotice('')
     try {
-      await approveRequest(id)
+      await inventoryAPI.approveRequest(id)
       setNotice('Request approved successfully.')
       await loadData()
     } catch (err) {
@@ -156,8 +147,6 @@ export default function RequestsPage() {
     }
   }
 
-  // reject now requires opening a confirmation step
-  // this prevents the common mistake of clicking reject, then immediately clicking approve (or another reject) before the first API response arrives, which causes confusion and incorrect request status
   const onRejectConfirm = async () => {
     const id = rejectConfirmId
     if (!id) return
@@ -165,7 +154,7 @@ export default function RequestsPage() {
     setNotice('')
     setRejectConfirmId(null)
     try {
-      await rejectRequest(id, rejectReasons[id] || '')
+      await inventoryAPI.rejectRequest(id, rejectReasons[id] || '')
       setRejectReasons((prev) => ({ ...prev, [id]: '' }))
       setNotice('Request rejected.')
       await loadData()
@@ -180,7 +169,7 @@ export default function RequestsPage() {
     const next = !itemRequest.is_urgent
     setBusyId(`urgent:${itemRequest.id}`)
     try {
-      await markUrgent(itemRequest.id, next)
+      await inventoryAPI.markUrgent(itemRequest.id, next)
       setRequests((prev) => prev.map((req) =>
         req.id === itemRequest.id ? { ...req, is_urgent: next } : req
       ))
@@ -311,7 +300,6 @@ export default function RequestsPage() {
                             value={rejectReasons[req.id] || ''}
                             onChange={(event) => setRejectReasons((prev) => ({ ...prev, [req.id]: event.target.value }))}
                           />
-                          {/* clicking REJECT opens a confirmation modal */}
                           <Button
                             variant="outline"
                             className="md:w-28"
@@ -320,7 +308,6 @@ export default function RequestsPage() {
                           >
                             {rejecting ? '…' : 'REJECT'}
                           </Button>
-                          {/* APPROVE is disabled while any action is in flight preventing race conditions*/}
                           <Button
                             variant="success"
                             className="md:w-32"

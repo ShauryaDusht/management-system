@@ -27,8 +27,6 @@ class CategoryListCreateView(generics.ListCreateAPIView):
     serializer_class = CategorySerializer
 
     def get_queryset(self):
-        # CategorySerializer reads it as a single JOIN instead of N separate COUNT queries
-        # This solve N+1 issue when listing categories with item counts
         return Category.objects.annotate(item_count=Count('items')).all()
 
     def get_permissions(self):
@@ -51,7 +49,6 @@ class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class ItemListCreateView(generics.ListCreateAPIView):
     serializer_class = ItemSerializer
-    # paginate item list — returns { count, next, previous, results }
     pagination_class = StandardPagination
 
     def get_queryset(self):
@@ -116,6 +113,7 @@ class ItemHistoryView(APIView):
             events.append({
                 'type': 'stock_added',
                 'date': entry.added_at.isoformat(),
+                '_sort_dt': entry.added_at,
                 'quantity': entry.quantity_added,
                 'person': entry.added_by.get_full_name() or entry.added_by.username,
                 'detail': entry.notes or 'Stock replenished',
@@ -130,6 +128,7 @@ class ItemHistoryView(APIView):
             events.append({
                 'type': 'issued',
                 'date': issue.issued_at.isoformat(),
+                '_sort_dt': issue.issued_at,
                 'quantity': issue.issued_quantity,
                 'person': supervisor,
                 'detail': f"Issued for: {issue.request.purpose}",
@@ -138,6 +137,7 @@ class ItemHistoryView(APIView):
                 events.append({
                     'type': 'returned',
                     'date': issue.returned_at.isoformat(),
+                    '_sort_dt': issue.returned_at,
                     'quantity': issue.returned_quantity,
                     'person': supervisor,
                     'detail': f"Condition: {issue.condition_on_return or 'Not noted'}",
@@ -146,12 +146,15 @@ class ItemHistoryView(APIView):
                 events.append({
                     'type': 'finalized',
                     'date': issue.usage_finalized_at.isoformat(),
+                    '_sort_dt': issue.usage_finalized_at,
                     'quantity': issue.actual_quantity_used,
                     'person': supervisor,
                     'detail': f"Actual quantity used: {issue.actual_quantity_used}",
                 })
 
-        events.sort(key=lambda e: e['date'], reverse=True)
+        events.sort(key=lambda e: e['_sort_dt'], reverse=True)
+        for event in events:
+            del event['_sort_dt']
 
         return Response({
             'item': ItemSerializer(item).data,
@@ -210,7 +213,6 @@ class ItemRequestListCreateView(generics.ListCreateAPIView):
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
-        # units_remaining not set at creation — it's a review-time snapshot
         serializer.save(requested_by=self.request.user)
 
 
@@ -258,7 +260,6 @@ class ReviewRequestView(APIView):
 
         item_request.approved_by = request.user
         item_request.reviewed_at = timezone.now()
-        # set units_remaining at review time (the meaningful moment)
         item_request.units_remaining = item_request.item.available_quantity
         item_request.save()
 
@@ -283,7 +284,11 @@ class IssueItemView(APIView):
         except (TypeError, ValueError):
             return Response({'detail': 'Invalid quantity.'}, status=400)
 
-        item = item_request.item
+        try:
+            item = Item.objects.select_for_update().get(pk=item_request.item_id)
+        except Item.DoesNotExist:
+            return Response({'detail': 'Item not found.'}, status=404)
+
         if issued_qty > item.available_quantity:
             return Response(
                 {'detail': f'Insufficient stock. Available: {item.available_quantity}.'},
@@ -389,8 +394,11 @@ class FinalizeConsumableView(APIView):
             )
             if user.is_admin or user.is_manager:
                 issue = base_qs.get(pk=pk)
-            else:
+            elif user.is_supervisor:
+                # Supervisors can only finalize their own issues
                 issue = base_qs.get(pk=pk, request__requested_by=user)
+            else:
+                return Response({'detail': 'Permission denied.'}, status=403)
         except ItemIssue.DoesNotExist:
             return Response({'detail': 'Issue record not found.'}, status=404)
 
@@ -493,7 +501,6 @@ class DashboardSummaryView(APIView):
             usage_finalized=False,
         ).count()
 
-        # surface overdue asset returns on the dashboard
         overdue_returns = ItemIssue.objects.filter(
             request__item__item_type='asset',
             returned_at__isnull=True,

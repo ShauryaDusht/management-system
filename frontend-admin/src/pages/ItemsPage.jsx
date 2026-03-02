@@ -1,16 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Layout from '../layout/Layout'
 import { Button, Field, Input, Modal, Select, Spinner, Textarea } from '../components/ui'
-import {
-  adjustStock,
-  createItem,
-  deleteItem,
-  getCategories,
-  getItems,
-  updateItem,
-} from '../api/inventory'
+import { inventoryAPI } from '../api/inventory'
 
 const UNIT_OPTIONS = ['pieces', 'litres', 'kg', 'metres', 'packets', 'bottles', 'boxes']
 const EMPTY_FORM = {
@@ -35,11 +28,9 @@ function statusMeta(item) {
 }
 
 function normalizeList(payload) {
-  // handle paginated responses ({ results: [...] }) AND plain arrays
   return payload?.results ?? payload ?? []
 }
 
-// simple debounce hook to avoid firing a search request on every keystroke
 function useDebounce(value, delay = 350) {
   const [debounced, setDebounced] = useState(value)
   useEffect(() => {
@@ -58,7 +49,6 @@ export default function ItemsPage() {
   const [totalCount, setTotalCount] = useState(0)
   const [categories, setCategories] = useState([])
 
-  // separate raw input state from debounced search value
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput, 350)
   const [typeFilter, setTypeFilter] = useState('')
@@ -78,7 +68,7 @@ export default function ItemsPage() {
 
   const loadCategories = useCallback(async () => {
     try {
-      const response = await getCategories()
+      const response = await inventoryAPI.getCategories()
       setCategories(normalizeList(response.data))
     } catch {
       setCategories([])
@@ -94,7 +84,7 @@ export default function ItemsPage() {
       if (typeFilter) params.item_type = typeFilter
       if (categoryFilter) params.category = categoryFilter
 
-      const response = await getItems(params)
+      const response = await inventoryAPI.getItems(params)
       const list = normalizeList(response.data)
       setItems(list)
       setTotalCount(response.data?.count ?? list.length)
@@ -135,7 +125,6 @@ export default function ItemsPage() {
     setModalMode('edit')
   }
 
-  // delete now opens a confirmation modal before proceeding
   const openDeleteModal = (item) => {
     setSelectedItem(item)
     setModalMode('delete')
@@ -169,9 +158,9 @@ export default function ItemsPage() {
         location: form.location,
       }
       if (modalMode === 'add') {
-        await createItem(payload)
+        await inventoryAPI.createItem(payload)
       } else if (selectedItem) {
-        await updateItem(selectedItem.id, payload)
+        await inventoryAPI.updateItem(selectedItem.id, payload)
       }
       closeModal()
       await loadItems()
@@ -187,7 +176,7 @@ export default function ItemsPage() {
     if (!selectedItem) return
     setSaving(true)
     try {
-      await deleteItem(selectedItem.id)
+      await inventoryAPI.deleteItem(selectedItem.id)
       closeModal()
       await loadItems()
     } catch (err) {
@@ -197,14 +186,12 @@ export default function ItemsPage() {
     }
   }
 
-  // buttons are disabled while the action is in flight,
-  // preventing double-clicks from firing duplicate API calls
   const onAdjustStock = async (item, action) => {
     if (!isAdmin) return
     setAdjustingId(`${item.id}:${action}`)
     setActionError('')
     try {
-      const response = await adjustStock(item.id, action, 1)
+      const response = await inventoryAPI.adjustStock(item.id, action, 1)
       const updated = response.data
       setItems((prev) => prev.map((entry) => (entry.id === updated.id ? updated : entry)))
     } catch (err) {
@@ -227,7 +214,6 @@ export default function ItemsPage() {
 
         <div className="bg-white border border-slate-200 rounded-xl p-4 mb-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* search bound to searchInput, API call uses debounced value */}
             <Input
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
@@ -295,7 +281,6 @@ export default function ItemsPage() {
                       <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50 transition">
                         <td className="px-4 py-3 font-medium text-slate-900">
                           {item.name}
-                          {/* warn when cost data is missing */}
                           {item.unit_cost_missing && (
                             <span className="ml-2 text-xs text-amber-500" title="Unit cost not set — report totals will show ₹0">
                               ⚠ no cost
@@ -313,7 +298,6 @@ export default function ItemsPage() {
                                 type="button"
                                 className="w-7 h-7 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
                                 onClick={() => onAdjustStock(item, 'decrease')}
-                                // disabled while any adjust is in flight
                                 disabled={decreaseBusy || increaseBusy || Number(item.available_quantity) <= 0}
                                 title="Decrease stock by 1"
                               >
@@ -351,7 +335,6 @@ export default function ItemsPage() {
                               <Button variant="ghost" size="sm" onClick={() => openEditModal(item)}>
                                 Edit
                               </Button>
-                              {/* opens confirmation modal, not direct delete */}
                               <Button
                                 variant="ghost"
                                 size="sm"
