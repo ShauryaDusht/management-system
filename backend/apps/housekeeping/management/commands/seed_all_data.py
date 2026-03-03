@@ -1,8 +1,9 @@
 from io import StringIO
-from pathlib import Path
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.management import BaseCommand, call_command
+from django.core.management import call_command
+from django.core.management.base import BaseCommand
 
 from apps.housekeeping.models import HKArea, HKScheduleTemplate, HKUserArea, HKWorker
 
@@ -46,13 +47,13 @@ class Command(BaseCommand):
         ))
 
     def _dump_fixtures(self):
-        fixtures_dir = Path('fixtures')
+        fixtures_dir = settings.BASE_DIR / 'fixtures'
         fixtures_dir.mkdir(parents=True, exist_ok=True)
 
         hk_buffer = StringIO()
         call_command('dumpdata', 'housekeeping', indent=2, stdout=hk_buffer)
-        Path('fixtures/housekeeping.json').write_text(hk_buffer.getvalue(), encoding='utf-8')
+        (fixtures_dir / 'housekeeping.json').write_text(hk_buffer.getvalue(), encoding='utf-8')
 
         users_buffer = StringIO()
         call_command('dumpdata', 'users', indent=2, stdout=users_buffer)
-        Path('fixtures/users_hk.json').write_text(users_buffer.getvalue(), encoding='utf-8')
+        (fixtures_dir / 'users_hk.json').write_text(users_buffer.getvalue(), encoding='utf-8')

@@ -8,6 +8,7 @@ Sunday extra: dustbin + terrace + fridge cleaning
 import datetime
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+from django.db.models.deletion import ProtectedError
 from apps.housekeeping.models import (
     HKArea, HKUserArea, HKWorker, HKScheduleTemplate,
 )
@@ -77,22 +78,27 @@ All accounts use password: {DEFAULT_PASSWORD}
         return HKArea.objects.filter(name=name).first()
 
     def make_user(self, username, first_name, last_name, phone, role, area_names):
-        user, created = User.objects.get_or_create(
+        is_superuser = role == 'admin'
+        is_staff = role in {'admin', 'manager', 'inventory_manager'}
+
+        user, _ = User.objects.get_or_create(
             username=username,
             defaults={
                 'first_name': first_name, 'last_name': last_name,
                 'phone': phone, 'role': role, 'is_active': True,
+                'is_staff': is_staff, 'is_superuser': is_superuser,
             }
         )
-        if created:
-            user.set_password(DEFAULT_PASSWORD)
-            user.save()
-        else:
-            user.first_name = first_name
-            user.last_name = last_name
-            user.phone = phone
-            user.role = role
-            user.save(update_fields=['first_name', 'last_name', 'phone', 'role'])
+        user.first_name = first_name
+        user.last_name = last_name
+        user.phone = phone
+        user.role = role
+        user.is_active = True
+        user.is_staff = is_staff
+        user.is_superuser = is_superuser
+        # Keep seeded environments deterministic for teammate logins.
+        user.set_password(DEFAULT_PASSWORD)
+        user.save()
 
         # Reset area assignments
         HKUserArea.objects.filter(user=user).delete()
@@ -163,11 +169,23 @@ All accounts use password: {DEFAULT_PASSWORD}
         Remove deprecated/old usernames so shared datasets remain clean and deterministic.
         """
         legacy_usernames = ['anil.hk', 'nikul.hk', 'lab.supervisor']
-        qs = User.objects.filter(username__in=legacy_usernames)
-        count = qs.count()
-        if count:
-            qs.delete()
-        self.stdout.write(f'  ✓ Legacy users removed: {count}')
+        removed = 0
+        blocked = []
+
+        for user in User.objects.filter(username__in=legacy_usernames):
+            try:
+                user.delete()
+                removed += 1
+            except ProtectedError:
+                blocked.append(user.username)
+
+        self.stdout.write(f'  ✓ Legacy users removed: {removed}')
+        if blocked:
+            self.stdout.write(
+                self.style.WARNING(
+                    f'  ! Legacy users kept due to protected relations: {", ".join(blocked)}'
+                )
+            )
 
     # ─────────────────────────────────────────────────────────────────────────
 

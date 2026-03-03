@@ -3,7 +3,7 @@
   "model": "users.user",
   "pk": 1,
   "fields": {
-    "password": "pbkdf2_sha256$600000$TtmKczYcLma1ynKVtUAAbw$lStiAcMjAALRHN5g++iF77ekqGcLgRXl8lHJYtBzEz8=",
+    "password": "pbkdf2_sha256$600000$0r7fw0UUnBajKNgQ9LUBdQ$R7jf1gJVK2iyyMb9pTS6v5LvhtLBr6M438dhsXzUvX4=",
     "last_login": "2026-03-03T10:00:01.550Z",
     "is_superuser": true,
     "username": "admin",
@@ -24,14 +24,14 @@
   "model": "users.user",
   "pk": 2,
   "fields": {
-    "password": "pbkdf2_sha256$600000$WxdReVPqZNarpCLeTArb7Z$AyiYoUNts8KZQo3+suUST/+HV0OgQlpndTSepMw3Ot0=",
+    "password": "pbkdf2_sha256$600000$8wCooXRnEQBN7zEXRLdTCv$QqAwK8zlliNOP6qSA1uXuRbh39w1C25WiGHXIqqRRfI=",
     "last_login": null,
     "is_superuser": false,
     "username": "inv.manager",
     "first_name": "Inventory",
     "last_name": "Manager",
     "email": "inv.manager@iitgn.ac.in",
-    "is_staff": false,
+    "is_staff": true,
     "date_joined": "2026-03-03T00:24:36.720Z",
     "role": "inventory_manager",
     "phone": "",
@@ -45,14 +45,14 @@
   "model": "users.user",
   "pk": 3,
   "fields": {
-    "password": "pbkdf2_sha256$600000$8nawK56mUS5hoeyZdPZtlt$AK7Q7YCfvapLCBRBsRIdLhdt+T2B032bylxunVvoAo0=",
+    "password": "pbkdf2_sha256$600000$qcNyzH08qzmFfK5bgmVTte$Jm6QDVXBKnUwi5rg6kR5zQrpyehS7NHBgYl+eaxvsfs=",
     "last_login": null,
     "is_superuser": false,
     "username": "estate.manager",
     "first_name": "Estate",
     "last_name": "Manager",
     "email": "estate.manager@iitgn.ac.in",
-    "is_staff": false,
+    "is_staff": true,
     "date_joined": "2026-03-03T00:24:37.173Z",
     "role": "manager",
     "phone": "",
@@ -66,14 +66,14 @@
   "model": "users.user",
   "pk": 4,
   "fields": {
-    "password": "pbkdf2_sha256$600000$OX2uztqsjhwWDZCOIGe5rL$ipWeA8mjEISXwzY5Znmp7+e1eKu3SZYJ7gkNF7ck+9w=",
+    "password": "pbkdf2_sha256$600000$EUGMna2jPnxcDx9ENl6DFx$WWMTgymTwLf927RqrYtvp0n6sP4O2LlIL/kinvTspD0=",
     "last_login": null,
     "is_superuser": false,
     "username": "hostel.manager",
     "first_name": "Hostel",
     "last_name": "Manager",
     "email": "hostel.manager@iitgn.ac.in",
-    "is_staff": false,
+    "is_staff": true,
     "date_joined": "2026-03-03T00:24:37.561Z",
     "role": "manager",
     "phone": "",
@@ -87,7 +87,7 @@
   "model": "users.user",
   "pk": 6,
   "fields": {
-    "password": "pbkdf2_sha256$600000$wWU6rnhy6sAQtnRS8PZYsa$//279qk+SXFEi0ds8qd5MVPuy01iz23YSy3vL1DxQu8=",
+    "password": "pbkdf2_sha256$600000$wEIXwV8M910toJTtxpZ6XZ$Fvrm4wolS5PsQZ6HMHG7mBy1rQpUuyKRCGBwn8/KEUk=",
     "last_login": null,
     "is_superuser": false,
     "username": "priyanka",
@@ -108,7 +108,7 @@
   "model": "users.user",
   "pk": 7,
   "fields": {
-    "password": "pbkdf2_sha256$600000$rjvi2nUvRM7p4yhD060sCc$9la8Q4xdW6TjQpHZZDLY1DXAkIW+qNIfm6a4G2vwZ28=",
+    "password": "pbkdf2_sha256$600000$OtrylKjEIKVLCwEpBnsNAD$7NZqNy/C0b3NgrQUc8neBD9rerLG9ddWA8DvvB/SfN8=",
     "last_login": null,
     "is_superuser": false,
     "username": "anita",
@@ -129,7 +129,7 @@
   "model": "users.user",
   "pk": 8,
   "fields": {
-    "password": "pbkdf2_sha256$600000$W4YgprsVQ5z6V9WNrh1Z4z$zs8nfUj+8ANK/hX61s4WHhj/REKDSHGA1FwH20V0Jac=",
+    "password": "pbkdf2_sha256$600000$rG0zwBL5sGDMjm2rrlR0CW$RiLQwFdqc1HDwZbPn9wQSE43NWwypgIisHx0qbgQly0=",
     "last_login": null,
     "is_superuser": false,
     "username": "rushita",
@@ -150,7 +150,7 @@
   "model": "users.user",
   "pk": 9,
   "fields": {
-    "password": "pbkdf2_sha256$600000$QMdXuVNBsGCZ20iojev8RN$v8jr3EG9/8wYCTIVIGc95KTatC7utwA5wxvv4PmPmes=",
+    "password": "pbkdf2_sha256$600000$687SZD2Qg51cQYbOWrXqtB$iJOUkXWR106TN9iN77EAnp5vjRSWHPd8bvEtWe9nU5Q=",
     "last_login": "2026-03-03T08:21:25.987Z",
     "is_superuser": false,
     "username": "pankaj",
@@ -171,7 +171,7 @@
   "model": "users.user",
   "pk": 10,
   "fields": {
-    "password": "pbkdf2_sha256$600000$2Os6zO5PCnjmL3WE6AdQD3$sfuLNnAW8La2EeIaXGuel9vBHiJoMF46jOSGzyhe0EE=",
+    "password": "pbkdf2_sha256$600000$moT8D8MPOxlD69qeR1zILO$cTpflVTQThcOz4Rt/og4Bv3PU4M4rVMvjjGfuyr7k00=",
     "last_login": null,
     "is_superuser": false,
     "username": "anil.caretaker",
@@ -192,7 +192,7 @@
   "model": "users.user",
   "pk": 11,
   "fields": {
-    "password": "pbkdf2_sha256$600000$u72TpoPyCJL7UGO4GbLfTI$hzM9hdDKq15B3yqDzRMdSnh8fKl6DxeYB6rp/XkB8Bs=",
+    "password": "pbkdf2_sha256$600000$brApTuQ2fqvcIMSJckHY5X$GwpIr9oc3IDtDuUTm5qqjhyUhUa+Aqkw5Ys5spkFQ/0=",
     "last_login": null,
     "is_superuser": false,
     "username": "nikul.caretaker",
@@ -213,7 +213,7 @@
   "model": "users.user",
   "pk": 12,
   "fields": {
-    "password": "pbkdf2_sha256$600000$RnM4qK7nenLWta1DcL966v$kDi60vVxg+zsU1IaCzjN2yIII1g3+vzL1oht9gce4O4=",
+    "password": "pbkdf2_sha256$600000$DVu3NRW7sXN1EQmwrCL9Te$B7oFV5nv1pB73c1KFizs/wC1x2FpTzkvd+8c/7hEh4k=",
     "last_login": null,
     "is_superuser": false,
     "username": "jaimin",
@@ -234,7 +234,7 @@
   "model": "users.user",
   "pk": 13,
   "fields": {
-    "password": "pbkdf2_sha256$600000$Tcx6VHVDSyIFfRwLOBFR4f$V9veXpYzx75uQz8aRdLkUCuGya1LCYy3bfljNE+8SLY=",
+    "password": "pbkdf2_sha256$600000$jbbnfRcArmTevhX85C18IB$KiD7YBbiiJpjUp+2/Hi7oInEyTJTE+dTd5OK111Nono=",
     "last_login": null,
     "is_superuser": false,
     "username": "ramsingh",
@@ -255,7 +255,7 @@
   "model": "users.user",
   "pk": 14,
   "fields": {
-    "password": "pbkdf2_sha256$600000$oKdcnHHBwYF3fdbiHjGd6h$SDqQBOQ5NwL6nYxZWDynpGhZpQUXBrzvkW0c9YOM+G8=",
+    "password": "pbkdf2_sha256$600000$pWc9NdruqKbRdoMuqcsdjO$t7v/4aweE4Jrbv7UMoxMZIc1QoTy3bWJhujXfwBPZ4U=",
     "last_login": null,
     "is_superuser": false,
     "username": "vishwajeet",
@@ -276,7 +276,7 @@
   "model": "users.user",
   "pk": 15,
   "fields": {
-    "password": "pbkdf2_sha256$600000$NlU1aIyv5IWHmvWCbANP7g$65PJdaDKhlqL3CESqM/nmDaPciSvDkmvghCFb7GGQME=",
+    "password": "pbkdf2_sha256$600000$1vC7fAgJgun6mEhQKufkUv$27WoZa+i2gyx6Ph9eKEk6oOFmfWPvPgV5bDO73o9f2k=",
     "last_login": null,
     "is_superuser": false,
     "username": "ashok.rathod",
@@ -297,7 +297,7 @@
   "model": "users.user",
   "pk": 16,
   "fields": {
-    "password": "pbkdf2_sha256$600000$wGbkcUPqOAYNHL3s1ApBnH$hN/UJUFs47Y3c5Dht8WRoUy4/yjBz55gaJc4tkfe5ag=",
+    "password": "pbkdf2_sha256$600000$ncBeIwjcwMIMoffexnlouH$1eNHZFl9apEVWR23GsbPaz5sLuvV75kUXzYDmrB0lCo=",
     "last_login": null,
     "is_superuser": false,
     "username": "kaushik.parmar",
@@ -318,7 +318,7 @@
   "model": "users.user",
   "pk": 17,
   "fields": {
-    "password": "pbkdf2_sha256$600000$ypGoBoG0eljlQkVlgw76dS$jeQWt+9srAgnc4C26QfFWeZrABP+57KzrF3YK0yEMm0=",
+    "password": "pbkdf2_sha256$600000$zUxJ0SFpzbzimJ5tm6MuMC$uKRSWSwJamzknGSJOvKozkdQHjO5pO5FCBLnfzkvGoQ=",
     "last_login": null,
     "is_superuser": false,
     "username": "shailesh.prajapati",
@@ -339,7 +339,7 @@
   "model": "users.user",
   "pk": 18,
   "fields": {
-    "password": "pbkdf2_sha256$600000$sWFiy5T1fYx3lxBJhA0QCh$E+n6QU8BzEFUnX26Llv9+HrScjIHih8KC16FJFE/HnQ=",
+    "password": "pbkdf2_sha256$600000$9D8zOFcembQDfaH6yjJrfk$h3s2lMJpUlOz8QmUkFBI41kn6lRx4BtYskjK0TcpWks=",
     "last_login": null,
     "is_superuser": false,
     "username": "maulik.patel",
@@ -360,7 +360,7 @@
   "model": "users.user",
   "pk": 19,
   "fields": {
-    "password": "pbkdf2_sha256$600000$zYVZroZbYBwOWsb5Vs7tku$jkpVylc0WYFqxZgbnGjG0nhga3RemPtGhIpThCU5/34=",
+    "password": "pbkdf2_sha256$600000$jnh098U72h1Hivh8zOcbIW$9HTElQT1wqrPpFNDYWE8rnG+h8RKxtdQLqiZaQpHkX8=",
     "last_login": null,
     "is_superuser": false,
     "username": "bharat.solanki",
@@ -381,7 +381,7 @@
   "model": "users.user",
   "pk": 20,
   "fields": {
-    "password": "pbkdf2_sha256$600000$BF70E4HAYOcKiFpPbfH0LP$/jo5G/0IF/MSDvXoPiJxkYokvVXvbljEDNo3k+PCEI0=",
+    "password": "pbkdf2_sha256$600000$Al0UsWmwF3HRC2wsKfDdIe$bOw+k7hdSL578LNveBecwUrsBrie0d3ZMPrIvy6xocg=",
     "last_login": null,
     "is_superuser": false,
     "username": "mukesh.vaghela",
@@ -402,7 +402,7 @@
   "model": "users.user",
   "pk": 21,
   "fields": {
-    "password": "pbkdf2_sha256$600000$1naWZJelrsU3Pj2fMS99XQ$RnL/ShYlwtTdnL1DH2f6NqFPCdXto8T/hPtGfuJrblA=",
+    "password": "pbkdf2_sha256$600000$SdCy9CW5reoqbBy36tbHAi$VFuJi+SJRWqOrbuG38KBSMaNSEVD2cnGfIaZ6olCDe8=",
     "last_login": null,
     "is_superuser": false,
     "username": "bipin.vaghela",
@@ -423,7 +423,7 @@
   "model": "users.user",
   "pk": 22,
   "fields": {
-    "password": "pbkdf2_sha256$600000$ayjUpsS933gyacwPTNUzRU$2i14JnTWNeZDSO+s/SR0f4KGylI5jjiUrlKsQRa4WCg=",
+    "password": "pbkdf2_sha256$600000$aC9KnCl4Ruuf9qNpKuaO4T$sZe66B6/uK5FP9iYco5aNzYkg0zicN00zK7Z0Kan6t4=",
     "last_login": null,
     "is_superuser": false,
     "username": "narendra.shreemali",
@@ -444,7 +444,7 @@
   "model": "users.user",
   "pk": 23,
   "fields": {
-    "password": "pbkdf2_sha256$600000$fhb5yiXgnVDgBjFgu6XJ3J$98hozv/BN8KmJ83rYqImt1DfwBZLjrwUf7/taUVHHR4=",
+    "password": "pbkdf2_sha256$600000$ueexZ4N1u1OExiLpxDvlc5$zKl8lnnPIKCLK/hxYRvw06Och2Jg0T4ZRYDQBwZ16k8=",
     "last_login": null,
     "is_superuser": false,
     "username": "pradip.swm",
