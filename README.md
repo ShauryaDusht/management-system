@@ -65,7 +65,7 @@ This repository contains a Dockerized management system with:
 | Django Admin | http://localhost:8000/admin/ |
 | React Admin Frontend | http://localhost:5173 |
 | Inventory Mobile (HTMX) | http://localhost:8000/inventory/mobile/ |
-| http://localhost:8000/housekeeping/login/ |
+| Housekeeping Moble (HTMX) | http://localhost:8000/housekeeping/login/ |
 
 ## Contribution Workflow (Required)
 
