@@ -1,0 +1,58 @@
+from io import StringIO
+from pathlib import Path
+
+from django.contrib.auth import get_user_model
+from django.core.management import BaseCommand, call_command
+
+from apps.housekeeping.models import HKArea, HKScheduleTemplate, HKUserArea, HKWorker
+
+
+class Command(BaseCommand):
+    help = (
+        'Bootstrap complete shared dataset for teammates: '
+        'inventory fixtures + housekeeping seed (+ optional fixture dump).'
+    )
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--dump-fixtures',
+            action='store_true',
+            help='Also refresh backend/fixtures/users_hk.json and backend/fixtures/housekeeping.json in UTF-8.',
+        )
+
+    def handle(self, *args, **options):
+        self.stdout.write(self.style.SUCCESS('Starting full data bootstrap...'))
+
+        call_command('loaddata', 'apps/inventory/fixtures/inventory.json', verbosity=0)
+        self.stdout.write(self.style.SUCCESS('  ✓ Inventory fixture loaded'))
+
+        call_command('seed_housekeeping', verbosity=0)
+        self.stdout.write(self.style.SUCCESS('  ✓ Housekeeping/users seeded'))
+
+        if options.get('dump_fixtures'):
+            self._dump_fixtures()
+            self.stdout.write(self.style.SUCCESS('  ✓ UTF-8 fixtures refreshed'))
+
+        User = get_user_model()
+        self.stdout.write(self.style.SUCCESS(
+            '\n'.join([
+                'BOOTSTRAP COMPLETE',
+                f'  Users:           {User.objects.count()}',
+                f'  HK Areas:        {HKArea.objects.count()}',
+                f'  HK User-Areas:   {HKUserArea.objects.count()}',
+                f'  HK Workers:      {HKWorker.objects.count()}',
+                f'  HK Templates:    {HKScheduleTemplate.objects.count()}',
+            ])
+        ))
+
+    def _dump_fixtures(self):
+        fixtures_dir = Path('fixtures')
+        fixtures_dir.mkdir(parents=True, exist_ok=True)
+
+        hk_buffer = StringIO()
+        call_command('dumpdata', 'housekeeping', indent=2, stdout=hk_buffer)
+        Path('fixtures/housekeeping.json').write_text(hk_buffer.getvalue(), encoding='utf-8')
+
+        users_buffer = StringIO()
+        call_command('dumpdata', 'users', indent=2, stdout=users_buffer)
+        Path('fixtures/users_hk.json').write_text(users_buffer.getvalue(), encoding='utf-8')

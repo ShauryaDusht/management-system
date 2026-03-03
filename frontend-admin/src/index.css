@@ -1,10 +1,88 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 
-@layer base {
-  body {
-    @apply antialiased text-slate-900;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  }
+:root {
+  /* Brand */
+  --green-900: #1a3c34;
+  --green-800: #2d4a3e;
+  --green-700: #3d6b55;
+  --green-600: #4d8c6e;
+  --green-100: #d1fae5;
+  --orange-600: #c2622a;
+  --orange-100: #fff7ed;
+
+  /* UI */
+  --bg: #f4f2ed;
+  --surface: #ffffff;
+  --surface-2: #f9f8f6;
+  --border: #e5e1d8;
+  --border-2: #d1cdc4;
+  --text: #1a1a1a;
+  --text-2: #4a4540;
+  --text-3: #8a8480;
+
+  /* Status */
+  --pending: #f97316;
+  --ongoing: #3b82f6;
+  --completed: #16a34a;
+  --urgent: #dc2626;
+  --low-stock: #f59e0b;
+
+  /* Sidebar */
+  --sidebar-w: 220px;
+  --header-h: 60px;
+
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-2);
+  border-radius: 99px;
+}
+
+/* Utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
 }

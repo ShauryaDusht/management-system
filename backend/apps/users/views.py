@@ -52,8 +52,14 @@ class UserListCreateView(generics.ListCreateAPIView):
     GET  /api/auth/users/   — Admin: list all users
     POST /api/auth/users/   — Admin: create new user
     """
-    queryset = User.objects.all().order_by('role', 'first_name')
     permission_classes = [IsAdmin]
+
+    def get_queryset(self):
+        qs = User.objects.all().order_by('role', 'first_name')
+        role = self.request.query_params.get('role')
+        if role:
+            qs = qs.filter(role=role)
+        return qs
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

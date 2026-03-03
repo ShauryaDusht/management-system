@@ -41,7 +41,7 @@ services:
         condition: service_started
     command: >
       sh -c "python manage.py migrate &&
-             python manage.py loaddata apps/inventory/fixtures/inventory.json &&
+             python manage.py seed_all_data &&
              python manage.py collectstatic --noinput &&
              python manage.py runserver 0.0.0.0:8000"
 

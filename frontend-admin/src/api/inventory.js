@@ -59,16 +59,25 @@ export const inventoryAPI = {
 
 // ── Reports API ────────────────────────────────────────────────────────────
 // Kept as a separate export since it belongs to the reports domain, not inventory.
+export const getInventoryReport = () => api.get('/reports/inventory/')
+export const getRequestsReport = (params = {}) => api.get('/reports/requests/', { params })
+export const listMonthly = () => api.get('/reports/monthly/')
+export const generateMonthly = (month, year, overwrite = false) =>
+  api.post('/reports/monthly/generate/', { month, year, overwrite })
+export const getMonthly = (id) => api.get(`/reports/monthly/${id}/`)
+export const deleteMonthly = (id) => api.delete(`/reports/monthly/${id}/`)
+export const csvUrl = (id) => `${api.defaults.baseURL}/reports/monthly/${id}/csv/`
+export const pdfUrl = (id) => `${api.defaults.baseURL}/reports/monthly/${id}/pdf/`
+
 export const reportsAPI = {
-  getInventoryReport: () => api.get('/reports/inventory/'),
-  getRequestsReport: (params = {}) => api.get('/reports/requests/', { params }),
+  getInventoryReport,
+  getRequestsReport,
 
   // Monthly procurement reports (Phase 3 — backend not yet wired)
-  listMonthly: () => api.get('/reports/monthly/'),
-  generateMonthly: (month, year, overwrite = false) =>
-    api.post('/reports/monthly/generate/', { month, year, overwrite }),
-  getMonthly: (id) => api.get(`/reports/monthly/${id}/`),
-  deleteMonthly: (id) => api.delete(`/reports/monthly/${id}/`),
-  csvUrl: (id) => `${api.defaults.baseURL}/reports/monthly/${id}/csv/`,
-  pdfUrl: (id) => `${api.defaults.baseURL}/reports/monthly/${id}/pdf/`,
+  listMonthly,
+  generateMonthly,
+  getMonthly,
+  deleteMonthly,
+  csvUrl,
+  pdfUrl,
 }

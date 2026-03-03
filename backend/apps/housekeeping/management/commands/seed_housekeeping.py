@@ -29,13 +29,15 @@ class Command(BaseCommand):
 
         self.seed_areas()
         self.seed_caretakers()
+        self.seed_portal_accounts()
+        self.cleanup_legacy_accounts()
         self.seed_workers()
         self.seed_schedules()
 
         self.stdout.write(self.style.SUCCESS(f'''
 ✓ SEED COMPLETE
   Areas:     {HKArea.objects.count()}
-  Users:     {User.objects.filter(role__in=["caretaker","supervisor"]).count()}
+  Users:     {User.objects.filter(role__in=["admin","manager","inventory_manager","caretaker","supervisor"]).count()}
   Workers:   {HKWorker.objects.count()}
   Templates: {HKScheduleTemplate.objects.count()}
 
@@ -137,6 +139,35 @@ All accounts use password: {DEFAULT_PASSWORD}
             self.make_user(username, first, last, phone, 'supervisor', areas)
 
         self.stdout.write(f'  ✓ Users: {User.objects.filter(role__in=["caretaker","supervisor"]).count()}')
+
+    def seed_portal_accounts(self):
+        """
+        Core web portal accounts for admin/dashboard usage.
+        These users are intentionally area-agnostic and can access module dashboards.
+        """
+        accounts = [
+            ('admin', 'Admin', '', '', 'admin', []),
+            ('estate.manager', 'Estate', 'Manager', '', 'manager', []),
+            ('hostel.manager', 'Hostel', 'Manager', '', 'manager', []),
+            ('inv.manager', 'Inventory', 'Manager', '', 'inventory_manager', []),
+        ]
+        for username, first, last, phone, role, areas in accounts:
+            self.make_user(username, first, last, phone, role, areas)
+
+        self.stdout.write(
+            f'  ✓ Portal users: {User.objects.filter(role__in=["admin","manager","inventory_manager"]).count()}'
+        )
+
+    def cleanup_legacy_accounts(self):
+        """
+        Remove deprecated/old usernames so shared datasets remain clean and deterministic.
+        """
+        legacy_usernames = ['anil.hk', 'nikul.hk', 'lab.supervisor']
+        qs = User.objects.filter(username__in=legacy_usernames)
+        count = qs.count()
+        if count:
+            qs.delete()
+        self.stdout.write(f'  ✓ Legacy users removed: {count}')
 
     # ─────────────────────────────────────────────────────────────────────────
 

@@ -5,6 +5,7 @@ from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 
 from .models import Category, Item, ItemRequest, ItemIssue, StockEntry
 from .serializers import (
@@ -203,16 +204,18 @@ class ItemRequestListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         qs = ItemRequest.objects.select_related('item', 'requested_by', 'approved_by')
-        if user.is_supervisor:
+        if getattr(user, 'role', '') in ['supervisor', 'caretaker']:
             return qs.filter(requested_by=user)
         return qs
 
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [IsSupervisor()]
+            return [IsAuthenticated()]
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
+        if getattr(self.request.user, 'role', '') not in ['supervisor', 'caretaker']:
+            raise PermissionDenied('Only supervisors/caretakers can create item requests.')
         serializer.save(requested_by=self.request.user)
 
 
@@ -224,7 +227,7 @@ class ItemRequestDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         user = self.request.user
         qs = super().get_queryset()
-        if user.is_supervisor:
+        if getattr(user, 'role', '') in ['supervisor', 'caretaker']:
             return qs.filter(requested_by=user)
         return qs
 
@@ -327,7 +330,7 @@ class ItemIssueListView(generics.ListAPIView):
         qs = ItemIssue.objects.select_related(
             'request__item', 'request__requested_by', 'issued_by', 'return_recorded_by'
         )
-        if user.is_supervisor:
+        if getattr(user, 'role', '') in ['supervisor', 'caretaker']:
             return qs.filter(request__requested_by=user)
         return qs
 

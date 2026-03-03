@@ -3,6 +3,7 @@ from .htmx_views import (
     hk_login, hk_logout, hk_dashboard, hk_mark_task, hk_log_extra_work,
     hk_schedule, hk_attendance, hk_sunday_incharge,
     hk_stock, hk_stock_request, hk_profile, hk_alerts_manage,
+    hk_assign_reliever,
 )
 
 urlpatterns = [
@@ -14,6 +15,7 @@ urlpatterns = [
     path('schedule/', hk_schedule,          name='hk_schedule'),
     path('attendance/', hk_attendance,      name='hk_attendance'),
     path('attendance/sunday-incharge/', hk_sunday_incharge, name='hk_sunday_incharge'),
+    path('attendance/assign-reliever/', hk_assign_reliever, name='hk_assign_reliever'),
     path('stock/',    hk_stock,             name='hk_stock'),
     path('stock/request/', hk_stock_request, name='hk_stock_request'),
     path('profile/',  hk_profile,           name='hk_profile'),

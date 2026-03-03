@@ -1,0 +1,18 @@
+from django.urls import path
+
+from . import api_views
+from .htmx_urls import urlpatterns as htmx_patterns
+
+api_urlpatterns = [
+    path('areas/', api_views.HKAreaListView.as_view(), name='hk-api-areas'),
+    path('workers/', api_views.HKWorkerListView.as_view(), name='hk-api-workers'),
+    path('daily-records/', api_views.HKDailyRecordListView.as_view(), name='hk-api-records'),
+    path('schedule-templates/', api_views.HKScheduleTemplateListView.as_view(), name='hk-api-templates'),
+    path('attendance-summary/', api_views.HKAttendanceSummaryView.as_view(), name='hk-api-attendance'),
+    path('stock-requests/', api_views.HKStockRequestListView.as_view(), name='hk-api-stock'),
+    path('stock-requests/<int:pk>/status/', api_views.HKStockRequestStatusUpdateView.as_view(), name='hk-api-stock-status'),
+    path('alerts/', api_views.HKAlertListView.as_view(), name='hk-api-alerts'),
+    path('dashboard-summary/', api_views.HKDashboardSummaryView.as_view(), name='hk-api-dashboard'),
+]
+
+urlpatterns = htmx_patterns + api_urlpatterns

@@ -274,3 +274,36 @@ class HKAlert(models.Model):
 
     def __str__(self):
         return f"[{self.priority.upper()}] {self.title}"
+
+
+class HKRelieverSubstitution(models.Model):
+    """
+    When a permanent worker is absent, a reliever covers their slot for the day.
+    Logged by caretaker/supervisor. Auto-marks original worker as leave.
+    """
+    original_worker = models.ForeignKey(
+        HKWorker, on_delete=models.CASCADE,
+        related_name='substituted_by',
+    )
+    reliever = models.ForeignKey(
+        HKWorker, on_delete=models.CASCADE,
+        related_name='substitution_slots',
+    )
+    date = models.DateField()
+    area = models.ForeignKey(
+        HKArea, on_delete=models.CASCADE,
+        related_name='reliever_substitutions',
+    )
+    note = models.CharField(max_length=200, blank=True)
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, related_name='reliever_assignments',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['original_worker', 'date']
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.date} | {self.original_worker.name} -> {self.reliever.name}"

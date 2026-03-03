@@ -1,0 +1,194 @@
+<div class="card" id="att-{{ row.worker.id }}">
+
+  <!-- WORKER HEADER ROW -->
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+    <div style="width:42px;height:42px;border-radius:50%;
+      background:{% if row.substitution %}#c2622a{% else %}#2d4a3e{% endif %};
+      color:#fff;display:flex;align-items:center;justify-content:center;
+      font-weight:700;font-size:17px;flex-shrink:0;overflow:hidden">
+      {% if row.worker.photo %}
+        <img src="{{ row.worker.photo.url }}" style="width:100%;height:100%;object-fit:cover">
+      {% else %}
+        {{ row.worker.name|first|upper }}
+      {% endif %}
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:700;font-size:14px">{{ row.worker.name }}</div>
+      <div style="font-size:11px;color:#6b7280">
+        📱 {{ row.worker.phone|default:'—' }}
+        {% if row.worker.punching_no %} · #{{ row.worker.punching_no }}{% endif %}
+      </div>
+      {% if row.substitution %}
+      <div style="font-size:11px;background:#fef3c7;color:#92400e;border-radius:5px;
+        padding:2px 7px;margin-top:3px;display:inline-block;font-weight:600">
+        🔄 Reliever: {{ row.substitution.reliever.name }}
+      </div>
+      {% endif %}
+    </div>
+    <!-- RELIEVER BUTTON — only today, only if no sub yet -->
+    {% if is_today and not row.substitution %}
+    <button
+      onclick="document.getElementById('relpanel-{{ row.worker.id }}').style.display='block';this.style.display='none'"
+      style="background:#fef3c7;color:#92400e;border:1.5px solid #fde68a;border-radius:8px;
+        padding:7px 8px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap"
+      id="relbtn-{{ row.worker.id }}">
+      🔄 Reliever
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- RELIEVER ASSIGNMENT PANEL (hidden, opens on button click) -->
+  {% if is_today and not row.substitution %}
+  <div id="relpanel-{{ row.worker.id }}"
+    style="display:none;background:#fffbeb;border-radius:10px;padding:12px;margin-bottom:10px;border:1.5px solid #fde68a">
+    <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:9px">
+      Assign Reliever for {{ row.worker.name }}
+    </div>
+    <form hx-post="/housekeeping/attendance/assign-reliever/"
+          hx-target="#att-{{ row.worker.id }}"
+          hx-swap="outerHTML"
+          hx-encoding="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" name="original_worker_id" value="{{ row.worker.id }}">
+      <input type="hidden" name="area_id" value="{{ sel_area.id }}">
+      <div style="margin-bottom:9px">
+        <label style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:4px">
+          Select Reliever *
+        </label>
+        <select name="reliever_id" required
+          style="width:100%;border:1.5px solid #fde68a;border-radius:8px;padding:9px 10px;font-size:13px">
+          <option value="">— Choose reliever —</option>
+          {% for rel in all_relievers %}
+          <option value="{{ rel.id }}">
+            {{ rel.name }}{% if rel.phone %} · {{ rel.phone }}{% endif %}{% if rel.punching_no %} #{{ rel.punching_no }}{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="margin-bottom:9px">
+        <label style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:4px">
+          Reason (optional)
+        </label>
+        <input type="text" name="note" placeholder="e.g. Worker sick, on leave..."
+          style="border-color:#fde68a;font-size:13px;padding:8px 10px">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+        <button type="submit"
+          style="background:#92400e;color:#fff;border:none;border-radius:8px;
+            padding:10px;font-size:12px;font-weight:700;cursor:pointer">
+          ✅ Confirm
+        </button>
+        <button type="button"
+          onclick="document.getElementById('relpanel-{{ row.worker.id }}').style.display='none';
+                   document.getElementById('relbtn-{{ row.worker.id }}').style.display='block'"
+          style="background:#f3f4f6;color:#374151;border:none;border-radius:8px;
+            padding:10px;font-size:12px;font-weight:700;cursor:pointer">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- SUBSTITUTION CONFIRMED PANEL -->
+  {% if row.substitution %}
+  <div style="background:#fffbeb;border-radius:9px;padding:10px;margin-bottom:10px;border:1px solid #fde68a">
+    <div style="font-size:11px;font-weight:800;color:#92400e">🔄 Reliever Assigned</div>
+    <div style="font-size:14px;font-weight:700;margin-top:3px">{{ row.substitution.reliever.name }}</div>
+    <div style="font-size:11px;color:#6b7280">
+      📱 {{ row.substitution.reliever.phone|default:'—' }}
+      {% if row.substitution.reliever.punching_no %} · #{{ row.substitution.reliever.punching_no }}{% endif %}
+    </div>
+    {% if row.substitution.note %}
+    <div style="font-size:11px;color:#374151;margin-top:3px">📝 {{ row.substitution.note }}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- FIRST HALF -->
+  <div style="background:#fafafa;border-radius:9px;padding:9px;margin-bottom:7px;border:1px solid #efefef">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+      <span style="font-size:12px;font-weight:700;color:#374151">First Half (8AM–1PM)</span>
+      {% if row.first_att %}
+      <span class="bdg
+        {% if row.first_att.status == 'present' %}g
+        {% elif row.first_att.status == 'absent' %}r
+        {% elif row.first_att.status == 'late' %}y
+        {% else %}b{% endif %}">
+        {{ row.first_att.status|title }}{% if row.first_att.is_submitted %} ✓{% endif %}
+      </span>
+      {% else %}
+      <span class="bdg gr">Not Marked</span>
+      {% endif %}
+    </div>
+    {% if row.first_att and row.first_att.is_submitted %}
+    <div style="font-size:11px;color:#16a34a">✅ Submitted — locked</div>
+    {% elif not is_today or cur_half == 'first' %}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+      {% for sv, sl, bg, clr in attn_choices %}
+      <form hx-post="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}"
+            hx-target="#att-{{ row.worker.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="mark">
+        <input type="hidden" name="half" value="first">
+        <input type="hidden" name="worker_id" value="{{ row.worker.id }}">
+        <input type="hidden" name="status" value="{{ sv }}">
+        <button type="submit"
+          style="width:100%;border:none;border-radius:6px;padding:7px 2px;
+            font-size:10px;font-weight:700;cursor:pointer;
+            background:{{ bg }};color:{{ clr }};
+            {% if row.first_att and row.first_att.status == sv %}box-shadow:inset 0 0 0 2px #1f2937{% endif %}">
+          {{ sl }}
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="font-size:11px;color:#9ca3af">Period ended</div>
+    {% endif %}
+  </div>
+
+  <!-- SECOND HALF -->
+  <div style="background:#fafafa;border-radius:9px;padding:9px;border:1px solid #efefef">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+      <span style="font-size:12px;font-weight:700;color:#374151">Second Half (1PM–5PM)</span>
+      {% if row.second_att %}
+      <span class="bdg
+        {% if row.second_att.status == 'present' %}g
+        {% elif row.second_att.status == 'absent' %}r
+        {% elif row.second_att.status == 'late' %}y
+        {% else %}b{% endif %}">
+        {{ row.second_att.status|title }}{% if row.second_att.is_submitted %} ✓{% endif %}
+      </span>
+      {% else %}
+      <span class="bdg gr">Not Marked</span>
+      {% endif %}
+    </div>
+    {% if row.second_att and row.second_att.is_submitted %}
+    <div style="font-size:11px;color:#16a34a">✅ Submitted — locked</div>
+    {% elif not is_today or cur_half == 'second' %}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+      {% for sv, sl, bg, clr in attn_choices %}
+      <form hx-post="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}"
+            hx-target="#att-{{ row.worker.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="mark">
+        <input type="hidden" name="half" value="second">
+        <input type="hidden" name="worker_id" value="{{ row.worker.id }}">
+        <input type="hidden" name="status" value="{{ sv }}">
+        <button type="submit"
+          style="width:100%;border:none;border-radius:6px;padding:7px 2px;
+            font-size:10px;font-weight:700;cursor:pointer;
+            background:{{ bg }};color:{{ clr }};
+            {% if row.second_att and row.second_att.status == sv %}box-shadow:inset 0 0 0 2px #1f2937{% endif %}">
+          {{ sl }}
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="font-size:11px;color:#9ca3af">Available after 1PM</div>
+    {% endif %}
+  </div>
+
+</div>

@@ -5,9 +5,13 @@
 {% block n3 %}on{% endblock %}
 
 {% block content %}
+
 {% if user_areas.count > 1 %}
 <div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px">
-  {% for area in user_areas %}<a href="?area={{ area.id }}&date={{ sel_date|date:'Y-m-d' }}" class="atab {% if sel_area.id == area.id %}on{% endif %}">{{ area.name }}</a>{% endfor %}
+  {% for area in user_areas %}
+  <a href="?area={{ area.id }}&date={{ sel_date|date:'Y-m-d' }}"
+    class="atab {% if sel_area.id == area.id %}on{% endif %}">{{ area.name }}</a>
+  {% endfor %}
 </div>
 {% endif %}
 
@@ -22,14 +26,29 @@
     </form>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
-    <div style="text-align:center;padding:7px;background:#d1fae5;border-radius:8px"><div style="font-size:20px;font-weight:900;color:#065f46">{{ present_first }}</div><div style="font-size:10px;color:#065f46">1st Half</div></div>
-    <div style="text-align:center;padding:7px;background:#dbeafe;border-radius:8px"><div style="font-size:20px;font-weight:900;color:#1d4ed8">{{ present_second }}</div><div style="font-size:10px;color:#1d4ed8">2nd Half</div></div>
-    <div style="text-align:center;padding:7px;background:#f3f4f6;border-radius:8px"><div style="font-size:20px;font-weight:900;color:#374151">{{ total_count }}</div><div style="font-size:10px;color:#6b7280">Workers</div></div>
+    <div style="text-align:center;padding:7px;background:#d1fae5;border-radius:8px">
+      <div style="font-size:20px;font-weight:900;color:#065f46">{{ present_first }}</div>
+      <div style="font-size:10px;color:#065f46">Present 1st</div>
+    </div>
+    <div style="text-align:center;padding:7px;background:#dbeafe;border-radius:8px">
+      <div style="font-size:20px;font-weight:900;color:#1d4ed8">{{ present_second }}</div>
+      <div style="font-size:10px;color:#1d4ed8">Present 2nd</div>
+    </div>
+    <div style="text-align:center;padding:7px;background:#f3f4f6;border-radius:8px">
+      <div style="font-size:20px;font-weight:900;color:#374151">{{ total_count }}</div>
+      <div style="font-size:10px;color:#6b7280">Workers</div>
+    </div>
   </div>
-  {% if is_today %}<div style="font-size:12px;font-weight:600;color:{% if cur_half == 'first' %}#c2622a{% else %}#2d4a3e{% endif %}">🕐 Active: {{ cur_half|title }} Half ({% if cur_half == 'first' %}8AM–1PM{% else %}1PM–5PM{% endif %})</div>{% endif %}
+  {% if is_today %}
+  <div style="font-size:12px;font-weight:600;
+    color:{% if cur_half == 'first' %}#c2622a{% else %}#2d4a3e{% endif %}">
+    🕐 Active: {{ cur_half|title }} Half
+    ({% if cur_half == 'first' %}8AM–1PM{% else %}1PM–5PM{% endif %})
+  </div>
+  {% endif %}
 </div>
 
-<!-- Workers grouped by type -->
+<!-- Workers grouped by type, each uses the partial -->
 {% for wtype, rows in type_groups.items %}
 <div class="wtag">
   {% if wtype == 'room' %}🛏 Room Staff
@@ -39,109 +58,42 @@
   {% else %}👷 General{% endif %}
 </div>
 {% for row in rows %}
-<div class="card" id="att-{{ row.worker.id }}">
-  <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
-    <div style="width:42px;height:42px;border-radius:50%;background:#2d4a3e;color:#fff;
-      display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;flex-shrink:0;overflow:hidden">
-      {% if row.worker.photo %}<img src="{{ row.worker.photo.url }}" style="width:100%;height:100%;object-fit:cover">{% else %}{{ row.worker.name|first|upper }}{% endif %}
-    </div>
-    <div style="flex:1">
-      <div style="font-weight:700;font-size:14px">{{ row.worker.name }}</div>
-      <div style="font-size:11px;color:#6b7280">📱 {{ row.worker.phone|default:'—' }}{% if row.worker.punching_no %} · #{{ row.worker.punching_no }}{% endif %}</div>
-    </div>
-  </div>
-
-  <!-- FIRST HALF -->
-  <div style="background:#fafafa;border-radius:9px;padding:9px;margin-bottom:7px;border:1px solid #efefef">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
-      <span style="font-size:12px;font-weight:700;color:#374151">First Half (8AM–1PM)</span>
-      {% if row.first_att %}
-        <span class="bdg {% if row.first_att.status == 'present' %}g{% elif row.first_att.status == 'absent' %}r{% elif row.first_att.status == 'late' %}y{% else %}b{% endif %}">
-          {{ row.first_att.status|title }}{% if row.first_att.is_submitted %} ✓{% endif %}
-        </span>
-      {% else %}<span class="bdg gr">Not Marked</span>{% endif %}
-    </div>
-    {% if row.first_att and row.first_att.is_submitted %}
-    <div style="font-size:11px;color:#16a34a">✅ Submitted — locked</div>
-    {% elif not is_today or cur_half == 'first' %}
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
-      {% for sv, sl, bg, clr in attn_choices %}
-      <form hx-post="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}"
-            hx-target="#att-{{ row.worker.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="mark">
-        <input type="hidden" name="half" value="first">
-        <input type="hidden" name="worker_id" value="{{ row.worker.id }}">
-        <input type="hidden" name="status" value="{{ sv }}">
-        <button type="submit" style="width:100%;border:none;border-radius:6px;padding:7px 3px;
-          font-size:10px;font-weight:700;cursor:pointer;background:{{ bg }};color:{{ clr }};
-          {% if row.first_att and row.first_att.status == sv %}box-shadow:inset 0 0 0 2px #1f2937{% endif %}">{{ sl }}</button>
-      </form>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div style="font-size:11px;color:#9ca3af">Period ended</div>
-    {% endif %}
-  </div>
-
-  <!-- SECOND HALF -->
-  <div style="background:#fafafa;border-radius:9px;padding:9px;border:1px solid #efefef">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
-      <span style="font-size:12px;font-weight:700;color:#374151">Second Half (1PM–5PM)</span>
-      {% if row.second_att %}
-        <span class="bdg {% if row.second_att.status == 'present' %}g{% elif row.second_att.status == 'absent' %}r{% elif row.second_att.status == 'late' %}y{% else %}b{% endif %}">
-          {{ row.second_att.status|title }}{% if row.second_att.is_submitted %} ✓{% endif %}
-        </span>
-      {% else %}<span class="bdg gr">Not Marked</span>{% endif %}
-    </div>
-    {% if row.second_att and row.second_att.is_submitted %}
-    <div style="font-size:11px;color:#16a34a">✅ Submitted — locked</div>
-    {% elif not is_today or cur_half == 'second' %}
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
-      {% for sv, sl, bg, clr in attn_choices %}
-      <form hx-post="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}"
-            hx-target="#att-{{ row.worker.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="mark">
-        <input type="hidden" name="half" value="second">
-        <input type="hidden" name="worker_id" value="{{ row.worker.id }}">
-        <input type="hidden" name="status" value="{{ sv }}">
-        <button type="submit" style="width:100%;border:none;border-radius:6px;padding:7px 3px;
-          font-size:10px;font-weight:700;cursor:pointer;background:{{ bg }};color:{{ clr }};
-          {% if row.second_att and row.second_att.status == sv %}box-shadow:inset 0 0 0 2px #1f2937{% endif %}">{{ sl }}</button>
-      </form>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div style="font-size:11px;color:#9ca3af">Available after 1PM</div>
-    {% endif %}
-  </div>
-</div>
+{% include 'housekeeping/mobile/partials/attendance_worker_card.html' %}
 {% endfor %}
 {% endfor %}
 
 {% if not worker_rows %}
-<div class="card" style="text-align:center;color:#9ca3af;padding:24px">No workers found for this area.</div>
+<div class="card" style="text-align:center;color:#9ca3af;padding:24px">
+  No workers found for this area.
+</div>
 {% endif %}
 
-<!-- SUBMIT BUTTON -->
+<!-- SUBMIT BUTTONS -->
 {% if worker_rows %}
-<div style="margin-top:6px">
+<div style="margin-top:8px">
   {% if is_today and cur_half == 'first' and not first_submitted %}
   <form method="post" action="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}">
-    {% csrf_token %}<input type="hidden" name="action" value="submit_half"><input type="hidden" name="half" value="first">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="submit_half">
+    <input type="hidden" name="half" value="first">
     <button type="submit" class="btn-s">✅ Submit First Half Attendance</button>
   </form>
+
   {% elif is_today and cur_half == 'second' and not second_submitted %}
   <form method="post" action="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}">
-    {% csrf_token %}<input type="hidden" name="action" value="submit_half"><input type="hidden" name="half" value="second">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="submit_half">
+    <input type="hidden" name="half" value="second">
     <button type="submit" class="btn-p">✅ Submit Second Half Attendance</button>
   </form>
+
   {% elif first_submitted and second_submitted %}
-  <div class="card" style="text-align:center;background:#d1fae5;border:1px solid #6ee7b7;color:#065f46;font-weight:700;padding:14px">
+  <div class="card" style="text-align:center;background:#d1fae5;border:1px solid #6ee7b7;
+    color:#065f46;font-weight:700;padding:14px">
     ✅ Both halves submitted for today
   </div>
   {% endif %}
 </div>
 {% endif %}
+
 {% endblock %}

@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     HKArea, HKUserArea, HKWorker, HKScheduleTemplate, HKDailyRecord,
     HKExtraWork, HKAttendanceRecord, HKSundayIncharge,
-    HKAreaStock, HKStockRequest, HKAlert,
+    HKAreaStock, HKStockRequest, HKAlert, HKRelieverSubstitution,
 )
 
 
@@ -86,3 +86,11 @@ class HKAlertAdmin(admin.ModelAdmin):
     list_display = ('title', 'priority', 'is_active', 'created_by', 'created_at')
     list_filter = ('priority', 'is_active')
     filter_horizontal = ('target_areas',)
+
+
+@admin.register(HKRelieverSubstitution)
+class HKRelieverSubstitutionAdmin(admin.ModelAdmin):
+    list_display = ('date', 'original_worker', 'reliever', 'area', 'assigned_by', 'created_at')
+    list_filter = ('date', 'area')
+    search_fields = ('original_worker__name', 'reliever__name')
+    date_hierarchy = 'date'

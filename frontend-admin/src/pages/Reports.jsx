@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import Layout from '../layout/Layout'
 import { Button, Input, Select, Spinner, StatusBadge, Alert, Modal } from '../components/ui'
-import { getInventoryReport, getRequestsReport, reportsAPI } from '../api/inventory'
-import api from '../api/client'
+import {
+  csvUrl,
+  deleteMonthly,
+  generateMonthly,
+  getInventoryReport,
+  getMonthly,
+  getRequestsReport,
+  listMonthly,
+  pdfUrl,
+} from '../api/inventory'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -320,7 +328,7 @@ function MonthlyTab() {
 
   // Load history on mount
   useEffect(() => {
-    reportsAPI.listMonthly()
+    listMonthly()
       .then((r) => setHistory(r.data))
       .catch(() => setHistoryError('Could not load report history.'))
       .finally(() => setHistoryLoading(false))
@@ -329,7 +337,7 @@ function MonthlyTab() {
   const loadReport = (id) => {
     setReportLoading(true)
     setActiveReport(null)
-    reportsAPI.getMonthly(id)
+    getMonthly(id)
       .then((r) => setActiveReport(r.data))
       .catch(() => setGenError('Could not load report details.'))
       .finally(() => setReportLoading(false))
@@ -340,7 +348,7 @@ function MonthlyTab() {
     setGenError('')
     setConflictId(null)
     try {
-      const res = await reportsAPI.generateMonthly(selMonth, selYear, overwrite)
+      const res = await generateMonthly(selMonth, selYear, overwrite)
       const newReport = res.data
       // Update history list
       setHistory((prev) => {
@@ -367,7 +375,7 @@ function MonthlyTab() {
     if (!deleteTarget) return
     setDeleting(true)
     try {
-      await reportsAPI.deleteMonthly(deleteTarget.id)
+      await deleteMonthly(deleteTarget.id)
       setHistory((prev) => prev.filter((r) => r.id !== deleteTarget.id))
       if (activeReport?.id === deleteTarget.id) setActiveReport(null)
       setDeleteTarget(null)
@@ -436,7 +444,7 @@ function MonthlyTab() {
                 variant="outline"
                 size="sm"
                 onClick={() => downloadViaToken(
-                  reportsAPI.csvUrl(activeReport.id),
+                  csvUrl(activeReport.id),
                   `procurement_${activeReport.year}_${String(activeReport.month).padStart(2,'0')}.csv`
                 )}
               >
@@ -446,7 +454,7 @@ function MonthlyTab() {
                 variant="outline"
                 size="sm"
                 onClick={() => downloadViaToken(
-                  reportsAPI.pdfUrl(activeReport.id),
+                  pdfUrl(activeReport.id),
                   `procurement_${activeReport.year}_${String(activeReport.month).padStart(2,'0')}.pdf`
                 )}
               >
@@ -515,7 +523,7 @@ function MonthlyTab() {
                         </button>
                         <button
                           onClick={() => downloadViaToken(
-                            reportsAPI.csvUrl(r.id),
+                            csvUrl(r.id),
                             `procurement_${r.year}_${String(r.month).padStart(2,'0')}.csv`
                           )}
                           className="text-xs text-slate-500 hover:underline"
@@ -524,7 +532,7 @@ function MonthlyTab() {
                         </button>
                         <button
                           onClick={() => downloadViaToken(
-                            reportsAPI.pdfUrl(r.id),
+                            pdfUrl(r.id),
                             `procurement_${r.year}_${String(r.month).padStart(2,'0')}.pdf`
                           )}
                           className="text-xs text-slate-500 hover:underline"

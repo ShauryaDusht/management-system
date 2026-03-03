@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+
 import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
@@ -9,10 +10,11 @@ export default function LoginPage() {
   const [form, setForm] = useState({ username: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
-    setError('')
+    if (error) setError('')
   }
 
   const handleSubmit = async (e) => {
@@ -20,41 +22,62 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const user = await login(form.username, form.password)
-      // Role-based redirect
-      if (user.role === 'admin') navigate('/dashboard', { replace: true })
-      else if (user.role === 'manager') navigate('/requests', { replace: true })
-      else navigate('/my-requests', { replace: true })
+      await login(form.username.trim(), form.password)
+      navigate('/', { replace: true })
     } catch (err) {
-      const msg = err.response?.data?.detail || 'Invalid username or password.'
-      setError(msg)
+      setError(err.response?.data?.detail || 'Invalid username or password.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
-            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory System</h1>
-          <p className="text-gray-500 mt-1 text-sm">Sign in to your account</p>
-        </div>
+    <div className="auth-page">
+      <div className="auth-bg">
+        <span className="orb orb-a" />
+        <span className="orb orb-b" />
+        <span className="orb orb-c" />
+      </div>
 
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="auth-layout">
+        <section className="auth-left">
+          <div className="badge">IITGN</div>
+          <h1>Campus Operations Portal</h1>
+          <p>
+            Manage Inventory, Housekeeping, Horticulture, Reports, and Users in one secure place.
+          </p>
+
+          <div className="feature-grid">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Username
-              </label>
+              <strong>Inventory</strong>
+              <span>Stock, requests, and issue flow</span>
+            </div>
+            <div>
+              <strong>Housekeeping</strong>
+              <span>Tasks, attendance, and relievers</span>
+            </div>
+            <div>
+              <strong>Horticulture</strong>
+              <span>Zone and supervisor controls</span>
+            </div>
+            <div>
+              <strong>Reports</strong>
+              <span>Weekly and monthly exports</span>
+            </div>
+          </div>
+
+          <small>Authorized staff access only.</small>
+        </section>
+
+        <section className="auth-right">
+          <header>
+            <h2>Welcome Back</h2>
+            <p>Login with your campus management account.</p>
+          </header>
+
+          <form onSubmit={handleSubmit} className="auth-form">
+            <label>
+              Username
               <input
                 type="text"
                 name="username"
@@ -62,46 +85,305 @@ export default function LoginPage() {
                 onChange={handleChange}
                 required
                 autoFocus
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                placeholder="Enter your username"
+                placeholder="Enter username"
               />
-            </div>
+            </label>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                required
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                placeholder="Enter your password"
-              />
-            </div>
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
-                {error}
+            <label>
+              Password
+              <div className="password-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  required
+                  placeholder="Enter password"
+                />
+                <button type="button" onClick={() => setShowPassword((v) => !v)}>
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
               </div>
-            )}
+            </label>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-2.5 rounded-lg text-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
+            {error ? <div className="error-box">{error}</div> : null}
+
+            <button type="submit" className="submit-btn" disabled={loading}>
+              {loading ? 'Signing in...' : 'Login to Portal'}
             </button>
           </form>
-        </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
-          Contact your administrator to reset your password.
-        </p>
+          <footer>Need help? Contact system admin.</footer>
+        </section>
       </div>
+
+      <style>{`
+        .auth-page {
+          min-height: 100vh;
+          padding: 20px;
+          display: grid;
+          place-items: center;
+          overflow: hidden;
+          position: relative;
+          background: linear-gradient(155deg, #f1eee8 0%, #e9e3d9 55%, #f4f2ed 100%);
+        }
+
+        .auth-bg {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+        }
+
+        .orb {
+          position: absolute;
+          border-radius: 999px;
+          filter: blur(8px);
+          opacity: 0.8;
+          animation: float 7s ease-in-out infinite;
+        }
+
+        .orb-a {
+          width: 380px;
+          height: 380px;
+          left: -120px;
+          top: -90px;
+          background: radial-gradient(circle at 35% 35%, rgba(61, 107, 85, 0.35), rgba(61, 107, 85, 0));
+        }
+
+        .orb-b {
+          width: 320px;
+          height: 320px;
+          right: -70px;
+          top: 18%;
+          background: radial-gradient(circle at 35% 35%, rgba(194, 98, 42, 0.3), rgba(194, 98, 42, 0));
+          animation-delay: 1.6s;
+        }
+
+        .orb-c {
+          width: 340px;
+          height: 340px;
+          right: 12%;
+          bottom: -120px;
+          background: radial-gradient(circle at 35% 35%, rgba(26, 60, 52, 0.3), rgba(26, 60, 52, 0));
+          animation-delay: 2.4s;
+        }
+
+        .auth-layout {
+          position: relative;
+          width: 100%;
+          max-width: 1020px;
+          min-height: 620px;
+          display: grid;
+          grid-template-columns: 1.1fr 0.9fr;
+          border: 1px solid var(--border);
+          border-radius: 22px;
+          overflow: hidden;
+          background: var(--surface);
+          box-shadow: 0 28px 70px rgba(16, 24, 40, 0.18);
+        }
+
+        .auth-left {
+          background: linear-gradient(145deg, #1a3c34 0%, #2d4a3e 42%, #3d6b55 100%);
+          color: #fff;
+          padding: 42px;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .badge {
+          width: fit-content;
+          padding: 5px 11px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.24);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          background: rgba(255, 255, 255, 0.08);
+          margin-bottom: 14px;
+          color: #fef3c7;
+        }
+
+        .auth-left h1 {
+          margin: 0;
+          font-size: clamp(28px, 3vw, 40px);
+          line-height: 1.08;
+          letter-spacing: -0.02em;
+        }
+
+        .auth-left p {
+          margin: 12px 0 24px;
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.82);
+          max-width: 420px;
+        }
+
+        .feature-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .feature-grid > div {
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 11px;
+          background: rgba(255, 255, 255, 0.08);
+          padding: 10px 11px;
+          display: grid;
+          gap: 4px;
+        }
+
+        .feature-grid strong {
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        .feature-grid span {
+          font-size: 11px;
+          color: rgba(255, 255, 255, 0.78);
+          line-height: 1.35;
+        }
+
+        .auth-left small {
+          margin-top: auto;
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.74);
+        }
+
+        .auth-right {
+          background: #fdfcf9;
+          padding: 38px 30px;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .auth-right header h2 {
+          margin: 0;
+          color: var(--green-900);
+          font-size: 30px;
+          letter-spacing: -0.02em;
+        }
+
+        .auth-right header p {
+          margin: 8px 0 18px;
+          font-size: 13px;
+          color: var(--text-3);
+        }
+
+        .auth-form {
+          display: grid;
+          gap: 14px;
+        }
+
+        .auth-form label {
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--text-2);
+          display: grid;
+          gap: 6px;
+        }
+
+        .auth-form input {
+          width: 100%;
+          border: 1.5px solid #d1cdc4;
+          border-radius: 10px;
+          padding: 12px 14px;
+          font-size: 14px;
+          background: #fff;
+          outline: none;
+          transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .auth-form input:focus {
+          border-color: #3d6b55;
+          box-shadow: 0 0 0 3px rgba(77, 140, 110, 0.14);
+        }
+
+        .password-wrap {
+          position: relative;
+        }
+
+        .password-wrap input {
+          padding-right: 82px;
+        }
+
+        .password-wrap button {
+          position: absolute;
+          right: 8px;
+          top: 50%;
+          transform: translateY(-50%);
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          background: #fff;
+          padding: 6px 10px;
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--text-2);
+        }
+
+        .error-box {
+          background: #fee2e2;
+          border: 1px solid #fca5a5;
+          border-radius: 10px;
+          color: #991b1b;
+          font-size: 13px;
+          font-weight: 600;
+          padding: 10px 12px;
+        }
+
+        .submit-btn {
+          border: none;
+          border-radius: 10px;
+          background: linear-gradient(135deg, #2d4a3e, #1a3c34);
+          color: #fff;
+          padding: 12px 14px;
+          font-size: 14px;
+          font-weight: 700;
+          transition: transform 0.15s, filter 0.15s;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+          transform: translateY(-1px);
+          filter: brightness(1.05);
+        }
+
+        .submit-btn:disabled {
+          opacity: 0.72;
+          cursor: not-allowed;
+        }
+
+        .auth-right footer {
+          margin-top: auto;
+          border-top: 1px solid var(--border);
+          padding-top: 12px;
+          font-size: 12px;
+          color: var(--text-3);
+        }
+
+        @media (max-width: 960px) {
+          .auth-layout {
+            max-width: 520px;
+            min-height: auto;
+            grid-template-columns: 1fr;
+          }
+
+          .auth-left {
+            padding: 28px 24px;
+          }
+
+          .feature-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .auth-right {
+            padding: 28px 24px;
+          }
+        }
+
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+      `}</style>
     </div>
   )
 }
