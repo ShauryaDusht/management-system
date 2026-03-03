@@ -92,7 +92,7 @@
     style="width:100%;border:none;border-radius:10px;padding:10px 4px;
     font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.4;
     background:#2d4a3e;color:#fff;transition:opacity .2s">
-    🧹 Floor<br>
+    🧹 {{ tab_label_floor }}<br>
     <span style="font-size:10px;font-weight:400;opacity:.85">
       {% if grouped.floor %}{{ grouped.floor|length }}{% else %}0{% endif %} tasks
     </span>
@@ -102,7 +102,7 @@
     style="width:100%;border:none;border-radius:10px;padding:10px 4px;
     font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.4;
     background:#c2622a;color:#fff;transition:opacity .2s">
-    🛏 Room<br>
+    🛏 {{ tab_label_room }}<br>
     <span style="font-size:10px;font-weight:400;opacity:.85">
       {% if grouped.room %}{{ grouped.room|length }}{% else %}0{% endif %} tasks
     </span>
@@ -112,7 +112,7 @@
     style="width:100%;border:none;border-radius:10px;padding:10px 4px;
     font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.4;
     background:#1d4ed8;color:#fff;transition:opacity .2s">
-    🚿 WR<br>
+    🚿 {{ tab_label_washroom }}<br>
     <span style="font-size:10px;font-weight:400;opacity:.85">
       {% if grouped.washroom %}{{ grouped.washroom|length }}{% else %}0{% endif %} tasks
     </span>
@@ -132,7 +132,7 @@
      TAB: FLOOR STAFF
      ══════════════════════════════════════ -->
 <div id="tab-floor" style="display:none">
-  <div class="wtag">🧹 Floor Staff</div>
+  <div class="wtag">🧹 {{ heading_floor }}</div>
   {% for record in grouped.floor %}
   {% if 'break' in record.schedule.task_name|lower or 'lunch' in record.schedule.task_name|lower %}
   <div style="text-align:center;color:#9ca3af;font-size:11px;padding:3px 0">
@@ -173,7 +173,7 @@
      TAB: ROOM STAFF
      ══════════════════════════════════════ -->
 <div id="tab-room" style="display:none">
-  <div class="wtag">🛏 Room Staff</div>
+  <div class="wtag">🛏 {{ heading_room }}</div>
   {% for record in grouped.room %}
   {% if 'break' in record.schedule.task_name|lower or 'lunch' in record.schedule.task_name|lower %}
   <div style="text-align:center;color:#9ca3af;font-size:11px;padding:3px 0">
@@ -214,7 +214,7 @@
      TAB: WASHROOM STAFF
      ══════════════════════════════════════ -->
 <div id="tab-washroom" style="display:none">
-  <div class="wtag">🚿 Washroom Staff</div>
+  <div class="wtag">🚿 {{ heading_washroom }}</div>
   {% for record in grouped.washroom %}
   {% if 'break' in record.schedule.task_name|lower or 'lunch' in record.schedule.task_name|lower %}
   <div style="text-align:center;color:#9ca3af;font-size:11px;padding:3px 0">

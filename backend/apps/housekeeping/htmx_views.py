@@ -141,6 +141,22 @@ def hk_dashboard(request):
         tag = rec.schedule.worker_tag or "general"
         grouped.setdefault(tag, []).append(rec)
 
+    is_common_area = bool(sel_area and sel_area.name == "Common Area")
+    if is_common_area:
+        tab_label_floor = "Route A"
+        tab_label_room = "Core Area"
+        tab_label_washroom = "Night Route"
+        heading_floor = "Day Route Operations"
+        heading_room = "Core Common Zones"
+        heading_washroom = "Night Touch-up Route"
+    else:
+        tab_label_floor = "Floor"
+        tab_label_room = "Room"
+        tab_label_washroom = "WR"
+        heading_floor = "Floor Staff"
+        heading_room = "Room Staff"
+        heading_washroom = "Washroom Staff"
+
     total = len(records)
     done = sum(1 for rec in records if rec.status == "done")
     pct = int((done / total) * 100) if total else 0
@@ -174,6 +190,12 @@ def hk_dashboard(request):
         "upcoming_sunday": upcoming_sunday,
         "area_workers": area_workers,
         "extra_works": extra_works,
+        "tab_label_floor": tab_label_floor,
+        "tab_label_room": tab_label_room,
+        "tab_label_washroom": tab_label_washroom,
+        "heading_floor": heading_floor,
+        "heading_room": heading_room,
+        "heading_washroom": heading_washroom,
     })
 
 
@@ -244,6 +266,7 @@ def hk_schedule(request):
     user = request.user
     user_areas = get_user_areas(user)
     sel_area = selected_area(request, user_areas)
+    is_common_area = bool(sel_area and sel_area.name == "Common Area")
 
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     weekly = []
@@ -261,6 +284,7 @@ def hk_schedule(request):
     return render(request, "housekeeping/mobile/schedule.html", {
         "user_areas": user_areas,
         "selected_area": sel_area,
+        "is_common_area": is_common_area,
         "weekly": weekly,
         "today_dow": timezone.localdate().weekday(),
         "tag_labels": WORKER_TAG_LABELS,
@@ -280,7 +304,7 @@ def hk_attendance(request):
         sel_date = timezone.localdate()
 
     workers = HKWorker.objects.filter(
-        area=sel_area, is_active=True
+        area=sel_area, is_active=True, is_reliever=False
     ).order_by("worker_type", "name") if sel_area else HKWorker.objects.none()
 
     cur_half = current_half()

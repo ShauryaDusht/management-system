@@ -231,7 +231,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 307,
+  "pk": 332,
   "fields": {
     "user": 6,
     "area": 1
@@ -239,7 +239,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 308,
+  "pk": 333,
   "fields": {
     "user": 7,
     "area": 2
@@ -247,7 +247,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 309,
+  "pk": 334,
   "fields": {
     "user": 7,
     "area": 3
@@ -255,7 +255,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 310,
+  "pk": 335,
   "fields": {
     "user": 8,
     "area": 9
@@ -263,7 +263,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 311,
+  "pk": 336,
   "fields": {
     "user": 9,
     "area": 4
@@ -271,7 +271,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 312,
+  "pk": 337,
   "fields": {
     "user": 9,
     "area": 5
@@ -279,7 +279,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 313,
+  "pk": 338,
   "fields": {
     "user": 10,
     "area": 6
@@ -287,7 +287,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 314,
+  "pk": 339,
   "fields": {
     "user": 10,
     "area": 7
@@ -295,7 +295,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 315,
+  "pk": 340,
   "fields": {
     "user": 11,
     "area": 8
@@ -303,7 +303,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 316,
+  "pk": 341,
   "fields": {
     "user": 12,
     "area": 10
@@ -311,7 +311,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 317,
+  "pk": 342,
   "fields": {
     "user": 12,
     "area": 12
@@ -319,7 +319,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 318,
+  "pk": 343,
   "fields": {
     "user": 13,
     "area": 11
@@ -327,7 +327,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 319,
+  "pk": 344,
   "fields": {
     "user": 14,
     "area": 23
@@ -335,7 +335,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 320,
+  "pk": 345,
   "fields": {
     "user": 15,
     "area": 18
@@ -343,7 +343,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 321,
+  "pk": 346,
   "fields": {
     "user": 15,
     "area": 20
@@ -351,7 +351,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 322,
+  "pk": 347,
   "fields": {
     "user": 16,
     "area": 22
@@ -359,7 +359,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 323,
+  "pk": 348,
   "fields": {
     "user": 17,
     "area": 22
@@ -367,7 +367,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 324,
+  "pk": 349,
   "fields": {
     "user": 18,
     "area": 13
@@ -375,7 +375,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 325,
+  "pk": 350,
   "fields": {
     "user": 19,
     "area": 15
@@ -383,7 +383,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 326,
+  "pk": 351,
   "fields": {
     "user": 19,
     "area": 14
@@ -391,7 +391,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 327,
+  "pk": 352,
   "fields": {
     "user": 20,
     "area": 21
@@ -399,7 +399,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 328,
+  "pk": 353,
   "fields": {
     "user": 21,
     "area": 21
@@ -407,7 +407,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 329,
+  "pk": 354,
   "fields": {
     "user": 22,
     "area": 16
@@ -415,7 +415,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 330,
+  "pk": 355,
   "fields": {
     "user": 22,
     "area": 19
@@ -423,7 +423,7 @@
 },
 {
   "model": "housekeeping.hkuserarea",
-  "pk": 331,
+  "pk": 356,
   "fields": {
     "user": 23,
     "area": 17
@@ -1108,10 +1108,10 @@
     "name": "Yogesh Vaghela",
     "phone": "9998100804",
     "punching_no": "80",
-    "worker_type": "general",
+    "worker_type": "room",
     "shift": "day",
     "area": 23,
-    "supervisor": null,
+    "supervisor": 14,
     "photo": "",
     "is_active": true,
     "is_reliever": false
@@ -1124,10 +1124,10 @@
     "name": "Vinayak Solanki",
     "phone": "9023271834",
     "punching_no": "240",
-    "worker_type": "general",
-    "shift": "day",
+    "worker_type": "washroom",
+    "shift": "night",
     "area": 23,
-    "supervisor": null,
+    "supervisor": 14,
     "photo": "",
     "is_active": true,
     "is_reliever": false
@@ -1140,10 +1140,10 @@
     "name": "Anil Thakur",
     "phone": "9265665289",
     "punching_no": "542",
-    "worker_type": "general",
+    "worker_type": "floor",
     "shift": "day",
     "area": 23,
-    "supervisor": null,
+    "supervisor": 14,
     "photo": "",
     "is_active": true,
     "is_reliever": false
@@ -1156,10 +1156,10 @@
     "name": "Suresh",
     "phone": "",
     "punching_no": "",
-    "worker_type": "general",
+    "worker_type": "floor",
     "shift": "day",
     "area": 23,
-    "supervisor": null,
+    "supervisor": 14,
     "photo": "",
     "is_active": true,
     "is_reliever": false
@@ -1172,10 +1172,10 @@
     "name": "Krunal",
     "phone": "",
     "punching_no": "",
-    "worker_type": "general",
+    "worker_type": "floor",
     "shift": "day",
     "area": 23,
-    "supervisor": null,
+    "supervisor": 14,
     "photo": "",
     "is_active": true,
     "is_reliever": false
@@ -1188,13 +1188,13 @@
     "name": "Ketan Gujjar",
     "phone": "8347139138",
     "punching_no": "100",
-    "worker_type": "general",
+    "worker_type": "reliever",
     "shift": "day",
     "area": 23,
-    "supervisor": null,
+    "supervisor": 14,
     "photo": "",
     "is_active": true,
-    "is_reliever": false
+    "is_reliever": true
   }
 },
 {
@@ -1343,7 +1343,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5617,
+  "pk": 6085,
   "fields": {
     "area": 1,
     "order": 1,
@@ -1359,7 +1359,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5618,
+  "pk": 6086,
   "fields": {
     "area": 1,
     "order": 2,
@@ -1375,7 +1375,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5619,
+  "pk": 6087,
   "fields": {
     "area": 1,
     "order": 3,
@@ -1391,7 +1391,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5620,
+  "pk": 6088,
   "fields": {
     "area": 1,
     "order": 4,
@@ -1407,7 +1407,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5621,
+  "pk": 6089,
   "fields": {
     "area": 1,
     "order": 5,
@@ -1423,7 +1423,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5622,
+  "pk": 6090,
   "fields": {
     "area": 1,
     "order": 6,
@@ -1439,7 +1439,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5623,
+  "pk": 6091,
   "fields": {
     "area": 1,
     "order": 7,
@@ -1455,7 +1455,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5624,
+  "pk": 6092,
   "fields": {
     "area": 1,
     "order": 8,
@@ -1471,7 +1471,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5625,
+  "pk": 6093,
   "fields": {
     "area": 1,
     "order": 9,
@@ -1487,7 +1487,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5626,
+  "pk": 6094,
   "fields": {
     "area": 1,
     "order": 10,
@@ -1503,7 +1503,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5627,
+  "pk": 6095,
   "fields": {
     "area": 1,
     "order": 11,
@@ -1519,7 +1519,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5628,
+  "pk": 6096,
   "fields": {
     "area": 1,
     "order": 1,
@@ -1535,7 +1535,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5629,
+  "pk": 6097,
   "fields": {
     "area": 1,
     "order": 2,
@@ -1551,7 +1551,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5630,
+  "pk": 6098,
   "fields": {
     "area": 1,
     "order": 3,
@@ -1567,7 +1567,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5631,
+  "pk": 6099,
   "fields": {
     "area": 1,
     "order": 4,
@@ -1583,7 +1583,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5632,
+  "pk": 6100,
   "fields": {
     "area": 1,
     "order": 5,
@@ -1599,7 +1599,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5633,
+  "pk": 6101,
   "fields": {
     "area": 1,
     "order": 6,
@@ -1615,7 +1615,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5634,
+  "pk": 6102,
   "fields": {
     "area": 1,
     "order": 7,
@@ -1631,7 +1631,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5635,
+  "pk": 6103,
   "fields": {
     "area": 1,
     "order": 8,
@@ -1647,7 +1647,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5636,
+  "pk": 6104,
   "fields": {
     "area": 1,
     "order": 9,
@@ -1663,7 +1663,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5637,
+  "pk": 6105,
   "fields": {
     "area": 1,
     "order": 10,
@@ -1679,7 +1679,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5638,
+  "pk": 6106,
   "fields": {
     "area": 1,
     "order": 11,
@@ -1695,7 +1695,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5639,
+  "pk": 6107,
   "fields": {
     "area": 1,
     "order": 1,
@@ -1711,7 +1711,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5640,
+  "pk": 6108,
   "fields": {
     "area": 1,
     "order": 2,
@@ -1727,7 +1727,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5641,
+  "pk": 6109,
   "fields": {
     "area": 1,
     "order": 3,
@@ -1743,7 +1743,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5642,
+  "pk": 6110,
   "fields": {
     "area": 1,
     "order": 4,
@@ -1759,7 +1759,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5643,
+  "pk": 6111,
   "fields": {
     "area": 1,
     "order": 5,
@@ -1775,7 +1775,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5644,
+  "pk": 6112,
   "fields": {
     "area": 1,
     "order": 6,
@@ -1791,7 +1791,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5645,
+  "pk": 6113,
   "fields": {
     "area": 1,
     "order": 7,
@@ -1807,7 +1807,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5646,
+  "pk": 6114,
   "fields": {
     "area": 1,
     "order": 8,
@@ -1823,7 +1823,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5647,
+  "pk": 6115,
   "fields": {
     "area": 1,
     "order": 9,
@@ -1839,7 +1839,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5648,
+  "pk": 6116,
   "fields": {
     "area": 1,
     "order": 10,
@@ -1855,7 +1855,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5649,
+  "pk": 6117,
   "fields": {
     "area": 1,
     "order": 11,
@@ -1871,7 +1871,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5650,
+  "pk": 6118,
   "fields": {
     "area": 1,
     "order": 1,
@@ -1887,7 +1887,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5651,
+  "pk": 6119,
   "fields": {
     "area": 1,
     "order": 2,
@@ -1903,7 +1903,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5652,
+  "pk": 6120,
   "fields": {
     "area": 1,
     "order": 3,
@@ -1919,7 +1919,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5653,
+  "pk": 6121,
   "fields": {
     "area": 1,
     "order": 4,
@@ -1935,7 +1935,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5654,
+  "pk": 6122,
   "fields": {
     "area": 1,
     "order": 5,
@@ -1951,7 +1951,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5655,
+  "pk": 6123,
   "fields": {
     "area": 1,
     "order": 6,
@@ -1967,7 +1967,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5656,
+  "pk": 6124,
   "fields": {
     "area": 2,
     "order": 1,
@@ -1983,7 +1983,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5657,
+  "pk": 6125,
   "fields": {
     "area": 2,
     "order": 2,
@@ -1999,7 +1999,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5658,
+  "pk": 6126,
   "fields": {
     "area": 2,
     "order": 3,
@@ -2015,7 +2015,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5659,
+  "pk": 6127,
   "fields": {
     "area": 2,
     "order": 4,
@@ -2031,7 +2031,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5660,
+  "pk": 6128,
   "fields": {
     "area": 2,
     "order": 5,
@@ -2047,7 +2047,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5661,
+  "pk": 6129,
   "fields": {
     "area": 2,
     "order": 6,
@@ -2063,7 +2063,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5662,
+  "pk": 6130,
   "fields": {
     "area": 2,
     "order": 7,
@@ -2079,7 +2079,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5663,
+  "pk": 6131,
   "fields": {
     "area": 2,
     "order": 8,
@@ -2095,7 +2095,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5664,
+  "pk": 6132,
   "fields": {
     "area": 2,
     "order": 9,
@@ -2111,7 +2111,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5665,
+  "pk": 6133,
   "fields": {
     "area": 2,
     "order": 10,
@@ -2127,7 +2127,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5666,
+  "pk": 6134,
   "fields": {
     "area": 2,
     "order": 11,
@@ -2143,7 +2143,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5667,
+  "pk": 6135,
   "fields": {
     "area": 2,
     "order": 1,
@@ -2159,7 +2159,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5668,
+  "pk": 6136,
   "fields": {
     "area": 2,
     "order": 2,
@@ -2175,7 +2175,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5669,
+  "pk": 6137,
   "fields": {
     "area": 2,
     "order": 3,
@@ -2191,7 +2191,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5670,
+  "pk": 6138,
   "fields": {
     "area": 2,
     "order": 4,
@@ -2207,7 +2207,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5671,
+  "pk": 6139,
   "fields": {
     "area": 2,
     "order": 5,
@@ -2223,7 +2223,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5672,
+  "pk": 6140,
   "fields": {
     "area": 2,
     "order": 6,
@@ -2239,7 +2239,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5673,
+  "pk": 6141,
   "fields": {
     "area": 2,
     "order": 7,
@@ -2255,7 +2255,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5674,
+  "pk": 6142,
   "fields": {
     "area": 2,
     "order": 8,
@@ -2271,7 +2271,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5675,
+  "pk": 6143,
   "fields": {
     "area": 2,
     "order": 9,
@@ -2287,7 +2287,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5676,
+  "pk": 6144,
   "fields": {
     "area": 2,
     "order": 10,
@@ -2303,7 +2303,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5677,
+  "pk": 6145,
   "fields": {
     "area": 2,
     "order": 11,
@@ -2319,7 +2319,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5678,
+  "pk": 6146,
   "fields": {
     "area": 2,
     "order": 1,
@@ -2335,7 +2335,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5679,
+  "pk": 6147,
   "fields": {
     "area": 2,
     "order": 2,
@@ -2351,7 +2351,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5680,
+  "pk": 6148,
   "fields": {
     "area": 2,
     "order": 3,
@@ -2367,7 +2367,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5681,
+  "pk": 6149,
   "fields": {
     "area": 2,
     "order": 4,
@@ -2383,7 +2383,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5682,
+  "pk": 6150,
   "fields": {
     "area": 2,
     "order": 5,
@@ -2399,7 +2399,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5683,
+  "pk": 6151,
   "fields": {
     "area": 2,
     "order": 6,
@@ -2415,7 +2415,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5684,
+  "pk": 6152,
   "fields": {
     "area": 2,
     "order": 7,
@@ -2431,7 +2431,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5685,
+  "pk": 6153,
   "fields": {
     "area": 2,
     "order": 8,
@@ -2447,7 +2447,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5686,
+  "pk": 6154,
   "fields": {
     "area": 2,
     "order": 9,
@@ -2463,7 +2463,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5687,
+  "pk": 6155,
   "fields": {
     "area": 2,
     "order": 10,
@@ -2479,7 +2479,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5688,
+  "pk": 6156,
   "fields": {
     "area": 2,
     "order": 11,
@@ -2495,7 +2495,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5689,
+  "pk": 6157,
   "fields": {
     "area": 2,
     "order": 1,
@@ -2511,7 +2511,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5690,
+  "pk": 6158,
   "fields": {
     "area": 2,
     "order": 2,
@@ -2527,7 +2527,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5691,
+  "pk": 6159,
   "fields": {
     "area": 2,
     "order": 3,
@@ -2543,7 +2543,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5692,
+  "pk": 6160,
   "fields": {
     "area": 2,
     "order": 4,
@@ -2559,7 +2559,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5693,
+  "pk": 6161,
   "fields": {
     "area": 2,
     "order": 5,
@@ -2575,7 +2575,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5694,
+  "pk": 6162,
   "fields": {
     "area": 2,
     "order": 6,
@@ -2591,7 +2591,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5695,
+  "pk": 6163,
   "fields": {
     "area": 3,
     "order": 1,
@@ -2607,7 +2607,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5696,
+  "pk": 6164,
   "fields": {
     "area": 3,
     "order": 2,
@@ -2623,7 +2623,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5697,
+  "pk": 6165,
   "fields": {
     "area": 3,
     "order": 3,
@@ -2639,7 +2639,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5698,
+  "pk": 6166,
   "fields": {
     "area": 3,
     "order": 4,
@@ -2655,7 +2655,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5699,
+  "pk": 6167,
   "fields": {
     "area": 3,
     "order": 5,
@@ -2671,7 +2671,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5700,
+  "pk": 6168,
   "fields": {
     "area": 3,
     "order": 6,
@@ -2687,7 +2687,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5701,
+  "pk": 6169,
   "fields": {
     "area": 3,
     "order": 7,
@@ -2703,7 +2703,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5702,
+  "pk": 6170,
   "fields": {
     "area": 3,
     "order": 8,
@@ -2719,7 +2719,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5703,
+  "pk": 6171,
   "fields": {
     "area": 3,
     "order": 9,
@@ -2735,7 +2735,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5704,
+  "pk": 6172,
   "fields": {
     "area": 3,
     "order": 10,
@@ -2751,7 +2751,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5705,
+  "pk": 6173,
   "fields": {
     "area": 3,
     "order": 11,
@@ -2767,7 +2767,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5706,
+  "pk": 6174,
   "fields": {
     "area": 3,
     "order": 1,
@@ -2783,7 +2783,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5707,
+  "pk": 6175,
   "fields": {
     "area": 3,
     "order": 2,
@@ -2799,7 +2799,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5708,
+  "pk": 6176,
   "fields": {
     "area": 3,
     "order": 3,
@@ -2815,7 +2815,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5709,
+  "pk": 6177,
   "fields": {
     "area": 3,
     "order": 4,
@@ -2831,7 +2831,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5710,
+  "pk": 6178,
   "fields": {
     "area": 3,
     "order": 5,
@@ -2847,7 +2847,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5711,
+  "pk": 6179,
   "fields": {
     "area": 3,
     "order": 6,
@@ -2863,7 +2863,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5712,
+  "pk": 6180,
   "fields": {
     "area": 3,
     "order": 7,
@@ -2879,7 +2879,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5713,
+  "pk": 6181,
   "fields": {
     "area": 3,
     "order": 8,
@@ -2895,7 +2895,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5714,
+  "pk": 6182,
   "fields": {
     "area": 3,
     "order": 9,
@@ -2911,7 +2911,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5715,
+  "pk": 6183,
   "fields": {
     "area": 3,
     "order": 10,
@@ -2927,7 +2927,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5716,
+  "pk": 6184,
   "fields": {
     "area": 3,
     "order": 11,
@@ -2943,7 +2943,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5717,
+  "pk": 6185,
   "fields": {
     "area": 3,
     "order": 1,
@@ -2959,7 +2959,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5718,
+  "pk": 6186,
   "fields": {
     "area": 3,
     "order": 2,
@@ -2975,7 +2975,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5719,
+  "pk": 6187,
   "fields": {
     "area": 3,
     "order": 3,
@@ -2991,7 +2991,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5720,
+  "pk": 6188,
   "fields": {
     "area": 3,
     "order": 4,
@@ -3007,7 +3007,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5721,
+  "pk": 6189,
   "fields": {
     "area": 3,
     "order": 5,
@@ -3023,7 +3023,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5722,
+  "pk": 6190,
   "fields": {
     "area": 3,
     "order": 6,
@@ -3039,7 +3039,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5723,
+  "pk": 6191,
   "fields": {
     "area": 3,
     "order": 7,
@@ -3055,7 +3055,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5724,
+  "pk": 6192,
   "fields": {
     "area": 3,
     "order": 8,
@@ -3071,7 +3071,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5725,
+  "pk": 6193,
   "fields": {
     "area": 3,
     "order": 9,
@@ -3087,7 +3087,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5726,
+  "pk": 6194,
   "fields": {
     "area": 3,
     "order": 10,
@@ -3103,7 +3103,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5727,
+  "pk": 6195,
   "fields": {
     "area": 3,
     "order": 11,
@@ -3119,7 +3119,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5728,
+  "pk": 6196,
   "fields": {
     "area": 3,
     "order": 1,
@@ -3135,7 +3135,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5729,
+  "pk": 6197,
   "fields": {
     "area": 3,
     "order": 2,
@@ -3151,7 +3151,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5730,
+  "pk": 6198,
   "fields": {
     "area": 3,
     "order": 3,
@@ -3167,7 +3167,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5731,
+  "pk": 6199,
   "fields": {
     "area": 3,
     "order": 4,
@@ -3183,7 +3183,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5732,
+  "pk": 6200,
   "fields": {
     "area": 3,
     "order": 5,
@@ -3199,7 +3199,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5733,
+  "pk": 6201,
   "fields": {
     "area": 3,
     "order": 6,
@@ -3215,7 +3215,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5734,
+  "pk": 6202,
   "fields": {
     "area": 4,
     "order": 1,
@@ -3231,7 +3231,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5735,
+  "pk": 6203,
   "fields": {
     "area": 4,
     "order": 2,
@@ -3247,7 +3247,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5736,
+  "pk": 6204,
   "fields": {
     "area": 4,
     "order": 3,
@@ -3263,7 +3263,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5737,
+  "pk": 6205,
   "fields": {
     "area": 4,
     "order": 4,
@@ -3279,7 +3279,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5738,
+  "pk": 6206,
   "fields": {
     "area": 4,
     "order": 5,
@@ -3295,7 +3295,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5739,
+  "pk": 6207,
   "fields": {
     "area": 4,
     "order": 6,
@@ -3311,7 +3311,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5740,
+  "pk": 6208,
   "fields": {
     "area": 4,
     "order": 7,
@@ -3327,7 +3327,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5741,
+  "pk": 6209,
   "fields": {
     "area": 4,
     "order": 8,
@@ -3343,7 +3343,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5742,
+  "pk": 6210,
   "fields": {
     "area": 4,
     "order": 9,
@@ -3359,7 +3359,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5743,
+  "pk": 6211,
   "fields": {
     "area": 4,
     "order": 10,
@@ -3375,7 +3375,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5744,
+  "pk": 6212,
   "fields": {
     "area": 4,
     "order": 11,
@@ -3391,7 +3391,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5745,
+  "pk": 6213,
   "fields": {
     "area": 4,
     "order": 1,
@@ -3407,7 +3407,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5746,
+  "pk": 6214,
   "fields": {
     "area": 4,
     "order": 2,
@@ -3423,7 +3423,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5747,
+  "pk": 6215,
   "fields": {
     "area": 4,
     "order": 3,
@@ -3439,7 +3439,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5748,
+  "pk": 6216,
   "fields": {
     "area": 4,
     "order": 4,
@@ -3455,7 +3455,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5749,
+  "pk": 6217,
   "fields": {
     "area": 4,
     "order": 5,
@@ -3471,7 +3471,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5750,
+  "pk": 6218,
   "fields": {
     "area": 4,
     "order": 6,
@@ -3487,7 +3487,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5751,
+  "pk": 6219,
   "fields": {
     "area": 4,
     "order": 7,
@@ -3503,7 +3503,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5752,
+  "pk": 6220,
   "fields": {
     "area": 4,
     "order": 8,
@@ -3519,7 +3519,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5753,
+  "pk": 6221,
   "fields": {
     "area": 4,
     "order": 9,
@@ -3535,7 +3535,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5754,
+  "pk": 6222,
   "fields": {
     "area": 4,
     "order": 10,
@@ -3551,7 +3551,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5755,
+  "pk": 6223,
   "fields": {
     "area": 4,
     "order": 11,
@@ -3567,7 +3567,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5756,
+  "pk": 6224,
   "fields": {
     "area": 4,
     "order": 1,
@@ -3583,7 +3583,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5757,
+  "pk": 6225,
   "fields": {
     "area": 4,
     "order": 2,
@@ -3599,7 +3599,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5758,
+  "pk": 6226,
   "fields": {
     "area": 4,
     "order": 3,
@@ -3615,7 +3615,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5759,
+  "pk": 6227,
   "fields": {
     "area": 4,
     "order": 4,
@@ -3631,7 +3631,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5760,
+  "pk": 6228,
   "fields": {
     "area": 4,
     "order": 5,
@@ -3647,7 +3647,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5761,
+  "pk": 6229,
   "fields": {
     "area": 4,
     "order": 6,
@@ -3663,7 +3663,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5762,
+  "pk": 6230,
   "fields": {
     "area": 4,
     "order": 7,
@@ -3679,7 +3679,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5763,
+  "pk": 6231,
   "fields": {
     "area": 4,
     "order": 8,
@@ -3695,7 +3695,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5764,
+  "pk": 6232,
   "fields": {
     "area": 4,
     "order": 9,
@@ -3711,7 +3711,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5765,
+  "pk": 6233,
   "fields": {
     "area": 4,
     "order": 10,
@@ -3727,7 +3727,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5766,
+  "pk": 6234,
   "fields": {
     "area": 4,
     "order": 11,
@@ -3743,7 +3743,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5767,
+  "pk": 6235,
   "fields": {
     "area": 4,
     "order": 1,
@@ -3759,7 +3759,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5768,
+  "pk": 6236,
   "fields": {
     "area": 4,
     "order": 2,
@@ -3775,7 +3775,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5769,
+  "pk": 6237,
   "fields": {
     "area": 4,
     "order": 3,
@@ -3791,7 +3791,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5770,
+  "pk": 6238,
   "fields": {
     "area": 4,
     "order": 4,
@@ -3807,7 +3807,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5771,
+  "pk": 6239,
   "fields": {
     "area": 4,
     "order": 5,
@@ -3823,7 +3823,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5772,
+  "pk": 6240,
   "fields": {
     "area": 4,
     "order": 6,
@@ -3839,7 +3839,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5773,
+  "pk": 6241,
   "fields": {
     "area": 5,
     "order": 1,
@@ -3855,7 +3855,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5774,
+  "pk": 6242,
   "fields": {
     "area": 5,
     "order": 2,
@@ -3871,7 +3871,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5775,
+  "pk": 6243,
   "fields": {
     "area": 5,
     "order": 3,
@@ -3887,7 +3887,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5776,
+  "pk": 6244,
   "fields": {
     "area": 5,
     "order": 4,
@@ -3903,7 +3903,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5777,
+  "pk": 6245,
   "fields": {
     "area": 5,
     "order": 5,
@@ -3919,7 +3919,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5778,
+  "pk": 6246,
   "fields": {
     "area": 5,
     "order": 6,
@@ -3935,7 +3935,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5779,
+  "pk": 6247,
   "fields": {
     "area": 5,
     "order": 7,
@@ -3951,7 +3951,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5780,
+  "pk": 6248,
   "fields": {
     "area": 5,
     "order": 8,
@@ -3967,7 +3967,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5781,
+  "pk": 6249,
   "fields": {
     "area": 5,
     "order": 9,
@@ -3983,7 +3983,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5782,
+  "pk": 6250,
   "fields": {
     "area": 5,
     "order": 10,
@@ -3999,7 +3999,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5783,
+  "pk": 6251,
   "fields": {
     "area": 5,
     "order": 11,
@@ -4015,7 +4015,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5784,
+  "pk": 6252,
   "fields": {
     "area": 5,
     "order": 1,
@@ -4031,7 +4031,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5785,
+  "pk": 6253,
   "fields": {
     "area": 5,
     "order": 2,
@@ -4047,7 +4047,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5786,
+  "pk": 6254,
   "fields": {
     "area": 5,
     "order": 3,
@@ -4063,7 +4063,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5787,
+  "pk": 6255,
   "fields": {
     "area": 5,
     "order": 4,
@@ -4079,7 +4079,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5788,
+  "pk": 6256,
   "fields": {
     "area": 5,
     "order": 5,
@@ -4095,7 +4095,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5789,
+  "pk": 6257,
   "fields": {
     "area": 5,
     "order": 6,
@@ -4111,7 +4111,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5790,
+  "pk": 6258,
   "fields": {
     "area": 5,
     "order": 7,
@@ -4127,7 +4127,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5791,
+  "pk": 6259,
   "fields": {
     "area": 5,
     "order": 8,
@@ -4143,7 +4143,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5792,
+  "pk": 6260,
   "fields": {
     "area": 5,
     "order": 9,
@@ -4159,7 +4159,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5793,
+  "pk": 6261,
   "fields": {
     "area": 5,
     "order": 10,
@@ -4175,7 +4175,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5794,
+  "pk": 6262,
   "fields": {
     "area": 5,
     "order": 11,
@@ -4191,7 +4191,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5795,
+  "pk": 6263,
   "fields": {
     "area": 5,
     "order": 1,
@@ -4207,7 +4207,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5796,
+  "pk": 6264,
   "fields": {
     "area": 5,
     "order": 2,
@@ -4223,7 +4223,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5797,
+  "pk": 6265,
   "fields": {
     "area": 5,
     "order": 3,
@@ -4239,7 +4239,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5798,
+  "pk": 6266,
   "fields": {
     "area": 5,
     "order": 4,
@@ -4255,7 +4255,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5799,
+  "pk": 6267,
   "fields": {
     "area": 5,
     "order": 5,
@@ -4271,7 +4271,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5800,
+  "pk": 6268,
   "fields": {
     "area": 5,
     "order": 6,
@@ -4287,7 +4287,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5801,
+  "pk": 6269,
   "fields": {
     "area": 5,
     "order": 7,
@@ -4303,7 +4303,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5802,
+  "pk": 6270,
   "fields": {
     "area": 5,
     "order": 8,
@@ -4319,7 +4319,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5803,
+  "pk": 6271,
   "fields": {
     "area": 5,
     "order": 9,
@@ -4335,7 +4335,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5804,
+  "pk": 6272,
   "fields": {
     "area": 5,
     "order": 10,
@@ -4351,7 +4351,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5805,
+  "pk": 6273,
   "fields": {
     "area": 5,
     "order": 11,
@@ -4367,7 +4367,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5806,
+  "pk": 6274,
   "fields": {
     "area": 5,
     "order": 1,
@@ -4383,7 +4383,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5807,
+  "pk": 6275,
   "fields": {
     "area": 5,
     "order": 2,
@@ -4399,7 +4399,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5808,
+  "pk": 6276,
   "fields": {
     "area": 5,
     "order": 3,
@@ -4415,7 +4415,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5809,
+  "pk": 6277,
   "fields": {
     "area": 5,
     "order": 4,
@@ -4431,7 +4431,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5810,
+  "pk": 6278,
   "fields": {
     "area": 5,
     "order": 5,
@@ -4447,7 +4447,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5811,
+  "pk": 6279,
   "fields": {
     "area": 5,
     "order": 6,
@@ -4463,7 +4463,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5812,
+  "pk": 6280,
   "fields": {
     "area": 6,
     "order": 1,
@@ -4479,7 +4479,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5813,
+  "pk": 6281,
   "fields": {
     "area": 6,
     "order": 2,
@@ -4495,7 +4495,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5814,
+  "pk": 6282,
   "fields": {
     "area": 6,
     "order": 3,
@@ -4511,7 +4511,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5815,
+  "pk": 6283,
   "fields": {
     "area": 6,
     "order": 4,
@@ -4527,7 +4527,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5816,
+  "pk": 6284,
   "fields": {
     "area": 6,
     "order": 5,
@@ -4543,7 +4543,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5817,
+  "pk": 6285,
   "fields": {
     "area": 6,
     "order": 6,
@@ -4559,7 +4559,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5818,
+  "pk": 6286,
   "fields": {
     "area": 6,
     "order": 7,
@@ -4575,7 +4575,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5819,
+  "pk": 6287,
   "fields": {
     "area": 6,
     "order": 8,
@@ -4591,7 +4591,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5820,
+  "pk": 6288,
   "fields": {
     "area": 6,
     "order": 9,
@@ -4607,7 +4607,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5821,
+  "pk": 6289,
   "fields": {
     "area": 6,
     "order": 10,
@@ -4623,7 +4623,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5822,
+  "pk": 6290,
   "fields": {
     "area": 6,
     "order": 11,
@@ -4639,7 +4639,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5823,
+  "pk": 6291,
   "fields": {
     "area": 6,
     "order": 1,
@@ -4655,7 +4655,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5824,
+  "pk": 6292,
   "fields": {
     "area": 6,
     "order": 2,
@@ -4671,7 +4671,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5825,
+  "pk": 6293,
   "fields": {
     "area": 6,
     "order": 3,
@@ -4687,7 +4687,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5826,
+  "pk": 6294,
   "fields": {
     "area": 6,
     "order": 4,
@@ -4703,7 +4703,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5827,
+  "pk": 6295,
   "fields": {
     "area": 6,
     "order": 5,
@@ -4719,7 +4719,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5828,
+  "pk": 6296,
   "fields": {
     "area": 6,
     "order": 6,
@@ -4735,7 +4735,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5829,
+  "pk": 6297,
   "fields": {
     "area": 6,
     "order": 7,
@@ -4751,7 +4751,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5830,
+  "pk": 6298,
   "fields": {
     "area": 6,
     "order": 8,
@@ -4767,7 +4767,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5831,
+  "pk": 6299,
   "fields": {
     "area": 6,
     "order": 9,
@@ -4783,7 +4783,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5832,
+  "pk": 6300,
   "fields": {
     "area": 6,
     "order": 10,
@@ -4799,7 +4799,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5833,
+  "pk": 6301,
   "fields": {
     "area": 6,
     "order": 11,
@@ -4815,7 +4815,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5834,
+  "pk": 6302,
   "fields": {
     "area": 6,
     "order": 1,
@@ -4831,7 +4831,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5835,
+  "pk": 6303,
   "fields": {
     "area": 6,
     "order": 2,
@@ -4847,7 +4847,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5836,
+  "pk": 6304,
   "fields": {
     "area": 6,
     "order": 3,
@@ -4863,7 +4863,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5837,
+  "pk": 6305,
   "fields": {
     "area": 6,
     "order": 4,
@@ -4879,7 +4879,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5838,
+  "pk": 6306,
   "fields": {
     "area": 6,
     "order": 5,
@@ -4895,7 +4895,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5839,
+  "pk": 6307,
   "fields": {
     "area": 6,
     "order": 6,
@@ -4911,7 +4911,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5840,
+  "pk": 6308,
   "fields": {
     "area": 6,
     "order": 7,
@@ -4927,7 +4927,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5841,
+  "pk": 6309,
   "fields": {
     "area": 6,
     "order": 8,
@@ -4943,7 +4943,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5842,
+  "pk": 6310,
   "fields": {
     "area": 6,
     "order": 9,
@@ -4959,7 +4959,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5843,
+  "pk": 6311,
   "fields": {
     "area": 6,
     "order": 10,
@@ -4975,7 +4975,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5844,
+  "pk": 6312,
   "fields": {
     "area": 6,
     "order": 11,
@@ -4991,7 +4991,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5845,
+  "pk": 6313,
   "fields": {
     "area": 6,
     "order": 1,
@@ -5007,7 +5007,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5846,
+  "pk": 6314,
   "fields": {
     "area": 6,
     "order": 2,
@@ -5023,7 +5023,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5847,
+  "pk": 6315,
   "fields": {
     "area": 6,
     "order": 3,
@@ -5039,7 +5039,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5848,
+  "pk": 6316,
   "fields": {
     "area": 6,
     "order": 4,
@@ -5055,7 +5055,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5849,
+  "pk": 6317,
   "fields": {
     "area": 6,
     "order": 5,
@@ -5071,7 +5071,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5850,
+  "pk": 6318,
   "fields": {
     "area": 6,
     "order": 6,
@@ -5087,7 +5087,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5851,
+  "pk": 6319,
   "fields": {
     "area": 7,
     "order": 1,
@@ -5103,7 +5103,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5852,
+  "pk": 6320,
   "fields": {
     "area": 7,
     "order": 2,
@@ -5119,7 +5119,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5853,
+  "pk": 6321,
   "fields": {
     "area": 7,
     "order": 3,
@@ -5135,7 +5135,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5854,
+  "pk": 6322,
   "fields": {
     "area": 7,
     "order": 4,
@@ -5151,7 +5151,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5855,
+  "pk": 6323,
   "fields": {
     "area": 7,
     "order": 5,
@@ -5167,7 +5167,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5856,
+  "pk": 6324,
   "fields": {
     "area": 7,
     "order": 6,
@@ -5183,7 +5183,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5857,
+  "pk": 6325,
   "fields": {
     "area": 7,
     "order": 7,
@@ -5199,7 +5199,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5858,
+  "pk": 6326,
   "fields": {
     "area": 7,
     "order": 8,
@@ -5215,7 +5215,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5859,
+  "pk": 6327,
   "fields": {
     "area": 7,
     "order": 9,
@@ -5231,7 +5231,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5860,
+  "pk": 6328,
   "fields": {
     "area": 7,
     "order": 10,
@@ -5247,7 +5247,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5861,
+  "pk": 6329,
   "fields": {
     "area": 7,
     "order": 11,
@@ -5263,7 +5263,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5862,
+  "pk": 6330,
   "fields": {
     "area": 7,
     "order": 1,
@@ -5279,7 +5279,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5863,
+  "pk": 6331,
   "fields": {
     "area": 7,
     "order": 2,
@@ -5295,7 +5295,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5864,
+  "pk": 6332,
   "fields": {
     "area": 7,
     "order": 3,
@@ -5311,7 +5311,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5865,
+  "pk": 6333,
   "fields": {
     "area": 7,
     "order": 4,
@@ -5327,7 +5327,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5866,
+  "pk": 6334,
   "fields": {
     "area": 7,
     "order": 5,
@@ -5343,7 +5343,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5867,
+  "pk": 6335,
   "fields": {
     "area": 7,
     "order": 6,
@@ -5359,7 +5359,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5868,
+  "pk": 6336,
   "fields": {
     "area": 7,
     "order": 7,
@@ -5375,7 +5375,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5869,
+  "pk": 6337,
   "fields": {
     "area": 7,
     "order": 8,
@@ -5391,7 +5391,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5870,
+  "pk": 6338,
   "fields": {
     "area": 7,
     "order": 9,
@@ -5407,7 +5407,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5871,
+  "pk": 6339,
   "fields": {
     "area": 7,
     "order": 10,
@@ -5423,7 +5423,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5872,
+  "pk": 6340,
   "fields": {
     "area": 7,
     "order": 11,
@@ -5439,7 +5439,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5873,
+  "pk": 6341,
   "fields": {
     "area": 7,
     "order": 1,
@@ -5455,7 +5455,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5874,
+  "pk": 6342,
   "fields": {
     "area": 7,
     "order": 2,
@@ -5471,7 +5471,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5875,
+  "pk": 6343,
   "fields": {
     "area": 7,
     "order": 3,
@@ -5487,7 +5487,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5876,
+  "pk": 6344,
   "fields": {
     "area": 7,
     "order": 4,
@@ -5503,7 +5503,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5877,
+  "pk": 6345,
   "fields": {
     "area": 7,
     "order": 5,
@@ -5519,7 +5519,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5878,
+  "pk": 6346,
   "fields": {
     "area": 7,
     "order": 6,
@@ -5535,7 +5535,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5879,
+  "pk": 6347,
   "fields": {
     "area": 7,
     "order": 7,
@@ -5551,7 +5551,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5880,
+  "pk": 6348,
   "fields": {
     "area": 7,
     "order": 8,
@@ -5567,7 +5567,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5881,
+  "pk": 6349,
   "fields": {
     "area": 7,
     "order": 9,
@@ -5583,7 +5583,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5882,
+  "pk": 6350,
   "fields": {
     "area": 7,
     "order": 10,
@@ -5599,7 +5599,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5883,
+  "pk": 6351,
   "fields": {
     "area": 7,
     "order": 11,
@@ -5615,7 +5615,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5884,
+  "pk": 6352,
   "fields": {
     "area": 7,
     "order": 1,
@@ -5631,7 +5631,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5885,
+  "pk": 6353,
   "fields": {
     "area": 7,
     "order": 2,
@@ -5647,7 +5647,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5886,
+  "pk": 6354,
   "fields": {
     "area": 7,
     "order": 3,
@@ -5663,7 +5663,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5887,
+  "pk": 6355,
   "fields": {
     "area": 7,
     "order": 4,
@@ -5679,7 +5679,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5888,
+  "pk": 6356,
   "fields": {
     "area": 7,
     "order": 5,
@@ -5695,7 +5695,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5889,
+  "pk": 6357,
   "fields": {
     "area": 7,
     "order": 6,
@@ -5711,7 +5711,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5890,
+  "pk": 6358,
   "fields": {
     "area": 8,
     "order": 1,
@@ -5727,7 +5727,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5891,
+  "pk": 6359,
   "fields": {
     "area": 8,
     "order": 2,
@@ -5743,7 +5743,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5892,
+  "pk": 6360,
   "fields": {
     "area": 8,
     "order": 3,
@@ -5759,7 +5759,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5893,
+  "pk": 6361,
   "fields": {
     "area": 8,
     "order": 4,
@@ -5775,7 +5775,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5894,
+  "pk": 6362,
   "fields": {
     "area": 8,
     "order": 5,
@@ -5791,7 +5791,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5895,
+  "pk": 6363,
   "fields": {
     "area": 8,
     "order": 6,
@@ -5807,7 +5807,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5896,
+  "pk": 6364,
   "fields": {
     "area": 8,
     "order": 7,
@@ -5823,7 +5823,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5897,
+  "pk": 6365,
   "fields": {
     "area": 8,
     "order": 8,
@@ -5839,7 +5839,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5898,
+  "pk": 6366,
   "fields": {
     "area": 8,
     "order": 9,
@@ -5855,7 +5855,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5899,
+  "pk": 6367,
   "fields": {
     "area": 8,
     "order": 10,
@@ -5871,7 +5871,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5900,
+  "pk": 6368,
   "fields": {
     "area": 8,
     "order": 11,
@@ -5887,7 +5887,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5901,
+  "pk": 6369,
   "fields": {
     "area": 8,
     "order": 1,
@@ -5903,7 +5903,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5902,
+  "pk": 6370,
   "fields": {
     "area": 8,
     "order": 2,
@@ -5919,7 +5919,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5903,
+  "pk": 6371,
   "fields": {
     "area": 8,
     "order": 3,
@@ -5935,7 +5935,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5904,
+  "pk": 6372,
   "fields": {
     "area": 8,
     "order": 4,
@@ -5951,7 +5951,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5905,
+  "pk": 6373,
   "fields": {
     "area": 8,
     "order": 5,
@@ -5967,7 +5967,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5906,
+  "pk": 6374,
   "fields": {
     "area": 8,
     "order": 6,
@@ -5983,7 +5983,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5907,
+  "pk": 6375,
   "fields": {
     "area": 8,
     "order": 7,
@@ -5999,7 +5999,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5908,
+  "pk": 6376,
   "fields": {
     "area": 8,
     "order": 8,
@@ -6015,7 +6015,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5909,
+  "pk": 6377,
   "fields": {
     "area": 8,
     "order": 9,
@@ -6031,7 +6031,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5910,
+  "pk": 6378,
   "fields": {
     "area": 8,
     "order": 10,
@@ -6047,7 +6047,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5911,
+  "pk": 6379,
   "fields": {
     "area": 8,
     "order": 11,
@@ -6063,7 +6063,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5912,
+  "pk": 6380,
   "fields": {
     "area": 8,
     "order": 1,
@@ -6079,7 +6079,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5913,
+  "pk": 6381,
   "fields": {
     "area": 8,
     "order": 2,
@@ -6095,7 +6095,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5914,
+  "pk": 6382,
   "fields": {
     "area": 8,
     "order": 3,
@@ -6111,7 +6111,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5915,
+  "pk": 6383,
   "fields": {
     "area": 8,
     "order": 4,
@@ -6127,7 +6127,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5916,
+  "pk": 6384,
   "fields": {
     "area": 8,
     "order": 5,
@@ -6143,7 +6143,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5917,
+  "pk": 6385,
   "fields": {
     "area": 8,
     "order": 6,
@@ -6159,7 +6159,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5918,
+  "pk": 6386,
   "fields": {
     "area": 8,
     "order": 7,
@@ -6175,7 +6175,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5919,
+  "pk": 6387,
   "fields": {
     "area": 8,
     "order": 8,
@@ -6191,7 +6191,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5920,
+  "pk": 6388,
   "fields": {
     "area": 8,
     "order": 9,
@@ -6207,7 +6207,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5921,
+  "pk": 6389,
   "fields": {
     "area": 8,
     "order": 10,
@@ -6223,7 +6223,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5922,
+  "pk": 6390,
   "fields": {
     "area": 8,
     "order": 11,
@@ -6239,7 +6239,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5923,
+  "pk": 6391,
   "fields": {
     "area": 8,
     "order": 1,
@@ -6255,7 +6255,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5924,
+  "pk": 6392,
   "fields": {
     "area": 8,
     "order": 2,
@@ -6271,7 +6271,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5925,
+  "pk": 6393,
   "fields": {
     "area": 8,
     "order": 3,
@@ -6287,7 +6287,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5926,
+  "pk": 6394,
   "fields": {
     "area": 8,
     "order": 4,
@@ -6303,7 +6303,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5927,
+  "pk": 6395,
   "fields": {
     "area": 8,
     "order": 5,
@@ -6319,7 +6319,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5928,
+  "pk": 6396,
   "fields": {
     "area": 8,
     "order": 6,
@@ -6335,7 +6335,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5929,
+  "pk": 6397,
   "fields": {
     "area": 9,
     "order": 1,
@@ -6351,7 +6351,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5930,
+  "pk": 6398,
   "fields": {
     "area": 9,
     "order": 2,
@@ -6367,7 +6367,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5931,
+  "pk": 6399,
   "fields": {
     "area": 9,
     "order": 3,
@@ -6383,7 +6383,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5932,
+  "pk": 6400,
   "fields": {
     "area": 9,
     "order": 4,
@@ -6399,7 +6399,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5933,
+  "pk": 6401,
   "fields": {
     "area": 9,
     "order": 5,
@@ -6415,7 +6415,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5934,
+  "pk": 6402,
   "fields": {
     "area": 9,
     "order": 6,
@@ -6431,7 +6431,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5935,
+  "pk": 6403,
   "fields": {
     "area": 9,
     "order": 7,
@@ -6447,7 +6447,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5936,
+  "pk": 6404,
   "fields": {
     "area": 9,
     "order": 8,
@@ -6463,7 +6463,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5937,
+  "pk": 6405,
   "fields": {
     "area": 9,
     "order": 9,
@@ -6479,7 +6479,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5938,
+  "pk": 6406,
   "fields": {
     "area": 9,
     "order": 10,
@@ -6495,7 +6495,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5939,
+  "pk": 6407,
   "fields": {
     "area": 9,
     "order": 11,
@@ -6511,7 +6511,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5940,
+  "pk": 6408,
   "fields": {
     "area": 9,
     "order": 1,
@@ -6527,7 +6527,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5941,
+  "pk": 6409,
   "fields": {
     "area": 9,
     "order": 2,
@@ -6543,7 +6543,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5942,
+  "pk": 6410,
   "fields": {
     "area": 9,
     "order": 3,
@@ -6559,7 +6559,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5943,
+  "pk": 6411,
   "fields": {
     "area": 9,
     "order": 4,
@@ -6575,7 +6575,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5944,
+  "pk": 6412,
   "fields": {
     "area": 9,
     "order": 5,
@@ -6591,7 +6591,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5945,
+  "pk": 6413,
   "fields": {
     "area": 9,
     "order": 6,
@@ -6607,7 +6607,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5946,
+  "pk": 6414,
   "fields": {
     "area": 9,
     "order": 7,
@@ -6623,7 +6623,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5947,
+  "pk": 6415,
   "fields": {
     "area": 9,
     "order": 8,
@@ -6639,7 +6639,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5948,
+  "pk": 6416,
   "fields": {
     "area": 9,
     "order": 9,
@@ -6655,7 +6655,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5949,
+  "pk": 6417,
   "fields": {
     "area": 9,
     "order": 10,
@@ -6671,7 +6671,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5950,
+  "pk": 6418,
   "fields": {
     "area": 9,
     "order": 11,
@@ -6687,7 +6687,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5951,
+  "pk": 6419,
   "fields": {
     "area": 9,
     "order": 1,
@@ -6703,7 +6703,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5952,
+  "pk": 6420,
   "fields": {
     "area": 9,
     "order": 2,
@@ -6719,7 +6719,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5953,
+  "pk": 6421,
   "fields": {
     "area": 9,
     "order": 3,
@@ -6735,7 +6735,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5954,
+  "pk": 6422,
   "fields": {
     "area": 9,
     "order": 4,
@@ -6751,7 +6751,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5955,
+  "pk": 6423,
   "fields": {
     "area": 9,
     "order": 5,
@@ -6767,7 +6767,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5956,
+  "pk": 6424,
   "fields": {
     "area": 9,
     "order": 6,
@@ -6783,7 +6783,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5957,
+  "pk": 6425,
   "fields": {
     "area": 9,
     "order": 7,
@@ -6799,7 +6799,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5958,
+  "pk": 6426,
   "fields": {
     "area": 9,
     "order": 8,
@@ -6815,7 +6815,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5959,
+  "pk": 6427,
   "fields": {
     "area": 9,
     "order": 9,
@@ -6831,7 +6831,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5960,
+  "pk": 6428,
   "fields": {
     "area": 9,
     "order": 10,
@@ -6847,7 +6847,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5961,
+  "pk": 6429,
   "fields": {
     "area": 9,
     "order": 11,
@@ -6863,7 +6863,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5962,
+  "pk": 6430,
   "fields": {
     "area": 9,
     "order": 1,
@@ -6879,7 +6879,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5963,
+  "pk": 6431,
   "fields": {
     "area": 9,
     "order": 2,
@@ -6895,7 +6895,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5964,
+  "pk": 6432,
   "fields": {
     "area": 9,
     "order": 3,
@@ -6911,7 +6911,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5965,
+  "pk": 6433,
   "fields": {
     "area": 9,
     "order": 4,
@@ -6927,7 +6927,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5966,
+  "pk": 6434,
   "fields": {
     "area": 9,
     "order": 5,
@@ -6943,7 +6943,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5967,
+  "pk": 6435,
   "fields": {
     "area": 9,
     "order": 6,
@@ -6959,7 +6959,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5968,
+  "pk": 6436,
   "fields": {
     "area": 10,
     "order": 1,
@@ -6975,7 +6975,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5969,
+  "pk": 6437,
   "fields": {
     "area": 10,
     "order": 2,
@@ -6991,7 +6991,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5970,
+  "pk": 6438,
   "fields": {
     "area": 10,
     "order": 3,
@@ -7007,7 +7007,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5971,
+  "pk": 6439,
   "fields": {
     "area": 10,
     "order": 4,
@@ -7023,7 +7023,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5972,
+  "pk": 6440,
   "fields": {
     "area": 10,
     "order": 5,
@@ -7039,7 +7039,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5973,
+  "pk": 6441,
   "fields": {
     "area": 10,
     "order": 6,
@@ -7055,7 +7055,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5974,
+  "pk": 6442,
   "fields": {
     "area": 10,
     "order": 7,
@@ -7071,7 +7071,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5975,
+  "pk": 6443,
   "fields": {
     "area": 10,
     "order": 8,
@@ -7087,7 +7087,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5976,
+  "pk": 6444,
   "fields": {
     "area": 10,
     "order": 9,
@@ -7103,7 +7103,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5977,
+  "pk": 6445,
   "fields": {
     "area": 10,
     "order": 10,
@@ -7119,7 +7119,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5978,
+  "pk": 6446,
   "fields": {
     "area": 10,
     "order": 11,
@@ -7135,7 +7135,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5979,
+  "pk": 6447,
   "fields": {
     "area": 10,
     "order": 1,
@@ -7151,7 +7151,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5980,
+  "pk": 6448,
   "fields": {
     "area": 10,
     "order": 2,
@@ -7167,7 +7167,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5981,
+  "pk": 6449,
   "fields": {
     "area": 10,
     "order": 3,
@@ -7183,7 +7183,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5982,
+  "pk": 6450,
   "fields": {
     "area": 10,
     "order": 4,
@@ -7199,7 +7199,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5983,
+  "pk": 6451,
   "fields": {
     "area": 10,
     "order": 5,
@@ -7215,7 +7215,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5984,
+  "pk": 6452,
   "fields": {
     "area": 10,
     "order": 6,
@@ -7231,7 +7231,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5985,
+  "pk": 6453,
   "fields": {
     "area": 10,
     "order": 7,
@@ -7247,7 +7247,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5986,
+  "pk": 6454,
   "fields": {
     "area": 10,
     "order": 8,
@@ -7263,7 +7263,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5987,
+  "pk": 6455,
   "fields": {
     "area": 10,
     "order": 9,
@@ -7279,7 +7279,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5988,
+  "pk": 6456,
   "fields": {
     "area": 10,
     "order": 10,
@@ -7295,7 +7295,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5989,
+  "pk": 6457,
   "fields": {
     "area": 10,
     "order": 11,
@@ -7311,7 +7311,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5990,
+  "pk": 6458,
   "fields": {
     "area": 10,
     "order": 1,
@@ -7327,7 +7327,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5991,
+  "pk": 6459,
   "fields": {
     "area": 10,
     "order": 2,
@@ -7343,7 +7343,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5992,
+  "pk": 6460,
   "fields": {
     "area": 10,
     "order": 3,
@@ -7359,7 +7359,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5993,
+  "pk": 6461,
   "fields": {
     "area": 10,
     "order": 4,
@@ -7375,7 +7375,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5994,
+  "pk": 6462,
   "fields": {
     "area": 10,
     "order": 5,
@@ -7391,7 +7391,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5995,
+  "pk": 6463,
   "fields": {
     "area": 10,
     "order": 6,
@@ -7407,7 +7407,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5996,
+  "pk": 6464,
   "fields": {
     "area": 10,
     "order": 7,
@@ -7423,7 +7423,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5997,
+  "pk": 6465,
   "fields": {
     "area": 10,
     "order": 8,
@@ -7439,7 +7439,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5998,
+  "pk": 6466,
   "fields": {
     "area": 10,
     "order": 9,
@@ -7455,7 +7455,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 5999,
+  "pk": 6467,
   "fields": {
     "area": 10,
     "order": 10,
@@ -7471,7 +7471,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6000,
+  "pk": 6468,
   "fields": {
     "area": 10,
     "order": 11,
@@ -7487,7 +7487,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6001,
+  "pk": 6469,
   "fields": {
     "area": 10,
     "order": 1,
@@ -7503,7 +7503,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6002,
+  "pk": 6470,
   "fields": {
     "area": 10,
     "order": 2,
@@ -7519,7 +7519,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6003,
+  "pk": 6471,
   "fields": {
     "area": 10,
     "order": 3,
@@ -7535,7 +7535,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6004,
+  "pk": 6472,
   "fields": {
     "area": 10,
     "order": 4,
@@ -7551,7 +7551,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6005,
+  "pk": 6473,
   "fields": {
     "area": 10,
     "order": 5,
@@ -7567,7 +7567,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6006,
+  "pk": 6474,
   "fields": {
     "area": 10,
     "order": 6,
@@ -7583,7 +7583,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6007,
+  "pk": 6475,
   "fields": {
     "area": 11,
     "order": 1,
@@ -7599,7 +7599,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6008,
+  "pk": 6476,
   "fields": {
     "area": 11,
     "order": 2,
@@ -7615,7 +7615,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6009,
+  "pk": 6477,
   "fields": {
     "area": 11,
     "order": 3,
@@ -7631,7 +7631,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6010,
+  "pk": 6478,
   "fields": {
     "area": 11,
     "order": 4,
@@ -7647,7 +7647,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6011,
+  "pk": 6479,
   "fields": {
     "area": 11,
     "order": 5,
@@ -7663,7 +7663,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6012,
+  "pk": 6480,
   "fields": {
     "area": 11,
     "order": 6,
@@ -7679,7 +7679,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6013,
+  "pk": 6481,
   "fields": {
     "area": 11,
     "order": 7,
@@ -7695,7 +7695,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6014,
+  "pk": 6482,
   "fields": {
     "area": 11,
     "order": 8,
@@ -7711,7 +7711,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6015,
+  "pk": 6483,
   "fields": {
     "area": 11,
     "order": 9,
@@ -7727,7 +7727,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6016,
+  "pk": 6484,
   "fields": {
     "area": 11,
     "order": 10,
@@ -7743,7 +7743,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6017,
+  "pk": 6485,
   "fields": {
     "area": 11,
     "order": 11,
@@ -7759,7 +7759,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6018,
+  "pk": 6486,
   "fields": {
     "area": 11,
     "order": 1,
@@ -7775,7 +7775,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6019,
+  "pk": 6487,
   "fields": {
     "area": 11,
     "order": 2,
@@ -7791,7 +7791,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6020,
+  "pk": 6488,
   "fields": {
     "area": 11,
     "order": 3,
@@ -7807,7 +7807,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6021,
+  "pk": 6489,
   "fields": {
     "area": 11,
     "order": 4,
@@ -7823,7 +7823,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6022,
+  "pk": 6490,
   "fields": {
     "area": 11,
     "order": 5,
@@ -7839,7 +7839,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6023,
+  "pk": 6491,
   "fields": {
     "area": 11,
     "order": 6,
@@ -7855,7 +7855,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6024,
+  "pk": 6492,
   "fields": {
     "area": 11,
     "order": 7,
@@ -7871,7 +7871,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6025,
+  "pk": 6493,
   "fields": {
     "area": 11,
     "order": 8,
@@ -7887,7 +7887,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6026,
+  "pk": 6494,
   "fields": {
     "area": 11,
     "order": 9,
@@ -7903,7 +7903,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6027,
+  "pk": 6495,
   "fields": {
     "area": 11,
     "order": 10,
@@ -7919,7 +7919,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6028,
+  "pk": 6496,
   "fields": {
     "area": 11,
     "order": 11,
@@ -7935,7 +7935,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6029,
+  "pk": 6497,
   "fields": {
     "area": 11,
     "order": 1,
@@ -7951,7 +7951,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6030,
+  "pk": 6498,
   "fields": {
     "area": 11,
     "order": 2,
@@ -7967,7 +7967,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6031,
+  "pk": 6499,
   "fields": {
     "area": 11,
     "order": 3,
@@ -7983,7 +7983,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6032,
+  "pk": 6500,
   "fields": {
     "area": 11,
     "order": 4,
@@ -7999,7 +7999,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6033,
+  "pk": 6501,
   "fields": {
     "area": 11,
     "order": 5,
@@ -8015,7 +8015,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6034,
+  "pk": 6502,
   "fields": {
     "area": 11,
     "order": 6,
@@ -8031,7 +8031,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6035,
+  "pk": 6503,
   "fields": {
     "area": 11,
     "order": 7,
@@ -8047,7 +8047,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6036,
+  "pk": 6504,
   "fields": {
     "area": 11,
     "order": 8,
@@ -8063,7 +8063,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6037,
+  "pk": 6505,
   "fields": {
     "area": 11,
     "order": 9,
@@ -8079,7 +8079,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6038,
+  "pk": 6506,
   "fields": {
     "area": 11,
     "order": 10,
@@ -8095,7 +8095,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6039,
+  "pk": 6507,
   "fields": {
     "area": 11,
     "order": 11,
@@ -8111,7 +8111,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6040,
+  "pk": 6508,
   "fields": {
     "area": 11,
     "order": 1,
@@ -8127,7 +8127,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6041,
+  "pk": 6509,
   "fields": {
     "area": 11,
     "order": 2,
@@ -8143,7 +8143,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6042,
+  "pk": 6510,
   "fields": {
     "area": 11,
     "order": 3,
@@ -8159,7 +8159,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6043,
+  "pk": 6511,
   "fields": {
     "area": 11,
     "order": 4,
@@ -8175,7 +8175,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6044,
+  "pk": 6512,
   "fields": {
     "area": 11,
     "order": 5,
@@ -8191,7 +8191,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6045,
+  "pk": 6513,
   "fields": {
     "area": 11,
     "order": 6,
@@ -8207,7 +8207,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6046,
+  "pk": 6514,
   "fields": {
     "area": 12,
     "order": 1,
@@ -8223,7 +8223,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6047,
+  "pk": 6515,
   "fields": {
     "area": 12,
     "order": 2,
@@ -8239,7 +8239,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6048,
+  "pk": 6516,
   "fields": {
     "area": 12,
     "order": 3,
@@ -8255,7 +8255,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6049,
+  "pk": 6517,
   "fields": {
     "area": 12,
     "order": 4,
@@ -8271,7 +8271,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6050,
+  "pk": 6518,
   "fields": {
     "area": 12,
     "order": 5,
@@ -8287,7 +8287,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6051,
+  "pk": 6519,
   "fields": {
     "area": 12,
     "order": 6,
@@ -8303,7 +8303,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6052,
+  "pk": 6520,
   "fields": {
     "area": 12,
     "order": 7,
@@ -8319,7 +8319,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6053,
+  "pk": 6521,
   "fields": {
     "area": 12,
     "order": 8,
@@ -8335,7 +8335,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6054,
+  "pk": 6522,
   "fields": {
     "area": 12,
     "order": 9,
@@ -8351,7 +8351,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6055,
+  "pk": 6523,
   "fields": {
     "area": 12,
     "order": 10,
@@ -8367,7 +8367,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6056,
+  "pk": 6524,
   "fields": {
     "area": 12,
     "order": 11,
@@ -8383,7 +8383,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6057,
+  "pk": 6525,
   "fields": {
     "area": 12,
     "order": 1,
@@ -8399,7 +8399,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6058,
+  "pk": 6526,
   "fields": {
     "area": 12,
     "order": 2,
@@ -8415,7 +8415,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6059,
+  "pk": 6527,
   "fields": {
     "area": 12,
     "order": 3,
@@ -8431,7 +8431,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6060,
+  "pk": 6528,
   "fields": {
     "area": 12,
     "order": 4,
@@ -8447,7 +8447,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6061,
+  "pk": 6529,
   "fields": {
     "area": 12,
     "order": 5,
@@ -8463,7 +8463,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6062,
+  "pk": 6530,
   "fields": {
     "area": 12,
     "order": 6,
@@ -8479,7 +8479,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6063,
+  "pk": 6531,
   "fields": {
     "area": 12,
     "order": 7,
@@ -8495,7 +8495,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6064,
+  "pk": 6532,
   "fields": {
     "area": 12,
     "order": 8,
@@ -8511,7 +8511,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6065,
+  "pk": 6533,
   "fields": {
     "area": 12,
     "order": 9,
@@ -8527,7 +8527,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6066,
+  "pk": 6534,
   "fields": {
     "area": 12,
     "order": 10,
@@ -8543,7 +8543,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6067,
+  "pk": 6535,
   "fields": {
     "area": 12,
     "order": 11,
@@ -8559,7 +8559,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6068,
+  "pk": 6536,
   "fields": {
     "area": 12,
     "order": 1,
@@ -8575,7 +8575,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6069,
+  "pk": 6537,
   "fields": {
     "area": 12,
     "order": 2,
@@ -8591,7 +8591,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6070,
+  "pk": 6538,
   "fields": {
     "area": 12,
     "order": 3,
@@ -8607,7 +8607,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6071,
+  "pk": 6539,
   "fields": {
     "area": 12,
     "order": 4,
@@ -8623,7 +8623,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6072,
+  "pk": 6540,
   "fields": {
     "area": 12,
     "order": 5,
@@ -8639,7 +8639,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6073,
+  "pk": 6541,
   "fields": {
     "area": 12,
     "order": 6,
@@ -8655,7 +8655,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6074,
+  "pk": 6542,
   "fields": {
     "area": 12,
     "order": 7,
@@ -8671,7 +8671,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6075,
+  "pk": 6543,
   "fields": {
     "area": 12,
     "order": 8,
@@ -8687,7 +8687,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6076,
+  "pk": 6544,
   "fields": {
     "area": 12,
     "order": 9,
@@ -8703,7 +8703,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6077,
+  "pk": 6545,
   "fields": {
     "area": 12,
     "order": 10,
@@ -8719,7 +8719,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6078,
+  "pk": 6546,
   "fields": {
     "area": 12,
     "order": 11,
@@ -8735,7 +8735,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6079,
+  "pk": 6547,
   "fields": {
     "area": 12,
     "order": 1,
@@ -8751,7 +8751,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6080,
+  "pk": 6548,
   "fields": {
     "area": 12,
     "order": 2,
@@ -8767,7 +8767,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6081,
+  "pk": 6549,
   "fields": {
     "area": 12,
     "order": 3,
@@ -8783,7 +8783,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6082,
+  "pk": 6550,
   "fields": {
     "area": 12,
     "order": 4,
@@ -8799,7 +8799,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6083,
+  "pk": 6551,
   "fields": {
     "area": 12,
     "order": 5,
@@ -8815,7 +8815,7 @@
 },
 {
   "model": "housekeeping.hkscheduletemplate",
-  "pk": 6084,
+  "pk": 6552,
   "fields": {
     "area": 12,
     "order": 6,
@@ -8826,6 +8826,390 @@
     "worker_tag": "all",
     "requires_photo": true,
     "frequency": "sunday_extra",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6553,
+  "fields": {
+    "area": 23,
+    "order": 1,
+    "start_time": "08:00:00",
+    "end_time": "09:00:00",
+    "task_name": "New Mess Common Area Front and Back Cleaning",
+    "task_description": "Assigned: Anil + Suresh",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6554,
+  "fields": {
+    "area": 23,
+    "order": 2,
+    "start_time": "09:00:00",
+    "end_time": "10:00:00",
+    "task_name": "Chimair and Duven Common Pockets Cleaning",
+    "task_description": "Assigned: Anil",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6555,
+  "fields": {
+    "area": 23,
+    "order": 3,
+    "start_time": "10:00:00",
+    "end_time": "11:00:00",
+    "task_name": "Kyzeel, Lekhaag and Ijokha Common Pockets",
+    "task_description": "Assigned: Anil",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6556,
+  "fields": {
+    "area": 23,
+    "order": 4,
+    "start_time": "11:00:00",
+    "end_time": "11:15:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6557,
+  "fields": {
+    "area": 23,
+    "order": 5,
+    "start_time": "11:15:00",
+    "end_time": "12:30:00",
+    "task_name": "Hiqom Front and Back + New PC Perimeter",
+    "task_description": "Assigned: Suresh",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6558,
+  "fields": {
+    "area": 23,
+    "order": 6,
+    "start_time": "12:30:00",
+    "end_time": "13:00:00",
+    "task_name": "Tool Refill and Waste Transfer",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6559,
+  "fields": {
+    "area": 23,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "floor",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6560,
+  "fields": {
+    "area": 23,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "15:00:00",
+    "task_name": "Ijokha, Lekhaag and Jurqia Backside Route",
+    "task_description": "Assigned: Suresh",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6561,
+  "fields": {
+    "area": 23,
+    "order": 9,
+    "start_time": "15:00:00",
+    "end_time": "16:00:00",
+    "task_name": "New Mess to Old Mess Corridor Cleaning",
+    "task_description": "Assigned: Krunal",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6562,
+  "fields": {
+    "area": 23,
+    "order": 10,
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "task_name": "Final Route Sweep and Spot Touch Up",
+    "task_description": "Assigned: Anil + Krunal",
+    "worker_tag": "floor",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6563,
+  "fields": {
+    "area": 23,
+    "order": 1,
+    "start_time": "08:00:00",
+    "end_time": "08:45:00",
+    "task_name": "New Mess Common Lobby and Entry Touch Up",
+    "task_description": "Assigned: Yogesh",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6564,
+  "fields": {
+    "area": 23,
+    "order": 2,
+    "start_time": "08:45:00",
+    "end_time": "09:30:00",
+    "task_name": "Common Area Benches, Railings and Corners",
+    "task_description": "Assigned: Yogesh",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6565,
+  "fields": {
+    "area": 23,
+    "order": 3,
+    "start_time": "09:30:00",
+    "end_time": "09:45:00",
+    "task_name": "Tea Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6566,
+  "fields": {
+    "area": 23,
+    "order": 4,
+    "start_time": "09:45:00",
+    "end_time": "10:45:00",
+    "task_name": "Common Passage Dusting and Dry Mop",
+    "task_description": "Assigned: Yogesh",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6567,
+  "fields": {
+    "area": 23,
+    "order": 5,
+    "start_time": "10:45:00",
+    "end_time": "12:00:00",
+    "task_name": "Approach Roads and Side Walk Touch Up",
+    "task_description": "Assigned: Yogesh",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6568,
+  "fields": {
+    "area": 23,
+    "order": 6,
+    "start_time": "12:00:00",
+    "end_time": "13:00:00",
+    "task_name": "Common Storage and Tool Bay Cleaning",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6569,
+  "fields": {
+    "area": 23,
+    "order": 7,
+    "start_time": "13:00:00",
+    "end_time": "13:45:00",
+    "task_name": "Lunch Break",
+    "task_description": "",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6570,
+  "fields": {
+    "area": 23,
+    "order": 8,
+    "start_time": "13:45:00",
+    "end_time": "15:30:00",
+    "task_name": "Hostel Common Entry Points Touch Up",
+    "task_description": "Assigned: Yogesh",
+    "worker_tag": "room",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6571,
+  "fields": {
+    "area": 23,
+    "order": 9,
+    "start_time": "15:30:00",
+    "end_time": "16:50:00",
+    "task_name": "Final Round and Issue Reporting",
+    "task_description": "Record any damage in extra work",
+    "worker_tag": "room",
+    "requires_photo": false,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6572,
+  "fields": {
+    "area": 23,
+    "order": 1,
+    "start_time": "20:00:00",
+    "end_time": "21:00:00",
+    "task_name": "All Hostel Touch Up Cleanup Round",
+    "task_description": "Assigned: Vinayak (Night Shift)",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6573,
+  "fields": {
+    "area": 23,
+    "order": 2,
+    "start_time": "21:00:00",
+    "end_time": "21:45:00",
+    "task_name": "Catwalk Bridge Touch Up Cleaning",
+    "task_description": "Assigned: Vinayak",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6574,
+  "fields": {
+    "area": 23,
+    "order": 3,
+    "start_time": "21:45:00",
+    "end_time": "22:30:00",
+    "task_name": "New Mess Second Floor Touch Up",
+    "task_description": "Assigned: Vinayak",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6575,
+  "fields": {
+    "area": 23,
+    "order": 4,
+    "start_time": "22:30:00",
+    "end_time": "23:15:00",
+    "task_name": "Old Mess Terrace Cleaning",
+    "task_description": "Assigned: Vinayak",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
+    "is_active": true
+  }
+},
+{
+  "model": "housekeeping.hkscheduletemplate",
+  "pk": 6576,
+  "fields": {
+    "area": 23,
+    "order": 5,
+    "start_time": "23:15:00",
+    "end_time": "23:59:00",
+    "task_name": "New Mess Terrace Final Round",
+    "task_description": "Assigned: Vinayak",
+    "worker_tag": "washroom",
+    "requires_photo": true,
+    "frequency": "daily",
     "is_active": true
   }
 }

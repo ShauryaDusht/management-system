@@ -264,12 +264,12 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Mehul Jadeja',     '106', '7096229284', 'Kyzeel',   'washroom', False),
 
             # ── COMMON AREA ─────────────────────────────────────────────────
-            ('Yogesh Vaghela',   '80',  '9998100804', 'Common Area', 'general', False),
-            ('Vinayak Solanki',  '240', '9023271834', 'Common Area', 'general', False),
-            ('Anil Thakur',      '542', '9265665289', 'Common Area', 'general', False),
-            ('Suresh',           '',    '',            'Common Area', 'general', False),
-            ('Krunal',           '',    '',            'Common Area', 'general', False),
-            ('Ketan Gujjar',     '100', '8347139138', 'Common Area', 'general', False),
+            ('Yogesh Vaghela',   '80',  '9998100804', 'Common Area', 'room',    False),
+            ('Vinayak Solanki',  '240', '9023271834', 'Common Area', 'washroom', False),
+            ('Anil Thakur',      '542', '9265665289', 'Common Area', 'floor',   False),
+            ('Suresh',           '',    '',            'Common Area', 'floor',   False),
+            ('Krunal',           '',    '',            'Common Area', 'floor',   False),
+            ('Ketan Gujjar',     '100', '8347139138', 'Common Area', 'reliever', True),
 
             # ── RELIEVERS ────────────────────────────────────────────────────
             # Relievers substitute for permanent workers when they take leave.
@@ -309,15 +309,34 @@ All accounts use password: {DEFAULT_PASSWORD}
                     worker_type=wtype, area=area, is_reliever=is_reliever,
                 )
 
+        # Common Area staffing details
+        common_supervisor = User.objects.filter(username='vishwajeet').first()
+        common_shift_map = {
+            'Vinayak Solanki': 'night',
+            'Anil Thakur': 'day',
+            'Suresh': 'day',
+            'Krunal': 'day',
+            'Yogesh Vaghela': 'day',
+            'Ketan Gujjar': 'day',
+        }
+        for worker_name, shift in common_shift_map.items():
+            worker = HKWorker.objects.filter(name=worker_name, area=self.area('Common Area')).first()
+            if worker:
+                worker.shift = shift
+                worker.supervisor = common_supervisor
+                worker.save(update_fields=['shift', 'supervisor'])
+
         self.stdout.write(f'  ✓ Workers: {HKWorker.objects.count()} ({created_count} new)')
 
     # ─────────────────────────────────────────────────────────────────────────
 
     def seed_schedules(self):
         """
-        Build schedule templates. SAME daily schedule for ALL 12 caretaker hostels.
+        Build schedule templates.
+        - Same daily schedule for all 12 caretaker hostels (room/floor/washroom).
+        - Sunday extras for hostels.
+        - Dedicated daily Common Area schedule for Vishwajeet and team.
         Three parallel staff groups: room / floor / washroom
-        Plus Sunday extras (dustbin + terrace + fridge) for all hostels.
         """
         # Wipe old hostel templates and recreate fresh
         hostel_names = [
@@ -426,4 +445,72 @@ All accounts use password: {DEFAULT_PASSWORD}
                 )
                 total += 1
 
-        self.stdout.write(f'  ✓ Schedule templates: {total} (across {len(hostel_areas)} hostels)')
+        # Common Area: same schedule for all 7 days (no separate Sunday-only plan)
+        common_area = self.area('Common Area')
+        if common_area:
+            HKScheduleTemplate.objects.filter(area=common_area).delete()
+
+            common_floor_tasks = [
+                (1, '08:00', '09:00', 'New Mess Common Area Front and Back Cleaning', True, 'Assigned: Anil + Suresh'),
+                (2, '09:00', '10:00', 'Chimair and Duven Common Pockets Cleaning', True, 'Assigned: Anil'),
+                (3, '10:00', '11:00', 'Kyzeel, Lekhaag and Ijokha Common Pockets', True, 'Assigned: Anil'),
+                (4, '11:00', '11:15', 'Tea Break', False, ''),
+                (5, '11:15', '12:30', 'Hiqom Front and Back + New PC Perimeter', True, 'Assigned: Suresh'),
+                (6, '12:30', '13:00', 'Tool Refill and Waste Transfer', False, ''),
+                (7, '13:00', '13:45', 'Lunch Break', False, ''),
+                (8, '13:45', '15:00', 'Ijokha, Lekhaag and Jurqia Backside Route', True, 'Assigned: Suresh'),
+                (9, '15:00', '16:00', 'New Mess to Old Mess Corridor Cleaning', True, 'Assigned: Krunal'),
+                (10, '16:00', '16:50', 'Final Route Sweep and Spot Touch Up', True, 'Assigned: Anil + Krunal'),
+            ]
+
+            common_room_tasks = [
+                (1, '08:00', '08:45', 'New Mess Common Lobby and Entry Touch Up', True, 'Assigned: Yogesh'),
+                (2, '08:45', '09:30', 'Common Area Benches, Railings and Corners', True, 'Assigned: Yogesh'),
+                (3, '09:30', '09:45', 'Tea Break', False, ''),
+                (4, '09:45', '10:45', 'Common Passage Dusting and Dry Mop', True, 'Assigned: Yogesh'),
+                (5, '10:45', '12:00', 'Approach Roads and Side Walk Touch Up', True, 'Assigned: Yogesh'),
+                (6, '12:00', '13:00', 'Common Storage and Tool Bay Cleaning', False, ''),
+                (7, '13:00', '13:45', 'Lunch Break', False, ''),
+                (8, '13:45', '15:30', 'Hostel Common Entry Points Touch Up', True, 'Assigned: Yogesh'),
+                (9, '15:30', '16:50', 'Final Round and Issue Reporting', False, 'Record any damage in extra work'),
+            ]
+
+            common_washroom_tasks = [
+                (1, '20:00', '21:00', 'All Hostel Touch Up Cleanup Round', True, 'Assigned: Vinayak (Night Shift)'),
+                (2, '21:00', '21:45', 'Catwalk Bridge Touch Up Cleaning', True, 'Assigned: Vinayak'),
+                (3, '21:45', '22:30', 'New Mess Second Floor Touch Up', True, 'Assigned: Vinayak'),
+                (4, '22:30', '23:15', 'Old Mess Terrace Cleaning', True, 'Assigned: Vinayak'),
+                (5, '23:15', '23:59', 'New Mess Terrace Final Round', True, 'Assigned: Vinayak'),
+            ]
+
+            for order, start, end, name, req_photo, desc in common_floor_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=common_area, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='floor', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in common_room_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=common_area, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='room', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in common_washroom_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=common_area, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='washroom', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+        self.stdout.write(f'  ✓ Schedule templates: {total} (hostels + common area)')
