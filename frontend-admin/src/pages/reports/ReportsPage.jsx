@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import api from '../../api/client'
 import AdminLayout from '../../layout/AdminLayout'
 import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner, StatCard, Tabs } from '../../components/ui'
 import {
@@ -13,28 +14,35 @@ import {
   pdfUrl,
 } from '../../api/inventory'
 
-function downloadWithToken(url, filename) {
-  const token = localStorage.getItem('access_token')
-  fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-    .then((res) => {
-      if (!res.ok) throw new Error('Download failed')
-      return res.blob()
-    })
-    .then((blob) => {
-      const href = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = href
-      a.download = filename
-      a.click()
-      URL.revokeObjectURL(href)
-    })
-    .catch(() => window.alert('Download failed.'))
+async function downloadWithToken(url, filename) {
+  try {
+    const response = await api.get(url, { responseType: 'blob' })
+    const href = URL.createObjectURL(response.data)
+    const a = document.createElement('a')
+    a.href = href
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(href)
+  } catch {
+    window.alert('Download failed.')
+  }
+}
+
+function csvEscape(value) {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  const str = String(value)
+  // Only wrap in quotes if the value contains a delimiter or quote character
+  if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+    return `"${str.replace(/"/g, '""')}"`
+  }
+  return str
 }
 
 function exportCsv(data, filename) {
   if (!Array.isArray(data) || !data.length) return
   const headers = Object.keys(data[0])
-  const rows = data.map((row) => headers.map((k) => JSON.stringify(row[k] ?? '')).join(','))
+  const rows = data.map((row) => headers.map((k) => csvEscape(row[k])).join(','))
   const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' })
   const href = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -191,6 +199,8 @@ function RequestsReportTab() {
               <StatCard label="Total" value={report?.total || 0} icon="TT" color="#1d4ed8" />
               <StatCard label="Pending" value={report?.pending || 0} icon="PN" color="#f59e0b" />
               <StatCard label="Approved" value={report?.approved || 0} icon="AP" color="#16a34a" />
+              {/* issued count now present in backend summary */}
+              <StatCard label="Issued" value={report?.issued || 0} icon="IS" color="#7c3aed" />
               <StatCard label="Rejected" value={report?.rejected || 0} icon="RJ" color="#dc2626" />
             </div>
             <DataTable

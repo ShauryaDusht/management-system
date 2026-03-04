@@ -1,18 +1,21 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 
 class MonthlyReport(models.Model):
     """
     Stores a generated monthly procurement snapshot.
     - month / year identify the reporting period.
-    - snapshot holds the full computed JSON so re-downloading never needs
-      re-computation.
-    - csv_file / pdf_file are populated in Phase 3B when files are generated.
+    - snapshot holds the full computed JSON so re-downloading never needs re-computation.
+    - csv_file / pdf_file are populated when files are generated.
     """
     month = models.PositiveSmallIntegerField()   # 1–12
     year = models.PositiveSmallIntegerField()     # e.g. 2025
-    generated_at = models.DateTimeField(auto_now_add=True)
+
+    # use default=timezone.now instead of auto_now_add=True so this
+    generated_at = models.DateTimeField(default=timezone.now)
+
     generated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

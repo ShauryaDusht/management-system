@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import F
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 
 from .models import Category, Item, ItemIssue, ItemRequest, StockEntry
@@ -13,19 +14,33 @@ def mobile_login(request):
         return redirect('/inventory/mobile/')
 
     error = ''
-    next_url = request.GET.get('next') or '/inventory/mobile/'
+    next_url = '/inventory/mobile/'
 
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
-        next_url = request.POST.get('next') or '/inventory/mobile/'
+        raw_next = request.POST.get('next', '').strip()
 
         user = authenticate(request, username=username, password=password)
         if user is not None:
             auth_login(request, user)
-            return redirect(next_url)
+            if raw_next and url_has_allowed_host_and_scheme(
+                url=raw_next,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+            ):
+                return redirect(raw_next)
+            return redirect('/inventory/mobile/')
 
         error = 'Invalid username or password.'
+    else:
+        raw_next = request.GET.get('next', '').strip()
+        if raw_next and url_has_allowed_host_and_scheme(
+            url=raw_next,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            next_url = raw_next
 
     return render(request, 'inventory/mobile/login.html', {
         'error': error,
@@ -70,13 +85,9 @@ def mobile_reports(request):
     if report_type == 'requests':
         requests_data = generate_requests_report(date_from or None, date_to or None)
     else:
-        inventory_data = generate_inventory_report()
-        if status_filter and status_filter != 'all':
-            filtered_items = [item for item in inventory_data['items'] if item.get('status') == status_filter]
-            inventory_data = {
-                **inventory_data,
-                'items': filtered_items,
-            }
+        inventory_data = generate_inventory_report(
+            status_filter=status_filter if status_filter and status_filter != 'all' else None
+        )
 
     return render(request, 'inventory/mobile/reports.html', {
         'report_type': report_type,
@@ -111,7 +122,22 @@ def mobile_inventory_list(request):
 def mobile_request_form(request):
     if request.method == 'POST':
         item_id = request.POST.get('item')
-        quantity = int(request.POST.get('quantity_requested', 1))
+
+        try:
+            quantity = int(request.POST.get('quantity_requested', 1))
+        except (ValueError, TypeError):
+            items = Item.objects.all().order_by('name')
+            return render(request, 'inventory/mobile/request_form.html', {
+                'items': items,
+                'error': 'Quantity must be a whole number.',
+            })
+        if quantity < 1:
+            items = Item.objects.all().order_by('name')
+            return render(request, 'inventory/mobile/request_form.html', {
+                'items': items,
+                'error': 'Quantity must be at least 1.',
+            })
+
         reason = request.POST.get('reason', '')
         notes = request.POST.get('notes', '')
 
@@ -201,17 +227,21 @@ def mobile_stock_log(request):
 
 
 @login_required
+@transaction.atomic
 def mobile_approve_request(request, pk):
     if request.method == 'POST':
-        item_request = get_object_or_404(ItemRequest, pk=pk)
-        item = item_request.item
-        if item.available_quantity >= item_request.quantity_requested and item_request.status == 'pending':
-            item.available_quantity -= item_request.quantity_requested
-            item.save(update_fields=['available_quantity'])
+        item_request = get_object_or_404(
+            ItemRequest.objects.select_for_update(), pk=pk
+        )
+        if item_request.status == 'pending':
+            item = item_request.item
+            item_request.units_remaining = item.available_quantity
             item_request.status = 'approved'
             item_request.approved_by = request.user
             item_request.reviewed_at = timezone.now()
-            item_request.save(update_fields=['status', 'approved_by', 'reviewed_at'])
+            item_request.save(update_fields=[
+                'status', 'approved_by', 'reviewed_at', 'units_remaining'
+            ])
     return redirect('mobile_manager_requests')
 
 
@@ -232,29 +262,38 @@ def mobile_reject_request(request, pk):
 @transaction.atomic
 def mobile_issue_request(request, pk):
     if request.method == 'POST':
-        item_request = get_object_or_404(ItemRequest.objects.select_related('item'), pk=pk)
-        item = item_request.item
-        qty = int(request.POST.get('quantity', item_request.quantity_requested))
+        item_request = get_object_or_404(
+            ItemRequest.objects.select_related('item').select_for_update(), pk=pk
+        )
 
-        if item_request.status == 'pending' and item.available_quantity >= qty:
-            item.available_quantity -= qty
-            item.save(update_fields=['available_quantity'])
-            item_request.status = 'issued'
-            item_request.approved_by = request.user
-            item_request.reviewed_at = timezone.now()
-            item_request.quantity_requested = qty
-            item_request.units_remaining = item.available_quantity
-            item_request.save(
-                update_fields=['status', 'approved_by', 'reviewed_at', 'quantity_requested', 'units_remaining']
-            )
-            ItemIssue.objects.update_or_create(
-                request=item_request,
-                defaults={
-                    'issued_by': request.user,
-                    'issued_quantity': qty,
-                    'notes': request.POST.get('notes', ''),
-                },
-            )
+        if item_request.status != 'approved':
+            return redirect('mobile_manager_requests')
+
+        item = item_request.item
+
+        try:
+            qty = int(request.POST.get('quantity', item_request.quantity_requested))
+        except (ValueError, TypeError):
+            qty = item_request.quantity_requested
+
+        if qty < 1 or item.available_quantity < qty:
+            return redirect('mobile_manager_requests')
+
+        Item.objects.filter(pk=item.pk).update(
+            available_quantity=F('available_quantity') - qty
+        )
+
+        item_request.status = 'issued'
+        item_request.save(update_fields=['status'])
+
+        ItemIssue.objects.update_or_create(
+            request=item_request,
+            defaults={
+                'issued_by': request.user,
+                'issued_quantity': qty,
+                'notes': request.POST.get('notes', ''),
+            },
+        )
     return redirect('mobile_manager_requests')
 
 
@@ -277,8 +316,8 @@ def mobile_change_password(request):
             error = 'Current password is incorrect.'
         elif new_pass != confirm:
             error = 'New passwords do not match.'
-        elif len(new_pass) < 6:
-            error = 'Password must be at least 6 characters.'
+        elif len(new_pass) < 8:
+            error = 'Password must be at least 8 characters.'
 
         if error:
             return render(request, 'inventory/mobile/profile.html', {
@@ -299,5 +338,6 @@ def mobile_change_password(request):
 
 
 def mobile_logout(request):
-    auth_logout(request)
+    if request.method == 'POST':
+        auth_logout(request)
     return redirect('mobile_login')

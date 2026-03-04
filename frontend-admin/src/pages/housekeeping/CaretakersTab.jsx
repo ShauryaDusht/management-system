@@ -47,9 +47,10 @@ export default function CaretakersTab() {
   const areaMap = useMemo(() => {
     const mapping = {}
     areas.forEach((a) => {
-      ;(a.caretakers || []).forEach((name) => {
-        if (!mapping[name]) mapping[name] = []
-        mapping[name].push(a.name)
+      const ids = a.caretaker_ids || []
+      ids.forEach((uid) => {
+        if (!mapping[uid]) mapping[uid] = []
+        mapping[uid].push(a.name)
       })
     })
     return mapping
@@ -72,7 +73,7 @@ export default function CaretakersTab() {
             headers={['Role', 'Name', 'Username', 'Phone', 'Assigned Areas', 'Status']}
             rows={users.map((u) => {
               const fullName = u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username
-              const areasForUser = areaMap[fullName] || []
+              const areasForUser = areaMap[u.id] || []
               return [
                 <Badge key={`r-${u.id}`} value={u.role} />,
                 fullName,

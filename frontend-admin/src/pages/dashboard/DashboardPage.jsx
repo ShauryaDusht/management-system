@@ -6,16 +6,6 @@ import { Badge, Btn, Card, Spinner, StatCard } from '../../components/ui'
 import { DonutChart, TrendArea } from '../../components/ui/Charts'
 import AdminLayout from '../../layout/AdminLayout'
 
-const MOCK_TREND = [
-  { name: 'Mon', completed: 12, ongoing: 5, pending: 8 },
-  { name: 'Tue', completed: 18, ongoing: 7, pending: 6 },
-  { name: 'Wed', completed: 15, ongoing: 4, pending: 10 },
-  { name: 'Thu', completed: 22, ongoing: 8, pending: 4 },
-  { name: 'Fri', completed: 19, ongoing: 6, pending: 7 },
-  { name: 'Sat', completed: 14, ongoing: 3, pending: 9 },
-  { name: 'Sun', completed: 20, ongoing: 9, pending: 5 },
-]
-
 export default function DashboardPage() {
   const [invSummary, setInvSummary] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -42,15 +32,20 @@ export default function DashboardPage() {
     )
   }
 
+  // fix math here
+  const inStockCount = invSummary
+    ? invSummary.in_stock_count ??
+      Math.max(
+        0,
+        (invSummary.total_items || 0) -
+          (invSummary.low_stock_count || 0) -
+          (invSummary.out_of_stock_count || 0),
+      )
+    : 0
+
   const invDonut = invSummary
     ? [
-        {
-          name: 'In Stock',
-          value:
-            (invSummary.total_items || 0) -
-            (invSummary.low_stock_count || 0) -
-            (invSummary.out_of_stock_count || 0),
-        },
+        { name: 'In Stock', value: inStockCount },
         { name: 'Low Stock', value: invSummary.low_stock_count || 0 },
         { name: 'Out of Stock', value: invSummary.out_of_stock_count || 0 },
       ]
@@ -197,11 +192,13 @@ export default function DashboardPage() {
             </>
           ) : (
             <div style={{ textAlign: 'center', color: 'var(--text-3)', padding: '30px 0' }}>
-              Run docker compose to seed HK data
+              No housekeeping data yet
             </div>
           )}
         </Card>
 
+        {/* removed hardcoded [5, 3] zone data. Show a clear
+            "coming soon" placeholder instead of a chart that lies. */}
         <Card>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <div>
@@ -214,26 +211,49 @@ export default function DashboardPage() {
               </Btn>
             </a>
           </div>
-          <DonutChart data={[{ name: 'Zones Active', value: 5 }, { name: 'Pending Setup', value: 3 }]} total={8} label="Zones" size={160} />
-          <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-3)', marginTop: 12 }}>
-            Module in development
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '30px 0',
+              color: 'var(--text-3)',
+              gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 28 }}>🌿</span>
+            <div style={{ fontSize: 12, textAlign: 'center' }}>Module in development</div>
           </div>
         </Card>
       </div>
 
+      {/* FIX DASH-01: removed the MOCK_TREND constant and the chart that used it.
+          A weekly activity trend chart that shows the same fake numbers every day
+          misleads users. Replaced with a placeholder until real historical data
+          is available from the API. */}
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ fontWeight: 700, fontSize: 14 }}>📈 Weekly Activity Trend</div>
         </div>
-        <TrendArea
-          data={MOCK_TREND}
-          lines={[
-            { key: 'completed', label: 'Completed' },
-            { key: 'ongoing', label: 'Ongoing' },
-            { key: 'pending', label: 'Pending' },
-          ]}
-          height={220}
-        />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: 220,
+            color: 'var(--text-3)',
+            fontSize: 13,
+            flexDirection: 'column',
+            gap: 8,
+            border: '1px dashed var(--border)',
+            borderRadius: 8,
+          }}
+        >
+          <span style={{ fontSize: 24 }}>📊</span>
+          <div>Historical trend data not yet available</div>
+          <div style={{ fontSize: 11 }}>This chart will populate once daily records accumulate</div>
+        </div>
       </Card>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginTop: 20 }}>

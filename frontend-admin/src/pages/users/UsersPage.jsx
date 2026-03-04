@@ -62,7 +62,8 @@ export default function UsersPage() {
   }
 
   const openEdit = (u) => {
-    setForm({ ...u, password: '' })
+    const { password: _ignored, ...safeFields } = u
+    setForm({ ...safeFields, password: '' })
     setFormError('')
     setModal({ mode: 'edit', user: u })
   }
@@ -82,8 +83,17 @@ export default function UsersPage() {
       if (modal.mode === 'create') {
         await authAPI.createUser(form)
       } else {
-        const payload = { ...form }
-        if (!payload.password) delete payload.password
+        const payload = {
+          username: form.username,
+          first_name: form.first_name,
+          last_name: form.last_name,
+          email: form.email,
+          phone: form.phone,
+          role: form.role,
+        }
+        if (form.password) {
+          payload.password = form.password
+        }
         await authAPI.updateUser(modal.user.id, payload)
       }
       setModal(null)

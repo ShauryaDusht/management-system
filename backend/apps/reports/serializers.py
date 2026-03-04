@@ -15,7 +15,6 @@ class MonthlyReportListSerializer(serializers.ModelSerializer):
             'id', 'month', 'year', 'period_label',
             'generated_at', 'generated_by', 'generated_by_name',
             'csv_url', 'pdf_url',
-            # summary fields pulled from snapshot
             'total_items', 'items_needing_reorder', 'total_estimated_cost',
         ]
 
@@ -36,17 +35,6 @@ class MonthlyReportListSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.pdf_file.url) if request else obj.pdf_file.url
         return None
 
-    # Pull summary numbers directly from stored snapshot
-    def get_total_items(self, obj):
-        return obj.snapshot.get('total_items', 0)
-
-    def get_items_needing_reorder(self, obj):
-        return obj.snapshot.get('items_needing_reorder', 0)
-
-    def get_total_estimated_cost(self, obj):
-        return obj.snapshot.get('total_estimated_cost', 0)
-
-    # Override to_representation to add computed snapshot fields
     def to_representation(self, instance):
         data = super().to_representation(instance)
         snap = instance.snapshot or {}
