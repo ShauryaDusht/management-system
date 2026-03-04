@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
 import { Alert, Badge, Btn, Card, DataTable, Spinner } from '../../components/ui'
-import { TrendArea } from '../../components/ui/Charts'
 
 function weekdayName(date) {
   return date.toLocaleDateString('en-IN', { weekday: 'short' })
@@ -35,12 +34,15 @@ export default function OverviewTab() {
       const mapped = recResults.map(({ area, records }) => {
         const completed = records.filter((r) => r.status === 'done').length
         const pending = records.filter((r) => r.status === 'pending').length
-        const ongoing = records.filter((r) => r.status === 'skipped').length
+        // FIX HK-13: 'skipped' is its own status — it is NOT the same as 'ongoing'.
+        // The model has no 'ongoing' status (tasks are pending, done, or skipped).
+        // Renamed the column and variable accordingly to avoid misleading admins.
+        const skipped = records.filter((r) => r.status === 'skipped').length
         return {
           area_id: area.id,
           area: area.name,
           pending,
-          ongoing,
+          skipped,
           completed,
           supervisor: (area.caretakers || []).join(', ') || '—',
         }
@@ -61,26 +63,12 @@ export default function OverviewTab() {
     return rows.reduce(
       (acc, r) => ({
         pending: acc.pending + r.pending,
-        ongoing: acc.ongoing + r.ongoing,
+        skipped: acc.skipped + r.skipped,
         completed: acc.completed + r.completed,
       }),
-      { pending: 0, ongoing: 0, completed: 0 }
+      { pending: 0, skipped: 0, completed: 0 }
     )
   }, [rows])
-
-  const trend = useMemo(() => {
-    const base = new Date()
-    return Array.from({ length: 7 }, (_, idx) => {
-      const d = new Date(base)
-      d.setDate(base.getDate() - (6 - idx))
-      return {
-        name: weekdayName(d),
-        completed: Math.max(0, Math.round(totals.completed * (0.5 + idx * 0.07))),
-        ongoing: Math.max(0, Math.round(totals.ongoing * (0.5 + idx * 0.05))),
-        pending: Math.max(0, Math.round(totals.pending * (0.5 + idx * 0.03))),
-      }
-    })
-  }, [totals])
 
   return (
     <div>
@@ -96,30 +84,46 @@ export default function OverviewTab() {
               Today's Running Tasks
             </div>
             <DataTable
-              headers={['Hostel/Block', 'Pending', 'Ongoing', 'Completed', 'Supervisor']}
+              // FIX HK-13: column renamed from 'Ongoing' to 'Skipped'
+              headers={['Hostel/Block', 'Pending', 'Skipped', 'Completed', 'Supervisor']}
               rows={rows.map((r) => [
                 r.area,
                 <span key={`p-${r.area_id}`}><Badge value="pending" style={{ marginRight: 6 }} />{r.pending}</span>,
-                <span key={`o-${r.area_id}`}><Badge value="ongoing" style={{ marginRight: 6 }} />{r.ongoing}</span>,
+                <span key={`s-${r.area_id}`}><Badge value="skipped" style={{ marginRight: 6 }} />{r.skipped}</span>,
                 <span key={`c-${r.area_id}`}><Badge value="completed" style={{ marginRight: 6 }} />{r.completed}</span>,
-                <span key={`s-${r.area_id}`} style={{ fontSize: 12 }}>
+                <span key={`sup-${r.area_id}`} style={{ fontSize: 12 }}>
                   {r.supervisor}
                 </span>,
               ])}
             />
           </Card>
 
+          {/* FIX HK-03: removed the fake trend chart that multiplied today's totals
+              by a fixed scalar (0.5 + idx * 0.07). This produced a fabricated curve
+              that users could mistake for real historical data.
+              Replaced with a clear placeholder until real per-day data is available. */}
           <Card>
             <div style={{ fontWeight: 700, marginBottom: 10 }}>Report Trends</div>
-            <TrendArea
-              data={trend}
-              lines={[
-                { key: 'completed', label: 'Completed' },
-                { key: 'ongoing', label: 'Ongoing' },
-                { key: 'pending', label: 'Pending' },
-              ]}
-              height={220}
-            />
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: 220,
+                color: 'var(--text-3)',
+                fontSize: 12,
+                gap: 8,
+                border: '1px dashed var(--border)',
+                borderRadius: 8,
+              }}
+            >
+              <span style={{ fontSize: 24 }}>📊</span>
+              <div style={{ textAlign: 'center' }}>Historical trend data not yet available</div>
+              <div style={{ fontSize: 11, textAlign: 'center' }}>
+                This chart will populate once daily records accumulate
+              </div>
+            </div>
           </Card>
         </div>
       )}
@@ -129,8 +133,9 @@ export default function OverviewTab() {
           <div style={{ fontSize: 13 }}>
             Completed <strong>{totals.completed}</strong> Tasks
           </div>
+          {/* FIX HK-13: label changed from 'Ongoing' to 'Skipped' */}
           <div style={{ fontSize: 13 }}>
-            Ongoing <strong>{totals.ongoing}</strong> Tasks
+            Skipped <strong>{totals.skipped}</strong> Tasks
           </div>
           <div style={{ fontSize: 13 }}>
             Pending <strong>{totals.pending}</strong> Tasks

@@ -1,14 +1,10 @@
 import { useEffect, useState } from 'react'
 
+import { asList } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
 import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField } from '../../components/ui'
 
-function asList(data) {
-  if (Array.isArray(data)) return data
-  if (Array.isArray(data?.results)) return data.results
-  if (Array.isArray(data?.items)) return data.items
-  return []
-}
+
 
 export default function StockLogTab({ userRole }) {
   const [loading, setLoading] = useState(true)

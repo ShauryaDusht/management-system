@@ -1,6 +1,7 @@
-from django.db import IntegrityError
 from django.http import FileResponse
+from django.utils import timezone
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -11,15 +12,19 @@ from .models import MonthlyReport
 from .serializers import MonthlyReportListSerializer, MonthlyReportDetailSerializer
 
 
-# ── Existing views (unchanged) ────────────────────────────────────────────────
+# ── Existing report views ─────────────────────────────────────────────────────
 
 class InventoryReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         data = generate_inventory_report()
         return Response(data)
 
 
 class RequestsReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
@@ -27,12 +32,11 @@ class RequestsReportView(APIView):
         return Response(data)
 
 
-# Monthly report views
+# ── Monthly report views ──────────────────────────────────────────────────────
 
 class MonthlyReportListView(APIView):
     """
-    GET  /api/reports/monthly/          → list all saved monthly reports (admin only)
-    POST /api/reports/monthly/generate/ → generate + save a new monthly report
+    GET  /api/reports/monthly/  → list all saved monthly reports (admin only)
     """
     permission_classes = [IsAdminUser]
 
@@ -58,7 +62,6 @@ class MonthlyReportGenerateView(APIView):
         year = request.data.get('year')
         overwrite = request.data.get('overwrite', False)
 
-        # Validate
         errors = {}
         if not month:
             errors['month'] = 'This field is required.'
@@ -79,7 +82,6 @@ class MonthlyReportGenerateView(APIView):
         if year < 2000 or year > 2100:
             return Response({'year': 'Must be a valid 4-digit year.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check for existing report
         existing = MonthlyReport.objects.filter(month=month, year=year).first()
         if existing and not overwrite:
             return Response(
@@ -91,24 +93,22 @@ class MonthlyReportGenerateView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        # Generate snapshot
         snapshot = generate_monthly_report(month=month, year=year)
 
         if existing and overwrite:
-            # Clear old files so Phase 3B regenerates them
-            existing.csv_file = None
-            existing.pdf_file = None
-            existing.snapshot = snapshot
-            existing.generated_by = request.user
-            # Reset auto_now_add field manually
+            # generated_at is now a plain DateTimeField (not auto_now_add),
+            # so we can update it properly on regeneration via .update().
             MonthlyReport.objects.filter(pk=existing.pk).update(
                 snapshot=snapshot,
                 generated_by=request.user,
+                generated_at=timezone.now(),  # reset timestamp on regeneration
                 csv_file=None,
                 pdf_file=None,
             )
             existing.refresh_from_db()
             report = existing
+            # return 200 OK for an update, not 201 Created
+            response_status = status.HTTP_200_OK
         else:
             report = MonthlyReport.objects.create(
                 month=month,
@@ -116,14 +116,15 @@ class MonthlyReportGenerateView(APIView):
                 snapshot=snapshot,
                 generated_by=request.user,
             )
+            response_status = status.HTTP_201_CREATED
 
         serializer = MonthlyReportDetailSerializer(report, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.data, status=response_status)
 
 
 class MonthlyReportDetailView(APIView):
     """
-    GET /api/reports/monthly/<id>/   → full report including snapshot rows
+    GET    /api/reports/monthly/<id>/  → full report including snapshot rows
     DELETE /api/reports/monthly/<id>/  → remove saved report
     """
     permission_classes = [IsAdminUser]
@@ -149,8 +150,6 @@ class MonthlyReportDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-# File export views
-
 class MonthlyReportCSVView(APIView):
     """
     GET /api/reports/monthly/<id>/csv/
@@ -164,7 +163,6 @@ class MonthlyReportCSVView(APIView):
         except MonthlyReport.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Generate if not already saved
         if not report.csv_file:
             generate_csv(report)
 
@@ -191,7 +189,6 @@ class MonthlyReportPDFView(APIView):
         except MonthlyReport.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Generate if not already saved
         if not report.pdf_file:
             generate_pdf(report)
 

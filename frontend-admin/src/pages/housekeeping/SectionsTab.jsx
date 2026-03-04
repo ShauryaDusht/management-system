@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
 import { Alert, Card, DataTable, SelectField, Spinner } from '../../components/ui'

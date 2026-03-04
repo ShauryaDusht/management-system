@@ -1,13 +1,13 @@
 """
-Phase 3 report generators.
+Report generators.
 Consumption logic:
   - Consumable : sum of actual_quantity_used from *finalized* issues whose
                  issued_at falls in the target month.
   - Asset      : sum of issued_quantity from issues whose issued_at falls in
                  the target month.
 Recommended order:
-  - If consumption > 0  →  ceil(consumption × 1.10)
-  - If consumption == 0 →  max(0, threshold − available)   (threshold-gap fallback)
+  - If consumption > 0  →  ceil(consumption x 1.10)
+  - If consumption == 0 →  max(0, threshold - available)   (threshold-gap fallback)
 """
 
 import calendar
@@ -19,13 +19,23 @@ from django.utils import timezone
 from apps.inventory.models import Item, ItemIssue
 
 
-# ── Keep existing generators intact ──────────────────────────────────────────
+# ── Inventory report ──────────────────────────────────────────────────────────
 
-def generate_inventory_report(date_from=None, date_to=None):
-    items = Item.objects.all().select_related('category')
+def generate_inventory_report(status_filter=None):
+    qs = Item.objects.all().select_related('category')
+
+    if status_filter == 'out_of_stock':
+        qs = qs.filter(available_quantity=0)
+    elif status_filter == 'low_stock':
+        # available > 0 AND available <= threshold  (mirrors Item.status property)
+        from django.db.models import F
+        qs = qs.filter(available_quantity__gt=0, available_quantity__lte=F('threshold_quantity'))
+    elif status_filter == 'in_stock':
+        from django.db.models import F
+        qs = qs.filter(available_quantity__gt=F('threshold_quantity'))
+
     data = []
-
-    for item in items:
+    for item in qs:
         unit_cost = float(item.unit_cost or 0)
         available_quantity = item.available_quantity or 0
         total_value = unit_cost * available_quantity
@@ -59,6 +69,8 @@ def generate_inventory_report(date_from=None, date_to=None):
     }
 
 
+# ── Requests report ───────────────────────────────────────────────────────────
+
 def generate_requests_report(date_from=None, date_to=None):
     from apps.inventory.models import ItemRequest
     qs = ItemRequest.objects.all().select_related('requested_by', 'item', 'approved_by')
@@ -88,12 +100,14 @@ def generate_requests_report(date_from=None, date_to=None):
         'total': len(data),
         'pending': sum(1 for d in data if d['status'] == 'pending'),
         'approved': sum(1 for d in data if d['status'] == 'approved'),
+        # add issued count
+        'issued': sum(1 for d in data if d['status'] == 'issued'),
         'rejected': sum(1 for d in data if d['status'] == 'rejected'),
         'requests': data,
     }
 
 
-# ── Phase 3: Monthly procurement snapshot ────────────────────────────────────
+# ── Monthly procurement snapshot ──────────────────────────────────────────────
 
 def _recommended_order(consumption: int, threshold: int, available: int) -> int:
     """Return the recommended procurement quantity."""
@@ -133,7 +147,7 @@ def generate_monthly_report(month: int, year: int) -> dict:
         else:
             entry['asset_issued'] += issue.issued_quantity
 
-    items = Item.objects.all().select_related('category').order_by('category__name', 'name')
+    items = Item.objects.select_related('category').order_by('category__name', 'name').iterator(chunk_size=200)
 
     rows = []
     total_estimated_cost = 0.0

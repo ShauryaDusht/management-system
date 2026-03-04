@@ -10,13 +10,6 @@ export default function WorkersTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const loadAreas = async () => {
-    const { data } = await hkAPI.getAreas()
-    const list = Array.isArray(data) ? data : data?.results || []
-    setAreas(list)
-    if (!selectedArea && list.length) setSelectedArea(String(list[0].id))
-  }
-
   const loadWorkers = async (areaId) => {
     setLoading(true)
     setError('')
@@ -30,20 +23,36 @@ export default function WorkersTab() {
     }
   }
 
+  // Single initialisation effect: for query optimization, see comments in the function body.
   useEffect(() => {
     ;(async () => {
+      setLoading(true)
+      setError('')
       try {
-        await loadAreas()
+        const { data } = await hkAPI.getAreas()
+        const list = Array.isArray(data) ? data : data?.results || []
+        setAreas(list)
+        const firstId = list.length ? String(list[0].id) : ''
+        setSelectedArea(firstId)
+        // Fetch workers for the first area directly — don't rely on the
+        // selectedArea state update to trigger a second useEffect.
+        const { data: wData } = await hkAPI.getWorkers(firstId || undefined)
+        setWorkers(Array.isArray(wData) ? wData : wData?.results || [])
       } catch (e) {
         setError(e.response?.data?.detail || 'Failed to load HK areas.')
+      } finally {
+        setLoading(false)
       }
     })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    loadWorkers(selectedArea)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedArea])
+  // Handle manual area changes from the dropdown.
+  const handleAreaChange = (e) => {
+    const newArea = e.target.value
+    setSelectedArea(newArea)
+    loadWorkers(newArea)
+  }
 
   return (
     <div>
@@ -62,7 +71,7 @@ export default function WorkersTab() {
           <div style={{ fontWeight: 700 }}>Workers</div>
           <SelectField
             value={selectedArea}
-            onChange={(e) => setSelectedArea(e.target.value)}
+            onChange={handleAreaChange}
             style={{ width: 220 }}
           >
             <option value="">All areas</option>

@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.core.validators import MinValueValidator
 from django.conf import settings
@@ -50,6 +51,24 @@ class Item(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_item_type_display()})"
+
+    def clean(self):
+        # prevent creating/updating an item where available_quantity
+        if (
+            self.available_quantity is not None
+            and self.total_quantity is not None
+            and self.available_quantity > self.total_quantity
+        ):
+            raise ValidationError({
+                'available_quantity': (
+                    f'Available quantity ({self.available_quantity}) cannot exceed '
+                    f'total quantity ({self.total_quantity}).'
+                )
+            })
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     @property
     def is_below_threshold(self):
@@ -125,7 +144,7 @@ class ItemRequest(models.Model):
     quantity_requested = models.PositiveIntegerField(
         validators=[MinValueValidator(1)]
     )
-    
+
     units_remaining = models.PositiveIntegerField(
         default=0,
         help_text='Snapshot of available stock at the time the request was reviewed (approved/rejected).'

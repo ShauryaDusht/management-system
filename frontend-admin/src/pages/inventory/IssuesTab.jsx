@@ -1,14 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { asList } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
 import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, Spinner } from '../../components/ui'
 
-function asList(data) {
-  if (Array.isArray(data)) return data
-  if (Array.isArray(data?.results)) return data.results
-  if (Array.isArray(data?.items)) return data.items
-  return []
-}
+
 
 export default function IssuesTab({ userRole }) {
   const [loading, setLoading] = useState(true)
