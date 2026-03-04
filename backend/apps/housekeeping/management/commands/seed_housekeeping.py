@@ -285,7 +285,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Lala',             '154', '9726303104', None, 'reliever', True),
             ('Hasmukhbhai',      '75',  '9714466201', None, 'reliever', True),
             ('Umesh Babariya',   '435', '9313230372', None, 'reliever', True),
-            # RAHUL FIX : punching_no after HK-10 discovery to prevent collision with Mukesh (Hiqom).
+            # RAHUL FIX
             ('Rajendra',         '121', '9924301124', None, 'reliever', True),
             ('Dhiraj',           '131', '9979030157', None, 'reliever', True),
             ('Mayur',            '258', '9099743600', None, 'reliever', True),
