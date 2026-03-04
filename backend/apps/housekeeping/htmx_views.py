@@ -54,13 +54,12 @@ def get_user_areas(user):
     return HKArea.objects.filter(assigned_users__user=user, is_active=True)
 
 
-# FIX SEC-03 + HK-16: use @functools.wraps (preserves all metadata) and check is_active
 def hk_required(fn):
     @functools.wraps(fn)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect(f"/housekeeping/login/?next={request.path}")
-        # FIX HK-16: deactivated users must not pass through even if role matches
+        # deactivated users must not pass through even if role matches
         if not request.user.is_active:
             return redirect("/housekeeping/login/")
         if request.user.role not in ["admin", "manager", "supervisor", "caretaker"]:
@@ -83,16 +82,6 @@ def get_today_records(area, date):
     Generate HKDailyRecord for every applicable template for this area/date.
     Caretaker hostels: daily templates run every day (Mon-Sun).
     sunday_extra templates run only on Sunday.
-
-    FIX HK-15: the original code ran a bare get_or_create() for each template
-    in a plain loop with no transaction isolation. Under concurrent dashboard
-    loads the non-atomic get_or_create could race: two requests both fail the
-    GET, both attempt the CREATE, one hits the unique_together IntegrityError
-    and Django raises a 500 for that user.
-
-    Fix: wrap the entire creation loop in a single SELECT FOR UPDATE advisory
-    lock (via select_for_update on a per-area basis) inside an atomic block so
-    only one writer at a time creates rows for this area/date pair.
     """
     from django.db import IntegrityError, transaction
 
@@ -136,8 +125,6 @@ def current_half():
 
 
 def get_active_alerts(user, user_areas):
-    # FIX INV-22: added prefetch_related('target_areas') so that if the template
-    # iterates alert.target_areas.all() it does not fire one extra query per alert.
     now = timezone.now()
     return HKAlert.objects.filter(is_active=True).filter(
         dm.Q(expires_at__isnull=True) | dm.Q(expires_at__gt=now)
