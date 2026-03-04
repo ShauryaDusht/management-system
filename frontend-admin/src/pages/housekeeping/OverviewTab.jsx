@@ -34,9 +34,6 @@ export default function OverviewTab() {
       const mapped = recResults.map(({ area, records }) => {
         const completed = records.filter((r) => r.status === 'done').length
         const pending = records.filter((r) => r.status === 'pending').length
-        // FIX HK-13: 'skipped' is its own status — it is NOT the same as 'ongoing'.
-        // The model has no 'ongoing' status (tasks are pending, done, or skipped).
-        // Renamed the column and variable accordingly to avoid misleading admins.
         const skipped = records.filter((r) => r.status === 'skipped').length
         return {
           area_id: area.id,
@@ -84,7 +81,7 @@ export default function OverviewTab() {
               Today's Running Tasks
             </div>
             <DataTable
-              // FIX HK-13: column renamed from 'Ongoing' to 'Skipped'
+              // column renamed from 'Ongoing' to 'Skipped'
               headers={['Hostel/Block', 'Pending', 'Skipped', 'Completed', 'Supervisor']}
               rows={rows.map((r) => [
                 r.area,
@@ -97,11 +94,6 @@ export default function OverviewTab() {
               ])}
             />
           </Card>
-
-          {/* FIX HK-03: removed the fake trend chart that multiplied today's totals
-              by a fixed scalar (0.5 + idx * 0.07). This produced a fabricated curve
-              that users could mistake for real historical data.
-              Replaced with a clear placeholder until real per-day data is available. */}
           <Card>
             <div style={{ fontWeight: 700, marginBottom: 10 }}>Report Trends</div>
             <div
@@ -133,7 +125,6 @@ export default function OverviewTab() {
           <div style={{ fontSize: 13 }}>
             Completed <strong>{totals.completed}</strong> Tasks
           </div>
-          {/* FIX HK-13: label changed from 'Ongoing' to 'Skipped' */}
           <div style={{ fontSize: 13 }}>
             Skipped <strong>{totals.skipped}</strong> Tasks
           </div>
