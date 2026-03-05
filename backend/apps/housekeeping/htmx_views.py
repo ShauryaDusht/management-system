@@ -72,11 +72,15 @@ def selected_area(request, user_areas):
 def get_today_records(area, date):
     """
     Generate HKDailyRecord for every applicable template for this area/date.
-    Caretaker hostels: daily templates run every day (Mon-Sun).
+    daily templates run every day.
+    saturday_special templates run only on Saturday.
     sunday_extra templates run only on Sunday.
     """
     dow = date.weekday()  # 0=Mon, 6=Sun
     templates = HKScheduleTemplate.objects.filter(area=area, is_active=True, frequency="daily")
+    if dow == 5:
+        saturday_qs = HKScheduleTemplate.objects.filter(area=area, is_active=True, frequency="saturday_special")
+        templates = (templates | saturday_qs).distinct()
     if dow == 6:
         sunday_qs = HKScheduleTemplate.objects.filter(area=area, is_active=True, frequency="sunday_extra")
         templates = (templates | sunday_qs).distinct()
@@ -141,7 +145,9 @@ def hk_dashboard(request):
         tag = rec.schedule.worker_tag or "general"
         grouped.setdefault(tag, []).append(rec)
 
-    is_common_area = bool(sel_area and sel_area.name == "Common Area")
+    area_name = sel_area.name if sel_area else ""
+    is_common_area = area_name == "Common Area"
+    is_research_park = area_name == "Research Park"
     if is_common_area:
         tab_label_floor = "Route A"
         tab_label_room = "Core Area"
@@ -149,6 +155,13 @@ def hk_dashboard(request):
         heading_floor = "Day Route Operations"
         heading_room = "Core Common Zones"
         heading_washroom = "Night Touch-up Route"
+    elif is_research_park:
+        tab_label_floor = "Ground Ops"
+        tab_label_room = "Office Zone"
+        tab_label_washroom = "WR Zone"
+        heading_floor = "Ground and External Operations"
+        heading_room = "Office and Meeting Zones"
+        heading_washroom = "Washroom and Utility Rounds"
     else:
         tab_label_floor = "Floor"
         tab_label_room = "Room"
@@ -266,7 +279,9 @@ def hk_schedule(request):
     user = request.user
     user_areas = get_user_areas(user)
     sel_area = selected_area(request, user_areas)
-    is_common_area = bool(sel_area and sel_area.name == "Common Area")
+    area_name = sel_area.name if sel_area else ""
+    is_common_area = area_name == "Common Area"
+    is_research_park = area_name == "Research Park"
 
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     weekly = []
@@ -274,17 +289,25 @@ def hk_schedule(request):
         daily = list(HKScheduleTemplate.objects.filter(
             area=sel_area, is_active=True, frequency="daily"
         ).order_by("worker_tag", "order", "start_time"))
+        saturday_special = list(HKScheduleTemplate.objects.filter(
+            area=sel_area, is_active=True, frequency="saturday_special"
+        ).order_by("worker_tag", "order", "start_time"))
         sunday_extra = list(HKScheduleTemplate.objects.filter(
             area=sel_area, is_active=True, frequency="sunday_extra"
         ).order_by("order", "start_time"))
         for i, day in enumerate(days):
-            tasks = daily + sunday_extra if i == 6 else daily
+            tasks = list(daily)
+            if i == 5:
+                tasks += saturday_special
+            if i == 6:
+                tasks += sunday_extra
             weekly.append({"day": day, "day_idx": i, "tasks": tasks})
 
     return render(request, "housekeeping/mobile/schedule.html", {
         "user_areas": user_areas,
         "selected_area": sel_area,
         "is_common_area": is_common_area,
+        "is_research_park": is_research_park,
         "weekly": weekly,
         "today_dow": timezone.localdate().weekday(),
         "tag_labels": WORKER_TAG_LABELS,

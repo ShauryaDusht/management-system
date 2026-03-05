@@ -82,6 +82,7 @@ class HKScheduleTemplate(models.Model):
     """
     FREQUENCY_CHOICES = [
         ('daily', 'Daily (Every Day)'),
+        ('saturday_special', 'Saturday Special Only'),
         ('sunday_extra', 'Sunday Extra Only'),
     ]
     area = models.ForeignKey(HKArea, on_delete=models.CASCADE, related_name='schedule_templates')
