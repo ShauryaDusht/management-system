@@ -2,139 +2,50 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Campus Inventory &mdash; Login</title>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body {
-            background: linear-gradient(160deg, #1a3a2e 0%, #2d4a3e 60%, #3a5e50 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            font-family: 'Inter', sans-serif;
-        }
-        .login-card {
-            width: 100%;
-            max-width: 360px;
-            background: white;
-            border-radius: 20px;
-            padding: 32px 24px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        .login-logo {
-            width: 56px; height: 56px;
-            background: #2d4a3e;
-            border-radius: 14px;
-            display: flex; align-items: center; justify-content: center;
-            margin-bottom: 20px;
-        }
-        .login-logo .material-icons-round { color: white; font-size: 28px; }
-        .login-title { font-size: 22px; font-weight: 800; color: #1a1a1a; margin-bottom: 4px; }
-        .login-sub { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
-        .form-label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 6px;
-        }
-        .form-group { margin-bottom: 16px; }
-        .input-wrapper { position: relative; }
-        .input-icon {
-            position: absolute; left: 12px; top: 50%;
-            transform: translateY(-50%);
-            color: #9ca3af;
-            font-size: 18px;
-        }
-        .form-input {
-            width: 100%;
-            border: 1.5px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 12px 12px 12px 38px;
-            font-size: 14px;
-            font-family: 'Inter', sans-serif;
-            color: #1a1a1a;
-            outline: none;
-            transition: border-color 0.15s;
-        }
-        .form-input:focus { border-color: #2d4a3e; }
-        .btn-login {
-            width: 100%;
-            height: 48px;
-            background: #2d4a3e;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: 'Inter', sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: filter 0.15s;
-            margin-top: 8px;
-        }
-        .btn-login:active { filter: brightness(0.9); }
-        .error-box {
-            background: #fee2e2;
-            border: 1px solid #fca5a5;
-            border-radius: 10px;
-            padding: 10px 12px;
-            color: #991b1b;
-            font-size: 13px;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div class="login-card">
-        <div class="login-logo">
-            <span class="material-icons-round">inventory_2</span>
-        </div>
-        <div class="login-title">Campus Inventory</div>
-        <div class="login-sub">Sign in to your account</div>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-sm bg-white rounded-xl shadow p-6">
+        <h1 class="text-xl font-bold text-slate-900 mb-1">Campus Inventory</h1>
+        <p class="text-sm text-slate-500 mb-5">Mobile Login</p>
 
         {% if error %}
-        <div class="error-box">
-            <span class="material-icons-round" style="font-size:16px;flex-shrink:0">error_outline</span>
-            {{ error }}
-        </div>
+            <div class="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
+                {{ error }}
+            </div>
         {% endif %}
 
-        <form method="post" action="{% url 'mobile_login' %}">
+        <form method="post" action="{% url 'mobile_login' %}" class="space-y-4">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ next }}">
 
-            <div class="form-group">
-                <label class="form-label">Username</label>
-                <div class="input-wrapper">
-                    <span class="material-icons-round input-icon">person</span>
-                    <input type="text" name="username" required autofocus
-                        class="form-input" placeholder="Enter your username">
-                </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Username</label>
+                <input
+                    type="text"
+                    name="username"
+                    required
+                    class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                >
             </div>
 
-            <div class="form-group">
-                <label class="form-label">Password</label>
-                <div class="input-wrapper">
-                    <span class="material-icons-round input-icon">lock</span>
-                    <input type="password" name="password" required
-                        class="form-input" placeholder="Enter your password">
-                </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                <input
+                    type="password"
+                    name="password"
+                    required
+                    class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                >
             </div>
 
-            <button type="submit" class="btn-login">
-                <span class="material-icons-round" style="font-size:18px">login</span>
-                Sign In
+            <button
+                type="submit"
+                class="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg px-4 py-2.5"
+            >
+                Login
             </button>
         </form>
     </div>

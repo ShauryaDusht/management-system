@@ -1,13 +1,5 @@
-"""
-Mobile (HTMX/Django template) views for the Inventory mobile app.
-No API contracts changed — only the template context is enriched.
-"""
-from django.contrib.auth import (
-    authenticate, login as auth_login,
-    logout as auth_logout, update_session_auth_hash,
-)
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import F
 from django.shortcuts import get_object_or_404, redirect, render
@@ -16,22 +8,6 @@ from django.utils import timezone
 
 from .models import Category, Item, ItemIssue, ItemRequest, StockEntry
 
-
-# ─── Helpers ──────────────────────────────────────────────────────────────────
-
-def _pending_count():
-    """Returns global pending request count for the nav badge."""
-    return ItemRequest.objects.filter(status='pending').count()
-
-
-def _base_context(request):
-    """Common context injected into every view so the nav badge is current."""
-    role = getattr(request.user, 'role', '')
-    ctx = {'pending_count': _pending_count(), 'role': role}
-    return ctx
-
-
-# ─── Auth ──────────────────────────────────────────────────────────────────────
 
 def mobile_login(request):
     if request.user.is_authenticated:
@@ -55,6 +31,7 @@ def mobile_login(request):
             ):
                 return redirect(raw_next)
             return redirect('/inventory/mobile/')
+
         error = 'Invalid username or password.'
     else:
         raw_next = request.GET.get('next', '').strip()
@@ -71,28 +48,23 @@ def mobile_login(request):
     })
 
 
-# ─── Dashboard ─────────────────────────────────────────────────────────────────
-
 @login_required
 def mobile_dashboard(request):
     items = Item.objects.all()
-    low_stock = items.filter(available_quantity__lt=F('threshold_quantity'))
+    low_stock = items.filter(available_quantity__lte=F('threshold_quantity'))
     pending = ItemRequest.objects.filter(status='pending')
 
-    ctx = _base_context(request)
-    ctx.update({
+    context = {
         'total_items': items.count(),
-        'low_stock_items': low_stock.select_related('category')[:3],
+        'low_stock_items': low_stock[:3],
         'low_stock_count': low_stock.count(),
         'out_of_stock_count': items.filter(available_quantity=0).count(),
         'pending_requests': pending.select_related('requested_by', 'item')[:5],
-        'pending_count': pending.count(),  # override for accuracy
+        'pending_count': pending.count(),
         'role': getattr(request.user, 'role', ''),
-    })
-    return render(request, 'inventory/mobile/dashboard.html', ctx)
+    }
+    return render(request, 'inventory/mobile/dashboard.html', context)
 
-
-# ─── Reports ───────────────────────────────────────────────────────────────────
 
 @login_required
 def mobile_reports(request):
@@ -117,8 +89,7 @@ def mobile_reports(request):
             status_filter=status_filter if status_filter and status_filter != 'all' else None
         )
 
-    ctx = _base_context(request)
-    ctx.update({
+    return render(request, 'inventory/mobile/reports.html', {
         'report_type': report_type,
         'inventory_data': inventory_data,
         'requests_data': requests_data,
@@ -126,67 +97,26 @@ def mobile_reports(request):
         'date_from': date_from,
         'date_to': date_to,
     })
-    return render(request, 'inventory/mobile/reports.html', ctx)
 
-
-# ─── Inventory List (with pagination + highlight) ──────────────────────────────
 
 @login_required
 def mobile_inventory_list(request):
     category_id = request.GET.get('category', '')
-    search_query = request.GET.get('search', '').strip()
-    low_stock_only = request.GET.get('low_stock', '') == 'true'
-    highlight_id = request.GET.get('highlight', '')
-
     categories = Category.objects.all()
-    items_qs = Item.objects.select_related('category').all()
-
-    out_of_stock_only = request.GET.get('out_of_stock', '') == 'true'
-
+    items = Item.objects.select_related('category').all()
     if category_id:
-        items_qs = items_qs.filter(category_id=category_id)
-    if search_query:
-        items_qs = items_qs.filter(name__icontains=search_query)
-    if low_stock_only:
-        items_qs = items_qs.filter(available_quantity__lt=F('threshold_quantity'))
-    if out_of_stock_only:
-        items_qs = items_qs.filter(available_quantity=0)
+        items = items.filter(category_id=category_id)
 
-    # Annotate is_low_stock on queryset items
-    for item in items_qs:
-        item.is_low_stock = item.available_quantity < item.threshold_quantity
+    for item in items:
+        item.is_low_stock = item.available_quantity <= item.threshold_quantity
 
-    # Pagination: 15 items per page
-    paginator = Paginator(items_qs, 15)
-    page_number = request.GET.get('page', 1)
-    page_obj = paginator.get_page(page_number)
-
-    # Re-annotate page items
-    for item in page_obj:
-        item.is_low_stock = item.available_quantity < item.threshold_quantity
-
-    # Highlighted item (from notification click)
-    highlighted_item = None
-    if highlight_id:
-        try:
-            highlighted_item = Item.objects.select_related('category').get(pk=int(highlight_id))
-        except (Item.DoesNotExist, ValueError):
-            pass
-
-    ctx = _base_context(request)
-    ctx.update({
-        'page_obj': page_obj,
-        'items': page_obj,  # backward compat alias
+    return render(request, 'inventory/mobile/list.html', {
+        'items': items,
         'categories': categories,
         'selected_category': category_id,
-        'search_query': search_query,
         'total_count': Item.objects.count(),
-        'highlighted_item': highlighted_item,
     })
-    return render(request, 'inventory/mobile/list.html', ctx)
 
-
-# ─── Request Form ──────────────────────────────────────────────────────────────
 
 @login_required
 def mobile_request_form(request):
@@ -197,15 +127,16 @@ def mobile_request_form(request):
             quantity = int(request.POST.get('quantity_requested', 1))
         except (ValueError, TypeError):
             items = Item.objects.all().order_by('name')
-            ctx = _base_context(request)
-            ctx.update({'items': items, 'error': 'Quantity must be a whole number.'})
-            return render(request, 'inventory/mobile/request_form.html', ctx)
-
+            return render(request, 'inventory/mobile/request_form.html', {
+                'items': items,
+                'error': 'Quantity must be a whole number.',
+            })
         if quantity < 1:
             items = Item.objects.all().order_by('name')
-            ctx = _base_context(request)
-            ctx.update({'items': items, 'error': 'Quantity must be at least 1.'})
-            return render(request, 'inventory/mobile/request_form.html', ctx)
+            return render(request, 'inventory/mobile/request_form.html', {
+                'items': items,
+                'error': 'Quantity must be at least 1.',
+            })
 
         reason = request.POST.get('reason', '')
         notes = request.POST.get('notes', '')
@@ -223,25 +154,16 @@ def mobile_request_form(request):
         return redirect('mobile_dashboard')
 
     items = Item.objects.all().order_by('name')
-    ctx = _base_context(request)
-    ctx['items'] = items
-    return render(request, 'inventory/mobile/request_form.html', ctx)
+    return render(request, 'inventory/mobile/request_form.html', {'items': items})
 
-
-# ─── My Requests ───────────────────────────────────────────────────────────────
 
 @login_required
 def mobile_my_requests(request):
-    requests_qs = ItemRequest.objects.filter(
+    requests = ItemRequest.objects.filter(
         requested_by=request.user
     ).select_related('item').order_by('-requested_at')
+    return render(request, 'inventory/mobile/my_requests.html', {'requests': requests})
 
-    ctx = _base_context(request)
-    ctx['requests'] = requests_qs
-    return render(request, 'inventory/mobile/my_requests.html', ctx)
-
-
-# ─── Manager Requests ──────────────────────────────────────────────────────────
 
 @login_required
 def mobile_manager_requests(request):
@@ -249,26 +171,21 @@ def mobile_manager_requests(request):
     if getattr(user, 'role', '') not in ['admin', 'inventory_manager', 'manager']:
         return redirect('mobile_dashboard')
 
+    from django.core.paginator import Paginator
+
     all_pending = ItemRequest.objects.filter(
         status='pending'
-    ).select_related('requested_by', 'item', 'item__category').order_by('-requested_at')
-
+    ).select_related('requested_by', 'item').order_by('-requested_at')
     paginator = Paginator(all_pending, 5)
     page_num = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_num)
-    total_pending = all_pending.count()
 
-    ctx = _base_context(request)
-    ctx.update({
+    return render(request, 'inventory/mobile/manager_requests.html', {
         'requests': page_obj,
         'page_obj': page_obj,
-        'total_pending': total_pending,
-        'pending_count': total_pending,  # override for nav badge accuracy
+        'total_pending': all_pending.count(),
     })
-    return render(request, 'inventory/mobile/manager_requests.html', ctx)
 
-
-# ─── Issued Items ──────────────────────────────────────────────────────────────
 
 @login_required
 def mobile_issued_items(request):
@@ -286,19 +203,16 @@ def mobile_issued_items(request):
     if not is_manager:
         issues_qs = issues_qs.filter(request__requested_by=request.user)
 
+    from django.core.paginator import Paginator
     paginator = Paginator(issues_qs, 10)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
-    ctx = _base_context(request)
-    ctx.update({
+    return render(request, 'inventory/mobile/issued_items.html', {
         'issues': page_obj,
         'page_obj': page_obj,
         'is_manager': is_manager,
     })
-    return render(request, 'inventory/mobile/issued_items.html', ctx)
 
-
-# ─── Stock Log ─────────────────────────────────────────────────────────────────
 
 @login_required
 def mobile_stock_log(request):
@@ -306,14 +220,11 @@ def mobile_stock_log(request):
     if role not in ['admin', 'inventory_manager', 'manager']:
         return redirect('mobile_dashboard')
 
-    entries = StockEntry.objects.select_related('item', 'item__category', 'added_by').order_by('-added_at')[:50]
+    entries = StockEntry.objects.select_related('item', 'added_by').order_by('-added_at')[:50]
+    return render(request, 'inventory/mobile/stock_log.html', {
+        'entries': entries,
+    })
 
-    ctx = _base_context(request)
-    ctx['entries'] = entries
-    return render(request, 'inventory/mobile/stock_log.html', ctx)
-
-
-# ─── Approve / Reject / Issue ──────────────────────────────────────────────────
 
 @login_required
 @transaction.atomic
@@ -343,9 +254,7 @@ def mobile_reject_request(request, pk):
             item_request.approved_by = request.user
             item_request.rejection_reason = request.POST.get('rejection_reason', '')
             item_request.reviewed_at = timezone.now()
-            item_request.save(update_fields=[
-                'status', 'approved_by', 'rejection_reason', 'reviewed_at'
-            ])
+            item_request.save(update_fields=['status', 'approved_by', 'rejection_reason', 'reviewed_at'])
     return redirect('mobile_manager_requests')
 
 
@@ -388,13 +297,11 @@ def mobile_issue_request(request, pk):
     return redirect('mobile_manager_requests')
 
 
-# ─── Profile & Password ────────────────────────────────────────────────────────
-
 @login_required
 def mobile_profile(request):
-    ctx = _base_context(request)
-    ctx['user'] = request.user
-    return render(request, 'inventory/mobile/profile.html', ctx)
+    return render(request, 'inventory/mobile/profile.html', {
+        'user': request.user,
+    })
 
 
 @login_required
@@ -412,19 +319,20 @@ def mobile_change_password(request):
         elif len(new_pass) < 8:
             error = 'Password must be at least 8 characters.'
 
-        ctx = _base_context(request)
-        ctx['user'] = request.user
-
         if error:
-            ctx['error'] = error
-            ctx['show_password_form'] = True
-            return render(request, 'inventory/mobile/profile.html', ctx)
+            return render(request, 'inventory/mobile/profile.html', {
+                'user': request.user,
+                'error': error,
+                'show_password_form': True,
+            })
 
         request.user.set_password(new_pass)
         request.user.save()
         update_session_auth_hash(request, request.user)
-        ctx['success'] = 'Password changed successfully.'
-        return render(request, 'inventory/mobile/profile.html', ctx)
+        return render(request, 'inventory/mobile/profile.html', {
+            'user': request.user,
+            'success': 'Password changed successfully.',
+        })
 
     return redirect('mobile_profile')
 

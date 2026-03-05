@@ -1,227 +1,131 @@
 {% extends 'inventory/mobile/base_mobile.html' %}
-{% block title %}Dashboard{% endblock %}
+{% block title %}Inventory Dashboard{% endblock %}
 {% block header_title %}INVENTORY DASHBOARD{% endblock %}
 
 {% block content %}
-
-  {# ── LOW STOCK ALERT BANNER (yellow, prominent, clickable) ─── #}
   {% if low_stock_items %}
-  {% for item in low_stock_items %}
-  <a href="{% url 'mobile_inventory_list' %}?highlight={{ item.id }}&category={{ item.category_id }}"
-     style="text-decoration:none;display:block;margin-bottom:10px">
-    <div style="
-      background:#fffbeb;
-      border:1.5px solid #f59e0b;
-      border-radius:12px;
-      padding:13px 14px;
-      display:flex;
-      align-items:center;
-      gap:10px;
-      box-shadow:0 1px 4px rgba(245,158,11,0.15);
-    ">
-      <span class="material-icons-round" style="color:#d97706;font-size:22px;flex-shrink:0">warning_amber</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:700;color:#b45309;font-size:14px;line-height:1.3">
-          Low Stock Alert: {{ item.name }}
-        </div>
-        <div style="color:#92400e;font-size:12px;margin-top:2px">
-          Only {{ item.available_quantity }} {{ item.unit }} left, reorder needed!
-        </div>
-      </div>
-      <span class="material-icons-round" style="color:#d97706;font-size:20px;flex-shrink:0">chevron_right</span>
+  <div style="background:#fff3e0;border:1px solid #f97316;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div>
+      <div style="color:#c2622a;font-weight:700">Low Stock Alert: {{ low_stock_items.0.name }}</div>
+      <div style="color:#666;font-size:13px">Only {{ low_stock_items.0.available_quantity }} units left, reorder needed!</div>
     </div>
-  </a>
-  {% endfor %}
+    <span style="color:#c2622a">&#8250;</span>
+  </div>
   {% endif %}
 
-  {# ── STAT CARDS — all clickable ──────────────────────────────── #}
-  <h2 class="section-title" style="margin-top:6px">Inventory Overview</h2>
+  <h3 style="font-weight:700;margin:12px 0 8px">Inventory Overview</h3>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-
-    {# Total Items → inventory list #}
-    <a href="{% url 'mobile_inventory_list' %}" style="text-decoration:none">
-      <div class="stat-card" style="background:#2d4a3e">
-        <div class="stat-label">
-          <span class="material-icons-round" style="font-size:14px">inventory_2</span> Total Items
-        </div>
-        <div class="stat-value">{{ total_items }}</div>
-        <div style="font-size:10px;opacity:0.7;margin-top:4px">Tap to view all</div>
-      </div>
-    </a>
-
-    {# Low Stock → filtered inventory list #}
-    <a href="{% url 'mobile_inventory_list' %}?low_stock=true" style="text-decoration:none">
-      <div class="stat-card" style="background:#1e6b7a">
-        <div class="stat-label">
-          <span class="material-icons-round" style="font-size:14px">trending_down</span> Low Stock
-        </div>
-        <div class="stat-value">{{ low_stock_count }}</div>
-        <div style="font-size:10px;opacity:0.7;margin-top:4px">Tap to view</div>
-      </div>
-    </a>
-
-    {# Pending Requests → manager requests page #}
-    {% if role == 'admin' or role == 'manager' or role == 'inventory_manager' %}
-    <a href="{% url 'mobile_manager_requests' %}" style="text-decoration:none">
-      <div class="stat-card" style="background:#c2622a">
-        <div class="stat-label">
-          <span class="material-icons-round" style="font-size:14px">hourglass_empty</span> Pending Requests
-        </div>
-        <div class="stat-value">{{ pending_count }}</div>
-        <div style="font-size:10px;opacity:0.7;margin-top:4px">Tap to review</div>
-      </div>
-    </a>
-    {% else %}
-    <a href="{% url 'mobile_my_requests' %}" style="text-decoration:none">
-      <div class="stat-card" style="background:#c2622a">
-        <div class="stat-label">
-          <span class="material-icons-round" style="font-size:14px">hourglass_empty</span> Pending Requests
-        </div>
-        <div class="stat-value">{{ pending_count }}</div>
-        <div style="font-size:10px;opacity:0.7;margin-top:4px">Tap to view</div>
-      </div>
-    </a>
-    {% endif %}
-
-    {# Out of Stock → filtered inventory list #}
-    <a href="{% url 'mobile_inventory_list' %}?out_of_stock=true" style="text-decoration:none">
-      <div class="stat-card" style="background:#8b5e3c">
-        <div class="stat-label">
-          <span class="material-icons-round" style="font-size:14px">remove_shopping_cart</span> Out of Stock
-        </div>
-        <div class="stat-value">{{ out_of_stock_count }}</div>
-        <div style="font-size:10px;opacity:0.7;margin-top:4px">Tap to view</div>
-      </div>
-    </a>
-
+    <div class="stat-card" style="background:#2d4a3e">
+      <div style="font-size:13px;opacity:0.8">Total Items</div>
+      <div style="font-size:32px;font-weight:800">{{ total_items }}</div>
+    </div>
+    <div class="stat-card" style="background:#1e6b7a">
+      <div style="font-size:13px;opacity:0.8">Low Stock</div>
+      <div style="font-size:32px;font-weight:800">{{ low_stock_count }}</div>
+    </div>
+    <div class="stat-card" style="background:#c2622a">
+      <div style="font-size:13px;opacity:0.8">Pending Requests</div>
+      <div style="font-size:32px;font-weight:800">{{ pending_count }}</div>
+    </div>
+    <div class="stat-card" style="background:#8b5e3c">
+      <div style="font-size:13px;opacity:0.8">Out of Stock</div>
+      <div style="font-size:32px;font-weight:800">{{ out_of_stock_count }}</div>
+    </div>
   </div>
 
-  {# ── Quick Links (admin/manager only) ────────────────────────── #}
   {% if role == 'admin' or role == 'manager' or role == 'inventory_manager' %}
-  <h2 class="section-title">Quick Actions</h2>
+  <h3 style="font-weight:700;margin:10px 0 8px">Quick Links</h3>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
     <a href="{% url 'mobile_manager_requests' %}" style="text-decoration:none">
-      <div class="card" style="margin:0;padding:12px 14px;display:flex;align-items:center;gap:10px">
-        <span class="material-icons-round" style="color:#c2622a;font-size:22px">assignment</span>
-        <div>
-          <div style="font-weight:700;color:#2d4a3e;font-size:13px">Pending</div>
-          <div style="font-size:11px;color:#888;margin-top:1px">Review approvals</div>
-        </div>
+      <div class="card" style="margin:0;padding:12px;border:1px solid #e5e7eb">
+        <div style="font-weight:700;color:#2d4a3e;font-size:14px">Pending Requests</div>
+        <div style="font-size:12px;color:#888;margin-top:2px">Review approvals</div>
       </div>
     </a>
     <a href="{% url 'mobile_reports' %}" style="text-decoration:none">
-      <div class="card" style="margin:0;padding:12px 14px;display:flex;align-items:center;gap:10px">
-        <span class="material-icons-round" style="color:#1e6b7a;font-size:22px">bar_chart</span>
-        <div>
-          <div style="font-weight:700;color:#2d4a3e;font-size:13px">Reports</div>
-          <div style="font-size:11px;color:#888;margin-top:1px">Inventory &amp; requests</div>
-        </div>
+      <div class="card" style="margin:0;padding:12px;border:1px solid #e5e7eb">
+        <div style="font-weight:700;color:#2d4a3e;font-size:14px">Reports</div>
+        <div style="font-size:12px;color:#888;margin-top:2px">Inventory & requests</div>
       </div>
     </a>
     <a href="{% url 'mobile_issued_items' %}" style="text-decoration:none">
-      <div class="card" style="margin:0;padding:12px 14px;display:flex;align-items:center;gap:10px">
-        <span class="material-icons-round" style="color:#2d4a3e;font-size:22px">outbox</span>
-        <div>
-          <div style="font-weight:700;color:#2d4a3e;font-size:13px">Issued Items</div>
-          <div style="font-size:11px;color:#888;margin-top:1px">Track issued stock</div>
-        </div>
+      <div class="card" style="margin:0;padding:12px;border:1px solid #e5e7eb">
+        <div style="font-weight:700;color:#2d4a3e;font-size:14px">Issued Items</div>
+        <div style="font-size:12px;color:#888;margin-top:2px">Track issued stock</div>
       </div>
     </a>
     <a href="{% url 'mobile_stock_log' %}" style="text-decoration:none">
-      <div class="card" style="margin:0;padding:12px 14px;display:flex;align-items:center;gap:10px">
-        <span class="material-icons-round" style="color:#8b5e3c;font-size:22px">history</span>
-        <div>
-          <div style="font-weight:700;color:#2d4a3e;font-size:13px">Stock Log</div>
-          <div style="font-size:11px;color:#888;margin-top:1px">Recent additions</div>
-        </div>
+      <div class="card" style="margin:0;padding:12px;border:1px solid #e5e7eb">
+        <div style="font-weight:700;color:#2d4a3e;font-size:14px">Stock Log</div>
+        <div style="font-size:12px;color:#888;margin-top:2px">Recent additions</div>
       </div>
     </a>
   </div>
   {% endif %}
 
-  {# ── Pending Requests Preview ─────────────────────────────────── #}
-  <div style="display:flex;justify-content:space-between;align-items:center">
-    <h2 class="section-title" style="margin-bottom:0">Pending Requests</h2>
-    {% if role == 'admin' or role == 'manager' or role == 'inventory_manager' %}
-    <a href="{% url 'mobile_manager_requests' %}"
-       style="font-size:13px;color:#c2622a;font-weight:600;text-decoration:none">
-      View all <span class="material-icons-round" style="font-size:13px">chevron_right</span>
-    </a>
-    {% endif %}
-  </div>
-
-  <div class="tab-row" style="margin-top:10px">
+  <h3 style="font-weight:700;margin:12px 0 8px">Pending Requests</h3>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
     <button id="tab-caretaker" type="button" onclick="setRoleTab('caretaker')"
-      class="tab-pill" style="flex:1;text-align:center">Caretakers (Hostels)</button>
+      style="flex:1;background:white;color:#555;border:1px solid #ddd;padding:8px 10px;border-radius:8px;font-size:12px;cursor:pointer">
+      Caretakers (Hostels)
+    </button>
     <button id="tab-supervisor" type="button" onclick="setRoleTab('supervisor')"
-      class="tab-pill" style="flex:1;text-align:center">Supervisors</button>
+      style="flex:1;background:#2d4a3e;color:white;border:1px solid #2d4a3e;padding:8px 10px;border-radius:8px;font-size:12px;cursor:pointer">
+      Supervisors
+    </button>
   </div>
 
   <div id="pending-requests-list">
     {% for req in pending_requests %}
-    <a href="{% if role == 'admin' or role == 'manager' or role == 'inventory_manager' %}{% url 'mobile_manager_requests' %}{% else %}{% url 'mobile_my_requests' %}{% endif %}"
-       style="text-decoration:none">
-      <div class="card mobile-pending-request" data-role="{{ req.requested_by.role }}"
-           style="display:flex;justify-content:space-between;align-items:center">
-        <div style="display:flex;align-items:center;gap:10px;min-width:0">
-          <div style="width:38px;height:38px;border-radius:50%;background:#2d4a3e;color:white;
-            display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0">
-            {{ req.requested_by.first_name|default:req.requested_by.username|first|upper }}
-          </div>
-          <div style="min-width:0">
-            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-              {{ req.item.name }}
-            </div>
-            <div style="color:#888;font-size:12px">
-              {{ req.requested_by.get_full_name|default:req.requested_by.username }}
-            </div>
-          </div>
-        </div>
-        <div style="text-align:right;flex-shrink:0;margin-left:8px;display:flex;align-items:center;gap:4px">
-          <div>
-            <div style="font-weight:700;color:#2d4a3e">{{ req.quantity_requested }} Units Needed</div>
-            <div style="font-size:11px;color:#888">{{ req.item.unit }}</div>
-          </div>
-          <span class="material-icons-round" style="color:#9ca3af;font-size:16px">chevron_right</span>
-        </div>
+    <div class="card mobile-pending-request" data-role="{{ req.requested_by.role }}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:600">{{ req.item.name }}</div>
+        <div style="color:#888;font-size:12px">{{ req.quantity_requested }} Units Needed &#8250;</div>
       </div>
-    </a>
-    {% empty %}
-    <div class="empty-state" style="padding:28px 20px">
-      <div class="empty-icon" style="width:48px;height:48px">
-        <span class="material-icons-round" style="font-size:24px">check_circle</span>
-      </div>
-      <p>No pending requests</p>
+      <div style="color:#888;font-size:12px">by {{ req.requested_by.get_full_name|default:req.requested_by.username }}</div>
     </div>
+    {% empty %}
+    <div style="color:#aaa;text-align:center;padding:20px">No pending requests</div>
     {% endfor %}
   </div>
 
-  <div id="pending-empty-message" style="display:none">
-    <div class="empty-state" style="padding:28px 20px">
-      <div class="empty-icon" style="width:48px;height:48px">
-        <span class="material-icons-round" style="font-size:24px">inbox</span>
-      </div>
-      <p>No requests for this role</p>
-    </div>
+  <div id="pending-empty-message" style="display:none;color:#aaa;text-align:center;padding:20px">
+    No requests found for selected role
   </div>
 
   <script>
     function setRoleTab(role) {
-      var tabCaretaker = document.getElementById('tab-caretaker');
-      var tabSupervisor = document.getElementById('tab-supervisor');
-      var cards = document.querySelectorAll('.mobile-pending-request');
-      var emptyState = document.getElementById('pending-empty-message');
-      var visibleCount = 0;
+      const tabCaretaker = document.getElementById('tab-caretaker');
+      const tabSupervisor = document.getElementById('tab-supervisor');
+      const cards = document.querySelectorAll('.mobile-pending-request');
+      const emptyState = document.getElementById('pending-empty-message');
+      let visibleCount = 0;
 
-      [tabCaretaker, tabSupervisor].forEach(function(t) { t.classList.remove('active'); });
-      if (role === 'caretaker') tabCaretaker.classList.add('active');
-      else tabSupervisor.classList.add('active');
+      if (tabCaretaker && tabSupervisor) {
+        if (role === 'caretaker') {
+          tabCaretaker.style.background = '#2d4a3e';
+          tabCaretaker.style.color = 'white';
+          tabCaretaker.style.borderColor = '#2d4a3e';
+          tabSupervisor.style.background = 'white';
+          tabSupervisor.style.color = '#555';
+          tabSupervisor.style.borderColor = '#ddd';
+        } else {
+          tabSupervisor.style.background = '#2d4a3e';
+          tabSupervisor.style.color = 'white';
+          tabSupervisor.style.borderColor = '#2d4a3e';
+          tabCaretaker.style.background = 'white';
+          tabCaretaker.style.color = '#555';
+          tabCaretaker.style.borderColor = '#ddd';
+        }
+      }
 
-      cards.forEach(function(card) {
-        var parentEl = card.closest('a') || card;
-        var show = card.getAttribute('data-role') === role;
-        parentEl.style.display = show ? 'block' : 'none';
-        if (show) visibleCount++;
+      cards.forEach((card) => {
+        const cardRole = card.getAttribute('data-role');
+        const show = cardRole === role;
+        card.style.display = show ? 'block' : 'none';
+        if (show) {
+          visibleCount += 1;
+        }
       });
 
       if (emptyState) {
@@ -229,10 +133,22 @@
       }
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-      var hasCaretaker = document.querySelector('.mobile-pending-request[data-role="caretaker"]');
+    document.addEventListener('DOMContentLoaded', function () {
+      const hasCaretaker = document.querySelector('.mobile-pending-request[data-role="caretaker"]');
       setRoleTab(hasCaretaker ? 'caretaker' : 'supervisor');
     });
   </script>
+{% endblock %}
 
+{% block bottom_bar %}
+<div style="position:fixed;bottom:0;left:0;right:0;background:white;padding:12px 16px;display:flex;gap:10px;box-shadow:0 -2px 8px rgba(0,0,0,0.1)">
+  {% if role == 'admin' or role == 'manager' or role == 'inventory_manager' %}
+  <a href="{% url 'mobile_inventory_list' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Inventory List</button></a>
+  <a href="{% url 'mobile_manager_requests' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Pending Requests</button></a>
+  <a href="{% url 'mobile_reports' %}" style="flex:1"><button class="btn-primary" style="width:100%">Reports</button></a>
+  {% else %}
+  <a href="{% url 'mobile_inventory_list' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Inventory List</button></a>
+  <a href="{% url 'mobile_request_form' %}" style="flex:1"><button class="btn-primary" style="width:100%">+ Request Item</button></a>
+  {% endif %}
+</div>
 {% endblock %}

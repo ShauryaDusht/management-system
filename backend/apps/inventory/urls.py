@@ -15,7 +15,6 @@ from .views import (
     ReturnAssetView, FinalizeConsumableView,
     UserActivityView,
     DashboardSummaryView,
-    InventoryTaskListCreateView, InventoryTaskDetailView,
 )
 
 # ─── BUG-02 FIX: Route audit ─────────────────────────────────────────────────
@@ -72,10 +71,6 @@ urlpatterns = [
 
     # ── Dashboard ────────────────────────────────────────────────────────────
     path('dashboard/', DashboardSummaryView.as_view(), name='dashboard-summary'),
-
-    # ── Inventory Tasks (admin assigns to inventory managers) ─────────────────
-    path('tasks/', InventoryTaskListCreateView.as_view(), name='task-list'),
-    path('tasks/<int:pk>/', InventoryTaskDetailView.as_view(), name='task-detail'),
 
     # ── Retained /api/ routes (no primary equivalent exists for these) ────────
     # These five endpoints have no counterpart in views.py and are still actively

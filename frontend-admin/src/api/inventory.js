@@ -10,10 +10,7 @@ export const inventoryAPI = {
   createCategory: (data) => api.post('/inventory/categories/', data),
 
   // ── Items ──────────────────────────────────────────────────────────────────
-  // FIX: Always fetch with page_size=200 to ensure all items (including assets
-  // on page 2+) are visible. StandardPagination defaults to 25/page which
-  // caused assets to go missing when total items exceeded 25.
-  getItems: (params = {}) => api.get('/inventory/items/', { params: { page_size: 200, ...params } }),
+  getItems: (params = {}) => api.get('/inventory/items/', { params }),
   getLowStockItems: () => api.get('/inventory/items/low-stock/'),
   getItem: (id) => api.get(`/inventory/items/${id}/`),
   createItem: (data) => api.post('/inventory/items/', data),
@@ -58,12 +55,6 @@ export const inventoryAPI = {
 
   // ── User activity (admin) ──────────────────────────────────────────────────
   getUserActivity: (userId) => api.get(`/inventory/activity/users/${userId}/`),
-
-  // ── Inventory Tasks (admin → inventory manager) ────────────────────────────
-  getTasks: () => api.get('/inventory/tasks/'),
-  createTask: (data) => api.post('/inventory/tasks/', data),
-  updateTask: (id, data) => api.patch(`/inventory/tasks/${id}/`, data),
-  deleteTask: (id) => api.delete(`/inventory/tasks/${id}/`),
 }
 
 // ── Reports API ────────────────────────────────────────────────────────────

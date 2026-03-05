@@ -1,91 +1,33 @@
 {% extends 'inventory/mobile/base_mobile.html' %}
 {% block title %}My Requests{% endblock %}
 {% block header_title %}MY REQUESTS{% endblock %}
-{% block back_button %}
-<a href="{% url 'mobile_dashboard' %}" class="btn-back">
-  <span class="material-icons-round" style="font-size:20px">arrow_back</span>
-</a>
-{% endblock %}
-
+{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white">←</a>{% endblock %}
 {% block content %}
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-  <h2 class="section-title" style="margin:0">My Requests</h2>
-  <a href="{% url 'mobile_request_form' %}" style="text-decoration:none">
-    <button class="btn btn-primary btn-sm" style="width:auto;padding:0 14px">
-      <span class="material-icons-round" style="font-size:16px">add</span> New
-    </button>
-  </a>
-</div>
-<p style="color:#6b7280;font-size:13px;margin:4px 0 16px">Track approval status of your submitted requests.</p>
+<h3 style="font-weight:700;margin:8px 0 4px">My Requests</h3>
+<p style="color:#888;font-size:13px;margin-bottom:12px">Track approval status for submitted requests.</p>
 
 {% for req in requests %}
 <div class="card">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-    <div style="display:flex;align-items:center;gap:10px;min-width:0">
-      <div style="width:38px;height:38px;background:#f3f4f6;border-radius:10px;
-        display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <span class="material-icons-round" style="color:#6b7280;font-size:20px">
-          {% if req.item.item_type == 'asset' %}build{% else %}science{% endif %}
-        </span>
-      </div>
-      <div style="min-width:0">
-        <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px">
-          {{ req.item.name }}
-        </div>
-        <div style="color:#888;font-size:12px">{{ req.quantity_requested }} {{ req.item.unit }}</div>
-      </div>
-    </div>
-    <div style="flex-shrink:0;margin-left:8px">
-      {% if req.status == 'approved' %}
-        <span class="badge badge-ok">
-          <span class="material-icons-round" style="font-size:11px">check_circle</span> Approved
-        </span>
-      {% elif req.status == 'rejected' %}
-        <span class="badge badge-out">
-          <span class="material-icons-round" style="font-size:11px">cancel</span> Rejected
-        </span>
-      {% elif req.status == 'issued' %}
-        <span class="badge badge-ok">
-          <span class="material-icons-round" style="font-size:11px">outbox</span> Issued
-        </span>
-      {% else %}
-        <span class="badge badge-pending">
-          <span class="material-icons-round" style="font-size:11px">hourglass_empty</span> Pending
-        </span>
-      {% endif %}
-    </div>
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div style="font-weight:600">{{ req.item.name }}</div>
+    <div style="font-size:12px;color:#888">{{ req.quantity_requested }} {{ req.item.unit }}</div>
   </div>
-
-  <div style="font-size:13px;color:#374151;margin-bottom:6px;line-height:1.4;
-    padding:8px 10px;background:#f9fafb;border-radius:6px">
-    {{ req.purpose|default:req.reason }}
-  </div>
-
-  {% if req.status == 'rejected' and req.rejection_reason %}
-  <div style="display:flex;align-items:flex-start;gap:6px;color:#991b1b;font-size:12px;
-    padding:6px 10px;background:#fee2e2;border-radius:6px;margin-top:6px">
-    <span class="material-icons-round" style="font-size:14px;flex-shrink:0;margin-top:1px">info</span>
-    <span>{{ req.rejection_reason }}</span>
-  </div>
-  {% endif %}
-
-  <div style="display:flex;align-items:center;gap:4px;color:#9ca3af;font-size:12px;margin-top:8px">
-    <span class="material-icons-round" style="font-size:13px">schedule</span>
-    {{ req.requested_at|timesince }} ago
+  <div style="font-size:13px;color:#555;margin-top:6px">{{ req.reason }}</div>
+  <div style="margin-top:8px;font-size:12px;color:#888">{{ req.created_at|timesince }} ago</div>
+  <div style="margin-top:8px">
+    {% if req.status == 'approved' %}
+      <span class="badge-ok">Approved</span>
+    {% elif req.status == 'rejected' %}
+      <span class="badge-out">Rejected</span>
+      {% if req.rejection_reason %}<div style="font-size:12px;color:#b91c1c;margin-top:6px">{{ req.rejection_reason }}</div>{% endif %}
+    {% elif req.status == 'issued' %}
+      <span class="badge-ok">Issued</span>
+    {% else %}
+      <span class="badge-low">Pending</span>
+    {% endif %}
   </div>
 </div>
 {% empty %}
-<div class="empty-state">
-  <div class="empty-icon">
-    <span class="material-icons-round">receipt_long</span>
-  </div>
-  <h3>No requests yet</h3>
-  <p>Submit a request when you need inventory items</p>
-  <a href="{% url 'mobile_request_form' %}" style="text-decoration:none;display:inline-block;margin-top:14px">
-    <button class="btn btn-primary" style="width:auto;padding:0 24px">
-      <span class="material-icons-round" style="font-size:16px">add</span> New Request
-    </button>
-  </a>
-</div>
+<div style="color:#aaa;text-align:center;padding:40px">No requests yet</div>
 {% endfor %}
 {% endblock %}

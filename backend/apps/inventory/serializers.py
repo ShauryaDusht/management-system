@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Item, ItemRequest, ItemIssue, StockEntry, InventoryTask
+from .models import Category, Item, ItemRequest, ItemIssue, StockEntry
 
 
 # Plan to remove this shim in a future cleanup once all callers are updated.
@@ -201,22 +201,3 @@ class UserActivitySerializer(serializers.ModelSerializer):
             'id', 'item_name', 'item_unit', 'quantity_requested',
             'purpose', 'status', 'requested_at', 'reviewed_at',
         ]
-
-
-class InventoryTaskSerializer(serializers.ModelSerializer):
-    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
-    assigned_to_name = serializers.SerializerMethodField()
-
-    def get_assigned_to_name(self, obj):
-        if obj.assigned_to:
-            return obj.assigned_to.get_full_name() or obj.assigned_to.username
-        return None
-
-    class Meta:
-        model = InventoryTask
-        fields = [
-            'id', 'title', 'description', 'assigned_to', 'assigned_to_name',
-            'created_by', 'created_by_name', 'priority', 'status',
-            'deadline', 'created_at', 'updated_at',
-        ]
-        read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']

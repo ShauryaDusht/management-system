@@ -1,105 +1,50 @@
 {% extends 'inventory/mobile/base_mobile.html' %}
 {% block title %}Request Item{% endblock %}
-{% block header_title %}REQUEST ITEM{% endblock %}
-{% block back_button %}
-<a href="{% url 'mobile_dashboard' %}" class="btn-back">
-  <span class="material-icons-round" style="font-size:20px">arrow_back</span>
-</a>
-{% endblock %}
-
+{% block header_title %}Request Item{% endblock %}
+{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white">←</a>{% endblock %}
 {% block content %}
-{% if error %}
-<div class="alert-banner alert-error" style="margin-bottom:14px">
-  <span class="material-icons-round" style="color:#991b1b">error_outline</span>
-  <span style="color:#991b1b;font-size:13px">{{ error }}</span>
-</div>
-{% endif %}
-
 <div class="card">
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-    <span class="material-icons-round" style="color:#2d4a3e;font-size:22px">add_shopping_cart</span>
-    <div>
-      <div style="font-weight:700;font-size:15px">Submit a Request</div>
-      <div style="color:#6b7280;font-size:12px">Fill out the details below</div>
-    </div>
-  </div>
-  <hr class="divider">
-
+  <p style="color:#888;margin-bottom:16px">Fill out the details...</p>
   <form method="POST" action="{% url 'mobile_request_form' %}">
     {% csrf_token %}
-
-    <div class="form-group">
-      <label class="form-label">
-        <span class="material-icons-round" style="font-size:14px;color:#2d4a3e">inventory_2</span>
-        Item
-      </label>
-      <select name="item" required class="form-input"
-        onchange="updateAvailable(this)">
+    <div style="margin-bottom:14px">
+      <label style="font-weight:600;display:block;margin-bottom:6px">Name of Inventory</label>
+      <select name="item" required style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px"
+        onchange="document.getElementById('units_remaining').value=this.options[this.selectedIndex].dataset.available">
         <option value="">-- Select Item --</option>
         {% for item in items %}
-        <option value="{{ item.id }}" data-available="{{ item.available_quantity }}" data-unit="{{ item.unit }}">
+        <option value="{{ item.id }}" data-available="{{ item.available_quantity }}">
           {{ item.name }} ({{ item.available_quantity }} {{ item.unit }} available)
         </option>
         {% endfor %}
       </select>
     </div>
-
-    <div class="form-group">
-      <label class="form-label">
-        <span class="material-icons-round" style="font-size:14px;color:#2d4a3e">numbers</span>
-        Quantity Needed
-      </label>
+    <div style="margin-bottom:14px">
+      <label style="font-weight:600;display:block;margin-bottom:6px">Quantity Needed</label>
       <input type="number" name="quantity_requested" min="1" required
-        class="form-input" placeholder="e.g. 5">
+        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px">
     </div>
-
-    <div class="form-group">
-      <label class="form-label" style="color:#9ca3af">
-        <span class="material-icons-round" style="font-size:14px">info_outline</span>
-        Units Available (auto-filled)
-      </label>
+    <div style="margin-bottom:14px">
+      <label style="font-weight:600;display:block;margin-bottom:6px">No. of Units Remaining</label>
       <input type="number" name="units_remaining" id="units_remaining" readonly
-        class="form-input" style="background:#f9fafb;color:#9ca3af">
+        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px;background:#f5f5f5">
     </div>
-
-    <div class="form-group">
-      <label class="form-label">
-        <span class="material-icons-round" style="font-size:14px;color:#2d4a3e">description</span>
-        Reason for Request
-      </label>
-      <textarea name="reason" required rows="3" class="form-input"
-        placeholder="Why do you need this item?"></textarea>
+    <div style="margin-bottom:14px">
+      <label style="font-weight:600;display:block;margin-bottom:6px">Reason for Request</label>
+      <textarea name="reason" required rows="3"
+        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px"></textarea>
     </div>
-
-    <div class="form-group">
-      <label class="form-label" style="color:#9ca3af">
-        <span class="material-icons-round" style="font-size:14px">notes</span>
-        Additional Notes (Optional)
-      </label>
-      <textarea name="notes" rows="2" class="form-input"
-        placeholder="Any extra details..."></textarea>
+    <div style="margin-bottom:20px">
+      <label style="font-weight:600;display:block;margin-bottom:6px">Additional Notes (Optional)</label>
+      <textarea name="notes" rows="2"
+        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px"></textarea>
     </div>
-
-    <div style="display:flex;gap:10px;margin-top:4px">
-      <a href="{% url 'mobile_dashboard' %}" style="flex:1;text-decoration:none">
-        <button type="button" class="btn btn-ghost">
-          <span class="material-icons-round" style="font-size:16px">close</span>
-          Cancel
-        </button>
+    <div style="display:flex;gap:10px">
+      <a href="{% url 'mobile_dashboard' %}" style="flex:1">
+        <button type="button" style="width:100%;background:#e5e7eb;padding:12px;border-radius:8px;border:none;font-size:15px">Cancel</button>
       </a>
-      <button type="submit" class="btn btn-secondary" style="flex:2">
-        <span class="material-icons-round" style="font-size:16px">send</span>
-        Submit Request
-      </button>
+      <button type="submit" class="btn-primary" style="flex:2">✓ Submit Request</button>
     </div>
   </form>
 </div>
-
-<script>
-function updateAvailable(select) {
-  const opt = select.options[select.selectedIndex];
-  const avail = opt.dataset.available || '';
-  document.getElementById('units_remaining').value = avail;
-}
-</script>
 {% endblock %}
