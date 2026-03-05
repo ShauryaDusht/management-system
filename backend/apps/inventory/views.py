@@ -1,13 +1,13 @@
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Sum, F, Count
+from django.db.models import Sum, F, Count, Q
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 
-from .models import Category, Item, ItemRequest, ItemIssue, StockEntry
+from .models import Category, Item, ItemRequest, ItemIssue, StockEntry, InventoryTask
 from .serializers import (
     CategorySerializer, ItemSerializer,
     StockEntrySerializer,
@@ -15,6 +15,7 @@ from .serializers import (
     ItemIssueSerializer,
     ReturnAssetSerializer, FinalizeConsumableSerializer,
     UserActivitySerializer,
+    InventoryTaskSerializer,
     StandardPagination,
 )
 from apps.users.permissions import IsAdmin, IsAdminOrManager, IsManager, IsSupervisor
@@ -534,6 +535,39 @@ class DashboardSummaryView(APIView):
             expected_return_date__lt=timezone.now().date(),
         ).count()
 
+        # Category-wise breakdown for analytics charts
+        category_breakdown = []
+        for cat in Category.objects.prefetch_related('items'):
+            items_qs = cat.items.all()
+            total = items_qs.count()
+            if total == 0:
+                continue
+            low = items_qs.filter(available_quantity__lt=F('threshold_quantity'), available_quantity__gt=0).count()
+            out = items_qs.filter(available_quantity=0).count()
+            in_stock = total - low - out
+            total_available = items_qs.aggregate(s=Sum('available_quantity'))['s'] or 0
+            category_breakdown.append({
+                'category': cat.name,
+                'total': total,
+                'in_stock': in_stock,
+                'low_stock': low,
+                'out_of_stock': out,
+                'total_available': total_available,
+            })
+
+        # Issued vs available for top 8 items
+        top_items = Item.objects.annotate(
+            issued_count=Count('requests', filter=Q(requests__status='issued'))
+        ).order_by('-issued_count')[:8]
+        issued_vs_available = [
+            {
+                'name': item.name[:18] + ('…' if len(item.name) > 18 else ''),
+                'available': item.available_quantity,
+                'issued': item.issued_count,
+            }
+            for item in top_items
+        ]
+
         return Response({
             'total_items': total_items,
             'low_stock_count': low_stock_count,
@@ -542,4 +576,39 @@ class DashboardSummaryView(APIView):
             'unreturned_assets': unreturned_assets,
             'unfinalized_consumables': unfinalized_consumables,
             'overdue_returns': overdue_returns,
+            'category_breakdown': category_breakdown,
+            'issued_vs_available': issued_vs_available,
         })
+
+
+# ─────────────────────────────────────────────────
+# INVENTORY TASK VIEWS
+# ─────────────────────────────────────────────────
+
+class InventoryTaskListCreateView(generics.ListCreateAPIView):
+    """Admin creates tasks; inventory managers can see their assigned tasks."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = InventoryTaskSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = InventoryTask.objects.select_related('assigned_to', 'created_by')
+        if getattr(user, 'role', '') == 'inventory_manager':
+            return qs.filter(assigned_to=user)
+        return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if getattr(user, 'role', '') not in ['admin', 'manager']:
+            raise PermissionDenied('Only admins or managers can create tasks.')
+        serializer.save(created_by=user)
+
+
+class InventoryTaskDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = InventoryTaskSerializer
+    queryset = InventoryTask.objects.select_related('assigned_to', 'created_by')
+
+    def get_permissions(self):
+        if self.request.method in ['DELETE']:
+            return [IsAdmin()]
+        return [IsAuthenticated()]
