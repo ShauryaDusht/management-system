@@ -1,50 +1,116 @@
 {% extends 'inventory/mobile/base_mobile.html' %}
 {% block title %}Request Item{% endblock %}
-{% block header_title %}Request Item{% endblock %}
-{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white">←</a>{% endblock %}
+{% block header_title %}REQUEST ITEM{% endblock %}
+{% block back_button %}
+<a href="{% url 'mobile_dashboard' %}" class="back-btn">
+  <span class="material-icons-round" style="font-size:20px">arrow_back</span>
+</a>
+{% endblock %}
+
 {% block content %}
+{% if error %}
+<div class="alert alert-error">
+  <span class="material-icons-round" style="font-size:18px;flex-shrink:0">error_outline</span>
+  {{ error }}
+</div>
+{% endif %}
+
 <div class="card">
-  <p style="color:#888;margin-bottom:16px">Fill out the details...</p>
+  <p style="color:var(--text-secondary);font-size:13px;margin:0 0 16px;display:flex;align-items:center;gap:6px">
+    <span class="material-icons-round" style="font-size:16px;color:var(--brand-green)">info</span>
+    Fill in the details below to submit an item request.
+  </p>
+
   <form method="POST" action="{% url 'mobile_request_form' %}">
     {% csrf_token %}
+
     <div style="margin-bottom:14px">
-      <label style="font-weight:600;display:block;margin-bottom:6px">Name of Inventory</label>
-      <select name="item" required style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px"
-        onchange="document.getElementById('units_remaining').value=this.options[this.selectedIndex].dataset.available">
-        <option value="">-- Select Item --</option>
+      <label style="font-weight:600;display:block;margin-bottom:6px;font-size:13px;color:var(--text-primary)">
+        <span class="material-icons-round" style="font-size:15px;vertical-align:middle;color:var(--brand-green)">inventory_2</span>
+        Item
+      </label>
+      <select name="item" required class="input"
+        onchange="updateUnitsRemaining(this)">
+        <option value="">— Select an item —</option>
         {% for item in items %}
-        <option value="{{ item.id }}" data-available="{{ item.available_quantity }}">
-          {{ item.name }} ({{ item.available_quantity }} {{ item.unit }} available)
+        <option value="{{ item.id }}"
+          data-available="{{ item.available_quantity }}"
+          data-unit="{{ item.unit }}"
+          {% if preselected_item == item.id|stringformat:'s' %}selected{% endif %}>
+          {{ item.name }} — {{ item.available_quantity }} {{ item.unit }} available
         </option>
         {% endfor %}
       </select>
     </div>
+
     <div style="margin-bottom:14px">
-      <label style="font-weight:600;display:block;margin-bottom:6px">Quantity Needed</label>
-      <input type="number" name="quantity_requested" min="1" required
-        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px">
+      <label style="font-weight:600;display:block;margin-bottom:6px;font-size:13px;color:var(--text-primary)">
+        <span class="material-icons-round" style="font-size:15px;vertical-align:middle;color:var(--brand-green)">numbers</span>
+        Quantity Needed
+      </label>
+      <input type="number" name="quantity_requested" min="1" required class="input" placeholder="0">
     </div>
+
     <div style="margin-bottom:14px">
-      <label style="font-weight:600;display:block;margin-bottom:6px">No. of Units Remaining</label>
-      <input type="number" name="units_remaining" id="units_remaining" readonly
-        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px;background:#f5f5f5">
+      <label style="font-weight:600;display:block;margin-bottom:6px;font-size:13px;color:var(--text-muted)">
+        <span class="material-icons-round" style="font-size:15px;vertical-align:middle">info_outline</span>
+        Units Available
+      </label>
+      <input type="number" name="units_remaining" id="units_remaining" readonly class="input"
+        style="background:#f8f8f8;color:var(--text-muted)" placeholder="—">
     </div>
+
     <div style="margin-bottom:14px">
-      <label style="font-weight:600;display:block;margin-bottom:6px">Reason for Request</label>
-      <textarea name="reason" required rows="3"
-        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px"></textarea>
+      <label style="font-weight:600;display:block;margin-bottom:6px;font-size:13px;color:var(--text-primary)">
+        <span class="material-icons-round" style="font-size:15px;vertical-align:middle;color:var(--brand-green)">notes</span>
+        Reason for Request <span style="color:#ef4444">*</span>
+      </label>
+      <textarea name="reason" required rows="3" class="input" style="resize:none"
+        placeholder="Describe why you need this item..."></textarea>
     </div>
+
     <div style="margin-bottom:20px">
-      <label style="font-weight:600;display:block;margin-bottom:6px">Additional Notes (Optional)</label>
-      <textarea name="notes" rows="2"
-        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:15px"></textarea>
+      <label style="font-weight:600;display:block;margin-bottom:6px;font-size:13px;color:var(--text-primary)">
+        <span class="material-icons-round" style="font-size:15px;vertical-align:middle;color:var(--brand-green)">edit_note</span>
+        Additional Notes <span style="font-weight:400;color:var(--text-muted)">(Optional)</span>
+      </label>
+      <textarea name="notes" rows="2" class="input" style="resize:none"
+        placeholder="Any additional details..."></textarea>
     </div>
+
     <div style="display:flex;gap:10px">
       <a href="{% url 'mobile_dashboard' %}" style="flex:1">
-        <button type="button" style="width:100%;background:#e5e7eb;padding:12px;border-radius:8px;border:none;font-size:15px">Cancel</button>
+        <button type="button" class="btn btn-outline btn-full">
+          <span class="material-icons-round" style="font-size:18px">close</span>
+          Cancel
+        </button>
       </a>
-      <button type="submit" class="btn-primary" style="flex:2">✓ Submit Request</button>
+      <button type="submit" class="btn btn-primary" style="flex:2">
+        <span class="material-icons-round" style="font-size:18px">send</span>
+        Submit Request
+      </button>
     </div>
   </form>
 </div>
+
+<script>
+function updateUnitsRemaining(select) {
+  const opt = select.options[select.selectedIndex];
+  const avail = opt.dataset.available || '';
+  document.getElementById('units_remaining').value = avail;
+}
+
+// Pre-select if item query param is present
+document.addEventListener('DOMContentLoaded', function () {
+  const params = new URLSearchParams(window.location.search);
+  const itemId = params.get('item');
+  if (itemId) {
+    const sel = document.querySelector('select[name="item"]');
+    if (sel) {
+      sel.value = itemId;
+      updateUnitsRemaining(sel);
+    }
+  }
+});
+</script>
 {% endblock %}

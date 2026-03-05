@@ -2,50 +2,104 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile Login</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Campus Inventory — Login</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            background: #f2ede8;
+            font-family: 'Inter', sans-serif;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            margin: 0;
+        }
+        .login-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 32px 24px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+        }
+        .logo {
+            width: 56px; height: 56px; border-radius: 14px;
+            background: #2d4a3e;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 20px;
+        }
+        h1 { font-size: 22px; font-weight: 800; color: #1a1a1a; margin: 0 0 4px; }
+        p { font-size: 13px; color: #6b7280; margin: 0 0 24px; }
+        .alert {
+            background: #fef2f2; border: 1px solid #fca5a5;
+            border-radius: 8px; padding: 10px 14px;
+            font-size: 13px; color: #991b1b;
+            margin-bottom: 16px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .input-wrap { position: relative; margin-bottom: 14px; }
+        .input-wrap .material-icons-round {
+            position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+            color: #9ca3af; font-size: 20px; pointer-events: none;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%; padding: 11px 12px 11px 40px;
+            border: 1.5px solid #e8e3de; border-radius: 8px;
+            font-size: 14px; font-family: 'Inter', sans-serif;
+            outline: none; transition: border-color 0.2s; background: #fff;
+        }
+        input:focus { border-color: #2d4a3e; }
+        button[type="submit"] {
+            width: 100%; background: #2d4a3e; color: #fff;
+            border: none; border-radius: 10px;
+            padding: 14px; font-size: 15px; font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: opacity 0.15s, transform 0.1s;
+            margin-top: 20px;
+        }
+        button[type="submit"]:active { transform: scale(0.98); opacity: 0.9; }
+    </style>
 </head>
-<body class="bg-slate-100 min-h-screen flex items-center justify-center px-4">
-    <div class="w-full max-w-sm bg-white rounded-xl shadow p-6">
-        <h1 class="text-xl font-bold text-slate-900 mb-1">Campus Inventory</h1>
-        <p class="text-sm text-slate-500 mb-5">Mobile Login</p>
+<body>
+    <div class="login-card">
+        <div class="logo">
+            <span class="material-icons-round" style="font-size:30px;color:white">inventory_2</span>
+        </div>
+        <h1>Campus Inventory</h1>
+        <p>Sign in to your account</p>
 
         {% if error %}
-            <div class="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
-                {{ error }}
-            </div>
+        <div class="alert">
+            <span class="material-icons-round" style="font-size:18px;flex-shrink:0">error_outline</span>
+            {{ error }}
+        </div>
         {% endif %}
 
-        <form method="post" action="{% url 'mobile_login' %}" class="space-y-4">
+        <form method="post" action="{% url 'mobile_login' %}">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ next }}">
 
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Username</label>
-                <input
-                    type="text"
-                    name="username"
-                    required
-                    class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-                >
+            <label for="username">Username</label>
+            <div class="input-wrap">
+                <span class="material-icons-round">person</span>
+                <input type="text" id="username" name="username" required autocomplete="username" autofocus>
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
-                <input
-                    type="password"
-                    name="password"
-                    required
-                    class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-                >
+            <label for="password">Password</label>
+            <div class="input-wrap">
+                <span class="material-icons-round">lock</span>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
             </div>
 
-            <button
-                type="submit"
-                class="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-lg px-4 py-2.5"
-            >
-                Login
+            <button type="submit">
+                <span class="material-icons-round" style="font-size:20px">login</span>
+                Sign In
             </button>
         </form>
     </div>

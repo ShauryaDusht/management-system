@@ -2,58 +2,157 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}Campus Inventory{% endblock %}</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { background: #f5f0eb; font-family: sans-serif; }
-        .card { background: white; border-radius: 12px; padding: 16px; margin: 8px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-        .btn-primary { background: #c2622a; color: white; padding: 12px 20px; border-radius: 8px; border: none; font-size: 15px; width: 100%; cursor: pointer; }
-        .btn-secondary { background: #2d4a3e; color: white; padding: 12px 20px; border-radius: 8px; border: none; font-size: 15px; cursor: pointer; }
-        .badge-low { background: #f97316; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-        .badge-out { background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-        .badge-ok { background: #22c55e; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-        .stat-card { border-radius: 12px; padding: 16px; color: white; }
-        .header { background: #2d4a3e; color: white; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
+        :root {
+            --brand-green:    #2d4a3e;
+            --brand-green-dk: #1a3a2e;
+            --brand-orange:   #c2622a;
+            --brand-teal:     #1e6b7a;
+            --brand-brown:    #8b5e3c;
+            --bg:             #f2ede8;
+            --surface:        #ffffff;
+            --border:         #e8e3de;
+            --text-primary:   #1a1a1a;
+            --text-secondary: #6b7280;
+            --text-muted:     #9ca3af;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 2px 8px rgba(0,0,0,0.10);
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body { background: var(--bg); font-family: 'Inter', sans-serif; font-size: 14px; color: var(--text-primary); margin: 0; -webkit-font-smoothing: antialiased; }
+        a { text-decoration: none; color: inherit; }
+        .card { background: var(--surface); border-radius: var(--radius-md); padding: 16px; margin-bottom: 10px; box-shadow: var(--shadow-sm); }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 44px; padding: 0 18px; border-radius: var(--radius-sm); border: none; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.15s, transform 0.1s; white-space: nowrap; }
+        .btn:active { transform: scale(0.97); opacity: 0.9; }
+        .btn-primary   { background: var(--brand-orange); color: #fff; }
+        .btn-secondary { background: var(--brand-green);  color: #fff; }
+        .btn-outline   { background: #fff; color: var(--brand-green); border: 1.5px solid var(--border); }
+        .btn-danger    { background: #ef4444; color: #fff; }
+        .btn-full      { width: 100%; }
+        .badge { display: inline-flex; align-items: center; gap: 3px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; }
+        .badge-ok      { background: #dcfce7; color: #166534; }
+        .badge-low     { background: #fff7ed; color: #9a3412; }
+        .badge-out     { background: #fee2e2; color: #991b1b; }
+        .badge-pending { background: #fef9c3; color: #854d0e; }
+        .badge-issued  { background: #e0f2fe; color: #075985; }
+        .stat-card { border-radius: var(--radius-md); padding: 16px; color: #fff; }
+        .stat-card .stat-label { font-size: 12px; opacity: 0.85; margin-bottom: 4px; }
+        .stat-card .stat-value { font-size: 30px; font-weight: 800; line-height: 1; }
+        .app-header { background: var(--brand-green); color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .app-header .left { display: flex; align-items: center; gap: 10px; }
+        .app-header .title { font-size: 15px; font-weight: 700; letter-spacing: 0.8px; }
+        .back-btn { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.12); color: #fff; }
+        .back-btn:active { background: rgba(255,255,255,0.25); }
+        .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--brand-green-dk); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; border: 2px solid rgba(255,255,255,0.25); }
+        .page-content { padding: 14px 12px; max-width: 480px; margin: 0 auto; }
+        .scroll-pad { height: 80px; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: flex; padding: 6px 0 calc(6px + env(safe-area-inset-bottom)); z-index: 200; box-shadow: 0 -2px 12px rgba(0,0,0,0.08); }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px 0; color: var(--text-muted); cursor: pointer; transition: color 0.15s; }
+        .nav-item .material-icons-round { font-size: 22px; }
+        .nav-item .nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.2px; }
+        .nav-item.active { color: var(--brand-green); }
+        .nav-item:active { opacity: 0.7; }
+        .input { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 14px; font-family: 'Inter', sans-serif; background: var(--surface); outline: none; transition: border-color 0.2s; }
+        .input:focus { border-color: var(--brand-green); }
+        .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+        .empty-state .material-icons-round { font-size: 52px; margin-bottom: 12px; opacity: 0.4; display: block; }
+        .empty-state .empty-title { font-size: 15px; font-weight: 600; margin: 0 0 4px; color: var(--text-secondary); }
+        .empty-state .empty-sub { font-size: 12px; }
+        .alert { border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .alert-warning { background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; }
+        .alert-success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+        .alert-error   { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+        .pagination { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px 0; }
+        .page-btn { display: flex; align-items: center; justify-content: center; height: 36px; min-width: 36px; padding: 0 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-size: 13px; font-weight: 600; color: var(--text-primary); cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.15s; }
+        .page-btn.active { background: var(--brand-green); color: #fff; border-color: var(--brand-green); }
+        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .page-btn:not(:disabled):hover { border-color: var(--brand-green); color: var(--brand-green); }
+        .chip { display: inline-flex; align-items: center; gap: 4px; padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; border: 1.5px solid var(--border); cursor: pointer; transition: all 0.15s; }
+        .chip.active { background: var(--brand-green); color: #fff; border-color: var(--brand-green); }
+        .chip:not(.active) { background: var(--surface); color: var(--text-secondary); }
+        .section-title { font-size: 16px; font-weight: 700; margin: 14px 0 10px; color: var(--text-primary); }
+        @keyframes item-highlight { 0%,100%{box-shadow:var(--shadow-sm)} 50%{box-shadow:0 0 0 3px var(--brand-orange),0 2px 8px rgba(194,98,42,.3)} }
+        .item-highlight { animation: item-highlight 1s ease-in-out 3; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div style="display:flex;align-items:center;gap:12px">
+    <header class="app-header">
+        <div class="left">
             {% block back_button %}{% endblock %}
-            <span style="font-weight:700;letter-spacing:1px">{% block header_title %}INVENTORY{% endblock %}</span>
+            <span class="title">{% block header_title %}INVENTORY{% endblock %}</span>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
             {% block header_right %}
             {% if request.user.is_authenticated %}
-            <a href="/inventory/mobile/profile/">
-                <div style="width:36px;height:36px;border-radius:50%;background:#1a3a2e;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;border:2px solid rgba(255,255,255,0.3)">
-                    {{ request.user.first_name|default:request.user.username|first|upper }}
-                </div>
-            </a>
+            <a href="/inventory/mobile/profile/"><div class="avatar">{{ request.user.first_name|default:request.user.username|first|upper }}</div></a>
             {% endif %}
             {% endblock %}
         </div>
-    </div>
-    <div style="padding:12px;max-width:480px;margin:0 auto">
+    </header>
+
+    <div class="page-content">
         {% block content %}{% endblock %}
     </div>
-    <div style="height:80px"></div>
+    <div class="scroll-pad"></div>
+
     {% block bottom_bar %}
     {% if request.user.is_authenticated %}
-    <div style="position:fixed;bottom:0;left:0;right:0;background:white;padding:10px 12px;display:flex;gap:8px;box-shadow:0 -2px 8px rgba(0,0,0,0.1)">
+    {% with current_path=request.path %}
+    <nav class="bottom-nav">
         {% if request.user.role == 'admin' or request.user.role == 'manager' or request.user.role == 'inventory_manager' %}
-        <a href="{% url 'mobile_dashboard' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">Dashboard</button></a>
-        <a href="{% url 'mobile_inventory_list' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">Inventory</button></a>
-        <a href="{% url 'mobile_reports' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">Reports</button></a>
-        <a href="{% url 'mobile_issued_items' %}" style="flex:1"><button class="btn-primary" style="width:100%;padding:10px 8px;font-size:13px">Issued</button></a>
+        <a href="{% url 'mobile_dashboard' %}" class="nav-item {% if current_path == '/inventory/mobile/' %}active{% endif %}">
+            <span class="material-icons-round">dashboard</span>
+            <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="{% url 'mobile_inventory_list' %}" class="nav-item {% if '/mobile/list' in current_path %}active{% endif %}">
+            <span class="material-icons-round">inventory_2</span>
+            <span class="nav-label">Inventory</span>
+        </a>
+        <a href="{% url 'mobile_manager_requests' %}" class="nav-item {% if '/mobile/manager-requests' in current_path %}active{% endif %}">
+            <span class="material-icons-round">pending_actions</span>
+            <span class="nav-label">Requests</span>
+        </a>
+        <a href="{% url 'mobile_reports' %}" class="nav-item {% if '/mobile/reports' in current_path %}active{% endif %}">
+            <span class="material-icons-round">bar_chart</span>
+            <span class="nav-label">Reports</span>
+        </a>
+        <a href="{% url 'mobile_profile' %}" class="nav-item {% if '/mobile/profile' in current_path %}active{% endif %}">
+            <span class="material-icons-round">account_circle</span>
+            <span class="nav-label">Profile</span>
+        </a>
         {% else %}
-        <a href="{% url 'mobile_dashboard' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">Dashboard</button></a>
-        <a href="{% url 'mobile_my_requests' %}" style="flex:1"><button class="btn-secondary" style="width:100%;padding:10px 8px;font-size:13px">My Requests</button></a>
-        <a href="{% url 'mobile_inventory_list' %}" style="flex:1"><button class="btn-primary" style="width:100%;padding:10px 8px;font-size:13px">Inventory</button></a>
+        <a href="{% url 'mobile_dashboard' %}" class="nav-item {% if current_path == '/inventory/mobile/' %}active{% endif %}">
+            <span class="material-icons-round">dashboard</span>
+            <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="{% url 'mobile_inventory_list' %}" class="nav-item {% if '/mobile/list' in current_path %}active{% endif %}">
+            <span class="material-icons-round">inventory_2</span>
+            <span class="nav-label">Inventory</span>
+        </a>
+        <a href="{% url 'mobile_request_form' %}" class="nav-item {% if '/mobile/request/' in current_path %}active{% endif %}">
+            <span class="material-icons-round">add_circle</span>
+            <span class="nav-label">Request</span>
+        </a>
+        <a href="{% url 'mobile_my_requests' %}" class="nav-item {% if '/mobile/my-requests' in current_path %}active{% endif %}">
+            <span class="material-icons-round">receipt_long</span>
+            <span class="nav-label">My Requests</span>
+        </a>
+        <a href="{% url 'mobile_profile' %}" class="nav-item {% if '/mobile/profile' in current_path %}active{% endif %}">
+            <span class="material-icons-round">account_circle</span>
+            <span class="nav-label">Profile</span>
+        </a>
         {% endif %}
-    </div>
+    </nav>
+    {% endwith %}
     {% endif %}
     {% endblock %}
 </body>
