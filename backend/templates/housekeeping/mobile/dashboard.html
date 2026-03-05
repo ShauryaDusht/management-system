@@ -4,12 +4,10 @@
 {% block n1 %}on{% endblock %}
 
 {% block content %}
-
 {% for a in alerts %}
 <div style="border-radius:11px;padding:10px 13px;display:flex;gap:9px;margin-bottom:8px;
   background:{% if a.priority == 'urgent' %}#fff0f0{% elif a.priority == 'warning' %}#fffbeb{% else %}#eff6ff{% endif %};
   border:1px solid {% if a.priority == 'urgent' %}#fca5a5{% elif a.priority == 'warning' %}#fde68a{% else %}#bfdbfe{% endif %}">
-  <span style="font-size:18px">{% if a.priority == 'urgent' %}⚠{% elif a.priority == 'warning' %}⚡{% else %}ℹ{% endif %}</span>
   <div><b style="font-size:13px">{{ a.title }}</b><div style="font-size:12px;margin-top:2px">{{ a.message }}</div></div>
 </div>
 {% endfor %}
@@ -22,13 +20,12 @@
 </div>
 {% endif %}
 
-<!-- GREETING + PROGRESS BAR -->
 <div class="card" style="background:linear-gradient(135deg,#2d4a3e,#1e3a30);color:#fff;border:none">
   <div style="font-size:16px;font-weight:800">
     {% now "H" as h %}{% if h < "12" %}Good Morning{% elif h < "17" %}Good Afternoon{% else %}Good Evening{% endif %}, {{ request.user.first_name|default:request.user.username }}
   </div>
   {% if selected_area %}
-  <div style="font-size:12px;opacity:.8;margin:3px 0 10px">📍 {{ selected_area.name }} · 📅 {{ today|date:"D, d M Y" }}</div>
+  <div style="font-size:12px;opacity:.85;margin:3px 0 10px">{{ selected_area.name }} | {{ today|date:"D, d M Y" }}</div>
   {% endif %}
   <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
     <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
@@ -38,42 +35,34 @@
     <div class="prog" style="background:rgba(255,255,255,.2)">
       <div class="fill" style="width:{{ percent_done }}%;background:rgba(255,255,255,.85)"></div>
     </div>
-    <div style="font-size:11px;opacity:.7;margin-top:4px">{{ percent_done }}% completed</div>
+    <div style="font-size:11px;opacity:.75;margin-top:4px">{{ percent_done }}% completed</div>
   </div>
 </div>
 
-<!-- SUNDAY INCHARGE (Saturday only) -->
 {% if today_dow == 5 and selected_area %}
 <div class="card" style="border:2px solid #c2622a">
-  <div style="font-weight:800;color:#c2622a;margin-bottom:8px">☀️ Upcoming Sunday Incharge — {{ upcoming_sunday|date:"d M" }}</div>
+  <div style="font-weight:800;color:#c2622a;margin-bottom:8px">Upcoming Sunday Incharge - {{ upcoming_sunday|date:"d M" }}</div>
   {% if sunday_incharge %}
-  <div style="font-weight:700">✅ {{ sunday_incharge.worker.name }}</div>
+  <div style="font-weight:700">{{ sunday_incharge.worker.name }}</div>
   <div style="font-size:12px;color:#6b7280;margin-top:2px">{{ sunday_incharge.notes|default:"No notes" }}</div>
   {% else %}
   <div style="font-size:13px;color:#6b7280;margin-bottom:8px">No incharge set yet.</div>
   {% endif %}
   <details style="margin-top:8px">
-    <summary style="font-size:13px;font-weight:700;color:#c2622a;cursor:pointer">
-      {% if sunday_incharge %}Change{% else %}Set{% endif %} Sunday Incharge
-    </summary>
+    <summary style="font-size:13px;font-weight:700;color:#c2622a;cursor:pointer">{% if sunday_incharge %}Change{% else %}Set{% endif %} Sunday Incharge</summary>
     <form method="post" action="/housekeeping/attendance/sunday-incharge/" style="margin-top:10px">
       {% csrf_token %}
       <input type="hidden" name="area_id" value="{{ selected_area.id }}">
       <div class="fg">
         <label>Worker taking Sunday responsibility</label>
         <select name="worker_id" required>
-          <option value="">— Choose worker —</option>
+          <option value="">- Choose worker -</option>
           {% for w in area_workers %}
-          <option value="{{ w.id }}" {% if sunday_incharge.worker_id == w.id %}selected{% endif %}>
-            {{ w.name }} ({{ w.get_worker_type_display }})
-          </option>
+          <option value="{{ w.id }}" {% if sunday_incharge.worker_id == w.id %}selected{% endif %}>{{ w.name }} ({{ w.get_worker_type_display }})</option>
           {% endfor %}
         </select>
       </div>
-      <div class="fg">
-        <label>Notes (optional)</label>
-        <input type="text" name="notes" placeholder="Any special instructions...">
-      </div>
+      <div class="fg"><label>Notes (optional)</label><input type="text" name="notes" placeholder="Any special instructions..."></div>
       <button type="submit" class="btn-s" style="padding:10px;font-size:13px">Confirm Incharge</button>
     </form>
   </details>
@@ -81,200 +70,74 @@
 {% endif %}
 
 {% if selected_area %}
-
 {% if records %}
-<!-- ══════════════════════════════════════
-     4 TAB BUTTONS
-     ══════════════════════════════════════ -->
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px" id="tab-buttons">
-
-  <button onclick="showTab('floor')" id="btn-floor"
-    style="width:100%;border:none;border-radius:10px;padding:10px 4px;
-    font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.4;
-    background:#2d4a3e;color:#fff;transition:opacity .2s">
-    🧹 {{ tab_label_floor }}<br>
-    <span style="font-size:10px;font-weight:400;opacity:.85">
-      {% if grouped.floor %}{{ grouped.floor|length }}{% else %}0{% endif %} tasks
-    </span>
+<div style="display:grid;grid-template-columns:repeat({% if has_special_tasks %}5{% else %}4{% endif %},1fr);gap:6px;margin-bottom:12px" id="tab-buttons">
+  <button onclick="showTab('floor')" id="btn-floor" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#2d4a3e;color:#fff;transition:opacity .2s">
+    {{ tab_label_floor }}<br><span style="font-size:10px;font-weight:400;opacity:.85">{{ grouped.floor|length|default:0 }} tasks</span>
   </button>
-
-  <button onclick="showTab('room')" id="btn-room"
-    style="width:100%;border:none;border-radius:10px;padding:10px 4px;
-    font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.4;
-    background:#c2622a;color:#fff;transition:opacity .2s">
-    🛏 {{ tab_label_room }}<br>
-    <span style="font-size:10px;font-weight:400;opacity:.85">
-      {% if grouped.room %}{{ grouped.room|length }}{% else %}0{% endif %} tasks
-    </span>
+  <button onclick="showTab('room')" id="btn-room" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#c2622a;color:#fff;transition:opacity .2s">
+    {{ tab_label_room }}<br><span style="font-size:10px;font-weight:400;opacity:.85">{{ grouped.room|length|default:0 }} tasks</span>
   </button>
-
-  <button onclick="showTab('washroom')" id="btn-washroom"
-    style="width:100%;border:none;border-radius:10px;padding:10px 4px;
-    font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.4;
-    background:#1d4ed8;color:#fff;transition:opacity .2s">
-    🚿 {{ tab_label_washroom }}<br>
-    <span style="font-size:10px;font-weight:400;opacity:.85">
-      {% if grouped.washroom %}{{ grouped.washroom|length }}{% else %}0{% endif %} tasks
-    </span>
+  <button onclick="showTab('washroom')" id="btn-washroom" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#1d4ed8;color:#fff;transition:opacity .2s">
+    {{ tab_label_washroom }}<br><span style="font-size:10px;font-weight:400;opacity:.85">{{ grouped.washroom|length|default:0 }} tasks</span>
   </button>
-
-  <button onclick="showTab('extra')" id="btn-extra"
-    style="width:100%;border:none;border-radius:10px;padding:10px 4px;
-    font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.4;
-    background:#374151;color:#fff;transition:opacity .2s">
-    ➕ Extra<br>
-    <span style="font-size:10px;font-weight:400;opacity:.85">Work</span>
+  {% if has_special_tasks %}
+  <button onclick="showTab('all')" id="btn-all" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#0f766e;color:#fff;transition:opacity .2s">
+    Special<br><span style="font-size:10px;font-weight:400;opacity:.85">{{ grouped.all|length|default:0 }} tasks</span>
   </button>
-
+  {% endif %}
+  <button onclick="showTab('extra')" id="btn-extra" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#374151;color:#fff;transition:opacity .2s">
+    Extra<br><span style="font-size:10px;font-weight:400;opacity:.85">Work</span>
+  </button>
 </div>
 
-<!-- ══════════════════════════════════════
-     TAB: FLOOR STAFF
-     ══════════════════════════════════════ -->
 <div id="tab-floor" style="display:none">
-  <div class="wtag">🧹 {{ heading_floor }}</div>
+  <div class="wtag">{{ heading_floor }}</div>
   {% for record in grouped.floor %}
-  {% if 'break' in record.schedule.task_name|lower or 'lunch' in record.schedule.task_name|lower %}
-  <div style="text-align:center;color:#9ca3af;font-size:11px;padding:3px 0">
-    ─── {{ record.schedule.task_name }} {{ record.schedule.start_time|time:"g:iA" }}–{{ record.schedule.end_time|time:"g:iA" }} ───
-  </div>
-  {% else %}
-  <div class="card" id="task-{{ record.id }}" style="padding:11px;{% if record.status == 'done' %}border-left:4px solid #16a34a;{% else %}border-left:4px solid #e5e7eb;{% endif %}">
-    <form hx-post="/housekeeping/task/{{ record.id }}/mark/" hx-target="#task-{{ record.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data" style="display:flex;align-items:flex-start;gap:11px">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="{% if record.status == 'done' %}undo{% else %}done{% endif %}">
-      <button type="submit" class="ckbox {% if record.status == 'done' %}done{% endif %}">✓</button>
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;gap:6px">
-          <div style="font-weight:700;font-size:13px;{% if record.status == 'done' %}text-decoration:line-through;color:#9ca3af{% endif %}">{{ record.schedule.task_name }}</div>
-          <span class="bdg {% if record.status == 'done' %}g{% else %}gr{% endif %}" style="flex-shrink:0">{% if record.status == 'done' %}Done{% else %}Pending{% endif %}</span>
-        </div>
-        <div style="font-size:11px;color:#6b7280;margin-top:2px">🕐 {{ record.schedule.start_time|time:"g:i A" }}–{{ record.schedule.end_time|time:"g:i A" }}{% if record.schedule.task_description %} · <span style="color:#9ca3af">{{ record.schedule.task_description }}</span>{% endif %}</div>
-        {% if record.status == 'done' and record.completed_at %}<div style="font-size:11px;color:#16a34a;margin-top:2px">✓ {{ record.completed_at|time:"g:i A" }}{% if record.completed_by %} by {{ record.completed_by.get_full_name|default:record.completed_by.username }}{% endif %}</div>
-        {% elif record.schedule.requires_photo %}<div style="font-size:11px;color:#c2622a;margin-top:2px">📷 Photo required</div>{% endif %}
-        {% if record.status != 'done' %}
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">
-          <input type="text" name="note" placeholder="Note (optional)" style="flex:1;padding:6px 8px;font-size:12px;min-width:0">
-          {% if record.schedule.requires_photo %}
-          <div style="flex:1;min-width:120px"><label style="font-size:10px;color:#c2622a;margin-bottom:2px;display:block">📷 After Photo *</label><input type="file" name="photo_after" accept="image/*" capture="environment" style="font-size:11px;padding:4px"></div>
-          {% endif %}
-        </div>
-        {% endif %}
-      </div>
-    </form>
-  </div>
-  {% endif %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
   {% empty %}
-  <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No floor tasks today.</div>
+    <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No floor tasks today.</div>
   {% endfor %}
 </div>
 
-<!-- ══════════════════════════════════════
-     TAB: ROOM STAFF
-     ══════════════════════════════════════ -->
 <div id="tab-room" style="display:none">
-  <div class="wtag">🛏 {{ heading_room }}</div>
+  <div class="wtag">{{ heading_room }}</div>
   {% for record in grouped.room %}
-  {% if 'break' in record.schedule.task_name|lower or 'lunch' in record.schedule.task_name|lower %}
-  <div style="text-align:center;color:#9ca3af;font-size:11px;padding:3px 0">
-    ─── {{ record.schedule.task_name }} {{ record.schedule.start_time|time:"g:iA" }}–{{ record.schedule.end_time|time:"g:iA" }} ───
-  </div>
-  {% else %}
-  <div class="card" id="task-{{ record.id }}" style="padding:11px;{% if record.status == 'done' %}border-left:4px solid #16a34a;{% else %}border-left:4px solid #e5e7eb;{% endif %}">
-    <form hx-post="/housekeeping/task/{{ record.id }}/mark/" hx-target="#task-{{ record.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data" style="display:flex;align-items:flex-start;gap:11px">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="{% if record.status == 'done' %}undo{% else %}done{% endif %}">
-      <button type="submit" class="ckbox {% if record.status == 'done' %}done{% endif %}">✓</button>
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;gap:6px">
-          <div style="font-weight:700;font-size:13px;{% if record.status == 'done' %}text-decoration:line-through;color:#9ca3af{% endif %}">{{ record.schedule.task_name }}</div>
-          <span class="bdg {% if record.status == 'done' %}g{% else %}gr{% endif %}" style="flex-shrink:0">{% if record.status == 'done' %}Done{% else %}Pending{% endif %}</span>
-        </div>
-        <div style="font-size:11px;color:#6b7280;margin-top:2px">🕐 {{ record.schedule.start_time|time:"g:i A" }}–{{ record.schedule.end_time|time:"g:i A" }}{% if record.schedule.task_description %} · <span style="color:#9ca3af">{{ record.schedule.task_description }}</span>{% endif %}</div>
-        {% if record.status == 'done' and record.completed_at %}<div style="font-size:11px;color:#16a34a;margin-top:2px">✓ {{ record.completed_at|time:"g:i A" }}{% if record.completed_by %} by {{ record.completed_by.get_full_name|default:record.completed_by.username }}{% endif %}</div>
-        {% elif record.schedule.requires_photo %}<div style="font-size:11px;color:#c2622a;margin-top:2px">📷 Photo required</div>{% endif %}
-        {% if record.status != 'done' %}
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">
-          <input type="text" name="note" placeholder="Note (optional)" style="flex:1;padding:6px 8px;font-size:12px;min-width:0">
-          {% if record.schedule.requires_photo %}
-          <div style="flex:1;min-width:120px"><label style="font-size:10px;color:#c2622a;margin-bottom:2px;display:block">📷 After Photo *</label><input type="file" name="photo_after" accept="image/*" capture="environment" style="font-size:11px;padding:4px"></div>
-          {% endif %}
-        </div>
-        {% endif %}
-      </div>
-    </form>
-  </div>
-  {% endif %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
   {% empty %}
-  <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No room tasks today.</div>
+    <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No room tasks today.</div>
   {% endfor %}
 </div>
 
-<!-- ══════════════════════════════════════
-     TAB: WASHROOM STAFF
-     ══════════════════════════════════════ -->
 <div id="tab-washroom" style="display:none">
-  <div class="wtag">🚿 {{ heading_washroom }}</div>
+  <div class="wtag">{{ heading_washroom }}</div>
   {% for record in grouped.washroom %}
-  {% if 'break' in record.schedule.task_name|lower or 'lunch' in record.schedule.task_name|lower %}
-  <div style="text-align:center;color:#9ca3af;font-size:11px;padding:3px 0">
-    ─── {{ record.schedule.task_name }} {{ record.schedule.start_time|time:"g:iA" }}–{{ record.schedule.end_time|time:"g:iA" }} ───
-  </div>
-  {% else %}
-  <div class="card" id="task-{{ record.id }}" style="padding:11px;{% if record.status == 'done' %}border-left:4px solid #16a34a;{% else %}border-left:4px solid #e5e7eb;{% endif %}">
-    <form hx-post="/housekeeping/task/{{ record.id }}/mark/" hx-target="#task-{{ record.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data" style="display:flex;align-items:flex-start;gap:11px">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="{% if record.status == 'done' %}undo{% else %}done{% endif %}">
-      <button type="submit" class="ckbox {% if record.status == 'done' %}done{% endif %}">✓</button>
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;gap:6px">
-          <div style="font-weight:700;font-size:13px;{% if record.status == 'done' %}text-decoration:line-through;color:#9ca3af{% endif %}">{{ record.schedule.task_name }}</div>
-          <span class="bdg {% if record.status == 'done' %}g{% else %}gr{% endif %}" style="flex-shrink:0">{% if record.status == 'done' %}Done{% else %}Pending{% endif %}</span>
-        </div>
-        <div style="font-size:11px;color:#6b7280;margin-top:2px">🕐 {{ record.schedule.start_time|time:"g:i A" }}–{{ record.schedule.end_time|time:"g:i A" }}{% if record.schedule.task_description %} · <span style="color:#9ca3af">{{ record.schedule.task_description }}</span>{% endif %}</div>
-        {% if record.status == 'done' and record.completed_at %}<div style="font-size:11px;color:#16a34a;margin-top:2px">✓ {{ record.completed_at|time:"g:i A" }}{% if record.completed_by %} by {{ record.completed_by.get_full_name|default:record.completed_by.username }}{% endif %}</div>
-        {% elif record.schedule.requires_photo %}<div style="font-size:11px;color:#c2622a;margin-top:2px">📷 Photo required</div>{% endif %}
-        {% if record.status != 'done' %}
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">
-          <input type="text" name="note" placeholder="Note (optional)" style="flex:1;padding:6px 8px;font-size:12px;min-width:0">
-          {% if record.schedule.requires_photo %}
-          <div style="flex:1;min-width:120px"><label style="font-size:10px;color:#c2622a;margin-bottom:2px;display:block">📷 After Photo *</label><input type="file" name="photo_after" accept="image/*" capture="environment" style="font-size:11px;padding:4px"></div>
-          {% endif %}
-        </div>
-        {% endif %}
-      </div>
-    </form>
-  </div>
-  {% endif %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
   {% empty %}
-  <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No washroom tasks today.</div>
+    <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No washroom tasks today.</div>
   {% endfor %}
 </div>
 
-<!-- ══════════════════════════════════════
-     TAB: EXTRA WORK
-     ══════════════════════════════════════ -->
+{% if has_special_tasks %}
+<div id="tab-all" style="display:none">
+  <div class="wtag">Special Tasks</div>
+  {% for record in grouped.all %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+  {% empty %}
+    <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No special tasks today.</div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <div id="tab-extra" style="display:none">
   <div class="card">
     <form method="post" action="/housekeeping/extra-work/" enctype="multipart/form-data">
       {% csrf_token %}
       <input type="hidden" name="area_id" value="{{ selected_area.id }}">
-      <div class="fg">
-        <label>Work Done *</label>
-        <input type="text" name="task_name" required placeholder="e.g. Fridge deep clean, cobweb removal...">
-      </div>
-      <div class="fg">
-        <label>Worker who did it</label>
-        <input type="text" name="worker_name" placeholder="Name of worker...">
-      </div>
-      <div class="fg">
-        <label>Details</label>
-        <textarea name="description" rows="2" placeholder="Additional info..."></textarea>
-      </div>
-      <div class="fg">
-        <label>Photo (optional)</label>
-        <input type="file" name="photo" accept="image/*" capture="environment">
-      </div>
+      <div class="fg"><label>Work Done *</label><input type="text" name="task_name" required placeholder="e.g. Fridge deep clean, cobweb removal..."></div>
+      <div class="fg"><label>Worker who did it</label><input type="text" name="worker_name" placeholder="Name of worker..."></div>
+      <div class="fg"><label>Details</label><textarea name="description" rows="2" placeholder="Additional info..."></textarea></div>
+      <div class="fg"><label>Photo (optional)</label><input type="file" name="photo" accept="image/*" capture="environment"></div>
       <button type="submit" class="btn-g">Log Extra Work</button>
     </form>
   </div>
@@ -283,53 +146,45 @@
   {% for ew in extra_works %}
   <div class="card" style="padding:10px">
     <div style="font-weight:700;font-size:13px">{{ ew.task_name }}</div>
-    {% if ew.worker_name %}<div style="font-size:12px;color:#6b7280">👤 {{ ew.worker_name }}</div>{% endif %}
+    {% if ew.worker_name %}<div style="font-size:12px;color:#6b7280">{{ ew.worker_name }}</div>{% endif %}
     {% if ew.description %}<div style="font-size:12px;color:#374151;margin-top:2px">{{ ew.description }}</div>{% endif %}
     <div style="font-size:11px;color:#9ca3af;margin-top:3px">{{ ew.logged_at|time:"g:i A" }}</div>
-    {% if ew.is_verified %}<span class="bdg g" style="margin-top:4px;display:inline-block">✓ Verified</span>{% endif %}
+    {% if ew.is_verified %}<span class="bdg g" style="margin-top:4px;display:inline-block">Verified</span>{% endif %}
   </div>
   {% endfor %}
   {% endif %}
 </div>
-
 {% else %}
 <div class="card" style="text-align:center;color:#9ca3af;padding:24px">No tasks scheduled for today.</div>
-{% endif %}{# end if records #}
-
+{% endif %}
 {% else %}
 <div class="card" style="text-align:center;color:#9ca3af;padding:28px">No area assigned. Contact admin.</div>
-{% endif %}{# end if selected_area #}
-
-{% if request.user.role == 'admin' or request.user.role == 'manager' %}
-<a href="/housekeeping/alerts/">
-  <button class="btn-g" style="margin-top:6px">⚡ Manage Alerts</button>
-</a>
 {% endif %}
 
-<!-- TAB SWITCHING SCRIPT -->
+{% if request.user.role == 'admin' or request.user.role == 'manager' %}
+<a href="/housekeeping/alerts/"><button class="btn-g" style="margin-top:6px">Manage Alerts</button></a>
+{% endif %}
+
 <script>
-const TABS = ['floor', 'room', 'washroom', 'extra'];
+const TABS = ['floor', 'room', 'washroom'{% if has_special_tasks %}, 'all'{% endif %}, 'extra'];
 
 function showTab(tab) {
   TABS.forEach(function(t) {
     var panel = document.getElementById('tab-' + t);
-    var btn   = document.getElementById('btn-' + t);
+    var btn = document.getElementById('btn-' + t);
     if (panel) panel.style.display = 'none';
-    if (btn)   btn.style.opacity   = '0.40';
+    if (btn) btn.style.opacity = '0.40';
   });
   var active = document.getElementById('tab-' + tab);
   var activeBtn = document.getElementById('btn-' + tab);
-  if (active)    active.style.display    = 'block';
+  if (active) active.style.display = 'block';
   if (activeBtn) activeBtn.style.opacity = '1';
-  // Scroll to just below the tab buttons
   var btns = document.getElementById('tab-buttons');
   if (btns) window.scrollTo({ top: btns.offsetTop - 70, behavior: 'smooth' });
 }
 
-// Default: show floor tab on page load
 document.addEventListener('DOMContentLoaded', function() {
   showTab('floor');
 });
 </script>
-
 {% endblock %}

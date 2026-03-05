@@ -1,3 +1,5 @@
+import datetime
+
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
@@ -82,6 +84,7 @@ class HKScheduleTemplate(models.Model):
     """
     FREQUENCY_CHOICES = [
         ('daily', 'Daily (Every Day)'),
+        ('saturday_special', 'Saturday Special Only'),
         ('sunday_extra', 'Sunday Extra Only'),
     ]
     area = models.ForeignKey(HKArea, on_delete=models.CASCADE, related_name='schedule_templates')
@@ -104,20 +107,58 @@ class HKScheduleTemplate(models.Model):
     class Meta:
         ordering = ['area', 'worker_tag', 'order', 'start_time']
 
+    @property
+    def duration_minutes(self):
+        """Task duration in minutes, supports overnight end-times."""
+        start_dt = datetime.datetime.combine(datetime.date.today(), self.start_time)
+        end_dt = datetime.datetime.combine(datetime.date.today(), self.end_time)
+        if end_dt <= start_dt:
+            end_dt += datetime.timedelta(days=1)
+        return int((end_dt - start_dt).total_seconds() // 60)
+
+    @property
+    def period_label(self):
+        """
+        Period bucket label for mobile UI.
+        Requested by users to view task periods (30m/1h/2h+) over exact clock slots.
+        """
+        mins = self.duration_minutes
+        if mins <= 30:
+            return '30 min'
+        if mins <= 60:
+            return '1 hour'
+        if mins <= 120:
+            return '2 hours'
+        hours = max(1, round(mins / 60))
+        return f'{hours} hours'
+
     def __str__(self):
         return f"{self.area} | [{self.worker_tag}] {self.task_name}"
 
 
 class HKDailyRecord(models.Model):
     STATUS_CHOICES = [
-        ('pending', 'Pending'), ('done', 'Done'), ('skipped', 'Skipped'),
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('done', 'Done'),
+        ('skipped', 'Skipped'),
     ]
     schedule = models.ForeignKey(
         HKScheduleTemplate, on_delete=models.CASCADE, related_name='daily_records'
     )
     area = models.ForeignKey(HKArea, on_delete=models.CASCADE, related_name='daily_records')
     date = models.DateField()
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    assigned_worker = models.ForeignKey(
+        HKWorker, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='assigned_daily_records',
+    )
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='hk_tasks_assigned',
+    )
+    assigned_at = models.DateTimeField(null=True, blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
     completed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         null=True, blank=True, related_name='hk_tasks_completed',

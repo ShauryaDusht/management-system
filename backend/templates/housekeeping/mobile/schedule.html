@@ -14,7 +14,18 @@
 
 {% if selected_area %}
 <div style="font-size:12px;color:#6b7280;margin-bottom:10px;font-weight:600">
-  📍 {{ selected_area.name }} · {% if is_common_area %}Route-based schedule every day{% else %}Same schedule every day{% endif %}
+  {{ selected_area.name }} -
+  {% if is_common_area %}
+    Route-based schedule every day
+  {% elif is_research_park %}
+    Worker-wise operations plan (Mon-Sat + Sunday deep clean)
+  {% elif is_central_arcade %}
+    Worker-wise operations plan (daily + weekend special/deep clean)
+  {% elif is_sports_complex %}
+    Indoor/outdoor operations plan (daily + weekend special/deep clean)
+  {% else %}
+    Same schedule every day
+  {% endif %}
 </div>
 
 {% for day_data in weekly %}
@@ -26,7 +37,8 @@
     <span>
       {{ day_data.day }}
       {% if day_data.day_idx == today_dow %}<span style="font-size:10px;opacity:.7">(Today)</span>{% endif %}
-      {% if not is_common_area and day_data.day_idx == 6 %}<span style="font-size:11px;opacity:.7">+ Sunday Extras</span>{% endif %}
+      {% if day_data.day_idx == 5 %}<span style="font-size:11px;opacity:.7">+ Saturday Special</span>{% endif %}
+      {% if day_data.day_idx == 6 %}<span style="font-size:11px;opacity:.7">+ Sunday Extras</span>{% endif %}
     </span>
     <span>{{ day_data.tasks|length }} tasks {% if day_data.day_idx == today_dow %}-{% else %}+{% endif %}</span>
   </summary>
@@ -39,16 +51,35 @@
         {% if tgrp.grouper == 'floor' %}Day Route Operations
         {% elif tgrp.grouper == 'room' %}Core Common Zones
         {% elif tgrp.grouper == 'washroom' %}Night Touch-up Route
-        {% elif tgrp.grouper == 'all' %}Sunday Extra
+        {% elif tgrp.grouper == 'all' %}Special Tasks
+        {% else %}General{% endif %}
+      {% elif is_research_park %}
+        {% if tgrp.grouper == 'floor' %}Ground and External Operations
+        {% elif tgrp.grouper == 'room' %}Office and Meeting Zones
+        {% elif tgrp.grouper == 'washroom' %}Washroom and Utility Rounds
+        {% elif tgrp.grouper == 'all' %}Special Tasks
+        {% else %}General{% endif %}
+      {% elif is_central_arcade %}
+        {% if tgrp.grouper == 'floor' %}Ground and Entry Operations
+        {% elif tgrp.grouper == 'room' %}First Floor and Hall Operations
+        {% elif tgrp.grouper == 'washroom' %}Second Floor and Washroom Operations
+        {% elif tgrp.grouper == 'all' %}Special Tasks
+        {% else %}General{% endif %}
+      {% elif is_sports_complex %}
+        {% if tgrp.grouper == 'floor' %}Indoor and Evening Operations
+        {% elif tgrp.grouper == 'room' %}Hall and Office Operations
+        {% elif tgrp.grouper == 'washroom' %}Washroom and Pool Utility Operations
+        {% elif tgrp.grouper == 'all' %}Special Tasks
         {% else %}General{% endif %}
       {% else %}
         {% if tgrp.grouper == 'room' %}Room Staff
         {% elif tgrp.grouper == 'floor' %}Floor Staff
         {% elif tgrp.grouper == 'washroom' %}Washroom Staff
-        {% elif tgrp.grouper == 'all' %}Sunday Extra
+        {% elif tgrp.grouper == 'all' %}Special Tasks
         {% else %}General{% endif %}
       {% endif %}
     </div>
+
     {% for task in tgrp.list %}
     <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 15px;
       border-bottom:{% if not forloop.last %}1px solid #f3f4f6{% else %}none{% endif %}">
@@ -58,7 +89,7 @@
         {% if task.requires_photo %}<div style="font-size:11px;color:#c2622a;margin-top:1px">Photo required</div>{% endif %}
       </div>
       <div style="text-align:right;font-size:11px;color:#6b7280;flex-shrink:0;margin-left:10px;white-space:nowrap">
-        {{ task.start_time|time:"g:i A" }}<br><span style="color:#ccc">↓</span><br>{{ task.end_time|time:"g:i A" }}
+        <span style="font-weight:700;color:#1f2937">{{ task.period_label }}</span>
       </div>
     </div>
     {% endfor %}

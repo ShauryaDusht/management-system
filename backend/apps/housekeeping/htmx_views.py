@@ -80,13 +80,17 @@ def selected_area(request, user_areas):
 def get_today_records(area, date):
     """
     Generate HKDailyRecord for every applicable template for this area/date.
-    Caretaker hostels: daily templates run every day (Mon-Sun).
+    daily templates run every day.
+    saturday_special templates run only on Saturday.
     sunday_extra templates run only on Sunday.
     """
     from django.db import IntegrityError, transaction
 
     dow = date.weekday()  # 0=Mon, 6=Sun
     templates = HKScheduleTemplate.objects.filter(area=area, is_active=True, frequency="daily")
+    if dow == 5:
+        saturday_qs = HKScheduleTemplate.objects.filter(area=area, is_active=True, frequency="saturday_special")
+        templates = (templates | saturday_qs).distinct()
     if dow == 6:
         sunday_qs = HKScheduleTemplate.objects.filter(area=area, is_active=True, frequency="sunday_extra")
         templates = (templates | sunday_qs).distinct()
@@ -115,7 +119,7 @@ def get_today_records(area, date):
                     pass
 
     return HKDailyRecord.objects.filter(area=area, date=date).select_related(
-        "schedule", "completed_by"
+        "schedule", "completed_by", "assigned_worker", "assigned_by"
     ).order_by("schedule__worker_tag", "schedule__order", "schedule__start_time")
 
 
@@ -190,7 +194,11 @@ def hk_dashboard(request):
         tag = rec.schedule.worker_tag or "general"
         grouped.setdefault(tag, []).append(rec)
 
-    is_common_area = bool(sel_area and sel_area.name == "Common Area")
+    area_name = sel_area.name if sel_area else ""
+    is_common_area = area_name == "Common Area"
+    is_research_park = area_name == "Research Park"
+    is_central_arcade = area_name == "Central Arcade"
+    is_sports_complex = area_name == "Sports Complex"
     if is_common_area:
         tab_label_floor = "Route A"
         tab_label_room = "Core Area"
@@ -198,6 +206,27 @@ def hk_dashboard(request):
         heading_floor = "Day Route Operations"
         heading_room = "Core Common Zones"
         heading_washroom = "Night Touch-up Route"
+    elif is_research_park:
+        tab_label_floor = "Ground Ops"
+        tab_label_room = "Office Zone"
+        tab_label_washroom = "WR Zone"
+        heading_floor = "Ground and External Operations"
+        heading_room = "Office and Meeting Zones"
+        heading_washroom = "Washroom and Utility Rounds"
+    elif is_central_arcade:
+        tab_label_floor = "Vijay Zone"
+        tab_label_room = "Bhavna Zone"
+        tab_label_washroom = "Ramesh Zone"
+        heading_floor = "Ground and Entry Operations"
+        heading_room = "First Floor and Hall Operations"
+        heading_washroom = "Second Floor and Washroom Operations"
+    elif is_sports_complex:
+        tab_label_floor = "Indoor Ops"
+        tab_label_room = "Hall Zone"
+        tab_label_washroom = "Pool/WR"
+        heading_floor = "Indoor and Evening Operations"
+        heading_room = "Hall and Office Operations"
+        heading_washroom = "Washroom and Pool Utility Operations"
     else:
         tab_label_floor = "Floor"
         tab_label_room = "Room"
@@ -213,13 +242,12 @@ def hk_dashboard(request):
     today_dow = today.weekday()
     sunday_incharge = None
     upcoming_sunday = None
-    area_workers = []
+    area_workers = list(HKWorker.objects.filter(area=sel_area, is_active=True).order_by("name")) if sel_area else []
     if today_dow == 5 and sel_area:
         upcoming_sunday = today + datetime.timedelta(days=1)
         sunday_incharge = HKSundayIncharge.objects.filter(
             area=sel_area, for_sunday=upcoming_sunday
         ).first()
-        area_workers = list(HKWorker.objects.filter(area=sel_area, is_active=True).order_by("name"))
 
     extra_works = HKExtraWork.objects.filter(area=sel_area, date=today).order_by("-logged_at") if sel_area else []
 
@@ -245,6 +273,12 @@ def hk_dashboard(request):
         "heading_floor": heading_floor,
         "heading_room": heading_room,
         "heading_washroom": heading_washroom,
+        "has_special_tasks": bool(
+            sel_area and HKScheduleTemplate.objects.filter(
+                area=sel_area, is_active=True, worker_tag="all"
+            ).exists()
+        ),
+        "can_assign_tasks": user.role in ["admin", "manager", "supervisor", "caretaker"],
     })
 
 
@@ -257,33 +291,89 @@ def hk_mark_task(request, record_id):
     if record.area not in get_user_areas(user):
         return HttpResponseForbidden("Not your area.")
 
-    if request.POST.get("action") == "undo":
+    task_error = ""
+    action = request.POST.get("action")
+    now = timezone.now()
+    task_title = (record.schedule.task_name or "").lower()
+    is_break_task = ("break" in task_title) or ("lunch" in task_title)
+    can_mark_break = user.role == "supervisor"
+
+    if action == "assign":
+        if is_break_task:
+            task_error = "Break tasks do not need worker assignment."
+        elif record.assigned_worker_id:
+            task_error = "Worker already assigned for this task."
+        else:
+            worker_id = request.POST.get("worker_id")
+            worker = HKWorker.objects.filter(pk=worker_id, area=record.area, is_active=True).first()
+            if worker:
+                record.assigned_worker = worker
+                record.assigned_by = user
+                record.assigned_at = now
+                record.save(update_fields=["assigned_worker", "assigned_by", "assigned_at"])
+            else:
+                task_error = "Please choose a valid worker for this area."
+
+    elif action == "start":
+        if is_break_task:
+            task_error = "Break tasks can be marked done directly."
+        elif not record.assigned_worker:
+            task_error = "Assign worker first, then start work."
+        else:
+            record.status = "in_progress"
+            if not record.started_at:
+                record.started_at = now
+            record.note = request.POST.get("note", "").strip()
+            record.save(update_fields=["status", "started_at", "note"])
+
+    elif action == "undo":
         record.status = "pending"
+        record.started_at = None
         record.completed_by = None
         record.completed_at = None
-        record.save(update_fields=["status", "completed_by", "completed_at"])
-    else:
-        record.status = "done"
-        record.completed_by = user
-        record.completed_at = timezone.now()
-        record.note = request.POST.get("note", "")
-        if "photo_before" in request.FILES:
-            record.photo_before = request.FILES["photo_before"]
-        if "photo_after" in request.FILES:
-            record.photo_after = request.FILES["photo_after"]
-        lat = request.POST.get("latitude")
-        lng = request.POST.get("longitude")
-        if lat and lng:
-            try:
-                record.latitude = float(lat)
-                record.longitude = float(lng)
-            except (ValueError, TypeError):
-                pass
-        record.save()
+        record.save(update_fields=["status", "started_at", "completed_by", "completed_at"])
+
+    elif action == "done":
+        if is_break_task and not can_mark_break:
+            task_error = "Only supervisor can mark break done."
+        elif is_break_task:
+            record.status = "done"
+            record.completed_by = user
+            record.completed_at = now
+            record.note = request.POST.get("note", "").strip()
+            record.save(update_fields=["status", "completed_by", "completed_at", "note"])
+        elif not record.assigned_worker:
+            task_error = "Assign worker first."
+        elif record.schedule.requires_photo and "photo_after" not in request.FILES and not record.photo_after:
+            task_error = "After-photo is required to complete this task."
+        else:
+            record.status = "done"
+            record.completed_by = user
+            record.completed_at = now
+            record.note = request.POST.get("note", "").strip()
+            if "photo_before" in request.FILES:
+                record.photo_before = request.FILES["photo_before"]
+            if "photo_after" in request.FILES:
+                record.photo_after = request.FILES["photo_after"]
+            lat = request.POST.get("latitude")
+            lng = request.POST.get("longitude")
+            if lat and lng:
+                try:
+                    record.latitude = float(lat)
+                    record.longitude = float(lng)
+                except (ValueError, TypeError):
+                    pass
+            record.save()
+
+    record.refresh_from_db()
+    area_workers = list(HKWorker.objects.filter(area=record.area, is_active=True).order_by("name"))
 
     return render(request, "housekeeping/mobile/partials/task_card.html", {
         "record": record,
         "tag_labels": WORKER_TAG_LABELS,
+        "area_workers": area_workers,
+        "can_assign_tasks": user.role in ["admin", "manager", "supervisor", "caretaker"],
+        "task_error": task_error,
     })
 
 
@@ -322,7 +412,11 @@ def hk_schedule(request):
     user = request.user
     user_areas = get_user_areas(user)
     sel_area = selected_area(request, user_areas)
-    is_common_area = bool(sel_area and sel_area.name == "Common Area")
+    area_name = sel_area.name if sel_area else ""
+    is_common_area = area_name == "Common Area"
+    is_research_park = area_name == "Research Park"
+    is_central_arcade = area_name == "Central Arcade"
+    is_sports_complex = area_name == "Sports Complex"
 
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     weekly = []
@@ -330,17 +424,27 @@ def hk_schedule(request):
         daily = list(HKScheduleTemplate.objects.filter(
             area=sel_area, is_active=True, frequency="daily"
         ).order_by("worker_tag", "order", "start_time"))
+        saturday_special = list(HKScheduleTemplate.objects.filter(
+            area=sel_area, is_active=True, frequency="saturday_special"
+        ).order_by("worker_tag", "order", "start_time"))
         sunday_extra = list(HKScheduleTemplate.objects.filter(
             area=sel_area, is_active=True, frequency="sunday_extra"
         ).order_by("order", "start_time"))
         for i, day in enumerate(days):
-            tasks = daily + sunday_extra if i == 6 else daily
+            tasks = list(daily)
+            if i == 5:
+                tasks += saturday_special
+            if i == 6:
+                tasks += sunday_extra
             weekly.append({"day": day, "day_idx": i, "tasks": tasks})
 
     return render(request, "housekeeping/mobile/schedule.html", {
         "user_areas": user_areas,
         "selected_area": sel_area,
         "is_common_area": is_common_area,
+        "is_research_park": is_research_park,
+        "is_central_arcade": is_central_arcade,
+        "is_sports_complex": is_sports_complex,
         "weekly": weekly,
         "today_dow": timezone.localdate().weekday(),
         "tag_labels": WORKER_TAG_LABELS,

@@ -38,10 +38,16 @@ class HKScheduleTemplateAdmin(admin.ModelAdmin):
 
 @admin.register(HKDailyRecord)
 class HKDailyRecordAdmin(admin.ModelAdmin):
-    list_display = ('schedule', 'area', 'date', 'status', 'completed_by', 'completed_at')
+    list_display = (
+        'schedule', 'area', 'date', 'status',
+        'assigned_worker', 'assigned_by', 'completed_by', 'completed_at',
+    )
     list_filter = ('status', 'date', 'area')
     date_hierarchy = 'date'
-    readonly_fields = ('photo_before', 'photo_after', 'latitude', 'longitude', 'completed_at')
+    readonly_fields = (
+        'photo_before', 'photo_after', 'latitude', 'longitude',
+        'assigned_at', 'started_at', 'completed_at',
+    )
 
 
 @admin.register(HKExtraWork)
