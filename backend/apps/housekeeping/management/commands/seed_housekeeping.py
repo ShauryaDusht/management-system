@@ -81,7 +81,7 @@ All accounts use password: {DEFAULT_PASSWORD}
         is_superuser = role == 'admin'
         is_staff = role in {'admin', 'manager', 'inventory_manager'}
 
-        user, created = User.objects.get_or_create(  # NOTE: capture `created`
+        user, created = User.objects.get_or_create(
             username=username,
             defaults={
                 'first_name': first_name, 'last_name': last_name,
@@ -131,7 +131,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('vishwajeet', 'Vishwajeet', '', '9898037530', ['Common Area']),
         ]
         for username, first, last, phone, areas in caretakers:
-            self.make_user(username, first, last, phone, 'caretaker', areas)
+            self.make_user_fixed(username, first, last, phone, 'caretaker', areas)
 
         # Supervisors (campus sections)
         supervisors = [
@@ -146,7 +146,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('pradip.swm', 'Pradip', '', '', ['Solid Waste Management']),
         ]
         for username, first, last, phone, areas in supervisors:
-            self.make_user(username, first, last, phone, 'supervisor', areas)
+            self.make_user_fixed(username, first, last, phone, 'supervisor', areas)
 
         self.stdout.write(f'  ✓ Users: {User.objects.filter(role__in=["caretaker","supervisor"]).count()}')
 
@@ -162,7 +162,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('inv.manager', 'Inventory', 'Manager', '', 'inventory_manager', []),
         ]
         for username, first, last, phone, role, areas in accounts:
-            self.make_user(username, first, last, phone, role, areas)
+            self.make_user_fixed(username, first, last, phone, role, areas)
 
         self.stdout.write(
             f'  ✓ Portal users: {User.objects.filter(role__in=["admin","manager","inventory_manager"]).count()}'

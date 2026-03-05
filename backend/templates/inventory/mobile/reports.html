@@ -1,132 +1,117 @@
 {% extends 'inventory/mobile/base_mobile.html' %}
 {% block title %}Reports{% endblock %}
 {% block header_title %}REPORTS{% endblock %}
-{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white;font-size:20px">&larr;</a>{% endblock %}
+{% block back_button %}
+<a href="{% url 'mobile_dashboard' %}" class="btn-back">
+  <span class="material-icons-round" style="font-size:20px">arrow_back</span>
+</a>
+{% endblock %}
 
 {% block content %}
-<div style="display:flex;gap:8px;margin-bottom:16px">
-  <a href="?type=inventory" style="flex:1;text-decoration:none">
-    <button style="width:100%;padding:10px;border-radius:8px;font-size:13px;font-weight:600;
-      border:1px solid {% if report_type == 'inventory' %}#2d4a3e{% else %}#ddd{% endif %};
-      background:{% if report_type == 'inventory' %}#2d4a3e{% else %}white{% endif %};
-      color:{% if report_type == 'inventory' %}white{% else %}#555{% endif %};cursor:pointer">
-      Inventory Report
-    </button>
+{# Report type toggle #}
+<div class="tab-row" style="margin-bottom:16px">
+  <a href="?type=inventory" class="tab-pill {% if report_type == 'inventory' %}active{% endif %}" style="flex:1;text-align:center">
+    <span class="material-icons-round" style="font-size:14px;vertical-align:middle">inventory_2</span>
+    Inventory
   </a>
-  <a href="?type=requests" style="flex:1;text-decoration:none">
-    <button style="width:100%;padding:10px;border-radius:8px;font-size:13px;font-weight:600;
-      border:1px solid {% if report_type == 'requests' %}#2d4a3e{% else %}#ddd{% endif %};
-      background:{% if report_type == 'requests' %}#2d4a3e{% else %}white{% endif %};
-      color:{% if report_type == 'requests' %}white{% else %}#555{% endif %};cursor:pointer">
-      Requests Report
-    </button>
+  <a href="?type=requests" class="tab-pill {% if report_type == 'requests' %}active{% endif %}" style="flex:1;text-align:center">
+    <span class="material-icons-round" style="font-size:14px;vertical-align:middle">assignment</span>
+    Requests
   </a>
 </div>
 
+{# ── Inventory Report ────────────────────────────────────── #}
 {% if report_type == 'inventory' and inventory_data %}
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
   <div class="stat-card" style="background:#2d4a3e">
-    <div style="font-size:12px;opacity:0.8">Total Items</div>
-    <div style="font-size:28px;font-weight:800">{{ inventory_data.total_items }}</div>
+    <div class="stat-label"><span class="material-icons-round" style="font-size:13px">inventory_2</span> Total</div>
+    <div class="stat-value">{{ inventory_data.total_items }}</div>
   </div>
   <div class="stat-card" style="background:#1e6b7a">
-    <div style="font-size:12px;opacity:0.8">Total Value</div>
-    <div style="font-size:22px;font-weight:800">&#8377;{{ inventory_data.total_value|floatformat:0 }}</div>
+    <div class="stat-label"><span class="material-icons-round" style="font-size:13px">attach_money</span> Value</div>
+    <div class="stat-value" style="font-size:22px">&#8377;{{ inventory_data.total_value|floatformat:0 }}</div>
   </div>
   <div class="stat-card" style="background:#c2622a">
-    <div style="font-size:12px;opacity:0.8">Low Stock</div>
-    <div style="font-size:28px;font-weight:800">{{ inventory_data.low_stock_count }}</div>
+    <div class="stat-label"><span class="material-icons-round" style="font-size:13px">trending_down</span> Low Stock</div>
+    <div class="stat-value">{{ inventory_data.low_stock_count }}</div>
   </div>
   <div class="stat-card" style="background:#8b5e3c">
-    <div style="font-size:12px;opacity:0.8">Out of Stock</div>
-    <div style="font-size:28px;font-weight:800">{{ inventory_data.out_of_stock_count }}</div>
+    <div class="stat-label"><span class="material-icons-round" style="font-size:13px">remove_shopping_cart</span> Out</div>
+    <div class="stat-value">{{ inventory_data.out_of_stock_count }}</div>
   </div>
 </div>
 
 <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
   <button type="button" onclick="exportInventoryCSV()"
-    style="background:#2d4a3e;color:white;border:none;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">
+    class="btn btn-secondary btn-sm" style="width:auto;padding:0 16px">
+    <span class="material-icons-round" style="font-size:16px">download</span>
     Export CSV
   </button>
 </div>
 
-<div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto">
-  <a href="?type=inventory&filter=all" style="text-decoration:none;white-space:nowrap">
-    <div style="padding:6px 12px;border-radius:16px;font-size:12px;font-weight:600;
-      background:{% if status_filter == 'all' %}#2d4a3e{% else %}white{% endif %};
-      color:{% if status_filter == 'all' %}white{% else %}#555{% endif %};
-      border:1px solid #ddd">All</div>
-  </a>
-  <a href="?type=inventory&filter=in_stock" style="text-decoration:none;white-space:nowrap">
-    <div style="padding:6px 12px;border-radius:16px;font-size:12px;font-weight:600;
-      background:{% if status_filter == 'in_stock' %}#2d4a3e{% else %}white{% endif %};
-      color:{% if status_filter == 'in_stock' %}white{% else %}#555{% endif %};
-      border:1px solid #ddd">In Stock</div>
-  </a>
-  <a href="?type=inventory&filter=low_stock" style="text-decoration:none;white-space:nowrap">
-    <div style="padding:6px 12px;border-radius:16px;font-size:12px;font-weight:600;
-      background:{% if status_filter == 'low_stock' %}#2d4a3e{% else %}white{% endif %};
-      color:{% if status_filter == 'low_stock' %}white{% else %}#555{% endif %};
-      border:1px solid #ddd">Low Stock</div>
-  </a>
-  <a href="?type=inventory&filter=out_of_stock" style="text-decoration:none;white-space:nowrap">
-    <div style="padding:6px 12px;border-radius:16px;font-size:12px;font-weight:600;
-      background:{% if status_filter == 'out_of_stock' %}#2d4a3e{% else %}white{% endif %};
-      color:{% if status_filter == 'out_of_stock' %}white{% else %}#555{% endif %};
-      border:1px solid #ddd">Out of Stock</div>
-  </a>
+<div class="tab-row">
+  <a href="?type=inventory&filter=all" class="tab-pill {% if status_filter == 'all' %}active{% endif %}">All</a>
+  <a href="?type=inventory&filter=in_stock" class="tab-pill {% if status_filter == 'in_stock' %}active{% endif %}">In Stock</a>
+  <a href="?type=inventory&filter=low_stock" class="tab-pill {% if status_filter == 'low_stock' %}active{% endif %}">Low Stock</a>
+  <a href="?type=inventory&filter=out_of_stock" class="tab-pill {% if status_filter == 'out_of_stock' %}active{% endif %}">Out</a>
 </div>
 
 {% for item in inventory_data.items %}
 <div class="card" style="margin-bottom:8px">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start">
-    <div style="flex:1">
-      <div style="font-weight:600;font-size:15px">{{ item.name }}</div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">{{ item.name }}</div>
       <div style="color:#888;font-size:12px;margin-top:2px">{{ item.category }} &bull; {{ item.type|title }}</div>
     </div>
-    <span style="padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;flex-shrink:0;
-      {% if item.status == 'in_stock' %}background:#d1fae5;color:#065f46;
-      {% elif item.status == 'low_stock' %}background:#fff3e0;color:#c2622a;
-      {% else %}background:#fee2e2;color:#991b1b;{% endif %}">
-      {{ item.status|upper }}
+    <span class="badge {% if item.status == 'in_stock' %}badge-ok{% elif item.status == 'low_stock' %}badge-low{% else %}badge-out{% endif %}" style="flex-shrink:0;margin-left:8px">
+      {{ item.status|upper|replace:"_":" " }}
     </span>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">
-    <div style="text-align:center">
-      <div style="font-size:11px;color:#888">Available</div>
-      <div style="font-weight:700;color:#2d4a3e">{{ item.available_quantity }}</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+    <div style="text-align:center;padding:6px;background:#f9fafb;border-radius:6px">
+      <div style="font-size:10px;color:#888">Available</div>
+      <div style="font-weight:700;color:#2d4a3e;font-size:14px">{{ item.available_quantity }}</div>
       <div style="font-size:10px;color:#aaa">{{ item.unit }}</div>
     </div>
-    <div style="text-align:center">
-      <div style="font-size:11px;color:#888">Unit Cost</div>
-      <div style="font-weight:700;color:#555">&#8377;{{ item.unit_cost|floatformat:0 }}</div>
+    <div style="text-align:center;padding:6px;background:#f9fafb;border-radius:6px">
+      <div style="font-size:10px;color:#888">Unit Cost</div>
+      <div style="font-weight:700;color:#374151;font-size:14px">&#8377;{{ item.unit_cost|floatformat:0 }}</div>
     </div>
-    <div style="text-align:center">
-      <div style="font-size:11px;color:#888">Total Value</div>
-      <div style="font-weight:700;color:#1e6b7a">&#8377;{{ item.total_value|floatformat:0 }}</div>
+    <div style="text-align:center;padding:6px;background:#f9fafb;border-radius:6px">
+      <div style="font-size:10px;color:#888">Total Value</div>
+      <div style="font-weight:700;color:#1e6b7a;font-size:14px">&#8377;{{ item.total_value|floatformat:0 }}</div>
     </div>
   </div>
 </div>
 {% empty %}
-<div style="text-align:center;padding:30px;color:#aaa">No inventory items found</div>
+<div class="empty-state">
+  <div class="empty-icon"><span class="material-icons-round">inventory_2</span></div>
+  <h3>No items found</h3>
+</div>
 {% endfor %}
 
 {{ inventory_data.items|json_script:"mobile-inventory-data" }}
+
+{# ── Requests Report ──────────────────────────────────────── #}
 {% elif report_type == 'requests' %}
-<div class="card" style="margin-bottom:16px">
+<div class="card" style="margin-bottom:14px">
+  <div style="font-weight:600;font-size:13px;color:#374151;margin-bottom:12px;
+    display:flex;align-items:center;gap:6px">
+    <span class="material-icons-round" style="font-size:16px;color:#2d4a3e">date_range</span>
+    Filter by Date
+  </div>
   <form method="GET">
     <input type="hidden" name="type" value="requests">
-    <div style="margin-bottom:10px">
-      <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px">Date From</label>
-      <input type="date" name="date_from" value="{{ date_from }}"
-        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:14px;box-sizing:border-box">
+    <div class="form-group">
+      <label class="form-label">From</label>
+      <input type="date" name="date_from" value="{{ date_from }}" class="form-input">
     </div>
-    <div style="margin-bottom:12px">
-      <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px">Date To</label>
-      <input type="date" name="date_to" value="{{ date_to }}"
-        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:14px;box-sizing:border-box">
+    <div class="form-group" style="margin-bottom:14px">
+      <label class="form-label">To</label>
+      <input type="date" name="date_to" value="{{ date_to }}" class="form-input">
     </div>
-    <button type="submit" style="width:100%;background:#2d4a3e;color:white;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">
+    <button type="submit" class="btn btn-secondary">
+      <span class="material-icons-round" style="font-size:16px">filter_alt</span>
       Apply Filter
     </button>
   </form>
@@ -135,54 +120,55 @@
 {% if requests_data %}
 <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
   <button type="button" onclick="exportRequestsCSV()"
-    style="background:#2d4a3e;color:white;border:none;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">
+    class="btn btn-secondary btn-sm" style="width:auto;padding:0 16px">
+    <span class="material-icons-round" style="font-size:16px">download</span>
     Export CSV
   </button>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
   <div class="stat-card" style="background:#2d4a3e">
-    <div style="font-size:12px;opacity:0.8">Total</div>
-    <div style="font-size:28px;font-weight:800">{{ requests_data.total }}</div>
+    <div class="stat-label">Total</div>
+    <div class="stat-value">{{ requests_data.total }}</div>
   </div>
   <div class="stat-card" style="background:#c2622a">
-    <div style="font-size:12px;opacity:0.8">Pending</div>
-    <div style="font-size:28px;font-weight:800">{{ requests_data.pending }}</div>
+    <div class="stat-label">Pending</div>
+    <div class="stat-value">{{ requests_data.pending }}</div>
   </div>
   <div class="stat-card" style="background:#1e6b7a">
-    <div style="font-size:12px;opacity:0.8">Approved</div>
-    <div style="font-size:28px;font-weight:800">{{ requests_data.approved }}</div>
+    <div class="stat-label">Approved</div>
+    <div class="stat-value">{{ requests_data.approved }}</div>
   </div>
   <div class="stat-card" style="background:#8b5e3c">
-    <div style="font-size:12px;opacity:0.8">Rejected</div>
-    <div style="font-size:28px;font-weight:800">{{ requests_data.rejected }}</div>
+    <div class="stat-label">Rejected</div>
+    <div class="stat-value">{{ requests_data.rejected }}</div>
   </div>
 </div>
 
 {% for req in requests_data.requests %}
 <div class="card" style="margin-bottom:8px">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-    <div>
-      <div style="font-weight:600">{{ req.requester }}</div>
-      <div style="color:#888;font-size:12px">{{ req.item }}</div>
+    <div style="min-width:0">
+      <div style="font-weight:600;font-size:14px">{{ req.requester }}</div>
+      <div style="color:#888;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">{{ req.item }}</div>
     </div>
-    <span style="padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;
-      {% if req.status == 'pending' %}background:#fff3e0;color:#c2622a;
-      {% elif req.status == 'approved' or req.status == 'issued' %}background:#d1fae5;color:#065f46;
-      {% else %}background:#fee2e2;color:#991b1b;{% endif %}">
+    <span class="badge {% if req.status == 'pending' %}badge-pending{% elif req.status == 'approved' or req.status == 'issued' %}badge-ok{% else %}badge-out{% endif %}" style="flex-shrink:0;margin-left:8px">
       {{ req.status|upper }}
     </span>
   </div>
-  <div style="display:flex;gap:12px;font-size:12px;color:#888">
-    <span>Qty: <strong style="color:#333">{{ req.quantity }}</strong></span>
-    <span>{{ req.created_at|slice:":10" }}</span>
-    {% if req.reviewed_by %}<span>By: {{ req.reviewed_by }}</span>{% endif %}
+  <div style="display:flex;gap:12px;font-size:12px;color:#6b7280;flex-wrap:wrap">
+    <span><span class="material-icons-round" style="font-size:13px;vertical-align:middle">numbers</span> {{ req.quantity }} units</span>
+    <span><span class="material-icons-round" style="font-size:13px;vertical-align:middle">calendar_today</span> {{ req.created_at|slice:":10" }}</span>
+    {% if req.reviewed_by %}<span><span class="material-icons-round" style="font-size:13px;vertical-align:middle">person</span> {{ req.reviewed_by }}</span>{% endif %}
   </div>
 </div>
 {% empty %}
-<div style="text-align:center;padding:30px;color:#aaa">No requests found</div>
+<div class="empty-state">
+  <div class="empty-icon"><span class="material-icons-round">assignment</span></div>
+  <h3>No requests found</h3>
+  <p>Try adjusting the date filters</p>
+</div>
 {% endfor %}
-
 {{ requests_data.requests|json_script:"mobile-requests-data" }}
 {% endif %}
 {% endif %}
@@ -191,27 +177,21 @@
 function exportToCSV(data, filename) {
   if (!data || data.length === 0) return;
   const headers = Object.keys(data[0]).join(',');
-  const rows = data.map((row) => Object.values(row).join(','));
-  const csv = [headers, ...rows].join('\n');
+  const rows = data.map(function(row) { return Object.values(row).join(','); });
+  const csv = [headers].concat(rows).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
 }
-
 function exportInventoryCSV() {
   const node = document.getElementById('mobile-inventory-data');
-  if (!node) return;
-  exportToCSV(JSON.parse(node.textContent), 'mobile_inventory_report.csv');
+  if (node) exportToCSV(JSON.parse(node.textContent), 'inventory_report.csv');
 }
-
 function exportRequestsCSV() {
   const node = document.getElementById('mobile-requests-data');
-  if (!node) return;
-  exportToCSV(JSON.parse(node.textContent), 'mobile_requests_report.csv');
+  if (node) exportToCSV(JSON.parse(node.textContent), 'requests_report.csv');
 }
 </script>
 {% endblock %}

@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Dev/OS
+.git/
+.gitignore
+*.md
+.DS_Store
+
+# Django
+staticfiles/
+media/
+db.sqlite3

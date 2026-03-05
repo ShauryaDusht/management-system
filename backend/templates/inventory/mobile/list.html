@@ -1,45 +1,155 @@
 {% extends 'inventory/mobile/base_mobile.html' %}
 {% block title %}Inventory List{% endblock %}
-{% block header_title %}INVENTORY LIST{% endblock %}
-{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white">&larr;</a>{% endblock %}
+{% block header_title %}INVENTORY{% endblock %}
+{% block back_button %}
+<a href="{% url 'mobile_dashboard' %}" class="btn-back">
+  <span class="material-icons-round" style="font-size:20px">arrow_back</span>
+</a>
+{% endblock %}
+
 {% block content %}
-  <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto">
-    <a href="?"><div style="background:{% if not selected_category %}#2d4a3e;color:white{% else %}white;color:#333{% endif %};padding:8px 16px;border-radius:8px;font-size:13px;white-space:nowrap">All {{ total_count }}</div></a>
+  {# Highlighted item notification banner #}
+  {% if highlighted_item %}
+  <div class="alert-banner alert-warning" style="margin-bottom:12px">
+    <span class="material-icons-round" style="color:#c2622a">warning_amber</span>
+    <div>
+      <div style="font-weight:700;color:#c2622a;font-size:13px">Low Stock Item</div>
+      <div style="font-size:12px;color:#7c4a1a">Showing: {{ highlighted_item.name }}</div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Search bar #}
+  <form method="GET" style="margin-bottom:12px">
+    {% if request.GET.category %}<input type="hidden" name="category" value="{{ request.GET.category }}">{% endif %}
+    <div style="position:relative">
+      <span class="material-icons-round" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:20px">search</span>
+      <input type="text" name="search" value="{{ search_query }}" placeholder="Search items..."
+        class="form-input" style="padding-left:40px">
+    </div>
+  </form>
+
+  {# Category filter tabs #}
+  <div class="tab-row">
+    <a href="?{% if search_query %}search={{ search_query }}&{% endif %}"
+       class="tab-pill {% if not selected_category %}active{% endif %}">
+      All ({{ total_count }})
+    </a>
     {% for cat in categories %}
-    <a href="?category={{ cat.id }}"><div style="background:{% if selected_category == cat.id|stringformat:'s' %}#2d4a3e;color:white{% else %}white;color:#333{% endif %};padding:8px 16px;border-radius:8px;font-size:13px;white-space:nowrap">{{ cat.name }}</div></a>
+    <a href="?category={{ cat.id }}{% if search_query %}&search={{ search_query }}{% endif %}"
+       class="tab-pill {% if selected_category == cat.id|stringformat:'s' %}active{% endif %}">
+      {{ cat.name }}
+    </a>
     {% endfor %}
   </div>
 
-  {% for item in items %}
-  <div class="card" style="display:flex;justify-content:space-between;align-items:center">
-    <div style="display:flex;align-items:center;gap:10px">
-      <div style="width:28px;height:28px;background:{% if item.is_low_stock %}#f97316{% else %}#22c55e{% endif %};border-radius:4px"></div>
-      <div>
-        <div style="font-weight:600">{{ item.name }}</div>
-        <div style="color:#888;font-size:12px">{{ item.category.name }}</div>
-        {% if item.is_low_stock %}<span class="badge-low">Low Stock</span>{% endif %}
+  {# Item count + low-stock filter #}
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div style="font-size:13px;color:#6b7280">
+      <strong style="color:#1a1a1a">{{ page_obj.paginator.count }}</strong> item{{ page_obj.paginator.count|pluralize }}
+    </div>
+    <a href="?{% if selected_category %}category={{ selected_category }}&{% endif %}low_stock=true"
+       style="text-decoration:none">
+      <span class="badge badge-low" style="cursor:pointer">
+        <span class="material-icons-round" style="font-size:12px">warning_amber</span>
+        Low Stock Only
+      </span>
+    </a>
+  </div>
+
+  {# Item list with pagination #}
+  {% for item in page_obj %}
+  <a href="{% url 'mobile_inventory_list' %}?highlight={{ item.id }}" style="text-decoration:none" id="item-{{ item.id }}">
+    <div class="card {% if highlighted_item and highlighted_item.id == item.id %}item-highlight{% endif %}"
+         style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0">
+        {# Status dot #}
+        {% if item.available_quantity == 0 %}
+        <span class="status-dot empty"></span>
+        {% elif item.is_low_stock %}
+        <span class="status-dot low"></span>
+        {% else %}
+        <span class="status-dot ok"></span>
+        {% endif %}
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">
+            {{ item.name }}
+          </div>
+          <div style="color:#888;font-size:12px;margin-top:2px">{{ item.category.name }}</div>
+          <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">
+            {% if item.available_quantity == 0 %}
+            <span class="badge badge-out">Out of Stock</span>
+            {% elif item.is_low_stock %}
+            <span class="badge badge-low">Low Stock</span>
+            {% else %}
+            <span class="badge badge-ok">In Stock</span>
+            {% endif %}
+            <span class="badge" style="background:#f3f4f6;color:#374151">{{ item.item_type|title }}</span>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;margin-left:8px">
+        <div style="font-size:26px;font-weight:800;color:{% if item.available_quantity == 0 %}#ef4444{% elif item.is_low_stock %}#f97316{% else %}#2d4a3e{% endif %}">
+          {{ item.available_quantity }}
+        </div>
+        <div style="font-size:12px;color:#888">{{ item.unit }}</div>
       </div>
     </div>
-    <div style="text-align:right">
-      <div style="font-size:22px;font-weight:800">{{ item.available_quantity }}</div>
-      <div style="font-size:12px;color:#888">{{ item.unit }}</div>
-    </div>
-  </div>
+  </a>
   {% empty %}
-  <div style="color:#aaa;text-align:center;padding:40px">No items found</div>
+  <div class="empty-state">
+    <div class="empty-icon">
+      <span class="material-icons-round">inventory_2</span>
+    </div>
+    <h3>No items found</h3>
+    <p>Try adjusting your filters or search terms</p>
+  </div>
   {% endfor %}
-{% endblock %}
 
-{% block bottom_bar %}
-<div style="position:fixed;bottom:0;left:0;right:0;background:white;padding:12px 16px;display:flex;gap:10px;box-shadow:0 -2px 8px rgba(0,0,0,0.1)">
-  {% if request.user.role == 'admin' or request.user.role == 'manager' or request.user.role == 'inventory_manager' %}
-  <a href="{% url 'mobile_dashboard' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Dashboard</button></a>
-  <a href="{% url 'mobile_reports' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Reports</button></a>
-  <a href="{% url 'mobile_issued_items' %}" style="flex:1"><button class="btn-primary" style="width:100%">Issued Items</button></a>
-  {% else %}
-  <a href="{% url 'mobile_dashboard' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Dashboard</button></a>
-  <a href="{% url 'mobile_my_requests' %}" style="flex:1"><button class="btn-secondary" style="width:100%">My Requests</button></a>
-  <a href="{% url 'mobile_request_form' %}" style="flex:1"><button class="btn-primary" style="width:100%">+ Request Item</button></a>
+  {# Pagination #}
+  {% if page_obj.has_other_pages %}
+  <div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+       class="page-btn">
+      <span class="material-icons-round" style="font-size:16px">chevron_left</span> Prev
+    </a>
+    {% else %}
+    <button class="page-btn" disabled>
+      <span class="material-icons-round" style="font-size:16px">chevron_left</span> Prev
+    </button>
+    {% endif %}
+
+    <span style="font-size:13px;color:#6b7280;padding:0 4px">
+      {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+    </span>
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+       class="page-btn">
+      Next <span class="material-icons-round" style="font-size:16px">chevron_right</span>
+    </a>
+    {% else %}
+    <button class="page-btn" disabled>
+      Next <span class="material-icons-round" style="font-size:16px">chevron_right</span>
+    </button>
+    {% endif %}
+  </div>
   {% endif %}
-</div>
+
+  <script>
+    // Scroll to highlighted item after page load
+    document.addEventListener('DOMContentLoaded', function() {
+      const params = new URLSearchParams(window.location.search);
+      const highlightId = params.get('highlight');
+      if (highlightId) {
+        const el = document.getElementById('item-' + highlightId);
+        if (el) {
+          setTimeout(function() {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 200);
+        }
+      }
+    });
+  </script>
 {% endblock %}
