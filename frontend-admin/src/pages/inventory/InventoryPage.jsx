@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { Tabs } from '../../components/ui'
 import AdminLayout from '../../layout/AdminLayout'
@@ -16,8 +17,27 @@ const TAB_CONFIG = [
 ]
 
 export default function InventoryPage() {
-  const [active, setActive] = useState('items')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const validTabs = useMemo(() => TAB_CONFIG.map((t) => t.key), [])
+  const initialTab = searchParams.get('tab')
+  const [active, setActive] = useState(
+    initialTab && validTabs.includes(initialTab) ? initialTab : 'items'
+  )
   const { user } = useAuth()
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab && validTabs.includes(tab) && tab !== active) {
+      setActive(tab)
+    }
+  }, [active, searchParams, validTabs])
+
+  const onTabChange = (nextTab) => {
+    setActive(nextTab)
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', nextTab)
+    setSearchParams(next, { replace: true })
+  }
 
   return (
     <AdminLayout
@@ -25,7 +45,7 @@ export default function InventoryPage() {
       subtitle="Stock overview, requests, issued assets, and replenishment logs"
     >
       <div style={{ marginBottom: 14 }}>
-        <Tabs tabs={TAB_CONFIG} active={active} onChange={setActive} />
+        <Tabs tabs={TAB_CONFIG} active={active} onChange={onTabChange} />
       </div>
 
       {active === 'items' && <ItemsTab userRole={user?.role} />}

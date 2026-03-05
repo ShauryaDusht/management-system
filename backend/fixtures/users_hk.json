@@ -1,10 +1,10 @@
-[
+﻿[
 {
   "model": "users.user",
   "pk": 1,
   "fields": {
     "password": "pbkdf2_sha256$600000$klwWKrJFHw33vTuA4Ask3V$KpeFJIwKhzaGvzqtsW2uSLkMp9tVm36mzQNhu5CHXeM=",
-    "last_login": "2026-03-04T10:54:52.088Z",
+    "last_login": "2026-03-05T08:08:01.494Z",
     "is_superuser": true,
     "username": "admin",
     "first_name": "Admin",
@@ -46,7 +46,7 @@
   "pk": 3,
   "fields": {
     "password": "pbkdf2_sha256$600000$Gv6Bq99yP1T3Hm4ej7Zcyz$BgrLBYNg5FUmVu4ldt7oayLajOnSJYPspYf8+v3EJ6w=",
-    "last_login": null,
+    "last_login": "2026-03-05T09:22:33.017Z",
     "is_superuser": false,
     "username": "estate.manager",
     "first_name": "Estate",
@@ -256,7 +256,7 @@
   "pk": 14,
   "fields": {
     "password": "pbkdf2_sha256$600000$fal9r5LEg8zpyA75hcMoyq$6NUb9EM4YVKqLXCautpfZgQ1bjSCHVn+OBn5NGffSjk=",
-    "last_login": "2026-03-04T10:26:08.065Z",
+    "last_login": "2026-03-05T09:46:13.507Z",
     "is_superuser": false,
     "username": "vishwajeet",
     "first_name": "Vishwajeet",
@@ -361,7 +361,7 @@
   "pk": 19,
   "fields": {
     "password": "pbkdf2_sha256$600000$VWN2M13VaYUkpLmBnjSQtW$/lQE+GITHxeX70/LdWf8NjUZT4+romfWGtJTDbCaeIM=",
-    "last_login": null,
+    "last_login": "2026-03-05T18:12:57.684Z",
     "is_superuser": false,
     "username": "bharat.solanki",
     "first_name": "Bharat",

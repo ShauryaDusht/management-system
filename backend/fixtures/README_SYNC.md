@@ -32,6 +32,8 @@ So your teammate gets the same baseline dataset automatically.
 ```bash
 docker compose exec backend python manage.py migrate
 docker compose exec backend python manage.py seed_all_data
+docker compose exec backend python manage.py loaddata fixtures/users_hk.json
+docker compose exec backend python manage.py loaddata fixtures/hk_user_areas.json
 ```
 
 ## Refresh shared fixtures before push (maintainer)
@@ -43,5 +45,6 @@ docker compose exec backend python manage.py seed_all_data --dump-fixtures
 This updates:
 - `backend/fixtures/users_hk.json`
 - `backend/fixtures/housekeeping.json`
+- `backend/fixtures/hk_user_areas.json`
 
 Both files are stored as UTF-8 for reliable `loaddata`.

@@ -55,7 +55,7 @@ class UserListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAdmin]
 
     def get_queryset(self):
-        qs = User.objects.all().order_by('role', 'first_name')
+        qs = User.objects.prefetch_related('hk_areas__area').all().order_by('role', 'first_name')
         role = self.request.query_params.get('role')
         if role:
             qs = qs.filter(role=role)
@@ -72,7 +72,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     GET/PUT/PATCH/DELETE /api/auth/users/<id>/
     Admin only.
     """
-    queryset = User.objects.all()
+    queryset = User.objects.prefetch_related('hk_areas__area').all()
     serializer_class = UserSerializer
     permission_classes = [IsAdmin]
 

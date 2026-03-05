@@ -1,0 +1,202 @@
+﻿[
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 632,
+  "fields": {
+    "user": 6,
+    "area": 1
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 633,
+  "fields": {
+    "user": 7,
+    "area": 2
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 634,
+  "fields": {
+    "user": 7,
+    "area": 3
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 635,
+  "fields": {
+    "user": 8,
+    "area": 9
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 636,
+  "fields": {
+    "user": 9,
+    "area": 4
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 637,
+  "fields": {
+    "user": 9,
+    "area": 5
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 638,
+  "fields": {
+    "user": 10,
+    "area": 6
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 639,
+  "fields": {
+    "user": 10,
+    "area": 7
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 640,
+  "fields": {
+    "user": 11,
+    "area": 8
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 641,
+  "fields": {
+    "user": 12,
+    "area": 10
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 642,
+  "fields": {
+    "user": 12,
+    "area": 12
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 643,
+  "fields": {
+    "user": 13,
+    "area": 11
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 644,
+  "fields": {
+    "user": 14,
+    "area": 23
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 645,
+  "fields": {
+    "user": 15,
+    "area": 18
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 646,
+  "fields": {
+    "user": 15,
+    "area": 20
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 647,
+  "fields": {
+    "user": 16,
+    "area": 22
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 648,
+  "fields": {
+    "user": 17,
+    "area": 22
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 649,
+  "fields": {
+    "user": 18,
+    "area": 13
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 650,
+  "fields": {
+    "user": 19,
+    "area": 15
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 651,
+  "fields": {
+    "user": 19,
+    "area": 14
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 652,
+  "fields": {
+    "user": 20,
+    "area": 21
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 653,
+  "fields": {
+    "user": 21,
+    "area": 21
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 654,
+  "fields": {
+    "user": 22,
+    "area": 16
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 655,
+  "fields": {
+    "user": 22,
+    "area": 19
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 656,
+  "fields": {
+    "user": 23,
+    "area": 17
+  }
+}
+]

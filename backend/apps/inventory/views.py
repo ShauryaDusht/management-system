@@ -17,7 +17,7 @@ from .serializers import (
     UserActivitySerializer,
     StandardPagination,
 )
-from apps.users.permissions import IsAdmin, IsAdminOrManager, IsManager, IsSupervisor
+from apps.users.permissions import IsAdmin, IsAdminOrManager, IsSupervisor
 
 
 # ─────────────────────────────────────────────────
@@ -257,7 +257,7 @@ class ItemRequestDetailView(generics.RetrieveAPIView):
 
 
 class ReviewRequestView(APIView):
-    permission_classes = [IsManager]
+    permission_classes = [IsAdminOrManager]
 
     @transaction.atomic
     def post(self, request, pk):
@@ -294,7 +294,7 @@ class ReviewRequestView(APIView):
 
 
 class IssueItemView(APIView):
-    permission_classes = [IsManager]
+    permission_classes = [IsAdminOrManager]
 
     @transaction.atomic
     def post(self, request, pk):
@@ -364,7 +364,7 @@ class ItemIssueListView(generics.ListAPIView):
 # ─────────────────────────────────────────────────
 
 class ReturnAssetView(APIView):
-    permission_classes = [IsManager]
+    permission_classes = [IsAdminOrManager]
 
     @transaction.atomic
     def post(self, request, pk):

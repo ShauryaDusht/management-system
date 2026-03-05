@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
 import { Tabs } from '../../components/ui'
@@ -12,7 +13,7 @@ import WorkersTab from './WorkersTab'
 
 export default function HousekeepingPage() {
   const { user } = useAuth()
-  const [active, setActive] = useState('overview')
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const tabs = useMemo(
     () => [
@@ -26,13 +27,33 @@ export default function HousekeepingPage() {
     []
   )
 
+  const validTabs = useMemo(() => tabs.map((t) => t.key), [tabs])
+  const initialTab = searchParams.get('tab')
+  const [active, setActive] = useState(
+    initialTab && validTabs.includes(initialTab) ? initialTab : 'overview'
+  )
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab && validTabs.includes(tab) && tab !== active) {
+      setActive(tab)
+    }
+  }, [active, searchParams, validTabs])
+
+  const onTabChange = (nextTab) => {
+    setActive(nextTab)
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', nextTab)
+    setSearchParams(next, { replace: true })
+  }
+
   return (
     <AdminLayout
       title="Housekeeping Administration"
       subtitle="Tasks, sections, caretakers, attendance, and inventory assignment"
     >
       <div style={{ marginBottom: 14 }}>
-        <Tabs tabs={tabs} active={active} onChange={setActive} />
+        <Tabs tabs={tabs} active={active} onChange={onTabChange} />
       </div>
 
       {active === 'overview' && <OverviewTab />}

@@ -10,7 +10,7 @@ export const inventoryAPI = {
   createCategory: (data) => api.post('/inventory/categories/', data),
 
   // ── Items ──────────────────────────────────────────────────────────────────
-  getItems: (params = {}) => api.get('/inventory/items/', { params }),
+  getItems: (params = {}) => api.get('/inventory/items/', { params: { page_size: 200, ...params } }),
   getLowStockItems: () => api.get('/inventory/items/low-stock/'),
   getItem: (id) => api.get(`/inventory/items/${id}/`),
   createItem: (data) => api.post('/inventory/items/', data),
@@ -27,11 +27,11 @@ export const inventoryAPI = {
   getItemStockEntries: (id) => api.get(`/inventory/items/${id}/stock-entries/`),
 
   // ── Stock entries (replenishment) ──────────────────────────────────────────
-  getStockEntries: (params = {}) => api.get('/inventory/stock-entries/', { params }),
+  getStockEntries: (params = {}) => api.get('/inventory/stock-entries/', { params: { page_size: 200, ...params } }),
   createStockEntry: (data) => api.post('/inventory/stock-entries/', data),
 
   // ── Requests ───────────────────────────────────────────────────────────────
-  getRequests: (params = {}) => api.get('/inventory/requests/', { params }),
+  getRequests: (params = {}) => api.get('/inventory/requests/', { params: { page_size: 200, ...params } }),
   createRequest: (data) => api.post('/inventory/requests/', data),
   reviewRequest: (id, data) => api.post(`/inventory/requests/${id}/review/`, data),
   issueRequest: (id, data) => api.post(`/inventory/requests/${id}/issue/`, data),
@@ -45,7 +45,7 @@ export const inventoryAPI = {
     api.post(`/inventory/api/requests/${id}/mark-urgent/`, { is_urgent: isUrgent }),
 
   // ── Issues ─────────────────────────────────────────────────────────────────
-  getIssues: () => api.get('/inventory/issues/'),
+  getIssues: (params = {}) => api.get('/inventory/issues/', { params: { page_size: 200, ...params } }),
 
   // Return asset (manager)
   returnAsset: (issueId, data) => api.post(`/inventory/issues/${issueId}/return/`, data),

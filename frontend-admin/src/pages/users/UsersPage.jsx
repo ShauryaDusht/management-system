@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { authAPI } from '../../api/auth'
+import { hkAPI } from '../../api/housekeeping'
 import {
   Alert,
   Badge,
@@ -16,6 +17,7 @@ import {
 import AdminLayout from '../../layout/AdminLayout'
 
 const ROLES = ['admin', 'manager', 'inventory_manager', 'supervisor', 'caretaker']
+const HK_ROLES = ['supervisor', 'caretaker']
 const EMPTY = {
   username: '',
   first_name: '',
@@ -23,16 +25,18 @@ const EMPTY = {
   email: '',
   phone: '',
   role: 'supervisor',
+  area_ids: [],
   password: '',
 }
 
 export default function UsersPage() {
   const [users, setUsers] = useState([])
+  const [areas, setAreas] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
-  const [modal, setModal] = useState(null) // null | { mode: 'create' | 'edit', user? }
+  const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
@@ -42,8 +46,13 @@ export default function UsersPage() {
     setLoading(true)
     setError('')
     try {
-      const { data } = await authAPI.getUsers()
-      setUsers(Array.isArray(data) ? data : data.results || [])
+      const [usersRes, areasRes] = await Promise.all([
+        authAPI.getUsers(),
+        hkAPI.getAreas().catch(() => ({ data: [] })),
+      ])
+      setUsers(Array.isArray(usersRes.data) ? usersRes.data : usersRes.data.results || [])
+      const areaList = Array.isArray(areasRes.data) ? areasRes.data : areasRes.data.results || []
+      setAreas(areaList)
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed to load users. Make sure you are logged in as Admin.')
     } finally {
@@ -62,8 +71,16 @@ export default function UsersPage() {
   }
 
   const openEdit = (u) => {
-    const { password: _ignored, ...safeFields } = u
-    setForm({ ...safeFields, password: '' })
+    setForm({
+      username: u.username || '',
+      first_name: u.first_name || '',
+      last_name: u.last_name || '',
+      email: u.email || '',
+      phone: u.phone || '',
+      role: u.role || 'supervisor',
+      area_ids: Array.isArray(u.assigned_area_ids) ? u.assigned_area_ids : [],
+      password: '',
+    })
     setFormError('')
     setModal({ mode: 'edit', user: u })
   }
@@ -80,22 +97,24 @@ export default function UsersPage() {
     setSaving(true)
     setFormError('')
     try {
+      const payload = {
+        username: form.username,
+        first_name: form.first_name,
+        last_name: form.last_name,
+        email: form.email,
+        phone: form.phone,
+        role: form.role,
+        area_ids: HK_ROLES.includes(form.role) ? form.area_ids : [],
+      }
+
+      if (form.password) payload.password = form.password
+
       if (modal.mode === 'create') {
-        await authAPI.createUser(form)
+        await authAPI.createUser(payload)
       } else {
-        const payload = {
-          username: form.username,
-          first_name: form.first_name,
-          last_name: form.last_name,
-          email: form.email,
-          phone: form.phone,
-          role: form.role,
-        }
-        if (form.password) {
-          payload.password = form.password
-        }
         await authAPI.updateUser(modal.user.id, payload)
       }
+
       setModal(null)
       await load()
     } catch (e) {
@@ -117,19 +136,30 @@ export default function UsersPage() {
     }
   }
 
+  const toggleArea = (areaId) => {
+    setForm((prev) => {
+      const set = new Set(prev.area_ids || [])
+      if (set.has(areaId)) set.delete(areaId)
+      else set.add(areaId)
+      return { ...prev, area_ids: Array.from(set) }
+    })
+  }
+
   const filtered = users.filter((u) => {
     const matchRole = roleFilter === 'all' || u.role === roleFilter
+    const areaText = Array.isArray(u.areas_incharge) ? u.areas_incharge.join(' ') : ''
     const matchSearch =
       !search ||
-      [u.username, u.first_name, u.last_name, u.email].some((v) =>
-        v?.toLowerCase().includes(search.toLowerCase())
+      [u.username, u.first_name, u.last_name, u.email, areaText].some((v) =>
+        String(v || '').toLowerCase().includes(search.toLowerCase())
       )
     return matchRole && matchSearch
   })
 
-  const roleCounts = ROLES.reduce(
-    (acc, r) => ({ ...acc, [r]: users.filter((u) => u.role === r).length }),
-    {}
+  const roleCounts = useMemo(
+    () =>
+      ROLES.reduce((acc, r) => ({ ...acc, [r]: users.filter((u) => u.role === r).length }), {}),
+    [users]
   )
 
   return (
@@ -181,10 +211,10 @@ export default function UsersPage() {
           }}
         >
           <Input
-            placeholder="Search name, username, email..."
+            placeholder="Search name, username, email, area..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ maxWidth: 280 }}
+            style={{ maxWidth: 320 }}
           />
           <SelectField value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={{ width: 160 }}>
             <option value="all">All Roles</option>
@@ -203,7 +233,7 @@ export default function UsersPage() {
           </div>
         ) : (
           <DataTable
-            headers={['Name', 'Username', 'Email', 'Phone', 'Role', 'Status', 'Actions']}
+            headers={['Name', 'Username', 'Email', 'Phone', 'Role', 'Area Incharge', 'Status', 'Actions']}
             rows={filtered.map((u) => [
               <div key={`name-${u.id}`}>
                 <div style={{ fontWeight: 600 }}>
@@ -213,9 +243,16 @@ export default function UsersPage() {
               <code key={`username-${u.id}`} style={{ fontSize: 12, background: 'var(--surface-2)', padding: '2px 6px', borderRadius: 5 }}>
                 {u.username}
               </code>,
-              u.email || '—',
-              u.phone || '—',
+              u.email || '-',
+              u.phone || '-',
               <Badge key={`role-${u.id}`} value={u.role} />,
+              <div key={`areas-${u.id}`} style={{ fontSize: 12, color: 'var(--text-2)', maxWidth: 280 }}>
+                {Array.isArray(u.areas_incharge) && u.areas_incharge.length > 0
+                  ? u.areas_incharge.join(', ')
+                  : HK_ROLES.includes(u.role)
+                    ? 'Not assigned'
+                    : 'All areas'}
+              </div>,
               <span
                 key={`active-${u.id}`}
                 style={{
@@ -224,7 +261,7 @@ export default function UsersPage() {
                   color: u.is_active ? '#16a34a' : '#dc2626',
                 }}
               >
-                {u.is_active ? '● Active' : '○ Inactive'}
+                {u.is_active ? 'Active' : 'Inactive'}
               </span>,
               <div key={`actions-${u.id}`} style={{ display: 'flex', gap: 6 }}>
                 <Btn size="sm" variant="ghost" onClick={() => openEdit(u)}>
@@ -242,14 +279,14 @@ export default function UsersPage() {
       <Modal
         open={!!modal}
         onClose={() => setModal(null)}
-        title={modal?.mode === 'create' ? 'Add New User' : `Edit — ${modal?.user?.username}`}
+        title={modal?.mode === 'create' ? 'Add New User' : `Edit - ${modal?.user?.username}`}
         footer={
           <>
             <Btn variant="ghost" onClick={() => setModal(null)}>
               Cancel
             </Btn>
             <Btn onClick={save} disabled={saving}>
-              {saving ? 'Saving…' : modal?.mode === 'create' ? 'Create User' : 'Save Changes'}
+              {saving ? 'Saving...' : modal?.mode === 'create' ? 'Create User' : 'Save Changes'}
             </Btn>
           </>
         }
@@ -273,7 +310,17 @@ export default function UsersPage() {
           <Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
         </Field>
         <Field label="Role" required>
-          <SelectField value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}>
+          <SelectField
+            value={form.role}
+            onChange={(e) => {
+              const nextRole = e.target.value
+              setForm((p) => ({
+                ...p,
+                role: nextRole,
+                area_ids: HK_ROLES.includes(nextRole) ? p.area_ids : [],
+              }))
+            }}
+          >
             {ROLES.map((r) => (
               <option key={r} value={r}>
                 {r.replace('_', ' ')}
@@ -281,6 +328,41 @@ export default function UsersPage() {
             ))}
           </SelectField>
         </Field>
+
+        <Field label="Areas Incharge">
+          {HK_ROLES.includes(form.role) ? (
+            <div
+              style={{
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '8px 10px',
+                maxHeight: 170,
+                overflowY: 'auto',
+                background: 'var(--surface-2)',
+              }}
+            >
+              {areas.length === 0 ? (
+                <div style={{ fontSize: 12, color: 'var(--text-3)' }}>No areas available.</div>
+              ) : (
+                areas.map((a) => (
+                  <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      checked={(form.area_ids || []).includes(a.id)}
+                      onChange={() => toggleArea(a.id)}
+                    />
+                    {a.name}
+                  </label>
+                ))
+              )}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+              Area assignment is used for Supervisor and Caretaker roles.
+            </div>
+          )}
+        </Field>
+
         <Field label={modal?.mode === 'create' ? 'Password *' : 'New Password (leave blank to keep)'}>
           <Input
             type="password"
