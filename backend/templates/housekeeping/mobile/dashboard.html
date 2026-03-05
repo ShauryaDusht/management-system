@@ -86,7 +86,7 @@
 <!-- ══════════════════════════════════════
      4 TAB BUTTONS
      ══════════════════════════════════════ -->
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px" id="tab-buttons">
+<div style="display:grid;grid-template-columns:repeat({% if has_special_tasks %}5{% else %}4{% endif %},1fr);gap:6px;margin-bottom:12px" id="tab-buttons">
 
   <button onclick="showTab('floor')" id="btn-floor"
     style="width:100%;border:none;border-radius:10px;padding:10px 4px;
@@ -117,6 +117,18 @@
       {% if grouped.washroom %}{{ grouped.washroom|length }}{% else %}0{% endif %} tasks
     </span>
   </button>
+
+  {% if has_special_tasks %}
+  <button onclick="showTab('all')" id="btn-all"
+    style="width:100%;border:none;border-radius:10px;padding:10px 4px;
+    font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.4;
+    background:#0f766e;color:#fff;transition:opacity .2s">
+    Special<br>
+    <span style="font-size:10px;font-weight:400;opacity:.85">
+      {% if grouped.all %}{{ grouped.all|length }}{% else %}0{% endif %} tasks
+    </span>
+  </button>
+  {% endif %}
 
   <button onclick="showTab('extra')" id="btn-extra"
     style="width:100%;border:none;border-radius:10px;padding:10px 4px;
@@ -254,6 +266,46 @@
 <!-- ══════════════════════════════════════
      TAB: EXTRA WORK
      ══════════════════════════════════════ -->
+{% if has_special_tasks %}
+<div id="tab-all" style="display:none">
+  <div class="wtag">Special Tasks</div>
+  {% for record in grouped.all %}
+  {% if 'break' in record.schedule.task_name|lower or 'lunch' in record.schedule.task_name|lower %}
+  <div style="text-align:center;color:#9ca3af;font-size:11px;padding:3px 0">
+    â”€â”€â”€ {{ record.schedule.task_name }} {{ record.schedule.start_time|time:"g:iA" }}â€“{{ record.schedule.end_time|time:"g:iA" }} â”€â”€â”€
+  </div>
+  {% else %}
+  <div class="card" id="task-{{ record.id }}" style="padding:11px;{% if record.status == 'done' %}border-left:4px solid #16a34a;{% else %}border-left:4px solid #e5e7eb;{% endif %}">
+    <form hx-post="/housekeeping/task/{{ record.id }}/mark/" hx-target="#task-{{ record.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data" style="display:flex;align-items:flex-start;gap:11px">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="{% if record.status == 'done' %}undo{% else %}done{% endif %}">
+      <button type="submit" class="ckbox {% if record.status == 'done' %}done{% endif %}">âœ“</button>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;gap:6px">
+          <div style="font-weight:700;font-size:13px;{% if record.status == 'done' %}text-decoration:line-through;color:#9ca3af{% endif %}">{{ record.schedule.task_name }}</div>
+          <span class="bdg {% if record.status == 'done' %}g{% else %}gr{% endif %}" style="flex-shrink:0">{% if record.status == 'done' %}Done{% else %}Pending{% endif %}</span>
+        </div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px">ðŸ• {{ record.schedule.start_time|time:"g:i A" }}â€“{{ record.schedule.end_time|time:"g:i A" }}{% if record.schedule.task_description %} Â· <span style="color:#9ca3af">{{ record.schedule.task_description }}</span>{% endif %}</div>
+        {% if record.status == 'done' and record.completed_at %}<div style="font-size:11px;color:#16a34a;margin-top:2px">âœ“ {{ record.completed_at|time:"g:i A" }}{% if record.completed_by %} by {{ record.completed_by.get_full_name|default:record.completed_by.username }}{% endif %}</div>
+        {% elif record.schedule.requires_photo %}<div style="font-size:11px;color:#c2622a;margin-top:2px">ðŸ“· Photo required</div>{% endif %}
+        {% if record.status != 'done' %}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">
+          <input type="text" name="note" placeholder="Note (optional)" style="flex:1;padding:6px 8px;font-size:12px;min-width:0">
+          {% if record.schedule.requires_photo %}
+          <div style="flex:1;min-width:120px"><label style="font-size:10px;color:#c2622a;margin-bottom:2px;display:block">ðŸ“· After Photo *</label><input type="file" name="photo_after" accept="image/*" capture="environment" style="font-size:11px;padding:4px"></div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+  {% endif %}
+  {% empty %}
+  <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No special tasks today.</div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <div id="tab-extra" style="display:none">
   <div class="card">
     <form method="post" action="/housekeeping/extra-work/" enctype="multipart/form-data">
@@ -308,7 +360,7 @@
 
 <!-- TAB SWITCHING SCRIPT -->
 <script>
-const TABS = ['floor', 'room', 'washroom', 'extra'];
+const TABS = ['floor', 'room', 'washroom'{% if has_special_tasks %}, 'all'{% endif %}, 'extra'];
 
 function showTab(tab) {
   TABS.forEach(function(t) {

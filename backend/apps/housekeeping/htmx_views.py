@@ -197,6 +197,8 @@ def hk_dashboard(request):
     area_name = sel_area.name if sel_area else ""
     is_common_area = area_name == "Common Area"
     is_research_park = area_name == "Research Park"
+    is_central_arcade = area_name == "Central Arcade"
+    is_sports_complex = area_name == "Sports Complex"
     if is_common_area:
         tab_label_floor = "Route A"
         tab_label_room = "Core Area"
@@ -211,6 +213,20 @@ def hk_dashboard(request):
         heading_floor = "Ground and External Operations"
         heading_room = "Office and Meeting Zones"
         heading_washroom = "Washroom and Utility Rounds"
+    elif is_central_arcade:
+        tab_label_floor = "Vijay Zone"
+        tab_label_room = "Bhavna Zone"
+        tab_label_washroom = "Ramesh Zone"
+        heading_floor = "Ground and Entry Operations"
+        heading_room = "First Floor and Hall Operations"
+        heading_washroom = "Second Floor and Washroom Operations"
+    elif is_sports_complex:
+        tab_label_floor = "Indoor Ops"
+        tab_label_room = "Hall Zone"
+        tab_label_washroom = "Pool/WR"
+        heading_floor = "Indoor and Evening Operations"
+        heading_room = "Hall and Office Operations"
+        heading_washroom = "Washroom and Pool Utility Operations"
     else:
         tab_label_floor = "Floor"
         tab_label_room = "Room"
@@ -258,6 +274,11 @@ def hk_dashboard(request):
         "heading_floor": heading_floor,
         "heading_room": heading_room,
         "heading_washroom": heading_washroom,
+        "has_special_tasks": bool(
+            sel_area and HKScheduleTemplate.objects.filter(
+                area=sel_area, is_active=True, worker_tag="all"
+            ).exists()
+        ),
     })
 
 
@@ -338,6 +359,8 @@ def hk_schedule(request):
     area_name = sel_area.name if sel_area else ""
     is_common_area = area_name == "Common Area"
     is_research_park = area_name == "Research Park"
+    is_central_arcade = area_name == "Central Arcade"
+    is_sports_complex = area_name == "Sports Complex"
 
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     weekly = []
@@ -364,6 +387,8 @@ def hk_schedule(request):
         "selected_area": sel_area,
         "is_common_area": is_common_area,
         "is_research_park": is_research_park,
+        "is_central_arcade": is_central_arcade,
+        "is_sports_complex": is_sports_complex,
         "weekly": weekly,
         "today_dow": timezone.localdate().weekday(),
         "tag_labels": WORKER_TAG_LABELS,

@@ -77,7 +77,7 @@ All accounts use password: {DEFAULT_PASSWORD}
     def area(self, name):
         return HKArea.objects.filter(name=name).first()
 
-    def make_user_fixed(self, username, first_name, last_name, phone, role, area_names):
+    def make_user(self, username, first_name, last_name, phone, role, area_names):
         is_superuser = role == 'admin'
         is_staff = role in {'admin', 'manager', 'inventory_manager'}
 
@@ -282,6 +282,26 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Shailesh Vaghela',   '', '7284950619', 'Research Park', 'room',     False),
             ('Dharmishtaben',      '', '9328002335', 'Research Park', 'washroom', False),
 
+            # ── CENTRAL ARCADE ──────────────────────────────────────────────
+            ('Vijay Parmar',       '', '9824347940', 'Central Arcade', 'floor',    False),
+            ('Bhavnaben',          '', '7041174657', 'Central Arcade', 'room',     False),
+            ('Ramesh Parmar',      '', '7203906051', 'Central Arcade', 'washroom', False),
+            ('Hasmukh Solanki',    '', '9727858924', 'Central Arcade', 'general',  False),
+
+            # ── SPORTS COMPLEX ──────────────────────────────────────────────
+            ('Anita Solanki',      '', '8401679845', 'Sports Complex', 'floor',    False),
+            ('Retuben Solanki',    '', '6356838847', 'Sports Complex', 'room',     False),
+            ('Uttam Vaghela',      '', '6353089004', 'Sports Complex', 'room',     False),
+            ('Sohil Vaghela',      '', '9904962725', 'Sports Complex', 'washroom', False),
+            ('Rahul Vaghela',      '', '8734964743', 'Sports Complex', 'washroom', False),
+            ('Rajendra Chavda',    '', '9016476894', 'Sports Complex', 'floor',    False),
+            ('Akshay Parmar',      '', '9265622322', 'Sports Complex', 'floor',    False),
+            ('Jaydeep Vaghela',    '', '7487803489', 'Sports Complex', 'reliever', True),
+            ('Chirag Vaghela',     '', '7698612980', 'Sports Complex', 'general',  False),
+            ('Harsh',              '', '7486922273', 'Sports Complex', 'general',  False),
+            ('Nikhil',             '', '7572829754', 'Sports Complex', 'general',  False),
+            ('Ramesh Sports',      '', '9904319434', 'Sports Complex', 'general',  False),
+
             # ── RELIEVERS ────────────────────────────────────────────────────
             # Relievers substitute for permanent workers when they take leave.
             # They are not tied to one hostel — assigned flexibly.
@@ -351,6 +371,43 @@ All accounts use password: {DEFAULT_PASSWORD}
             if worker:
                 worker.shift = shift
                 worker.supervisor = research_supervisor
+                worker.save(update_fields=['shift', 'supervisor'])
+
+        # Central Arcade staffing details
+        bharat_supervisor = User.objects.filter(username='bharat.solanki').first()
+        central_shift_map = {
+            'Vijay Parmar': 'day',
+            'Bhavnaben': 'day',
+            'Ramesh Parmar': 'day',
+            'Hasmukh Solanki': 'day',
+        }
+        for worker_name, shift in central_shift_map.items():
+            worker = HKWorker.objects.filter(name=worker_name, area=self.area('Central Arcade')).first()
+            if worker:
+                worker.shift = shift
+                worker.supervisor = bharat_supervisor
+                worker.save(update_fields=['shift', 'supervisor'])
+
+        # Sports Complex staffing details
+        sports_shift_map = {
+            'Anita Solanki': 'day',
+            'Retuben Solanki': 'day',
+            'Uttam Vaghela': 'day',
+            'Sohil Vaghela': 'evening',
+            'Rahul Vaghela': 'evening',
+            'Rajendra Chavda': 'evening',
+            'Akshay Parmar': 'evening',
+            'Jaydeep Vaghela': 'day',
+            'Chirag Vaghela': 'day',
+            'Harsh': 'day',
+            'Nikhil': 'day',
+            'Ramesh Sports': 'day',
+        }
+        for worker_name, shift in sports_shift_map.items():
+            worker = HKWorker.objects.filter(name=worker_name, area=self.area('Sports Complex')).first()
+            if worker:
+                worker.shift = shift
+                worker.supervisor = bharat_supervisor
                 worker.save(update_fields=['shift', 'supervisor'])
 
         self.stdout.write(f'  ✓ Workers: {HKWorker.objects.count()} ({created_count} new)')
@@ -671,4 +728,212 @@ All accounts use password: {DEFAULT_PASSWORD}
                 )
                 total += 1
 
-        self.stdout.write(f'  ✓ Schedule templates: {total} (hostels + common area + research park)')
+        # Central Arcade: handwritten worker-wise schedule + deep cleaning
+        central_arcade = self.area('Central Arcade')
+        if central_arcade:
+            HKScheduleTemplate.objects.filter(area=central_arcade).delete()
+
+            ca_floor_tasks = [
+                (1, '08:00', '10:00', 'Vijay: Ground Floor Outside and Fire Entry Cleaning', True, ''),
+                (2, '10:00', '11:00', 'Vijay: Fire and Entry Gate Round', True, ''),
+                (3, '11:00', '13:00', 'Vijay: Ground Floor Washroom Round Cleaning', True, ''),
+                (4, '13:00', '14:00', 'Vijay: Lunch Break', False, ''),
+                (5, '14:00', '15:00', 'Vijay: Staircase Cleaning', True, ''),
+                (6, '15:00', '16:00', 'Vijay: Basement/Equipment Area Cleaning', True, ''),
+                (7, '16:00', '17:00', 'Vijay: Extra Work and Pending Points', True, ''),
+            ]
+
+            ca_room_tasks = [
+                (1, '08:00', '10:00', 'Bhavnaben: 1st Floor Cleaning', True, ''),
+                (2, '10:00', '11:00', 'Bhavnaben: Silver Room Cleaning', True, ''),
+                (3, '11:00', '13:00', 'Bhavnaben: All 1st Floor Washroom Cleaning', True, ''),
+                (4, '13:00', '14:00', 'Bhavnaben: Lunch Break', False, ''),
+                (5, '14:00', '16:00', 'Bhavnaben: Hall Cleaning', True, ''),
+                (6, '16:00', '17:00', 'Bhavnaben: Railing and Corner Dusting', True, ''),
+            ]
+
+            ca_washroom_tasks = [
+                (1, '08:00', '10:30', 'Ramesh: 2nd Floor Floor and Lobby Cleaning', True, ''),
+                (2, '10:30', '11:30', 'Ramesh: 2nd Floor Washroom Cleaning', True, ''),
+                (3, '11:30', '13:00', 'Ramesh: Multi-purpose Room Cleaning', True, ''),
+                (4, '13:00', '14:00', 'Ramesh: Lunch Break', False, ''),
+                (5, '14:00', '15:00', 'Ramesh: Staircase Cleaning', True, ''),
+                (6, '15:00', '17:00', 'Ramesh: Hall Cleaning', True, ''),
+            ]
+
+            ca_saturday_special = [
+                (1, '15:00', '16:00', 'Saturday Special: Outside Area Cleaning', True, ''),
+                (2, '16:00', '17:00', 'Saturday Special: Drain Check and Entry Gate Wash', True, ''),
+            ]
+
+            ca_sunday_extra = [
+                (1, '08:00', '10:00', 'Deep Clean: Washroom (cobweb/lower tile/scale)', True, ''),
+                (2, '10:00', '12:00', 'Deep Clean: Tanker/Service Zone and Floor Machine', True, ''),
+                (3, '12:00', '13:00', 'Deep Clean: Hall and Corridor', True, ''),
+                (4, '14:00', '16:00', 'Deep Clean: Ceiling, Vent and Glass', True, ''),
+                (5, '16:00', '17:00', 'Deep Clean: Outside Railing and Final Polish', True, ''),
+            ]
+
+            for order, start, end, name, req_photo, desc in ca_floor_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=central_arcade, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='floor', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in ca_room_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=central_arcade, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='room', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in ca_washroom_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=central_arcade, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='washroom', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in ca_saturday_special:
+                HKScheduleTemplate.objects.create(
+                    area=central_arcade, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='all', requires_photo=req_photo,
+                    frequency='saturday_special', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in ca_sunday_extra:
+                HKScheduleTemplate.objects.create(
+                    area=central_arcade, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='all', requires_photo=req_photo,
+                    frequency='sunday_extra', is_active=True,
+                )
+                total += 1
+
+        # Sports Complex: PDF schedule adapted as operational task plan
+        sports_complex = self.area('Sports Complex')
+        if sports_complex:
+            HKScheduleTemplate.objects.filter(area=sports_complex).delete()
+
+            sp_floor_tasks = [
+                (1, '08:00', '09:30', 'Indoor Deep Clean: Ground Floor (Anita + Ramesh)', True, ''),
+                (2, '09:30', '10:00', 'Main Entry and Corridor Cleaning', True, ''),
+                (3, '10:00', '10:15', 'Tea Break', False, ''),
+                (4, '10:15', '12:00', 'Open Gym and Gallery Floor Cleaning', True, ''),
+                (5, '12:00', '13:00', 'Gents and Ladies Toilet Round 1', True, ''),
+                (6, '13:00', '14:00', 'Lunch Break', False, ''),
+                (7, '14:00', '15:30', 'Hall Floor and Railing Dusting', True, ''),
+                (8, '15:30', '17:00', 'Badminton and Basketball Hall Dry Mop', True, ''),
+                (9, '17:00', '18:00', 'Terrace and Corridor Detailing', True, ''),
+                (10, '18:00', '19:00', 'Dinner Break (Sohil + Rahul)', False, ''),
+                (11, '19:00', '21:00', 'Evening Shift: Swimming Pool and Volleyball Zone', True, ''),
+                (12, '21:00', '23:00', 'Night Closing: Hall Windows, Lights and Main Door Lock', True, ''),
+            ]
+
+            sp_room_tasks = [
+                (1, '08:00', '09:00', 'Yoga Hall and Office Cleaning', True, ''),
+                (2, '09:00', '10:00', 'Table Tennis Hall Cleaning', True, ''),
+                (3, '10:00', '10:15', 'Tea Break', False, ''),
+                (4, '10:15', '11:30', 'Gym and Squash Court Cleaning', True, ''),
+                (5, '11:30', '13:00', 'Ladies Toilet and Office 2 Cleaning', True, ''),
+                (6, '13:00', '14:00', 'Lunch Break', False, ''),
+                (7, '14:00', '15:30', 'Glass Cleaning: Gym/Yoga/Squash/TT', True, ''),
+                (8, '15:30', '17:00', 'Trophy Showcase and Lower Glass Cleaning', True, ''),
+                (9, '17:00', '19:00', 'Pavilion and Side Office Detailing', True, ''),
+            ]
+
+            sp_washroom_tasks = [
+                (1, '08:00', '08:30', 'Deep Clean: Washroom, Fan and Lower Glass', True, ''),
+                (2, '08:30', '10:00', 'Main Entry, Corridor and Open Gym Washroom', True, ''),
+                (3, '10:00', '10:15', 'Tea Break', False, ''),
+                (4, '10:15', '12:00', 'Mopping Gallery, Floor and Washroom Touch Up', True, ''),
+                (5, '12:00', '13:00', 'Gents Toilet 2 Cleaning', True, ''),
+                (6, '13:00', '14:00', 'Lunch Break', False, ''),
+                (7, '14:00', '16:00', 'Specially Abled + Changing Washroom Deep Clean', True, ''),
+                (8, '16:00', '17:00', 'Swimming Pool Washroom Cleaning (After Pool Bucket)', True, ''),
+                (9, '22:00', '23:00', 'Final Washroom Sanitization', True, ''),
+            ]
+
+            sp_saturday_special = [
+                (1, '10:00', '11:30', 'Outside: Gym Corridor to Neem Area and Parking', True, ''),
+                (2, '11:30', '13:00', 'Outside: MS Jali to Pavilion Cleaning', True, ''),
+                (3, '14:00', '15:30', 'Outside: Lawn Tennis 4 Courts', True, ''),
+                (4, '15:30', '17:00', 'Outside: Hostel Basketball 2 Courts', True, ''),
+                (5, '17:00', '17:30', 'Outside: Sports Complex Backside Parking', True, ''),
+                (6, '17:30', '19:00', 'Outside: Pavilion and Surrounding Cleaning', True, ''),
+            ]
+
+            sp_sunday_extra = [
+                (1, '08:00', '09:00', 'Deep Clean: Floor and Both Terrace', True, ''),
+                (2, '09:00', '10:00', 'Badminton Hall 1 and 2 Floor Mopping', True, ''),
+                (3, '10:30', '13:00', 'Basketball Hall Cleaning + Ladies/Gents Toilet', True, ''),
+                (4, '14:00', '15:00', 'Swimming Pool and Gents Toilet Touch Up', True, ''),
+                (5, '15:00', '16:30', 'Pavilion Railing and Outside Glass Cleaning', True, ''),
+                (6, '16:30', '17:00', 'Dustbin Cleaning and Final Round', True, ''),
+            ]
+
+            for order, start, end, name, req_photo, desc in sp_floor_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=sports_complex, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='floor', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in sp_room_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=sports_complex, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='room', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in sp_washroom_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=sports_complex, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='washroom', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in sp_saturday_special:
+                HKScheduleTemplate.objects.create(
+                    area=sports_complex, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='all', requires_photo=req_photo,
+                    frequency='saturday_special', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in sp_sunday_extra:
+                HKScheduleTemplate.objects.create(
+                    area=sports_complex, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='all', requires_photo=req_photo,
+                    frequency='sunday_extra', is_active=True,
+                )
+                total += 1
+
+        self.stdout.write(f'  ✓ Schedule templates: {total} (hostels + common area + research park + central arcade + sports complex)')

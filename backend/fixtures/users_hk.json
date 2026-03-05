@@ -3,8 +3,8 @@
   "model": "users.user",
   "pk": 1,
   "fields": {
-    "password": "pbkdf2_sha256$600000$XU9bh9kdgFOMlyuE4ffqKs$fF2ZuSnGIUoc0ZXBAA4YFGKPWyrsGNLnA5dZDa0HA8Q=",
-    "last_login": "2026-03-03T10:00:01.550Z",
+    "password": "pbkdf2_sha256$600000$klwWKrJFHw33vTuA4Ask3V$KpeFJIwKhzaGvzqtsW2uSLkMp9tVm36mzQNhu5CHXeM=",
+    "last_login": "2026-03-04T10:54:52.088Z",
     "is_superuser": true,
     "username": "admin",
     "first_name": "Admin",
@@ -256,7 +256,7 @@
   "pk": 14,
   "fields": {
     "password": "pbkdf2_sha256$600000$fal9r5LEg8zpyA75hcMoyq$6NUb9EM4YVKqLXCautpfZgQ1bjSCHVn+OBn5NGffSjk=",
-    "last_login": "2026-03-03T12:55:51.947Z",
+    "last_login": "2026-03-04T10:26:08.065Z",
     "is_superuser": false,
     "username": "vishwajeet",
     "first_name": "Vishwajeet",
