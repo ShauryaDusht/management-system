@@ -66,7 +66,7 @@ class HKDailyRecordListView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = HKDailyRecord.objects.select_related('schedule', 'area')
+        qs = HKDailyRecord.objects.select_related('schedule', 'area', 'assigned_worker', 'assigned_by')
         area = self.request.query_params.get('area')
         date = self.request.query_params.get('date', str(timezone.localdate()))
         if area:
@@ -186,12 +186,14 @@ class HKDashboardSummaryView(APIView):
                 total=Count('id'),
                 done=Count('id', filter=Q(status='done')),
                 pending=Count('id', filter=Q(status='pending')),
+                ongoing=Count('id', filter=Q(status='in_progress')),
                 skipped=Count('id', filter=Q(status='skipped')),
             )
         )
         total_records = counts['total']
         done = counts['done']
         pending = counts['pending']
+        ongoing = counts['ongoing']
         skipped = counts['skipped']
 
         total_workers = HKWorker.objects.filter(is_active=True, is_reliever=False).count()
@@ -204,6 +206,7 @@ class HKDashboardSummaryView(APIView):
             'total_tasks': total_records,
             'done_tasks': done,
             'pending_tasks': pending,
+            'ongoing_tasks': ongoing,
             'skipped_tasks': skipped,
             'completion_pct': int((done / total_records * 100) if total_records else 0),
             'total_workers': total_workers,

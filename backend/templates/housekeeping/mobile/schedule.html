@@ -89,7 +89,7 @@
         {% if task.requires_photo %}<div style="font-size:11px;color:#c2622a;margin-top:1px">Photo required</div>{% endif %}
       </div>
       <div style="text-align:right;font-size:11px;color:#6b7280;flex-shrink:0;margin-left:10px;white-space:nowrap">
-        {{ task.start_time|time:"g:i A" }}<br><span style="color:#ccc">↓</span><br>{{ task.end_time|time:"g:i A" }}
+        <span style="font-weight:700;color:#1f2937">{{ task.period_label }}</span>
       </div>
     </div>
     {% endfor %}

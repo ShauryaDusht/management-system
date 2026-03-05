@@ -119,7 +119,7 @@ def get_today_records(area, date):
                     pass
 
     return HKDailyRecord.objects.filter(area=area, date=date).select_related(
-        "schedule", "completed_by"
+        "schedule", "completed_by", "assigned_worker", "assigned_by"
     ).order_by("schedule__worker_tag", "schedule__order", "schedule__start_time")
 
 
@@ -242,13 +242,12 @@ def hk_dashboard(request):
     today_dow = today.weekday()
     sunday_incharge = None
     upcoming_sunday = None
-    area_workers = []
+    area_workers = list(HKWorker.objects.filter(area=sel_area, is_active=True).order_by("name")) if sel_area else []
     if today_dow == 5 and sel_area:
         upcoming_sunday = today + datetime.timedelta(days=1)
         sunday_incharge = HKSundayIncharge.objects.filter(
             area=sel_area, for_sunday=upcoming_sunday
         ).first()
-        area_workers = list(HKWorker.objects.filter(area=sel_area, is_active=True).order_by("name"))
 
     extra_works = HKExtraWork.objects.filter(area=sel_area, date=today).order_by("-logged_at") if sel_area else []
 
@@ -279,6 +278,7 @@ def hk_dashboard(request):
                 area=sel_area, is_active=True, worker_tag="all"
             ).exists()
         ),
+        "can_assign_tasks": user.role in ["admin", "manager", "supervisor", "caretaker"],
     })
 
 
@@ -291,33 +291,89 @@ def hk_mark_task(request, record_id):
     if record.area not in get_user_areas(user):
         return HttpResponseForbidden("Not your area.")
 
-    if request.POST.get("action") == "undo":
+    task_error = ""
+    action = request.POST.get("action")
+    now = timezone.now()
+    task_title = (record.schedule.task_name or "").lower()
+    is_break_task = ("break" in task_title) or ("lunch" in task_title)
+    can_mark_break = user.role == "supervisor"
+
+    if action == "assign":
+        if is_break_task:
+            task_error = "Break tasks do not need worker assignment."
+        elif record.assigned_worker_id:
+            task_error = "Worker already assigned for this task."
+        else:
+            worker_id = request.POST.get("worker_id")
+            worker = HKWorker.objects.filter(pk=worker_id, area=record.area, is_active=True).first()
+            if worker:
+                record.assigned_worker = worker
+                record.assigned_by = user
+                record.assigned_at = now
+                record.save(update_fields=["assigned_worker", "assigned_by", "assigned_at"])
+            else:
+                task_error = "Please choose a valid worker for this area."
+
+    elif action == "start":
+        if is_break_task:
+            task_error = "Break tasks can be marked done directly."
+        elif not record.assigned_worker:
+            task_error = "Assign worker first, then start work."
+        else:
+            record.status = "in_progress"
+            if not record.started_at:
+                record.started_at = now
+            record.note = request.POST.get("note", "").strip()
+            record.save(update_fields=["status", "started_at", "note"])
+
+    elif action == "undo":
         record.status = "pending"
+        record.started_at = None
         record.completed_by = None
         record.completed_at = None
-        record.save(update_fields=["status", "completed_by", "completed_at"])
-    else:
-        record.status = "done"
-        record.completed_by = user
-        record.completed_at = timezone.now()
-        record.note = request.POST.get("note", "")
-        if "photo_before" in request.FILES:
-            record.photo_before = request.FILES["photo_before"]
-        if "photo_after" in request.FILES:
-            record.photo_after = request.FILES["photo_after"]
-        lat = request.POST.get("latitude")
-        lng = request.POST.get("longitude")
-        if lat and lng:
-            try:
-                record.latitude = float(lat)
-                record.longitude = float(lng)
-            except (ValueError, TypeError):
-                pass
-        record.save()
+        record.save(update_fields=["status", "started_at", "completed_by", "completed_at"])
+
+    elif action == "done":
+        if is_break_task and not can_mark_break:
+            task_error = "Only supervisor can mark break done."
+        elif is_break_task:
+            record.status = "done"
+            record.completed_by = user
+            record.completed_at = now
+            record.note = request.POST.get("note", "").strip()
+            record.save(update_fields=["status", "completed_by", "completed_at", "note"])
+        elif not record.assigned_worker:
+            task_error = "Assign worker first."
+        elif record.schedule.requires_photo and "photo_after" not in request.FILES and not record.photo_after:
+            task_error = "After-photo is required to complete this task."
+        else:
+            record.status = "done"
+            record.completed_by = user
+            record.completed_at = now
+            record.note = request.POST.get("note", "").strip()
+            if "photo_before" in request.FILES:
+                record.photo_before = request.FILES["photo_before"]
+            if "photo_after" in request.FILES:
+                record.photo_after = request.FILES["photo_after"]
+            lat = request.POST.get("latitude")
+            lng = request.POST.get("longitude")
+            if lat and lng:
+                try:
+                    record.latitude = float(lat)
+                    record.longitude = float(lng)
+                except (ValueError, TypeError):
+                    pass
+            record.save()
+
+    record.refresh_from_db()
+    area_workers = list(HKWorker.objects.filter(area=record.area, is_active=True).order_by("name"))
 
     return render(request, "housekeeping/mobile/partials/task_card.html", {
         "record": record,
         "tag_labels": WORKER_TAG_LABELS,
+        "area_workers": area_workers,
+        "can_assign_tasks": user.role in ["admin", "manager", "supervisor", "caretaker"],
+        "task_error": task_error,
     })
 
 

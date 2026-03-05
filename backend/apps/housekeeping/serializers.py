@@ -67,6 +67,8 @@ class HKDailyRecordSerializer(serializers.ModelSerializer):
     task_name = serializers.CharField(source='schedule.task_name', read_only=True)
     worker_tag = serializers.CharField(source='schedule.worker_tag', read_only=True)
     area_name = serializers.CharField(source='area.name', read_only=True)
+    assigned_worker_name = serializers.CharField(source='assigned_worker.name', read_only=True, default='')
+    assigned_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = HKDailyRecord
@@ -78,9 +80,19 @@ class HKDailyRecordSerializer(serializers.ModelSerializer):
             'status',
             'task_name',
             'worker_tag',
+            'assigned_worker',
+            'assigned_worker_name',
+            'assigned_by_name',
+            'assigned_at',
+            'started_at',
             'completed_at',
             'note',
         ]
+
+    def get_assigned_by_name(self, obj):
+        if obj.assigned_by:
+            return obj.assigned_by.get_full_name() or obj.assigned_by.username
+        return ''
 
 
 class HKScheduleTemplateSerializer(serializers.ModelSerializer):
