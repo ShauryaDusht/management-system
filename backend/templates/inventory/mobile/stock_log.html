@@ -1,36 +1,70 @@
 {% extends 'inventory/mobile/base_mobile.html' %}
 {% block title %}Stock Log{% endblock %}
 {% block header_title %}STOCK LOG{% endblock %}
-{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white;font-size:20px">&larr;</a>{% endblock %}
+{% block back_button %}
+<a href="{% url 'mobile_dashboard' %}" class="back-btn">
+  <span class="material-icons-round" style="font-size:20px">arrow_back</span>
+</a>
+{% endblock %}
 
 {% block content %}
-<div style="margin-bottom:14px">
-  <h3 style="font-weight:700;font-size:18px;margin:0">Stock Log</h3>
-  <p style="color:#888;font-size:13px;margin-top:4px">Recent stock addition activity</p>
-</div>
+<div class="section-title" style="margin-top:4px">Stock Log</div>
+<p style="color:var(--text-secondary);font-size:13px;margin:-6px 0 14px">Recent stock replenishment activity</p>
 
 {% for entry in entries %}
 <div class="card" style="margin-bottom:10px">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start">
-    <div>
-      <div style="font-weight:700;font-size:15px">{{ entry.item.name }}</div>
-      <div style="color:#888;font-size:12px">{{ entry.item.category.name }}</div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:10px;min-width:0">
+      <div style="width:40px;height:40px;border-radius:10px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <span class="material-icons-round" style="font-size:22px;color:#22c55e">add_box</span>
+      </div>
+      <div style="min-width:0">
+        <div style="font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ entry.item.name }}</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:1px">{{ entry.item.category.name }}</div>
+      </div>
     </div>
-    <span style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700">
+    <span class="badge badge-ok" style="flex-shrink:0;font-size:13px;padding:4px 10px">
       +{{ entry.quantity_added }} {{ entry.item.unit }}
     </span>
   </div>
-  <div style="font-size:12px;color:#888;margin-top:8px">
-    Added by: <strong style="color:#333">{{ entry.added_by.get_full_name|default:entry.added_by.username }}</strong>
+  <div style="display:flex;flex-direction:column;gap:4px;padding-top:8px;border-top:1px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)">
+      <span class="material-icons-round" style="font-size:14px">person</span>
+      Added by: <strong style="color:var(--text-primary)">{{ entry.added_by.get_full_name|default:entry.added_by.username }}</strong>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)">
+      <span class="material-icons-round" style="font-size:14px">event</span>
+      {{ entry.added_at|date:"d M Y, h:i A" }}
+    </div>
+    {% if entry.notes %}
+    <div style="font-size:12px;color:var(--text-secondary);font-style:italic;margin-top:2px;padding:6px 8px;background:var(--bg);border-radius:var(--radius-sm)">
+      {{ entry.notes }}
+    </div>
+    {% endif %}
   </div>
-  <div style="font-size:12px;color:#888;margin-top:2px">
-    Date: {{ entry.added_at|date:"d M Y, h:i A" }}
-  </div>
-  {% if entry.notes %}
-  <div style="font-size:12px;color:#6b7280;margin-top:6px;font-style:italic">{{ entry.notes }}</div>
-  {% endif %}
 </div>
 {% empty %}
-<div style="text-align:center;padding:40px;color:#aaa">No stock log entries found</div>
+<div class="empty-state">
+  <span class="material-icons-round">add_box</span>
+  <div class="empty-title">No stock entries yet</div>
+  <div class="empty-sub">Stock replenishments will appear here</div>
+</div>
 {% endfor %}
 {% endblock %}
+
+{# ── Pagination ── #}
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+  {% if page_obj.has_previous %}
+  <a href="?page={{ page_obj.previous_page_number }}"><button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button></a>
+  {% else %}
+  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+  {% endif %}
+  <button class="page-btn active">{{ page_obj.number }}</button>
+  {% if page_obj.has_next %}
+  <a href="?page={{ page_obj.next_page_number }}"><button class="page-btn">Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button></a>
+  {% else %}
+  <button class="page-btn" disabled>Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  {% endif %}
+</div>
+{% endif %}

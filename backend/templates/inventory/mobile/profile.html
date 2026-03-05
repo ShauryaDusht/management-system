@@ -1,91 +1,144 @@
 {% extends 'inventory/mobile/base_mobile.html' %}
 {% block title %}Profile{% endblock %}
 {% block header_title %}PROFILE{% endblock %}
-{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white;font-size:20px">&larr;</a>{% endblock %}
+{% block back_button %}
+<a href="{% url 'mobile_dashboard' %}" class="back-btn">
+  <span class="material-icons-round" style="font-size:20px">arrow_back</span>
+</a>
+{% endblock %}
 
 {% block content %}
 {% if success %}
-<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:8px;padding:10px 14px;
-  margin-bottom:14px;color:#065f46;font-size:14px">
-  &#10003; {{ success }}
+<div class="alert alert-success">
+  <span class="material-icons-round" style="font-size:18px;flex-shrink:0">check_circle</span>
+  {{ success }}
 </div>
 {% endif %}
 {% if error %}
-<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;
-  margin-bottom:14px;color:#991b1b;font-size:14px">
-  &#10005; {{ error }}
+<div class="alert alert-error">
+  <span class="material-icons-round" style="font-size:18px;flex-shrink:0">error_outline</span>
+  {{ error }}
 </div>
 {% endif %}
 
-<div class="card">
+{# ── Profile header ── #}
+<div class="card" style="padding:20px">
   <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
-    <div style="width:80px;height:80px;border-radius:50%;background:#2d4a3e;color:white;
-      display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;flex-shrink:0">
+    <div style="width:72px;height:72px;border-radius:50%;background:var(--brand-green);color:white;
+      display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;flex-shrink:0;
+      box-shadow:0 4px 12px rgba(45,74,62,0.3)">
       {{ user.first_name|default:user.username|first|upper }}
     </div>
     <div>
-      <div style="font-size:22px;font-weight:700;color:#1a1a1a">
+      <div style="font-size:20px;font-weight:700;color:var(--text-primary)">
         {{ user.get_full_name|default:user.username }}
       </div>
-      <div style="color:#888;font-size:14px;margin-top:2px">
-        {{ user.phone|default:'No phone number' }}
+      <div style="color:var(--text-secondary);font-size:13px;margin-top:3px;display:flex;align-items:center;gap:4px">
+        <span class="material-icons-round" style="font-size:14px">badge</span>
+        {{ user.role|title|default:'Staff' }}
       </div>
-    </div>
-  </div>
-
-  <hr style="border:none;border-top:1px solid #eee;margin-bottom:16px">
-
-  <div style="margin-bottom:20px">
-    <div style="font-weight:600;color:#2d4a3e;margin-bottom:8px">Inventory Blocks In Charge</div>
-    <div style="color:#333;font-size:14px;line-height:1.8">
-      {% if user.role == 'admin' %}
-        All Categories
-      {% elif user.role == 'manager' or user.role == 'inventory_manager' %}
-        Tools &amp; Equipment<br>
-        Consumables<br>
-        Cleaning Supplies<br>
-        Garden &amp; Horticulture Equipment<br>
-        Housekeeping Supplies
-      {% elif user.role == 'supervisor' %}
-        Consumables<br>
-        Cleaning Supplies
-      {% else %}
-        Housekeeping Supplies<br>
-        Cleaning Supplies
+      {% if user.phone %}
+      <div style="color:var(--text-secondary);font-size:12px;margin-top:2px;display:flex;align-items:center;gap:4px">
+        <span class="material-icons-round" style="font-size:14px">call</span>
+        {{ user.phone }}
+      </div>
       {% endif %}
     </div>
   </div>
 
-  <hr style="border:none;border-top:1px solid #eee;margin-bottom:16px">
+  <hr class="divider">
 
+  {# ── Areas in charge ── #}
   <div style="margin-bottom:20px">
-    <div style="font-weight:600;color:#2d4a3e;margin-bottom:12px">Change Password</div>
+    <div style="font-weight:600;color:var(--brand-green);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+      <span class="material-icons-round" style="font-size:18px">domain</span>
+      Inventory Categories In Charge
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      {% if user.role == 'admin' %}
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-primary);padding:8px 10px;background:var(--bg);border-radius:var(--radius-sm)">
+          <span class="material-icons-round" style="font-size:16px;color:var(--brand-green)">admin_panel_settings</span>
+          All Categories (Full Access)
+        </div>
+      {% elif user.role == 'manager' or user.role == 'inventory_manager' %}
+        {% with cats="" %}
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-primary);padding:7px 10px;background:var(--bg);border-radius:var(--radius-sm)">
+          <span class="material-icons-round" style="font-size:15px;color:var(--brand-teal)">category</span>
+          Tools &amp; Equipment
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-primary);padding:7px 10px;background:var(--bg);border-radius:var(--radius-sm)">
+          <span class="material-icons-round" style="font-size:15px;color:var(--brand-teal)">category</span>
+          Consumables
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-primary);padding:7px 10px;background:var(--bg);border-radius:var(--radius-sm)">
+          <span class="material-icons-round" style="font-size:15px;color:var(--brand-teal)">category</span>
+          Cleaning Supplies
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-primary);padding:7px 10px;background:var(--bg);border-radius:var(--radius-sm)">
+          <span class="material-icons-round" style="font-size:15px;color:var(--brand-teal)">category</span>
+          Garden Equipment
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-primary);padding:7px 10px;background:var(--bg);border-radius:var(--radius-sm)">
+          <span class="material-icons-round" style="font-size:15px;color:var(--brand-teal)">category</span>
+          Housekeeping Supplies
+        </div>
+        {% endwith %}
+      {% elif user.role == 'supervisor' %}
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-primary);padding:7px 10px;background:var(--bg);border-radius:var(--radius-sm)">
+          <span class="material-icons-round" style="font-size:15px;color:var(--brand-teal)">category</span>
+          Consumables
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-primary);padding:7px 10px;background:var(--bg);border-radius:var(--radius-sm)">
+          <span class="material-icons-round" style="font-size:15px;color:var(--brand-teal)">category</span>
+          Cleaning Supplies
+        </div>
+      {% else %}
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-primary);padding:7px 10px;background:var(--bg);border-radius:var(--radius-sm)">
+          <span class="material-icons-round" style="font-size:15px;color:var(--brand-teal)">category</span>
+          Housekeeping Supplies
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-primary);padding:7px 10px;background:var(--bg);border-radius:var(--radius-sm)">
+          <span class="material-icons-round" style="font-size:15px;color:var(--brand-teal)">category</span>
+          Cleaning Supplies
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  {# ── Change Password ── #}
+  <div style="margin-bottom:20px">
+    <div style="font-weight:600;color:var(--brand-green);margin-bottom:12px;display:flex;align-items:center;gap:6px">
+      <span class="material-icons-round" style="font-size:18px">lock</span>
+      Change Password
+    </div>
     <form method="POST" action="{% url 'mobile_change_password' %}">
       {% csrf_token %}
-      <input type="password" name="current_password" placeholder="Current Password" required
-        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;
-        font-size:14px;box-sizing:border-box;margin-bottom:8px">
-      <input type="password" name="new_password" placeholder="New Password" required
-        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;
-        font-size:14px;box-sizing:border-box;margin-bottom:8px">
-      <input type="password" name="confirm_password" placeholder="Confirm New Password" required
-        style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;
-        font-size:14px;box-sizing:border-box;margin-bottom:12px">
-      <button type="submit"
-        style="width:100%;background:#2d4a3e;color:white;border:none;padding:12px;
-        border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">
+      <div style="margin-bottom:10px">
+        <input type="password" name="current_password" placeholder="Current Password" required class="input">
+      </div>
+      <div style="margin-bottom:10px">
+        <input type="password" name="new_password" placeholder="New Password" required class="input">
+      </div>
+      <div style="margin-bottom:14px">
+        <input type="password" name="confirm_password" placeholder="Confirm New Password" required class="input">
+      </div>
+      <button type="submit" class="btn btn-secondary btn-full">
+        <span class="material-icons-round" style="font-size:18px">lock_reset</span>
         Update Password
       </button>
     </form>
   </div>
 
-  <hr style="border:none;border-top:1px solid #eee;margin-bottom:16px">
+  <hr class="divider">
 
+  {# ── Logout ── #}
   <form method="POST" action="{% url 'mobile_logout' %}">
     {% csrf_token %}
-    <button type="submit" style="width:100%;background:#c2622a;color:white;border:none;padding:14px;
-      border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">
-      Logout
+    <button type="submit" class="btn btn-danger btn-full">
+      <span class="material-icons-round" style="font-size:18px">logout</span>
+      Sign Out
     </button>
   </form>
 </div>

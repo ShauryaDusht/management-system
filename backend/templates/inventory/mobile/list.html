@@ -1,45 +1,180 @@
 {% extends 'inventory/mobile/base_mobile.html' %}
 {% block title %}Inventory List{% endblock %}
-{% block header_title %}INVENTORY LIST{% endblock %}
-{% block back_button %}<a href="{% url 'mobile_dashboard' %}" style="color:white">&larr;</a>{% endblock %}
-{% block content %}
-  <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto">
-    <a href="?"><div style="background:{% if not selected_category %}#2d4a3e;color:white{% else %}white;color:#333{% endif %};padding:8px 16px;border-radius:8px;font-size:13px;white-space:nowrap">All {{ total_count }}</div></a>
-    {% for cat in categories %}
-    <a href="?category={{ cat.id }}"><div style="background:{% if selected_category == cat.id|stringformat:'s' %}#2d4a3e;color:white{% else %}white;color:#333{% endif %};padding:8px 16px;border-radius:8px;font-size:13px;white-space:nowrap">{{ cat.name }}</div></a>
-    {% endfor %}
-  </div>
-
-  {% for item in items %}
-  <div class="card" style="display:flex;justify-content:space-between;align-items:center">
-    <div style="display:flex;align-items:center;gap:10px">
-      <div style="width:28px;height:28px;background:{% if item.is_low_stock %}#f97316{% else %}#22c55e{% endif %};border-radius:4px"></div>
-      <div>
-        <div style="font-weight:600">{{ item.name }}</div>
-        <div style="color:#888;font-size:12px">{{ item.category.name }}</div>
-        {% if item.is_low_stock %}<span class="badge-low">Low Stock</span>{% endif %}
-      </div>
-    </div>
-    <div style="text-align:right">
-      <div style="font-size:22px;font-weight:800">{{ item.available_quantity }}</div>
-      <div style="font-size:12px;color:#888">{{ item.unit }}</div>
-    </div>
-  </div>
-  {% empty %}
-  <div style="color:#aaa;text-align:center;padding:40px">No items found</div>
-  {% endfor %}
+{% block header_title %}INVENTORY{% endblock %}
+{% block back_button %}
+<a href="{% url 'mobile_dashboard' %}" class="back-btn">
+  <span class="material-icons-round" style="font-size:20px">arrow_back</span>
+</a>
 {% endblock %}
 
-{% block bottom_bar %}
-<div style="position:fixed;bottom:0;left:0;right:0;background:white;padding:12px 16px;display:flex;gap:10px;box-shadow:0 -2px 8px rgba(0,0,0,0.1)">
-  {% if request.user.role == 'admin' or request.user.role == 'manager' or request.user.role == 'inventory_manager' %}
-  <a href="{% url 'mobile_dashboard' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Dashboard</button></a>
-  <a href="{% url 'mobile_reports' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Reports</button></a>
-  <a href="{% url 'mobile_issued_items' %}" style="flex:1"><button class="btn-primary" style="width:100%">Issued Items</button></a>
+{% block content %}
+
+{# ── Search bar ── #}
+<form method="GET" style="margin-bottom:12px">
+  {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
+  <div style="position:relative">
+    <span class="material-icons-round" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:20px">search</span>
+    <input type="text" name="search" value="{{ search_query|default:'' }}"
+      placeholder="Search items..." class="input"
+      style="padding-left:38px;height:42px">
+  </div>
+</form>
+
+{# ── Category filter chips ── #}
+<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none">
+  <a href="{% if search_query %}?search={{ search_query }}{% else %}?{% endif %}">
+    <div class="chip {% if not selected_category %}active{% endif %}">
+      <span class="material-icons-round" style="font-size:14px">all_inclusive</span>
+      All ({{ total_count }})
+    </div>
+  </a>
+  {% for cat in categories %}
+  <a href="?category={{ cat.id }}{% if search_query %}&search={{ search_query }}{% endif %}">
+    <div class="chip {% if selected_category == cat.id|stringformat:'s' %}active{% endif %}">
+      {{ cat.name }}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{# ── Low stock filter ── #}
+{% if low_stock_filter %}
+<div class="alert alert-warning" style="margin-bottom:12px">
+  <span class="material-icons-round" style="font-size:18px;flex-shrink:0">filter_list</span>
+  Showing low stock items only —
+  <a href="{% url 'mobile_inventory_list' %}" style="font-weight:700;text-decoration:underline;color:inherit;margin-left:4px">Clear filter</a>
+</div>
+{% endif %}
+
+{# ── Items list with pagination ── #}
+{% for item in items %}
+<a href="#item-{{ item.id }}" id="item-{{ item.id }}"
+   onclick="return expandItem({{ item.id }}, event)"
+   style="display:block">
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px"
+       id="item-card-{{ item.id }}" {% if highlight_id == item.id|stringformat:'s' %}class="card item-highlight"{% endif %}>
+    <div style="display:flex;align-items:center;gap:12px;min-width:0">
+      <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+        {% if item.status == 'out_of_stock' %}background:#fee2e2{% elif item.status == 'low_stock' %}background:#fff7ed{% else %}background:#f0fdf4{% endif %}">
+        <span class="material-icons-round" style="font-size:22px;
+          {% if item.status == 'out_of_stock' %}color:#ef4444{% elif item.status == 'low_stock' %}color:var(--brand-orange){% else %}color:#22c55e{% endif %}">
+          {% if item.item_type == 'asset' %}hardware{% else %}science{% endif %}
+        </span>
+      </div>
+      <div style="min-width:0">
+        <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.name }}</div>
+        <div style="color:var(--text-secondary);font-size:12px;margin-top:1px">{{ item.category.name }}</div>
+        <div style="margin-top:4px">
+          {% if item.status == 'out_of_stock' %}
+            <span class="badge badge-out"><span class="material-icons-round" style="font-size:10px">cancel</span>Out of Stock</span>
+          {% elif item.status == 'low_stock' %}
+            <span class="badge badge-low"><span class="material-icons-round" style="font-size:10px">warning</span>Low Stock</span>
+          {% else %}
+            <span class="badge badge-ok"><span class="material-icons-round" style="font-size:10px">check_circle</span>In Stock</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div style="text-align:right;flex-shrink:0;margin-left:8px">
+      <div style="font-size:24px;font-weight:800;color:var(--brand-green);line-height:1">{{ item.available_quantity }}</div>
+      <div style="font-size:11px;color:var(--text-muted)">{{ item.unit }}</div>
+    </div>
+  </div>
+</a>
+{# ── Expanded item detail (hidden by default) ── #}
+<div id="item-detail-{{ item.id }}" style="display:none;margin-top:-6px;margin-bottom:10px">
+  <div class="card" style="border-top:3px solid var(--brand-green);border-radius:0 0 var(--radius-md) var(--radius-md);padding:14px 16px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+      <div style="text-align:center;background:var(--bg);padding:10px;border-radius:8px">
+        <div style="font-size:11px;color:var(--text-muted)">Available</div>
+        <div style="font-weight:700;font-size:18px;color:var(--brand-green)">{{ item.available_quantity }}</div>
+      </div>
+      <div style="text-align:center;background:var(--bg);padding:10px;border-radius:8px">
+        <div style="font-size:11px;color:var(--text-muted)">Total</div>
+        <div style="font-weight:700;font-size:18px;color:var(--text-primary)">{{ item.total_quantity }}</div>
+      </div>
+      <div style="text-align:center;background:var(--bg);padding:10px;border-radius:8px">
+        <div style="font-size:11px;color:var(--text-muted)">Threshold</div>
+        <div style="font-weight:700;font-size:18px;color:var(--brand-orange)">{{ item.threshold_quantity }}</div>
+      </div>
+    </div>
+    {% if item.description %}
+    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;line-height:1.5">{{ item.description }}</div>
+    {% endif %}
+    {% if item.location %}
+    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)">
+      <span class="material-icons-round" style="font-size:14px">location_on</span> {{ item.location }}
+    </div>
+    {% endif %}
+    {% if request.user.role != 'admin' and request.user.role != 'manager' and request.user.role != 'inventory_manager' %}
+    <a href="{% url 'mobile_request_form' %}?item={{ item.id }}" style="display:block;margin-top:12px">
+      <button class="btn btn-primary btn-full">
+        <span class="material-icons-round" style="font-size:18px">add_shopping_cart</span>
+        Request This Item
+      </button>
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% empty %}
+<div class="empty-state">
+  <span class="material-icons-round">inventory_2</span>
+  <div class="empty-title">No items found</div>
+  <div class="empty-sub">Try a different search or category</div>
+</div>
+{% endfor %}
+
+{# ── Pagination ── #}
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+  {% if page_obj.has_previous %}
+  <a href="?page={{ page_obj.previous_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if low_stock_filter %}&low_stock=true{% endif %}">
+    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span></button>
+  </a>
   {% else %}
-  <a href="{% url 'mobile_dashboard' %}" style="flex:1"><button class="btn-secondary" style="width:100%">Dashboard</button></a>
-  <a href="{% url 'mobile_my_requests' %}" style="flex:1"><button class="btn-secondary" style="width:100%">My Requests</button></a>
-  <a href="{% url 'mobile_request_form' %}" style="flex:1"><button class="btn-primary" style="width:100%">+ Request Item</button></a>
+  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_left</span></button>
+  {% endif %}
+
+  <span style="font-size:13px;color:var(--text-secondary)">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+  {% if page_obj.has_next %}
+  <a href="?page={{ page_obj.next_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if low_stock_filter %}&low_stock=true{% endif %}">
+    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  </a>
+  {% else %}
+  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
   {% endif %}
 </div>
+{% endif %}
+
+<script>
+// Expand/collapse item details inline
+function expandItem(id, event) {
+  event.preventDefault();
+  const detail = document.getElementById('item-detail-' + id);
+  const isOpen = detail.style.display !== 'none';
+  // Close all open ones first
+  document.querySelectorAll('[id^="item-detail-"]').forEach(el => { el.style.display = 'none'; });
+  if (!isOpen) {
+    detail.style.display = 'block';
+    detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+// Auto-highlight item if deep-linked from notification
+document.addEventListener('DOMContentLoaded', function () {
+  const params = new URLSearchParams(window.location.search);
+  const highlightId = params.get('highlight');
+  if (highlightId) {
+    const card = document.getElementById('item-card-' + highlightId);
+    if (card) {
+      card.classList.add('item-highlight');
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Auto-expand
+      const detail = document.getElementById('item-detail-' + highlightId);
+      if (detail) detail.style.display = 'block';
+    }
+  }
+});
+</script>
 {% endblock %}
