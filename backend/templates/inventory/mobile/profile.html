@@ -81,11 +81,12 @@
 
   <hr style="border:none;border-top:1px solid #eee;margin-bottom:16px">
 
-  <a href="{% url 'mobile_logout' %}">
-    <button type="button" style="width:100%;background:#c2622a;color:white;border:none;padding:14px;
+  <form method="POST" action="{% url 'mobile_logout' %}">
+    {% csrf_token %}
+    <button type="submit" style="width:100%;background:#c2622a;color:white;border:none;padding:14px;
       border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">
       Logout
     </button>
-  </a>
+  </form>
 </div>
 {% endblock %}

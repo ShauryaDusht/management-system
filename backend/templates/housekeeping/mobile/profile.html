@@ -40,5 +40,8 @@
   </form>
 </div>
 
-<a href="/housekeeping/logout/"><button class="btn-p" style="margin-top:4px">Logout</button></a>
+<form method="post" action="/housekeeping/logout/" style="margin-top:4px">
+  {% csrf_token %}
+  <button type="submit" class="btn-p">Logout</button>
+</form>
 {% endblock %}
