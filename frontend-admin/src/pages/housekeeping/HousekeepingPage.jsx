@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 
 import { useAuth } from '../../context/AuthContext'
-import { Btn, Tabs } from '../../components/ui'
+import { Tabs } from '../../components/ui'
 import AdminLayout from '../../layout/AdminLayout'
 import AttendanceTab from './AttendanceTab'
 import AssignInventoryTab from './AssignInventoryTab'
@@ -30,22 +30,6 @@ export default function HousekeepingPage() {
     <AdminLayout
       title="Housekeeping Administration"
       subtitle="Tasks, sections, caretakers, attendance, and inventory assignment"
-      actions={
-        <>
-          <Btn
-            variant="secondary"
-            onClick={() => window.alert('Weekly report export is available in this module overview.')}
-          >
-            Generate Weekly Report
-          </Btn>
-          <Btn
-            variant="orange"
-            onClick={() => window.alert('Monthly report export is available in this module overview.')}
-          >
-            Generate Monthly Report
-          </Btn>
-        </>
-      }
     >
       <div style={{ marginBottom: 14 }}>
         <Tabs tabs={tabs} active={active} onChange={setActive} />

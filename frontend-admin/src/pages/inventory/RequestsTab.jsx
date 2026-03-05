@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { asList } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
 import {
   Alert,
@@ -14,12 +15,7 @@ import {
   Tabs,
 } from '../../components/ui'
 
-function asList(data) {
-  if (Array.isArray(data)) return data
-  if (Array.isArray(data?.results)) return data.results
-  if (Array.isArray(data?.items)) return data.items
-  return []
-}
+
 
 export default function RequestsTab({ userRole }) {
   const [loading, setLoading] = useState(true)

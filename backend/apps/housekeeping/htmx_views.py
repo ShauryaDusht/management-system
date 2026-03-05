@@ -1,4 +1,6 @@
 import datetime
+import functools
+import logging
 
 from django.contrib.auth import (
     authenticate,
@@ -10,6 +12,8 @@ from django.db import models as dm
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 
 from .models import (
     HKAlert,
@@ -25,6 +29,8 @@ from .models import (
     HKUserArea,
     HKWorker,
 )
+
+logger = logging.getLogger(__name__)
 
 ATTENDANCE_CHOICES = [
     ("present", "Present", "#d1fae5", "#065f46"),
@@ -49,14 +55,16 @@ def get_user_areas(user):
 
 
 def hk_required(fn):
+    @functools.wraps(fn)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect(f"/housekeeping/login/?next={request.path}")
+        # deactivated users must not pass through even if role matches
+        if not request.user.is_active:
+            return redirect("/housekeeping/login/")
         if request.user.role not in ["admin", "manager", "supervisor", "caretaker"]:
             return redirect("/housekeeping/login/")
         return fn(request, *args, **kwargs)
-
-    wrapper.__name__ = fn.__name__
     return wrapper
 
 
@@ -76,6 +84,8 @@ def get_today_records(area, date):
     saturday_special templates run only on Saturday.
     sunday_extra templates run only on Sunday.
     """
+    from django.db import IntegrityError, transaction
+
     dow = date.weekday()  # 0=Mon, 6=Sun
     templates = HKScheduleTemplate.objects.filter(area=area, is_active=True, frequency="daily")
     if dow == 5:
@@ -85,8 +95,28 @@ def get_today_records(area, date):
         sunday_qs = HKScheduleTemplate.objects.filter(area=area, is_active=True, frequency="sunday_extra")
         templates = (templates | sunday_qs).distinct()
 
-    for tmpl in templates.order_by("worker_tag", "order", "start_time"):
-        HKDailyRecord.objects.get_or_create(schedule=tmpl, area=area, date=date)
+    template_list = list(templates.order_by("worker_tag", "order", "start_time"))
+
+    # Find which templates already have a record for today in one query
+    existing_schedule_ids = set(
+        HKDailyRecord.objects.filter(
+            area=area, date=date, schedule__in=template_list
+        ).values_list("schedule_id", flat=True)
+    )
+
+    # Only create records for templates that don't have one yet
+    missing = [t for t in template_list if t.pk not in existing_schedule_ids]
+    if missing:
+        with transaction.atomic():
+            for tmpl in missing:
+                try:
+                    HKDailyRecord.objects.get_or_create(
+                        schedule=tmpl, area=area, date=date
+                    )
+                except IntegrityError:
+                    # Another concurrent request created this row between our
+                    # check and insert — safe to ignore, record already exists.
+                    pass
 
     return HKDailyRecord.objects.filter(area=area, date=date).select_related(
         "schedule", "completed_by"
@@ -104,16 +134,33 @@ def get_active_alerts(user, user_areas):
         dm.Q(expires_at__isnull=True) | dm.Q(expires_at__gt=now)
     ).filter(
         dm.Q(target_areas__isnull=True) | dm.Q(target_areas__in=user_areas)
-    ).distinct()
+    ).prefetch_related("target_areas").distinct()
 
 
 def hk_login(request):
     if request.user.is_authenticated and request.user.role in ["supervisor", "caretaker", "admin", "manager"]:
         return redirect("/housekeeping/dashboard/")
-    next_url = request.GET.get("next", "/housekeeping/dashboard/")
+
+    # validate next URL before use
+    next_url = "/housekeeping/dashboard/"
+    raw_next = request.GET.get("next", "").strip()
+    if raw_next and url_has_allowed_host_and_scheme(
+        url=raw_next,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        next_url = raw_next
+
     error = ""
     if request.method == "POST":
-        next_url = request.POST.get("next", "/housekeeping/dashboard/")
+        raw_post_next = request.POST.get("next", "").strip()
+        if raw_post_next and url_has_allowed_host_and_scheme(
+            url=raw_post_next,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            next_url = raw_post_next
+
         user = authenticate(
             request,
             username=request.POST.get("username", "").strip(),
@@ -126,6 +173,8 @@ def hk_login(request):
     return render(request, "housekeeping/mobile/login.html", {"error": error, "next": next_url})
 
 
+# require POST for logout to prevent CSRF-style logout via GET
+@require_POST
 def hk_logout(request):
     auth_logout(request)
     return redirect("/housekeeping/login/")
@@ -259,10 +308,17 @@ def hk_log_extra_work(request):
     user_areas = get_user_areas(user)
     area_id = request.POST.get("area_id")
     area = user_areas.filter(pk=area_id).first() or user_areas.first()
+
+    # reject blank task_name after stripping whitespace
+    task_name = request.POST.get("task_name", "").strip()
+    if not task_name:
+        param = f"?area={area.id}&error=task_name_required" if area else "?error=task_name_required"
+        return redirect(f"/housekeeping/dashboard/{param}")
+
     extra = HKExtraWork(
         area=area,
         date=timezone.localdate(),
-        task_name=request.POST.get("task_name", "").strip(),
+        task_name=task_name,
         description=request.POST.get("description", "").strip(),
         worker_name=request.POST.get("worker_name", "").strip(),
         logged_by=user,
@@ -505,7 +561,18 @@ def hk_sunday_incharge(request):
     user = request.user
     user_areas = get_user_areas(user)
     today = timezone.localdate()
-    upcoming = today + datetime.timedelta(days=(6 - today.weekday()) % 7 or 7)
+
+    # correctly calculate the upcoming Sunday from any day of the week.
+    # today.weekday(): Mon=0 … Sat=5, Sun=6
+    # On Saturday (5): days_ahead = 1  ✓
+    # On Sunday  (6): days_ahead = 7  → next Sunday (correct, current Sunday is today)
+    # On Monday  (0): days_ahead = 6  ✓
+    days_until_sunday = (6 - today.weekday()) % 7
+    if days_until_sunday == 0:
+        # It is already Sunday — target next Sunday
+        days_until_sunday = 7
+    upcoming = today + datetime.timedelta(days=days_until_sunday)
+
     area_id = request.POST.get("area_id")
     area = user_areas.filter(pk=area_id).first()
     worker = get_object_or_404(HKWorker, pk=request.POST.get("worker_id"))
@@ -564,6 +631,8 @@ def hk_stock_request(request):
             reason=request.POST.get("reason", "").strip(),
             is_urgent=request.POST.get("is_urgent") == "on",
         )
+
+        # FIX HK-01: log inventory request creation failures instead of silently swallowing them
         if inv_item:
             try:
                 inv_req = InvItemRequest.objects.create(
@@ -576,7 +645,13 @@ def hk_stock_request(request):
                 hk_req.inventory_request = inv_req
                 hk_req.save(update_fields=["inventory_request"])
             except Exception:
-                pass
+                # Log the error so it appears in server logs; the HKStockRequest
+                # is saved but inventory_request will be None — ops team can reconcile.
+                logger.exception(
+                    "Failed to create InvItemRequest for HKStockRequest pk=%s item=%s",
+                    hk_req.pk,
+                    inv_item.pk,
+                )
 
         return redirect(f"/housekeeping/stock/?requested=1&area={area.id if area else ''}")
 
@@ -604,8 +679,9 @@ def hk_profile(request):
                 error = "Current password is incorrect."
             elif new != conf:
                 error = "Passwords do not match."
-            elif len(new) < 6:
-                error = "Minimum 6 characters required."
+            elif len(new) < 8:
+                # align to Django's default minimum of 8
+                error = "Minimum 8 characters required."
             else:
                 user.set_password(new)
                 user.save()

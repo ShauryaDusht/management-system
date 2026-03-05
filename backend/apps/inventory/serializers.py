@@ -2,21 +2,12 @@ from rest_framework import serializers
 from .models import Category, Item, ItemRequest, ItemIssue, StockEntry
 
 
-# Standard pagination class used by all list views
-# Set in each ViewSet/ListAPIView via pagination_class = StandardPagination.
-# Returns: { count, next, previous, results: [...] }
-from rest_framework.pagination import PageNumberPagination
-
-class StandardPagination(PageNumberPagination):
-    page_size = 25
-    page_size_query_param = 'page_size'
-    max_page_size = 200
+# Plan to remove this shim in a future cleanup once all callers are updated.
+from .pagination import StandardPagination
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    # IMPROVEMENT 19 FIX: replaced SerializerMethodField (N+1 query per category)
-    # with an annotated IntegerField. The view must annotate the queryset with
-    # annotate(item_count=Count('items')) for this to work without extra queries.
+    # Uses annotated item_count from the view queryset — no per-category query.
     item_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
@@ -28,8 +19,6 @@ class ItemSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     status = serializers.ReadOnlyField()
     is_below_threshold = serializers.ReadOnlyField()
-    is_low_stock = serializers.SerializerMethodField()
-    # show the user that cost data is missing rather than silently showing ₹0.00
     unit_cost_missing = serializers.SerializerMethodField()
 
     class Meta:
@@ -38,19 +27,13 @@ class ItemSerializer(serializers.ModelSerializer):
             'id', 'name', 'category', 'category_name', 'item_type', 'unit',
             'total_quantity', 'available_quantity', 'threshold_quantity',
             'unit_cost', 'unit_cost_missing', 'description', 'location', 'status',
-            'is_below_threshold', 'is_low_stock', 'created_at', 'updated_at',
+            'is_below_threshold', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
-    def get_is_low_stock(self, obj):
-        return obj.available_quantity <= obj.threshold_quantity
-
     def get_unit_cost_missing(self, obj):
-        # True when unit_cost is null — frontend/reports can display a warning
         return obj.unit_cost is None
 
-
-# ── StockEntry serializer ──────────────────────────────────────────────────────
 
 class StockEntrySerializer(serializers.ModelSerializer):
     added_by_name = serializers.CharField(source='added_by.get_full_name', read_only=True)
@@ -78,7 +61,9 @@ class ItemRequestSerializer(serializers.ModelSerializer):
     item_unit = serializers.CharField(source='item.unit', read_only=True)
     item_type = serializers.CharField(source='item.item_type', read_only=True)
     item_description = serializers.CharField(source='item.description', read_only=True)
-    is_low_stock = serializers.SerializerMethodField()
+
+    is_low_stock = serializers.BooleanField(source='item.is_below_threshold', read_only=True)
+
     reviewed_by = serializers.PrimaryKeyRelatedField(source='approved_by', read_only=True)
     reviewed_by_name = serializers.SerializerMethodField()
 
@@ -107,9 +92,6 @@ class ItemRequestSerializer(serializers.ModelSerializer):
 
     def get_requester_phone(self, obj):
         return getattr(obj.requested_by, 'phone', '') or ''
-
-    def get_is_low_stock(self, obj):
-        return obj.item.available_quantity <= obj.item.threshold_quantity
 
     def get_reviewed_by_name(self, obj):
         if obj.approved_by:

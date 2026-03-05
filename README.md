@@ -6,16 +6,10 @@ This repository contains a Dockerized management system with:
 - Inventory workflows (API + mobile HTMX pages)
 - PostgreSQL + Redis
 
-## Project Structure
+## Module Documentation
 
-- `backend/` — Django project and APIs
-- `frontend-admin/` — React admin UI
-- `backend/apps/inventory/README.md` — inventory module endpoints + role-wise functionality
-
-## Prerequisites
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose)
-- Git
+- Inventory: [`backend/apps/inventory/README.md`](backend/apps/inventory/README.md)
+- Housekeeping: [`backend/apps/housekeeping/README.md`](backend/apps/housekeeping/README.md)
 
 ## Quick Start (Docker)
 
@@ -65,7 +59,7 @@ This repository contains a Dockerized management system with:
 | Django Admin | http://localhost:8000/admin/ |
 | React Admin Frontend | http://localhost:5173 |
 | Inventory Mobile (HTMX) | http://localhost:8000/inventory/mobile/ |
-| http://localhost:8000/housekeeping/login/ |
+| Housekeeping Mobile (HTMX) | http://localhost:8000/housekeeping/login/ |
 
 ## Contribution Workflow (Required)
 
@@ -88,4 +82,4 @@ Direct commits to protected branches are not allowed. Every change must go throu
 
 - Backend runs DB migrations automatically at startup.
 - Static files are collected automatically at startup.
-- See inventory-specific documentation here: [`backend/apps/inventory/README.md`](backend/apps/inventory/README.md)
+- Housekeeping module docs include HTMX + API coverage: [`backend/apps/housekeeping/README.md`](backend/apps/housekeeping/README.md)

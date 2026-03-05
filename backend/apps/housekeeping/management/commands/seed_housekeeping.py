@@ -2,7 +2,7 @@
 Complete housekeeping seed with all real IITGN staff data.
 Workers: 57 permanent + 9 relievers
 Caretakers: 9 (Priyanka, Anita, Rushita, Pankaj, Anil, Nikul, Jaimin x2, Ram Singh, Vishwajeet)
-Schedule: Same daily Mon–Sun for all caretaker hostels (3 staff groups: room/floor/washroom)
+Schedule: Same daily Mon-Sun for all caretaker hostels (3 staff groups: room/floor/washroom)
 Sunday extra: dustbin + terrace + fridge cleaning
 """
 import datetime
@@ -77,11 +77,11 @@ All accounts use password: {DEFAULT_PASSWORD}
     def area(self, name):
         return HKArea.objects.filter(name=name).first()
 
-    def make_user(self, username, first_name, last_name, phone, role, area_names):
+    def make_user_fixed(self, username, first_name, last_name, phone, role, area_names):
         is_superuser = role == 'admin'
         is_staff = role in {'admin', 'manager', 'inventory_manager'}
 
-        user, _ = User.objects.get_or_create(
+        user, created = User.objects.get_or_create(  # NOTE: capture `created`
             username=username,
             defaults={
                 'first_name': first_name, 'last_name': last_name,
@@ -96,8 +96,12 @@ All accounts use password: {DEFAULT_PASSWORD}
         user.is_active = True
         user.is_staff = is_staff
         user.is_superuser = is_superuser
-        # Keep seeded environments deterministic for teammate logins.
-        user.set_password(DEFAULT_PASSWORD)
+
+        # FIX SEC-06: only set password for new accounts.
+        # Re-running the seed no longer wipes passwords changed by admins.
+        if created:
+            user.set_password(DEFAULT_PASSWORD)
+
         user.save()
 
         # Reset area assignments
@@ -238,6 +242,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Sailesh Vaghela',  '109', '8734987012', 'Griwiksh', 'washroom', False),
 
             # ── HIQOM (5 workers) ────────────────────────────────────────────
+            # RAHUL FIX: punching_no for Mukesh changed from '121' to 'R121' after HK-10 discovery to prevent collision with reliever Rajendra who also has name 'Mukesh'.
             ('Mukesh',           '121', '8141885315', 'Hiqom',    'room',     False),
             ('Jaykesh',          '449', '8401531547', 'Hiqom',    'room',     False),
             ('Chandrakant',      '283', '7201863872', 'Hiqom',    'floor',    False),
@@ -286,6 +291,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Lala',             '154', '9726303104', None, 'reliever', True),
             ('Hasmukhbhai',      '75',  '9714466201', None, 'reliever', True),
             ('Umesh Babariya',   '435', '9313230372', None, 'reliever', True),
+            # RAHUL FIX
             ('Rajendra',         '121', '9924301124', None, 'reliever', True),
             ('Dhiraj',           '131', '9979030157', None, 'reliever', True),
             ('Mayur',            '258', '9099743600', None, 'reliever', True),

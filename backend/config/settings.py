@@ -26,7 +26,6 @@ INSTALLED_APPS = [
     'apps.inventory',
     'apps.core',
     'apps.reports',
-    'apps.horticulture',
     'apps.housekeeping',
 ]
 
@@ -63,11 +62,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     "default": {
-        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
+        "ENGINE": "django.db.backends.postgresql",
         "NAME": os.getenv("DB_NAME", "inventory_db"),
         "USER": os.getenv("DB_USER", "postgres"),
         "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", "localhost"),
+        "HOST": os.getenv("DB_HOST", "db"),
         "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
@@ -86,13 +85,13 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
-LOGIN_URL = '/inventory/mobile/login/'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -112,5 +111,7 @@ SIMPLE_JWT = {
 
 CORS_ALLOWED_ORIGINS = os.getenv(
     'CORS_ALLOWED_ORIGINS',
-    'http://localhost:5173'
+    'http://localhost:5173,http://127.0.0.1:5173'
 ).split(',')
+
+LOGIN_URL = '/housekeeping/login/'

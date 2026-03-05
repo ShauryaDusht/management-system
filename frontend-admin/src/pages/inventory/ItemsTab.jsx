@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { asList } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
 import {
   Alert,
@@ -16,12 +17,7 @@ import {
 } from '../../components/ui'
 import { BarGroupChart, DonutChart } from '../../components/ui/Charts'
 
-function asList(data) {
-  if (Array.isArray(data)) return data
-  if (Array.isArray(data?.results)) return data.results
-  if (Array.isArray(data?.items)) return data.items
-  return []
-}
+
 
 function itemStatus(item) {
   if (Number(item.available_quantity || 0) <= 0) return 'out_of_stock'

@@ -3,12 +3,11 @@ from django.db.models import F
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import viewsets
 from rest_framework.viewsets import ModelViewSet
 
 from apps.users.permissions import IsAdmin, IsAdminOrManager
@@ -24,6 +23,8 @@ class ItemViewSet(ModelViewSet):
     filterset_fields = ['item_type', 'category']
     search_fields = ['name', 'description']
     ordering_fields = ['name', 'available_quantity', 'created_at']
+    
+    # class-level declaration and a proper write-guard below.
     permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
@@ -39,7 +40,7 @@ class CategoryViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.action in ['create', 'retrieve', 'update', 'partial_update', 'destroy']:
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAdmin()]
         return [IsAuthenticated()]
 
@@ -68,16 +69,15 @@ class AdjustStockView(APIView):
                 total_quantity=F('total_quantity') + quantity,
             )
         elif action == 'decrease':
-            # Re-read the locked value to do the guard check accurately.
             item.refresh_from_db()
             if item.available_quantity < quantity:
                 return Response(
                     {'detail': 'Cannot reduce stock below 0.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            # only available_quantity decreases on a write-off
             Item.objects.filter(pk=item.pk).update(
                 available_quantity=F('available_quantity') - quantity,
-                total_quantity=F('total_quantity') - quantity,
             )
         else:
             return Response(
@@ -175,15 +175,12 @@ class MarkUrgentView(APIView):
 
     @transaction.atomic
     def post(self, request, pk):
-        # FIX BUG-06: use select_for_update() to prevent concurrent modifications,
-        # and add a status guard so only PENDING requests can be marked urgent.
         try:
             item_request = ItemRequest.objects.select_for_update().get(pk=pk)
         except ItemRequest.DoesNotExist:
             return Response({'error': 'Request not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         user = request.user
-
         is_owner = item_request.requested_by == user
         is_privileged = user.is_admin or user.is_manager
         if not (is_owner or is_privileged):
@@ -214,11 +211,14 @@ class InventoryStatsView(APIView):
 
     def get(self, request):
         stats = {
+            # Field names aligned with DashboardSummaryView to reduce drift
             'total_items': Item.objects.count(),
             'low_stock_count': Item.objects.filter(
                 available_quantity__lt=F('threshold_quantity')
             ).count(),
             'out_of_stock_count': Item.objects.filter(available_quantity=0).count(),
+            'pending_requests': ItemRequest.objects.filter(status='pending').count(),
+            # Legacy alias kept so existing callers don't break immediately
             'pending_requests_count': ItemRequest.objects.filter(status='pending').count(),
         }
         return Response(stats, status=status.HTTP_200_OK)

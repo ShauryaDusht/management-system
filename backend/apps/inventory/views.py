@@ -102,15 +102,25 @@ class LowStockItemsView(APIView):
 class ItemHistoryView(APIView):
     permission_classes = [IsAdmin]
 
+    # Max rows fetched per source table per request
+    _MAX_PER_SOURCE = 200
+
     def get(self, request, pk):
         try:
             item = Item.objects.get(pk=pk)
         except Item.DoesNotExist:
             return Response({'detail': 'Item not found.'}, status=404)
 
+        try:
+            page = max(1, int(request.query_params.get('page', 1)))
+            page_size = min(200, max(1, int(request.query_params.get('page_size', 50))))
+        except (TypeError, ValueError):
+            page = 1
+            page_size = 50
+
         events = []
 
-        for entry in StockEntry.objects.filter(item=item).select_related('added_by'):
+        for entry in StockEntry.objects.filter(item=item).select_related('added_by').order_by('-added_at')[:self._MAX_PER_SOURCE]:
             events.append({
                 'type': 'stock_added',
                 'date': entry.added_at.isoformat(),
@@ -120,9 +130,12 @@ class ItemHistoryView(APIView):
                 'detail': entry.notes or 'Stock replenished',
             })
 
-        issues = ItemIssue.objects.filter(
-            request__item=item
-        ).select_related('request__requested_by', 'issued_by', 'return_recorded_by')
+        issues = (
+            ItemIssue.objects
+            .filter(request__item=item)
+            .select_related('request__requested_by', 'issued_by', 'return_recorded_by')
+            .order_by('-issued_at')[:self._MAX_PER_SOURCE]
+        )
 
         for issue in issues:
             supervisor = issue.request.requested_by.get_full_name() or issue.request.requested_by.username
@@ -154,12 +167,23 @@ class ItemHistoryView(APIView):
                 })
 
         events.sort(key=lambda e: e['_sort_dt'], reverse=True)
-        for event in events:
+        total_count = len(events)
+
+        # Slice to the requested page
+        start = (page - 1) * page_size
+        end = start + page_size
+        page_events = events[start:end]
+
+        for event in page_events:
             del event['_sort_dt']
 
         return Response({
             'item': ItemSerializer(item).data,
-            'events': events,
+            'total_count': total_count,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': max(1, (total_count + page_size - 1) // page_size),
+            'events': page_events,
         })
 
 
