@@ -8,6 +8,9 @@ export const hkAPI = {
     api.get('/housekeeping/attendance-summary/', { params: { date } }),
   getDailyRecords: (areaId, date) =>
     api.get('/housekeeping/daily-records/', { params: { area: areaId, date } }),
+  assignAreaTask: (payload) => api.post('/housekeeping/assign-area-task/', payload),
+  promoteTaskToDaily: (recordId) =>
+    api.post('/housekeeping/promote-task-to-daily/', { record_id: recordId }),
   getScheduleTemplates: (areaId) =>
     api.get('/housekeeping/schedule-templates/', { params: { area: areaId } }),
   getStockRequests: () => api.get('/housekeeping/stock-requests/'),

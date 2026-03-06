@@ -1,4 +1,6 @@
-from django.db.models import Count, Q
+from datetime import timedelta
+
+from django.db.models import Count, Max, Q
 from django.utils import timezone
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -68,10 +70,25 @@ class HKDailyRecordListView(ListAPIView):
     def get_queryset(self):
         qs = HKDailyRecord.objects.select_related('schedule', 'area', 'assigned_worker', 'assigned_by')
         area = self.request.query_params.get('area')
-        date = self.request.query_params.get('date', str(timezone.localdate()))
+        date_str = self.request.query_params.get('date', str(timezone.localdate()))
+
+        try:
+            parsed_date = timezone.datetime.strptime(date_str, '%Y-%m-%d').date()
+        except (TypeError, ValueError):
+            parsed_date = timezone.localdate()
+
         if area:
-            qs = qs.filter(area_id=area)
-        return qs.filter(date=date)
+            area_obj = HKArea.objects.filter(pk=area).first()
+            if area_obj:
+                # Keep REST behavior consistent with HTMX mobile: ensure
+                # today's daily records exist before listing them.
+                from .htmx_views import get_today_records
+                get_today_records(area_obj, parsed_date)
+                qs = qs.filter(area=area_obj)
+            else:
+                return qs.none()
+
+        return qs.filter(date=parsed_date)
 
 
 class HKScheduleTemplateListView(ListAPIView):
@@ -170,6 +187,128 @@ class HKAlertListView(ListAPIView):
 
     def get_queryset(self):
         return HKAlert.objects.filter(is_active=True).order_by('-created_at')[:20]
+
+
+class HKAssignAreaTaskView(APIView):
+    """
+    Admin/manager assigns a one-time area-level task for today.
+    The task is created under worker_tag='all' and appears in mobile "Special" tab.
+    """
+    permission_classes = [IsAdminOrManager]
+
+    def post(self, request):
+        area_id = request.data.get('area_id')
+        task_name = (request.data.get('task_name') or '').strip()
+        note = (request.data.get('note') or '').strip()
+        task_mode = str(request.data.get('task_mode') or 'temporary').strip().lower()
+
+        if not area_id:
+            return Response({'detail': 'area_id is required.'}, status=400)
+        if not task_name:
+            return Response({'detail': 'task_name is required.'}, status=400)
+        if task_mode not in {'temporary', 'permanent'}:
+            return Response({'detail': 'task_mode must be temporary or permanent.'}, status=400)
+
+        area = HKArea.objects.filter(pk=area_id, is_active=True).first()
+        if not area:
+            return Response({'detail': 'Area not found.'}, status=404)
+
+        try:
+            period_minutes = int(request.data.get('period_minutes') or 60)
+        except (TypeError, ValueError):
+            period_minutes = 60
+        period_minutes = max(30, min(period_minutes, 240))
+
+        requires_photo_raw = str(request.data.get('requires_photo', '')).strip().lower()
+        requires_photo = requires_photo_raw in {'1', 'true', 'yes', 'on'}
+        add_to_daily_raw = str(request.data.get('add_to_daily', '')).strip().lower()
+        add_to_daily = add_to_daily_raw in {'1', 'true', 'yes', 'on'}
+
+        now = timezone.localtime()
+        start_dt = now.replace(second=0, microsecond=0)
+        end_dt = start_dt + timedelta(minutes=period_minutes)
+
+        assigned_by_name = request.user.get_full_name() or request.user.username
+        desc = f"Admin assigned by {assigned_by_name} | mode={task_mode}"
+        if note:
+            desc = f"{desc} | {note}"
+        if task_mode == 'permanent' and not add_to_daily:
+            desc = f"{desc} | pending_daily_promotion=1"
+
+        next_order = (
+            HKScheduleTemplate.objects
+            .filter(area=area)
+            .aggregate(m=Max('order'))
+            .get('m') or 0
+        ) + 1
+
+        is_active = bool(task_mode == 'permanent' and add_to_daily)
+
+        schedule = HKScheduleTemplate.objects.create(
+            area=area,
+            order=next_order,
+            start_time=start_dt.time(),
+            end_time=end_dt.time(),
+            task_name=task_name,
+            task_description=desc,
+            worker_tag='all',
+            requires_photo=requires_photo,
+            frequency='daily',
+            is_active=is_active,
+        )
+
+        record = HKDailyRecord.objects.create(
+            schedule=schedule,
+            area=area,
+            date=timezone.localdate(),
+            status='pending',
+            assigned_by=request.user,
+            assigned_at=timezone.now(),
+            note=note,
+        )
+
+        return Response(
+            {
+                'record': HKDailyRecordSerializer(record).data,
+                'task_mode': task_mode,
+                'added_to_daily': is_active,
+                'can_promote_to_daily': bool(task_mode == 'permanent' and not is_active),
+            },
+            status=201,
+        )
+
+
+class HKPromoteTaskToDailyView(APIView):
+    """
+    Promote an existing special task record into the daily schedule.
+    This makes the same task appear automatically every day going forward.
+    """
+    permission_classes = [IsAdminOrManager]
+
+    def post(self, request):
+        record_id = request.data.get('record_id')
+        if not record_id:
+            return Response({'detail': 'record_id is required.'}, status=400)
+
+        record = HKDailyRecord.objects.select_related('schedule', 'area').filter(pk=record_id).first()
+        if not record:
+            return Response({'detail': 'Task record not found.'}, status=404)
+
+        schedule = record.schedule
+        if schedule.worker_tag != 'all':
+            return Response({'detail': 'Only special tasks can be promoted to daily schedule.'}, status=400)
+
+        schedule.is_active = True
+        schedule.frequency = 'daily'
+        schedule.save(update_fields=['is_active', 'frequency'])
+
+        return Response(
+            {
+                'record': HKDailyRecordSerializer(record).data,
+                'promoted': True,
+            },
+            status=200,
+        )
 
 
 class HKDashboardSummaryView(APIView):

@@ -1,25 +1,38 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { Alert, Badge, Btn, Card, DataTable, Spinner } from '../../components/ui'
-
-function weekdayName(date) {
-  return date.toLocaleDateString('en-IN', { weekday: 'short' })
-}
+import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
 
 export default function OverviewTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [areas, setAreas] = useState([])
+  const [success, setSuccess] = useState('')
   const [rows, setRows] = useState([])
 
-  const load = async () => {
-    setLoading(true)
-    setError('')
+  const [assignArea, setAssignArea] = useState(null)
+  const [assignSaving, setAssignSaving] = useState(false)
+  const [promoteSaving, setPromoteSaving] = useState(false)
+  const [pendingPromotion, setPendingPromotion] = useState(null)
+  const loadInProgressRef = useRef(false)
+  const [assignForm, setAssignForm] = useState({
+    task_name: '',
+    period_minutes: '60',
+    task_mode: 'temporary',
+    add_to_daily: false,
+    requires_photo: true,
+    note: '',
+  })
+
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (loadInProgressRef.current) return
+    loadInProgressRef.current = true
+    if (!silent) {
+      setLoading(true)
+      setError('')
+    }
     try {
       const { data: areaData } = await hkAPI.getAreas()
       const areaList = Array.isArray(areaData) ? areaData : areaData?.results || []
-      setAreas(areaList)
       const today = new Date().toISOString().slice(0, 10)
       const recResults = await Promise.all(
         areaList.map(async (a) => {
@@ -29,8 +42,9 @@ export default function OverviewTab() {
           } catch {
             return { area: a, records: [] }
           }
-        })
+        }),
       )
+
       const mapped = recResults.map(({ area, records }) => {
         const completed = records.filter((r) => r.status === 'done').length
         const pending = records.filter((r) => r.status === 'pending').length
@@ -38,38 +52,148 @@ export default function OverviewTab() {
         return {
           area_id: area.id,
           area: area.name,
+          area_type: area.area_type,
           pending,
           skipped,
           completed,
-          supervisor: (area.caretakers || []).join(', ') || '—',
+          total: records.length,
+          supervisor_caretaker: (area.caretakers || []).join(', ') || '-',
         }
       })
-      setRows(mapped)
+
+      const sorted = [...mapped].sort((a, b) => {
+        const aHostel = a.area_type === 'hostel' ? 0 : 1
+        const bHostel = b.area_type === 'hostel' ? 0 : 1
+        if (aHostel !== bHostel) return aHostel - bHostel
+        if (a.area_type !== b.area_type) return String(a.area_type).localeCompare(String(b.area_type))
+        return a.area.localeCompare(b.area)
+      })
+
+      setRows(sorted)
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed to load housekeeping overview.')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
+      loadInProgressRef.current = false
     }
-  }
+  }, [])
 
   useEffect(() => {
     load()
-  }, [])
+    const timer = setInterval(() => {
+      load({ silent: true })
+    }, 10000)
+    return () => clearInterval(timer)
+  }, [load])
 
-  const totals = useMemo(() => {
-    return rows.reduce(
-      (acc, r) => ({
-        pending: acc.pending + r.pending,
-        skipped: acc.skipped + r.skipped,
-        completed: acc.completed + r.completed,
-      }),
-      { pending: 0, skipped: 0, completed: 0 }
-    )
-  }, [rows])
+  const openAssignModal = (row) => {
+    setAssignArea(row)
+    setAssignForm({
+      task_name: '',
+      period_minutes: '60',
+      task_mode: 'temporary',
+      add_to_daily: false,
+      requires_photo: true,
+      note: '',
+    })
+  }
+
+  const submitAssignTask = async () => {
+    if (!assignArea) return
+    if (!assignForm.task_name.trim()) {
+      setError('Task name is required.')
+      return
+    }
+
+    setAssignSaving(true)
+    setError('')
+    setSuccess('')
+    try {
+      const { data } = await hkAPI.assignAreaTask({
+        area_id: assignArea.area_id,
+        task_name: assignForm.task_name.trim(),
+        period_minutes: Number(assignForm.period_minutes || 60),
+        task_mode: assignForm.task_mode,
+        add_to_daily: !!assignForm.add_to_daily,
+        requires_photo: !!assignForm.requires_photo,
+        note: assignForm.note.trim(),
+      })
+      setAssignArea(null)
+      const rec = data?.record || null
+      if (data?.can_promote_to_daily && rec) {
+        setPendingPromotion({
+          record_id: rec.id,
+          area: rec.area_name,
+          task_name: rec.task_name,
+        })
+        setSuccess(`Permanent task created in Special for ${assignArea.area}.`)
+      } else if (data?.added_to_daily) {
+        setPendingPromotion(null)
+        setSuccess(`Task assigned and added to daily schedule in ${assignArea.area}.`)
+      } else {
+        setPendingPromotion(null)
+        setSuccess(`Task assigned in ${assignArea.area}.`)
+      }
+      await load()
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Failed to assign task.')
+    } finally {
+      setAssignSaving(false)
+    }
+  }
+
+  const promoteToDaily = async () => {
+    if (!pendingPromotion?.record_id) return
+    setPromoteSaving(true)
+    setError('')
+    setSuccess('')
+    try {
+      await hkAPI.promoteTaskToDaily(pendingPromotion.record_id)
+      setSuccess(`Task "${pendingPromotion.task_name}" promoted to daily schedule.`)
+      setPendingPromotion(null)
+      await load()
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Failed to promote task to daily schedule.')
+    } finally {
+      setPromoteSaving(false)
+    }
+  }
+
+  const totals = useMemo(
+    () =>
+      rows.reduce(
+        (acc, r) => ({
+          pending: acc.pending + r.pending,
+          skipped: acc.skipped + r.skipped,
+          completed: acc.completed + r.completed,
+          total: acc.total + r.total,
+        }),
+        { pending: 0, skipped: 0, completed: 0, total: 0 },
+      ),
+    [rows],
+  )
 
   return (
     <div>
       <Alert message={error} />
+      <Alert message={success} type="success" />
+      {pendingPromotion ? (
+        <Card style={{ marginBottom: 12, borderColor: '#fed7aa', background: '#fff7ed' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+            <div style={{ fontSize: 13, color: '#9a3412' }}>
+              Permanent task ready for daily schedule:
+              {' '}
+              <strong>{pendingPromotion.task_name}</strong>
+              {' '}
+              ({pendingPromotion.area})
+            </div>
+            <Btn variant="orange" size="sm" onClick={promoteToDaily} disabled={promoteSaving}>
+              {promoteSaving ? 'Adding...' : 'Add to Daily Schedule'}
+            </Btn>
+          </div>
+        </Card>
+      ) : null}
+
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
           <Spinner />
@@ -81,19 +205,31 @@ export default function OverviewTab() {
               Today's Running Tasks
             </div>
             <DataTable
-              // column renamed from 'Ongoing' to 'Skipped'
-              headers={['Hostel/Block', 'Pending', 'Skipped', 'Completed', 'Supervisor']}
+              headers={[
+                'Hostel/Block',
+                'Pending',
+                'Skipped',
+                'Completed',
+                'Total Work',
+                'Supervisor/Caretaker',
+                'Assign Task',
+              ]}
               rows={rows.map((r) => [
                 r.area,
-                <span key={`p-${r.area_id}`}><Badge value="pending" style={{ marginRight: 6 }} />{r.pending}</span>,
-                <span key={`s-${r.area_id}`}><Badge value="skipped" style={{ marginRight: 6 }} />{r.skipped}</span>,
-                <span key={`c-${r.area_id}`}><Badge value="completed" style={{ marginRight: 6 }} />{r.completed}</span>,
+                <strong key={`p-${r.area_id}`}>{r.pending}</strong>,
+                <strong key={`s-${r.area_id}`}>{r.skipped}</strong>,
+                <strong key={`c-${r.area_id}`}>{r.completed}</strong>,
+                <strong key={`t-${r.area_id}`}>{r.total}</strong>,
                 <span key={`sup-${r.area_id}`} style={{ fontSize: 12 }}>
-                  {r.supervisor}
+                  {r.supervisor_caretaker}
                 </span>,
+                <Btn key={`a-${r.area_id}`} size="sm" variant="orange" onClick={() => openAssignModal(r)}>
+                  + Assign
+                </Btn>,
               ])}
             />
           </Card>
+
           <Card>
             <div style={{ fontWeight: 700, marginBottom: 10 }}>Report Trends</div>
             <div
@@ -110,7 +246,7 @@ export default function OverviewTab() {
                 borderRadius: 8,
               }}
             >
-              <span style={{ fontSize: 24 }}>📊</span>
+              <span style={{ fontSize: 24 }}>Chart</span>
               <div style={{ textAlign: 'center' }}>Historical trend data not yet available</div>
               <div style={{ fontSize: 11, textAlign: 'center' }}>
                 This chart will populate once daily records accumulate
@@ -122,6 +258,9 @@ export default function OverviewTab() {
 
       <Card style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 13 }}>
+            Total <strong>{totals.total}</strong> Tasks
+          </div>
           <div style={{ fontSize: 13 }}>
             Completed <strong>{totals.completed}</strong> Tasks
           </div>
@@ -137,6 +276,107 @@ export default function OverviewTab() {
           </div>
         </div>
       </Card>
+
+      <Modal
+        open={!!assignArea}
+        onClose={() => setAssignArea(null)}
+        title={`Assign Task - ${assignArea?.area || ''}`}
+        footer={
+          <>
+            <Btn variant="ghost" onClick={() => setAssignArea(null)}>
+              Cancel
+            </Btn>
+            <Btn variant="orange" onClick={submitAssignTask} disabled={assignSaving}>
+              {assignSaving ? 'Assigning...' : 'Assign Task'}
+            </Btn>
+          </>
+        }
+      >
+        <Field label="Task Name" required>
+          <Input
+            value={assignForm.task_name}
+            onChange={(e) => setAssignForm((p) => ({ ...p, task_name: e.target.value }))}
+            placeholder="e.g. Urgent corridor deep cleaning"
+          />
+        </Field>
+
+        <Field label="Work Duration">
+          <SelectField
+            value={assignForm.period_minutes}
+            onChange={(e) => setAssignForm((p) => ({ ...p, period_minutes: e.target.value }))}
+          >
+            <option value="30">30 min</option>
+            <option value="60">1 hour</option>
+            <option value="120">2 hours</option>
+            <option value="180">3 hours</option>
+          </SelectField>
+        </Field>
+
+        <Field label="Task Type">
+          <SelectField
+            value={assignForm.task_mode}
+            onChange={(e) =>
+              setAssignForm((p) => ({
+                ...p,
+                task_mode: e.target.value,
+                add_to_daily: e.target.value === 'temporary' ? false : p.add_to_daily,
+              }))
+            }
+          >
+            <option value="temporary">Temporary (Special only)</option>
+            <option value="permanent">Permanent</option>
+          </SelectField>
+        </Field>
+
+        {assignForm.task_mode === 'permanent' ? (
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              marginTop: 2,
+              marginBottom: 10,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={assignForm.add_to_daily}
+              onChange={(e) => setAssignForm((p) => ({ ...p, add_to_daily: e.target.checked }))}
+            />
+            Add to Daily Schedule now
+          </label>
+        ) : null}
+
+        <Field label="Notes (Optional)">
+          <Input
+            value={assignForm.note}
+            onChange={(e) => setAssignForm((p) => ({ ...p, note: e.target.value }))}
+            placeholder="Any special instruction..."
+          />
+        </Field>
+
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 13,
+            fontWeight: 600,
+            color: 'var(--text-2)',
+            marginTop: 4,
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={assignForm.requires_photo}
+            onChange={(e) => setAssignForm((p) => ({ ...p, requires_photo: e.target.checked }))}
+          />
+          Require after-photo on completion
+        </label>
+      </Modal>
     </div>
   )
 }

@@ -6,7 +6,6 @@ import { Tabs } from '../../components/ui'
 import AdminLayout from '../../layout/AdminLayout'
 import AttendanceTab from './AttendanceTab'
 import AssignInventoryTab from './AssignInventoryTab'
-import CaretakersTab from './CaretakersTab'
 import OverviewTab from './OverviewTab'
 import SectionsTab from './SectionsTab'
 import WorkersTab from './WorkersTab'
@@ -18,8 +17,7 @@ export default function HousekeepingPage() {
   const tabs = useMemo(
     () => [
       { key: 'overview', label: 'Overview', icon: 'HK' },
-      { key: 'sections', label: 'Sections / Areas', icon: 'AR' },
-      { key: 'caretakers', label: 'Caretakers', icon: 'CT' },
+      { key: 'directory', label: 'Sections + Staff', icon: 'AR/CT' },
       { key: 'workers', label: 'Workers', icon: 'WK' },
       { key: 'attendance', label: 'Attendance', icon: 'AT' },
       { key: 'assign_stock', label: 'Assign Inventory', icon: 'ST' },
@@ -28,13 +26,17 @@ export default function HousekeepingPage() {
   )
 
   const validTabs = useMemo(() => tabs.map((t) => t.key), [tabs])
-  const initialTab = searchParams.get('tab')
+  const mapLegacyTab = (tab) => {
+    if (tab === 'sections' || tab === 'caretakers') return 'directory'
+    return tab
+  }
+  const initialTab = mapLegacyTab(searchParams.get('tab'))
   const [active, setActive] = useState(
     initialTab && validTabs.includes(initialTab) ? initialTab : 'overview'
   )
 
   useEffect(() => {
-    const tab = searchParams.get('tab')
+    const tab = mapLegacyTab(searchParams.get('tab'))
     if (tab && validTabs.includes(tab) && tab !== active) {
       setActive(tab)
     }
@@ -50,15 +52,14 @@ export default function HousekeepingPage() {
   return (
     <AdminLayout
       title="Housekeeping Administration"
-      subtitle="Tasks, sections, caretakers, attendance, and inventory assignment"
+      subtitle="Tasks, sections, staff directory, attendance, and inventory assignment"
     >
       <div style={{ marginBottom: 14 }}>
         <Tabs tabs={tabs} active={active} onChange={onTabChange} />
       </div>
 
       {active === 'overview' && <OverviewTab />}
-      {active === 'sections' && <SectionsTab />}
-      {active === 'caretakers' && <CaretakersTab />}
+      {active === 'directory' && <SectionsTab />}
       {active === 'workers' && <WorkersTab />}
       {active === 'attendance' && <AttendanceTab />}
       {active === 'assign_stock' && <AssignInventoryTab userRole={user?.role} />}

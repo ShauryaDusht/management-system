@@ -193,6 +193,11 @@ def hk_dashboard(request):
     for rec in records:
         tag = rec.schedule.worker_tag or "general"
         grouped.setdefault(tag, []).append(rec)
+    # Keep worker-group keys stable so mobile tabs render consistently.
+    grouped.setdefault("floor", [])
+    grouped.setdefault("room", [])
+    grouped.setdefault("washroom", [])
+    grouped.setdefault("all", [])
 
     area_name = sel_area.name if sel_area else ""
     is_common_area = area_name == "Common Area"
@@ -273,11 +278,9 @@ def hk_dashboard(request):
         "heading_floor": heading_floor,
         "heading_room": heading_room,
         "heading_washroom": heading_washroom,
-        "has_special_tasks": bool(
-            sel_area and HKScheduleTemplate.objects.filter(
-                area=sel_area, is_active=True, worker_tag="all"
-            ).exists()
-        ),
+        # Product requirement: Special tab should be visible in all HK dashboards.
+        # It can be empty by default and then receive admin-assigned area tasks.
+        "has_special_tasks": bool(sel_area),
         "can_assign_tasks": user.role in ["admin", "manager", "supervisor", "caretaker"],
     })
 

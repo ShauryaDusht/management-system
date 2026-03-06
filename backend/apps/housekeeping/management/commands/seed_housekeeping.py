@@ -91,7 +91,14 @@ All accounts use password: {DEFAULT_PASSWORD}
         )
         user.first_name = first_name
         user.last_name = last_name
-        user.phone = phone
+        # Phone sync policy:
+        # - New users: apply seed phone (or blank).
+        # - Existing users: fill only if DB phone is blank.
+        # This keeps admin-edited phones stable across restarts.
+        if created:
+            user.phone = phone or ''
+        elif phone and not user.phone:
+            user.phone = phone
         user.role = role
         user.is_active = True
         user.is_staff = is_staff
@@ -135,15 +142,15 @@ All accounts use password: {DEFAULT_PASSWORD}
 
         # Supervisors (campus sections)
         supervisors = [
-            ('ashok.rathod', 'Ashok', 'Rathod', '', ['Guest House New', 'Director Bungalow']),
-            ('kaushik.parmar', 'Kaushik', 'Parmar', '', ['Academic Blocks 10-13']),
-            ('shailesh.prajapati', 'Shailesh', 'Prajapati', '', ['Academic Blocks 10-13']),
-            ('maulik.patel', 'Maulik', 'Patel', '', ['Research Park']),
-            ('bharat.solanki', 'Bharat', 'Solanki', '', ['Sports Complex', 'Central Arcade']),
-            ('mukesh.vaghela', 'Mukesh', 'Vaghela', '', ['Academic Blocks 1-9']),
-            ('bipin.vaghela', 'Bipin', 'Vaghela', '', ['Academic Blocks 1-9']),
-            ('narendra.shreemali', 'Narendra', 'Shreemali', '', ['Roads & Outdoor', 'Guest House Old RB']),
-            ('pradip.swm', 'Pradip', '', '', ['Solid Waste Management']),
+            ('ashok.rathod', 'Ashok', 'Rathod', '7016722524', ['Guest House New', 'Director Bungalow']),
+            ('kaushik.parmar', 'Kaushik', 'Parmar', '9825504802', ['Academic Blocks 10-13']),
+            ('shailesh.prajapati', 'Shailesh', 'Prajapati', '9898477320', ['Academic Blocks 10-13']),
+            ('maulik.patel', 'Maulik', 'Patel', '8758363879', ['Research Park']),
+            ('bharat.solanki', 'Bharat', 'Solanki', '8511764551', ['Sports Complex', 'Central Arcade']),
+            ('mukesh.vaghela', 'Mukesh', 'Vaghela', '9265591836', ['Academic Blocks 1-9']),
+            ('bipin.vaghela', 'Bipin', 'Vaghela', '9979627312', ['Academic Blocks 1-9']),
+            ('narendra.shreemali', 'Narendra', 'Shreemali', '9898661986', ['Roads & Outdoor', 'Guest House Old RB']),
+            ('pradip.swm', 'Pradip', '', '8200560889', ['Solid Waste Management']),
         ]
         for username, first, last, phone, areas in supervisors:
             self.make_user(username, first, last, phone, 'supervisor', areas)
@@ -156,10 +163,10 @@ All accounts use password: {DEFAULT_PASSWORD}
         These users are intentionally area-agnostic and can access module dashboards.
         """
         accounts = [
-            ('admin', 'Admin', '', '', 'admin', []),
+            ('admin', 'Admin', '', '9727757096', 'admin', []),
             ('estate.manager', 'Estate', 'Manager', '', 'manager', []),
             ('hostel.manager', 'Hostel', 'Manager', '', 'manager', []),
-            ('inv.manager', 'Inventory', 'Manager', '', 'inventory_manager', []),
+            ('inv.manager', 'Inventory', 'Manager', '8758120645', 'inventory_manager', []),
         ]
         for username, first, last, phone, role, areas in accounts:
             self.make_user(username, first, last, phone, role, areas)
