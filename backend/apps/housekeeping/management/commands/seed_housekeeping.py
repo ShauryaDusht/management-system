@@ -56,6 +56,16 @@ All accounts use password: {DEFAULT_PASSWORD}
         for name in hostel_names:
             HKArea.objects.get_or_create(name=name, defaults={'area_type': 'hostel'})
 
+        # Data migration-on-seed:
+        # Rename legacy "Common Area" to "Hostel Common Area" so existing DBs
+        # and fresh setups stay aligned with current nomenclature.
+        legacy_common = HKArea.objects.filter(name='Common Area').first()
+        if legacy_common and not HKArea.objects.filter(name='Hostel Common Area').exists():
+            legacy_common.name = 'Hostel Common Area'
+            legacy_common.area_type = 'hostel'
+            legacy_common.is_active = True
+            legacy_common.save(update_fields=['name', 'area_type', 'is_active'])
+
         other_areas = [
             ('Research Park', 'research_park'),
             ('Central Arcade', 'central_arcade'),
@@ -65,12 +75,34 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Guest House New', 'guesthouse'),
             ('Guest House Old RB', 'guesthouse'),
             ('Director Bungalow', 'director'),
-            ('Academic Blocks 1-9', 'academic'),
-            ('Academic Blocks 10-13', 'academic'),
-            ('Common Area', 'other'),
+            ('Academic Block 1', 'academic'),
+            ('Academic Block 2', 'academic'),
+            ('Academic Block 3', 'academic'),
+            ('Academic Block 4', 'academic'),
+            ('Academic Block 5', 'academic'),
+            ('Academic Block 6', 'academic'),
+            ('Academic Block 7', 'academic'),
+            ('Academic Block 8', 'academic'),
+            ('Academic Block 9', 'academic'),
+            ('Academic Block 10', 'academic'),
+            ('Academic Block 11', 'academic'),
+            ('Academic Block 12', 'academic'),
+            ('Academic Block 13', 'academic'),
+            ('Academic Common Area', 'academic'),
+            ('New AB U-Shape', 'academic'),
+            ('New Academy', 'academic'),
+            ('Hostel Common Area', 'hostel'),
         ]
         for name, atype in other_areas:
             HKArea.objects.get_or_create(name=name, defaults={'area_type': atype})
+
+        # Ensure Hostel Common Area is always treated as a hostel segment
+        # even on existing databases where older seeds set it as "other".
+        HKArea.objects.filter(name='Hostel Common Area').update(area_type='hostel', is_active=True)
+
+        # Legacy consolidated academic records are kept inactive for history,
+        # but excluded from active dashboards and assignments.
+        HKArea.objects.filter(name__in=['Academic Blocks 1-9', 'Academic Blocks 10-13']).update(is_active=False)
 
         self.stdout.write(f'  ✓ Areas: {HKArea.objects.count()}')
 
@@ -135,7 +167,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('nikul.caretaker', 'Nikul', '', '9714730290', ['Hiqom']),
             ('jaimin', 'Jaimin', '', '7600738945', ['Jurqia', 'Lekhaag']),
             ('ramsingh', 'Ram Singh', '', '9687460280', ['Kyzeel']),
-            ('vishwajeet', 'Vishwajeet', '', '9898037530', ['Common Area']),
+            ('vishwajeet', 'Vishwajeet', '', '9898037530', ['Hostel Common Area']),
         ]
         for username, first, last, phone, areas in caretakers:
             self.make_user(username, first, last, phone, 'caretaker', areas)
@@ -143,12 +175,12 @@ All accounts use password: {DEFAULT_PASSWORD}
         # Supervisors (campus sections)
         supervisors = [
             ('ashok.rathod', 'Ashok', 'Rathod', '7016722524', ['Guest House New', 'Director Bungalow']),
-            ('kaushik.parmar', 'Kaushik', 'Parmar', '9825504802', ['Academic Blocks 10-13']),
-            ('shailesh.prajapati', 'Shailesh', 'Prajapati', '9898477320', ['Academic Blocks 10-13']),
+            ('kaushik.parmar', 'Kaushik', 'Parmar', '9825504802', ['Academic Block 12', 'Academic Block 13', 'New Academy']),
+            ('shailesh.prajapati', 'Shailesh', 'Prajapati', '9898477320', ['Academic Block 10', 'Academic Block 11', 'New AB U-Shape']),
             ('maulik.patel', 'Maulik', 'Patel', '8758363879', ['Research Park']),
             ('bharat.solanki', 'Bharat', 'Solanki', '8511764551', ['Sports Complex', 'Central Arcade']),
-            ('mukesh.vaghela', 'Mukesh', 'Vaghela', '9265591836', ['Academic Blocks 1-9']),
-            ('bipin.vaghela', 'Bipin', 'Vaghela', '9979627312', ['Academic Blocks 1-9']),
+            ('mukesh.vaghela', 'Mukesh', 'Vaghela', '9265591836', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Academic Block 8']),
+            ('bipin.vaghela', 'Bipin', 'Vaghela', '9979627312', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Academic Common Area']),
             ('narendra.shreemali', 'Narendra', 'Shreemali', '9898661986', ['Roads & Outdoor', 'Guest House Old RB']),
             ('pradip.swm', 'Pradip', '', '8200560889', ['Solid Waste Management']),
         ]
@@ -276,12 +308,12 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Mehul Jadeja',     '106', '7096229284', 'Kyzeel',   'washroom', False),
 
             # ── COMMON AREA ─────────────────────────────────────────────────
-            ('Yogesh Vaghela',   '80',  '9998100804', 'Common Area', 'room',    False),
-            ('Vinayak Solanki',  '240', '9023271834', 'Common Area', 'washroom', False),
-            ('Anil Thakur',      '542', '9265665289', 'Common Area', 'floor',   False),
-            ('Suresh',           '',    '',            'Common Area', 'floor',   False),
-            ('Krunal',           '',    '',            'Common Area', 'floor',   False),
-            ('Ketan Gujjar',     '100', '8347139138', 'Common Area', 'reliever', True),
+            ('Yogesh Vaghela',   '80',  '9998100804', 'Hostel Common Area', 'room',    False),
+            ('Vinayak Solanki',  '240', '9023271834', 'Hostel Common Area', 'washroom', False),
+            ('Anil Thakur',      '542', '9265665289', 'Hostel Common Area', 'floor',   False),
+            ('Suresh',           '',    '',            'Hostel Common Area', 'floor',   False),
+            ('Krunal',           '',    '',            'Hostel Common Area', 'floor',   False),
+            ('Ketan Gujjar',     '100', '8347139138', 'Hostel Common Area', 'reliever', True),
 
             # ── RESEARCH PARK ───────────────────────────────────────────────
             ('Mahesh Solanki',     '', '7046959603', 'Research Park', 'floor',    False),
@@ -393,7 +425,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             'Ketan Gujjar': 'day',
         }
         for worker_name, shift in common_shift_map.items():
-            worker = HKWorker.objects.filter(name=worker_name, area=self.area('Common Area')).first()
+            worker = HKWorker.objects.filter(name=worker_name, area=self.area('Hostel Common Area')).first()
             if worker:
                 worker.shift = shift
                 worker.supervisor = common_supervisor
@@ -513,7 +545,7 @@ All accounts use password: {DEFAULT_PASSWORD}
         Build schedule templates.
         - Same daily schedule for all 12 caretaker hostels (room/floor/washroom).
         - Sunday extras for hostels.
-        - Dedicated daily Common Area schedule for Vishwajeet and team.
+        - Dedicated daily Hostel Common Area schedule for Vishwajeet and team.
         Three parallel staff groups: room / floor / washroom
         """
         # Wipe old hostel templates and recreate fresh
@@ -623,8 +655,8 @@ All accounts use password: {DEFAULT_PASSWORD}
                 )
                 total += 1
 
-        # Common Area: same schedule for all 7 days (no separate Sunday-only plan)
-        common_area = self.area('Common Area')
+        # Hostel Common Area: same schedule for all 7 days (no separate Sunday-only plan)
+        common_area = self.area('Hostel Common Area')
         if common_area:
             HKScheduleTemplate.objects.filter(area=common_area).delete()
 

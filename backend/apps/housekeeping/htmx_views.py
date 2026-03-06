@@ -219,7 +219,7 @@ def hk_dashboard(request):
     grouped.setdefault("all", [])
 
     area_name = sel_area.name if sel_area else ""
-    is_common_area = area_name == "Common Area"
+    is_common_area = area_name == "Hostel Common Area"
     is_research_park = area_name == "Research Park"
     is_central_arcade = area_name == "Central Arcade"
     is_sports_complex = area_name == "Sports Complex"
@@ -505,7 +505,7 @@ def hk_schedule(request):
     user_areas = get_user_areas(user)
     sel_area = selected_area(request, user_areas)
     area_name = sel_area.name if sel_area else ""
-    is_common_area = area_name == "Common Area"
+    is_common_area = area_name == "Hostel Common Area"
     is_research_park = area_name == "Research Park"
     is_central_arcade = area_name == "Central Arcade"
     is_sports_complex = area_name == "Sports Complex"

@@ -8,6 +8,7 @@ export default function OverviewTab() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [rows, setRows] = useState([])
+  const [areaClassFilter, setAreaClassFilter] = useState('all')
 
   const [assignArea, setAssignArea] = useState(null)
   const [assignSaving, setAssignSaving] = useState(false)
@@ -22,6 +23,15 @@ export default function OverviewTab() {
     requires_photo: true,
     note: '',
   })
+
+  const areaGroup = (areaName, areaType) => {
+    const n = String(areaName || '').trim()
+    if (/^Academic Block\s+([1-9]|1[0-3])$/i.test(n)) return 'academic'
+    if (['Academic Common Area', 'New AB U-Shape', 'New Academy'].includes(n)) return 'academic'
+    if (['hostel common area', 'common area'].includes(n.toLowerCase())) return 'hostels'
+    if (areaType === 'hostel') return 'hostels'
+    return 'others'
+  }
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (loadInProgressRef.current) return
@@ -61,11 +71,27 @@ export default function OverviewTab() {
         }
       })
 
+      const groupOrder = (areaName, areaType) => {
+        const g = areaGroup(areaName, areaType)
+        if (g === 'hostels') return 0
+        if (g === 'academic') return 1
+        return 2
+      }
+      const extractBlockNo = (name) => {
+        const m = String(name || '').match(/Academic Block\s+(\d+)/i)
+        return m ? Number(m[1]) : Number.POSITIVE_INFINITY
+      }
+
       const sorted = [...mapped].sort((a, b) => {
-        const aHostel = a.area_type === 'hostel' ? 0 : 1
-        const bHostel = b.area_type === 'hostel' ? 0 : 1
-        if (aHostel !== bHostel) return aHostel - bHostel
-        if (a.area_type !== b.area_type) return String(a.area_type).localeCompare(String(b.area_type))
+        const ga = groupOrder(a.area, a.area_type)
+        const gb = groupOrder(b.area, b.area_type)
+        if (ga !== gb) return ga - gb
+
+        if (ga === 1) {
+          const an = extractBlockNo(a.area)
+          const bn = extractBlockNo(b.area)
+          if (an !== bn) return an - bn
+        }
         return a.area.localeCompare(b.area)
       })
 
@@ -77,6 +103,15 @@ export default function OverviewTab() {
       loadInProgressRef.current = false
     }
   }, [])
+
+  const visibleRows = useMemo(
+    () => (
+      areaClassFilter === 'all'
+        ? rows
+        : rows.filter((r) => areaGroup(r.area, r.area_type) === areaClassFilter)
+    ),
+    [rows, areaClassFilter],
+  )
 
   useEffect(() => {
     load()
@@ -161,7 +196,7 @@ export default function OverviewTab() {
 
   const totals = useMemo(
     () =>
-      rows.reduce(
+      visibleRows.reduce(
         (acc, r) => ({
           pending: acc.pending + r.pending,
           skipped: acc.skipped + r.skipped,
@@ -170,7 +205,7 @@ export default function OverviewTab() {
         }),
         { pending: 0, skipped: 0, completed: 0, total: 0 },
       ),
-    [rows],
+    [visibleRows],
   )
 
   return (
@@ -201,28 +236,68 @@ export default function OverviewTab() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 14 }}>
           <Card noPad>
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700 }}>
-              Today's Running Tasks
+            <div
+              style={{
+                padding: '12px 16px',
+                borderBottom: '1px solid var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 10,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>Today's Running Tasks</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <Btn
+                  size="sm"
+                  variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'}
+                  onClick={() => setAreaClassFilter('hostels')}
+                >
+                  Hostels
+                </Btn>
+                <Btn
+                  size="sm"
+                  variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'}
+                  onClick={() => setAreaClassFilter('academic')}
+                >
+                  Academic Blocks
+                </Btn>
+                <Btn
+                  size="sm"
+                  variant={areaClassFilter === 'others' ? 'primary' : 'secondary'}
+                  onClick={() => setAreaClassFilter('others')}
+                >
+                  Others
+                </Btn>
+                <Btn
+                  size="sm"
+                  variant={areaClassFilter === 'all' ? 'primary' : 'secondary'}
+                  onClick={() => setAreaClassFilter('all')}
+                >
+                  All
+                </Btn>
+              </div>
             </div>
             <DataTable
               headers={[
-                'Hostel/Block',
+                'Area',
+                'Assigned To',
+                'Total Work',
                 'Pending',
                 'Skipped',
                 'Completed',
-                'Total Work',
-                'Supervisor/Caretaker',
                 'Assign Task',
               ]}
-              rows={rows.map((r) => [
+              rows={visibleRows.map((r) => [
                 r.area,
-                <strong key={`p-${r.area_id}`}>{r.pending}</strong>,
-                <strong key={`s-${r.area_id}`}>{r.skipped}</strong>,
-                <strong key={`c-${r.area_id}`}>{r.completed}</strong>,
-                <strong key={`t-${r.area_id}`}>{r.total}</strong>,
                 <span key={`sup-${r.area_id}`} style={{ fontSize: 12 }}>
                   {r.supervisor_caretaker}
                 </span>,
+                <strong key={`t-${r.area_id}`}>{r.total}</strong>,
+                <strong key={`p-${r.area_id}`}>{r.pending}</strong>,
+                <strong key={`s-${r.area_id}`}>{r.skipped}</strong>,
+                <strong key={`c-${r.area_id}`}>{r.completed}</strong>,
                 <Btn key={`a-${r.area_id}`} size="sm" variant="orange" onClick={() => openAssignModal(r)}>
                   + Assign
                 </Btn>,
