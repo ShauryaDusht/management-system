@@ -223,6 +223,8 @@ def hk_dashboard(request):
     is_research_park = area_name == "Research Park"
     is_central_arcade = area_name == "Central Arcade"
     is_sports_complex = area_name == "Sports Complex"
+    is_guest_house_new = area_name == "Guest House New"
+    is_director_bungalow = area_name == "Director Bungalow"
     is_swm = area_name == "Solid Waste Management"
     if is_common_area:
         tab_label_floor = "Route A"
@@ -252,6 +254,20 @@ def hk_dashboard(request):
         heading_floor = "Indoor and Evening Operations"
         heading_room = "Hall and Office Operations"
         heading_washroom = "Washroom and Pool Utility Operations"
+    elif is_guest_house_new:
+        tab_label_floor = "Ground/Canteen"
+        tab_label_room = "Room Ops"
+        tab_label_washroom = "Upper Floors"
+        heading_floor = "Ground Floor and Canteen Operations"
+        heading_room = "Room and Shift Operations"
+        heading_washroom = "Upper Floor and Washroom Operations"
+    elif is_director_bungalow:
+        tab_label_floor = "Outer Area"
+        tab_label_room = "Inside Ops"
+        tab_label_washroom = "WR Checks"
+        heading_floor = "Bungalow Surrounding and Garden Operations"
+        heading_room = "Inside Bungalow and Camp Office Operations"
+        heading_washroom = "Common Washroom and Kitchen Checks"
     elif is_swm:
         tab_label_floor = "Collection"
         tab_label_room = "Transport"
@@ -493,6 +509,8 @@ def hk_schedule(request):
     is_research_park = area_name == "Research Park"
     is_central_arcade = area_name == "Central Arcade"
     is_sports_complex = area_name == "Sports Complex"
+    is_guest_house_new = area_name == "Guest House New"
+    is_director_bungalow = area_name == "Director Bungalow"
     is_swm = area_name == "Solid Waste Management"
 
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -525,6 +543,8 @@ def hk_schedule(request):
         "is_research_park": is_research_park,
         "is_central_arcade": is_central_arcade,
         "is_sports_complex": is_sports_complex,
+        "is_guest_house_new": is_guest_house_new,
+        "is_director_bungalow": is_director_bungalow,
         "is_swm": is_swm,
         "weekly": weekly,
         "today_dow": timezone.localdate().weekday(),

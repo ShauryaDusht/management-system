@@ -309,6 +309,23 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Nikhil',             '', '7572829754', 'Sports Complex', 'general',  False),
             ('Ramesh Sports',      '', '9904319434', 'Sports Complex', 'general',  False),
 
+            # Guest House New
+            ('Pankaj Parmar',      '', '', 'Guest House New', 'floor',    False),
+            ('Hitesh Vaghela',     '', '', 'Guest House New', 'washroom', False),
+            ('Dhaval Jadeja',      '', '', 'Guest House New', 'room',     False),
+            ('Ajay Purabiya',      '', '', 'Guest House New', 'room',     False),
+            ('Sumit Solanki',      '', '', 'Guest House New', 'room',     False),
+            ('Shailesh Ravel',     '', '', 'Guest House New', 'washroom', False),
+            ('Sanjay Vaghela',     '', '', 'Guest House New', 'washroom', False),
+            ('Anil Thakor',        '', '', 'Guest House New', 'general',  False),
+            ('Gautam Parmar',      '', '', 'Guest House New', 'floor',    False),
+            ('Raju Chamar',        '', '', 'Guest House New', 'reliever', True),
+            ('Lalit Parmar',       '', '', 'Guest House New', 'reliever', True),
+
+            # Director Bungalow
+            ('Shailesh Vaghela',   '', '', 'Director Bungalow', 'general', False),
+            ('Rakesh Parmar',      '', '', 'Director Bungalow', 'general', False),
+
             # SWM (Solid Waste Management) - Biogas workers intentionally excluded
             ('Salesh bhai Thakur',    '', '9723045094', 'Solid Waste Management', 'swm', False),
             ('Satish bhai Raval',     '', '9157865695', 'Solid Waste Management', 'swm', False),
@@ -338,14 +355,14 @@ All accounts use password: {DEFAULT_PASSWORD}
         created_count = 0
         for name, punching_no, phone, area_name, wtype, is_reliever in workers:
             area = self.area(area_name) if area_name else None
-            _, created = HKWorker.objects.get_or_create(
+            worker, created = HKWorker.objects.get_or_create(
                 name=name,
+                area=area,
                 defaults={
                     'punching_no': punching_no,
                     'phone': phone,
                     'worker_type': wtype,
                     'shift': 'day',
-                    'area': area,
                     'is_active': True,
                     'is_reliever': is_reliever,
                 }
@@ -354,10 +371,16 @@ All accounts use password: {DEFAULT_PASSWORD}
                 created_count += 1
             else:
                 # Update phone/punching if changed
-                HKWorker.objects.filter(name=name).update(
-                    punching_no=punching_no, phone=phone,
-                    worker_type=wtype, area=area, is_reliever=is_reliever,
-                )
+                worker.punching_no = punching_no
+                worker.phone = phone
+                worker.worker_type = wtype
+                worker.is_reliever = is_reliever
+                worker.shift = worker.shift or 'day'
+                worker.is_active = True
+                worker.save(update_fields=[
+                    'punching_no', 'phone', 'worker_type',
+                    'is_reliever', 'shift', 'is_active',
+                ])
 
         # Common Area staffing details
         common_supervisor = User.objects.filter(username='vishwajeet').first()
@@ -426,6 +449,39 @@ All accounts use password: {DEFAULT_PASSWORD}
             if worker:
                 worker.shift = shift
                 worker.supervisor = bharat_supervisor
+                worker.save(update_fields=['shift', 'supervisor'])
+
+        # Guest House New + Director Bungalow staffing details
+        ashok_supervisor = User.objects.filter(username='ashok.rathod').first()
+        guest_house_shift_map = {
+            'Pankaj Parmar': 'day',
+            'Hitesh Vaghela': 'day',
+            'Dhaval Jadeja': 'day',
+            'Ajay Purabiya': 'day',
+            'Sumit Solanki': 'day',
+            'Shailesh Ravel': 'evening',
+            'Sanjay Vaghela': 'evening',
+            'Anil Thakor': 'night',
+            'Gautam Parmar': 'day',
+            'Raju Chamar': 'day',
+            'Lalit Parmar': 'day',
+        }
+        for worker_name, shift in guest_house_shift_map.items():
+            worker = HKWorker.objects.filter(name=worker_name, area=self.area('Guest House New')).first()
+            if worker:
+                worker.shift = shift
+                worker.supervisor = ashok_supervisor
+                worker.save(update_fields=['shift', 'supervisor'])
+
+        director_shift_map = {
+            'Shailesh Vaghela': 'day',
+            'Rakesh Parmar': 'day',
+        }
+        for worker_name, shift in director_shift_map.items():
+            worker = HKWorker.objects.filter(name=worker_name, area=self.area('Director Bungalow')).first()
+            if worker:
+                worker.shift = shift
+                worker.supervisor = ashok_supervisor
                 worker.save(update_fields=['shift', 'supervisor'])
 
         # SWM staffing details
@@ -974,6 +1030,170 @@ All accounts use password: {DEFAULT_PASSWORD}
                 )
                 total += 1
 
+        # Guest House New: worker-wise area and shift schedule
+        guest_house = self.area('Guest House New')
+        if guest_house:
+            HKScheduleTemplate.objects.filter(area=guest_house).delete()
+
+            gh_floor_tasks = [
+                (1, '07:00', '09:00', 'Pankaj: Ground Floor Office, Reception and Front Corridor', True, 'Dusting, sweeping and mopping'),
+                (2, '09:00', '11:00', 'Pankaj: Parking, Washroom and Lobby Touch Up', True, 'Ladies/Gents/Handicapped washroom, lobby and dining passage'),
+                (3, '11:00', '13:00', 'Pankaj: Front Glass, Lift and Ground Floor Final Round', True, ''),
+                (4, '13:00', '14:00', 'Pankaj: Lunch Break', False, ''),
+                (5, '14:00', '14:15', 'Pankaj: Washroom Touch Up', True, ''),
+                (6, '14:15', '14:45', 'Pankaj: Rooms Back Side Area Sweeping', True, ''),
+                (7, '14:45', '15:30', 'Pankaj: Gym Area and Equipment Dusting', True, ''),
+                (8, '15:30', '16:00', 'Pankaj: All Floor Coolers and Washroom Cleaning', True, ''),
+                (9, '07:00', '09:00', 'Gautam: Dining Hall, Front Area, Washroom and Kitchen', True, 'Canteen and Gate duty'),
+                (10, '09:00', '10:30', 'Gautam: Gate No. 01 Cleaning', True, ''),
+                (11, '10:30', '11:30', 'Gautam: Gate No. 02 Cleaning', True, ''),
+                (12, '11:30', '13:00', 'Gautam: Washroom and Kitchen Area Round 2', True, ''),
+                (13, '13:00', '14:00', 'Gautam: Lunch Break', False, ''),
+                (14, '14:00', '16:00', 'Gautam: Sewer Channel, Kitchen and Dustbin Washing', True, ''),
+            ]
+
+            gh_washroom_tasks = [
+                (1, '08:00', '09:00', 'Hitesh: 1st to 4th Floor Common Washroom Cleaning', True, ''),
+                (2, '09:00', '13:00', 'Hitesh: 1st to 4th Floor Lobby, Corridor and Railing', True, 'Dusting and sweeping'),
+                (3, '13:00', '14:00', 'Hitesh: Lunch Break', False, ''),
+                (4, '14:00', '16:00', 'Hitesh: 1st to 4th Floor Lobby and Corridor Sweeping', True, ''),
+                (5, '16:00', '17:00', 'Hitesh: Extra Work (Railing, Louver, Fountain Area)', True, ''),
+                (6, '13:00', '17:00', 'Shailesh + Sanjay: Staircase, Common Washroom, Dining and Open Hall', True, 'Evening washroom/staircase support'),
+            ]
+
+            gh_room_tasks = [
+                (1, '08:00', '17:00', 'Dhaval + Ajay + Sumit: Checkout/Occupied/Vacant Rooms', True, 'Morning room operations'),
+                (2, '17:00', '22:00', 'Shailesh + Sanjay: Evening Room Operations', True, 'Checkout/occupied/vacant room round'),
+                (3, '22:00', '07:00', 'Anil: Night Shift All Work Coverage', True, 'Dining hall, common hall, meeting hall, conference hall, washrooms and rooms'),
+            ]
+
+            gh_special_tasks = [
+                (1, '16:00', '16:20', 'Supervisor: Weekly Off and Reliever Roster Check', False,
+                 'Mon Pankaj->Lalit, Tue Hitesh->Lalit, Wed Dhaval->Lalit, Thu Ajay->Raju, Fri Sanjay->Lalit, Sat Shailesh->Lalit + Anil->Raju, Sun Sumit/Gautam->Lalit'),
+            ]
+
+            for order, start, end, name, req_photo, desc in gh_floor_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=guest_house, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='floor', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in gh_washroom_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=guest_house, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='washroom', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in gh_room_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=guest_house, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='room', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in gh_special_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=guest_house, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='all', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+        director_bungalow = self.area('Director Bungalow')
+        if director_bungalow:
+            HKScheduleTemplate.objects.filter(area=director_bungalow).delete()
+
+            db_floor_tasks = [
+                (1, '08:00', '09:00', "Around Director's Bungalow Cleaning", True, 'Sweeping, mopping and dusting'),
+                (2, '10:30', '11:30', 'Front/Backside + Garden + Natural Park Sweeping', True, ''),
+                (3, '12:00', '13:00', 'Servant Quarter (Ground and First) Alternate Cleaning', True, ''),
+                (4, '13:00', '14:00', 'Lunch Break', False, ''),
+                (5, '16:00', '16:30', 'Kitchen Area Cleaning', True, ''),
+            ]
+
+            db_room_tasks = [
+                (1, '09:00', '10:00', 'Inside Bungalow Cleaning', True, 'Sweeping, mopping and dusting'),
+                (2, '14:00', '15:00', 'Floor Alternate Cleaning', True, 'Sweeping, mopping and dusting'),
+                (3, '15:00', '16:00', 'Camp Office Alternate Cleaning', True, 'Sweeping, mopping and dusting'),
+            ]
+
+            db_washroom_tasks = [
+                (1, '10:00', '10:15', 'Common Washroom Cleaning - Round 1', True, ''),
+                (2, '12:30', '12:45', 'Common Washroom Cleaning - Round 2', True, ''),
+                (3, '16:30', '16:45', 'Common Washroom Cleaning - Round 3', True, ''),
+            ]
+
+            db_special_tasks = [
+                (1, '08:00', '08:15', 'Supervisor: Weekly Off Coverage Check', False, 'Shailesh weekly off Wednesday, Rakesh weekly off Monday'),
+            ]
+
+            db_saturday_special = [
+                (1, '16:45', '17:00', 'Terrace Cleaning Weekly', True, 'Sweeping and mopping'),
+            ]
+
+            for order, start, end, name, req_photo, desc in db_floor_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=director_bungalow, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='floor', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in db_room_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=director_bungalow, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='room', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in db_washroom_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=director_bungalow, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='washroom', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in db_special_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=director_bungalow, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='all', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in db_saturday_special:
+                HKScheduleTemplate.objects.create(
+                    area=director_bungalow, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='all', requires_photo=req_photo,
+                    frequency='saturday_special', is_active=True,
+                )
+                total += 1
+
         # Solid Waste Management (SWM): worker-wise operations + Sunday deep cleaning
         swm_area = self.area('Solid Waste Management')
         if swm_area:
@@ -1064,5 +1284,5 @@ All accounts use password: {DEFAULT_PASSWORD}
 
         self.stdout.write(
             f'  ✓ Schedule templates: {total} '
-            '(hostels + common area + research park + central arcade + sports complex + swm)'
+            '(hostels + common area + research park + central arcade + sports complex + guest house + director bungalow + swm)'
         )

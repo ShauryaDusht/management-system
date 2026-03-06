@@ -23,6 +23,10 @@
     Worker-wise operations plan (daily + weekend special/deep clean)
   {% elif is_sports_complex %}
     Indoor/outdoor operations plan (daily + weekend special/deep clean)
+  {% elif is_guest_house_new %}
+    Guest house operations plan (ground/canteen + upper floors + room shifts)
+  {% elif is_director_bungalow %}
+    Director bungalow operations plan (daily tasks + weekly terrace cleaning)
   {% elif is_swm %}
     SWM workflow (Mon-Sat operations + Sunday deep clean)
   {% else %}
@@ -71,6 +75,18 @@
         {% if tgrp.grouper == 'floor' %}Indoor and Evening Operations
         {% elif tgrp.grouper == 'room' %}Hall and Office Operations
         {% elif tgrp.grouper == 'washroom' %}Washroom and Pool Utility Operations
+        {% elif tgrp.grouper == 'all' %}Special Tasks
+        {% else %}General{% endif %}
+      {% elif is_guest_house_new %}
+        {% if tgrp.grouper == 'floor' %}Ground Floor and Canteen Operations
+        {% elif tgrp.grouper == 'room' %}Room and Shift Operations
+        {% elif tgrp.grouper == 'washroom' %}Upper Floor and Washroom Operations
+        {% elif tgrp.grouper == 'all' %}Special Tasks
+        {% else %}General{% endif %}
+      {% elif is_director_bungalow %}
+        {% if tgrp.grouper == 'floor' %}Bungalow Surrounding and Garden Operations
+        {% elif tgrp.grouper == 'room' %}Inside Bungalow and Camp Office Operations
+        {% elif tgrp.grouper == 'washroom' %}Common Washroom and Kitchen Checks
         {% elif tgrp.grouper == 'all' %}Special Tasks
         {% else %}General{% endif %}
       {% elif is_swm %}

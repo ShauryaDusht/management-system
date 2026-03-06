@@ -277,7 +277,7 @@
   "pk": 15,
   "fields": {
     "password": "pbkdf2_sha256$600000$XYgkohzCZ7GKoL3CNCSwky$19hfZJNKkOs+kuNmSyja0n/eDejtF6J7du+4twtzjl0=",
-    "last_login": null,
+    "last_login": "2026-03-06T11:32:38.019Z",
     "is_superuser": false,
     "username": "ashok.rathod",
     "first_name": "Ashok",
@@ -445,7 +445,7 @@
   "pk": 23,
   "fields": {
     "password": "pbkdf2_sha256$600000$LqbTHF2W8tNeKTwMRq9jED$Ic2IgWKGFu18v6pm4plRfAtZ6DDTtPdKH2jj7LEr+V8=",
-    "last_login": "2026-03-06T10:15:03.823Z",
+    "last_login": "2026-03-06T10:26:20.505Z",
     "is_superuser": false,
     "username": "pradip.swm",
     "first_name": "Pradip",
