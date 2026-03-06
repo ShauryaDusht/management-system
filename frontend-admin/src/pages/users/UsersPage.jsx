@@ -146,7 +146,12 @@ export default function UsersPage() {
   }
 
   const filtered = users.filter((u) => {
-    const matchRole = roleFilter === 'all' || u.role === roleFilter
+    const matchRole =
+      roleFilter === 'all'
+        ? true
+        : roleFilter === 'managers'
+          ? ['manager', 'inventory_manager'].includes(u.role)
+          : u.role === roleFilter
     const areaText = Array.isArray(u.areas_incharge) ? u.areas_incharge.join(' ') : ''
     const matchSearch =
       !search ||
@@ -156,11 +161,19 @@ export default function UsersPage() {
     return matchRole && matchSearch
   })
 
-  const roleCounts = useMemo(
-    () =>
-      ROLES.reduce((acc, r) => ({ ...acc, [r]: users.filter((u) => u.role === r).length }), {}),
-    [users]
-  )
+  const roleCounts = useMemo(() => {
+    const admin = users.filter((u) => u.role === 'admin').length
+    const managers = users.filter((u) => ['manager', 'inventory_manager'].includes(u.role)).length
+    const supervisor = users.filter((u) => u.role === 'supervisor').length
+    const caretaker = users.filter((u) => u.role === 'caretaker').length
+    return {
+      total: users.length,
+      admin,
+      managers,
+      supervisor,
+      caretaker,
+    }
+  }, [users])
 
   return (
     <AdminLayout
@@ -178,25 +191,86 @@ export default function UsersPage() {
           marginBottom: 20,
         }}
       >
-        {ROLES.map((r) => (
-          <Card
-            key={r}
-            onClick={() => setRoleFilter(roleFilter === r ? 'all' : r)}
-            style={{
-              cursor: 'pointer',
-              padding: '12px 14px',
-              borderColor: roleFilter === r ? 'var(--green-700)' : 'var(--border)',
-              background: roleFilter === r ? '#f0fdf4' : 'var(--surface)',
-            }}
-          >
-            <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green-800)' }}>
-              {roleCounts[r]}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2, textTransform: 'capitalize' }}>
-              {r.replace('_', ' ')}
-            </div>
-          </Card>
-        ))}
+        <Card
+          onClick={() => setRoleFilter('all')}
+          style={{
+            cursor: 'pointer',
+            padding: '12px 14px',
+            borderColor: roleFilter === 'all' ? 'var(--green-700)' : 'var(--border)',
+            background: roleFilter === 'all' ? '#f0fdf4' : 'var(--surface)',
+          }}
+        >
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green-800)' }}>
+            {roleCounts.total}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+            Total
+          </div>
+        </Card>
+        <Card
+          onClick={() => setRoleFilter(roleFilter === 'admin' ? 'all' : 'admin')}
+          style={{
+            cursor: 'pointer',
+            padding: '12px 14px',
+            borderColor: roleFilter === 'admin' ? 'var(--green-700)' : 'var(--border)',
+            background: roleFilter === 'admin' ? '#f0fdf4' : 'var(--surface)',
+          }}
+        >
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green-800)' }}>
+            {roleCounts.admin}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+            Admin
+          </div>
+        </Card>
+        <Card
+          onClick={() => setRoleFilter(roleFilter === 'managers' ? 'all' : 'managers')}
+          style={{
+            cursor: 'pointer',
+            padding: '12px 14px',
+            borderColor: roleFilter === 'managers' ? 'var(--green-700)' : 'var(--border)',
+            background: roleFilter === 'managers' ? '#f0fdf4' : 'var(--surface)',
+          }}
+        >
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green-800)' }}>
+            {roleCounts.managers}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+            Managers
+          </div>
+        </Card>
+        <Card
+          onClick={() => setRoleFilter(roleFilter === 'supervisor' ? 'all' : 'supervisor')}
+          style={{
+            cursor: 'pointer',
+            padding: '12px 14px',
+            borderColor: roleFilter === 'supervisor' ? 'var(--green-700)' : 'var(--border)',
+            background: roleFilter === 'supervisor' ? '#f0fdf4' : 'var(--surface)',
+          }}
+        >
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green-800)' }}>
+            {roleCounts.supervisor}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+            Supervisor
+          </div>
+        </Card>
+        <Card
+          onClick={() => setRoleFilter(roleFilter === 'caretaker' ? 'all' : 'caretaker')}
+          style={{
+            cursor: 'pointer',
+            padding: '12px 14px',
+            borderColor: roleFilter === 'caretaker' ? 'var(--green-700)' : 'var(--border)',
+            background: roleFilter === 'caretaker' ? '#f0fdf4' : 'var(--surface)',
+          }}
+        >
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green-800)' }}>
+            {roleCounts.caretaker}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+            Caretaker
+          </div>
+        </Card>
       </div>
 
       <Card noPad>
@@ -218,11 +292,10 @@ export default function UsersPage() {
           />
           <SelectField value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={{ width: 160 }}>
             <option value="all">All Roles</option>
-            {ROLES.map((r) => (
-              <option key={r} value={r}>
-                {r.replace('_', ' ')}
-              </option>
-            ))}
+            <option value="admin">Admin</option>
+            <option value="managers">Managers</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="caretaker">Caretaker</option>
           </SelectField>
           <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--text-3)' }}>{filtered.length} users</span>
         </div>

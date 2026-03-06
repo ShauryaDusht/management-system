@@ -109,7 +109,7 @@ All accounts use password: {DEFAULT_PASSWORD}
     def area(self, name):
         return HKArea.objects.filter(name=name).first()
 
-    def make_user(self, username, first_name, last_name, phone, role, area_names):
+    def make_user(self, username, first_name, last_name, phone, role, area_names, email=''):
         is_superuser = role == 'admin'
         is_staff = role in {'admin', 'manager', 'inventory_manager'}
 
@@ -123,6 +123,8 @@ All accounts use password: {DEFAULT_PASSWORD}
         )
         user.first_name = first_name
         user.last_name = last_name
+        if email:
+            user.email = email
         # Phone sync policy:
         # - New users: apply seed phone (or blank).
         # - Existing users: fill only if DB phone is blank.
@@ -194,14 +196,36 @@ All accounts use password: {DEFAULT_PASSWORD}
         Core web portal accounts for admin/dashboard usage.
         These users are intentionally area-agnostic and can access module dashboards.
         """
-        accounts = [
-            ('admin', 'Admin', '', '9727757096', 'admin', []),
-            ('estate.manager', 'Estate', 'Manager', '', 'manager', []),
-            ('hostel.manager', 'Hostel', 'Manager', '', 'manager', []),
-            ('inv.manager', 'Inventory', 'Manager', '8758120645', 'inventory_manager', []),
+        # Migrate old manager usernames to new portal nomenclature.
+        # This preserves existing user relations while updating login identity.
+        rename_map = [
+            ('estate.manager', 'horticulture.manager', 'Horticulture', 'Manager', 'horticulture.manager@iitgn.ac.in'),
+            ('hostel.manager', 'housekeeping.manager', 'Housekeeping', 'Manager', 'housekeeping.manager@iitgn.ac.in'),
         ]
-        for username, first, last, phone, role, areas in accounts:
-            self.make_user(username, first, last, phone, role, areas)
+        for old_un, new_un, first, last, email in rename_map:
+            old_user = User.objects.filter(username=old_un).first()
+            if old_user and not User.objects.filter(username=new_un).exists():
+                old_user.username = new_un
+                old_user.first_name = first
+                old_user.last_name = last
+                old_user.email = email
+                old_user.role = 'manager'
+                old_user.is_active = True
+                old_user.is_staff = True
+                old_user.is_superuser = False
+                old_user.save(update_fields=[
+                    'username', 'first_name', 'last_name', 'email',
+                    'role', 'is_active', 'is_staff', 'is_superuser',
+                ])
+
+        accounts = [
+            ('admin', 'Admin', '', '9727757096', 'admin', [], 'admin@iitgn.ac.in'),
+            ('horticulture.manager', 'Horticulture', 'Manager', '', 'manager', [], 'horticulture.manager@iitgn.ac.in'),
+            ('housekeeping.manager', 'Housekeeping', 'Manager', '', 'manager', [], 'housekeeping.manager@iitgn.ac.in'),
+            ('inv.manager', 'Inventory', 'Manager', '8758120645', 'inventory_manager', [], 'inv.manager@iitgn.ac.in'),
+        ]
+        for username, first, last, phone, role, areas, email in accounts:
+            self.make_user(username, first, last, phone, role, areas, email=email)
 
         self.stdout.write(
             f'  ✓ Portal users: {User.objects.filter(role__in=["admin","manager","inventory_manager"]).count()}'
@@ -211,7 +235,10 @@ All accounts use password: {DEFAULT_PASSWORD}
         """
         Remove deprecated/old usernames so shared datasets remain clean and deterministic.
         """
-        legacy_usernames = ['anil.hk', 'nikul.hk', 'lab.supervisor']
+        legacy_usernames = [
+            'anil.hk', 'nikul.hk', 'lab.supervisor',
+            'estate.manager', 'hostel.manager',
+        ]
         removed = 0
         blocked = []
 
