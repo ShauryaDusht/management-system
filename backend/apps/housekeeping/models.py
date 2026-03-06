@@ -178,6 +178,38 @@ class HKDailyRecord(models.Model):
         return f"{self.area} | {self.date} | {self.schedule.task_name}"
 
 
+class HKTaskWorkerAssignment(models.Model):
+    """
+    Multi-worker task assignment support.
+    Used primarily for SWM where one task may have 2-4 workers.
+    """
+    daily_record = models.ForeignKey(
+        HKDailyRecord,
+        on_delete=models.CASCADE,
+        related_name='worker_assignments',
+    )
+    worker = models.ForeignKey(
+        HKWorker,
+        on_delete=models.CASCADE,
+        related_name='task_assignments',
+    )
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='hk_multi_worker_assignments',
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['daily_record', 'worker']
+        ordering = ['assigned_at', 'worker__name']
+
+    def __str__(self):
+        return f"{self.daily_record_id} | {self.worker.name}"
+
+
 class HKExtraWork(models.Model):
     """Ad-hoc extra work logged by the caretaker beyond fixed schedule."""
     area = models.ForeignKey(HKArea, on_delete=models.CASCADE, related_name='extra_works')

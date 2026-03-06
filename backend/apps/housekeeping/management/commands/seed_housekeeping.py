@@ -309,6 +309,17 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Nikhil',             '', '7572829754', 'Sports Complex', 'general',  False),
             ('Ramesh Sports',      '', '9904319434', 'Sports Complex', 'general',  False),
 
+            # SWM (Solid Waste Management) - Biogas workers intentionally excluded
+            ('Salesh bhai Thakur',    '', '9723045094', 'Solid Waste Management', 'swm', False),
+            ('Satish bhai Raval',     '', '9157865695', 'Solid Waste Management', 'swm', False),
+            ('Jitendra bhai Thakur',  '', '8780211472', 'Solid Waste Management', 'swm', False),
+            ('Naveenbhai Chauhan',    '', '9737949563', 'Solid Waste Management', 'swm', False),
+            ('Rajnibhai Parmar',      '', '8758216753', 'Solid Waste Management', 'swm', False),
+            ('Dineshbhai Purohit',    '', '6351446589', 'Solid Waste Management', 'swm', False),
+            ('Baldevbhai Vaghela',    '', '9558464772', 'Solid Waste Management', 'swm', False),
+            ('Saleshbhai Vaghela',    '', '6351150573', 'Solid Waste Management', 'swm', False),
+            ('Kanti bhai Thakur',     '', '9924375528', 'Solid Waste Management', 'swm', False),
+
             # ── RELIEVERS ────────────────────────────────────────────────────
             # Relievers substitute for permanent workers when they take leave.
             # They are not tied to one hostel — assigned flexibly.
@@ -415,6 +426,26 @@ All accounts use password: {DEFAULT_PASSWORD}
             if worker:
                 worker.shift = shift
                 worker.supervisor = bharat_supervisor
+                worker.save(update_fields=['shift', 'supervisor'])
+
+        # SWM staffing details
+        swm_supervisor = User.objects.filter(username='pradip.swm').first()
+        swm_shift_map = {
+            'Salesh bhai Thakur': 'day',
+            'Satish bhai Raval': 'day',
+            'Jitendra bhai Thakur': 'day',
+            'Naveenbhai Chauhan': 'day',
+            'Rajnibhai Parmar': 'day',
+            'Dineshbhai Purohit': 'day',
+            'Baldevbhai Vaghela': 'day',
+            'Saleshbhai Vaghela': 'day',
+            'Kanti bhai Thakur': 'day',
+        }
+        for worker_name, shift in swm_shift_map.items():
+            worker = HKWorker.objects.filter(name=worker_name, area=self.area('Solid Waste Management')).first()
+            if worker:
+                worker.shift = shift
+                worker.supervisor = swm_supervisor
                 worker.save(update_fields=['shift', 'supervisor'])
 
         self.stdout.write(f'  ✓ Workers: {HKWorker.objects.count()} ({created_count} new)')
@@ -943,4 +974,95 @@ All accounts use password: {DEFAULT_PASSWORD}
                 )
                 total += 1
 
-        self.stdout.write(f'  ✓ Schedule templates: {total} (hostels + common area + research park + central arcade + sports complex)')
+        # Solid Waste Management (SWM): worker-wise operations + Sunday deep cleaning
+        swm_area = self.area('Solid Waste Management')
+        if swm_area:
+            HKScheduleTemplate.objects.filter(area=swm_area).delete()
+
+            swm_collection_tasks = [
+                (1, '07:45', '08:00', 'Attendance and Preparation (All SWM workers)', False, 'Attendance, tools, PPE and route confirmation'),
+                (2, '08:00', '09:15', 'Housing Area Collection', True, 'Door-to-door wet and dry collection'),
+                (3, '08:00', '09:15', 'Hostel Area Collection', True, 'Hostel waste collection and transfer'),
+                (4, '09:15', '09:45', 'Break Time', False, 'Rest and equipment check'),
+                (5, '10:15', '11:30', 'Secondary Collection and Bin Clearance', True, 'Campus bins and remaining points'),
+                (6, '11:30', '13:00', 'Waste Transfer Support (All SWM workers)', True, 'Transfer remaining waste to AB-3'),
+                (7, '13:00', '14:00', 'Lunch Break', False, ''),
+                (8, '14:00', '15:30', 'Housing and Hostel Follow-up Collection', True, 'Second collection round'),
+                (9, '15:30', '16:30', 'Final Waste Clearance (All routes)', True, 'Final bin check and area clearance'),
+                (10, '16:30', '17:00', 'Closing Work and Report Handover', True, 'Tool cleanup and completion report'),
+            ]
+
+            swm_transport_tasks = [
+                (1, '08:00', '09:15', 'Tempo Vehicle Collection', True, 'Mess, canteen, academic blocks, campus bins and guest house'),
+                (2, '09:45', '10:15', 'Waste Unloading at AB-3 Segregation Area', True, 'Unload and stage for sorting'),
+                (3, '10:15', '11:30', 'Vehicle Transport - Remaining Campus Bins', True, 'Carry remaining waste to segregation point'),
+                (4, '11:30', '13:00', 'Recyclable Transfer Support', True, 'Dry recyclable transfer support'),
+                (5, '13:00', '14:00', 'Lunch Break', False, ''),
+                (6, '14:00', '15:30', 'Afternoon Vehicle Collection Run', True, 'Academic/event waste and follow-up collection'),
+                (7, '15:30', '16:30', 'Final Waste Transport and Storage Cleanup', True, 'Final shift transport cycle'),
+                (8, '16:30', '17:00', 'Tempo Parking and Day Close', True, 'Park vehicle and submit status'),
+            ]
+
+            swm_segregation_tasks = [
+                (1, '09:45', '10:15', 'Segregation: Wet/Dry/Plastic/Paper/Cardboard', True, 'AB-3 segregation zone'),
+                (2, '10:15', '11:30', 'Segregation Support and Sorting', True, 'Sort recyclable and mixed inflow'),
+                (3, '11:30', '13:00', 'Waste Supply Support to Biogas Team', True, 'Only waste supply support, not plant operation'),
+                (4, '13:00', '14:00', 'Lunch Break', False, ''),
+                (5, '14:00', '15:30', 'Segregation Support for Second Collection', True, 'Handle second round inflow'),
+                (6, '15:30', '16:30', 'Final Segregation and Storage Area Hygiene', True, 'Ensure no pending mixed waste'),
+                (7, '16:30', '17:00', 'Supervisor Verification and Close', False, 'Checklist and final verification'),
+            ]
+
+            swm_sunday_extra = [
+                (1, '08:00', '10:00', 'Sunday Deep Clean: Floor Machine Cleaning (campus priority points)', True, ''),
+                (2, '10:00', '11:00', 'Sunday Deep Clean: Lift and Glass Deep Cleaning', True, ''),
+                (3, '11:00', '12:00', 'Sunday Deep Clean: Fountain Area Deep Cleaning', True, ''),
+                (4, '12:00', '13:00', 'Sunday Deep Clean: Common Area Polishing', True, ''),
+                (5, '14:00', '15:00', 'Sunday Deep Clean: Segregation Bay Wash and Sanitization', True, ''),
+                (6, '15:00', '16:00', 'Sunday Deep Clean: Final Disposal and Reporting', True, ''),
+            ]
+
+            for order, start, end, name, req_photo, desc in swm_collection_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=swm_area, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='floor', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in swm_transport_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=swm_area, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='room', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in swm_segregation_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=swm_area, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='washroom', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in swm_sunday_extra:
+                HKScheduleTemplate.objects.create(
+                    area=swm_area, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='all', requires_photo=req_photo,
+                    frequency='sunday_extra', is_active=True,
+                )
+                total += 1
+
+        self.stdout.write(
+            f'  ✓ Schedule templates: {total} '
+            '(hostels + common area + research park + central arcade + sports complex + swm)'
+        )

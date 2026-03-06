@@ -62,7 +62,15 @@
     {% if record.schedule.task_description %} | {{ record.schedule.task_description }}{% endif %}
   </div>
 
-  {% if record.assigned_worker %}
+  {% if record.area.area_type == 'swm' and record.worker_assignments.count %}
+  <div style="font-size:11px;color:#374151;margin-top:4px">
+    Assigned Team:
+    {% for asn in record.worker_assignments.all %}
+      <b>{{ asn.worker.name }}</b>{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+    {% if record.assigned_at %} | {{ record.assigned_at|time:"g:i A" }}{% endif %}
+  </div>
+  {% elif record.assigned_worker %}
   <div style="font-size:11px;color:#374151;margin-top:4px">
     Assigned Worker: <b>{{ record.assigned_worker.name }}</b>
     {% if record.assigned_at %} | {{ record.assigned_at|time:"g:i A" }}{% endif %}
@@ -75,7 +83,46 @@
   </div>
   {% endif %}
 
-  {% if can_assign_tasks and record.status != 'done' and not record.assigned_worker %}
+  {% if can_assign_tasks and record.status != 'done' and record.area.area_type == 'swm' and not record.worker_assignments.count %}
+  <button type="button"
+          id="swm-open-{{ record.id }}"
+          onclick="document.getElementById('swm-panel-{{ record.id }}').style.display='block'; this.style.display='none';"
+          style="margin-top:8px;border:none;background:#2d4a3e;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
+    Assign workers
+  </button>
+
+  <div id="swm-panel-{{ record.id }}" style="display:none;margin-top:8px">
+    <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
+          hx-target="#task-{{ record.id }}" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="assign">
+      <div style="font-size:11px;font-weight:700;color:#374151;margin:0 0 6px 2px">Select workers</div>
+      <div style="max-height:180px;overflow:auto;border:1px solid #d1d5db;border-radius:8px;background:#fff">
+        {% for w in area_workers %}
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last %}1px solid #eef2f7{% else %}none{% endif %};cursor:pointer">
+          <input type="checkbox" name="worker_ids" value="{{ w.id }}" style="width:16px;height:16px;flex-shrink:0">
+          <span style="font-weight:700;color:#1f2937;font-size:14px">{{ w.name }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <div style="font-size:10px;color:#6b7280;margin-top:4px">Select multiple workers, then assign once.</div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button type="submit" style="border:none;background:#2d4a3e;color:#fff;padding:8px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">
+          Assign Team
+        </button>
+        <button type="button"
+                onclick="document.getElementById('swm-panel-{{ record.id }}').style.display='none'; document.getElementById('swm-open-{{ record.id }}').style.display='inline-block';"
+                style="border:none;background:#e5e7eb;color:#374151;padding:8px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+  {% elif can_assign_tasks and record.status != 'done' and record.area.area_type == 'swm' and record.worker_assignments.count %}
+  <div style="margin-top:7px;font-size:11px;color:#6b7280;background:#f3f4f6;border-radius:7px;padding:6px 8px">
+    Team assignment locked for this task.
+  </div>
+  {% elif can_assign_tasks and record.status != 'done' and not record.assigned_worker %}
   <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
         hx-target="#task-{{ record.id }}" hx-swap="outerHTML"
         style="margin-top:8px;display:flex;gap:6px;align-items:center">

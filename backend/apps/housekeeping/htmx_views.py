@@ -26,6 +26,7 @@ from .models import (
     HKScheduleTemplate,
     HKStockRequest,
     HKSundayIncharge,
+    HKTaskWorkerAssignment,
     HKUserArea,
     HKWorker,
 )
@@ -87,13 +88,27 @@ def get_today_records(area, date):
     from django.db import IntegrityError, transaction
 
     dow = date.weekday()  # 0=Mon, 6=Sun
-    templates = HKScheduleTemplate.objects.filter(area=area, is_active=True, frequency="daily")
-    if dow == 5:
-        saturday_qs = HKScheduleTemplate.objects.filter(area=area, is_active=True, frequency="saturday_special")
-        templates = (templates | saturday_qs).distinct()
-    if dow == 6:
-        sunday_qs = HKScheduleTemplate.objects.filter(area=area, is_active=True, frequency="sunday_extra")
-        templates = (templates | sunday_qs).distinct()
+    is_swm_area = area.area_type == "swm"
+
+    # SWM business rule:
+    # - Monday-Saturday: normal daily flow
+    # - Sunday: only rotational deep-clean tasks
+    if is_swm_area and dow == 6:
+        templates = HKScheduleTemplate.objects.filter(
+            area=area, is_active=True, frequency="sunday_extra"
+        )
+    else:
+        templates = HKScheduleTemplate.objects.filter(area=area, is_active=True, frequency="daily")
+        if dow == 5:
+            saturday_qs = HKScheduleTemplate.objects.filter(
+                area=area, is_active=True, frequency="saturday_special"
+            )
+            templates = (templates | saturday_qs).distinct()
+        if dow == 6:
+            sunday_qs = HKScheduleTemplate.objects.filter(
+                area=area, is_active=True, frequency="sunday_extra"
+            )
+            templates = (templates | sunday_qs).distinct()
 
     template_list = list(templates.order_by("worker_tag", "order", "start_time"))
 
@@ -118,9 +133,13 @@ def get_today_records(area, date):
                     # check and insert — safe to ignore, record already exists.
                     pass
 
-    return HKDailyRecord.objects.filter(area=area, date=date).select_related(
-        "schedule", "completed_by", "assigned_worker", "assigned_by"
-    ).order_by("schedule__worker_tag", "schedule__order", "schedule__start_time")
+    return (
+        HKDailyRecord.objects
+        .filter(area=area, date=date)
+        .select_related("schedule", "completed_by", "assigned_worker", "assigned_by", "area")
+        .prefetch_related("worker_assignments__worker")
+        .order_by("schedule__worker_tag", "schedule__order", "schedule__start_time")
+    )
 
 
 def current_half():
@@ -204,6 +223,7 @@ def hk_dashboard(request):
     is_research_park = area_name == "Research Park"
     is_central_arcade = area_name == "Central Arcade"
     is_sports_complex = area_name == "Sports Complex"
+    is_swm = area_name == "Solid Waste Management"
     if is_common_area:
         tab_label_floor = "Route A"
         tab_label_room = "Core Area"
@@ -232,6 +252,13 @@ def hk_dashboard(request):
         heading_floor = "Indoor and Evening Operations"
         heading_room = "Hall and Office Operations"
         heading_washroom = "Washroom and Pool Utility Operations"
+    elif is_swm:
+        tab_label_floor = "Collection"
+        tab_label_room = "Transport"
+        tab_label_washroom = "Segregation"
+        heading_floor = "Primary and Secondary Collection Routes"
+        heading_room = "Tempo and Vehicle Collection Operations"
+        heading_washroom = "Segregation and Supervisor Operations"
     else:
         tab_label_floor = "Floor"
         tab_label_room = "Room"
@@ -300,10 +327,55 @@ def hk_mark_task(request, record_id):
     task_title = (record.schedule.task_name or "").lower()
     is_break_task = ("break" in task_title) or ("lunch" in task_title)
     can_mark_break = user.role == "supervisor"
+    is_swm_task = record.area.area_type == "swm"
+
+    def has_worker_assignment():
+        if record.assigned_worker_id:
+            return True
+        if is_swm_task:
+            return record.worker_assignments.exists()
+        return False
 
     if action == "assign":
         if is_break_task:
             task_error = "Break tasks do not need worker assignment."
+        elif is_swm_task:
+            # SWM rule: once team is assigned for a task, do not allow reassignment.
+            if record.assigned_worker_id or record.worker_assignments.exists():
+                task_error = "Team already assigned for this SWM task."
+            else:
+                worker_ids = [w for w in request.POST.getlist("worker_ids") if w]
+                if not worker_ids:
+                    single_worker_id = request.POST.get("worker_id")
+                    if single_worker_id:
+                        worker_ids = [single_worker_id]
+
+                workers = list(
+                    HKWorker.objects.filter(
+                        pk__in=worker_ids,
+                        area=record.area,
+                        is_active=True,
+                    ).order_by("name")
+                )
+                if not workers:
+                    task_error = "Please select at least one valid SWM worker."
+                else:
+                    HKTaskWorkerAssignment.objects.bulk_create(
+                        [
+                            HKTaskWorkerAssignment(
+                                daily_record=record,
+                                worker=w,
+                                assigned_by=user,
+                            )
+                            for w in workers
+                        ]
+                    )
+
+                    # Keep legacy single-assignee field for backward-compatible reporting.
+                    record.assigned_worker = workers[0]
+                    record.assigned_by = user
+                    record.assigned_at = now
+                    record.save(update_fields=["assigned_worker", "assigned_by", "assigned_at"])
         elif record.assigned_worker_id:
             task_error = "Worker already assigned for this task."
         else:
@@ -320,7 +392,7 @@ def hk_mark_task(request, record_id):
     elif action == "start":
         if is_break_task:
             task_error = "Break tasks can be marked done directly."
-        elif not record.assigned_worker:
+        elif not has_worker_assignment():
             task_error = "Assign worker first, then start work."
         else:
             record.status = "in_progress"
@@ -345,7 +417,7 @@ def hk_mark_task(request, record_id):
             record.completed_at = now
             record.note = request.POST.get("note", "").strip()
             record.save(update_fields=["status", "completed_by", "completed_at", "note"])
-        elif not record.assigned_worker:
+        elif not has_worker_assignment():
             task_error = "Assign worker first."
         elif record.schedule.requires_photo and "photo_after" not in request.FILES and not record.photo_after:
             task_error = "After-photo is required to complete this task."
@@ -368,9 +440,10 @@ def hk_mark_task(request, record_id):
                     pass
             record.save()
 
-    record.refresh_from_db()
+    record = HKDailyRecord.objects.select_related(
+        "schedule", "assigned_worker", "assigned_by", "area", "completed_by"
+    ).prefetch_related("worker_assignments__worker").get(pk=record.pk)
     area_workers = list(HKWorker.objects.filter(area=record.area, is_active=True).order_by("name"))
-
     return render(request, "housekeeping/mobile/partials/task_card.html", {
         "record": record,
         "tag_labels": WORKER_TAG_LABELS,
@@ -420,6 +493,7 @@ def hk_schedule(request):
     is_research_park = area_name == "Research Park"
     is_central_arcade = area_name == "Central Arcade"
     is_sports_complex = area_name == "Sports Complex"
+    is_swm = area_name == "Solid Waste Management"
 
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     weekly = []
@@ -434,11 +508,14 @@ def hk_schedule(request):
             area=sel_area, is_active=True, frequency="sunday_extra"
         ).order_by("order", "start_time"))
         for i, day in enumerate(days):
-            tasks = list(daily)
-            if i == 5:
-                tasks += saturday_special
-            if i == 6:
-                tasks += sunday_extra
+            if is_swm and i == 6:
+                tasks = list(sunday_extra)
+            else:
+                tasks = list(daily)
+                if i == 5:
+                    tasks += saturday_special
+                if i == 6:
+                    tasks += sunday_extra
             weekly.append({"day": day, "day_idx": i, "tasks": tasks})
 
     return render(request, "housekeeping/mobile/schedule.html", {
@@ -448,6 +525,7 @@ def hk_schedule(request):
         "is_research_park": is_research_park,
         "is_central_arcade": is_central_arcade,
         "is_sports_complex": is_sports_complex,
+        "is_swm": is_swm,
         "weekly": weekly,
         "today_dow": timezone.localdate().weekday(),
         "tag_labels": WORKER_TAG_LABELS,

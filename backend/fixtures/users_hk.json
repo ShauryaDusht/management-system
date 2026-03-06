@@ -4,7 +4,7 @@
   "pk": 1,
   "fields": {
     "password": "pbkdf2_sha256$600000$klwWKrJFHw33vTuA4Ask3V$KpeFJIwKhzaGvzqtsW2uSLkMp9tVm36mzQNhu5CHXeM=",
-    "last_login": "2026-03-05T08:08:01.494Z",
+    "last_login": "2026-03-06T05:35:43.333Z",
     "is_superuser": true,
     "username": "admin",
     "first_name": "Admin",
@@ -25,7 +25,7 @@
   "pk": 2,
   "fields": {
     "password": "pbkdf2_sha256$600000$AXR8w3AVuElFAaE4BryIO1$KNqON6F5J1FC5XT2iGtY324N3AvwYWisApxnhz+EPeo=",
-    "last_login": "2026-03-03T11:53:46.945Z",
+    "last_login": "2026-03-05T20:33:01.800Z",
     "is_superuser": false,
     "username": "inv.manager",
     "first_name": "Inventory",
@@ -151,7 +151,7 @@
   "pk": 9,
   "fields": {
     "password": "pbkdf2_sha256$600000$6CGnO99IqH6D42KlCjKDab$77dQ+f8okswva2Y0v1q9ZqcTU6E4AJU5cq3o09HEW+E=",
-    "last_login": "2026-03-03T08:21:25.987Z",
+    "last_login": "2026-03-06T09:35:22.117Z",
     "is_superuser": false,
     "username": "pankaj",
     "first_name": "Pankaj",
@@ -340,7 +340,7 @@
   "pk": 18,
   "fields": {
     "password": "pbkdf2_sha256$600000$PkduRO7dDwL1BNDrUHhNbH$+qelsB4UJEObU0YhLENfMnTYCL1xWHJ+3s0Bkvl1PLo=",
-    "last_login": null,
+    "last_login": "2026-03-06T05:23:45.892Z",
     "is_superuser": false,
     "username": "maulik.patel",
     "first_name": "Maulik",
@@ -361,7 +361,7 @@
   "pk": 19,
   "fields": {
     "password": "pbkdf2_sha256$600000$VWN2M13VaYUkpLmBnjSQtW$/lQE+GITHxeX70/LdWf8NjUZT4+romfWGtJTDbCaeIM=",
-    "last_login": "2026-03-05T18:12:57.684Z",
+    "last_login": "2026-03-06T05:36:23.923Z",
     "is_superuser": false,
     "username": "bharat.solanki",
     "first_name": "Bharat",
@@ -445,7 +445,7 @@
   "pk": 23,
   "fields": {
     "password": "pbkdf2_sha256$600000$LqbTHF2W8tNeKTwMRq9jED$Ic2IgWKGFu18v6pm4plRfAtZ6DDTtPdKH2jj7LEr+V8=",
-    "last_login": null,
+    "last_login": "2026-03-06T10:15:03.823Z",
     "is_superuser": false,
     "username": "pradip.swm",
     "first_name": "Pradip",
