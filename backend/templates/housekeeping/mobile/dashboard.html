@@ -167,8 +167,16 @@
 
 <script>
 const TABS = ['floor', 'room', 'washroom'{% if has_special_tasks %}, 'all'{% endif %}, 'extra'];
+let hkBusy = false;
 
-function showTab(tab) {
+document.body.addEventListener('htmx:beforeRequest', function() {
+  hkBusy = true;
+});
+document.body.addEventListener('htmx:afterRequest', function() {
+  hkBusy = false;
+});
+
+function showTab(tab, skipScroll) {
   TABS.forEach(function(t) {
     var panel = document.getElementById('tab-' + t);
     var btn = document.getElementById('btn-' + t);
@@ -179,12 +187,35 @@ function showTab(tab) {
   var activeBtn = document.getElementById('btn-' + tab);
   if (active) active.style.display = 'block';
   if (activeBtn) activeBtn.style.opacity = '1';
-  var btns = document.getElementById('tab-buttons');
-  if (btns) window.scrollTo({ top: btns.offsetTop - 70, behavior: 'smooth' });
+  try { sessionStorage.setItem('hk_active_tab', tab); } catch (e) {}
+  if (!skipScroll) {
+    var btns = document.getElementById('tab-buttons');
+    if (btns) window.scrollTo({ top: btns.offsetTop - 70, behavior: 'smooth' });
+  }
+}
+
+function shouldSkipAutoRefresh() {
+  if (document.hidden || hkBusy) return true;
+  var active = document.activeElement;
+  if (active && ['INPUT', 'TEXTAREA', 'SELECT'].indexOf(active.tagName) !== -1) return true;
+
+  var fileInputs = document.querySelectorAll('input[type="file"]');
+  for (var i = 0; i < fileInputs.length; i++) {
+    if (fileInputs[i].files && fileInputs[i].files.length > 0) return true;
+  }
+  return false;
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  showTab('floor');
+  var saved = null;
+  try { saved = sessionStorage.getItem('hk_active_tab'); } catch (e) {}
+  var initial = (saved && TABS.indexOf(saved) !== -1) ? saved : 'floor';
+  showTab(initial, true);
+
+  setInterval(function() {
+    if (shouldSkipAutoRefresh()) return;
+    window.location.reload();
+  }, 10000);
 });
 </script>
 {% endblock %}
