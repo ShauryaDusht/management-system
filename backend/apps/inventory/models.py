@@ -224,3 +224,46 @@ class ItemIssue(models.Model):
 
     def __str__(self):
         return f"Issue #{self.id} — {self.request.item.name} x{self.issued_quantity}"
+
+
+class InventoryTask(models.Model):
+    """
+    Tasks assigned by admin to inventory managers.
+    Non-breaking addition — existing endpoints are unaffected.
+    """
+    class Priority(models.TextChoices):
+        LOW = 'low', 'Low'
+        MEDIUM = 'medium', 'Medium'
+        HIGH = 'high', 'High'
+        URGENT = 'urgent', 'Urgent'
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        IN_PROGRESS = 'in_progress', 'In Progress'
+        COMPLETED = 'completed', 'Completed'
+        CANCELLED = 'cancelled', 'Cancelled'
+
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='inventory_tasks_assigned',
+        limit_choices_to={'role__in': ['inventory_manager', 'supervisor']},
+    )
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='inventory_tasks_created',
+    )
+    priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.MEDIUM)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    deadline = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} → {self.assigned_to.get_full_name() or self.assigned_to.username}"

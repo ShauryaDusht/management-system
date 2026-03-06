@@ -201,3 +201,27 @@ class UserActivitySerializer(serializers.ModelSerializer):
             'id', 'item_name', 'item_unit', 'quantity_requested',
             'purpose', 'status', 'requested_at', 'reviewed_at',
         ]
+
+
+from .models import InventoryTask
+
+
+class InventoryTaskSerializer(serializers.ModelSerializer):
+    assigned_to_name = serializers.SerializerMethodField()
+    assigned_by_name = serializers.SerializerMethodField()
+    assigned_to_role = serializers.CharField(source='assigned_to.role', read_only=True)
+
+    class Meta:
+        model = InventoryTask
+        fields = [
+            'id', 'title', 'description', 'assigned_to', 'assigned_to_name',
+            'assigned_to_role', 'assigned_by', 'assigned_by_name', 'priority', 'status',
+            'deadline', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'assigned_by', 'assigned_by_name', 'created_at', 'updated_at']
+
+    def get_assigned_to_name(self, obj):
+        return obj.assigned_to.get_full_name() or obj.assigned_to.username
+
+    def get_assigned_by_name(self, obj):
+        return obj.assigned_by.get_full_name() or obj.assigned_by.username

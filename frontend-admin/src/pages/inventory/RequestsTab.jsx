@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { asList } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
@@ -16,11 +17,12 @@ import {
 } from '../../components/ui'
 
 export default function RequestsTab({ userRole }) {
+  const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [requests, setRequests] = useState([])
   const [items, setItems] = useState([])
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useState(searchParams.get('reqFilter') || 'all')
 
   const [newModal, setNewModal] = useState(false)
   const [savingNew, setSavingNew] = useState(false)

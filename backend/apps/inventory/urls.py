@@ -15,6 +15,7 @@ from .views import (
     ReturnAssetView, FinalizeConsumableView,
     UserActivityView,
     DashboardSummaryView,
+    InventoryTaskListCreateView, InventoryTaskDetailView, InventoryManagerListView,
 )
 
 # ─── BUG-02 FIX: Route audit ─────────────────────────────────────────────────
@@ -80,4 +81,9 @@ urlpatterns = [
     path('api/requests/<int:pk>/approve/', ApproveRequestView.as_view(), name='api-request-approve'),
     path('api/requests/<int:pk>/reject/', RejectRequestView.as_view(), name='api-request-reject'),
     path('api/requests/<int:pk>/mark-urgent/', MarkUrgentView.as_view(), name='api-request-mark-urgent'),
+
+    # ── Inventory Tasks (Admin → Inventory Manager) ───────────────────────────
+    path('tasks/', InventoryTaskListCreateView.as_view(), name='task-list'),
+    path('tasks/<int:pk>/', InventoryTaskDetailView.as_view(), name='task-detail'),
+    path('managers/', InventoryManagerListView.as_view(), name='inventory-managers'),
 ]

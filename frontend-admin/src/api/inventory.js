@@ -55,6 +55,13 @@ export const inventoryAPI = {
 
   // ── User activity (admin) ──────────────────────────────────────────────────
   getUserActivity: (userId) => api.get(`/inventory/activity/users/${userId}/`),
+
+  // ── Inventory Tasks (Admin → Inventory Manager) ────────────────────────────
+  getTasks: (params = {}) => api.get('/inventory/tasks/', { params }),
+  createTask: (data) => api.post('/inventory/tasks/', data),
+  updateTask: (id, data) => api.patch(`/inventory/tasks/${id}/`, data),
+  deleteTask: (id) => api.delete(`/inventory/tasks/${id}/`),
+  getInventoryManagers: () => api.get('/inventory/managers/'),
 }
 
 // ── Reports API ────────────────────────────────────────────────────────────

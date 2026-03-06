@@ -548,3 +548,50 @@ class DashboardSummaryView(APIView):
             'unfinalized_consumables': unfinalized_consumables,
             'overdue_returns': overdue_returns,
         })
+
+
+# ─────────────────────────────────────────────────
+# INVENTORY TASKS (Admin → Inventory Manager)
+# ─────────────────────────────────────────────────
+
+from .models import InventoryTask
+from .serializers import InventoryTaskSerializer
+from apps.users.models import User
+
+
+class InventoryTaskListCreateView(generics.ListCreateAPIView):
+    serializer_class = InventoryTaskSerializer
+    permission_classes = [IsAdminOrManager]
+
+    def get_queryset(self):
+        return InventoryTask.objects.select_related('assigned_to', 'assigned_by').all()
+
+    def perform_create(self, serializer):
+        serializer.save(assigned_by=self.request.user)
+
+
+class InventoryTaskDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = InventoryTask.objects.select_related('assigned_to', 'assigned_by').all()
+    serializer_class = InventoryTaskSerializer
+    permission_classes = [IsAdminOrManager]
+
+
+class InventoryManagerListView(APIView):
+    """Returns list of users with inventory_manager or supervisor role for task assignment dropdown."""
+    permission_classes = [IsAdminOrManager]
+
+    def get(self, request):
+        users = User.objects.filter(
+            role__in=['inventory_manager', 'supervisor']
+        ).values('id', 'first_name', 'last_name', 'username', 'role').order_by('role', 'first_name')
+        data = [
+            {
+                'id': u['id'],
+                'name': f"{u['first_name']} {u['last_name']}".strip() or u['username'],
+                'username': u['username'],
+                'role': u['role'],
+                'role_label': 'Inventory Manager' if u['role'] == 'inventory_manager' else 'Supervisor',
+            }
+            for u in users
+        ]
+        return Response(data)
