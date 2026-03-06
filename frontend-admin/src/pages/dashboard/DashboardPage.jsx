@@ -1,59 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 import { inventoryAPI } from '../../api/inventory'
 import { hkAPI } from '../../api/housekeeping'
-import { Badge, Btn, Card, Spinner } from '../../components/ui'
+import { Badge, Btn, Card, Spinner, StatCard } from '../../components/ui'
 import { DonutChart } from '../../components/ui/Charts'
 import AdminLayout from '../../layout/AdminLayout'
-
-function ClickableStatCard({ label, value, icon, color = 'var(--green-800)', sub, to }) {
-  const navigate = useNavigate()
-  return (
-    <div
-      onClick={() => to && navigate(to)}
-      style={{
-        background: 'var(--surface)',
-        borderRadius: 14,
-        border: '1px solid var(--border)',
-        padding: '16px 20px',
-        cursor: to ? 'pointer' : 'default',
-        transition: 'transform 0.15s, box-shadow 0.15s, border-color 0.15s',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 14,
-        userSelect: 'none',
-      }}
-      onMouseEnter={(e) => {
-        if (!to) return
-        e.currentTarget.style.transform = 'translateY(-2px)'
-        e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.1)'
-        e.currentTarget.style.borderColor = color
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = ''
-        e.currentTarget.style.boxShadow = ''
-        e.currentTarget.style.borderColor = 'var(--border)'
-      }}
-      title={to ? `View ${label}` : undefined}
-    >
-      <div style={{
-        width: 46, height: 46, borderRadius: 12,
-        background: color + '18',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 22, flexShrink: 0,
-      }}>
-        {icon}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1 }}>{value}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{label}</div>
-        {sub && <div style={{ fontSize: 11, color, marginTop: 2, fontWeight: 600 }}>{sub}</div>}
-      </div>
-      {to && <span style={{ color: 'var(--text-3)', fontSize: 16 }}>›</span>}
-    </div>
-  )
-}
 
 export default function DashboardPage() {
   const [invSummary, setInvSummary] = useState(null)
@@ -74,7 +26,10 @@ export default function DashboardPage() {
   const todayLabel = useMemo(
     () =>
       new Date().toLocaleDateString('en-IN', {
-        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
       }),
     [],
   )
@@ -89,20 +44,38 @@ export default function DashboardPage() {
     )
   }
 
+  const inStockCount = invSummary
+    ? invSummary.in_stock_count ??
+      Math.max(
+        0,
+        (invSummary.total_items || 0) -
+          (invSummary.low_stock_count || 0) -
+          (invSummary.out_of_stock_count || 0),
+      )
+    : 0
+
+  const invDonut = invSummary
+    ? [
+        { name: 'In Stock', value: inStockCount },
+        { name: 'Low Stock', value: invSummary.low_stock_count || 0 },
+        { name: 'Out of Stock', value: invSummary.out_of_stock_count || 0 },
+      ]
+    : []
+
   const hkDonut = hkSummary
     ? [
         { name: 'Done', value: hkSummary.done_tasks || 0 },
         { name: 'Pending', value: hkSummary.pending_tasks || 0 },
       ]
     : []
+
   const hkHasActivity = hkDonut.some((d) => d.value > 0)
   const hkDonutData = hkHasActivity ? hkDonut : [{ name: 'No Activity', value: 1 }]
 
-  // Stat cards — each linked to the relevant filtered view
-  const invStatCards = [
+  const statCards = [
     {
-      label: 'Total Items',
-      value: invSummary?.total_items ?? '—',
+      label: 'Total Inventory Items',
+      value: invSummary?.total_items ?? '-',
       icon: '📦',
       color: 'var(--green-800)',
       sub: `${invSummary?.pending_requests ?? 0} requests pending`,
@@ -110,50 +83,15 @@ export default function DashboardPage() {
     },
     {
       label: 'Low Stock Alerts',
-      value: invSummary?.low_stock_count ?? '—',
+      value: invSummary?.low_stock_count ?? '-',
       icon: '⚠️',
-      color: '#d97706',
-      sub: 'Click to view items',
-      to: '/inventory?tab=items&status=low_stock',
+      color: 'var(--orange-600)',
+      sub: `${invSummary?.out_of_stock_count ?? 0} out of stock`,
+      to: '/inventory?tab=items',
     },
-    {
-      label: 'Out of Stock',
-      value: invSummary?.out_of_stock_count ?? '—',
-      icon: '🚫',
-      color: '#dc2626',
-      sub: 'Click to view items',
-      to: '/inventory?tab=items&status=out_of_stock',
-    },
-    {
-      label: 'Pending Requests',
-      value: invSummary?.pending_requests ?? '—',
-      icon: '📋',
-      color: '#3b82f6',
-      sub: 'Click to review',
-      to: '/inventory?tab=requests',
-    },
-    {
-      label: 'Unreturned Assets',
-      value: invSummary?.unreturned_assets ?? '—',
-      icon: '🔄',
-      color: '#f59e0b',
-      sub: `${invSummary?.overdue_returns ?? 0} overdue`,
-      to: '/inventory?tab=issues',
-    },
-    {
-      label: 'Pending Stock Req.',
-      value: hkSummary?.pending_stock_requests ?? '—',
-      icon: '🏗️',
-      color: '#8b5cf6',
-      sub: 'Open approval queue',
-      to: '/housekeeping?tab=assign_stock',
-    },
-  ]
-
-  const hkStatCards = [
     {
       label: 'HK Tasks Today',
-      value: hkSummary?.total_tasks ?? '—',
+      value: hkSummary?.total_tasks ?? '-',
       icon: '🧹',
       color: 'var(--green-700)',
       sub: `${hkSummary?.completion_pct ?? 0}% completed`,
@@ -161,84 +99,134 @@ export default function DashboardPage() {
     },
     {
       label: 'Workers Present',
-      value: hkSummary?.present_today ?? '—',
+      value: hkSummary?.present_today ?? '-',
       icon: '👷',
       color: '#3b82f6',
       sub: `of ${hkSummary?.total_workers ?? 0} workers`,
       to: '/housekeeping?tab=attendance',
     },
+    {
+      label: 'Unreturned Assets',
+      value: invSummary?.unreturned_assets ?? '-',
+      icon: '🔄',
+      color: '#f59e0b',
+      sub: `${invSummary?.overdue_returns ?? 0} overdue`,
+      to: '/inventory?tab=issues',
+    },
+    {
+      label: 'Pending Stock Req.',
+      value: hkSummary?.pending_stock_requests ?? '-',
+      icon: '📋',
+      color: 'var(--orange-600)',
+      sub: 'Open approval queue',
+      to: '/housekeeping?tab=assign_stock',
+    },
   ]
 
   return (
     <AdminLayout title="Admin Dashboard" subtitle={`Welcome back — ${todayLabel}`}>
-
-      {/* Section: Inventory */}
-      <div style={{ marginBottom: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-2)' }}>📦 Inventory</div>
-          <Link to="/inventory"><Btn size="sm" variant="ghost">View all →</Btn></Link>
-        </div>
-        <div style={{
+      <div
+        style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(195px, 1fr))',
-          gap: 10,
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap: 12,
           marginBottom: 24,
-        }}>
-          {invStatCards.map((card) => (
-            <ClickableStatCard key={card.label} {...card} />
-          ))}
-        </div>
+          position: 'relative',
+          zIndex: 5,
+          pointerEvents: 'auto',
+        }}
+      >
+        {statCards.map((card) => (
+          <a
+            key={card.label}
+            href={card.to}
+            style={{
+              height: '100%',
+              display: 'block',
+              textDecoration: 'none',
+              color: 'inherit',
+              position: 'relative',
+              zIndex: 6,
+              pointerEvents: 'auto',
+            }}
+            title={`Open ${card.label}`}
+          >
+            <StatCard
+              label={card.label}
+              value={card.value}
+              icon={card.icon}
+              color={card.color}
+              sub={card.sub}
+              style={{ height: '100%', cursor: 'pointer', userSelect: 'none' }}
+            />
+          </a>
+        ))}
       </div>
 
-      {/* Section: Housekeeping + charts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, marginBottom: 24 }}>
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-2)' }}>🧹 Housekeeping</div>
-            <Link to="/housekeeping"><Btn size="sm" variant="ghost">View all →</Btn></Link>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(195px, 1fr))', gap: 10, marginBottom: 14 }}>
-            {hkStatCards.map((card) => (
-              <ClickableStatCard key={card.label} {...card} />
-            ))}
-          </div>
-
-          {/* Horticulture placeholder */}
-          <Card>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>🌿 Horticulture</div>
-                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>Zone status</div>
-              </div>
-              <Link to="/horticulture"><Btn size="sm" variant="ghost">View →</Btn></Link>
-            </div>
-            <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', padding: '20px 0', color: 'var(--text-3)', gap: 6,
-            }}>
-              <span style={{ fontSize: 26 }}>🌿</span>
-              <div style={{ fontSize: 12 }}>Module in development</div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Housekeeping donut */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24 }}>
         <Card>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14 }}>🧹 HK Task Status</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>📦 Inventory</div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>Stock overview</div>
+            </div>
+            <Link to="/inventory">
+              <Btn size="sm" variant="ghost">
+                View →
+              </Btn>
+            </Link>
+          </div>
+          {invSummary && invDonut.some((d) => d.value > 0) ? (
+            <>
+              <DonutChart data={invDonut} total={invSummary.total_items} label="Items" size={160} />
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+                {invDonut.map((d, i) => (
+                  <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11 }}>
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: ['#2d4a3e', '#c2622a', '#dc2626'][i],
+                        display: 'inline-block',
+                      }}
+                    />
+                    {d.name}: <strong>{d.value}</strong>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', color: 'var(--text-3)', padding: '30px 0' }}>No data</div>
+          )}
+        </Card>
+
+        <Card>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>🧹 Housekeeping</div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>Today&apos;s tasks</div>
+            </div>
+            <Link to="/housekeeping">
+              <Btn size="sm" variant="ghost">
+                View →
+              </Btn>
+            </Link>
+          </div>
           {hkSummary ? (
             <>
               <DonutChart
                 data={hkDonutData}
                 total={hkSummary.total_tasks}
                 label={hkHasActivity ? 'Tasks' : 'No Activity'}
-                size={180}
+                size={160}
               />
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 14, flexWrap: 'wrap' }}>
-                <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12 }}>
+                <div style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2d4a3e', display: 'inline-block' }} />
                   Done: <strong>{hkSummary.done_tasks || 0}</strong>
                 </div>
-                <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#c2622a', display: 'inline-block' }} />
                   Pending: <strong>{hkSummary.pending_tasks || 0}</strong>
                 </div>
@@ -248,29 +236,86 @@ export default function DashboardPage() {
             <div style={{ textAlign: 'center', color: 'var(--text-3)', padding: '30px 0' }}>No housekeeping data yet</div>
           )}
         </Card>
+
+        <Card>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>🌿 Horticulture</div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>Zone status</div>
+            </div>
+            <Link to="/horticulture">
+              <Btn size="sm" variant="ghost">
+                View →
+              </Btn>
+            </Link>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '30px 0',
+              color: 'var(--text-3)',
+              gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 28 }}>🌿</span>
+            <div style={{ fontSize: 12, textAlign: 'center' }}>Module in development</div>
+          </div>
+        </Card>
       </div>
 
-      {/* Quick links */}
       <Card>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14 }}>Quick Actions</div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Link to="/inventory?tab=requests">
-            <Btn variant="secondary">📋 Review Requests</Btn>
-          </Link>
-          <Link to="/inventory?tab=stocklog">
-            <Btn variant="secondary">🧾 Stock Log</Btn>
-          </Link>
-          <Link to="/inventory?tab=tasks">
-            <Btn variant="secondary">✅ Assign Task</Btn>
-          </Link>
-          <Link to="/users">
-            <Btn variant="secondary">👥 Manage Users</Btn>
-          </Link>
-          <Link to="/reports">
-            <Btn variant="secondary">📊 Reports</Btn>
-          </Link>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>📈 Weekly Activity Trend</div>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: 220,
+            color: 'var(--text-3)',
+            fontSize: 13,
+            flexDirection: 'column',
+            gap: 8,
+            border: '1px dashed var(--border)',
+            borderRadius: 8,
+          }}
+        >
+          <span style={{ fontSize: 24 }}>📊</span>
+          <div>Historical trend data not yet available</div>
+          <div style={{ fontSize: 11 }}>This chart will populate once daily records accumulate</div>
         </div>
       </Card>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginTop: 20 }}>
+        <Card>
+          <div style={{ fontWeight: 700, marginBottom: 10 }}>Inventory Tasks</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Badge value="pending" />
+            <Badge value="approved" />
+            <Badge value="issued" />
+          </div>
+        </Card>
+        <Card>
+          <div style={{ fontWeight: 700, marginBottom: 10 }}>Housekeeping Tasks</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Badge value="ongoing" />
+            <Badge value="completed" />
+            <Badge value="pending" />
+          </div>
+        </Card>
+        <Card>
+          <div style={{ fontWeight: 700, marginBottom: 10 }}>Horticulture Tasks</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Badge value="pending" />
+            <Badge value="ongoing" />
+            <Badge value="completed" />
+          </div>
+        </Card>
+      </div>
     </AdminLayout>
   )
 }
