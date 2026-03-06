@@ -25,7 +25,11 @@
   <a href="{% if search_query %}?search={{ search_query }}{% else %}?{% endif %}">
     <div class="chip {% if not selected_category %}active{% endif %}">
       <span class="material-icons-round" style="font-size:14px">all_inclusive</span>
+<<<<<<< Updated upstream
       All ({{ total_count }})
+=======
+      All ({% if low_stock_filter or search_query %}{{ filtered_count }}{% else %}{{ total_count }}{% endif %})
+>>>>>>> Stashed changes
     </div>
   </a>
   {% for cat in categories %}
@@ -51,8 +55,13 @@
 <a href="#item-{{ item.id }}" id="item-{{ item.id }}"
    onclick="return expandItem({{ item.id }}, event)"
    style="display:block">
+<<<<<<< Updated upstream
   <div class="card" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px"
        id="item-card-{{ item.id }}" {% if highlight_id == item.id|stringformat:'s' %}class="card item-highlight"{% endif %}>
+=======
+  <div class="card {% if highlight_id == item.id|stringformat:'s' %}item-highlight{% endif %}" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px"
+       id="item-card-{{ item.id }}">
+>>>>>>> Stashed changes
     <div style="display:flex;align-items:center;gap:12px;min-width:0">
       <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
         {% if item.status == 'out_of_stock' %}background:#fee2e2{% elif item.status == 'low_stock' %}background:#fff7ed{% else %}background:#f0fdf4{% endif %}">

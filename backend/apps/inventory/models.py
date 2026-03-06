@@ -72,7 +72,11 @@ class Item(models.Model):
 
     @property
     def is_below_threshold(self):
+<<<<<<< Updated upstream
         return 0 < self.available_quantity <= self.threshold_quantity
+=======
+        return self.available_quantity > 0 and self.available_quantity <= self.threshold_quantity
+>>>>>>> Stashed changes
 
     @property
     def status(self):

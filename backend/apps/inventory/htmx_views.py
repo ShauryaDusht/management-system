@@ -65,10 +65,14 @@ def mobile_logout(request):
 @login_required
 def mobile_dashboard(request):
     items = Item.objects.all()
+<<<<<<< Updated upstream
     low_stock = items.filter(
         available_quantity__gt=0,
         available_quantity__lte=F('threshold_quantity'),
     )
+=======
+    low_stock = items.filter(available_quantity__gt=0, available_quantity__lte=F('threshold_quantity'))
+>>>>>>> Stashed changes
     pending = ItemRequest.objects.filter(status='pending')
 
     context = {
@@ -103,10 +107,14 @@ def mobile_inventory_list(request):
         items_qs = items_qs.filter(name__icontains=search_query)
 
     if low_stock_filter:
+<<<<<<< Updated upstream
         items_qs = items_qs.filter(
             available_quantity__gt=0,
             available_quantity__lte=F('threshold_quantity'),
         )
+=======
+        items_qs = items_qs.filter(available_quantity__gt=0, available_quantity__lte=F('threshold_quantity'))
+>>>>>>> Stashed changes
 
     # Pagination — 15 items per page
     paginator = Paginator(items_qs, 15)
@@ -118,6 +126,10 @@ def mobile_inventory_list(request):
         'categories': categories,
         'selected_category': category_id,
         'total_count': Item.objects.count(),
+<<<<<<< Updated upstream
+=======
+        'filtered_count': paginator.count,
+>>>>>>> Stashed changes
         'search_query': search_query,
         'low_stock_filter': low_stock_filter,
         'highlight_id': request.GET.get('highlight', ''),
