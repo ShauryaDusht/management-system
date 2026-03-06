@@ -72,7 +72,7 @@ class Item(models.Model):
 
     @property
     def is_below_threshold(self):
-        return self.available_quantity < self.threshold_quantity
+        return 0 < self.available_quantity <= self.threshold_quantity
 
     @property
     def status(self):

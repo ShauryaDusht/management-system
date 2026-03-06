@@ -65,7 +65,10 @@ def mobile_logout(request):
 @login_required
 def mobile_dashboard(request):
     items = Item.objects.all()
-    low_stock = items.filter(available_quantity__lt=F('threshold_quantity'))
+    low_stock = items.filter(
+        available_quantity__gt=0,
+        available_quantity__lte=F('threshold_quantity'),
+    )
     pending = ItemRequest.objects.filter(status='pending')
 
     context = {
@@ -100,7 +103,10 @@ def mobile_inventory_list(request):
         items_qs = items_qs.filter(name__icontains=search_query)
 
     if low_stock_filter:
-        items_qs = items_qs.filter(available_quantity__lt=F('threshold_quantity'))
+        items_qs = items_qs.filter(
+            available_quantity__gt=0,
+            available_quantity__lte=F('threshold_quantity'),
+        )
 
     # Pagination — 15 items per page
     paginator = Paginator(items_qs, 15)

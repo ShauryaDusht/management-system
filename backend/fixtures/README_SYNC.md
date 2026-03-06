@@ -17,7 +17,7 @@ Core portal accounts:
 ## Option A (Recommended): Auto bootstrap via Docker
 
 ```bash
-docker compose down
+docker compose down -v
 docker compose up --build -d
 ```
 

@@ -62,7 +62,10 @@ class ItemListCreateView(generics.ListCreateAPIView):
             qs = qs.filter(category_id=category)
         low_stock = self.request.query_params.get('low_stock')
         if low_stock == 'true':
-            qs = qs.filter(available_quantity__lt=F('threshold_quantity'))
+            qs = qs.filter(
+                available_quantity__gt=0,
+                available_quantity__lte=F('threshold_quantity'),
+            )
         search = self.request.query_params.get('search')
         if search:
             qs = qs.filter(name__icontains=search)
@@ -89,7 +92,8 @@ class LowStockItemsView(APIView):
 
     def get(self, request):
         items = Item.objects.filter(
-            available_quantity__lt=F('threshold_quantity')
+            available_quantity__gt=0,
+            available_quantity__lte=F('threshold_quantity'),
         ).select_related('category')
         serializer = ItemSerializer(items, many=True)
         return Response({'count': items.count(), 'items': serializer.data})
@@ -513,7 +517,8 @@ class DashboardSummaryView(APIView):
     def get(self, request):
         total_items = Item.objects.count()
         low_stock_count = Item.objects.filter(
-            available_quantity__lt=F('threshold_quantity')
+            available_quantity__gt=0,
+            available_quantity__lte=F('threshold_quantity'),
         ).count()
         out_of_stock = Item.objects.filter(available_quantity=0).count()
         pending_requests = ItemRequest.objects.filter(status='pending').count()

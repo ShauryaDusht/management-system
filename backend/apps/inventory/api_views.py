@@ -214,7 +214,8 @@ class InventoryStatsView(APIView):
             # Field names aligned with DashboardSummaryView to reduce drift
             'total_items': Item.objects.count(),
             'low_stock_count': Item.objects.filter(
-                available_quantity__lt=F('threshold_quantity')
+                available_quantity__gt=0,
+                available_quantity__lte=F('threshold_quantity'),
             ).count(),
             'out_of_stock_count': Item.objects.filter(available_quantity=0).count(),
             'pending_requests': ItemRequest.objects.filter(status='pending').count(),
