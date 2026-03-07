@@ -224,7 +224,11 @@ class HKStockRequestListView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return HKStockRequest.objects.select_related('requested_by', 'area').order_by('-created_at')[:50]
+        user = self.request.user
+        qs = HKStockRequest.objects.select_related('requested_by', 'area').order_by('-created_at')
+        if user.role not in ['admin', 'manager']:
+            qs = qs.filter(requested_by=user)
+        return qs[:50]
 
 
 class HKStockRequestStatusUpdateView(RetrieveUpdateAPIView):
@@ -314,6 +318,7 @@ class HKAssignAreaTaskView(APIView):
 
         record = HKDailyRecord.objects.create(
             schedule=schedule,
+            originating_template=schedule,
             area=area,
             date=timezone.localdate(),
             status='pending',
@@ -391,9 +396,22 @@ class HKDashboardSummaryView(APIView):
         skipped = counts['skipped']
 
         total_workers = HKWorker.objects.filter(is_active=True, is_reliever=False).count()
-        present_today = HKAttendanceRecord.objects.filter(
-            date=today, status__in=['present', 'late']
-        ).values('worker').distinct().count()
+        first_half_workers = set(
+            HKAttendanceRecord.objects.filter(
+                date=today,
+                half='first',
+                status__in=['present', 'late'],
+            ).values_list('worker_id', flat=True)
+        )
+        second_half_workers = set(
+            HKAttendanceRecord.objects.filter(
+                date=today,
+                half='second',
+                status__in=['present', 'late'],
+            ).values_list('worker_id', flat=True)
+        )
+        present_today = len(first_half_workers | second_half_workers)
+        full_day_present = len(first_half_workers & second_half_workers)
         pending_stock = HKStockRequest.objects.filter(status='pending').count()
 
         return Response({
@@ -405,6 +423,7 @@ class HKDashboardSummaryView(APIView):
             'completion_pct': int((done / total_records * 100) if total_records else 0),
             'total_workers': total_workers,
             'present_today': present_today,
+            'full_day_present': full_day_present,
             'pending_stock_requests': pending_stock,
             'total_areas': HKArea.objects.filter(is_active=True).count(),
         })

@@ -106,8 +106,8 @@ class LowStockItemsView(APIView):
 class ItemHistoryView(APIView):
     permission_classes = [IsAdmin]
 
-    # Max rows fetched per source table per request
-    _MAX_PER_SOURCE = 200
+    # Max merged rows considered per request before pagination
+    _MAX_MERGED_EVENTS = 400
 
     def get(self, request, pk):
         try:
@@ -124,7 +124,7 @@ class ItemHistoryView(APIView):
 
         events = []
 
-        for entry in StockEntry.objects.filter(item=item).select_related('added_by').order_by('-added_at')[:self._MAX_PER_SOURCE]:
+        for entry in StockEntry.objects.filter(item=item).select_related('added_by').order_by('-added_at'):
             events.append({
                 'type': 'stock_added',
                 'date': entry.added_at.isoformat(),
@@ -138,7 +138,7 @@ class ItemHistoryView(APIView):
             ItemIssue.objects
             .filter(request__item=item)
             .select_related('request__requested_by', 'issued_by', 'return_recorded_by')
-            .order_by('-issued_at')[:self._MAX_PER_SOURCE]
+            .order_by('-issued_at')
         )
 
         for issue in issues:
@@ -171,6 +171,9 @@ class ItemHistoryView(APIView):
                 })
 
         events.sort(key=lambda e: e['_sort_dt'], reverse=True)
+        capped = len(events) > self._MAX_MERGED_EVENTS
+        if capped:
+            events = events[:self._MAX_MERGED_EVENTS]
         total_count = len(events)
 
         # Slice to the requested page
@@ -187,6 +190,7 @@ class ItemHistoryView(APIView):
             'page': page,
             'page_size': page_size,
             'total_pages': max(1, (total_count + page_size - 1) // page_size),
+            'capped': capped,
             'events': page_events,
         })
 
@@ -277,13 +281,19 @@ class ReviewRequestView(APIView):
             return Response(serializer.errors, status=400)
 
         action = serializer.validated_data['action']
+        item = Item.objects.select_for_update().get(pk=item_request.item_id)
 
         if action == 'approve':
-            if item_request.quantity_requested > item_request.item.available_quantity:
+            available_to_reserve = item.available_quantity - item.reserved_quantity
+            if item_request.quantity_requested > available_to_reserve:
                 return Response(
-                    {'detail': f'Insufficient stock. Available: {item_request.item.available_quantity} {item_request.item.unit}.'},
+                    {'detail': f'Insufficient stock. Available: {available_to_reserve} {item.unit}.'},
                     status=400
                 )
+            Item.objects.filter(pk=item.pk).update(
+                reserved_quantity=F('reserved_quantity') + item_request.quantity_requested
+            )
+            item.refresh_from_db(fields=['available_quantity', 'reserved_quantity'])
             item_request.status = ItemRequest.Status.APPROVED
         else:
             item_request.status = ItemRequest.Status.REJECTED
@@ -291,7 +301,7 @@ class ReviewRequestView(APIView):
 
         item_request.approved_by = request.user
         item_request.reviewed_at = timezone.now()
-        item_request.units_remaining = item_request.item.available_quantity
+        item_request.units_remaining = max(item.available_quantity - item.reserved_quantity, 0)
         item_request.save()
 
         return Response(ItemRequestSerializer(item_request).data)
@@ -315,6 +325,14 @@ class IssueItemView(APIView):
         except (TypeError, ValueError):
             return Response({'detail': 'Invalid quantity.'}, status=400)
 
+        if issued_qty <= 0:
+            return Response({'detail': 'Issued quantity must be greater than 0.'}, status=400)
+        if issued_qty > item_request.quantity_requested:
+            return Response(
+                {'detail': 'Issued quantity cannot exceed requested quantity.'},
+                status=400
+            )
+
         try:
             item = Item.objects.select_for_update().get(pk=item_request.item_id)
         except Item.DoesNotExist:
@@ -326,8 +344,10 @@ class IssueItemView(APIView):
                 status=400
             )
 
+        reserved_to_release = min(item.reserved_quantity, item_request.quantity_requested)
         Item.objects.filter(pk=item.pk).update(
-            available_quantity=F('available_quantity') - issued_qty
+            available_quantity=F('available_quantity') - issued_qty,
+            reserved_quantity=F('reserved_quantity') - reserved_to_release,
         )
 
         issue = ItemIssue.objects.create(
@@ -397,6 +417,9 @@ class ReturnAssetView(APIView):
             update_kwargs['total_quantity'] = F('total_quantity') - lost_qty
 
         Item.objects.filter(pk=issue.request.item_id).update(**update_kwargs)
+        updated_item = Item.objects.select_for_update().get(pk=issue.request.item_id)
+        if updated_item.available_quantity > updated_item.total_quantity:
+            raise AssertionError('available_quantity cannot exceed total_quantity')
 
         issue.returned_quantity = returned_qty
         issue.returned_at = timezone.now()
@@ -444,6 +467,12 @@ class FinalizeConsumableView(APIView):
             return Response(serializer.errors, status=400)
 
         actual_used = serializer.validated_data['actual_quantity_used']
+        confirmed_zero_usage = serializer.validated_data.get('confirmed_zero_usage', False)
+        if actual_used == 0 and confirmed_zero_usage is not True:
+            return Response(
+                {'detail': 'Set confirmed_zero_usage=true to finalize with zero usage.'},
+                status=400,
+            )
         unused = issue.issued_quantity - actual_used
 
         if unused > 0:
@@ -474,7 +503,7 @@ class UserActivityView(APIView):
         except User.DoesNotExist:
             return Response({'detail': 'User not found.'}, status=404)
 
-        if user.is_supervisor:
+        if user.role in ['supervisor', 'caretaker']:
             requests_qs = ItemRequest.objects.filter(
                 requested_by=user
             ).select_related('item').order_by('-requested_at')

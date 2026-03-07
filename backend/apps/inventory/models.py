@@ -36,6 +36,7 @@ class Item(models.Model):
     unit = models.CharField(max_length=20, choices=Unit.choices, default=Unit.PIECES)
     total_quantity = models.PositiveIntegerField(default=0)
     available_quantity = models.PositiveIntegerField(default=0)
+    reserved_quantity = models.PositiveIntegerField(default=0)
     threshold_quantity = models.PositiveIntegerField(
         default=10,
         help_text='Alert admin when available quantity falls below this number.'
@@ -48,6 +49,12 @@ class Item(models.Model):
 
     class Meta:
         ordering = ['category', 'name']
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(available_quantity__lte=models.F('total_quantity')),
+                name='inventory_item_available_lte_total',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.name} ({self.get_item_type_display()})"
@@ -117,6 +124,15 @@ class StockEntry(models.Model):
                 available_quantity=models.F('available_quantity') + self.quantity_added,
                 total_quantity=models.F('total_quantity') + self.quantity_added,
             )
+
+    def delete(self, *args, **kwargs):
+        quantity_added = self.quantity_added
+        item_id = self.item_id
+        super().delete(*args, **kwargs)
+        Item.objects.filter(pk=item_id).update(
+            available_quantity=models.F('available_quantity') - quantity_added,
+            total_quantity=models.F('total_quantity') - quantity_added,
+        )
 
 
 class ItemRequest(models.Model):

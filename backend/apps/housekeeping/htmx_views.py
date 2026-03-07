@@ -9,7 +9,7 @@ from django.contrib.auth import (
     update_session_auth_hash,
 )
 from django.db import models as dm
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -126,7 +126,10 @@ def get_today_records(area, date):
             for tmpl in missing:
                 try:
                     HKDailyRecord.objects.get_or_create(
-                        schedule=tmpl, area=area, date=date
+                        schedule=tmpl,
+                        area=area,
+                        date=date,
+                        defaults={"originating_template": tmpl},
                     )
                 except IntegrityError:
                     # Another concurrent request created this row between our
@@ -435,7 +438,8 @@ def hk_mark_task(request, record_id):
         record.started_at = None
         record.completed_by = None
         record.completed_at = None
-        record.save(update_fields=["status", "started_at", "completed_by", "completed_at"])
+        record.photo_after = None
+        record.save(update_fields=["status", "started_at", "completed_by", "completed_at", "photo_after"])
 
     elif action == "done":
         if is_break_task and not can_mark_break:
@@ -701,7 +705,22 @@ def hk_assign_reliever(request):
     today = timezone.localdate()
 
     original = get_object_or_404(HKWorker, pk=request.POST.get("original_worker_id"))
-    reliever = get_object_or_404(HKWorker, pk=request.POST.get("reliever_id"))
+    reliever = HKWorker.objects.filter(
+        pk=request.POST.get("reliever_id"),
+        is_reliever=True,
+    ).first()
+    if not reliever:
+        return HttpResponseBadRequest("Selected worker is not a valid reliever.")
+
+    already_covering = HKRelieverSubstitution.objects.filter(
+        reliever=reliever,
+        date=today,
+    ).exclude(original_worker=original).select_related("original_worker").first()
+    if already_covering:
+        return HttpResponseBadRequest(
+            f"This reliever is already covering {already_covering.original_worker.name} today"
+        )
+
     note = request.POST.get("note", "")
 
     HKRelieverSubstitution.objects.update_or_create(
@@ -759,27 +778,27 @@ def hk_sunday_incharge(request):
     user_areas = get_user_areas(user)
     today = timezone.localdate()
 
-    # correctly calculate the upcoming Sunday from any day of the week.
-    # today.weekday(): Mon=0 … Sat=5, Sun=6
-    # On Saturday (5): days_ahead = 1  ✓
-    # On Sunday  (6): days_ahead = 7  → next Sunday (correct, current Sunday is today)
-    # On Monday  (0): days_ahead = 6  ✓
-    days_until_sunday = (6 - today.weekday()) % 7
-    if days_until_sunday == 0:
-        # It is already Sunday — target next Sunday
-        days_until_sunday = 7
-    upcoming = today + datetime.timedelta(days=days_until_sunday)
-
     area_id = request.POST.get("area_id")
     area = user_areas.filter(pk=area_id).first()
-    worker = get_object_or_404(HKWorker, pk=request.POST.get("worker_id"))
-    if area:
-        HKSundayIncharge.objects.update_or_create(
-            area=area, for_sunday=upcoming,
-            defaults={"worker": worker, "set_by": user, "notes": request.POST.get("notes", "")}
-        )
-    return redirect(f"/housekeeping/dashboard/?area={area_id}" if area_id else "/housekeeping/dashboard/")
+    if not area:
+        return redirect("/housekeeping/dashboard/?error=area_required")
 
+    days_until_sunday = (6 - today.weekday()) % 7
+    if days_until_sunday == 0:
+        return redirect(f"/housekeeping/dashboard/?error=already_sunday&area={area.id}")
+    upcoming = today + datetime.timedelta(days=days_until_sunday)
+
+    worker = get_object_or_404(
+        HKWorker,
+        pk=request.POST.get("worker_id"),
+        is_active=True,
+        area=area,
+    )
+    HKSundayIncharge.objects.update_or_create(
+        area=area, for_sunday=upcoming,
+        defaults={"worker": worker, "set_by": user, "notes": request.POST.get("notes", "")}
+    )
+    return redirect(f"/housekeeping/dashboard/?area={area_id}")
 
 @hk_required
 def hk_stock(request):
@@ -819,6 +838,8 @@ def hk_stock_request(request):
 
         area_id = request.POST.get("area_id")
         area = user_areas.filter(pk=area_id).first() if area_id else user_areas.first()
+        if not item_name:
+            return redirect(f"/housekeeping/stock/?error=item_name_required&area={area.id if area else ''}")
         qty = max(1, int(request.POST.get("quantity", 1) or 1))
 
         hk_req = HKStockRequest.objects.create(
@@ -920,3 +941,4 @@ def hk_alerts_manage(request):
         "alerts": HKAlert.objects.order_by("-created_at")[:20],
         "all_areas": HKArea.objects.filter(is_active=True),
     })
+

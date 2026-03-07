@@ -53,7 +53,7 @@ def generate_inventory_report(status_filter=None):
             'total_value': total_value,
             'status': (
                 'out_of_stock' if item.available_quantity == 0
-                else 'low_stock' if item.available_quantity <= item.threshold_quantity
+                else 'low_stock' if 0 < item.available_quantity <= item.threshold_quantity
                 else 'in_stock'
             ),
         })

@@ -146,6 +146,14 @@ class HKDailyRecord(models.Model):
     schedule = models.ForeignKey(
         HKScheduleTemplate, on_delete=models.CASCADE, related_name='daily_records'
     )
+    originating_template = models.ForeignKey(
+        HKScheduleTemplate,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='originated_daily_records',
+        help_text='Original template used to create this daily record (for temporary-task cleanup).',
+    )
     area = models.ForeignKey(HKArea, on_delete=models.CASCADE, related_name='daily_records')
     date = models.DateField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')

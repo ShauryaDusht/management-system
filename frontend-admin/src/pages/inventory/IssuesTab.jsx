@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { asList } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
+import { useAuth } from '../../context/AuthContext'
 import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, Spinner } from '../../components/ui'
 
 
 
 export default function IssuesTab({ userRole }) {
+  const { isSupervisor, isCaretaker } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [issues, setIssues] = useState([])
@@ -19,7 +21,7 @@ export default function IssuesTab({ userRole }) {
   })
 
   const canManager = ['admin', 'manager', 'inventory_manager'].includes(userRole)
-  const canSupervisor = ['supervisor', 'caretaker'].includes(userRole)
+  const canSupervisor = isSupervisor || isCaretaker
 
   const load = async () => {
     setLoading(true)
