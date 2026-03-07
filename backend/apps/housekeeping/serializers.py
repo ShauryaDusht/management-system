@@ -62,6 +62,13 @@ class HKWorkerSerializer(serializers.ModelSerializer):
             return obj.supervisor.get_full_name() or obj.supervisor.username
         return ''
 
+    def validate_supervisor(self, value):
+        if value and value.role not in ['supervisor', 'caretaker']:
+            raise serializers.ValidationError(
+                'Supervisor must have role "supervisor" or "caretaker".'
+            )
+        return value
+
 
 class HKDailyRecordSerializer(serializers.ModelSerializer):
     task_name = serializers.CharField(source='schedule.task_name', read_only=True)

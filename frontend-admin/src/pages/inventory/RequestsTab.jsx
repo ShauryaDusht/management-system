@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { asList } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
+import { useAuth } from '../../context/AuthContext'
 import {
   Alert,
   Badge,
@@ -16,6 +17,7 @@ import {
 } from '../../components/ui'
 
 export default function RequestsTab({ userRole }) {
+  const { isSupervisor, isCaretaker } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [requests, setRequests] = useState([])
@@ -45,7 +47,7 @@ export default function RequestsTab({ userRole }) {
 
   const [actingId, setActingId] = useState(null)
 
-  const canCreate = ['supervisor', 'caretaker'].includes(userRole)
+  const canCreate = isSupervisor || isCaretaker
   const canReview = ['admin', 'manager', 'inventory_manager'].includes(userRole)
 
   const load = async () => {

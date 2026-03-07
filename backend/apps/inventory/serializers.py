@@ -172,6 +172,7 @@ class ReturnAssetSerializer(serializers.Serializer):
 class FinalizeConsumableSerializer(serializers.Serializer):
     """Supervisor finalizes actual consumable usage."""
     actual_quantity_used = serializers.IntegerField(min_value=0)
+    confirmed_zero_usage = serializers.BooleanField(required=False, default=False)
     notes = serializers.CharField(required=False, allow_blank=True)
 
     def validate_actual_quantity_used(self, value):

@@ -86,6 +86,8 @@ class AdjustStockView(APIView):
             )
 
         item.refresh_from_db()
+        if item.available_quantity > item.total_quantity:
+            raise AssertionError('available_quantity cannot exceed total_quantity')
         return Response(ItemSerializer(item).data, status=status.HTTP_200_OK)
 
 
@@ -125,19 +127,25 @@ class ApproveRequestView(APIView):
         if item_request.status != ItemRequest.Status.PENDING:
             return Response({'error': 'Request is not pending'}, status=status.HTTP_400_BAD_REQUEST)
 
-        item = item_request.item
+        item = Item.objects.select_for_update().get(pk=item_request.item_id)
         qty = item_request.quantity_requested
+        available_to_reserve = item.available_quantity - item.reserved_quantity
 
-        if item.available_quantity < qty:
+        if available_to_reserve < qty:
             return Response(
-                {'error': f'Not enough stock. Available: {item.available_quantity}, Requested: {qty}'},
+                {'error': f'Not enough stock. Available: {available_to_reserve}, Requested: {qty}'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        Item.objects.filter(pk=item.pk).update(
+            reserved_quantity=F('reserved_quantity') + qty
+        )
+        item.refresh_from_db(fields=['available_quantity', 'reserved_quantity'])
 
         item_request.status = ItemRequest.Status.APPROVED
         item_request.approved_by = user
         item_request.reviewed_at = timezone.now()
-        item_request.units_remaining = item.available_quantity
+        item_request.units_remaining = max(item.available_quantity - item.reserved_quantity, 0)
         item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'units_remaining'])
 
         return Response(ItemRequestSerializer(item_request).data, status=status.HTTP_200_OK)
