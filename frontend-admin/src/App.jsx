@@ -11,18 +11,15 @@ import ProfilePage from './pages/profile/ProfilePage'
 import ReportsPage from './pages/reports/ReportsPage'
 import UsersPage from './pages/users/UsersPage'
 
-const ALL_AUTH = ['admin', 'manager', 'inventory_manager', 'supervisor', 'caretaker']
-const ADMIN_MANAGER = ['admin', 'manager', 'inventory_manager']
 const ADMIN_ONLY = ['admin']
 
 function RoleRedirect() {
   const { user, loading } = useAuth()
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />
-  if (['admin', 'manager', 'inventory_manager'].includes(user.role)) {
-    return <Navigate to="/dashboard" replace />
-  }
-  return <Navigate to="/inventory" replace />
+  if (user.role === 'admin') return <Navigate to="/dashboard" replace />
+  window.location.href = '/portal/'
+  return null
 }
 
 export default function App() {
@@ -35,7 +32,7 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_MANAGER}>
+              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
                 <DashboardPage />
               </ProtectedRoute>
             }
@@ -43,7 +40,7 @@ export default function App() {
           <Route
             path="/inventory/*"
             element={
-              <ProtectedRoute allowedRoles={ALL_AUTH}>
+              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
                 <InventoryPage />
               </ProtectedRoute>
             }
@@ -51,7 +48,7 @@ export default function App() {
           <Route
             path="/housekeeping/*"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_MANAGER}>
+              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
                 <HousekeepingPage />
               </ProtectedRoute>
             }
@@ -59,7 +56,7 @@ export default function App() {
           <Route
             path="/horticulture/*"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_MANAGER}>
+              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
                 <HorticulturePage />
               </ProtectedRoute>
             }
@@ -67,7 +64,7 @@ export default function App() {
           <Route
             path="/reports"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_MANAGER}>
+              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
                 <ReportsPage />
               </ProtectedRoute>
             }
@@ -83,7 +80,7 @@ export default function App() {
           <Route
             path="/profile"
             element={
-              <ProtectedRoute allowedRoles={ALL_AUTH}>
+              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
                 <ProfilePage />
               </ProtectedRoute>
             }

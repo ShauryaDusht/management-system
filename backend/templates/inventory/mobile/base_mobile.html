@@ -108,7 +108,7 @@
     {% if request.user.is_authenticated %}
     {% with current_path=request.path %}
     <nav class="bottom-nav">
-        {% if request.user.role == 'admin' or request.user.role == 'manager' or request.user.role == 'inventory_manager' %}
+        {% if request.user.role == 'admin' or request.user.role == 'inventory_manager' %}
         <a href="{% url 'mobile_dashboard' %}" class="nav-item {% if current_path == '/inventory/mobile/' %}active{% endif %}">
             <span class="material-icons-round">dashboard</span>
             <span class="nav-label">Dashboard</span>

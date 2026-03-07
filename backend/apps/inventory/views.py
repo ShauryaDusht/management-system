@@ -17,7 +17,8 @@ from .serializers import (
     UserActivitySerializer,
     StandardPagination,
 )
-from apps.users.permissions import IsAdmin, IsAdminOrManager, IsSupervisor
+from apps.users.permissions import IsAdmin, IsSupervisor
+from .permissions import IsAdminOrInventoryManager
 
 
 # ─────────────────────────────────────────────────
@@ -265,7 +266,7 @@ class ItemRequestDetailView(generics.RetrieveAPIView):
 
 
 class ReviewRequestView(APIView):
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsAdminOrInventoryManager]
 
     @transaction.atomic
     def post(self, request, pk):
@@ -308,7 +309,7 @@ class ReviewRequestView(APIView):
 
 
 class IssueItemView(APIView):
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsAdminOrInventoryManager]
 
     @transaction.atomic
     def post(self, request, pk):
@@ -388,7 +389,7 @@ class ItemIssueListView(generics.ListAPIView):
 # ─────────────────────────────────────────────────
 
 class ReturnAssetView(APIView):
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsAdminOrInventoryManager]
 
     @transaction.atomic
     def post(self, request, pk):
@@ -446,7 +447,7 @@ class FinalizeConsumableView(APIView):
             base_qs = ItemIssue.objects.select_for_update().select_related(
                 'request__item', 'request__requested_by'
             )
-            if user.is_admin or user.is_manager:
+            if user.is_admin or user.is_inventory_manager:
                 issue = base_qs.get(pk=pk)
             elif user.is_supervisor:
                 # Supervisors can only finalize their own issues
@@ -541,7 +542,7 @@ class UserActivityView(APIView):
 # ─────────────────────────────────────────────────
 
 class DashboardSummaryView(APIView):
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsAdminOrInventoryManager]
 
     def get(self, request):
         total_items = Item.objects.count()

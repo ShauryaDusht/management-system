@@ -9,7 +9,7 @@ import {
 
 export default function IssuesPage() {
   const { user } = useAuth()
-  const isManager = user?.role === 'manager' || user?.role === 'inventory_manager'
+  const isManager = user?.role === 'admin' || user?.role === 'inventory_manager'
   const isSupervisor = user?.role === 'supervisor'
 
   const [issues, setIssues] = useState([])

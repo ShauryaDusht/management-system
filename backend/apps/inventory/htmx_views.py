@@ -16,8 +16,11 @@ from .models import Category, Item, ItemIssue, ItemRequest, StockEntry
 
 def mobile_login(request):
     if request.user.is_authenticated:
-        return redirect('/inventory/mobile/')
+        if getattr(request.user, 'role', '') in ['admin', 'inventory_manager']:
+            return redirect('/inventory/mobile/')
+        return redirect('/portal/login/')
 
+    allowed_roles = ['admin', 'inventory_manager']
     error = ''
     next_url = '/inventory/mobile/'
 
@@ -27,7 +30,7 @@ def mobile_login(request):
         raw_next = request.POST.get('next', '').strip()
 
         user = authenticate(request, username=username, password=password)
-        if user is not None:
+        if user is not None and user.is_active and getattr(user, 'role', '') in allowed_roles:
             auth_login(request, user)
             if raw_next and url_has_allowed_host_and_scheme(
                 url=raw_next,
@@ -36,7 +39,7 @@ def mobile_login(request):
             ):
                 return redirect(raw_next)
             return redirect('/inventory/mobile/')
-        error = 'Invalid username or password.'
+        error = 'You do not have inventory portal access.' if user and user.is_active else 'Invalid username or password.'
     else:
         raw_next = request.GET.get('next', '').strip()
         if raw_next and url_has_allowed_host_and_scheme(
@@ -55,7 +58,7 @@ def mobile_login(request):
 def mobile_logout(request):
     if request.method == 'POST':
         auth_logout(request)
-    return redirect('mobile_login')
+    return redirect('/portal/login/')
 
 
 # ─────────────────────────────────────────────────
@@ -202,7 +205,7 @@ def mobile_my_requests(request):
 @login_required
 def mobile_manager_requests(request):
     user = request.user
-    if getattr(user, 'role', '') not in ['admin', 'inventory_manager', 'manager']:
+    if getattr(user, 'role', '') not in ['admin', 'inventory_manager']:
         return redirect('mobile_dashboard')
 
     all_pending = ItemRequest.objects.filter(
@@ -226,7 +229,7 @@ def mobile_manager_requests(request):
 @login_required
 def mobile_issued_items(request):
     role = getattr(request.user, 'role', '')
-    is_manager = role in ['admin', 'inventory_manager', 'manager']
+    is_manager = role in ['admin', 'inventory_manager']
 
     issues_qs = ItemIssue.objects.select_related(
         'request',
@@ -256,7 +259,7 @@ def mobile_issued_items(request):
 @login_required
 def mobile_stock_log(request):
     role = getattr(request.user, 'role', '')
-    if role not in ['admin', 'inventory_manager', 'manager']:
+    if role not in ['admin', 'inventory_manager']:
         return redirect('mobile_dashboard')
 
     entries = StockEntry.objects.select_related('item', 'item__category', 'added_by').order_by('-added_at')
@@ -276,7 +279,7 @@ def mobile_stock_log(request):
 @login_required
 def mobile_reports(request):
     role = getattr(request.user, 'role', '')
-    if role not in ['admin', 'inventory_manager', 'manager']:
+    if role not in ['admin', 'inventory_manager']:
         return redirect('mobile_dashboard')
 
     from apps.reports.generators import generate_inventory_report, generate_requests_report
@@ -359,7 +362,7 @@ def mobile_approve_request(request, pk):
     """Approve a pending request (manager/admin only)."""
     if request.method == 'POST':
         role = getattr(request.user, 'role', '')
-        if role not in ['admin', 'inventory_manager', 'manager']:
+        if role not in ['admin', 'inventory_manager']:
             return redirect('mobile_dashboard')
 
         item_request = get_object_or_404(
@@ -382,7 +385,7 @@ def mobile_reject_request(request, pk):
     """Reject a pending request with an optional reason."""
     if request.method == 'POST':
         role = getattr(request.user, 'role', '')
-        if role not in ['admin', 'inventory_manager', 'manager']:
+        if role not in ['admin', 'inventory_manager']:
             return redirect('mobile_dashboard')
 
         item_request = get_object_or_404(ItemRequest, pk=pk)
@@ -404,7 +407,7 @@ def mobile_issue_request(request, pk):
     """Issue an approved request: deduct stock and create ItemIssue record."""
     if request.method == 'POST':
         role = getattr(request.user, 'role', '')
-        if role not in ['admin', 'inventory_manager', 'manager']:
+        if role not in ['admin', 'inventory_manager']:
             return redirect('mobile_dashboard')
 
         item_request = get_object_or_404(
