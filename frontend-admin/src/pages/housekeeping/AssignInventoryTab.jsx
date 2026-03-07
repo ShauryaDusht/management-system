@@ -13,7 +13,7 @@ export default function AssignInventoryTab({ userRole }) {
   const [draftStatus, setDraftStatus] = useState({})
   const [savingId, setSavingId] = useState(null)
 
-  const canUpdate = ['admin', 'manager', 'inventory_manager'].includes(userRole)
+  const canUpdate = userRole === 'admin'
 
   const load = async () => {
     setLoading(true)

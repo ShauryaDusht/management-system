@@ -48,7 +48,7 @@ export default function RequestsTab({ userRole }) {
   const [actingId, setActingId] = useState(null)
 
   const canCreate = isSupervisor || isCaretaker
-  const canReview = ['admin', 'manager', 'inventory_manager'].includes(userRole)
+  const canReview = userRole === 'admin'
 
   const load = async () => {
     setLoading(true)

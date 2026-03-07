@@ -88,7 +88,8 @@ export default function UsersPage() {
   // count inventory_manager separately so the subtitle is accurate
   const counts = {
     admin: users.filter((u) => u.role === 'admin').length,
-    manager: users.filter((u) => u.role === 'manager').length,
+    housekeeping_manager: users.filter((u) => u.role === 'housekeeping_manager').length,
+    horticulture_manager: users.filter((u) => u.role === 'horticulture_manager').length,
     inventory_manager: users.filter((u) => u.role === 'inventory_manager').length,
     supervisor: users.filter((u) => u.role === 'supervisor').length,
   }
@@ -140,7 +141,7 @@ export default function UsersPage() {
       <div className="p-6 max-w-6xl mx-auto">
         <PageHeader
           title="Users"
-          subtitle={`${counts.supervisor} supervisors · ${counts.manager} managers · ${counts.inventory_manager} inv. managers · ${counts.admin} admins`}
+          subtitle={`${counts.supervisor} supervisors - ${counts.housekeeping_manager} hk managers - ${counts.horticulture_manager} hort managers - ${counts.inventory_manager} inv. managers - ${counts.admin} admins`}
           action={<Button onClick={openAdd}>+ Add User</Button>}
         />
 
@@ -187,8 +188,9 @@ export default function UsersPage() {
             <Field label="Role *">
               <Select name="role" value={form.role} onChange={handleChange}>
                 <option value="supervisor">Supervisor</option>
-                <option value="manager">Manager</option>
                 <option value="inventory_manager">Inventory Manager</option>
+                <option value="housekeeping_manager">Housekeeping Manager</option>
+                <option value="horticulture_manager">Horticulture Manager</option>
                 <option value="admin">Admin</option>
               </Select>
             </Field>
@@ -226,3 +228,4 @@ export default function UsersPage() {
     </Layout>
   )
 }
+

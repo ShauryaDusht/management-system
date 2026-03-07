@@ -16,8 +16,23 @@ import {
 } from '../../components/ui'
 import AdminLayout from '../../layout/AdminLayout'
 
-const ROLES = ['admin', 'manager', 'inventory_manager', 'supervisor', 'caretaker']
-const HK_ROLES = ['supervisor', 'caretaker']
+const ROLES = [
+  'admin',
+  'inventory_manager',
+  'housekeeping_manager',
+  'horticulture_manager',
+  'supervisor',
+  'caretaker',
+]
+const HK_ROLES = ['supervisor', 'caretaker', 'housekeeping_manager']
+const ROLE_FILTERS = [
+  { key: 'admin', label: 'Admin' },
+  { key: 'inventory_manager', label: 'Inventory Manager' },
+  { key: 'housekeeping_manager', label: 'Housekeeping Manager' },
+  { key: 'horticulture_manager', label: 'Horticulture Manager' },
+  { key: 'supervisor', label: 'Supervisor' },
+  { key: 'caretaker', label: 'Caretaker' },
+]
 const EMPTY = {
   username: '',
   first_name: '',
@@ -146,12 +161,7 @@ export default function UsersPage() {
   }
 
   const filtered = users.filter((u) => {
-    const matchRole =
-      roleFilter === 'all'
-        ? true
-        : roleFilter === 'managers'
-          ? ['manager', 'inventory_manager'].includes(u.role)
-          : u.role === roleFilter
+    const matchRole = roleFilter === 'all' ? true : u.role === roleFilter
     const areaText = Array.isArray(u.areas_incharge) ? u.areas_incharge.join(' ') : ''
     const matchSearch =
       !search ||
@@ -162,16 +172,22 @@ export default function UsersPage() {
   })
 
   const roleCounts = useMemo(() => {
-    const admin = users.filter((u) => u.role === 'admin').length
-    const managers = users.filter((u) => ['manager', 'inventory_manager'].includes(u.role)).length
-    const supervisor = users.filter((u) => u.role === 'supervisor').length
-    const caretaker = users.filter((u) => u.role === 'caretaker').length
+    const counts = {
+      admin: 0,
+      inventory_manager: 0,
+      housekeeping_manager: 0,
+      horticulture_manager: 0,
+      supervisor: 0,
+      caretaker: 0,
+    }
+    users.forEach((u) => {
+      if (Object.prototype.hasOwnProperty.call(counts, u.role)) {
+        counts[u.role] += 1
+      }
+    })
     return {
       total: users.length,
-      admin,
-      managers,
-      supervisor,
-      caretaker,
+      ...counts,
     }
   }, [users])
 
@@ -223,54 +239,25 @@ export default function UsersPage() {
             Admin
           </div>
         </Card>
-        <Card
-          onClick={() => setRoleFilter(roleFilter === 'managers' ? 'all' : 'managers')}
-          style={{
-            cursor: 'pointer',
-            padding: '12px 14px',
-            borderColor: roleFilter === 'managers' ? 'var(--green-700)' : 'var(--border)',
-            background: roleFilter === 'managers' ? '#f0fdf4' : 'var(--surface)',
-          }}
-        >
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green-800)' }}>
-            {roleCounts.managers}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-            Managers
-          </div>
-        </Card>
-        <Card
-          onClick={() => setRoleFilter(roleFilter === 'supervisor' ? 'all' : 'supervisor')}
-          style={{
-            cursor: 'pointer',
-            padding: '12px 14px',
-            borderColor: roleFilter === 'supervisor' ? 'var(--green-700)' : 'var(--border)',
-            background: roleFilter === 'supervisor' ? '#f0fdf4' : 'var(--surface)',
-          }}
-        >
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green-800)' }}>
-            {roleCounts.supervisor}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-            Supervisor
-          </div>
-        </Card>
-        <Card
-          onClick={() => setRoleFilter(roleFilter === 'caretaker' ? 'all' : 'caretaker')}
-          style={{
-            cursor: 'pointer',
-            padding: '12px 14px',
-            borderColor: roleFilter === 'caretaker' ? 'var(--green-700)' : 'var(--border)',
-            background: roleFilter === 'caretaker' ? '#f0fdf4' : 'var(--surface)',
-          }}
-        >
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green-800)' }}>
-            {roleCounts.caretaker}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-            Caretaker
-          </div>
-        </Card>
+        {ROLE_FILTERS.filter((r) => r.key !== 'admin').map((r) => (
+          <Card
+            key={r.key}
+            onClick={() => setRoleFilter(roleFilter === r.key ? 'all' : r.key)}
+            style={{
+              cursor: 'pointer',
+              padding: '12px 14px',
+              borderColor: roleFilter === r.key ? 'var(--green-700)' : 'var(--border)',
+              background: roleFilter === r.key ? '#f0fdf4' : 'var(--surface)',
+            }}
+          >
+            <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green-800)' }}>
+              {roleCounts[r.key]}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+              {r.label}
+            </div>
+          </Card>
+        ))}
       </div>
 
       <Card noPad>
@@ -292,10 +279,9 @@ export default function UsersPage() {
           />
           <SelectField value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={{ width: 160 }}>
             <option value="all">All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="managers">Managers</option>
-            <option value="supervisor">Supervisor</option>
-            <option value="caretaker">Caretaker</option>
+            {ROLE_FILTERS.map((r) => (
+              <option key={r.key} value={r.key}>{r.label}</option>
+            ))}
           </SelectField>
           <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--text-3)' }}>{filtered.length} users</span>
         </div>

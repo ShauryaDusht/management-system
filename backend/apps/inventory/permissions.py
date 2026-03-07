@@ -8,7 +8,7 @@ class IsAdmin(BasePermission):
 
 class IsManager(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.is_manager
+        return request.user.is_authenticated and request.user.is_any_manager
 
 
 class IsSupervisor(BasePermission):
@@ -19,7 +19,7 @@ class IsSupervisor(BasePermission):
 class IsAdminOrManager(BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and (
-            request.user.is_admin or request.user.is_manager
+            request.user.is_admin or request.user.is_any_manager
         )
 
 
@@ -30,6 +30,13 @@ class IsAdminOrManagerOrSupervisor(BasePermission):
 
         return request.user.is_authenticated and (
             request.user.is_admin
-            or request.user.is_manager
+            or request.user.is_any_manager
             or request.user.is_supervisor
+        )
+
+
+class IsAdminOrInventoryManager(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and (
+            request.user.is_admin or request.user.is_inventory_manager
         )

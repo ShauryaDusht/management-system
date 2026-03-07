@@ -20,7 +20,7 @@ export default function IssuesTab({ userRole }) {
     notes: '',
   })
 
-  const canManager = ['admin', 'manager', 'inventory_manager'].includes(userRole)
+  const canManager = userRole === 'admin'
   const canSupervisor = isSupervisor || isCaretaker
 
   const load = async () => {

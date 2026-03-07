@@ -16,7 +16,7 @@ import {
 import { inventoryAPI } from '../api/inventory'
 
 const REQUESTER_ROLES = ['caretaker', 'supervisor']
-const MANAGER_ROLES = ['admin', 'inventory_manager', 'manager']
+const MANAGER_ROLES = ['admin', 'inventory_manager']
 const PAGE_SIZE = 10
 
 const EMPTY_FORM = {

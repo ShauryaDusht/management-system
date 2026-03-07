@@ -6,6 +6,21 @@ from .models import User
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Add user info into the JWT token response."""
 
+    @staticmethod
+    def _get_portal_redirect(user):
+        role = user.role
+        if role == 'admin':
+            return '/admin-portal/'
+        if role == 'inventory_manager':
+            return '/inventory/mobile/'
+        if role == 'housekeeping_manager':
+            return '/housekeeping/dashboard/'
+        if role == 'horticulture_manager':
+            return '/horticulture/dashboard/'
+        if role in ('supervisor', 'caretaker'):
+            return '/housekeeping/dashboard/'
+        return '/portal/'
+
     def validate(self, attrs):
         data = super().validate(attrs)
         user = self.user
@@ -16,6 +31,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'full_name': user.get_full_name(),
             'role': user.role,
             'phone': user.phone,
+            'portal_redirect': self._get_portal_redirect(user),
         }
         return data
 

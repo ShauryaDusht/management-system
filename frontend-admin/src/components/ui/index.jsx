@@ -88,10 +88,11 @@ export function Badge({ value, style }) {
     out_of_stock: { bg: '#fee2e2', color: '#991b1b', text: 'Out of Stock' },
     in_stock: { bg: '#d1fae5', color: '#065f46', text: 'In Stock' },
     admin: { bg: '#ede9fe', color: '#5b21b6', text: 'Admin' },
-    manager: { bg: '#dbeafe', color: '#1d4ed8', text: 'Manager' },
+    inventory_manager: { bg: '#fef3c7', color: '#92400e', text: 'Inv. Manager' },
+    housekeeping_manager: { bg: '#dbeafe', color: '#1d4ed8', text: 'HK Manager' },
+    horticulture_manager: { bg: '#dcfce7', color: '#166534', text: 'Horti Manager' },
     supervisor: { bg: '#d1fae5', color: '#065f46', text: 'Supervisor' },
     caretaker: { bg: '#fff7ed', color: '#c2410c', text: 'Caretaker' },
-    inventory_manager: { bg: '#fef3c7', color: '#92400e', text: 'Inv. Manager' },
     urgent: { bg: '#fee2e2', color: '#991b1b', text: '⚡ Urgent' },
   }
   const m =
