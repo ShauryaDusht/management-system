@@ -31,6 +31,8 @@
     Route-wise road and footpath cleaning plan (daily + Sunday deep clean)
   {% elif is_swm %}
     SWM workflow (Mon-Sat operations + Sunday deep clean)
+  {% elif is_academic %}
+    Academic block plan (AB1-AB13 + common zones)
   {% else %}
     Same schedule every day
   {% endif %}
@@ -102,6 +104,12 @@
         {% elif tgrp.grouper == 'room' %}Tempo and Vehicle Collection Operations
         {% elif tgrp.grouper == 'washroom' %}Segregation and Supervisor Operations
         {% elif tgrp.grouper == 'all' %}Sunday Deep Cleaning
+        {% else %}General{% endif %}
+      {% elif is_academic %}
+        {% if tgrp.grouper == 'floor' %}Block and Corridor Operations
+        {% elif tgrp.grouper == 'room' %}Classroom, Lab and Office Operations
+        {% elif tgrp.grouper == 'washroom' %}Washroom and Common Area Operations
+        {% elif tgrp.grouper == 'all' %}Special / Sunday Tasks
         {% else %}General{% endif %}
       {% else %}
         {% if tgrp.grouper == 'room' %}Room Staff

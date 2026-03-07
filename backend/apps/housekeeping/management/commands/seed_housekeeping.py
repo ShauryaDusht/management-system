@@ -1,4 +1,4 @@
-"""
+﻿"""
 Complete housekeeping seed with all real IITGN staff data.
 Workers: 57 permanent + 9 relievers
 Caretakers: 9 (Priyanka, Anita, Rushita, Pankaj, Anil, Nikul, Jaimin x2, Ram Singh, Vishwajeet)
@@ -36,7 +36,7 @@ class Command(BaseCommand):
         self.seed_schedules()
 
         self.stdout.write(self.style.SUCCESS(f'''
-✓ SEED COMPLETE
+âœ“ SEED COMPLETE
   Areas:     {HKArea.objects.count()}
   Users:     {User.objects.filter(role__in=["admin","manager","inventory_manager","caretaker","supervisor"]).count()}
   Workers:   {HKWorker.objects.count()}
@@ -45,7 +45,7 @@ class Command(BaseCommand):
 All accounts use password: {DEFAULT_PASSWORD}
         '''))
 
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def seed_areas(self):
         hostel_names = [
@@ -114,7 +114,7 @@ All accounts use password: {DEFAULT_PASSWORD}
         # but excluded from active dashboards and assignments.
         HKArea.objects.filter(name__in=['Academic Blocks 1-9', 'Academic Blocks 10-13']).update(is_active=False)
 
-        self.stdout.write(f'  ✓ Areas: {HKArea.objects.count()}')
+        self.stdout.write(f'  âœ“ Areas: {HKArea.objects.count()}')
 
     def area(self, name):
         return HKArea.objects.filter(name=name).first()
@@ -163,7 +163,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                 HKUserArea.objects.get_or_create(user=user, area=a)
         return user
 
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def seed_caretakers(self):
         """
@@ -199,7 +199,7 @@ All accounts use password: {DEFAULT_PASSWORD}
         for username, first, last, phone, areas in supervisors:
             self.make_user(username, first, last, phone, 'supervisor', areas)
 
-        self.stdout.write(f'  ✓ Users: {User.objects.filter(role__in=["caretaker","supervisor"]).count()}')
+        self.stdout.write(f'  âœ“ Users: {User.objects.filter(role__in=["caretaker","supervisor"]).count()}')
 
     def seed_portal_accounts(self):
         """
@@ -238,7 +238,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             self.make_user(username, first, last, phone, role, areas, email=email)
 
         self.stdout.write(
-            f'  ✓ Portal users: {User.objects.filter(role__in=["admin","manager","inventory_manager"]).count()}'
+            f'  âœ“ Portal users: {User.objects.filter(role__in=["admin","manager","inventory_manager"]).count()}'
         )
 
     def cleanup_legacy_accounts(self):
@@ -259,7 +259,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             except ProtectedError:
                 blocked.append(user.username)
 
-        self.stdout.write(f'  ✓ Legacy users removed: {removed}')
+        self.stdout.write(f'  âœ“ Legacy users removed: {removed}')
         if blocked:
             self.stdout.write(
                 self.style.WARNING(
@@ -267,7 +267,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                 )
             )
 
-    # ─────────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def seed_workers(self):
         """
@@ -277,47 +277,47 @@ All accounts use password: {DEFAULT_PASSWORD}
         """
         # Format: (name, punching_no, phone, area_name, worker_type, is_reliever)
         workers = [
-            # ── AIBAAN ──────────────────────────────────────────────────────
+            # â”€â”€ AIBAAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Reeta Ben',        '357', '9574379477', 'Aibaan',   'room',     False),
             ('Meena Ben',        '76',  '9909679865', 'Aibaan',   'floor',    False),
             ('Kailash B',        '143', '7265921026', 'Aibaan',   'washroom', False),
 
-            # ── BEUAKI ──────────────────────────────────────────────────────
+            # â”€â”€ BEUAKI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Shilpa Ben',       '419', '6356046585', 'Beuaki',   'room',     False),
             ('Bhanu Ben',        '332', '7567371788', 'Beuaki',   'floor',    False),
             ('Surya Ben',        '233', '9725963299', 'Beuaki',   'washroom', False),
 
-            # ── CHIMAIR ─────────────────────────────────────────────────────
+            # â”€â”€ CHIMAIR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Kailashben M',     '98',  '8490053837', 'Chimair',  'room',     False),
             ('Geeta Ben',        '230', '7041016942', 'Chimair',  'floor',    False),
             ('Manisha Ben',      '356', '9157691322', 'Chimair',  'washroom', False),
 
-            # ── IJOKHA ──────────────────────────────────────────────────────
+            # â”€â”€ IJOKHA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Sangeeta Ben',     '219', '8866941201', 'Ijokha',   'room',     False),
             ('Sonal Ben',        '415', '7359834672', 'Ijokha',   'floor',    False),
             ('Champa Ben',       '249', '8140558882', 'Ijokha',   'washroom', False),
 
-            # ── DUVEN ───────────────────────────────────────────────────────
+            # â”€â”€ DUVEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Shailesh Rathod',  '239', '9081107066', 'Duven',    'room',     False),
             ('Rajnikant',        '153', '6355825476', 'Duven',    'floor',    False),
             ('Harish',           '122', '7698462575', 'Duven',    'washroom', False),
 
-            # ── EMIET ───────────────────────────────────────────────────────
+            # â”€â”€ EMIET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Nikul Solanki',    '446', '8238759843', 'Emiet',    'room',     False),
             ('Jagdish',          '157', '9662312505', 'Emiet',    'floor',    False),
             ('Mahendra Makwana', '148', '7041143190', 'Emiet',    'washroom', False),
 
-            # ── FIRPEAL ─────────────────────────────────────────────────────
+            # â”€â”€ FIRPEAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Anand',            '310', '9023393753', 'Firpeal',  'room',     False),
             ('Satish',           '113', '9558903676', 'Firpeal',  'floor',    False),
             ('Jaydeep Solanki',  '259', '9727981188', 'Firpeal',  'washroom', False),
 
-            # ── GRIWIKSH ────────────────────────────────────────────────────
+            # â”€â”€ GRIWIKSH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Karan',            '260', '7016522113', 'Griwiksh', 'room',     False),
             ('Jignesh',          '115', '8401617156', 'Griwiksh', 'floor',    False),
             ('Sailesh Vaghela',  '109', '8734987012', 'Griwiksh', 'washroom', False),
 
-            # ── HIQOM (5 workers) ────────────────────────────────────────────
+            # â”€â”€ HIQOM (5 workers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             # RAHUL FIX: punching_no for Mukesh changed from '121' to 'R121' after HK-10 discovery to prevent collision with reliever Rajendra who also has name 'Mukesh'.
             ('Mukesh',           '121', '8141885315', 'Hiqom',    'room',     False),
             ('Jaykesh',          '449', '8401531547', 'Hiqom',    'room',     False),
@@ -325,26 +325,26 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Jitendra',         '95',  '9723216455', 'Hiqom',    'washroom', False),
             ('Ravi',             '245', '7383342914', 'Hiqom',    'washroom', False),
 
-            # ── JURQIA (4 workers) ───────────────────────────────────────────
+            # â”€â”€ JURQIA (4 workers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Rakesh',           '438', '9316531354', 'Jurqia',   'room',     False),
             ('Shailesh Talvadi', '97',  '8866886040', 'Jurqia',   'floor',    False),
             ('Pravin Vaghela',   '246', '8511376344', 'Jurqia',   'washroom', False),
             ('Banshi',           '149', '9023507559', 'Jurqia',   'washroom', False),
 
-            # ── LEKHAAG (4 workers) ──────────────────────────────────────────
+            # â”€â”€ LEKHAAG (4 workers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Suresh Solanki',   '73',  '9687317660', 'Lekhaag',  'room',     False),
             ('Naresh',           '89',  '7284086230', 'Lekhaag',  'floor',    False),
             ('Nitin Makwana',    '261', '9157708871', 'Lekhaag',  'washroom', False),
             ('Pravin Maida',     '91',  '9265530235', 'Lekhaag',  'washroom', False),
 
-            # ── KYZEEL (5 workers) ───────────────────────────────────────────
+            # â”€â”€ KYZEEL (5 workers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Prahlad Parmar',   '242', '8734949909', 'Kyzeel',   'room',     False),
             ('Amit',             '110', '7779004437', 'Kyzeel',   'room',     False),
             ('Mehul Rathod',     '256', '6353451489', 'Kyzeel',   'floor',    False),
             ('Rajesh',           '104', '7046510026', 'Kyzeel',   'washroom', False),
             ('Mehul Jadeja',     '106', '7096229284', 'Kyzeel',   'washroom', False),
 
-            # ── COMMON AREA ─────────────────────────────────────────────────
+            # â”€â”€ COMMON AREA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Yogesh Vaghela',   '80',  '9998100804', 'Hostel Common Area', 'room',    False),
             ('Vinayak Solanki',  '240', '9023271834', 'Hostel Common Area', 'washroom', False),
             ('Anil Thakur',      '542', '9265665289', 'Hostel Common Area', 'floor',   False),
@@ -352,19 +352,19 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Krunal',           '',    '',            'Hostel Common Area', 'floor',   False),
             ('Ketan Gujjar',     '100', '8347139138', 'Hostel Common Area', 'reliever', True),
 
-            # ── RESEARCH PARK ───────────────────────────────────────────────
+            # â”€â”€ RESEARCH PARK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Mahesh Solanki',     '', '7046959603', 'Research Park', 'floor',    False),
             ('Ajay Thakor',        '', '8780940745', 'Research Park', 'floor',    False),
             ('Shailesh Vaghela',   '', '7284950619', 'Research Park', 'room',     False),
             ('Dharmishtaben',      '', '9328002335', 'Research Park', 'washroom', False),
 
-            # ── CENTRAL ARCADE ──────────────────────────────────────────────
+            # â”€â”€ CENTRAL ARCADE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Vijay Parmar',       '', '9824347940', 'Central Arcade', 'floor',    False),
             ('Bhavnaben',          '', '7041174657', 'Central Arcade', 'room',     False),
             ('Ramesh Parmar',      '', '7203906051', 'Central Arcade', 'washroom', False),
             ('Hasmukh Solanki',    '', '9727858924', 'Central Arcade', 'general',  False),
 
-            # ── SPORTS COMPLEX ──────────────────────────────────────────────
+            # â”€â”€ SPORTS COMPLEX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ('Anita Solanki',      '', '8401679845', 'Sports Complex', 'floor',    False),
             ('Retuben Solanki',    '', '6356838847', 'Sports Complex', 'room',     False),
             ('Uttam Vaghela',      '', '6353089004', 'Sports Complex', 'room',     False),
@@ -419,7 +419,43 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Saleshbhai Vaghela',    '', '6351150573', 'Solid Waste Management', 'swm', False),
             ('Kanti bhai Thakur',     '', '9924375528', 'Solid Waste Management', 'swm', False),
 
-            # ── RELIEVERS ────────────────────────────────────────────────────
+            # Academic Blocks 01-13 + Academic Common Area + New AB U-Shape + New Academy
+            ('Minaben',             '', '', 'Academic Block 1', 'floor',    False),
+            ('Rajnibhai',           '', '', 'Academic Block 2', 'floor',    False),
+            ('Krunal',              '', '', 'Academic Block 3', 'floor',    False),
+            ('Rakeshbhai',          '', '', 'Academic Block 3', 'room',     False),
+            ('Varshaben',           '', '', 'Academic Block 4', 'washroom', False),
+            ('Harshad',             '', '', 'Academic Block 4', 'room',     False),
+            ('Dinesh',              '', '', 'Academic Block 5', 'floor',    False),
+            ('Anjanaben',           '', '', 'Academic Block 5', 'washroom', False),
+            ('Shaileshbhai',        '', '', 'Academic Block 5', 'room',     False),
+            ('Nilamben',            '', '', 'Academic Block 6', 'washroom', False),
+            ('Ashok',               '', '', 'Academic Block 6', 'floor',    False),
+            ('Hiten',               '', '', 'Academic Block 6', 'room',     False),
+            ('Chandrikaben',        '', '', 'Academic Block 7', 'washroom', False),
+            ('Nikhil',              '', '', 'Academic Block 7', 'floor',    False),
+            ('Academic Reliever',   '', '', 'Academic Block 8', 'general',  False),
+            ('Jay',                 '', '', 'Academic Block 9', 'room',     False),
+            ('Padmaben Vaghela',    '', '', 'Academic Block 10', 'washroom', False),
+            ('Hitesh Solanki',      '', '', 'Academic Block 10', 'room',     False),
+            ('Parth Solanki',       '', '', 'Academic Block 10', 'floor',    False),
+            ('Sunil Makwana',       '', '', 'Academic Block 11', 'floor',    False),
+            ('Elesh',               '', '', 'Academic Block 11', 'room',     False),
+            ('Sangeetaben Patel',   '', '', 'Academic Block 11', 'washroom', False),
+            ('Bharat Solanki',      '', '', 'Academic Block 11', 'room',     False),
+            ('Kailashbhai Parmar',  '', '', 'Academic Block 12', 'washroom', False),
+            ('Gautam Vaghela',      '', '', 'Academic Block 12', 'floor',    False),
+            ('Devendra',            '', '', 'Academic Block 12', 'room',     False),
+            ('Jignesh Solanki',     '', '', 'Academic Block 13', 'washroom', False),
+            ('Kunal Parmar',        '', '', 'Academic Block 13', 'room',     False),
+            ('Mahesh Vaghela',      '', '', 'Academic Block 13', 'floor',    False),
+            ('Ajay Rathod',         '', '', 'Academic Block 13', 'room',     False),
+            ('Bharat Solanki',      '', '', 'Academic Block 13', 'room',     False),
+            ('Bhavesh',             '', '', 'Academic Common Area', 'floor', False),
+            ('Nikhil',              '', '', 'Academic Common Area', 'floor', False),
+            ('Akshay Vaghela',      '', '', 'New AB U-Shape', 'floor', False),
+            ('Jitendra Vasudev',    '', '', 'New Academy', 'floor', False),
+
             # Relievers substitute for permanent workers when they take leave.
             # They are managed in a dedicated hostel reliever pool area.
             ('Deepika Ben',      '418', '7383512108', 'Hostels Reliever', 'reliever', True),
@@ -626,9 +662,37 @@ All accounts use password: {DEFAULT_PASSWORD}
                 worker.supervisor = swm_supervisor
                 worker.save(update_fields=['shift', 'supervisor'])
 
-        self.stdout.write(f'  ✓ Workers: {HKWorker.objects.count()} ({created_count} new)')
+        # Academic blocks staffing details
+        academic_supervisor_by_area = {
+            'Academic Block 1': 'mukesh.vaghela',
+            'Academic Block 2': 'mukesh.vaghela',
+            'Academic Block 3': 'bipin.vaghela',
+            'Academic Block 4': 'bipin.vaghela',
+            'Academic Block 5': 'mukesh.vaghela',
+            'Academic Block 6': 'mukesh.vaghela',
+            'Academic Block 7': 'bipin.vaghela',
+            'Academic Block 8': 'mukesh.vaghela',
+            'Academic Block 9': 'bipin.vaghela',
+            'Academic Block 10': 'shailesh.prajapati',
+            'Academic Block 11': 'shailesh.prajapati',
+            'Academic Block 12': 'kaushik.parmar',
+            'Academic Block 13': 'kaushik.parmar',
+            'Academic Common Area': 'bipin.vaghela',
+            'New AB U-Shape': 'shailesh.prajapati',
+            'New Academy': 'kaushik.parmar',
+        }
+        for area_name, supervisor_username in academic_supervisor_by_area.items():
+            supervisor = User.objects.filter(username=supervisor_username).first()
+            area_obj = self.area(area_name)
+            if supervisor and area_obj:
+                HKWorker.objects.filter(area=area_obj, is_active=True).update(
+                    shift='day',
+                    supervisor=supervisor,
+                )
 
-    # ─────────────────────────────────────────────────────────────────────────
+        self.stdout.write(f'  âœ“ Workers: {HKWorker.objects.count()} ({created_count} new)')
+
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def seed_schedules(self):
         """
@@ -650,23 +714,23 @@ All accounts use password: {DEFAULT_PASSWORD}
         # Delete existing templates for these areas
         HKScheduleTemplate.objects.filter(area__in=hostel_areas).delete()
 
-        # ── ROOM STAFF SCHEDULE ─────────────────────────────────────────────
+        # â”€â”€ ROOM STAFF SCHEDULE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         room_tasks = [
             # (order, start, end, task_name, requires_photo, description)
             (1,  '08:10', '08:45', '2nd Floor Washroom Touch Up',         False, ''),
             (2,  '08:45', '09:00', 'Staircase Cleaning',                   False, ''),
-            (3,  '09:00', '09:30', 'Room Cleaning — 5 rooms',              True,  'First round of room cleaning'),
+            (3,  '09:00', '09:30', 'Room Cleaning â€” 5 rooms',              True,  'First round of room cleaning'),
             (4,  '09:30', '09:45', 'Tea Break',                            False, ''),
             (5,  '09:45', '10:00', 'Outside Round',                        False, ''),
-            (6,  '10:00', '12:00', 'Room Round — 15 rooms',                True,  'Main room cleaning round'),
-            (7,  '12:00', '13:00', 'Pantry Cleaning — 4 pantries',         True,  ''),
+            (6,  '10:00', '12:00', 'Room Round â€” 15 rooms',                True,  'Main room cleaning round'),
+            (7,  '12:00', '13:00', 'Pantry Cleaning â€” 4 pantries',         True,  ''),
             (8,  '13:00', '13:45', 'Lunch Break',                          False, ''),
             (9,  '13:45', '14:00', 'Paper Cutting / Admin Work',           False, ''),
-            (10, '14:00', '16:00', 'Room & Extra Work — 10 rooms',         True,  'Afternoon room round'),
+            (10, '14:00', '16:00', 'Room & Extra Work â€” 10 rooms',         True,  'Afternoon room round'),
             (11, '16:00', '16:50', 'Common Cleaning & Pantry Round',       False, ''),
         ]
 
-        # ── FLOOR STAFF SCHEDULE ────────────────────────────────────────────
+        # â”€â”€ FLOOR STAFF SCHEDULE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         floor_tasks = [
             (1,  '08:10', '08:45', '3rd Floor Washroom Touch Up',          False, ''),
             (2,  '08:45', '09:30', 'Ground Floor Dry Mop',                 False, ''),
@@ -681,14 +745,14 @@ All accounts use password: {DEFAULT_PASSWORD}
             (11, '16:20', '16:50', 'Ground Floor Cleaning',                False, ''),
         ]
 
-        # ── WASHROOM STAFF SCHEDULE ─────────────────────────────────────────
+        # â”€â”€ WASHROOM STAFF SCHEDULE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         washroom_tasks = [
             (1,  '08:10', '08:45', '1st Floor Washroom Touch Up',          False, ''),
             (2,  '08:45', '09:30', 'Ground Floor Washroom Touch Up',       False, ''),
             (3,  '09:30', '09:45', 'Tea Break',                            False, ''),
             (4,  '09:45', '10:00', 'Staircase Cleaning',                   False, ''),
-            (5,  '10:00', '12:00', '3rd Floor — 2 Washroom Deep Cleaning', True,  ''),
-            (6,  '12:00', '13:00', '2nd Floor — 2 Washroom Cleaning',      True,  ''),
+            (5,  '10:00', '12:00', '3rd Floor â€” 2 Washroom Deep Cleaning', True,  ''),
+            (6,  '12:00', '13:00', '2nd Floor â€” 2 Washroom Cleaning',      True,  ''),
             (7,  '13:00', '13:45', 'Lunch Break',                          False, ''),
             (8,  '13:45', '14:00', 'Paper Cutting',                        False, ''),
             (9,  '14:00', '15:00', '6 Washroom Rounds Touch Up',           False, ''),
@@ -696,9 +760,9 @@ All accounts use password: {DEFAULT_PASSWORD}
             (11, '16:00', '16:50', 'All Washroom Touch Up & Final Round',  True,  ''),
         ]
 
-        # ── SUNDAY EXTRAS (same for all hostels) ────────────────────────────
+        # â”€â”€ SUNDAY EXTRAS (same for all hostels) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         sunday_tasks = [
-            (1, '08:10', '09:00', 'Dustbin Cleaning — All Floors',         True,  'Every Sunday'),
+            (1, '08:10', '09:00', 'Dustbin Cleaning â€” All Floors',         True,  'Every Sunday'),
             (2, '09:00', '10:30', 'Terrace Cleaning',                      True,  'Every Sunday'),
             (3, '10:30', '12:00', 'Fridge Cleaning (Every 15 Days)',        True,  'Check with caretaker if due today'),
             (4, '13:00', '14:00', 'Lunch Break',                           False, ''),
@@ -1534,7 +1598,217 @@ All accounts use password: {DEFAULT_PASSWORD}
                 )
                 total += 1
 
+        # Academic Blocks 01-13 + Academic Common Area + New AB U-Shape + New Academy
+        academic_area_names = [
+            'Academic Block 1', 'Academic Block 2', 'Academic Block 3', 'Academic Block 4',
+            'Academic Block 5', 'Academic Block 6', 'Academic Block 7', 'Academic Block 8',
+            'Academic Block 9', 'Academic Block 10', 'Academic Block 11', 'Academic Block 12',
+            'Academic Block 13', 'Academic Common Area', 'New AB U-Shape', 'New Academy',
+        ]
+        academic_areas = [self.area(name) for name in academic_area_names if self.area(name)]
+        if academic_areas:
+            HKScheduleTemplate.objects.filter(area__in=academic_areas).delete()
+
+            academic_daily_tasks = {
+                'Academic Block 1': [
+                    (1, '08:00', '09:00', 'AB-1: 300 Auditorium Hall Corridor Cleaning', 'room', True, 'Minaben'),
+                    (2, '09:00', '10:00', 'AB-1: 150 Seating Classroom-1 Cleaning', 'room', True, 'First floor'),
+                    (3, '10:00', '11:00', 'AB-1: 150 Seating Classroom-2 Cleaning', 'room', True, 'Ground floor'),
+                    (4, '11:00', '12:00', 'AB-1: GF + 1F Passage Black Marble Cleaning', 'floor', True, ''),
+                    (5, '12:00', '13:00', 'AB-1: Male/Female/Handicap Washroom Cleaning', 'washroom', True, ''),
+                    (6, '13:00', '14:00', 'Lunch Break', 'floor', False, 'All assigned workers'),
+                    (7, '14:00', '15:00', 'AB-1: Outside Area Sweeping', 'floor', True, ''),
+                    (8, '15:00', '16:00', 'AB-1: Auditorium and Classroom Touch Up', 'room', True, ''),
+                    (9, '16:00', '17:00', 'AB-1: Final Washroom and Passage Touch Up', 'washroom', True, ''),
+                ],
+                'Academic Block 2': [
+                    (1, '08:00', '09:00', 'AB-2: Main Fountain Area Cleaning', 'floor', True, 'Rajnibhai'),
+                    (2, '09:00', '10:00', 'AB-2: 600 Auditorium Hall Cleaning', 'room', True, ''),
+                    (3, '10:00', '11:00', 'AB-2: First Floor Offices Cleaning', 'room', True, '2 big offices'),
+                    (4, '11:00', '12:00', 'AB-2: First Floor Common Area and Washroom', 'washroom', True, ''),
+                    (5, '12:00', '13:00', 'AB-2: Ground Floor Washroom and Common Area', 'washroom', True, ''),
+                    (6, '13:00', '14:00', 'Lunch Break', 'floor', False, 'All assigned workers'),
+                    (7, '14:00', '15:00', 'AB-2: Outside Area and Black Marble Cleaning', 'floor', True, ''),
+                    (8, '15:00', '16:00', 'AB-2: Auditorium/Office Touch Up Round', 'room', True, ''),
+                    (9, '16:00', '17:00', 'AB-2: Final Washroom Touch Up', 'washroom', True, ''),
+                ],
+                'Academic Block 3': [
+                    (1, '08:00', '08:30', 'AB-3: All Floors Washroom Touch Up', 'washroom', True, 'Krunal + Rakeshbhai'),
+                    (2, '08:30', '09:30', 'AB-3: Floor Cleaning', 'floor', True, ''),
+                    (3, '10:00', '10:15', 'Tea Break', 'floor', False, ''),
+                    (4, '10:20', '12:00', 'AB-3: Office and Meeting Room Cleaning', 'room', True, ''),
+                    (5, '12:00', '13:00', 'AB-3: Washroom Touch Up', 'washroom', True, ''),
+                    (6, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
+                    (7, '14:00', '15:00', 'AB-3: Floor Touch Up and Washroom Round', 'floor', True, ''),
+                    (8, '15:00', '16:00', 'AB-3: Lab Area and Office Cleaning', 'room', True, ''),
+                    (9, '16:00', '17:00', 'AB-3: Staircase, Dusting and Water Cooler Area', 'floor', True, ''),
+                ],
+                'Academic Block 4': [
+                    (1, '08:00', '08:30', 'AB-4: Washroom Touch Up', 'washroom', True, 'Varshaben + Harshad'),
+                    (2, '08:30', '09:30', 'AB-4: Passage Area Cleaning', 'floor', True, ''),
+                    (3, '09:30', '11:00', 'AB-4: Office Cleaning', 'room', True, ''),
+                    (4, '11:00', '13:00', 'AB-4: Lab and Hall Area Cleaning', 'room', True, ''),
+                    (5, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
+                    (6, '14:00', '15:00', 'AB-4: Floor and Washroom Touch Up', 'washroom', True, ''),
+                    (7, '15:00', '16:00', 'AB-4: Staircase, Dusting and Any Pending Work', 'floor', True, ''),
+                    (8, '16:00', '17:00', 'AB-4: Water Cooler Area Cleaning', 'washroom', True, ''),
+                ],
+                'Academic Block 5': [
+                    (1, '08:00', '08:30', 'AB-5: All Floors Washroom Touch Up', 'washroom', True, 'Dinesh + Anjanaben + Shaileshbhai'),
+                    (2, '08:30', '09:30', 'AB-5: Floor Cleaning', 'floor', True, ''),
+                    (3, '10:00', '10:15', 'Tea Break', 'floor', False, ''),
+                    (4, '10:30', '12:30', 'AB-5: Office and Lab Area Cleaning', 'room', True, ''),
+                    (5, '12:30', '13:00', 'AB-5: Washroom Touch Up', 'washroom', True, ''),
+                    (6, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
+                    (7, '14:00', '15:00', 'AB-5: Floor and Washroom Touch Up', 'floor', True, ''),
+                    (8, '15:00', '16:00', 'AB-5: Meeting and Lab Area Cleaning', 'room', True, ''),
+                    (9, '16:00', '17:00', 'AB-5: Staircase and Water Cooler Dusting', 'floor', True, ''),
+                ],
+                'Academic Block 6': [
+                    (1, '08:00', '08:30', 'AB-6: All Floors Washroom Touch Up', 'washroom', True, 'Nilamben + Ashok + Hiten'),
+                    (2, '08:30', '09:30', 'AB-6: Floor Cleaning', 'floor', True, ''),
+                    (3, '10:00', '10:15', 'Tea Break', 'floor', False, ''),
+                    (4, '10:30', '12:30', 'AB-6: Office, Lab and Classroom Cleaning', 'room', True, ''),
+                    (5, '12:30', '13:00', 'AB-6: Washroom Touch Up', 'washroom', True, ''),
+                    (6, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
+                    (7, '14:00', '15:00', 'AB-6: Floor and Washroom Touch Up', 'floor', True, ''),
+                    (8, '15:00', '16:00', 'AB-6: Classroom/Lab Pending Work', 'room', True, ''),
+                    (9, '16:00', '17:00', 'AB-6: Staircase and Water Cooler Cleaning', 'floor', True, ''),
+                ],
+                'Academic Block 7': [
+                    (1, '08:00', '08:15', 'AB-7: Washroom Touch Up', 'washroom', True, 'Chandrikaben + Nikhil'),
+                    (2, '08:30', '09:30', 'AB-7: Closed Classroom Cleaning', 'room', True, ''),
+                    (3, '09:30', '11:30', 'AB-7: Passage Area Cleaning', 'floor', True, ''),
+                    (4, '11:30', '12:00', 'AB-7: Block Marble Cleaning', 'floor', True, ''),
+                    (5, '12:00', '13:00', 'AB-7: Washroom Cleaning', 'washroom', True, ''),
+                    (6, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
+                    (7, '14:00', '15:00', 'AB-7: Floor Touch Up and Washroom Round', 'floor', True, ''),
+                    (8, '15:00', '16:00', 'AB-7: Pending Classroom Cleaning', 'room', True, ''),
+                    (9, '16:00', '17:00', 'AB-7: Staircase and Railing Dusting', 'floor', True, ''),
+                ],
+                'Academic Block 8': [
+                    (1, '08:00', '12:00', 'AB-8: Lal Minar Tower Cleaning Support', 'floor', True, 'Reliever/coverage support'),
+                    (2, '12:00', '13:00', 'AB-8: First Floor Passage and Ramp Cleaning', 'floor', True, ''),
+                    (3, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
+                    (4, '14:00', '16:00', 'AB-8: Indoor Sweeping and Mopping', 'floor', True, 'Every 15 days'),
+                    (5, '16:00', '17:00', 'AB-8: Month-end Additional Cleaning Check', 'floor', True, 'Month ending 2 times'),
+                ],
+                'Academic Block 9': [
+                    (1, '08:00', '09:00', 'AB-9: All Office Cleaning', 'room', True, 'Jay'),
+                    (2, '09:00', '09:30', 'AB-9: Balcony Area Cleaning', 'floor', True, ''),
+                    (3, '09:30', '10:00', 'AB-9: First Floor Passage and Balcony Floor', 'floor', True, ''),
+                    (4, '10:00', '10:15', 'Tea Break', 'floor', False, ''),
+                    (5, '10:20', '11:30', 'AB-9: Ground Floor Passage and Lift Ramp Area', 'floor', True, ''),
+                    (6, '11:30', '12:30', 'AB-9: All Floors Washroom Cleaning', 'washroom', True, ''),
+                    (7, '12:30', '13:00', 'AB-9: First Floor Office Cleaning', 'room', True, ''),
+                    (8, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
+                    (9, '14:00', '15:00', 'AB-9: All Floors Touch Up and Washroom', 'washroom', True, ''),
+                    (10, '15:00', '17:00', 'AB-9: DHD Hall, Balcony, Staircase and Railing', 'floor', True, 'Second floor'),
+                ],
+                'Academic Block 10': [
+                    (1, '08:00', '09:30', 'AB-10: Male and Female Washroom Cleaning', 'washroom', True, 'Padmaben + Hitesh + Parth'),
+                    (2, '09:30', '12:00', 'AB-10: Floor, Classroom and Staircase Cleaning', 'floor', True, ''),
+                    (3, '12:00', '13:00', 'AB-10: Lab Area and Lift Cleaning', 'room', True, ''),
+                    (4, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
+                    (5, '14:00', '15:00', 'AB-10: Washroom and Floor Touch Up', 'washroom', True, ''),
+                    (6, '15:00', '16:00', 'AB-10: Floor Touch Up and Extra Work', 'floor', True, ''),
+                    (7, '16:00', '17:00', 'AB-10: Washroom, Staircase and Pantry Cleaning', 'washroom', True, ''),
+                ],
+                'Academic Block 11': [
+                    (1, '08:00', '09:30', 'AB-11: First-Third Floor Washroom Cleaning', 'washroom', True, 'Sunil + Elesh + Sangeetaben + Bharat'),
+                    (2, '09:30', '10:30', 'AB-11: Floor Cleaning', 'floor', True, ''),
+                    (3, '10:30', '13:00', 'AB-11: Classroom, Labs and Office Cleaning', 'room', True, ''),
+                    (4, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
+                    (5, '14:00', '15:00', 'AB-11: Washroom and Floor Touch Up', 'washroom', True, ''),
+                    (6, '15:00', '16:00', 'AB-11: Second Floor Lab Area', 'room', True, ''),
+                    (7, '16:00', '17:00', 'AB-11: Washroom Touch Up, Dustbin, Corridor and Pantry', 'washroom', True, ''),
+                ],
+                'Academic Block 12': [
+                    (1, '08:00', '09:00', 'AB-12: Washroom and Staircase Cleaning', 'washroom', True, 'Kailashbhai + Gautam + Devendra'),
+                    (2, '09:00', '10:00', 'AB-12: Office Area Cleaning (All Floors)', 'room', True, ''),
+                    (3, '10:00', '12:00', 'AB-12: Floor, Pantry and Lift Cleaning', 'floor', True, ''),
+                    (4, '12:00', '13:00', 'AB-12: Extra Work', 'floor', True, 'Closed lab and office cleaning support'),
+                    (5, '13:00', '14:00', 'AB-12: Washroom and Floor Touch Up', 'washroom', True, ''),
+                    (6, '14:00', '16:00', 'AB-12: Big Lab and Ground Floor Lab Cleaning', 'room', True, ''),
+                    (7, '16:00', '17:00', 'AB-12: Extra Work and Final Round', 'floor', True, ''),
+                ],
+                'Academic Block 13': [
+                    (1, '08:00', '09:00', 'AB-13 GF: Washroom Floor Cleaning', 'washroom', True, 'Jignesh Solanki'),
+                    (2, '09:00', '10:00', 'AB-13 GF: Classroom Staircase Cleaning', 'floor', True, ''),
+                    (3, '10:00', '11:00', 'AB-13 GF: Washroom Touch Up + Lift + Room 112', 'washroom', True, 'Meeting room coverage'),
+                    (4, '11:00', '12:00', 'AB-13 GF: Labs and Extra Work', 'room', True, ''),
+                    (5, '12:00', '13:00', 'AB-13 GF: Final Ground Floor Touch Up', 'floor', True, ''),
+                    (6, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
+                    (7, '14:00', '15:00', 'AB-13 2F/3F: Washroom Cleaning', 'washroom', True, 'Kunal + Mahesh'),
+                    (8, '15:00', '16:00', 'AB-13 2F/3F: Floor and Office Cleaning', 'floor', True, ''),
+                    (9, '16:00', '17:00', 'AB-13 2F/3F: Lab Area and Touch Up', 'room', True, ''),
+                    (10, '08:00', '11:00', 'AB-13 Library: Washroom and Office Floor Cleaning', 'room', True, 'Ajay Rathod + Bharat Solanki'),
+                    (11, '11:00', '13:00', 'AB-13 Library: First Floor Lab Floor Cleaning', 'room', True, ''),
+                ],
+                'Academic Common Area': [
+                    (1, '07:00', '13:00', 'Academic Common: All Blocks Common Area + Marble Cleaning', 'floor', True, 'Bhavesh + Nikhil'),
+                    (2, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
+                    (3, '15:00', '16:00', 'Academic Common: Block-07 Terrace Side Railing Dusting', 'floor', True, ''),
+                ],
+                'New AB U-Shape': [
+                    (1, '08:00', '10:00', 'New AB U-Shape: Sweeping and Mopping', 'floor', True, 'Akshay Vaghela'),
+                    (2, '10:00', '13:00', 'New AB U-Shape: Blocks 10-13 Common Area Cleaning - Round 1', 'floor', True, ''),
+                    (3, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
+                    (4, '14:00', '17:00', 'New AB U-Shape: Blocks 10-13 Common Area Cleaning - Round 2', 'floor', True, ''),
+                ],
+                'New Academy': [
+                    (1, '08:00', '10:00', 'New Academy: Sweeping and Mopping', 'floor', True, 'Jitendra Vasudev'),
+                    (2, '10:00', '13:00', 'New Academy: Blocks 10-13 Common Area Cleaning - Round 1', 'floor', True, ''),
+                    (3, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
+                    (4, '14:00', '17:00', 'New Academy: Blocks 10-13 Common Area Cleaning - Round 2', 'floor', True, ''),
+                ],
+            }
+
+            academic_sunday_extra = {
+                'Academic Common Area': [
+                    (1, '08:00', '11:00', 'Sunday Deep Clean: Samved Area Scrubbing and Washing', 'all', True, 'Weekly Sunday task'),
+                ],
+            }
+
+            for area_name, tasks in academic_daily_tasks.items():
+                area_obj = self.area(area_name)
+                if not area_obj:
+                    continue
+                for order, start, end, name, tag, req_photo, desc in tasks:
+                    HKScheduleTemplate.objects.create(
+                        area=area_obj,
+                        order=order,
+                        start_time=t(start),
+                        end_time=t(end),
+                        task_name=name,
+                        task_description=desc,
+                        worker_tag=tag,
+                        requires_photo=req_photo,
+                        frequency='daily',
+                        is_active=True,
+                    )
+                    total += 1
+
+            for area_name, tasks in academic_sunday_extra.items():
+                area_obj = self.area(area_name)
+                if not area_obj:
+                    continue
+                for order, start, end, name, tag, req_photo, desc in tasks:
+                    HKScheduleTemplate.objects.create(
+                        area=area_obj,
+                        order=order,
+                        start_time=t(start),
+                        end_time=t(end),
+                        task_name=name,
+                        task_description=desc,
+                        worker_tag=tag,
+                        requires_photo=req_photo,
+                        frequency='sunday_extra',
+                        is_active=True,
+                    )
+                    total += 1
+
         self.stdout.write(
-            f'  ✓ Schedule templates: {total} '
-            '(hostels + common area + research park + central arcade + sports complex + guest house + director bungalow + roads + swm)'
+            f'  âœ“ Schedule templates: {total} '
+            '(hostels + common area + research park + central arcade + sports complex + guest house + director bungalow + roads + swm + academic blocks)'
         )

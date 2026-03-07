@@ -235,6 +235,7 @@ def hk_dashboard(request):
     is_director_bungalow = area_name == "Director Bungalow"
     is_roads_outdoor = area_name == "Roads & Outdoor"
     is_swm = area_name == "Solid Waste Management"
+    is_academic = bool(sel_area and sel_area.area_type == "academic")
     if is_common_area:
         tab_label_floor = "Route A"
         tab_label_room = "Core Area"
@@ -291,6 +292,13 @@ def hk_dashboard(request):
         heading_floor = "Primary and Secondary Collection Routes"
         heading_room = "Tempo and Vehicle Collection Operations"
         heading_washroom = "Segregation and Supervisor Operations"
+    elif is_academic:
+        tab_label_floor = "Block Ops"
+        tab_label_room = "Labs/Office"
+        tab_label_washroom = "WR/Common"
+        heading_floor = "Block and Corridor Operations"
+        heading_room = "Classroom, Lab and Office Operations"
+        heading_washroom = "Washroom and Common Area Operations"
     else:
         tab_label_floor = "Floor"
         tab_label_room = "Room"
@@ -530,6 +538,7 @@ def hk_schedule(request):
     is_director_bungalow = area_name == "Director Bungalow"
     is_roads_outdoor = area_name == "Roads & Outdoor"
     is_swm = area_name == "Solid Waste Management"
+    is_academic = bool(sel_area and sel_area.area_type == "academic")
 
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     weekly = []
@@ -565,6 +574,7 @@ def hk_schedule(request):
         "is_director_bungalow": is_director_bungalow,
         "is_roads_outdoor": is_roads_outdoor,
         "is_swm": is_swm,
+        "is_academic": is_academic,
         "weekly": weekly,
         "today_dow": timezone.localdate().weekday(),
         "tag_labels": WORKER_TAG_LABELS,
