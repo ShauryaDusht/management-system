@@ -28,7 +28,7 @@ Dockerized management system with Django backend + React admin frontend.
 ## Quick Start (Docker)
 1. **Clone the repository**
    ```bash
-   git clone <your-repository-url>
+   git clone https://github.com/ShauryaDusht/management-system/
    cd management-system
    ```
 2. **Create environment file**
@@ -52,19 +52,12 @@ Dockerized management system with Django backend + React admin frontend.
    ```
 4. **Build and run services**
    ```bash
-   docker compose up --build
+   docker compose up -d --build
    ```
-5. **Create first admin user**
+5. **Create first admin user (only first time)**
    ```bash
    docker compose exec backend python manage.py createsuperuser
    ```
-
-## API bases
-- Auth: `/api/auth/`
-- Inventory: `/api/inventory/`
-- Housekeeping: `/api/housekeeping/`
-- Horticulture: `/api/horticulture/`
-- Reports: `/api/reports/`
 
 ## Module Documentation
 - Inventory: [`backend/apps/inventory/README.md`](backend/apps/inventory/README.md)
