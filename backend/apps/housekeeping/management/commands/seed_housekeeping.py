@@ -66,6 +66,14 @@ All accounts use password: {DEFAULT_PASSWORD}
             legacy_common.is_active = True
             legacy_common.save(update_fields=['name', 'area_type', 'is_active'])
 
+        # Rename legacy guest house naming.
+        legacy_old_guest = HKArea.objects.filter(name='Guest House Old RB').first()
+        if legacy_old_guest and not HKArea.objects.filter(name='Old Guest House').exists():
+            legacy_old_guest.name = 'Old Guest House'
+            legacy_old_guest.area_type = 'guesthouse'
+            legacy_old_guest.is_active = True
+            legacy_old_guest.save(update_fields=['name', 'area_type', 'is_active'])
+
         other_areas = [
             ('Research Park', 'research_park'),
             ('Central Arcade', 'central_arcade'),
@@ -73,7 +81,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Roads & Outdoor', 'roads'),
             ('Solid Waste Management', 'swm'),
             ('Guest House New', 'guesthouse'),
-            ('Guest House Old RB', 'guesthouse'),
+            ('Old Guest House', 'guesthouse'),
             ('Director Bungalow', 'director'),
             ('Academic Block 1', 'academic'),
             ('Academic Block 2', 'academic'),
@@ -183,7 +191,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('bharat.solanki', 'Bharat', 'Solanki', '8511764551', ['Sports Complex', 'Central Arcade']),
             ('mukesh.vaghela', 'Mukesh', 'Vaghela', '9265591836', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Academic Block 8']),
             ('bipin.vaghela', 'Bipin', 'Vaghela', '9979627312', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Academic Common Area']),
-            ('narendra.shreemali', 'Narendra', 'Shreemali', '9898661986', ['Roads & Outdoor', 'Guest House Old RB']),
+            ('narendra.shreemali', 'Narendra', 'Shreemali', '9898661986', ['Roads & Outdoor', 'Old Guest House']),
             ('pradip.swm', 'Pradip', '', '8200560889', ['Solid Waste Management']),
         ]
         for username, first, last, phone, areas in supervisors:
@@ -381,6 +389,10 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Raju Chamar',        '', '', 'Guest House New', 'reliever', True),
             ('Lalit Parmar',       '', '', 'Guest House New', 'reliever', True),
 
+            # Old Guest House
+            ('Mukesh Parmar',      '', '7096432339', 'Old Guest House', 'floor', False),
+            ('Rajesh Chauhan',     '', '9674629886', 'Old Guest House', 'room',  False),
+
             # Director Bungalow
             ('Shailesh Vaghela',   '', '', 'Director Bungalow', 'general', False),
             ('Rakesh Parmar',      '', '', 'Director Bungalow', 'general', False),
@@ -510,8 +522,9 @@ All accounts use password: {DEFAULT_PASSWORD}
                 worker.supervisor = bharat_supervisor
                 worker.save(update_fields=['shift', 'supervisor'])
 
-        # Guest House New + Director Bungalow staffing details
+        # Guest House New + Old Guest House + Director Bungalow staffing details
         ashok_supervisor = User.objects.filter(username='ashok.rathod').first()
+        narendra_supervisor = User.objects.filter(username='narendra.shreemali').first()
         guest_house_shift_map = {
             'Pankaj Parmar': 'day',
             'Hitesh Vaghela': 'day',
@@ -530,6 +543,17 @@ All accounts use password: {DEFAULT_PASSWORD}
             if worker:
                 worker.shift = shift
                 worker.supervisor = ashok_supervisor
+                worker.save(update_fields=['shift', 'supervisor'])
+
+        old_guest_shift_map = {
+            'Mukesh Parmar': 'day',
+            'Rajesh Chauhan': 'day',
+        }
+        for worker_name, shift in old_guest_shift_map.items():
+            worker = HKWorker.objects.filter(name=worker_name, area=self.area('Old Guest House')).first()
+            if worker:
+                worker.shift = shift
+                worker.supervisor = narendra_supervisor
                 worker.save(update_fields=['shift', 'supervisor'])
 
         director_shift_map = {
@@ -1167,6 +1191,35 @@ All accounts use password: {DEFAULT_PASSWORD}
                     start_time=t(start), end_time=t(end),
                     task_name=name, task_description=desc,
                     worker_tag='all', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+        # Old Guest House: daily supervisor-linked room/block schedule
+        old_guest_house = self.area('Old Guest House')
+        if old_guest_house:
+            HKScheduleTemplate.objects.filter(area=old_guest_house).delete()
+
+            old_guest_tasks = [
+                # order, start, end, task_name, requires_photo, description, worker_tag
+                (1,  '08:00', '08:20', 'Block-1 Office Cleaning',            True,  'Assigned: Mukesh Parmar', 'floor'),
+                (2,  '08:25', '09:00', 'Block-1 and Block-2 Staircase',      True,  'Assigned: Mukesh Parmar', 'floor'),
+                (3,  '09:15', '10:00', 'Room 16/203 Cleaning',                True,  'Assigned: Rajesh Chauhan', 'room'),
+                (4,  '10:15', '11:00', 'Room 1/102 Cleaning',                 True,  'Assigned: Rajesh Chauhan', 'room'),
+                (5,  '11:15', '12:00', 'Room 2/101 Cleaning',                 True,  'Assigned: Rajesh Chauhan', 'room'),
+                (6,  '12:15', '13:00', 'Room 2/202 Cleaning',                 True,  'Assigned: Rajesh Chauhan', 'room'),
+                (7,  '13:00', '14:00', 'Lunch Break',                         False, 'All workers', 'floor'),
+                (8,  '14:00', '14:45', 'Room 16/302 Cleaning',                True,  'Assigned: Rajesh Chauhan', 'room'),
+                (9,  '15:00', '15:45', 'Gate-3 Cleaning',                     True,  'Assigned: Mukesh Parmar', 'floor'),
+                (10, '16:00', '16:45', 'Room 16/301 Cleaning',                True,  'Assigned: Rajesh Chauhan', 'room'),
+            ]
+
+            for order, start, end, name, req_photo, desc, tag in old_guest_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=old_guest_house, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag=tag, requires_photo=req_photo,
                     frequency='daily', is_active=True,
                 )
                 total += 1

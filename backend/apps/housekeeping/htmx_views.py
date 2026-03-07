@@ -207,10 +207,16 @@ def hk_dashboard(request):
     sel_area = selected_area(request, user_areas)
 
     records = list(get_today_records(sel_area, today)) if sel_area else []
+    area_name = sel_area.name if sel_area else ""
+    is_old_guest_house = area_name == "Old Guest House"
 
     grouped = {}
     for rec in records:
         tag = rec.schedule.worker_tag or "general"
+        if is_old_guest_house and tag == "all":
+            task_title = (rec.schedule.task_name or "").lower()
+            if "break" in task_title or "lunch" in task_title:
+                tag = "floor"
         grouped.setdefault(tag, []).append(rec)
     # Keep worker-group keys stable so mobile tabs render consistently.
     grouped.setdefault("floor", [])
@@ -218,7 +224,6 @@ def hk_dashboard(request):
     grouped.setdefault("washroom", [])
     grouped.setdefault("all", [])
 
-    area_name = sel_area.name if sel_area else ""
     is_common_area = area_name == "Hostel Common Area"
     is_research_park = area_name == "Research Park"
     is_central_arcade = area_name == "Central Arcade"
