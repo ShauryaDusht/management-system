@@ -110,7 +110,8 @@ class HKWorkerDetailView(APIView):
 
     def delete(self, request, pk):
         worker = get_object_or_404(HKWorker, pk=pk)
-        worker.delete()
+        worker.is_active = False
+        worker.save(update_fields=['is_active'])
         return Response(status=204)
 
 
