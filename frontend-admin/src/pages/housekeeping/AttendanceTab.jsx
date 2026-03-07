@@ -167,10 +167,10 @@ export default function AttendanceTab() {
             </div>
           ) : (
             <DataTable
-              headers={['Area', 'Present', 'Absent', 'Total', 'Attendance %']}
+              headers={['Area', 'Total', 'Present', 'Absent', 'Attendance %']}
               rows={visibleRows.map((r) => {
                 const pct = r.total_workers ? Math.round((r.present / r.total_workers) * 100) : 0
-                return [r.area_name, r.present, r.absent, r.total_workers, `${pct}%`]
+                return [r.area_name, r.total_workers, r.present, r.absent, `${pct}%`]
               })}
               emptyMsg="No attendance entries found for selected segment/date."
             />

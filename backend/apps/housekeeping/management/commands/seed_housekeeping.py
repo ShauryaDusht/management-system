@@ -100,6 +100,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('New AB U-Shape', 'academic'),
             ('New Academy', 'academic'),
             ('Hostel Common Area', 'hostel'),
+            ('Hostels Reliever', 'hostel'),
         ]
         for name, atype in other_areas:
             HKArea.objects.get_or_create(name=name, defaults={'area_type': atype})
@@ -107,6 +108,7 @@ All accounts use password: {DEFAULT_PASSWORD}
         # Ensure Hostel Common Area is always treated as a hostel segment
         # even on existing databases where older seeds set it as "other".
         HKArea.objects.filter(name='Hostel Common Area').update(area_type='hostel', is_active=True)
+        HKArea.objects.filter(name='Hostels Reliever').update(area_type='hostel', is_active=True)
 
         # Legacy consolidated academic records are kept inactive for history,
         # but excluded from active dashboards and assignments.
@@ -419,18 +421,28 @@ All accounts use password: {DEFAULT_PASSWORD}
 
             # ── RELIEVERS ────────────────────────────────────────────────────
             # Relievers substitute for permanent workers when they take leave.
-            # They are not tied to one hostel — assigned flexibly.
-            ('Deepika Ben',      '418', '7383512108', None, 'reliever', True),
-            ('Mital Ben',        '386', '7383619204', None, 'reliever', True),
-            ('Vinay',            '136', '8758388061', None, 'reliever', True),
-            ('Lala',             '154', '9726303104', None, 'reliever', True),
-            ('Hasmukhbhai',      '75',  '9714466201', None, 'reliever', True),
-            ('Umesh Babariya',   '435', '9313230372', None, 'reliever', True),
+            # They are managed in a dedicated hostel reliever pool area.
+            ('Deepika Ben',      '418', '7383512108', 'Hostels Reliever', 'reliever', True),
+            ('Mital Ben',        '386', '7383619204', 'Hostels Reliever', 'reliever', True),
+            ('Vinay',            '136', '8758388061', 'Hostels Reliever', 'reliever', True),
+            ('Lala',             '154', '9726303104', 'Hostels Reliever', 'reliever', True),
+            ('Hasmukhbhai',      '75',  '9714466201', 'Hostels Reliever', 'reliever', True),
+            ('Umesh Babariya',   '435', '9313230372', 'Hostels Reliever', 'reliever', True),
             # RAHUL FIX
-            ('Rajendra',         '121', '9924301124', None, 'reliever', True),
-            ('Dhiraj',           '131', '9979030157', None, 'reliever', True),
-            ('Mayur',            '258', '9099743600', None, 'reliever', True),
+            ('Rajendra',         '121', '9924301124', 'Hostels Reliever', 'reliever', True),
+            ('Dhiraj',           '131', '9979030157', 'Hostels Reliever', 'reliever', True),
+            ('Mayur',            '258', '9099743600', 'Hostels Reliever', 'reliever', True),
         ]
+
+        # Backward-compatibility: move relievers to dedicated hostel reliever area.
+        reliever_names = [
+            'Deepika Ben', 'Mital Ben', 'Vinay', 'Lala', 'Hasmukhbhai',
+            'Umesh Babariya', 'Rajendra', 'Dhiraj', 'Mayur',
+        ]
+        HKWorker.objects.filter(
+            name__in=reliever_names,
+            is_reliever=True,
+        ).update(area=self.area('Hostels Reliever'))
 
         created_count = 0
         for name, punching_no, phone, area_name, wtype, is_reliever in workers:
