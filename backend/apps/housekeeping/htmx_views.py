@@ -135,7 +135,7 @@ def get_today_records(area, date):
 
     return (
         HKDailyRecord.objects
-        .filter(area=area, date=date)
+        .filter(area=area, date=date, schedule__in=template_list)
         .select_related("schedule", "completed_by", "assigned_worker", "assigned_by", "area")
         .prefetch_related("worker_assignments__worker")
         .order_by("schedule__worker_tag", "schedule__order", "schedule__start_time")
@@ -230,6 +230,7 @@ def hk_dashboard(request):
     is_sports_complex = area_name == "Sports Complex"
     is_guest_house_new = area_name == "Guest House New"
     is_director_bungalow = area_name == "Director Bungalow"
+    is_roads_outdoor = area_name == "Roads & Outdoor"
     is_swm = area_name == "Solid Waste Management"
     if is_common_area:
         tab_label_floor = "Route A"
@@ -273,6 +274,13 @@ def hk_dashboard(request):
         heading_floor = "Bungalow Surrounding and Garden Operations"
         heading_room = "Inside Bungalow and Camp Office Operations"
         heading_washroom = "Common Washroom and Kitchen Checks"
+    elif is_roads_outdoor:
+        tab_label_floor = "Route C/K"
+        tab_label_room = "Route E/F"
+        tab_label_washroom = "Route B/A"
+        heading_floor = "Parking and Circle Route Operations"
+        heading_room = "Residence and RB Connector Routes"
+        heading_washroom = "Academic/Hostel/Gate-5 Route Operations"
     elif is_swm:
         tab_label_floor = "Collection"
         tab_label_room = "Transport"
@@ -516,6 +524,7 @@ def hk_schedule(request):
     is_sports_complex = area_name == "Sports Complex"
     is_guest_house_new = area_name == "Guest House New"
     is_director_bungalow = area_name == "Director Bungalow"
+    is_roads_outdoor = area_name == "Roads & Outdoor"
     is_swm = area_name == "Solid Waste Management"
 
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -550,6 +559,7 @@ def hk_schedule(request):
         "is_sports_complex": is_sports_complex,
         "is_guest_house_new": is_guest_house_new,
         "is_director_bungalow": is_director_bungalow,
+        "is_roads_outdoor": is_roads_outdoor,
         "is_swm": is_swm,
         "weekly": weekly,
         "today_dow": timezone.localdate().weekday(),

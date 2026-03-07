@@ -397,6 +397,15 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Shailesh Vaghela',   '', '', 'Director Bungalow', 'general', False),
             ('Rakesh Parmar',      '', '', 'Director Bungalow', 'general', False),
 
+            # Roads & Outdoor
+            ('Prakash Thakor',     '', '6355540093', 'Roads & Outdoor', 'road', False),
+            ('Kanji Thakor',       '', '8347418371', 'Roads & Outdoor', 'road', False),
+            ('Ashokbhai Thakor',   '', '9054841766', 'Roads & Outdoor', 'road', False),
+            ('Rohit Thakor',       '', '8320831295', 'Roads & Outdoor', 'road', False),
+            ('Mahesh Raval',       '', '7698588092', 'Roads & Outdoor', 'road', False),
+            ('Chirag Thakor',      '', '7041456600', 'Roads & Outdoor', 'road', False),
+            ('Satish Vaghela',     '', '8160402819', 'Roads & Outdoor', 'road', False),
+
             # SWM (Solid Waste Management) - Biogas workers intentionally excluded
             ('Salesh bhai Thakur',    '', '9723045094', 'Solid Waste Management', 'swm', False),
             ('Satish bhai Raval',     '', '9157865695', 'Solid Waste Management', 'swm', False),
@@ -565,6 +574,24 @@ All accounts use password: {DEFAULT_PASSWORD}
             if worker:
                 worker.shift = shift
                 worker.supervisor = ashok_supervisor
+                worker.save(update_fields=['shift', 'supervisor'])
+
+        # Roads & Outdoor staffing details
+        roads_supervisor = User.objects.filter(username='narendra.shreemali').first()
+        roads_shift_map = {
+            'Prakash Thakor': 'day',
+            'Kanji Thakor': 'day',
+            'Ashokbhai Thakor': 'day',
+            'Rohit Thakor': 'day',
+            'Mahesh Raval': 'day',
+            'Chirag Thakor': 'day',
+            'Satish Vaghela': 'day',
+        }
+        for worker_name, shift in roads_shift_map.items():
+            worker = HKWorker.objects.filter(name=worker_name, area=self.area('Roads & Outdoor')).first()
+            if worker:
+                worker.shift = shift
+                worker.supervisor = roads_supervisor
                 worker.save(update_fields=['shift', 'supervisor'])
 
         # SWM staffing details
@@ -1306,6 +1333,107 @@ All accounts use password: {DEFAULT_PASSWORD}
                 )
                 total += 1
 
+        # Roads & Outdoor: route-wise road cleaning plan (period based)
+        roads_area = self.area('Roads & Outdoor')
+        if roads_area:
+            HKScheduleTemplate.objects.filter(area=roads_area).delete()
+
+            roads_floor_tasks = [
+                (1, '08:00', '09:30', 'Route C: Two Degrees Parking Sweep', True, 'Primary road and parking cleaning zone'),
+                (2, '09:30', '11:30', 'Route C2: U-Yog Circle to Block-9 Academic Back Side', True, 'Road and footpath route'),
+                (3, '11:30', '13:00', 'Route C1: U-Yog Circle to Fire Building Side', True, 'Back side road cleaning'),
+                (4, '13:00', '14:00', 'Lunch Break', False, 'All assigned workers'),
+                (5, '14:00', '15:30', 'Route C2/G1: Sanitize Area to Gate-1 (10D Compost) - Round 1', True, 'Back side road route'),
+                (6, '15:30', '17:00', 'Route C2/G1: Sanitize Area to Gate-1 (10D Compost) - Round 2', True, 'Final route touch-up'),
+                (7, '08:00', '10:30', 'Route E-1/K: Gate-1 to Research Park Roads and Footpath', True, 'Road, parking and footpath cleaning'),
+                (8, '10:30', '13:00', 'Route E-1/K: Gate-1 to Research Park Parking Detailing', True, 'Detailed parking and side cleaning'),
+                (10, '14:00', '15:40', 'Route F-19/F-1: Gate-1 Circle to Laundry Gate', True, 'Back side connector road'),
+                (11, '15:40', '17:00', 'Route H-1: Laundry Gate to Gate-2', True, 'End-of-day route close'),
+            ]
+
+            roads_room_tasks = [
+                (1, '08:00', '10:30', 'Route F-2/1: Gate-3 to Parking (Road and Footpath)', True, 'Primary route cleaning'),
+                (2, '10:30', '13:00', 'Route F-2/1: Gate-3 to Parking Detail Sweep', True, 'Detailed side and edge cleaning'),
+                (4, '14:00', '15:30', 'Route E-2/H-2/14: RB Parking to Block-14 - Round 1', True, 'Back side road route'),
+                (5, '15:30', '17:00', 'Route E-2/H-2/14: RB Parking to Block-14 - Round 2', True, 'Final route touch-up'),
+                (6, '08:00', '10:30', 'Route A-1/J-1/13: Director Residence to Sports/Central/Hostel Roads', True, 'Multi-segment road route'),
+                (7, '10:30', '12:00', 'Route B-1: Block-8 Academic to Cricket Ground', True, 'Road and footpath'),
+                (9, '14:00', '15:00', 'Route F-1: Cricket Ground to Director Residence', True, 'Connector road cleaning'),
+                (10, '15:00', '17:00', 'RB Parking to Block-14 Back Side Route', True, 'Shared support route'),
+            ]
+
+            roads_washroom_tasks = [
+                (1, '08:00', '10:30', 'Route B-1: Academic Block-2 to Hostel (Sanyojak Marg)', True, 'Road and footpath'),
+                (2, '10:30', '13:00', 'Route A-1: Hostel to Gate-2 Footpath', True, 'Footpath route cleaning'),
+                (4, '14:00', '15:30', 'Centre Area to Central Arcade Footpath Route', True, 'Route includes centre and arcade links'),
+                (5, '15:30', '17:00', 'Jal Mandir -> Long Tennis -> RB -> Block-31 Footpath Route', True, 'Extended route closure'),
+                (6, '08:00', '10:30', 'Route C-2: Gate-5 to Hostel Cycle Track', True, 'Cycle track cleaning'),
+                (7, '10:30', '13:00', 'Route C-2: Gate-5 to AC Plant Cycle Track', True, 'Cycle track continuation'),
+                (9, '14:00', '15:30', 'Route C-2: Gate-5 to Block-9 Back Side - Round 1', True, 'Back side road'),
+                (10, '15:30', '17:00', 'Route C-2: Gate-5 to Block-9 Back Side - Round 2', True, 'Final route touch-up'),
+            ]
+
+            roads_special_tasks = [
+                (1, '07:45', '08:00', 'Supervisor: Route Allocation and Attendance Check', False, 'Assign routes and verify manpower'),
+                (2, '17:00', '17:15', 'Supervisor: Final Inspection and Closure Report', False, 'Confirm completion and pending points'),
+            ]
+
+            roads_sunday_extra = [
+                (1, '08:00', '10:00', 'Sunday Deep Clean: Major Footpath and Parking Sweep', True, ''),
+                (2, '10:00', '12:00', 'Sunday Deep Clean: Drain Edge and Roadside Detailing', True, ''),
+                (3, '14:00', '16:00', 'Sunday Deep Clean: Compost Route and Gate Buffer Sanitization', True, ''),
+            ]
+
+            for order, start, end, name, req_photo, desc in roads_floor_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=roads_area, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='floor', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in roads_room_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=roads_area, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='room', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in roads_washroom_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=roads_area, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='washroom', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in roads_special_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=roads_area, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='all', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in roads_sunday_extra:
+                HKScheduleTemplate.objects.create(
+                    area=roads_area, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='all', requires_photo=req_photo,
+                    frequency='sunday_extra', is_active=True,
+                )
+                total += 1
+
         # Solid Waste Management (SWM): worker-wise operations + Sunday deep cleaning
         swm_area = self.area('Solid Waste Management')
         if swm_area:
@@ -1396,5 +1524,5 @@ All accounts use password: {DEFAULT_PASSWORD}
 
         self.stdout.write(
             f'  ✓ Schedule templates: {total} '
-            '(hostels + common area + research park + central arcade + sports complex + guest house + director bungalow + swm)'
+            '(hostels + common area + research park + central arcade + sports complex + guest house + director bungalow + roads + swm)'
         )

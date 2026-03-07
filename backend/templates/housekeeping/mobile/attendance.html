@@ -51,12 +51,13 @@
 <!-- Workers grouped by type, each uses the partial -->
 {% for wtype, rows in type_groups.items %}
 <div class="wtag">
-  {% if wtype == 'room' %}🛏 Room Staff
-  {% elif wtype == 'floor' %}🧹 Floor Staff
-  {% elif wtype == 'washroom' %}🚿 Washroom Staff
-  {% elif wtype == 'swm' %}♻️ SWM Staff
-  {% elif wtype == 'reliever' %}🔄 Reliever
-  {% else %}👷 General{% endif %}
+  {% if wtype == 'room' %}Room Staff
+  {% elif wtype == 'floor' %}Floor Staff
+  {% elif wtype == 'washroom' %}Washroom Staff
+  {% elif wtype == 'road' %}Road Staff
+  {% elif wtype == 'swm' %}SWM Staff
+  {% elif wtype == 'reliever' %}Reliever
+  {% else %}General{% endif %}
 </div>
 {% for row in rows %}
 {% include 'housekeeping/mobile/partials/attendance_worker_card.html' %}
@@ -98,3 +99,4 @@
 {% endif %}
 
 {% endblock %}
+

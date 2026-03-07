@@ -27,6 +27,8 @@
     Guest house operations plan (ground/canteen + upper floors + room shifts)
   {% elif is_director_bungalow %}
     Director bungalow operations plan (daily tasks + weekly terrace cleaning)
+  {% elif is_roads_outdoor %}
+    Route-wise road and footpath cleaning plan (daily + Sunday deep clean)
   {% elif is_swm %}
     SWM workflow (Mon-Sat operations + Sunday deep clean)
   {% else %}
@@ -88,6 +90,12 @@
         {% elif tgrp.grouper == 'room' %}Inside Bungalow and Camp Office Operations
         {% elif tgrp.grouper == 'washroom' %}Common Washroom and Kitchen Checks
         {% elif tgrp.grouper == 'all' %}Special Tasks
+        {% else %}General{% endif %}
+      {% elif is_roads_outdoor %}
+        {% if tgrp.grouper == 'floor' %}Parking and Circle Route Operations
+        {% elif tgrp.grouper == 'room' %}Residence and RB Connector Routes
+        {% elif tgrp.grouper == 'washroom' %}Academic/Hostel/Gate-5 Route Operations
+        {% elif tgrp.grouper == 'all' %}Special and Sunday Deep Cleaning
         {% else %}General{% endif %}
       {% elif is_swm %}
         {% if tgrp.grouper == 'floor' %}Primary and Secondary Collection Routes
