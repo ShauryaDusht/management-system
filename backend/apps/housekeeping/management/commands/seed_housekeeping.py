@@ -38,7 +38,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'''
 âœ“ SEED COMPLETE
   Areas:     {HKArea.objects.count()}
-  Users:     {User.objects.filter(role__in=["admin","manager","inventory_manager","caretaker","supervisor"]).count()}
+  Users:     {User.objects.filter(role__in=["admin","inventory_manager","housekeeping_manager","horticulture_manager","caretaker","supervisor"]).count()}
   Workers:   {HKWorker.objects.count()}
   Templates: {HKScheduleTemplate.objects.count()}
 
@@ -121,7 +121,7 @@ All accounts use password: {DEFAULT_PASSWORD}
 
     def make_user(self, username, first_name, last_name, phone, role, area_names, email=''):
         is_superuser = role == 'admin'
-        is_staff = role in {'admin', 'manager', 'inventory_manager'}
+        is_staff = role in {'admin', 'inventory_manager', 'housekeeping_manager', 'horticulture_manager'}
 
         user, created = User.objects.get_or_create(  # NOTE: capture `created`
             username=username,
@@ -209,17 +209,17 @@ All accounts use password: {DEFAULT_PASSWORD}
         # Migrate old manager usernames to new portal nomenclature.
         # This preserves existing user relations while updating login identity.
         rename_map = [
-            ('estate.manager', 'horticulture.manager', 'Horticulture', 'Manager', 'horticulture.manager@iitgn.ac.in'),
-            ('hostel.manager', 'housekeeping.manager', 'Housekeeping', 'Manager', 'housekeeping.manager@iitgn.ac.in'),
+            ('estate.manager', 'horticulture.manager', 'Horticulture', 'Manager', 'horticulture.manager@iitgn.ac.in', 'horticulture_manager'),
+            ('hostel.manager', 'housekeeping.manager', 'Housekeeping', 'Manager', 'housekeeping.manager@iitgn.ac.in', 'housekeeping_manager'),
         ]
-        for old_un, new_un, first, last, email in rename_map:
+        for old_un, new_un, first, last, email, target_role in rename_map:
             old_user = User.objects.filter(username=old_un).first()
             if old_user and not User.objects.filter(username=new_un).exists():
                 old_user.username = new_un
                 old_user.first_name = first
                 old_user.last_name = last
                 old_user.email = email
-                old_user.role = 'manager'
+                old_user.role = target_role
                 old_user.is_active = True
                 old_user.is_staff = True
                 old_user.is_superuser = False
@@ -230,15 +230,15 @@ All accounts use password: {DEFAULT_PASSWORD}
 
         accounts = [
             ('admin', 'Admin', '', '9727757096', 'admin', [], 'admin@iitgn.ac.in'),
-            ('horticulture.manager', 'Horticulture', 'Manager', '', 'manager', [], 'horticulture.manager@iitgn.ac.in'),
-            ('housekeeping.manager', 'Housekeeping', 'Manager', '', 'manager', [], 'housekeeping.manager@iitgn.ac.in'),
+            ('horticulture.manager', 'Horticulture', 'Manager', '', 'horticulture_manager', [], 'horticulture.manager@iitgn.ac.in'),
+            ('housekeeping.manager', 'Housekeeping', 'Manager', '', 'housekeeping_manager', [], 'housekeeping.manager@iitgn.ac.in'),
             ('inv.manager', 'Inventory', 'Manager', '8758120645', 'inventory_manager', [], 'inv.manager@iitgn.ac.in'),
         ]
         for username, first, last, phone, role, areas, email in accounts:
             self.make_user(username, first, last, phone, role, areas, email=email)
 
         self.stdout.write(
-            f'  âœ“ Portal users: {User.objects.filter(role__in=["admin","manager","inventory_manager"]).count()}'
+            f'  ✓ Portal users: {User.objects.filter(role__in=["admin","inventory_manager","housekeeping_manager","horticulture_manager"]).count()}'
         )
 
     def cleanup_legacy_accounts(self):

@@ -17,11 +17,15 @@ const NAV = {
     { to: '/requests',     label: 'Requests',       icon: 'clipboard' },
     { to: '/reports',      label: 'Reports',        icon: 'report'    },
   ],
-  manager: [
+  housekeeping_manager: [
     { to: '/requests',     label: 'Requests',       icon: 'clipboard' },
     { to: '/reports',      label: 'Reports',        icon: 'report'    },
     { to: '/issues',       label: 'Issued Items',   icon: 'arrows'    },
     { to: '/items',        label: 'Inventory',      icon: 'box'       },
+  ],
+  horticulture_manager: [
+    { to: '/requests',     label: 'Requests',       icon: 'clipboard' },
+    { to: '/reports',      label: 'Reports',        icon: 'report'    },
   ],
   supervisor: [
     { to: '/requests',     label: 'My Requests',    icon: 'clipboard' },
@@ -97,7 +101,7 @@ function getInventoryBlocks(role) {
   if (role === 'admin') {
     return ['All Categories']
   }
-  if (role === 'manager' || role === 'inventory_manager') {
+  if (role === 'housekeeping_manager' || role === 'inventory_manager') {
     return [
       'Cleaning Supplies',
       'Housekeeping Supplies',

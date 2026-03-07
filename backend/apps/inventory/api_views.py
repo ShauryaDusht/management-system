@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
-from apps.users.permissions import IsAdmin, IsAdminOrManager
+from apps.users.permissions import IsAdmin
 from .models import Category, Item, ItemRequest
 from .serializers import CategorySerializer, ItemSerializer, ItemRequestSerializer
 
@@ -99,7 +99,7 @@ class ItemRequestViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         queryset = ItemRequest.objects.all().select_related('requested_by', 'item', 'approved_by')
-        if user.is_admin or user.is_manager:
+        if user.is_admin or user.is_inventory_manager:
             return queryset
         return queryset.filter(requested_by=user)
 
@@ -116,7 +116,7 @@ class ApproveRequestView(APIView):
     @transaction.atomic
     def post(self, request, pk):
         user = request.user
-        if not (user.is_admin or user.is_manager):
+        if not (user.is_admin or user.is_inventory_manager):
             return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -157,7 +157,7 @@ class RejectRequestView(APIView):
     @transaction.atomic
     def post(self, request, pk):
         user = request.user
-        if not (user.is_admin or user.is_manager):
+        if not (user.is_admin or user.is_inventory_manager):
             return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -190,10 +190,10 @@ class MarkUrgentView(APIView):
 
         user = request.user
         is_owner = item_request.requested_by == user
-        is_privileged = user.is_admin or user.is_manager
+        is_privileged = user.is_admin or user.is_inventory_manager
         if not (is_owner or is_privileged):
             return Response(
-                {'error': 'Only the requester or a manager can change urgency.'},
+                {'error': 'Only the requester or an inventory manager can change urgency.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

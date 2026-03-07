@@ -6,16 +6,13 @@ export default function Sidebar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
-  const isAdmin = user?.role === 'admin'
-  const canManageModules = ['admin', 'manager', 'inventory_manager'].includes(user?.role)
-
   const navItems = [
-    ...(canManageModules ? [{ to: '/dashboard', icon: 'DB', label: 'Dashboard' }] : []),
+    { to: '/dashboard', icon: 'DB', label: 'Dashboard' },
     { to: '/inventory', icon: 'IN', label: 'Inventory' },
-    ...(canManageModules ? [{ to: '/housekeeping', icon: 'HK', label: 'Housekeeping' }] : []),
-    ...(canManageModules ? [{ to: '/horticulture', icon: 'HT', label: 'Horticulture' }] : []),
-    ...(canManageModules ? [{ to: '/reports', icon: 'RP', label: 'Reports' }] : []),
-    ...(isAdmin ? [{ to: '/users', icon: 'US', label: 'Manage Users' }] : []),
+    { to: '/housekeeping', icon: 'HK', label: 'Housekeeping' },
+    { to: '/horticulture', icon: 'HT', label: 'Horticulture' },
+    { to: '/reports', icon: 'RP', label: 'Reports' },
+    { to: '/users', icon: 'US', label: 'Manage Users' },
     { to: '/profile', icon: 'PR', label: 'Profile' },
   ]
 

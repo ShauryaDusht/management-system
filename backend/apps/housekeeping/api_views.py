@@ -3,12 +3,11 @@ from datetime import timedelta
 from django.db.models import Count, Max, Q
 from django.utils import timezone
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 
-from apps.users.permissions import IsAdminOrManager
 from .models import (
     HKAlert,
     HKArea,
@@ -27,6 +26,14 @@ from .serializers import (
     HKStockRequestStatusSerializer,
     HKWorkerSerializer,
 )
+
+
+class IsAdminOrHousekeepingManager(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        return user.is_authenticated and (
+            user.is_admin or user.is_housekeeping_manager
+        )
 
 
 class HKAreaListView(ListAPIView):
@@ -65,7 +72,7 @@ class HKWorkerListView(ListAPIView):
 
 
 class HKWorkerCreateView(APIView):
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsAdminOrHousekeepingManager]
 
     def post(self, request):
         data = request.data.copy()
@@ -87,7 +94,7 @@ class HKWorkerCreateView(APIView):
 
 
 class HKWorkerDetailView(APIView):
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsAdminOrHousekeepingManager]
 
     def patch(self, request, pk):
         worker = get_object_or_404(HKWorker, pk=pk)
@@ -227,7 +234,7 @@ class HKStockRequestListView(ListAPIView):
     def get_queryset(self):
         user = self.request.user
         qs = HKStockRequest.objects.select_related('requested_by', 'area').order_by('-created_at')
-        if user.role not in ['admin', 'manager']:
+        if user.role not in ['admin', 'housekeeping_manager']:
             qs = qs.filter(requested_by=user)
         return qs[:50]
 
@@ -238,7 +245,7 @@ class HKStockRequestStatusUpdateView(RetrieveUpdateAPIView):
     serializer_class = HKStockRequestStatusSerializer
 
     def get_permissions(self):
-        return [IsAdminOrManager()]
+        return [IsAdminOrHousekeepingManager()]
 
 
 class HKAlertListView(ListAPIView):
@@ -254,7 +261,7 @@ class HKAssignAreaTaskView(APIView):
     Admin/manager assigns a one-time area-level task for today.
     The task is created under worker_tag='all' and appears in mobile "Special" tab.
     """
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsAdminOrHousekeepingManager]
 
     def post(self, request):
         area_id = request.data.get('area_id')
@@ -344,7 +351,7 @@ class HKPromoteTaskToDailyView(APIView):
     Promote an existing special task record into the daily schedule.
     This makes the same task appear automatically every day going forward.
     """
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsAdminOrHousekeepingManager]
 
     def post(self, request):
         record_id = request.data.get('record_id')

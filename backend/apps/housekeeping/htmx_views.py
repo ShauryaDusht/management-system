@@ -50,7 +50,7 @@ WORKER_TAG_LABELS = {
 
 
 def get_user_areas(user):
-    if user.role in ["admin", "manager"]:
+    if user.role in ["admin", "housekeeping_manager"]:
         return HKArea.objects.filter(is_active=True)
     return HKArea.objects.filter(assigned_users__user=user, is_active=True)
 
@@ -63,7 +63,7 @@ def hk_required(fn):
         # deactivated users must not pass through even if role matches
         if not request.user.is_active:
             return redirect("/housekeeping/login/")
-        if request.user.role not in ["admin", "manager", "supervisor", "caretaker"]:
+        if request.user.role not in ["admin", "housekeeping_manager", "supervisor", "caretaker"]:
             return redirect("/housekeeping/login/")
         return fn(request, *args, **kwargs)
     return wrapper
@@ -160,7 +160,11 @@ def get_active_alerts(user, user_areas):
 
 
 def hk_login(request):
-    if request.user.is_authenticated and request.user.role in ["supervisor", "caretaker", "admin", "manager"]:
+    if request.user.is_authenticated and request.user.role in [
+        "supervisor", "caretaker", "admin", "housekeeping_manager"
+    ]:
+        if request.user.role == "admin":
+            return redirect("/admin-portal/")
         return redirect("/housekeeping/dashboard/")
 
     # validate next URL before use
@@ -188,8 +192,12 @@ def hk_login(request):
             username=request.POST.get("username", "").strip(),
             password=request.POST.get("password", ""),
         )
-        if user and user.is_active and user.role in ["supervisor", "caretaker", "admin", "manager"]:
+        if user and user.is_active and user.role in [
+            "supervisor", "caretaker", "admin", "housekeeping_manager"
+        ]:
             auth_login(request, user)
+            if user.role == "admin":
+                return redirect("/admin-portal/")
             return redirect(next_url)
         error = "You do not have housekeeping access." if (user and user.is_active) else "Invalid username or password."
     return render(request, "housekeeping/mobile/login.html", {"error": error, "next": next_url})
@@ -199,7 +207,7 @@ def hk_login(request):
 @require_POST
 def hk_logout(request):
     auth_logout(request)
-    return redirect("/housekeeping/login/")
+    return redirect("/portal/login/")
 
 
 @hk_required
@@ -348,7 +356,7 @@ def hk_dashboard(request):
         # Product requirement: Special tab should be visible in all HK dashboards.
         # It can be empty by default and then receive admin-assigned area tasks.
         "has_special_tasks": bool(sel_area),
-        "can_assign_tasks": user.role in ["admin", "manager", "supervisor", "caretaker"],
+        "can_assign_tasks": user.role in ["admin", "housekeeping_manager", "supervisor", "caretaker"],
     })
 
 
@@ -489,7 +497,7 @@ def hk_mark_task(request, record_id):
         "record": record,
         "tag_labels": WORKER_TAG_LABELS,
         "area_workers": area_workers,
-        "can_assign_tasks": user.role in ["admin", "manager", "supervisor", "caretaker"],
+        "can_assign_tasks": user.role in ["admin", "housekeeping_manager", "supervisor", "caretaker"],
         "task_error": task_error,
     })
 
@@ -929,7 +937,7 @@ def hk_profile(request):
 
 @hk_required
 def hk_alerts_manage(request):
-    if request.user.role not in ["admin", "manager"]:
+    if request.user.role not in ["admin", "housekeeping_manager"]:
         return redirect("/housekeeping/dashboard/")
     if request.method == "POST":
         action = request.POST.get("action")

@@ -60,7 +60,7 @@
           <span class="material-icons-round" style="font-size:16px;color:var(--brand-green)">admin_panel_settings</span>
           All Categories (Full Access)
         </div>
-      {% elif user.role == 'manager' or user.role == 'inventory_manager' %}
+      {% elif user.role == 'inventory_manager' %}
         {% with cats="" %}
         <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-primary);padding:7px 10px;background:var(--bg);border-radius:var(--radius-sm)">
           <span class="material-icons-round" style="font-size:15px;color:var(--brand-teal)">category</span>

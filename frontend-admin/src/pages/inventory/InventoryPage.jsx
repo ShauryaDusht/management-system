@@ -21,7 +21,7 @@ const REPORT_TAB = { key: 'report', label: 'Report', icon: '📊' }
 export default function InventoryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
-  const canViewReports = ['admin', 'manager', 'inventory_manager'].includes(user?.role)
+  const canViewReports = user?.role === 'admin'
 
   const tabConfig = useMemo(
     () => (canViewReports ? [...BASE_TAB_CONFIG, REPORT_TAB] : BASE_TAB_CONFIG),

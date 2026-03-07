@@ -39,13 +39,27 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
-  // isManager now includes inventory_manager to match the backend role
   const isAdmin = user?.role === 'admin'
-  const isManager = user?.role === 'manager' || user?.role === 'inventory_manager'
+  const isInventoryManager = user?.role === 'inventory_manager'
+  const isHousekeepingManager = user?.role === 'housekeeping_manager'
+  const isHorticultureManager = user?.role === 'horticulture_manager'
+  const isAnyManager = isInventoryManager || isHousekeepingManager || isHorticultureManager
   const isSupervisor = user?.role === 'supervisor'
   const isCaretaker = user?.role === 'caretaker'
 
-  const value = { user, loading, login, logout, isAdmin, isManager, isSupervisor, isCaretaker }
+  const value = {
+    user,
+    loading,
+    login,
+    logout,
+    isAdmin,
+    isInventoryManager,
+    isHousekeepingManager,
+    isHorticultureManager,
+    isAnyManager,
+    isSupervisor,
+    isCaretaker,
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

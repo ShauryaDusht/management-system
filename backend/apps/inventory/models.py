@@ -154,7 +154,7 @@ class ItemRequest(models.Model):
         on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name='requests_reviewed',
-        limit_choices_to={'role__in': ['manager', 'inventory_manager']},
+        limit_choices_to={'role__in': ['inventory_manager', 'admin']},
     )
     # Enforce minimum quantity of 1
     quantity_requested = models.PositiveIntegerField(

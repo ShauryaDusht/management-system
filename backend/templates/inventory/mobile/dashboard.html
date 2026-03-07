@@ -42,7 +42,7 @@
 </div>
 
 {# ── Manager Quick Links ── #}
-{% if role == 'admin' or role == 'manager' or role == 'inventory_manager' %}
+{% if role == 'admin' or role == 'inventory_manager' %}
 <div class="section-title">Quick Actions</div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
   <a href="{% url 'mobile_manager_requests' %}">
@@ -87,7 +87,7 @@
 {# ── Pending Requests Preview ── #}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
   <div class="section-title" style="margin:0">Pending Requests</div>
-  {% if role == 'admin' or role == 'manager' or role == 'inventory_manager' %}
+  {% if role == 'admin' or role == 'inventory_manager' %}
   <a href="{% url 'mobile_manager_requests' %}" style="font-size:12px;font-weight:600;color:var(--brand-orange);display:flex;align-items:center;gap:2px">
     View All <span class="material-icons-round" style="font-size:16px">chevron_right</span>
   </a>
@@ -107,7 +107,7 @@
 
 <div id="pending-requests-list">
   {% for req in pending_requests %}
-  <a href="{% if role == 'admin' or role == 'manager' or role == 'inventory_manager' %}{% url 'mobile_manager_requests' %}{% else %}{% url 'mobile_my_requests' %}{% endif %}" style="display:block">
+  <a href="{% if role == 'admin' or role == 'inventory_manager' %}{% url 'mobile_manager_requests' %}{% else %}{% url 'mobile_my_requests' %}{% endif %}" style="display:block">
     <div class="card mobile-pending-request" data-role="{{ req.requested_by.role }}" style="display:flex;align-items:center;justify-content:space-between">
       <div style="display:flex;align-items:center;gap:10px">
         <div style="width:36px;height:36px;border-radius:8px;background:#e8f5e9;display:flex;align-items:center;justify-content:center;flex-shrink:0">

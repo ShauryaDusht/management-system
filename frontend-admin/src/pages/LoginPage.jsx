@@ -22,8 +22,12 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      await login(form.username.trim(), form.password)
-      navigate('/', { replace: true })
+      const user = await login(form.username.trim(), form.password)
+      if (user.role !== 'admin') {
+        window.location.href = '/portal/'
+        return
+      }
+      navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(err.response?.data?.detail || 'Invalid username or password.')
     } finally {
@@ -113,7 +117,12 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <footer>Need help? Contact system admin.</footer>
+          <footer>
+            <div>Need help? Contact system admin.</div>
+            <div style={{ marginTop: 6 }}>
+              Field staff? <a href="/portal/login/">Use the Staff Portal</a>
+            </div>
+          </footer>
         </section>
       </div>
 
