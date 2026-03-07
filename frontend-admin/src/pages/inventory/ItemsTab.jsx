@@ -15,7 +15,7 @@ import {
   Spinner,
   StatCard,
 } from '../../components/ui'
-import { BarGroupChart, DonutChart } from '../../components/ui/Charts'
+import { BarGroupChart } from '../../components/ui/Charts'
 
 
 
@@ -24,7 +24,6 @@ function itemStatus(item) {
   if (Number(item.available_quantity || 0) <= Number(item.threshold_quantity || 0)) return 'low_stock'
   return 'in_stock'
 }
-
 const EMPTY_ITEM = {
   name: '',
   category: '',
@@ -95,15 +94,10 @@ export default function ItemsTab({ userRole }) {
 
   const lowStockItems = filtered.filter((i) => itemStatus(i) !== 'in_stock')
 
-  const stockDonut = useMemo(() => {
-    const inStock = filtered.filter((i) => itemStatus(i) === 'in_stock').length
+  const stockCounts = useMemo(() => {
     const lowStock = filtered.filter((i) => itemStatus(i) === 'low_stock').length
-    const outStock = filtered.filter((i) => itemStatus(i) === 'out_of_stock').length
-    return [
-      { name: 'In Stock', value: inStock },
-      { name: 'Low Stock', value: lowStock },
-      { name: 'Out of Stock', value: outStock },
-    ]
+    const outOfStock = filtered.filter((i) => itemStatus(i) === 'out_of_stock').length
+    return { lowStock, outOfStock }
   }, [filtered])
 
   const byTypeChart = useMemo(() => {
@@ -178,8 +172,8 @@ export default function ItemsTab({ userRole }) {
           }}
         >
           <StatCard label="Total Items" value={summary?.total_items ?? items.length} icon="📦" />
-          <StatCard label="Low Stock" value={summary?.low_stock_count ?? stockDonut[1].value} icon="⚠️" color="var(--orange-600)" />
-          <StatCard label="Out of Stock" value={summary?.out_of_stock_count ?? stockDonut[2].value} icon="🟥" color="#dc2626" />
+          <StatCard label="Low Stock" value={summary?.low_stock_count ?? stockCounts.lowStock} icon="⚠️" color="var(--orange-600)" />
+          <StatCard label="Out of Stock" value={summary?.out_of_stock_count ?? stockCounts.outOfStock} icon="🟥" color="#dc2626" />
           <StatCard label="Pending Requests" value={summary?.pending_requests ?? 0} icon="📋" color="#3b82f6" />
         </div>
 
@@ -213,11 +207,20 @@ export default function ItemsTab({ userRole }) {
               onChange={(e) => setSearch(e.target.value)}
               style={{ maxWidth: 280 }}
             />
-            <SelectField value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={{ width: 150 }}>
-              <option value="all">All Types</option>
-              <option value="consumable">Consumable</option>
-              <option value="asset">Asset</option>
-            </SelectField>
+            <Btn
+              size="sm"
+              variant={typeFilter === 'consumable' ? 'primary' : 'secondary'}
+              onClick={() => setTypeFilter((prev) => (prev === 'consumable' ? 'all' : 'consumable'))}
+            >
+              Consumables
+            </Btn>
+            <Btn
+              size="sm"
+              variant={typeFilter === 'asset' ? 'primary' : 'secondary'}
+              onClick={() => setTypeFilter((prev) => (prev === 'asset' ? 'all' : 'asset'))}
+            >
+              Assets
+            </Btn>
             {canAdmin && (
               <Btn style={{ marginLeft: 'auto' }} onClick={() => setAddModal(true)}>
                 + Add Item
@@ -254,11 +257,6 @@ export default function ItemsTab({ userRole }) {
       </div>
 
       <div>
-        <Card style={{ marginBottom: 14 }}>
-          <div style={{ fontWeight: 700, marginBottom: 12 }}>Stock Composition</div>
-          <DonutChart data={stockDonut} total={filtered.length} label="Items" size={220} />
-        </Card>
-
         <Card>
           <div style={{ fontWeight: 700, marginBottom: 10 }}>Stock Alerts</div>
           {lowStockItems.length === 0 ? (
@@ -431,3 +429,4 @@ export default function ItemsTab({ userRole }) {
     </div>
   )
 }
+
