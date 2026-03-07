@@ -138,17 +138,9 @@
             <span class="material-icons-round">inventory_2</span>
             <span class="nav-label">Inventory</span>
         </a>
-        <a href="{% url 'mobile_request_form' %}" class="nav-item {% if '/mobile/request/' in current_path %}active{% endif %}">
-            <span class="material-icons-round">add_circle</span>
-            <span class="nav-label">Request</span>
-        </a>
         <a href="{% url 'mobile_my_requests' %}" class="nav-item {% if '/mobile/my-requests' in current_path %}active{% endif %}">
             <span class="material-icons-round">receipt_long</span>
             <span class="nav-label">My Requests</span>
-        </a>
-        <a href="{% url 'mobile_profile' %}" class="nav-item {% if '/mobile/profile' in current_path %}active{% endif %}">
-            <span class="material-icons-round">account_circle</span>
-            <span class="nav-label">Profile</span>
         </a>
         {% endif %}
     </nav>

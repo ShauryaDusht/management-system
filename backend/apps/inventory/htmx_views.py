@@ -95,6 +95,7 @@ def mobile_inventory_list(request):
     category_id = request.GET.get('category', '')
     search_query = request.GET.get('search', '').strip()
     low_stock_filter = request.GET.get('low_stock') == 'true'
+    out_of_stock_filter = request.GET.get('out_of_stock') == 'true'
 
     categories = Category.objects.all()
     items_qs = Item.objects.select_related('category').all()
@@ -110,6 +111,8 @@ def mobile_inventory_list(request):
             available_quantity__gt=0,
             available_quantity__lte=F('threshold_quantity'),
         )
+    elif out_of_stock_filter:
+        items_qs = items_qs.filter(available_quantity=0)
 
     # Pagination — 15 items per page
     paginator = Paginator(items_qs, 15)
@@ -123,6 +126,7 @@ def mobile_inventory_list(request):
         'total_count': Item.objects.count(),
         'search_query': search_query,
         'low_stock_filter': low_stock_filter,
+        'out_of_stock_filter': out_of_stock_filter,
         'highlight_id': request.GET.get('highlight', ''),
     })
 
