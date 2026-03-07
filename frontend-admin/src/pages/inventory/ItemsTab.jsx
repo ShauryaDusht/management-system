@@ -209,15 +209,22 @@ export default function ItemsTab({ userRole }) {
             />
             <Btn
               size="sm"
+              variant={typeFilter === 'all' ? 'primary' : 'secondary'}
+              onClick={() => setTypeFilter('all')}
+            >
+              All
+            </Btn>
+            <Btn
+              size="sm"
               variant={typeFilter === 'consumable' ? 'primary' : 'secondary'}
-              onClick={() => setTypeFilter((prev) => (prev === 'consumable' ? 'all' : 'consumable'))}
+              onClick={() => setTypeFilter('consumable')}
             >
               Consumables
             </Btn>
             <Btn
               size="sm"
               variant={typeFilter === 'asset' ? 'primary' : 'secondary'}
-              onClick={() => setTypeFilter((prev) => (prev === 'asset' ? 'all' : 'asset'))}
+              onClick={() => setTypeFilter('asset')}
             >
               Assets
             </Btn>

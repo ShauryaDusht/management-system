@@ -1,0 +1,159 @@
+import { useEffect, useMemo, useState } from 'react'
+
+import { getInventoryReport } from '../../api/inventory'
+import { Alert, Badge, Btn, Card, DataTable, Spinner, StatCard } from '../../components/ui'
+import { asList } from '../../shared/utils'
+
+const STATUS_OPTIONS = [
+  { key: 'all', label: 'All' },
+  { key: 'in_stock', label: 'In Stock' },
+  { key: 'low_stock', label: 'Low Stock' },
+  { key: 'out_of_stock', label: 'Out of Stock' },
+]
+
+function csvEscape(value) {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  const str = String(value)
+  if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+    return `"${str.replace(/"/g, '""')}"`
+  }
+  return str
+}
+
+function downloadCsv(data, filename) {
+  if (!Array.isArray(data) || data.length === 0) return
+  const headers = Object.keys(data[0])
+  const rows = data.map((row) => headers.map((key) => csvEscape(row[key])).join(','))
+  const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' })
+  const href = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = href
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(href)
+}
+
+export default function ReportTab() {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [report, setReport] = useState(null)
+  const [statusFilter, setStatusFilter] = useState('all')
+
+  useEffect(() => {
+    ;(async () => {
+      setLoading(true)
+      setError('')
+      try {
+        const { data } = await getInventoryReport()
+        setReport(data || null)
+      } catch (e) {
+        setError(e.response?.data?.detail || 'Failed to load inventory report.')
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [])
+
+  const items = useMemo(() => {
+    const list = asList(report?.items)
+    if (statusFilter === 'all') return list
+    return list.filter((item) => item.status === statusFilter)
+  }, [report, statusFilter])
+
+  const csvRows = useMemo(
+    () =>
+      items.map((item) => ({
+        Item: item.name || '',
+        Category: item.category || '',
+        Type: item.type || '',
+        Available: `${item.available_quantity ?? 0} ${item.unit || ''}`.trim(),
+        Threshold: item.threshold_quantity ?? 0,
+        UnitCost: Number(item.unit_cost || 0).toFixed(2),
+        Status: String(item.status || '').replace(/_/g, ' ').toUpperCase(),
+      })),
+    [items]
+  )
+
+  const csvFilename = statusFilter === 'all' ? 'inventory_report.csv' : `inventory_report_${statusFilter}.csv`
+
+  return (
+    <div>
+      <Alert message={error} />
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap: 10,
+          marginBottom: 14,
+        }}
+      >
+        <StatCard label="Total Items" value={report?.total_items ?? 0} icon="IT" color="#1d4ed8" />
+        <StatCard
+          label="Total Value"
+          value={`INR ${Number(report?.total_value || 0).toLocaleString('en-IN')}`}
+          icon="VL"
+          color="#16a34a"
+        />
+        <StatCard label="Low Stock" value={report?.low_stock_count ?? 0} icon="LS" color="#f59e0b" />
+        <StatCard label="Out of Stock" value={report?.out_of_stock_count ?? 0} icon="OS" color="#dc2626" />
+      </div>
+
+      <Card noPad>
+        <div
+          style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 10,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {STATUS_OPTIONS.map((option) => (
+              <Btn
+                key={option.key}
+                size="sm"
+                variant={statusFilter === option.key ? 'primary' : 'secondary'}
+                onClick={() => setStatusFilter(option.key)}
+              >
+                {option.label}
+              </Btn>
+            ))}
+          </div>
+
+          <Btn
+            variant="secondary"
+            onClick={() => downloadCsv(csvRows, csvFilename)}
+            disabled={csvRows.length === 0}
+          >
+            Download CSV
+          </Btn>
+        </div>
+
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
+            <Spinner />
+          </div>
+        ) : (
+          <DataTable
+            headers={['Name', 'Category', 'Type', 'Available', 'Threshold', 'Unit Cost', 'Status']}
+            rows={items.map((item) => [
+              item.name || '-',
+              item.category || '-',
+              String(item.type || '').toUpperCase(),
+              `${item.available_quantity ?? 0} ${item.unit || ''}`.trim(),
+              item.threshold_quantity ?? 0,
+              `INR ${Number(item.unit_cost || 0).toFixed(2)}`,
+              <Badge key={`st-${item.id}`} value={item.status} />,
+            ])}
+            emptyMsg="No items found for the selected filter."
+          />
+        )}
+      </Card>
+    </div>
+  )
+}
