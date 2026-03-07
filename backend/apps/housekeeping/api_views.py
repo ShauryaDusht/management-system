@@ -6,6 +6,7 @@ from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
 
 from apps.users.permissions import IsAdminOrManager
 from .models import (
@@ -61,6 +62,56 @@ class HKWorkerListView(ListAPIView):
         if area:
             qs = qs.filter(area_id=area)
         return qs
+
+
+class HKWorkerCreateView(APIView):
+    permission_classes = [IsAdminOrManager]
+
+    def post(self, request):
+        data = request.data.copy()
+        first_name = (data.pop('first_name', '') or '').strip()
+        last_name = (data.pop('last_name', '') or '').strip()
+        if not data.get('name'):
+            data['name'] = ' '.join([p for p in [first_name, last_name] if p]).strip()
+        if not data.get('name'):
+            return Response({'detail': 'Worker name is required.'}, status=400)
+
+        if data.get('is_reliever') in [True, 'true', '1', 'on', 'yes']:
+            data['is_reliever'] = True
+            data['worker_type'] = 'reliever'
+
+        serializer = HKWorkerSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        worker = serializer.save()
+        return Response(HKWorkerSerializer(worker).data, status=201)
+
+
+class HKWorkerDetailView(APIView):
+    permission_classes = [IsAdminOrManager]
+
+    def patch(self, request, pk):
+        worker = get_object_or_404(HKWorker, pk=pk)
+        data = request.data.copy()
+
+        first_name = (data.pop('first_name', '') or '').strip()
+        last_name = (data.pop('last_name', '') or '').strip()
+        if first_name or last_name:
+            data['name'] = ' '.join([p for p in [first_name, last_name] if p]).strip()
+
+        if data.get('is_reliever') in [True, 'true', '1', 'on', 'yes']:
+            data['is_reliever'] = True
+            if not data.get('worker_type'):
+                data['worker_type'] = 'reliever'
+
+        serializer = HKWorkerSerializer(worker, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        worker = serializer.save()
+        return Response(HKWorkerSerializer(worker).data, status=200)
+
+    def delete(self, request, pk):
+        worker = get_object_or_404(HKWorker, pk=pk)
+        worker.delete()
+        return Response(status=204)
 
 
 class HKDailyRecordListView(ListAPIView):

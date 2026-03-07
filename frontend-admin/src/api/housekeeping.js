@@ -4,6 +4,9 @@ export const hkAPI = {
   getAreas: () => api.get('/housekeeping/areas/'),
   getWorkers: (areaId) =>
     api.get('/housekeeping/workers/', { params: areaId ? { area: areaId } : {} }),
+  createWorker: (payload) => api.post('/housekeeping/workers/create/', payload),
+  updateWorker: (id, payload) => api.patch(`/housekeeping/workers/${id}/`, payload),
+  deleteWorker: (id) => api.delete(`/housekeeping/workers/${id}/`),
   getAttendanceSummary: (date) =>
     api.get('/housekeeping/attendance-summary/', { params: { date } }),
   getDailyRecords: (areaId, date) =>
