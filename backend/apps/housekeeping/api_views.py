@@ -150,15 +150,19 @@ class HKAttendanceSummaryView(APIView):
             total = worker_totals.get(area.id, 0)
             first = first_half_map.get(area.id, set())
             second = second_half_map.get(area.id, set())
+            # Present for admin dashboard should reflect any marked presence
+            # (first OR second half), so counts move immediately after marking.
+            present_any = len(first | second)
             full_day = len(first & second)
             partial = len(first ^ second)
             summary.append({
                 'area_id': area.id,
                 'area_name': area.name,
                 'total_workers': total,
-                'present': full_day,
+                'present': present_any,
                 'partial': partial,
-                'absent': max(total - full_day - partial, 0),
+                'absent': max(total - present_any, 0),
+                'full_day_present': full_day,
             })
 
         return Response(summary)
