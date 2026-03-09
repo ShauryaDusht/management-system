@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from django.http import JsonResponse
 from apps.core.portal_views import portal_root, portal_login, portal_logout
 from apps.horticulture.views import horticulture_dashboard as horticulture_dashboard_view
+from apps.housekeeping import api_views as hk_api_views
 
 
 def backend_root(_request):
@@ -24,6 +25,7 @@ def api_root(_request):
             'auth': '/api/auth/',
             'inventory': '/api/inventory/',
             'housekeeping': '/api/housekeeping/',
+            'admin_gallery': '/api/admin/gallery/',
             'horticulture': '/api/horticulture/',
             'reports': '/api/reports/',
         }
@@ -38,6 +40,14 @@ urlpatterns = [
     path('api/reports/', include('apps.reports.urls')),
     path('api/horticulture/', include('apps.horticulture.urls')),
     path('api/housekeeping/', include('apps.housekeeping.urls')),
+    path('api/admin/gallery/', hk_api_views.HKAdminGalleryView.as_view(), name='api-admin-gallery'),
+    path('api/admin/gallery/grouped-by-area/', hk_api_views.HKAdminGalleryGroupedByAreaView.as_view(), name='api-admin-gallery-grouped'),
+    path('api/admin/gallery/stats/', hk_api_views.HKAdminGalleryStatsView.as_view(), name='api-admin-gallery-stats'),
+    path('api/admin/gallery/photos/<int:task_id>/', hk_api_views.HKAdminGalleryTaskPhotosView.as_view(), name='api-admin-gallery-task-photos'),
+    path('api/admin/gallery/photo/<int:photo_id>/delete/', hk_api_views.HKAdminGalleryPhotoDeleteView.as_view(), name='api-admin-gallery-photo-delete'),
+    path('api/admin/gallery/photo/<int:photo_id>/flag/', hk_api_views.HKAdminGalleryPhotoFlagView.as_view(), name='api-admin-gallery-photo-flag'),
+    path('api/admin/gallery/export-csv/', hk_api_views.HKAdminGalleryExportCSVView.as_view(), name='api-admin-gallery-export-csv'),
+    path('api/admin/gallery/task/<int:task_id>/download-zip/', hk_api_views.HKAdminGalleryTaskZipView.as_view(), name='api-admin-gallery-task-zip'),
     path('inventory/', include('apps.inventory.htmx_urls')),
     path('housekeeping/', include('apps.housekeeping.htmx_urls')),
     path('portal/', portal_root),

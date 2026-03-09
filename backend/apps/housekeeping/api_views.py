@@ -1,10 +1,16 @@
 from datetime import timedelta
+import csv
+import io
 import re
+import zipfile
+from urllib.parse import urlparse, urlunparse
 
 from django.db import transaction
-from django.db.models import Count, Max, Q
+from django.db.models import Count, Max, Q, Sum
+from django.db.models.functions import Coalesce
 from django.http import FileResponse, HttpResponse
 from django.core.files.base import ContentFile
+from django.core.cache import cache
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView
@@ -967,3 +973,492 @@ class HKDashboardSummaryView(APIView):
             'pending_stock_requests': pending_stock,
             'total_areas': HKArea.objects.filter(is_active=True).count(),
         })
+
+
+def _gallery_base_queryset():
+    return (
+        HKDailyRecord.objects
+        .select_related('schedule', 'area', 'completed_by', 'assigned_worker', 'photo_after_flagged_by')
+        .filter(photo_after__isnull=False)
+        .exclude(photo_after='')
+        .annotate(capture_ts=Coalesce('photo_after_captured_at', 'completed_at'))
+    )
+
+
+def _parse_int(value, default=0, min_value=None, max_value=None):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    if min_value is not None:
+        parsed = max(min_value, parsed)
+    if max_value is not None:
+        parsed = min(max_value, parsed)
+    return parsed
+
+
+def _parse_iso_date(value):
+    if not value:
+        return None
+    try:
+        return timezone.datetime.strptime(value, '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return None
+
+
+def _apply_gallery_filters(request, qs):
+    area = (request.query_params.get('area') or request.query_params.get('areaId') or '').strip()
+    task_id = (request.query_params.get('taskId') or '').strip()
+    staff_id = (request.query_params.get('staffId') or '').strip()
+    search = (request.query_params.get('search') or '').strip()
+    date_from = _parse_iso_date(request.query_params.get('dateFrom'))
+    date_to = _parse_iso_date(request.query_params.get('dateTo'))
+
+    if area:
+        if area.isdigit():
+            qs = qs.filter(area_id=int(area))
+        else:
+            qs = qs.filter(area__name__icontains=area)
+
+    if task_id:
+        try:
+            qs = qs.filter(schedule_id=int(task_id))
+        except (TypeError, ValueError):
+            pass
+
+    if staff_id:
+        try:
+            qs = qs.filter(completed_by_id=int(staff_id))
+        except (TypeError, ValueError):
+            pass
+
+    if date_from:
+        qs = qs.filter(capture_ts__date__gte=date_from)
+    if date_to:
+        qs = qs.filter(capture_ts__date__lte=date_to)
+
+    if search:
+        qs = qs.filter(
+            Q(area__name__icontains=search)
+            | Q(schedule__task_name__icontains=search)
+            | Q(completed_by__first_name__icontains=search)
+            | Q(completed_by__last_name__icontains=search)
+            | Q(completed_by__username__icontains=search)
+            | Q(assigned_worker__name__icontains=search)
+        )
+
+    return qs
+
+
+def _public_gallery_host(request):
+    forwarded = (request.META.get("HTTP_X_FORWARDED_HOST") or "").split(",")[0].strip()
+    host = forwarded or request.get_host() or "localhost:8000"
+    hostname = host.split(":")[0].lower()
+    if hostname in {"backend", "web", "app", "django", "server"}:
+        return "localhost:8000"
+    return host
+
+
+def _public_media_url(request, raw_url):
+    if not raw_url:
+        return ""
+    try:
+        absolute = request.build_absolute_uri(raw_url)
+    except Exception:
+        absolute = raw_url
+
+    try:
+        parsed = urlparse(absolute)
+        hostname = (parsed.hostname or "").lower()
+        if hostname in {"backend", "web", "app", "django", "server"}:
+            parsed = parsed._replace(netloc=_public_gallery_host(request))
+            return urlunparse(parsed)
+    except Exception:
+        return absolute
+    return absolute
+
+
+def _file_field_url(request, file_field):
+    if not file_field:
+        return ""
+    try:
+        return _public_media_url(request, file_field.url)
+    except Exception:
+        return ""
+
+
+def _serialize_gallery_photo(request, record):
+    photo_url = _file_field_url(request, record.photo_after)
+    thumbnail_url = _file_field_url(request, record.photo_after_thumbnail) or photo_url
+    staff_name = ''
+    staff_id = None
+    if record.completed_by:
+        staff_name = record.completed_by.get_full_name() or record.completed_by.username
+        staff_id = record.completed_by_id
+    elif record.assigned_worker:
+        staff_name = record.assigned_worker.name
+    else:
+        staff_name = 'Unknown'
+
+    capture_ts = record.photo_after_captured_at or record.completed_at
+    return {
+        'id': record.id,
+        'url': photo_url,
+        'thumbnailUrl': thumbnail_url,
+        'taskId': record.schedule_id,
+        'taskName': record.schedule.task_name if record.schedule else '',
+        'areaId': record.area_id,
+        'areaName': record.area.name if record.area else '',
+        'staffId': staff_id,
+        'staffName': staff_name,
+        'capturedAt': capture_ts,
+        'captureMethod': record.photo_after_capture_method or 'file_upload',
+        'fileSize': int(record.photo_after_saved_size or (record.photo_after.size if record.photo_after else 0)),
+        'originalSize': int(record.photo_after_original_size or 0),
+        'savedSize': int(record.photo_after_saved_size or 0),
+        'thumbSize': int(record.photo_after_thumb_size or 0),
+        'compressionRatio': int(record.photo_after_compression_ratio or 0),
+        'format': record.photo_after_format or "jpeg",
+        'flagged': bool(record.photo_after_flagged),
+        'flagNote': record.photo_after_flag_note or '',
+    }
+
+
+class HKAdminGalleryView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def get(self, request):
+        page = _parse_int(request.query_params.get('page'), default=1, min_value=1)
+        limit = _parse_int(request.query_params.get('limit'), default=50, min_value=1, max_value=200)
+        sort = (request.query_params.get('sort') or 'newest').strip().lower()
+
+        qs = _apply_gallery_filters(request, _gallery_base_queryset())
+
+        if sort in {'oldest', 'oldest_first'}:
+            qs = qs.order_by('capture_ts', 'id')
+        elif sort in {'area_a-z', 'area_az'}:
+            qs = qs.order_by('area__name', '-capture_ts', '-id')
+        elif sort in {'most_photos', 'task_most'}:
+            qs = qs.annotate(task_photo_count=Count('schedule_id')).order_by('-task_photo_count', '-capture_ts', '-id')
+        else:
+            qs = qs.order_by('-capture_ts', '-id')
+
+        total = qs.count()
+        start = (page - 1) * limit
+        end = start + limit
+        records = list(qs[start:end])
+
+        photos = [_serialize_gallery_photo(request, rec) for rec in records]
+        return Response(
+            {
+                'photos': photos,
+                'total': total,
+                'page': page,
+                'limit': limit,
+                'hasMore': end < total,
+            }
+        )
+
+
+class HKAdminGalleryGroupedByAreaView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def get(self, request):
+        params_key = '&'.join(
+            [f'{k}={v}' for k, v in sorted(request.query_params.items()) if v not in [None, '']]
+        )
+        cache_key = f'hk_gallery_grouped_v3::{params_key or "all"}'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        qs = _apply_gallery_filters(request, _gallery_base_queryset()).order_by('area__name', 'schedule__task_name', '-capture_ts', '-id')
+        grouped = {}
+        for rec in qs:
+            area = rec.area
+            schedule = rec.schedule
+            if not area or not schedule:
+                continue
+
+            area_bucket = grouped.setdefault(
+                area.id,
+                {
+                    'areaId': area.id,
+                    'areaName': area.name,
+                    'areaIcon': '🏢',
+                    'totalPhotos': 0,
+                    'tasks_map': {},
+                },
+            )
+            area_bucket['totalPhotos'] += 1
+
+            task_bucket = area_bucket['tasks_map'].setdefault(
+                schedule.id,
+                {
+                    'taskId': schedule.id,
+                    'taskName': schedule.task_name,
+                    'photoCount': 0,
+                    'recentPhotos': [],
+                },
+            )
+            task_bucket['photoCount'] += 1
+            if len(task_bucket['recentPhotos']) < 4:
+                task_bucket['recentPhotos'].append(_serialize_gallery_photo(request, rec))
+
+        payload = []
+        for area_id in sorted(grouped.keys(), key=lambda aid: grouped[aid]['areaName'].lower()):
+            area_bucket = grouped[area_id]
+            tasks = list(area_bucket['tasks_map'].values())
+            tasks.sort(key=lambda t: (-t['photoCount'], (t['taskName'] or '').lower()))
+            payload.append(
+                {
+                    'areaId': area_bucket['areaId'],
+                    'areaName': area_bucket['areaName'],
+                    'areaIcon': area_bucket['areaIcon'],
+                    'totalPhotos': area_bucket['totalPhotos'],
+                    'tasks': tasks,
+                }
+            )
+
+        cache.set(cache_key, payload, timeout=60)
+        return Response(payload)
+
+
+class HKAdminGalleryStatsView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def get(self, request):
+        qs = _apply_gallery_filters(request, _gallery_base_queryset())
+        total = qs.count()
+
+        today = timezone.localdate()
+        week_start = today - timedelta(days=today.weekday())
+        this_week = qs.filter(capture_ts__date__gte=week_start, capture_ts__date__lte=today).count()
+
+        areas_with_photos = qs.values('area_id').distinct().count()
+        total_areas = HKArea.objects.filter(is_active=True).count()
+        tasks_with_photos = qs.values('schedule_id').distinct().count()
+        avg_photos_per_task = round((total / tasks_with_photos), 2) if tasks_with_photos else 0
+        size_agg = qs.aggregate(
+            original_total=Coalesce(Sum('photo_after_original_size'), 0),
+            saved_total=Coalesce(Sum('photo_after_saved_size'), 0),
+            thumb_total=Coalesce(Sum('photo_after_thumb_size'), 0),
+        )
+        original_total = int(size_agg.get('original_total') or 0)
+        saved_total = int(size_agg.get('saved_total') or 0)
+        thumb_total = int(size_agg.get('thumb_total') or 0)
+        storage_used_total = saved_total + thumb_total
+        if original_total <= 0:
+            # fallback for legacy rows where metadata is absent.
+            original_total = storage_used_total
+        storage_saved = max(0, original_total - storage_used_total)
+        storage_saved_pct = int(round((storage_saved / float(original_total)) * 100)) if original_total > 0 else 0
+
+        return Response(
+            {
+                'totalPhotos': total,
+                'thisWeekPhotos': this_week,
+                'areasWithPhotos': areas_with_photos,
+                'totalAreas': total_areas,
+                'avgPhotosPerTask': avg_photos_per_task,
+                'storageOriginalBytes': original_total,
+                'storageUsedBytes': storage_used_total,
+                'storageSavedBytes': storage_saved,
+                'storageSavedPercent': storage_saved_pct,
+            }
+        )
+
+
+class HKAdminGalleryTaskPhotosView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def get(self, request, task_id):
+        qs = _apply_gallery_filters(
+            request,
+            _gallery_base_queryset().filter(schedule_id=task_id).order_by('-capture_ts', '-id'),
+        )
+        photos = [_serialize_gallery_photo(request, rec) for rec in qs]
+        return Response({'taskId': task_id, 'photos': photos})
+
+
+class HKAdminGalleryPhotoDeleteView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def delete(self, request, photo_id):
+        record = get_object_or_404(HKDailyRecord, pk=photo_id)
+        if not record.photo_after:
+            return Response({'detail': 'Photo not found.'}, status=404)
+
+        old_name = record.photo_after.name
+        old_storage = record.photo_after.storage
+        thumb_name = record.photo_after_thumbnail.name if record.photo_after_thumbnail else ''
+        thumb_storage = record.photo_after_thumbnail.storage if record.photo_after_thumbnail else old_storage
+
+        record.photo_after = None
+        record.photo_after_thumbnail = None
+        record.photo_after_captured_at = None
+        record.photo_after_capture_method = ''
+        record.photo_after_original_size = 0
+        record.photo_after_saved_size = 0
+        record.photo_after_thumb_size = 0
+        record.photo_after_compression_ratio = 0
+        record.photo_after_format = ''
+        record.photo_after_flagged = False
+        record.photo_after_flag_note = ''
+        record.photo_after_flagged_at = None
+        record.photo_after_flagged_by = None
+        record.save(
+            update_fields=[
+                'photo_after',
+                'photo_after_thumbnail',
+                'photo_after_captured_at',
+                'photo_after_capture_method',
+                'photo_after_original_size',
+                'photo_after_saved_size',
+                'photo_after_thumb_size',
+                'photo_after_compression_ratio',
+                'photo_after_format',
+                'photo_after_flagged',
+                'photo_after_flag_note',
+                'photo_after_flagged_at',
+                'photo_after_flagged_by',
+            ]
+        )
+
+        try:
+            if old_name:
+                old_storage.delete(old_name)
+        except Exception:
+            pass
+        try:
+            if thumb_name:
+                thumb_storage.delete(thumb_name)
+        except Exception:
+            pass
+
+        return Response({'success': True})
+
+
+class HKAdminGalleryPhotoFlagView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def post(self, request, photo_id):
+        record = get_object_or_404(HKDailyRecord, pk=photo_id)
+        if not record.photo_after:
+            return Response({'detail': 'Photo not found.'}, status=404)
+
+        raw_flagged = str(request.data.get('flagged', 'true')).strip().lower()
+        flagged = raw_flagged in {'1', 'true', 'yes', 'on'}
+        note = (request.data.get('note') or '').strip()
+
+        if flagged:
+            record.photo_after_flagged = True
+            record.photo_after_flag_note = note
+            record.photo_after_flagged_at = timezone.now()
+            record.photo_after_flagged_by = request.user
+        else:
+            record.photo_after_flagged = False
+            record.photo_after_flag_note = ''
+            record.photo_after_flagged_at = None
+            record.photo_after_flagged_by = None
+
+        record.save(
+            update_fields=[
+                'photo_after_flagged',
+                'photo_after_flag_note',
+                'photo_after_flagged_at',
+                'photo_after_flagged_by',
+            ]
+        )
+
+        return Response({'success': True, 'flagged': record.photo_after_flagged})
+
+
+class HKAdminGalleryExportCSVView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def get(self, request):
+        qs = _apply_gallery_filters(request, _gallery_base_queryset()).order_by('-capture_ts', '-id')
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(
+            [
+                'area',
+                'task',
+                'staff',
+                'captured_at',
+                'capture_method',
+                'photo_url',
+                'thumbnail_url',
+                'original_size',
+                'saved_size',
+                'thumbnail_size',
+                'compression_ratio',
+                'format',
+            ]
+        )
+        for rec in qs:
+            photo_url = _file_field_url(request, rec.photo_after)
+            thumbnail_url = _file_field_url(request, rec.photo_after_thumbnail)
+            staff_name = ''
+            if rec.completed_by:
+                staff_name = rec.completed_by.get_full_name() or rec.completed_by.username
+            elif rec.assigned_worker:
+                staff_name = rec.assigned_worker.name
+            writer.writerow(
+                [
+                    rec.area.name if rec.area else '',
+                    rec.schedule.task_name if rec.schedule else '',
+                    staff_name,
+                    (rec.photo_after_captured_at or rec.completed_at or '').isoformat() if (rec.photo_after_captured_at or rec.completed_at) else '',
+                    rec.photo_after_capture_method or 'file_upload',
+                    photo_url,
+                    thumbnail_url,
+                    int(rec.photo_after_original_size or 0),
+                    int(rec.photo_after_saved_size or (rec.photo_after.size if rec.photo_after else 0)),
+                    int(rec.photo_after_thumb_size or 0),
+                    int(rec.photo_after_compression_ratio or 0),
+                    rec.photo_after_format or 'jpeg',
+                ]
+            )
+
+        response = HttpResponse(output.getvalue(), content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="housekeeping_gallery_export.csv"'
+        return response
+
+
+class HKAdminGalleryTaskZipView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def get(self, request, task_id):
+        records = list(
+            _gallery_base_queryset()
+            .filter(schedule_id=task_id)
+            .order_by('-capture_ts', '-id')
+        )
+        if not records:
+            return Response({'detail': 'No photos available for this task.'}, status=404)
+
+        mem_file = io.BytesIO()
+        with zipfile.ZipFile(mem_file, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
+            for rec in records:
+                if not rec.photo_after:
+                    continue
+                stamp = timezone.localtime(rec.photo_after_captured_at or rec.completed_at or timezone.now()).strftime('%Y%m%d_%H%M%S')
+                area_slug = slugify(rec.area.name if rec.area else 'area') or 'area'
+                ext = (rec.photo_after_format or '').strip().lower() or 'jpg'
+                filename = f'{area_slug}_{stamp}_{rec.id}.{ext}'
+                try:
+                    rec.photo_after.open('rb')
+                    zf.writestr(filename, rec.photo_after.read())
+                finally:
+                    try:
+                        rec.photo_after.close()
+                    except Exception:
+                        pass
+
+        mem_file.seek(0)
+        response = HttpResponse(mem_file.getvalue(), content_type='application/zip')
+        response['Content-Disposition'] = f'attachment; filename="task_{task_id}_photos.zip"'
+        return response

@@ -47,7 +47,11 @@ class HKDailyRecordAdmin(admin.ModelAdmin):
     list_filter = ('status', 'date', 'area')
     date_hierarchy = 'date'
     readonly_fields = (
-        'photo_before', 'photo_after', 'latitude', 'longitude',
+        'photo_before', 'photo_after', 'photo_after_captured_at', 'photo_after_capture_method',
+        'photo_after_thumbnail', 'photo_after_original_size', 'photo_after_saved_size',
+        'photo_after_thumb_size', 'photo_after_compression_ratio', 'photo_after_format',
+        'photo_after_flagged', 'photo_after_flag_note', 'photo_after_flagged_at', 'photo_after_flagged_by',
+        'latitude', 'longitude',
         'assigned_at', 'started_at', 'completed_at',
     )
 

@@ -12,6 +12,7 @@ from django.contrib.auth import (
 from django.db import models as dm
 from django.http import HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
@@ -35,6 +36,7 @@ from .models import (
     HKWorker,
     HKWorkerSelectionRequest,
 )
+from .photo_utils import process_task_photo
 
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
@@ -53,6 +55,13 @@ WORKER_TAG_LABELS = {
     "all": ("all", "All Staff"),
     "general": ("general", "General"),
 }
+
+
+def _safe_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def area_bucket(area):
@@ -990,7 +999,21 @@ def hk_mark_task(request, record_id):
         record.completed_by = None
         record.completed_at = None
         record.photo_after = None
-        record.save(update_fields=["status", "started_at", "completed_by", "completed_at", "photo_after"])
+        record.photo_after_thumbnail = None
+        record.photo_after_captured_at = None
+        record.photo_after_capture_method = ""
+        record.photo_after_original_size = 0
+        record.photo_after_saved_size = 0
+        record.photo_after_thumb_size = 0
+        record.photo_after_compression_ratio = 0
+        record.photo_after_format = ""
+        record.save(update_fields=[
+            "status", "started_at", "completed_by", "completed_at", "photo_after",
+            "photo_after_thumbnail",
+            "photo_after_captured_at", "photo_after_capture_method",
+            "photo_after_original_size", "photo_after_saved_size", "photo_after_thumb_size",
+            "photo_after_compression_ratio", "photo_after_format",
+        ])
 
     elif action == "done":
         if is_break_task and not can_mark_break:
@@ -1013,7 +1036,66 @@ def hk_mark_task(request, record_id):
             if "photo_before" in request.FILES:
                 record.photo_before = request.FILES["photo_before"]
             if "photo_after" in request.FILES:
-                record.photo_after = request.FILES["photo_after"]
+                uploaded_photo = request.FILES["photo_after"]
+                original_size_hint = _safe_int(request.POST.get("originalSize"), default=0)
+                fallback_saved_size = _safe_int(
+                    request.POST.get("compressedSize"), default=getattr(uploaded_photo, "size", 0)
+                )
+                fallback_thumb_size = _safe_int(request.POST.get("thumbnailSize"), default=0)
+                fallback_format = (request.POST.get("format") or "").strip().lower()
+                if len(fallback_format) > 20:
+                    fallback_format = fallback_format[:20]
+                if fallback_format.startswith("image/"):
+                    fallback_format = fallback_format.split("/", 1)[1]
+
+                try:
+                    processed = process_task_photo(
+                        uploaded_photo,
+                        task_id=record.id,
+                        original_size_hint=original_size_hint,
+                    )
+                    record.photo_after = processed["main_file"]
+                    record.photo_after_thumbnail = processed["thumb_file"]
+                    record.photo_after_original_size = processed["original_size"]
+                    record.photo_after_saved_size = processed["saved_size"]
+                    record.photo_after_thumb_size = processed["thumb_size"]
+                    record.photo_after_compression_ratio = processed["compression_ratio"]
+                    record.photo_after_format = processed["format"]
+                except Exception as ex:
+                    logger.warning("Task photo processing failed for record %s: %s", record.id, ex)
+                    uploaded_photo.seek(0)
+                    record.photo_after = uploaded_photo
+                    record.photo_after_thumbnail = request.FILES.get("photo_after_thumbnail")
+                    original_size = original_size_hint or getattr(uploaded_photo, "size", 0) or fallback_saved_size
+                    saved_size = getattr(uploaded_photo, "size", 0) or fallback_saved_size
+                    record.photo_after_original_size = original_size
+                    record.photo_after_saved_size = saved_size
+                    record.photo_after_thumb_size = (
+                        getattr(record.photo_after_thumbnail, "size", 0) or fallback_thumb_size
+                    )
+                    if original_size > 0 and saved_size > 0 and saved_size < original_size:
+                        record.photo_after_compression_ratio = int(
+                            round((1 - (saved_size / float(original_size))) * 100)
+                        )
+                    else:
+                        record.photo_after_compression_ratio = 0
+                    record.photo_after_format = fallback_format or (
+                        (getattr(uploaded_photo, "content_type", "") or "image/jpeg").split("/")[-1]
+                    )
+
+                raw_captured_at = (request.POST.get("capturedAt") or "").strip()
+                parsed_captured_at = parse_datetime(raw_captured_at) if raw_captured_at else None
+                if parsed_captured_at and timezone.is_naive(parsed_captured_at):
+                    parsed_captured_at = timezone.make_aware(
+                        parsed_captured_at,
+                        timezone.get_current_timezone(),
+                    )
+                record.photo_after_captured_at = parsed_captured_at or now
+
+                capture_method = (request.POST.get("captureMethod") or "").strip().lower()
+                if capture_method not in {"camera", "file_upload"}:
+                    capture_method = "file_upload"
+                record.photo_after_capture_method = capture_method
             lat = request.POST.get("latitude")
             lng = request.POST.get("longitude")
             if lat and lng:

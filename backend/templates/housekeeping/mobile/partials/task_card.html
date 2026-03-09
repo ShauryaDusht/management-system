@@ -156,13 +156,61 @@
   <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
         hx-target="#task-{{ record.id }}" hx-swap="outerHTML"
         hx-encoding="multipart/form-data"
-        style="margin-top:8px">
+        style="margin-top:8px"
+        id="task-complete-form-{{ record.id }}"
+        class="js-task-complete-form"
+        data-requires-photo="{% if record.schedule.requires_photo %}1{% else %}0{% endif %}">
     {% csrf_token %}
     <input type="hidden" name="action" value="done">
+    <input type="hidden" name="capturedAt" class="js-photo-captured-at" value="">
+    <input type="hidden" name="captureMethod" class="js-photo-capture-method" value="">
+    <input type="hidden" name="originalSize" class="js-photo-original-size" value="">
+    <input type="hidden" name="compressedSize" class="js-photo-compressed-size" value="">
+    <input type="hidden" name="thumbnailSize" class="js-photo-thumb-size" value="">
+    <input type="hidden" name="format" class="js-photo-format" value="">
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <input type="text" name="note" placeholder="Remark / completion note" style="flex:1;padding:7px 8px;font-size:12px;min-width:140px">
       {% if record.schedule.requires_photo %}
-      <input type="file" name="photo_after" accept="image/*" capture="environment" required style="flex:1;font-size:11px;min-width:140px">
+      <div style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:8px;background:#f9fafb">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+          <button type="button"
+                  class="btn-g js-open-camera"
+                  data-form-id="task-complete-form-{{ record.id }}"
+                  data-task-id="{{ record.id }}"
+                  data-task-name="{{ record.schedule.task_name|escape }}"
+                  style="width:auto;padding:8px 10px;font-size:12px;line-height:1.2">
+            Take Photo
+          </button>
+        </div>
+        <input type="file"
+               name="photo_after"
+               class="js-photo-file-input"
+               accept="image/*"
+               capture="environment"
+               style="display:none">
+        <div class="js-photo-selected" style="display:none;margin-top:8px;background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:7px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <img class="js-photo-thumb" alt="Task photo" style="width:52px;height:52px;border-radius:7px;object-fit:cover;border:1px solid #e5e7eb;flex-shrink:0">
+            <div style="flex:1;min-width:0">
+              <div class="js-photo-meta" style="font-size:11px;color:#374151;font-weight:700">Photo selected</div>
+              <div class="js-photo-size" style="font-size:10px;color:#6b7280;margin-top:2px"></div>
+            </div>
+            <button type="button" class="js-photo-clear" style="border:none;background:#fee2e2;color:#991b1b;border-radius:7px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer">
+              Clear
+            </button>
+          </div>
+        </div>
+        <div class="js-photo-error" style="display:none;margin-top:8px;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:7px 8px;border-radius:7px;font-size:11px;font-weight:700"></div>
+        <div class="js-upload-progress-wrap" style="display:none;margin-top:8px">
+          <div class="prog"><div class="fill js-upload-progress-fill" style="width:0%"></div></div>
+          <div class="js-upload-progress-label" style="font-size:10px;color:#6b7280;margin-top:3px">Uploading photo... 0%</div>
+        </div>
+        <button type="button"
+                class="js-upload-retry-btn"
+                style="display:none;margin-top:8px;border:none;background:#1d4ed8;color:#fff;border-radius:7px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer">
+          Retry Upload
+        </button>
+      </div>
       {% endif %}
     </div>
     <button type="submit" class="btn-s" style="padding:9px;font-size:12px;margin-top:7px">Mark Completed</button>
@@ -178,13 +226,36 @@
   <div style="font-size:11px;color:#16a34a;margin-top:6px">
     Completed at {{ record.completed_at|time:"g:i A" }}{% if record.completed_by %} by {{ record.completed_by.get_full_name|default:record.completed_by.username }}{% endif %}
   </div>
+  {% if record.photo_after %}
+  <div style="margin-top:7px">
+    <img src="{{ record.photo_after.url }}"
+         alt="Completed task proof"
+         class="js-task-photo-thumb"
+         data-photo-url="{{ record.photo_after.url }}"
+         data-photo-title="{{ record.schedule.task_name|escape }}"
+         style="width:86px;height:86px;border-radius:8px;object-fit:cover;border:1px solid #d1d5db;cursor:pointer">
+    <div style="font-size:10px;color:#6b7280;margin-top:4px">
+      Captured:
+      {% if record.photo_after_captured_at %}
+        {{ record.photo_after_captured_at|date:"g:i A d M Y" }}
+      {% else %}
+        {{ record.completed_at|date:"g:i A d M Y" }}
+      {% endif %}
+      {% if record.photo_after_capture_method %}| {{ record.photo_after_capture_method|title }}{% endif %}
+      {% if record.photo_after_saved_size %}| {{ record.photo_after_saved_size|filesizeformat }}{% endif %}
+      {% if record.photo_after_compression_ratio %}| {{ record.photo_after_compression_ratio }}% saved{% endif %}
+    </div>
+  </div>
+  {% endif %}
   {% if record.note %}<div style="font-size:11px;color:#374151;margin-top:3px">Remark: {{ record.note }}</div>{% endif %}
   <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
         hx-target="#task-{{ record.id }}" hx-swap="outerHTML"
         style="margin-top:6px">
     {% csrf_token %}
     <input type="hidden" name="action" value="undo">
-    <button type="submit" class="btn-g" style="padding:8px;font-size:12px">Reopen Task</button>
+    <button type="submit" class="btn-g" style="padding:8px;font-size:12px">
+      {% if record.photo_after %}Retake Photo{% else %}Reopen Task{% endif %}
+    </button>
   </form>
   {% endif %}
   {% endif %}

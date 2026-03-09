@@ -11,6 +11,7 @@ import SectionsTab from './SectionsTab'
 import WorkersTab from './WorkersTab'
 import WorkerSelectionTab from './WorkerSelectionTab'
 import InchargeApprovalsTab from './InchargeApprovalsTab'
+import GalleryTab from './GalleryTab'
 
 export default function HousekeepingPage() {
   const { user } = useAuth()
@@ -28,6 +29,9 @@ export default function HousekeepingPage() {
       ]
       if (['admin', 'housekeeping_manager'].includes(user?.role)) {
         base.push({ key: 'incharge_approvals', label: 'Incharge Approvals', icon: 'IA' })
+      }
+      if (user?.role === 'admin') {
+        base.push({ key: 'gallery', label: 'Gallery', icon: 'GL' })
       }
       return base
     },
@@ -75,6 +79,7 @@ export default function HousekeepingPage() {
       {active === 'workers' && <WorkersTab />}
       {active === 'worker_selection' && <WorkerSelectionTab />}
       {active === 'incharge_approvals' && <InchargeApprovalsTab />}
+      {active === 'gallery' && <GalleryTab />}
     </AdminLayout>
   )
 }

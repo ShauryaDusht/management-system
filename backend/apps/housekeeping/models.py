@@ -175,6 +175,24 @@ class HKDailyRecord(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     photo_before = models.ImageField(upload_to='housekeeping/photos/%Y/%m/%d/', null=True, blank=True)
     photo_after = models.ImageField(upload_to='housekeeping/photos/%Y/%m/%d/', null=True, blank=True)
+    photo_after_thumbnail = models.ImageField(upload_to='housekeeping/photos/%Y/%m/%d/thumbs/', null=True, blank=True)
+    photo_after_captured_at = models.DateTimeField(null=True, blank=True)
+    photo_after_capture_method = models.CharField(max_length=20, blank=True)
+    photo_after_original_size = models.PositiveIntegerField(default=0)
+    photo_after_saved_size = models.PositiveIntegerField(default=0)
+    photo_after_thumb_size = models.PositiveIntegerField(default=0)
+    photo_after_compression_ratio = models.PositiveSmallIntegerField(default=0)
+    photo_after_format = models.CharField(max_length=20, blank=True)
+    photo_after_flagged = models.BooleanField(default=False)
+    photo_after_flag_note = models.CharField(max_length=300, blank=True)
+    photo_after_flagged_at = models.DateTimeField(null=True, blank=True)
+    photo_after_flagged_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='hk_flagged_task_photos',
+    )
     note = models.CharField(max_length=300, blank=True)
     latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
