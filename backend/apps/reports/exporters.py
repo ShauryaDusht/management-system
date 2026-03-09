@@ -113,6 +113,104 @@ def export_worker_report_csv(snapshot: dict) -> bytes:
     return buffer.getvalue().encode('utf-8-sig')
 
 
+def export_supervisor_report_csv(snapshot: dict) -> bytes:
+    supervisor_info = snapshot.get('supervisor_info', {})
+    task_oversight = snapshot.get('task_oversight', {})
+    attendance = snapshot.get('attendance_management', {})
+    daily_rows = snapshot.get('daily_activity_breakdown', [])
+    extra_work_rows = (snapshot.get('extra_work') or {}).get('list', [])
+    reliever_rows = (snapshot.get('reliever_management') or {}).get('list', [])
+    stock_rows = (snapshot.get('stock_requests') or {}).get('list', [])
+
+    month_label = snapshot.get('month_label') or f"{snapshot.get('month', '')}/{snapshot.get('year', '')}"
+    generated_at = snapshot.get('generated_at', '')
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+
+    # Section 1 - Header block
+    writer.writerow(['Supervisor Name', supervisor_info.get('full_name', '')])
+    writer.writerow(['Username', supervisor_info.get('username', '')])
+    writer.writerow(['Role', supervisor_info.get('role', '')])
+    writer.writerow(['Areas Assigned', ', '.join(supervisor_info.get('areas', []) or [])])
+    writer.writerow(['Workers Under Supervision', supervisor_info.get('workers_under', 0)])
+    writer.writerow(['Report Period', month_label])
+    writer.writerow(['Generated At', generated_at])
+    writer.writerow([])
+
+    # Section 2 - Task Oversight Summary
+    writer.writerow(['Task Oversight Summary'])
+    writer.writerow(['Metric', 'Value'])
+    writer.writerow(['Tasks Assigned', task_oversight.get('total_tasks_assigned', 0)])
+    writer.writerow(['Tasks Completed', task_oversight.get('tasks_completed', 0)])
+    writer.writerow(['Tasks Skipped', task_oversight.get('tasks_skipped', 0)])
+    writer.writerow(['Tasks Pending', task_oversight.get('tasks_pending', 0)])
+    writer.writerow(['Completion Rate %', task_oversight.get('completion_rate_pct', 0)])
+    writer.writerow(['Avg Completion Time (mins)', task_oversight.get('avg_completion_time_minutes', 0)])
+    writer.writerow([])
+
+    # Section 3 - Attendance Management Summary
+    writer.writerow(['Attendance Management Summary'])
+    writer.writerow(['Metric', 'Value'])
+    writer.writerow(['Working Days', attendance.get('working_days_in_month', 0)])
+    writer.writerow(['Days Submitted', attendance.get('unique_days_submitted', 0)])
+    writer.writerow(['Submission Rate %', attendance.get('submission_rate_pct', 0)])
+    writer.writerow(['Workers Marked Absent', attendance.get('workers_marked_absent', 0)])
+    writer.writerow(['Workers Marked Late', attendance.get('workers_marked_late', 0)])
+    writer.writerow([])
+
+    # Section 4 - Daily Activity Breakdown
+    writer.writerow(['Daily Activity Breakdown'])
+    writer.writerow(['Date', 'Tasks Assigned', 'Tasks Completed', 'Attendance Submissions', 'Extra Work Logged'])
+    for row in daily_rows:
+        writer.writerow([
+            row.get('date', ''),
+            row.get('tasks_assigned', 0),
+            row.get('tasks_completed', 0),
+            row.get('attendance_submissions', 0),
+            row.get('extra_work_logged', 0),
+        ])
+    writer.writerow([])
+
+    # Section 5 - Extra Work Log
+    writer.writerow(['Extra Work Log'])
+    writer.writerow(['Date', 'Task Name', 'Area', 'Verified'])
+    for row in extra_work_rows:
+        writer.writerow([
+            row.get('date', ''),
+            row.get('task_name', ''),
+            row.get('area_name', ''),
+            'Yes' if row.get('is_verified') else 'No',
+        ])
+    writer.writerow([])
+
+    # Section 6 - Reliever Substitutions
+    writer.writerow(['Reliever Substitutions'])
+    writer.writerow(['Date', 'Original Worker', 'Reliever', 'Area'])
+    for row in reliever_rows:
+        writer.writerow([
+            row.get('date', ''),
+            row.get('original_worker_name', ''),
+            row.get('reliever_name', ''),
+            row.get('area_name', ''),
+        ])
+    writer.writerow([])
+
+    # Section 7 - Stock Requests
+    writer.writerow(['Stock Requests'])
+    writer.writerow(['Item', 'Quantity', 'Status', 'Urgent', 'Date'])
+    for row in stock_rows:
+        writer.writerow([
+            row.get('item_name', ''),
+            row.get('quantity', 0),
+            row.get('status', ''),
+            'Yes' if row.get('is_urgent') else 'No',
+            row.get('created_at', ''),
+        ])
+
+    return buffer.getvalue().encode('utf-8-sig')
+
+
 def export_workers_combined_csv(rows: list, month: int, year: int, title: str) -> bytes:
     buffer = io.StringIO()
     writer = csv.writer(buffer)

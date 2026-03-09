@@ -59,3 +59,24 @@ class WorkerMonthlyReport(models.Model):
 
     def __str__(self):
         return f"Worker Report {self.worker.name} {self.month:02d}/{self.year}"
+
+
+class SupervisorMonthlyReport(models.Model):
+    supervisor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='monthly_supervisor_reports',
+    )
+    month = models.PositiveSmallIntegerField()
+    year = models.PositiveSmallIntegerField()
+    generated_at = models.DateTimeField(default=timezone.now)
+    snapshot = models.JSONField(default=dict)
+    csv_file = models.FileField(upload_to='reports/supervisors/csv/', blank=True, null=True)
+
+    class Meta:
+        ordering = ['-year', '-month', 'supervisor__username']
+        unique_together = [('supervisor', 'month', 'year')]
+
+    def __str__(self):
+        name = self.supervisor.get_full_name() or self.supervisor.username
+        return f"Supervisor Report {name} {self.month:02d}/{self.year}"

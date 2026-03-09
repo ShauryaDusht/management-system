@@ -8,6 +8,8 @@ from urllib.parse import urlparse, urlunparse
 from django.db import transaction
 from django.db.models import Count, Max, Q, Sum
 from django.db.models.functions import Coalesce
+from django.contrib.auth import get_user_model
+from django.db import OperationalError, ProgrammingError, transaction
 from django.http import FileResponse, HttpResponse
 from django.core.files.base import ContentFile
 from django.core.cache import cache
@@ -18,9 +20,13 @@ from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from apps.reports.exporters import export_worker_report_csv, export_workers_combined_csv
-from apps.reports.generators import generate_worker_report
-from apps.reports.models import WorkerMonthlyReport
+from apps.reports.exporters import (
+    export_supervisor_report_csv,
+    export_worker_report_csv,
+    export_workers_combined_csv,
+)
+from apps.reports.generators import generate_supervisor_report, generate_worker_report
+from apps.reports.models import SupervisorMonthlyReport, WorkerMonthlyReport
 
 from .models import (
     HKAlert,
@@ -133,6 +139,20 @@ def _is_past_month(month, year):
 def _worker_report_filename(worker, month, year):
     safe_name = slugify(worker.name) or str(worker.id)
     return f"worker_{safe_name}_{month:02d}_{year}.csv"
+
+
+def _get_supervisor_or_404(pk):
+    User = get_user_model()
+    return get_object_or_404(
+        User,
+        pk=pk,
+        role__in=['supervisor', 'caretaker'],
+    )
+
+
+def _supervisor_report_filename(supervisor, month, year):
+    safe_name = slugify(supervisor.username) or str(supervisor.id)
+    return f"supervisor_{safe_name}_{month:02d}_{year}.csv"
 
 
 class HKAreaListView(ListAPIView):
@@ -336,6 +356,149 @@ class HKWorkerReportRegenerateView(APIView):
 
         report, created = WorkerMonthlyReport.objects.get_or_create(
             worker=worker,
+            month=month,
+            year=year,
+            defaults={
+                'generated_at': now,
+                'snapshot': snapshot,
+            },
+        )
+        if not created:
+            if report.csv_file:
+                report.csv_file.delete(save=False)
+            report.snapshot = snapshot
+            report.generated_at = now
+        else:
+            report.generated_at = now
+            report.snapshot = snapshot
+
+        report.csv_file.save(filename, ContentFile(csv_bytes), save=False)
+        report.save()
+
+        return Response({'success': True, 'generated_at': report.generated_at})
+
+
+class SupervisorReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        supervisor = _get_supervisor_or_404(pk)
+
+        month, year, err = _parse_report_period(
+            request.query_params.get('month'),
+            request.query_params.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        if _is_past_month(month, year):
+            try:
+                cached_report = SupervisorMonthlyReport.objects.filter(
+                    supervisor=supervisor,
+                    month=month,
+                    year=year,
+                ).first()
+            except (OperationalError, ProgrammingError):
+                cached_report = None
+            if cached_report:
+                return Response(
+                    {
+                        'cached': True,
+                        'generated_at': cached_report.generated_at,
+                        'snapshot': cached_report.snapshot,
+                    }
+                )
+
+        snapshot = generate_supervisor_report(supervisor.id, month, year)
+        return Response(
+            {
+                'cached': False,
+                'generated_at': snapshot.get('generated_at'),
+                'snapshot': snapshot,
+            }
+        )
+
+
+class SupervisorReportCSVView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        supervisor = _get_supervisor_or_404(pk)
+
+        month, year, err = _parse_report_period(
+            request.query_params.get('month'),
+            request.query_params.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        filename = _supervisor_report_filename(supervisor, month, year)
+        if _is_past_month(month, year):
+            try:
+                cached_report = SupervisorMonthlyReport.objects.filter(
+                    supervisor=supervisor,
+                    month=month,
+                    year=year,
+                ).first()
+            except (OperationalError, ProgrammingError):
+                cached_report = None
+
+            if cached_report and cached_report.csv_file:
+                file_handle = cached_report.csv_file.open('rb')
+                return FileResponse(
+                    file_handle,
+                    content_type='text/csv',
+                    as_attachment=True,
+                    filename=filename,
+                )
+
+            if cached_report and not cached_report.csv_file:
+                snapshot = cached_report.snapshot or generate_supervisor_report(supervisor.id, month, year)
+                csv_bytes = export_supervisor_report_csv(snapshot)
+                cached_report.csv_file.save(filename, ContentFile(csv_bytes), save=True)
+
+                file_handle = cached_report.csv_file.open('rb')
+                return FileResponse(
+                    file_handle,
+                    content_type='text/csv',
+                    as_attachment=True,
+                    filename=filename,
+                )
+
+        snapshot = generate_supervisor_report(supervisor.id, month, year)
+        csv_bytes = export_supervisor_report_csv(snapshot)
+
+        response = HttpResponse(csv_bytes, content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+
+class SupervisorReportRegenerateView(APIView):
+    permission_classes = [IsAdminOrHousekeepingManager]
+
+    def post(self, request, pk):
+        supervisor = _get_supervisor_or_404(pk)
+
+        month, year, err = _parse_report_period(
+            request.data.get('month'),
+            request.data.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        if not _is_past_month(month, year):
+            return Response(
+                {'detail': 'Only completed past months can be regenerated/cached.'},
+                status=400,
+            )
+
+        snapshot = generate_supervisor_report(supervisor.id, month, year)
+        csv_bytes = export_supervisor_report_csv(snapshot)
+        now = timezone.now()
+        filename = _supervisor_report_filename(supervisor, month, year)
+
+        report, created = SupervisorMonthlyReport.objects.get_or_create(
+            supervisor=supervisor,
             month=month,
             year=year,
             defaults={

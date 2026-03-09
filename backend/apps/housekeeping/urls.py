@@ -21,6 +21,21 @@ api_urlpatterns = [
         name='hk-api-worker-report-regenerate',
     ),
     path(
+        'supervisors/<int:pk>/report/',
+        api_views.SupervisorReportView.as_view(),
+        name='hk-api-supervisor-report',
+    ),
+    path(
+        'supervisors/<int:pk>/report/csv/',
+        api_views.SupervisorReportCSVView.as_view(),
+        name='hk-api-supervisor-report-csv',
+    ),
+    path(
+        'supervisors/<int:pk>/report/regenerate/',
+        api_views.SupervisorReportRegenerateView.as_view(),
+        name='hk-api-supervisor-report-regenerate',
+    ),
+    path(
         'worker-selection-requests/',
         api_views.HKWorkerSelectionRequestListCreateView.as_view(),
         name='hk-api-worker-selection-requests',

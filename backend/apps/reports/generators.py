@@ -14,6 +14,7 @@ import calendar
 import math
 from datetime import date, timedelta
 
+from django.contrib.auth import get_user_model
 from django.db.models import Count
 from django.utils import timezone
 
@@ -22,8 +23,11 @@ from apps.housekeeping.models import (
     HKDailyRecord,
     HKExtraWork,
     HKRelieverSubstitution,
+    HKStockRequest,
     HKTaskWorkerAssignment,
+    HKUserArea,
     HKWorker,
+    HKWorkerSelectionRequest,
 )
 from apps.inventory.models import Item, ItemIssue
 
@@ -368,4 +372,244 @@ def generate_worker_report(worker_id: int, month: int, year: int) -> dict:
         'extra_work_count': extra_work_count,
         'reliever_days': reliever_days,
         'daily_breakdown': daily_breakdown,
+    }
+
+
+def generate_supervisor_report(supervisor_id: int, month: int, year: int) -> dict:
+    User = get_user_model()
+    supervisor = User.objects.filter(
+        pk=supervisor_id,
+        role__in=['supervisor', 'caretaker'],
+    ).first()
+    if not supervisor:
+        raise User.DoesNotExist('Supervisor/Caretaker not found.')
+
+    period_start, period_end, month_days = _month_dates(month, year)
+    month_label = f"{calendar.month_name[month]} {year}"
+    working_days_in_month = sum(1 for day in month_days if day.weekday() != 6)
+
+    areas = list(
+        HKUserArea.objects
+        .filter(user=supervisor)
+        .select_related('area')
+        .order_by('area__name')
+        .values_list('area__name', flat=True)
+    )
+    workers_under = HKWorker.objects.filter(supervisor=supervisor, is_active=True).count()
+
+    assigned_qs = HKDailyRecord.objects.filter(
+        assigned_by=supervisor,
+        date__gte=period_start,
+        date__lte=period_end,
+    )
+    total_tasks_assigned = assigned_qs.count()
+    tasks_completed = assigned_qs.filter(status='done').count()
+    tasks_skipped = assigned_qs.filter(status='skipped').count()
+    tasks_pending = assigned_qs.filter(status__in=['pending', 'in_progress']).count()
+    completion_rate_pct = round((tasks_completed / total_tasks_assigned * 100), 2) if total_tasks_assigned else 0.0
+
+    completion_minutes = []
+    for started_at, completed_at in (
+        assigned_qs
+        .filter(started_at__isnull=False, completed_at__isnull=False)
+        .values_list('started_at', 'completed_at')
+    ):
+        delta_minutes = (completed_at - started_at).total_seconds() / 60
+        if delta_minutes >= 0:
+            completion_minutes.append(delta_minutes)
+    avg_completion_time_minutes = round(
+        sum(completion_minutes) / len(completion_minutes),
+        2,
+    ) if completion_minutes else 0.0
+
+    marking_qs = HKDailyRecord.objects.filter(
+        completed_by=supervisor,
+        status='done',
+        date__gte=period_start,
+        date__lte=period_end,
+    )
+    total_tasks_personally_marked_done = marking_qs.count()
+    unique_workers_covered = (
+        marking_qs
+        .exclude(assigned_worker__isnull=True)
+        .values('assigned_worker')
+        .distinct()
+        .count()
+    )
+
+    attendance_qs = HKAttendanceRecord.objects.filter(
+        marked_by=supervisor,
+        date__gte=period_start,
+        date__lte=period_end,
+    )
+    submitted_qs = attendance_qs.filter(is_submitted=True)
+    total_submissions = submitted_qs.count()
+    unique_days_submitted = submitted_qs.values('date').distinct().count()
+    submission_rate_pct = round((unique_days_submitted / working_days_in_month * 100), 2) if working_days_in_month else 0.0
+    workers_marked_absent = attendance_qs.filter(status='absent').values('worker').distinct().count()
+    workers_marked_late = attendance_qs.filter(status='late').values('worker').distinct().count()
+
+    extra_work_qs = (
+        HKExtraWork.objects
+        .filter(
+            logged_by=supervisor,
+            date__gte=period_start,
+            date__lte=period_end,
+        )
+        .select_related('area')
+        .order_by('date', 'id')
+    )
+    extra_work_list = [
+        {
+            'date': row.date.isoformat(),
+            'task_name': row.task_name,
+            'area_name': row.area.name if row.area else '',
+            'is_verified': row.is_verified,
+        }
+        for row in extra_work_qs
+    ]
+
+    reliever_qs = (
+        HKRelieverSubstitution.objects
+        .filter(
+            assigned_by=supervisor,
+            date__gte=period_start,
+            date__lte=period_end,
+        )
+        .select_related('original_worker', 'reliever', 'area')
+        .order_by('date', 'id')
+    )
+    reliever_list = [
+        {
+            'date': row.date.isoformat(),
+            'original_worker_name': row.original_worker.name,
+            'reliever_name': row.reliever.name,
+            'area_name': row.area.name if row.area else '',
+        }
+        for row in reliever_qs
+    ]
+
+    stock_qs = (
+        HKStockRequest.objects
+        .filter(
+            requested_by=supervisor,
+            created_at__date__gte=period_start,
+            created_at__date__lte=period_end,
+        )
+        .order_by('created_at', 'id')
+    )
+    stock_list = [
+        {
+            'item_name': row.item_name,
+            'quantity': row.quantity,
+            'status': row.status,
+            'is_urgent': row.is_urgent,
+            'created_at': row.created_at.isoformat(),
+        }
+        for row in stock_qs
+    ]
+
+    worker_selection_qs = HKWorkerSelectionRequest.objects.filter(
+        requested_by=supervisor,
+        created_at__date__gte=period_start,
+        created_at__date__lte=period_end,
+    )
+
+    tasks_assigned_by_day = dict(
+        assigned_qs
+        .values('date')
+        .annotate(total=Count('id'))
+        .values_list('date', 'total')
+    )
+    tasks_completed_by_day = dict(
+        assigned_qs
+        .filter(status='done')
+        .values('date')
+        .annotate(total=Count('id'))
+        .values_list('date', 'total')
+    )
+    attendance_submissions_by_day = dict(
+        submitted_qs
+        .values('date')
+        .annotate(total=Count('id'))
+        .values_list('date', 'total')
+    )
+    extra_work_by_day = dict(
+        extra_work_qs
+        .values('date')
+        .annotate(total=Count('id'))
+        .values_list('date', 'total')
+    )
+    daily_activity_breakdown = []
+    for day in month_days:
+        daily_activity_breakdown.append(
+            {
+                'date': day.isoformat(),
+                'tasks_assigned': tasks_assigned_by_day.get(day, 0),
+                'tasks_completed': tasks_completed_by_day.get(day, 0),
+                'attendance_submissions': attendance_submissions_by_day.get(day, 0),
+                'extra_work_logged': extra_work_by_day.get(day, 0),
+            }
+        )
+
+    return {
+        'report_type': 'supervisor_monthly',
+        'supervisor_id': supervisor.id,
+        'month': month,
+        'year': year,
+        'month_label': month_label,
+        'generated_at': timezone.now().isoformat(),
+        'supervisor_info': {
+            'full_name': supervisor.get_full_name() or supervisor.username,
+            'username': supervisor.username,
+            'role': supervisor.role,
+            'phone': supervisor.phone,
+            'areas': areas,
+            'workers_under': workers_under,
+        },
+        'task_oversight': {
+            'total_tasks_assigned': total_tasks_assigned,
+            'tasks_completed': tasks_completed,
+            'tasks_skipped': tasks_skipped,
+            'tasks_pending': tasks_pending,
+            'completion_rate_pct': completion_rate_pct,
+            'avg_completion_time_minutes': avg_completion_time_minutes,
+        },
+        'task_marking': {
+            'total_tasks_personally_marked_done': total_tasks_personally_marked_done,
+            'unique_workers_covered': unique_workers_covered,
+        },
+        'attendance_management': {
+            'total_submissions': total_submissions,
+            'unique_days_submitted': unique_days_submitted,
+            'working_days_in_month': working_days_in_month,
+            'submission_rate_pct': submission_rate_pct,
+            'workers_marked_absent': workers_marked_absent,
+            'workers_marked_late': workers_marked_late,
+        },
+        'extra_work': {
+            'total_extra_tasks_logged': len(extra_work_list),
+            'verified_count': sum(1 for row in extra_work_list if row['is_verified']),
+            'list': extra_work_list,
+        },
+        'reliever_management': {
+            'total_substitutions_arranged': len(reliever_list),
+            'list': reliever_list,
+        },
+        'stock_requests': {
+            'total_raised': len(stock_list),
+            'approved': sum(1 for row in stock_list if row['status'] == 'approved'),
+            'rejected': sum(1 for row in stock_list if row['status'] == 'rejected'),
+            'pending': sum(1 for row in stock_list if row['status'] == 'pending'),
+            'issued': sum(1 for row in stock_list if row['status'] == 'issued'),
+            'urgent_count': sum(1 for row in stock_list if row['is_urgent']),
+            'list': stock_list,
+        },
+        'worker_selection_requests': {
+            'total_raised': worker_selection_qs.count(),
+            'approved': worker_selection_qs.filter(status='approved').count(),
+            'rejected': worker_selection_qs.filter(status='rejected').count(),
+            'pending': worker_selection_qs.filter(status='pending').count(),
+        },
+        'daily_activity_breakdown': daily_activity_breakdown,
     }

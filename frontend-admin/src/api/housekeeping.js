@@ -8,11 +8,22 @@ export const hkAPI = {
     api.get(`/housekeeping/workers/${workerId}/report/`, {
       params: { month, year },
     }),
+  getSupervisorReport: (supervisorId, month, year) =>
+    api.get(`/housekeeping/supervisors/${supervisorId}/report/`, {
+      params: { month, year },
+    }),
   downloadWorkerReportCSV: (workerId, month, year) =>
     api.get(`/housekeeping/workers/${workerId}/report/csv/`, {
       params: { month, year },
       responseType: 'blob',
     }),
+  downloadSupervisorReportCSV: (supervisorId, month, year) =>
+    api.get(`/housekeeping/supervisors/${supervisorId}/report/csv/`, {
+      params: { month, year },
+      responseType: 'blob',
+    }),
+  regenerateSupervisorReport: (supervisorId, month, year) =>
+    api.post(`/housekeeping/supervisors/${supervisorId}/report/regenerate/`, { month, year }),
   downloadWorkersCombinedCSV: (params = {}) =>
     api.get('/housekeeping/workers/reports/combined/csv/', {
       params,
