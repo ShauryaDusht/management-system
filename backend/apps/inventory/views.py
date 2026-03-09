@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 
-from .models import Category, Item, ItemRequest, ItemIssue, StockEntry
+from .models import Category, Item, ItemRequest, ItemIssue, StockEntry, PurchaseRequest
 from .serializers import (
     CategorySerializer, ItemSerializer,
     StockEntrySerializer,
@@ -16,6 +16,7 @@ from .serializers import (
     ReturnAssetSerializer, FinalizeConsumableSerializer,
     UserActivitySerializer,
     StandardPagination,
+    PurchaseRequestSerializer,
 )
 from apps.users.permissions import IsAdmin, IsSupervisor
 from .permissions import IsAdminOrInventoryManager
@@ -348,6 +349,7 @@ class IssueItemView(APIView):
         reserved_to_release = min(item.reserved_quantity, item_request.quantity_requested)
         Item.objects.filter(pk=item.pk).update(
             available_quantity=F('available_quantity') - issued_qty,
+            total_quantity=F('total_quantity') - issued_qty,
             reserved_quantity=F('reserved_quantity') - reserved_to_release,
         )
 
@@ -413,14 +415,20 @@ class ReturnAssetView(APIView):
         returned_qty = serializer.validated_data['returned_quantity']
         lost_qty = issue.issued_quantity - returned_qty
 
-        update_kwargs = {'available_quantity': F('available_quantity') + returned_qty}
-        if lost_qty > 0:
-            update_kwargs['total_quantity'] = F('total_quantity') - lost_qty
+        # On issue: available -= issued_qty, total -= issued_qty
+        # On return: restore available += returned_qty, total += returned_qty
+        # Lost units are permanently gone: total -= lost_qty (already excluded since we only add returned_qty back)
+        update_kwargs = {
+            'available_quantity': F('available_quantity') + returned_qty,
+            'total_quantity': F('total_quantity') + returned_qty,
+        }
 
         Item.objects.filter(pk=issue.request.item_id).update(**update_kwargs)
         updated_item = Item.objects.select_for_update().get(pk=issue.request.item_id)
         if updated_item.available_quantity > updated_item.total_quantity:
-            raise AssertionError('available_quantity cannot exceed total_quantity')
+            Item.objects.filter(pk=issue.request.item_id).update(
+                available_quantity=updated_item.total_quantity
+            )
 
         issue.returned_quantity = returned_qty
         issue.returned_at = timezone.now()
@@ -578,3 +586,103 @@ class DashboardSummaryView(APIView):
             'unfinalized_consumables': unfinalized_consumables,
             'overdue_returns': overdue_returns,
         })
+
+
+# ─────────────────────────────────────────────────
+# PURCHASE REQUEST VIEWS
+# ─────────────────────────────────────────────────
+
+class PurchaseRequestListCreateView(generics.ListCreateAPIView):
+    """
+    GET  — list purchase requests (admin sees all; inv_manager sees own)
+    POST — inventory manager submits a purchase request
+    """
+    serializer_class = PurchaseRequestSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = PurchaseRequest.objects.select_related('requested_by', 'reviewed_by').all()
+        if getattr(user, 'role', '') not in ['admin']:
+            qs = qs.filter(requested_by=user)
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+        return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if getattr(user, 'role', '') not in ['inventory_manager', 'admin']:
+            raise PermissionDenied('Only inventory managers can submit purchase requests.')
+        serializer.save(requested_by=user)
+
+
+class PurchaseRequestDetailView(generics.RetrieveAPIView):
+    serializer_class = PurchaseRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = PurchaseRequest.objects.select_related('requested_by', 'reviewed_by').all()
+        if getattr(user, 'role', '') != 'admin':
+            qs = qs.filter(requested_by=user)
+        return qs
+
+
+class PurchaseRequestReviewView(APIView):
+    """Admin approves, rejects, or marks a purchase request as completed."""
+    permission_classes = [IsAdminOrInventoryManager]
+
+    @transaction.atomic
+    def post(self, request, pk):
+        user = request.user
+        if getattr(user, 'role', '') != 'admin':
+            return Response(
+                {'detail': 'Only admins can review purchase requests.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            pr = PurchaseRequest.objects.select_for_update().get(pk=pk)
+        except PurchaseRequest.DoesNotExist:
+            return Response({'detail': 'Purchase request not found.'}, status=404)
+
+        action = request.data.get('action')
+        if action not in ['approve', 'reject', 'complete']:
+            return Response(
+                {'detail': "Invalid action. Use 'approve', 'reject', or 'complete'."},
+                status=400,
+            )
+
+        now = timezone.now()
+
+        if action == 'approve':
+            if pr.status not in ['pending']:
+                return Response({'detail': 'Only pending requests can be approved.'}, status=400)
+            pr.status = PurchaseRequest.Status.APPROVED
+            pr.reviewed_by = user
+            pr.reviewed_at = now
+            pr.admin_notes = request.data.get('admin_notes', pr.admin_notes)
+
+        elif action == 'reject':
+            if pr.status not in ['pending', 'approved']:
+                return Response({'detail': 'Cannot reject a completed request.'}, status=400)
+            rejection_reason = request.data.get('rejection_reason', '').strip()
+            if not rejection_reason:
+                return Response({'detail': 'Rejection reason is required.'}, status=400)
+            pr.status = PurchaseRequest.Status.REJECTED
+            pr.reviewed_by = user
+            pr.reviewed_at = now
+            pr.rejection_reason = rejection_reason
+            pr.admin_notes = request.data.get('admin_notes', pr.admin_notes)
+
+        elif action == 'complete':
+            if pr.status != 'approved':
+                return Response({'detail': 'Only approved requests can be marked complete.'}, status=400)
+            pr.status = PurchaseRequest.Status.COMPLETED
+            pr.completed_at = now
+            pr.admin_notes = request.data.get('admin_notes', pr.admin_notes)
+
+        pr.save()
+        return Response(PurchaseRequestSerializer(pr).data)

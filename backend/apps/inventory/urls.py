@@ -3,6 +3,7 @@ from django.urls import path
 from .api_views import (
     AdjustStockView, InventoryStatsView,
     ApproveRequestView, RejectRequestView, MarkUrgentView,
+    ManagerApproveRequestView, FinalApproveRequestView, FinalRejectRequestView,
 )
 from .views import (
     CategoryListCreateView, CategoryDetailView,
@@ -15,6 +16,7 @@ from .views import (
     ReturnAssetView, FinalizeConsumableView,
     UserActivityView,
     DashboardSummaryView,
+    PurchaseRequestListCreateView, PurchaseRequestDetailView, PurchaseRequestReviewView,
 )
 
 # ─── BUG-02 FIX: Route audit ─────────────────────────────────────────────────
@@ -72,6 +74,11 @@ urlpatterns = [
     # ── Dashboard ────────────────────────────────────────────────────────────
     path('dashboard/', DashboardSummaryView.as_view(), name='dashboard-summary'),
 
+    # ── Purchase Requests (manager → admin procurement flow) ─────────────────
+    path('purchase-requests/', PurchaseRequestListCreateView.as_view(), name='purchase-request-list'),
+    path('purchase-requests/<int:pk>/', PurchaseRequestDetailView.as_view(), name='purchase-request-detail'),
+    path('purchase-requests/<int:pk>/review/', PurchaseRequestReviewView.as_view(), name='purchase-request-review'),
+
     # ── Retained /api/ routes (no primary equivalent exists for these) ────────
     # These five endpoints have no counterpart in views.py and are still actively
     # used by the frontend. They are kept intentionally and are NOT duplicates.
@@ -80,4 +87,8 @@ urlpatterns = [
     path('api/requests/<int:pk>/approve/', ApproveRequestView.as_view(), name='api-request-approve'),
     path('api/requests/<int:pk>/reject/', RejectRequestView.as_view(), name='api-request-reject'),
     path('api/requests/<int:pk>/mark-urgent/', MarkUrgentView.as_view(), name='api-request-mark-urgent'),
+    # Two-level approval endpoints (new — non-breaking additions)
+    path('api/requests/<int:pk>/manager-approve/', ManagerApproveRequestView.as_view(), name='api-request-manager-approve'),
+    path('api/requests/<int:pk>/final-approve/', FinalApproveRequestView.as_view(), name='api-request-final-approve'),
+    path('api/requests/<int:pk>/final-reject/', FinalRejectRequestView.as_view(), name='api-request-final-reject'),
 ]

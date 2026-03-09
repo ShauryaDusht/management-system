@@ -1,5 +1,5 @@
 {% extends 'inventory/mobile/base_mobile.html' %}
-{% block title %}Pending Requests{% endblock %}
+{% block title %}Requests{% endblock %}
 {% block header_title %}REQUESTS{% endblock %}
 {% block back_button %}
 <a href="{% url 'mobile_dashboard' %}" class="back-btn">
@@ -7,173 +7,493 @@
 </a>
 {% endblock %}
 
+{% block header_right %}
+{% if request.user.is_authenticated %}
+<a href="{% url 'mobile_profile' %}" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.3)">
+  <span class="material-icons-round" style="font-size:22px;color:#fff">person</span>
+</a>
+{% endif %}
+{% endblock %}
+
+<style>
+.req-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.req-tab {
+  flex: 1;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  transition: all 0.18s;
+  box-shadow: var(--shadow-sm);
+  letter-spacing: 0.2px;
+  position: relative;
+}
+.req-tab .tab-icon {
+  font-size: 20px;
+  opacity: 0.6;
+  transition: opacity 0.18s;
+}
+.req-tab .tab-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg);
+}
+.req-tab.active {
+  background: var(--brand-green);
+  color: #fff;
+  border-color: var(--brand-green);
+  box-shadow: 0 4px 14px rgba(45,74,62,0.30);
+}
+.req-tab.active .tab-icon { opacity: 1; }
+.req-tab:not(.active):hover {
+  border-color: var(--brand-green);
+  color: var(--brand-green);
+  background: #f0f7f4;
+}
+.req-tab:not(.active):hover .tab-icon { opacity: 0.9; }
+.req-tab:active { transform: scale(0.97); }
+</style>
+
 {% block content %}
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-  <div>
-    <div class="section-title" style="margin:0">Pending Requests</div>
-    <div style="color:var(--text-secondary);font-size:12px;margin-top:2px">
-      Review item requests from staff
-    </div>
-  </div>
-  <span class="badge badge-pending" style="font-size:13px;padding:5px 12px">{{ total_pending }}</span>
+
+{# ── Tab switcher ── #}
+<div class="req-tabs">
+  <button class="req-tab {% if active_tab != 'purchase' %}active{% endif %}"
+    onclick="switchTab('requests')" id="tab-btn-requests">
+    <span class="material-icons-round tab-icon">pending_actions</span>
+    Item Requests
+    {% if total_pending > 0 %}
+    <span class="tab-badge" style="background:#ef4444;color:#fff">{{ total_pending }}</span>
+    {% endif %}
+  </button>
+  <button class="req-tab {% if active_tab == 'purchase' %}active{% endif %}"
+    onclick="switchTab('purchase')" id="tab-btn-purchase">
+    <span class="material-icons-round tab-icon">shopping_cart</span>
+    Purchase
+    {% if purchase_pending_count > 0 %}
+    <span class="tab-badge" style="background:#7c3aed;color:#fff">{{ purchase_pending_count }}</span>
+    {% endif %}
+  </button>
 </div>
 
-{% for req in requests %}
-<div class="card" style="margin-bottom:14px">
-  {# ── Requester header ── #}
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-    <div style="display:flex;gap:10px;align-items:center">
-      <div style="width:42px;height:42px;border-radius:50%;background:var(--brand-green);color:white;
-        display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0">
-        {{ req.requested_by.first_name|default:req.requested_by.username|first|upper }}
+{# ════════════════════════════════════════════════════════════ #}
+{# ── ITEM REQUESTS TAB ─────────────────────────────────────── #}
+{# ════════════════════════════════════════════════════════════ #}
+<div id="panel-requests" {% if active_tab == 'purchase' %}style="display:none"{% endif %}>
+
+  {# ── Header row ── #}
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div>
+      <div class="section-title" style="margin:0">
+        {% if user_role == 'admin' %}Review Requests{% else %}Pending Requests{% endif %}
       </div>
-      <div>
-        <div style="font-weight:700;font-size:14px">{{ req.requested_by.get_full_name|default:req.requested_by.username }}</div>
-        <div style="display:flex;align-items:center;gap:4px;color:var(--text-secondary);font-size:12px;margin-top:2px">
-          <span class="material-icons-round" style="font-size:13px">schedule</span>
-          {{ req.requested_at|timesince }} ago
-          {% if req.is_urgent %}
-          <span class="badge badge-out" style="margin-left:4px">
-            <span class="material-icons-round" style="font-size:10px">priority_high</span> URGENT
-          </span>
-          {% endif %}
+      <div style="color:var(--text-secondary);font-size:12px;margin-top:2px">
+        {% if user_role == 'admin' %}Pending &amp; manager-approved requests{% else %}Review item requests from staff{% endif %}
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+      {% if total_pending > 0 %}
+      <span class="badge badge-pending" style="font-size:11px;padding:3px 8px">{{ total_pending }} pending</span>
+      {% endif %}
+      {% if user_role == 'admin' and total_manager_approved > 0 %}
+      <span class="badge badge-issued" style="font-size:11px;padding:3px 8px">{{ total_manager_approved }} awaiting you</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── Admin info banner ── #}
+  {% if user_role == 'admin' %}
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:var(--radius-sm);margin-bottom:14px">
+    <span class="material-icons-round" style="font-size:18px;color:#16a34a;flex-shrink:0">admin_panel_settings</span>
+    <div style="font-size:12px;color:#166534"><strong>Admin Final Approval.</strong> Teal-bordered cards await your sign-off.</div>
+  </div>
+  {% endif %}
+
+  {# ── Request cards ── #}
+  {% for req in requests %}
+  <div class="card" style="margin-bottom:14px;border-left:4px solid {% if req.status == 'manager_approved' %}var(--brand-teal){% else %}var(--brand-orange){% endif %};padding:0;overflow:hidden">
+
+    {# Status strip #}
+    {% if req.status == 'manager_approved' %}
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:#e0f2fe">
+      <span class="material-icons-round" style="font-size:15px;color:var(--brand-teal)">verified</span>
+      <span style="font-size:11px;font-weight:700;color:var(--brand-teal);flex:1">MANAGER APPROVED</span>
+      {% if req.manager_approved_by %}<span style="font-size:11px;color:#075985">by {{ req.manager_approved_by.get_full_name|default:req.manager_approved_by.username }}</span>{% endif %}
+      <span style="font-size:10px;font-weight:700;color:#dc2626;background:#fee2e2;padding:2px 8px;border-radius:10px">Awaiting Admin</span>
+    </div>
+    {% else %}
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:#fef9c3">
+      <span class="material-icons-round" style="font-size:15px;color:#d97706">schedule</span>
+      <span style="font-size:11px;font-weight:700;color:#92400e;flex:1">PENDING REVIEW</span>
+      {% if user_role == 'admin' %}<span style="font-size:11px;color:#92400e">No manager review yet</span>{% endif %}
+    </div>
+    {% endif %}
+
+    <div style="padding:14px">
+
+      {# Requester #}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div style="display:flex;gap:10px;align-items:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--brand-green);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0">
+            {{ req.requested_by.first_name|default:req.requested_by.username|first|upper }}
+          </div>
+          <div>
+            <div style="font-weight:700;font-size:14px">{{ req.requested_by.get_full_name|default:req.requested_by.username }}</div>
+            <div style="display:flex;align-items:center;gap:5px;color:var(--text-secondary);font-size:12px;margin-top:2px;flex-wrap:wrap">
+              <span class="material-icons-round" style="font-size:13px">schedule</span>
+              {{ req.requested_at|timesince }} ago
+              {% if req.is_urgent %}<span class="badge badge-out" style="font-size:10px;padding:2px 7px"><span class="material-icons-round" style="font-size:10px">priority_high</span> URGENT</span>{% endif %}
+            </div>
+          </div>
+        </div>
+        {% if req.requested_by.phone %}
+        <a href="tel:{{ req.requested_by.phone }}" style="color:var(--brand-green);flex-shrink:0">
+          <span class="material-icons-round" style="font-size:22px">call</span>
+        </a>
+        {% endif %}
+      </div>
+
+      {# Item info #}
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:10px">
+        <div style="width:42px;height:42px;background:var(--surface);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:var(--shadow-sm)">
+          <span class="material-icons-round" style="font-size:22px;color:var(--brand-green)">{% if req.item.item_type == 'asset' %}hardware{% else %}science{% endif %}</span>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ req.item.name }}</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">
+            Requested: <strong>{{ req.quantity_requested }} {{ req.item.unit }}</strong>
+            &nbsp;·&nbsp;
+            Available: <strong style="color:{% if req.item.available_quantity <= req.item.threshold_quantity %}var(--brand-orange){% else %}var(--brand-green){% endif %}">{{ req.item.available_quantity }}</strong>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:20px;font-weight:800;color:var(--brand-green);line-height:1">{{ req.item.total_quantity }}</div>
+          <div style="font-size:10px;color:var(--text-muted)">total</div>
         </div>
       </div>
-    </div>
-    {% if req.requested_by.phone %}
-    <a href="tel:{{ req.requested_by.phone }}" style="color:var(--brand-green)">
-      <span class="material-icons-round" style="font-size:22px">call</span>
-    </a>
-    {% endif %}
-  </div>
 
-  {# ── Item info ── #}
-  <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:10px">
-    <div style="width:44px;height:44px;background:var(--surface);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:var(--shadow-sm)">
-      <span class="material-icons-round" style="font-size:24px;color:var(--brand-green)">
-        {% if req.item.item_type == 'asset' %}hardware{% else %}science{% endif %}
-      </span>
-    </div>
-    <div style="flex:1;min-width:0">
-      <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ req.item.name }}</div>
-      <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">
-        Requested: <strong>{{ req.quantity_requested }} {{ req.item.unit }}</strong>
-        &nbsp;·&nbsp;
-        Available: <strong style="color:{% if req.item.available_quantity <= req.item.threshold_quantity %}var(--brand-orange){% else %}var(--brand-green){% endif %}">
-          {{ req.item.available_quantity }}
-        </strong>
+      {# Low stock warning #}
+      {% if req.item.available_quantity <= req.item.threshold_quantity %}
+      <div style="display:flex;align-items:center;gap:6px;color:var(--brand-orange);font-size:12px;padding:6px 10px;background:#fff7ed;border-radius:var(--radius-sm);margin-bottom:10px">
+        <span class="material-icons-round" style="font-size:15px">warning_amber</span>
+        Low stock — only {{ req.item.available_quantity }} of {{ req.item.total_quantity }} units remaining
       </div>
-    </div>
-    <div style="text-align:right;flex-shrink:0">
-      <div style="font-size:20px;font-weight:800;color:var(--brand-green);line-height:1">{{ req.item.total_quantity }}</div>
-      <div style="font-size:10px;color:var(--text-muted)">total</div>
-    </div>
-  </div>
+      {% endif %}
 
-  {# ── Low stock warning ── #}
-  {% if req.item.available_quantity <= req.item.threshold_quantity %}
-  <div style="display:flex;align-items:center;gap:6px;color:var(--brand-orange);font-size:12px;
-    padding:6px 10px;background:#fff7ed;border-radius:var(--radius-sm);margin-bottom:10px">
-    <span class="material-icons-round" style="font-size:16px">warning_amber</span>
-    Low stock — only {{ req.item.available_quantity }} of {{ req.item.total_quantity }} units remaining
-  </div>
-  {% endif %}
+      {# Purpose #}
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;padding:8px 10px;background:var(--bg);border-radius:var(--radius-sm)">
+        <span class="material-icons-round" style="font-size:13px;vertical-align:middle;color:var(--text-muted)">notes</span>
+        {{ req.purpose }}
+      </div>
 
-  {# ── Purpose ── #}
-  <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;padding:0 2px">
-    <span class="material-icons-round" style="font-size:14px;vertical-align:middle;color:var(--text-muted)">notes</span>
-    {{ req.purpose }}
-  </div>
+      {# Urgent toggle #}
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:var(--bg);border-radius:var(--radius-sm)">
+        <input type="checkbox" id="urgent-{{ req.id }}" {% if req.is_urgent %}checked{% endif %}
+          onchange="toggleUrgent({{ req.id }}, this.checked)"
+          style="width:18px;height:18px;cursor:pointer;accent-color:var(--brand-orange)">
+        <label for="urgent-{{ req.id }}" style="font-size:13px;font-weight:600;color:var(--text-primary);cursor:pointer;display:flex;align-items:center;gap:6px">
+          <span class="material-icons-round" style="font-size:15px;color:var(--brand-orange)">priority_high</span>
+          Mark as Urgent
+        </label>
+      </div>
 
-  {# ── Urgent toggle ── #}
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:var(--bg);border-radius:var(--radius-sm)">
-    <input type="checkbox" id="urgent-{{ req.id }}"
-      {% if req.is_urgent %}checked{% endif %}
-      onchange="toggleUrgent({{ req.id }}, this.checked)"
-      style="width:18px;height:18px;cursor:pointer;accent-color:var(--brand-orange)">
-    <label for="urgent-{{ req.id }}" style="font-size:13px;font-weight:600;color:var(--text-primary);cursor:pointer;display:flex;align-items:center;gap:6px">
-      <span class="material-icons-round" style="font-size:16px;color:var(--brand-orange)">priority_high</span>
-      Mark as Urgent
-    </label>
-  </div>
+      {# Qty adjuster for assets #}
+      {% if req.item.item_type == 'asset' %}
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <button type="button" onclick="adjustQty({{ req.id }}, -1, {{ req.item.available_quantity }})"
+          class="btn btn-outline" style="width:40px;height:40px;padding:0;font-size:18px;flex-shrink:0">−</button>
+        <div id="qty-{{ req.id }}" data-qty="{{ req.quantity_requested }}" data-unit="{{ req.item.unit }}"
+          style="flex:1;text-align:center;font-weight:700;font-size:15px;background:var(--bg);border-radius:var(--radius-sm);padding:9px;border:1.5px solid var(--border)">
+          {{ req.quantity_requested }} {{ req.item.unit }}
+        </div>
+        <button type="button" onclick="adjustQty({{ req.id }}, 1, {{ req.item.available_quantity }})"
+          class="btn btn-outline" style="width:40px;height:40px;padding:0;font-size:18px;flex-shrink:0">+</button>
+        <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">max: {{ req.item.available_quantity }}</span>
+      </div>
+      {% endif %}
 
-  {# ── Qty adjuster for assets ── #}
-  {% if req.item.item_type == 'asset' %}
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-    <button type="button" onclick="adjustQty({{ req.id }}, -1, {{ req.item.available_quantity }})"
-      class="btn btn-outline" style="width:40px;height:40px;padding:0;font-size:18px;flex-shrink:0">−</button>
-    <div id="qty-{{ req.id }}" data-qty="{{ req.quantity_requested }}" data-unit="{{ req.item.unit }}"
-      style="flex:1;text-align:center;font-weight:700;font-size:15px;background:var(--bg);border-radius:var(--radius-sm);padding:9px;border:1.5px solid var(--border)">
-      {{ req.quantity_requested }} {{ req.item.unit }}
-    </div>
-    <button type="button" onclick="adjustQty({{ req.id }}, 1, {{ req.item.available_quantity }})"
-      class="btn btn-outline" style="width:40px;height:40px;padding:0;font-size:18px;flex-shrink:0">+</button>
-    <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">max: {{ req.item.available_quantity }}</span>
-  </div>
-  {% endif %}
-
-  {# ── Action buttons ── #}
-  <div style="display:flex;gap:10px">
-    <div style="flex:1">
-      <button type="button" onclick="toggleReject({{ req.id }})"
-        class="btn btn-outline btn-full">
-        <span class="material-icons-round" style="font-size:18px">cancel</span> Reject
-      </button>
-      <div id="reject-form-{{ req.id }}" style="display:none;margin-top:8px">
-        <textarea id="reject-reason-{{ req.id }}" placeholder="Reason for rejection..."
-          class="input" rows="2" style="margin-bottom:6px;resize:none"></textarea>
-        <form method="POST" action="{% url 'mobile_reject_request' req.id %}">
+      {# Action buttons #}
+      {% if req.status == 'pending' %}
+      <div style="display:flex;gap:10px">
+        <div style="flex:1">
+          <button type="button" onclick="toggleReject({{ req.id }})" class="btn btn-outline btn-full" style="height:44px">
+            <span class="material-icons-round" style="font-size:17px">cancel</span> Reject
+          </button>
+          <div id="reject-form-{{ req.id }}" style="display:none;margin-top:8px">
+            <textarea id="reject-reason-{{ req.id }}" placeholder="Reason for rejection..." class="input" rows="2" style="margin-bottom:6px;resize:none"></textarea>
+            <form method="POST" action="{% url 'mobile_reject_request' req.id %}">
+              {% csrf_token %}
+              <input type="hidden" name="rejection_reason" id="reject-hidden-{{ req.id }}">
+              <button type="submit" onclick="document.getElementById('reject-hidden-{{ req.id }}').value=document.getElementById('reject-reason-{{ req.id }}').value" class="btn btn-danger btn-full">
+                <span class="material-icons-round" style="font-size:17px">block</span> Confirm Reject
+              </button>
+            </form>
+          </div>
+        </div>
+        <form method="POST" action="{% url 'mobile_approve_request' req.id %}" style="flex:2">
           {% csrf_token %}
-          <input type="hidden" name="rejection_reason" id="reject-hidden-{{ req.id }}">
-          <button type="submit"
-            onclick="document.getElementById('reject-hidden-{{ req.id }}').value=document.getElementById('reject-reason-{{ req.id }}').value"
-            class="btn btn-danger btn-full">
-            <span class="material-icons-round" style="font-size:18px">block</span> Confirm Reject
+          <button type="submit" class="btn btn-secondary btn-full" style="height:44px">
+            <span class="material-icons-round" style="font-size:17px">thumb_up</span>
+            {% if user_role == 'admin' %}Manager Approve{% else %}Approve Request{% endif %}
           </button>
         </form>
       </div>
-    </div>
-    <form method="POST" action="{% url 'mobile_issue_request' req.id %}" style="flex:2">
-      {% csrf_token %}
-      <input type="hidden" name="quantity" id="qty-input-{{ req.id }}" value="{{ req.quantity_requested }}">
-      <button type="submit" class="btn btn-secondary btn-full" style="height:44px">
-        <span class="material-icons-round" style="font-size:18px">move_to_inbox</span> Issue Item
-      </button>
-    </form>
-  </div>
-</div>
-{% empty %}
-<div class="empty-state">
-  <span class="material-icons-round">check_circle</span>
-  <div class="empty-title">No pending requests</div>
-  <div class="empty-sub">All requests have been reviewed</div>
-</div>
-{% endfor %}
 
-{# ── Pagination ── #}
-{% if page_obj.has_other_pages %}
-<div class="pagination">
-  {% if page_obj.has_previous %}
-  <a href="?page={{ page_obj.previous_page_number }}">
-    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
-  </a>
-  {% else %}
-  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+      {% elif req.status == 'manager_approved' and user_role == 'admin' %}
+      <div style="padding:8px 10px;background:#e0f2fe;border-radius:var(--radius-sm);margin-bottom:10px;font-size:12px;color:#075985;display:flex;align-items:center;gap:6px">
+        <span class="material-icons-round" style="font-size:14px">admin_panel_settings</span>
+        Manager has reviewed this request. Your approval allows it to be issued.
+      </div>
+      <div style="display:flex;gap:10px">
+        <div style="flex:1">
+          <button type="button" onclick="toggleReject({{ req.id }})" class="btn btn-outline btn-full" style="height:44px">
+            <span class="material-icons-round" style="font-size:17px">cancel</span> Reject
+          </button>
+          <div id="reject-form-{{ req.id }}" style="display:none;margin-top:8px">
+            <textarea id="reject-reason-{{ req.id }}" placeholder="Reason for rejection..." class="input" rows="2" style="margin-bottom:6px;resize:none"></textarea>
+            <form method="POST" action="{% url 'mobile_reject_request' req.id %}">
+              {% csrf_token %}
+              <input type="hidden" name="rejection_reason" id="reject-hidden-{{ req.id }}">
+              <button type="submit" onclick="document.getElementById('reject-hidden-{{ req.id }}').value=document.getElementById('reject-reason-{{ req.id }}').value" class="btn btn-danger btn-full">
+                <span class="material-icons-round" style="font-size:17px">block</span> Confirm Reject
+              </button>
+            </form>
+          </div>
+        </div>
+        <form method="POST" action="{% url 'mobile_approve_request' req.id %}" style="flex:2">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-full" style="height:44px;background:var(--brand-teal);color:#fff;font-size:14px;font-weight:600;border-radius:var(--radius-sm);border:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">
+            <span class="material-icons-round" style="font-size:17px">verified</span>
+            Final Approve
+          </button>
+        </form>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+  {% empty %}
+  <div class="empty-state">
+    <span class="material-icons-round">check_circle</span>
+    <div class="empty-title">No requests to review</div>
+    <div class="empty-sub">{% if user_role == 'admin' %}All requests have been processed{% else %}All requests have been reviewed{% endif %}</div>
+  </div>
+  {% endfor %}
+
+  {# ── Approved requests ready to be issued ── #}
+  {% if approved_for_issue %}
+  <div style="margin-top:20px">
+    <div class="section-title" style="display:flex;align-items:center;gap:8px">
+      <span class="material-icons-round" style="font-size:18px;color:var(--brand-green)">move_to_inbox</span>
+      Ready to Issue
+      <span class="badge badge-ok" style="margin-left:4px">{{ approved_for_issue|length }}</span>
+    </div>
+    {% for req in approved_for_issue %}
+    <div class="card" style="margin-bottom:10px;border-left:4px solid var(--brand-green)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="min-width:0;flex:1">
+          <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ req.item.name }}</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">
+            {{ req.requested_by.get_full_name|default:req.requested_by.username }} &bull; {{ req.quantity_requested }} {{ req.item.unit }}
+          </div>
+        </div>
+        <span class="badge badge-ok" style="flex-shrink:0;margin-left:8px">APPROVED</span>
+      </div>
+      <form method="POST" action="{% url 'mobile_issue_request' req.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="quantity" value="{{ req.quantity_requested }}">
+        <button type="submit" class="btn btn-secondary btn-full" style="height:42px">
+          <span class="material-icons-round" style="font-size:17px">move_to_inbox</span>
+          Issue Item
+        </button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
   {% endif %}
-  <button class="page-btn active">{{ page_obj.number }}</button>
-  {% if page_obj.has_next %}
-  <a href="?page={{ page_obj.next_page_number }}">
-    <button class="page-btn">Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
-  </a>
-  {% else %}
-  <button class="page-btn" disabled>Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+
+  {# Item requests pagination #}
+  {% if page_obj.has_other_pages %}
+  <div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?tab=requests&page={{ page_obj.previous_page_number }}">
+      <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+    </a>
+    {% else %}
+    <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+    {% endif %}
+    <button class="page-btn active">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</button>
+    {% if page_obj.has_next %}
+    <a href="?tab=requests&page={{ page_obj.next_page_number }}">
+      <button class="page-btn">Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+    </a>
+    {% else %}
+    <button class="page-btn" disabled>Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+    {% endif %}
+  </div>
   {% endif %}
-</div>
-{% endif %}
+
+</div>{# end panel-requests #}
+
+{# ════════════════════════════════════════════════════════════ #}
+{# ── PURCHASE REQUESTS TAB ─────────────────────────────────── #}
+{# ════════════════════════════════════════════════════════════ #}
+<div id="panel-purchase" {% if active_tab != 'purchase' %}style="display:none"{% endif %}>
+
+  {# Header #}
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div>
+      <div class="section-title" style="margin:0">Purchase Requests</div>
+      <div style="color:var(--text-secondary);font-size:12px;margin-top:2px">Items you've requested procurement for</div>
+    </div>
+    <a href="{% url 'mobile_purchase_request_form' %}">
+      <button class="btn" style="height:36px;padding:0 12px;background:#7c3aed;color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer">
+        <span class="material-icons-round" style="font-size:16px">add</span>New
+      </button>
+    </a>
+  </div>
+
+  {# Status filter chips #}
+  <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px;padding-bottom:2px">
+    <a href="?tab=purchase&pr_status=all"><div class="chip {% if purchase_status_filter == 'all' %}active{% endif %}">All</div></a>
+    <a href="?tab=purchase&pr_status=pending"><div class="chip {% if purchase_status_filter == 'pending' %}active{% endif %}">Pending</div></a>
+    <a href="?tab=purchase&pr_status=approved"><div class="chip {% if purchase_status_filter == 'approved' %}active{% endif %}">Approved</div></a>
+    <a href="?tab=purchase&pr_status=rejected"><div class="chip {% if purchase_status_filter == 'rejected' %}active{% endif %}">Rejected</div></a>
+    <a href="?tab=purchase&pr_status=completed"><div class="chip {% if purchase_status_filter == 'completed' %}active{% endif %}">Completed</div></a>
+  </div>
+
+  {# Purchase request cards #}
+  {% for pr in purchase_requests %}
+  <div class="card" style="margin-bottom:12px;border-left:4px solid {% if pr.status == 'approved' %}#16a34a{% elif pr.status == 'rejected' %}#dc2626{% elif pr.status == 'completed' %}#7c3aed{% else %}var(--brand-orange){% endif %}">
+
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ pr.item_name }}</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;display:flex;align-items:center;gap:4px">
+          <span class="material-icons-round" style="font-size:13px">schedule</span>
+          {{ pr.requested_at|date:"d M Y" }}
+        </div>
+      </div>
+      <span style="padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;flex-shrink:0;margin-left:8px;
+        {% if pr.status == 'pending' %}background:#fef9c3;color:#854d0e;
+        {% elif pr.status == 'approved' %}background:#dcfce7;color:#166534;
+        {% elif pr.status == 'rejected' %}background:#fee2e2;color:#991b1b;
+        {% elif pr.status == 'completed' %}background:#ede9fe;color:#5b21b6;
+        {% endif %}">
+        {{ pr.status|upper }}
+      </span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="background:var(--bg);padding:8px 10px;border-radius:var(--radius-sm)">
+        <div style="font-size:10px;color:var(--text-muted)">Quantity</div>
+        <div style="font-weight:700;font-size:15px;color:var(--brand-green)">{{ pr.quantity_required }}{% if pr.unit %} {{ pr.unit }}{% endif %}</div>
+      </div>
+      <div style="background:var(--bg);padding:8px 10px;border-radius:var(--radius-sm)">
+        <div style="font-size:10px;color:var(--text-muted)">Priority</div>
+        <div style="font-weight:700;font-size:13px;{% if pr.priority == 'urgent' %}color:#dc2626{% elif pr.priority == 'high' %}color:#ea580c{% elif pr.priority == 'medium' %}color:#ca8a04{% else %}color:#16a34a{% endif %}">{{ pr.priority|title }}</div>
+      </div>
+      {% if pr.estimated_cost %}
+      <div style="background:var(--bg);padding:8px 10px;border-radius:var(--radius-sm)">
+        <div style="font-size:10px;color:var(--text-muted)">Est. Cost/Unit</div>
+        <div style="font-weight:700;font-size:13px;color:var(--brand-teal)">₹{{ pr.estimated_cost|floatformat:0 }}</div>
+      </div>
+      <div style="background:var(--bg);padding:8px 10px;border-radius:var(--radius-sm)">
+        <div style="font-size:10px;color:var(--text-muted)">Est. Total</div>
+        <div style="font-weight:700;font-size:13px;color:var(--brand-teal)">₹{% widthratio pr.quantity_required 1 pr.estimated_cost %}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if pr.description %}
+    <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;padding:8px 10px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:10px">
+      <span class="material-icons-round" style="font-size:13px;vertical-align:middle;color:var(--text-muted)">notes</span>
+      {{ pr.description }}
+    </div>
+    {% endif %}
+
+    {% if pr.status == 'rejected' and pr.rejection_reason %}
+    <div style="padding:8px 10px;background:#fef2f2;border:1px solid #fca5a5;border-radius:var(--radius-sm);font-size:12px;color:#991b1b;margin-bottom:6px">
+      <strong>Rejection reason:</strong> {{ pr.rejection_reason }}
+    </div>
+    {% endif %}
+    {% if pr.admin_notes %}
+    <div style="padding:8px 10px;background:#f0fdf4;border:1px solid #86efac;border-radius:var(--radius-sm);font-size:12px;color:#166534">
+      <strong>Admin note:</strong> {{ pr.admin_notes }}
+    </div>
+    {% endif %}
+
+    {% if pr.reviewed_by %}
+    <div style="margin-top:8px;font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px">
+      <span class="material-icons-round" style="font-size:13px">admin_panel_settings</span>
+      Reviewed by {{ pr.reviewed_by.get_full_name|default:pr.reviewed_by.username }}
+      {% if pr.reviewed_at %}· {{ pr.reviewed_at|date:"d M Y" }}{% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% empty %}
+  <div class="empty-state">
+    <span class="material-icons-round" style="color:#7c3aed">shopping_cart</span>
+    <div class="empty-title">No purchase requests yet</div>
+    <div class="empty-sub">Tap "New" to request procurement of an item</div>
+  </div>
+  {% endfor %}
+
+  {# Purchase pagination #}
+  {% if purchase_page_obj.has_other_pages %}
+  <div class="pagination">
+    {% if purchase_page_obj.has_previous %}
+    <a href="?tab=purchase&pr_status={{ purchase_status_filter }}&pr_page={{ purchase_page_obj.previous_page_number }}">
+      <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+    </a>
+    {% else %}
+    <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+    {% endif %}
+    <button class="page-btn active">{{ purchase_page_obj.number }} / {{ purchase_page_obj.paginator.num_pages }}</button>
+    {% if purchase_page_obj.has_next %}
+    <a href="?tab=purchase&pr_status={{ purchase_status_filter }}&pr_page={{ purchase_page_obj.next_page_number }}">
+      <button class="page-btn">Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+    </a>
+    {% else %}
+    <button class="page-btn" disabled>Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>{# end panel-purchase #}
 
 <script>
-const qtys = {};
+function switchTab(tab) {
+  document.getElementById('panel-requests').style.display = tab === 'requests' ? '' : 'none';
+  document.getElementById('panel-purchase').style.display = tab === 'purchase' ? '' : 'none';
+  document.getElementById('tab-btn-requests').classList.toggle('active', tab === 'requests');
+  document.getElementById('tab-btn-purchase').classList.toggle('active', tab === 'purchase');
+}
 
+const qtys = {};
 function adjustQty(id, delta, maxQty) {
   const display = document.getElementById('qty-' + id);
   if (!display) return;
@@ -183,12 +503,10 @@ function adjustQty(id, delta, maxQty) {
   const input = document.getElementById('qty-input-' + id);
   if (input) input.value = qtys[id];
 }
-
 function toggleReject(id) {
   const form = document.getElementById('reject-form-' + id);
   form.style.display = form.style.display === 'none' ? 'block' : 'none';
 }
-
 function toggleUrgent(id, isUrgent) {
   const csrf = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='))?.split('=')[1] || '';
   fetch('/api/inventory/api/requests/' + id + '/mark-urgent/', {

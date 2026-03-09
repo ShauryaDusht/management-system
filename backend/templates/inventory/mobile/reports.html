@@ -57,6 +57,13 @@
   </button>
 </div>
 
+{% if inv_page_obj %}
+<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;display:flex;align-items:center;gap:4px">
+  <span class="material-icons-round" style="font-size:14px">format_list_bulleted</span>
+  Showing {{ inv_page_obj.start_index }}–{{ inv_page_obj.end_index }} of {{ inv_page_obj.paginator.count }} items
+</div>
+{% endif %}
+
 {% for item in inventory_data.items %}
 <div class="card" style="margin-bottom:8px;padding:12px 14px">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
@@ -94,6 +101,38 @@
 </div>
 {% endfor %}
 {{ inventory_data.items|json_script:"mobile-inventory-data" }}
+
+{# ── Inventory pagination ── #}
+{% if inv_page_obj and inv_page_obj.has_other_pages %}
+<div class="pagination">
+  {% if inv_page_obj.has_previous %}
+  <a href="?type=inventory&filter={{ status_filter }}&page={{ inv_page_obj.previous_page_number }}">
+    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+  </a>
+  {% else %}
+  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+  {% endif %}
+
+  {# Page number buttons #}
+  {% for page_num in inv_page_obj.paginator.page_range %}
+    {% if page_num == inv_page_obj.number %}
+    <button class="page-btn active">{{ page_num }}</button>
+    {% elif page_num == 1 or page_num == inv_page_obj.paginator.num_pages or page_num >= inv_page_obj.number|add:"-2" and page_num <= inv_page_obj.number|add:"2" %}
+    <a href="?type=inventory&filter={{ status_filter }}&page={{ page_num }}">
+      <button class="page-btn">{{ page_num }}</button>
+    </a>
+    {% endif %}
+  {% endfor %}
+
+  {% if inv_page_obj.has_next %}
+  <a href="?type=inventory&filter={{ status_filter }}&page={{ inv_page_obj.next_page_number }}">
+    <button class="page-btn">Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  </a>
+  {% else %}
+  <button class="page-btn" disabled>Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  {% endif %}
+</div>
+{% endif %}
 
 {# ── Requests Report ── #}
 {% elif report_type == 'requests' %}
@@ -141,8 +180,14 @@
   </div>
 </div>
 
-<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-  <button type="button" onclick="exportRequestsCSV()" class="btn btn-outline" style="height:36px;padding:0 12px;font-size:12px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+  {% if req_page_obj %}
+  <div style="font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:4px">
+    <span class="material-icons-round" style="font-size:14px">format_list_bulleted</span>
+    Showing {{ req_page_obj.start_index }}–{{ req_page_obj.end_index }} of {{ req_page_obj.paginator.count }}
+  </div>
+  {% endif %}
+  <button type="button" onclick="exportRequestsCSV()" class="btn btn-outline" style="height:36px;padding:0 12px;font-size:12px;margin-left:auto">
     <span class="material-icons-round" style="font-size:16px">download</span> Export CSV
   </button>
 </div>
@@ -156,9 +201,10 @@
     </div>
     <span style="padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;flex-shrink:0;
       {% if req.status == 'pending' %}background:#fef9c3;color:#854d0e;
+      {% elif req.status == 'manager_approved' %}background:#e0f2fe;color:#075985;
       {% elif req.status == 'approved' or req.status == 'issued' %}background:#dcfce7;color:#166534;
       {% else %}background:#fee2e2;color:#991b1b;{% endif %}">
-      {{ req.status|upper }}
+      {% if req.status == 'manager_approved' %}MGR APPROVED{% else %}{{ req.status|upper }}{% endif %}
     </span>
   </div>
   <div style="display:flex;gap:14px;font-size:12px;color:var(--text-secondary)">
@@ -185,6 +231,37 @@
 </div>
 {% endfor %}
 {{ requests_data.requests|json_script:"mobile-requests-data" }}
+
+{# ── Requests pagination ── #}
+{% if req_page_obj and req_page_obj.has_other_pages %}
+<div class="pagination">
+  {% if req_page_obj.has_previous %}
+  <a href="?type=requests&date_from={{ date_from }}&date_to={{ date_to }}&page={{ req_page_obj.previous_page_number }}">
+    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+  </a>
+  {% else %}
+  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+  {% endif %}
+
+  {% for page_num in req_page_obj.paginator.page_range %}
+    {% if page_num == req_page_obj.number %}
+    <button class="page-btn active">{{ page_num }}</button>
+    {% elif page_num == 1 or page_num == req_page_obj.paginator.num_pages %}
+    <a href="?type=requests&date_from={{ date_from }}&date_to={{ date_to }}&page={{ page_num }}">
+      <button class="page-btn">{{ page_num }}</button>
+    </a>
+    {% endif %}
+  {% endfor %}
+
+  {% if req_page_obj.has_next %}
+  <a href="?type=requests&date_from={{ date_from }}&date_to={{ date_to }}&page={{ req_page_obj.next_page_number }}">
+    <button class="page-btn">Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  </a>
+  {% else %}
+  <button class="page-btn" disabled>Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  {% endif %}
+</div>
+{% endif %}
 {% endif %}
 {% endif %}
 

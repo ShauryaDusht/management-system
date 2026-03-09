@@ -231,3 +231,129 @@ class InventoryStatsView(APIView):
             'pending_requests_count': ItemRequest.objects.filter(status='pending').count(),
         }
         return Response(stats, status=status.HTTP_200_OK)
+
+
+class ManagerApproveRequestView(APIView):
+    """
+    Inventory Manager gives first-level approval: pending → manager_approved.
+    Admin can also use this to do first-level if they want.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, pk):
+        user = request.user
+        if not (user.is_admin or user.is_inventory_manager):
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            item_request = ItemRequest.objects.select_for_update().get(pk=pk)
+        except ItemRequest.DoesNotExist:
+            return Response({'error': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if item_request.status != ItemRequest.Status.PENDING:
+            return Response(
+                {'error': 'Only pending requests can receive manager approval.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        item_request.status = ItemRequest.Status.MANAGER_APPROVED
+        item_request.manager_approved_by = user
+        item_request.manager_approved_at = timezone.now()
+        item_request.save(update_fields=['status', 'manager_approved_by', 'manager_approved_at'])
+
+        return Response(ItemRequestSerializer(item_request).data, status=status.HTTP_200_OK)
+
+
+class FinalApproveRequestView(APIView):
+    """
+    Admin gives final approval: manager_approved → approved.
+    Reserves stock atomically, same as the existing ApproveRequestView but
+    operates on manager_approved status instead of pending.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, pk):
+        user = request.user
+        if not user.is_admin:
+            return Response(
+                {'error': 'Only admins can give final approval.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            item_request = ItemRequest.objects.select_related('item').select_for_update().get(pk=pk)
+        except ItemRequest.DoesNotExist:
+            return Response({'error': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if item_request.status != ItemRequest.Status.MANAGER_APPROVED:
+            return Response(
+                {'error': 'Only manager-approved requests can receive final admin approval.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        item = Item.objects.select_for_update().get(pk=item_request.item_id)
+        qty = item_request.quantity_requested
+        available_to_reserve = item.available_quantity - item.reserved_quantity
+
+        if available_to_reserve < qty:
+            return Response(
+                {'error': f'Not enough stock. Available: {available_to_reserve}, Requested: {qty}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        Item.objects.filter(pk=item.pk).update(
+            reserved_quantity=F('reserved_quantity') + qty
+        )
+        item.refresh_from_db(fields=['available_quantity', 'reserved_quantity'])
+
+        item_request.status = ItemRequest.Status.APPROVED
+        item_request.approved_by = user
+        item_request.reviewed_at = timezone.now()
+        item_request.units_remaining = max(item.available_quantity - item.reserved_quantity, 0)
+        item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'units_remaining'])
+
+        return Response(ItemRequestSerializer(item_request).data, status=status.HTTP_200_OK)
+
+
+class FinalRejectRequestView(APIView):
+    """
+    Admin rejects a manager_approved request (or pending).
+    """
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, pk):
+        user = request.user
+        if not user.is_admin:
+            return Response(
+                {'error': 'Only admins can reject from this endpoint.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            item_request = ItemRequest.objects.select_for_update().get(pk=pk)
+        except ItemRequest.DoesNotExist:
+            return Response({'error': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if item_request.status not in [
+            ItemRequest.Status.PENDING,
+            ItemRequest.Status.MANAGER_APPROVED,
+        ]:
+            return Response(
+                {'error': 'Only pending or manager-approved requests can be rejected.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        item_request.status = ItemRequest.Status.REJECTED
+        item_request.approved_by = user
+        item_request.reviewed_at = timezone.now()
+        item_request.rejection_reason = request.data.get('rejection_reason', '')
+        item_request.units_remaining = item_request.item.available_quantity
+        item_request.save(update_fields=[
+            'status', 'approved_by', 'reviewed_at',
+            'rejection_reason', 'units_remaining',
+        ])
+
+        return Response(ItemRequestSerializer(item_request).data, status=status.HTTP_200_OK)

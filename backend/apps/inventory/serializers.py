@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Item, ItemRequest, ItemIssue, StockEntry
+from .models import Category, Item, ItemRequest, ItemIssue, StockEntry, PurchaseRequest
 
 
 # Plan to remove this shim in a future cleanup once all callers are updated.
@@ -67,6 +67,9 @@ class ItemRequestSerializer(serializers.ModelSerializer):
     reviewed_by = serializers.PrimaryKeyRelatedField(source='approved_by', read_only=True)
     reviewed_by_name = serializers.SerializerMethodField()
 
+    # Manager approval info (new two-level flow)
+    manager_approved_by_name = serializers.SerializerMethodField()
+
     # Backward-compatible aliases
     requested_by_name = serializers.SerializerMethodField()
     approved_by_name = serializers.SerializerMethodField()
@@ -104,6 +107,11 @@ class ItemRequestSerializer(serializers.ModelSerializer):
     def get_approved_by_name(self, obj):
         return self.get_reviewed_by_name(obj)
 
+    def get_manager_approved_by_name(self, obj):
+        if obj.manager_approved_by:
+            return obj.manager_approved_by.get_full_name() or obj.manager_approved_by.username
+        return None
+
     def get_reason(self, obj):
         return obj.purpose
 
@@ -115,6 +123,7 @@ class ItemRequestSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = [
             'id', 'requested_by', 'approved_by', 'requested_at', 'reviewed_at',
+            'manager_approved_by', 'manager_approved_at',
         ]
 
 
@@ -201,4 +210,34 @@ class UserActivitySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'item_name', 'item_unit', 'quantity_requested',
             'purpose', 'status', 'requested_at', 'reviewed_at',
+        ]
+
+
+class PurchaseRequestSerializer(serializers.ModelSerializer):
+    requested_by_name = serializers.SerializerMethodField()
+    requested_by_id = serializers.IntegerField(source='requested_by.id', read_only=True)
+    reviewed_by_name = serializers.SerializerMethodField()
+
+    def get_requested_by_name(self, obj):
+        return obj.requested_by.get_full_name() or obj.requested_by.username
+
+    def get_reviewed_by_name(self, obj):
+        if obj.reviewed_by:
+            return obj.reviewed_by.get_full_name() or obj.reviewed_by.username
+        return None
+
+    class Meta:
+        model = PurchaseRequest
+        fields = [
+            'id', 'item_name', 'quantity_required', 'unit', 'description',
+            'priority', 'estimated_cost', 'status',
+            'rejection_reason', 'admin_notes',
+            'requested_by', 'requested_by_id', 'requested_by_name',
+            'reviewed_by', 'reviewed_by_name',
+            'requested_at', 'reviewed_at', 'completed_at',
+        ]
+        read_only_fields = [
+            'id', 'requested_by', 'reviewed_by',
+            'requested_at', 'reviewed_at', 'completed_at',
+            'status', 'rejection_reason',
         ]

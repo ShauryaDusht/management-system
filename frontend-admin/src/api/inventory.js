@@ -44,6 +44,14 @@ export const inventoryAPI = {
   markUrgent: (id, isUrgent) =>
     api.post(`/inventory/api/requests/${id}/mark-urgent/`, { is_urgent: isUrgent }),
 
+  // Two-level approval (new non-breaking endpoints)
+  managerApproveRequest: (id) =>
+    api.post(`/inventory/api/requests/${id}/manager-approve/`),
+  finalApproveRequest: (id) =>
+    api.post(`/inventory/api/requests/${id}/final-approve/`),
+  finalRejectRequest: (id, reason) =>
+    api.post(`/inventory/api/requests/${id}/final-reject/`, { rejection_reason: reason }),
+
   // ── Issues ─────────────────────────────────────────────────────────────────
   getIssues: (params = {}) => api.get('/inventory/issues/', { params: { page_size: 200, ...params } }),
 
@@ -55,6 +63,13 @@ export const inventoryAPI = {
 
   // ── User activity (admin) ──────────────────────────────────────────────────
   getUserActivity: (userId) => api.get(`/inventory/activity/users/${userId}/`),
+
+  // ── Purchase Requests (manager → admin procurement) ────────────────────────
+  getPurchaseRequests: (params = {}) =>
+    api.get('/inventory/purchase-requests/', { params: { page_size: 200, ...params } }),
+  createPurchaseRequest: (data) => api.post('/inventory/purchase-requests/', data),
+  reviewPurchaseRequest: (id, data) =>
+    api.post(`/inventory/purchase-requests/${id}/review/`, data),
 }
 
 // ── Reports API ────────────────────────────────────────────────────────────

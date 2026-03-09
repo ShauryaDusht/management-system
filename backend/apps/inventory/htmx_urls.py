@@ -16,6 +16,8 @@ from .htmx_views import (
     mobile_profile,
     mobile_change_password,
     mobile_logout,
+    mobile_purchase_requests,
+    mobile_purchase_request_form,
 )
 
 urlpatterns = [
@@ -34,4 +36,6 @@ urlpatterns = [
     path('mobile/approve/<int:pk>/', mobile_approve_request, name='mobile_approve_request'),
     path('mobile/reject/<int:pk>/', mobile_reject_request, name='mobile_reject_request'),
     path('mobile/issue/<int:pk>/', mobile_issue_request, name='mobile_issue_request'),
+    path('mobile/purchase-requests/', mobile_purchase_requests, name='mobile_purchase_requests'),
+    path('mobile/purchase-requests/new/', mobile_purchase_request_form, name='mobile_purchase_request_form'),
 ]

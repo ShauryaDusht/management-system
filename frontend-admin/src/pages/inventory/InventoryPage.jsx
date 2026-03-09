@@ -6,15 +6,17 @@ import { useAuth } from '../../context/AuthContext'
 import AdminLayout from '../../layout/AdminLayout'
 import IssuesTab from './IssuesTab'
 import ItemsTab from './ItemsTab'
+import PurchaseRequestsTab from './PurchaseRequestsTab'
 import ReportTab from './ReportTab'
 import RequestsTab from './RequestsTab'
 import StockLogTab from './StockLogTab'
 
 const BASE_TAB_CONFIG = [
-  { key: 'items', label: 'Items', icon: '📦' },
-  { key: 'requests', label: 'Requests', icon: '📋' },
-  { key: 'issues', label: 'Issued Items', icon: '🔄' },
-  { key: 'stocklog', label: 'Stock Log', icon: '🧾' },
+  { key: 'items',             label: 'Items',             icon: '📦' },
+  { key: 'requests',          label: 'Requests',          icon: '📋' },
+  { key: 'issues',            label: 'Issued Items',      icon: '🔄' },
+  { key: 'stocklog',          label: 'Stock Log',         icon: '🧾' },
+  { key: 'purchase_requests', label: 'Purchase Requests', icon: '🛒' },
 ]
 const REPORT_TAB = { key: 'report', label: 'Report', icon: '📊' }
 
@@ -55,16 +57,17 @@ export default function InventoryPage() {
   return (
     <AdminLayout
       title="Inventory Management"
-      subtitle="Stock overview, requests, issued assets, replenishment logs, and reports"
+      subtitle="Stock overview, requests, issued assets, replenishment logs, purchase requests, and reports"
     >
       <div style={{ marginBottom: 14 }}>
         <Tabs tabs={tabConfig} active={active} onChange={onTabChange} />
       </div>
 
-      {active === 'items' && <ItemsTab userRole={user?.role} />}
-      {active === 'requests' && <RequestsTab userRole={user?.role} />}
-      {active === 'issues' && <IssuesTab userRole={user?.role} />}
-      {active === 'stocklog' && <StockLogTab userRole={user?.role} />}
+      {active === 'items'             && <ItemsTab userRole={user?.role} />}
+      {active === 'requests'          && <RequestsTab userRole={user?.role} />}
+      {active === 'issues'            && <IssuesTab userRole={user?.role} />}
+      {active === 'stocklog'          && <StockLogTab userRole={user?.role} />}
+      {active === 'purchase_requests' && <PurchaseRequestsTab userRole={user?.role} />}
       {active === 'report' && canViewReports && <ReportTab />}
     </AdminLayout>
   )

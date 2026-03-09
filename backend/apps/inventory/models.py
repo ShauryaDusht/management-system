@@ -138,6 +138,7 @@ class StockEntry(models.Model):
 class ItemRequest(models.Model):
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
+        MANAGER_APPROVED = 'manager_approved', 'Manager Approved'
         APPROVED = 'approved', 'Approved'
         REJECTED = 'rejected', 'Rejected'
         ISSUED = 'issued', 'Issued'
@@ -156,6 +157,14 @@ class ItemRequest(models.Model):
         related_name='requests_reviewed',
         limit_choices_to={'role__in': ['inventory_manager', 'admin']},
     )
+    manager_approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='requests_manager_approved',
+        limit_choices_to={'role__in': ['inventory_manager', 'admin']},
+    )
+    manager_approved_at = models.DateTimeField(null=True, blank=True)
     # Enforce minimum quantity of 1
     quantity_requested = models.PositiveIntegerField(
         validators=[MinValueValidator(1)]
@@ -199,6 +208,81 @@ class ItemRequest(models.Model):
     @property
     def updated_at(self):
         return self.reviewed_at or self.requested_at
+
+
+class PurchaseRequest(models.Model):
+    """
+    Allows an Inventory Manager to request procurement of new/additional items.
+    Admin reviews and approves, rejects, or marks as completed.
+    Completely independent of ItemRequest — no stock deductions involved.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        APPROVED = 'approved', 'Approved'
+        REJECTED = 'rejected', 'Rejected'
+        COMPLETED = 'completed', 'Completed'
+
+    class Priority(models.TextChoices):
+        LOW = 'low', 'Low'
+        MEDIUM = 'medium', 'Medium'
+        HIGH = 'high', 'High'
+        URGENT = 'urgent', 'Urgent'
+
+    item_name = models.CharField(
+        max_length=200,
+        help_text='Name of the item to be purchased (may not exist in stock yet)'
+    )
+    quantity_required = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)]
+    )
+    unit = models.CharField(max_length=20, blank=True, help_text='Unit of measurement')
+    description = models.TextField(
+        blank=True,
+        help_text='Reason / additional context for the purchase request'
+    )
+    priority = models.CharField(
+        max_length=10,
+        choices=Priority.choices,
+        default=Priority.MEDIUM,
+    )
+    estimated_cost = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        null=True, blank=True,
+        help_text='Estimated cost per unit (optional)'
+    )
+
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='purchase_requests_made',
+        limit_choices_to={'role__in': ['inventory_manager', 'admin']},
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='purchase_requests_reviewed',
+        limit_choices_to={'role': 'admin'},
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    rejection_reason = models.TextField(blank=True)
+    admin_notes = models.TextField(blank=True, help_text='Notes added by admin on review')
+
+    requested_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-requested_at']
+
+    def __str__(self):
+        return f"PurchaseReq #{self.id} — {self.item_name} x{self.quantity_required} [{self.status}]"
 
 
 class ItemIssue(models.Model):

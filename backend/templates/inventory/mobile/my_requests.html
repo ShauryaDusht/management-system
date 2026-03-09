@@ -29,7 +29,11 @@
       {% if req.status == 'issued' %}
         <span class="badge badge-issued"><span class="material-icons-round" style="font-size:10px">move_to_inbox</span> Issued</span>
       {% elif req.status == 'approved' %}
-        <span class="badge badge-ok"><span class="material-icons-round" style="font-size:10px">check_circle</span> Approved</span>
+        <span class="badge badge-ok"><span class="material-icons-round" style="font-size:10px">check_circle</span> Admin Approved</span>
+      {% elif req.status == 'manager_approved' %}
+        <span style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:#fef9c3;color:#854d0e">
+          <span class="material-icons-round" style="font-size:10px">hourglass_top</span> Admin Approval Pending
+        </span>
       {% elif req.status == 'rejected' %}
         <span class="badge badge-out"><span class="material-icons-round" style="font-size:10px">cancel</span> Rejected</span>
       {% else %}
@@ -56,6 +60,13 @@
   <div style="margin-top:8px;padding:8px 10px;background:#fef2f2;border-radius:var(--radius-sm);border-left:3px solid #ef4444">
     <div style="font-size:11px;font-weight:600;color:#991b1b;margin-bottom:2px">Rejection reason</div>
     <div style="font-size:12px;color:#b91c1c">{{ req.rejection_reason }}</div>
+  </div>
+  {% endif %}
+
+  {% if req.status == 'manager_approved' %}
+  <div style="margin-top:8px;padding:8px 10px;background:#e0f2fe;border-radius:var(--radius-sm);border-left:3px solid var(--brand-teal);display:flex;align-items:center;gap:6px">
+    <span class="material-icons-round" style="font-size:15px;color:var(--brand-teal);flex-shrink:0">hourglass_top</span>
+    <div style="font-size:12px;color:#075985">Your request has been reviewed by the manager and is awaiting final admin approval.</div>
   </div>
   {% endif %}
 </div>

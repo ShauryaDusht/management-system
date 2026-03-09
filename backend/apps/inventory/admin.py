@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Item, ItemRequest, ItemIssue, StockEntry
+from .models import Category, Item, ItemRequest, ItemIssue, StockEntry, PurchaseRequest
 
 
 @admin.register(Category)
@@ -30,10 +30,11 @@ class StockEntryAdmin(admin.ModelAdmin):
 
 @admin.register(ItemRequest)
 class ItemRequestAdmin(admin.ModelAdmin):
-    list_display = ['id', 'item', 'requested_by', 'quantity_requested', 'status', 'requested_at']
+    list_display = ['id', 'item', 'requested_by', 'quantity_requested', 'status',
+                    'manager_approved_by', 'approved_by', 'requested_at']
     list_filter = ['status']
     search_fields = ['item__name', 'requested_by__username']
-    readonly_fields = ['requested_at', 'reviewed_at']
+    readonly_fields = ['requested_at', 'reviewed_at', 'manager_approved_at']
 
 
 @admin.register(ItemIssue)
@@ -45,3 +46,14 @@ class ItemIssueAdmin(admin.ModelAdmin):
     list_filter = ['usage_finalized']
     search_fields = ['request__item__name']
     readonly_fields = ['issued_at', 'usage_finalized_at']
+
+
+@admin.register(PurchaseRequest)
+class PurchaseRequestAdmin(admin.ModelAdmin):
+    list_display = [
+        'id', 'item_name', 'quantity_required', 'priority', 'status',
+        'requested_by', 'reviewed_by', 'requested_at',
+    ]
+    list_filter = ['status', 'priority']
+    search_fields = ['item_name', 'requested_by__username']
+    readonly_fields = ['requested_at', 'reviewed_at', 'completed_at']

@@ -54,12 +54,13 @@
         .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--brand-green-dk); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; border: 2px solid rgba(255,255,255,0.25); }
         .page-content { padding: 14px 12px; max-width: 480px; margin: 0 auto; }
         .scroll-pad { height: 80px; }
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: flex; padding: 6px 0 calc(6px + env(safe-area-inset-bottom)); z-index: 200; box-shadow: 0 -2px 12px rgba(0,0,0,0.08); }
-        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px 0; color: var(--text-muted); cursor: pointer; transition: color 0.15s; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: flex; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); gap: 6px; z-index: 200; box-shadow: 0 -2px 12px rgba(0,0,0,0.08); }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 8px 4px; color: var(--text-muted); cursor: pointer; transition: all 0.15s; border-radius: var(--radius-sm); border: 1.5px solid transparent; background: transparent; text-decoration: none; }
         .nav-item .material-icons-round { font-size: 22px; }
         .nav-item .nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.2px; }
-        .nav-item.active { color: var(--brand-green); }
-        .nav-item:active { opacity: 0.7; }
+        .nav-item.active { color: var(--brand-green); background: #e8f5e9; border-color: rgba(45,74,62,0.2); }
+        .nav-item:not(.active):active { background: var(--bg); }
+        .nav-item:active { transform: scale(0.95); }
         .input { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 14px; font-family: 'Inter', sans-serif; background: var(--surface); outline: none; transition: border-color 0.2s; }
         .input:focus { border-color: var(--brand-green); }
         .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
@@ -117,17 +118,13 @@
             <span class="material-icons-round">inventory_2</span>
             <span class="nav-label">Inventory</span>
         </a>
-        <a href="{% url 'mobile_manager_requests' %}" class="nav-item {% if '/mobile/manager-requests' in current_path %}active{% endif %}">
+        <a href="{% url 'mobile_manager_requests' %}" class="nav-item {% if '/mobile/manager-requests' in current_path or '/mobile/purchase-requests' in current_path %}active{% endif %}">
             <span class="material-icons-round">pending_actions</span>
             <span class="nav-label">Requests</span>
         </a>
         <a href="{% url 'mobile_reports' %}" class="nav-item {% if '/mobile/reports' in current_path %}active{% endif %}">
             <span class="material-icons-round">bar_chart</span>
             <span class="nav-label">Reports</span>
-        </a>
-        <a href="{% url 'mobile_profile' %}" class="nav-item {% if '/mobile/profile' in current_path %}active{% endif %}">
-            <span class="material-icons-round">account_circle</span>
-            <span class="nav-label">Profile</span>
         </a>
         {% else %}
         <a href="{% url 'mobile_dashboard' %}" class="nav-item {% if current_path == '/inventory/mobile/' %}active{% endif %}">

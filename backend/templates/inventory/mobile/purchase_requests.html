@@ -1,0 +1,155 @@
+{% extends 'inventory/mobile/base_mobile.html' %}
+{% block title %}Purchase Requests{% endblock %}
+{% block header_title %}PURCHASE REQUESTS{% endblock %}
+{% block back_button %}
+<a href="{% url 'mobile_dashboard' %}" class="back-btn">
+  <span class="material-icons-round" style="font-size:20px">arrow_back</span>
+</a>
+{% endblock %}
+
+{% block content %}
+
+{# ── Header ── #}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+  <div>
+    <div class="section-title" style="margin:0">Purchase Requests</div>
+    <div style="color:var(--text-secondary);font-size:12px;margin-top:2px">
+      Items you've requested procurement for
+    </div>
+  </div>
+  <a href="{% url 'mobile_purchase_request_form' %}">
+    <button class="btn btn-primary" style="height:38px;padding:0 14px;background:#7c3aed;color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer">
+      <span class="material-icons-round" style="font-size:16px">add</span>
+      New
+    </button>
+  </a>
+</div>
+
+{# ── Status filter chips ── #}
+<div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px;padding-bottom:2px">
+  <a href="?status=all"><div class="chip {% if status_filter == 'all' %}active{% endif %}">All</div></a>
+  <a href="?status=pending"><div class="chip {% if status_filter == 'pending' %}active{% endif %}">Pending</div></a>
+  <a href="?status=approved"><div class="chip {% if status_filter == 'approved' %}active{% endif %}">Approved</div></a>
+  <a href="?status=rejected"><div class="chip {% if status_filter == 'rejected' %}active{% endif %}">Rejected</div></a>
+  <a href="?status=completed"><div class="chip {% if status_filter == 'completed' %}active{% endif %}">Completed</div></a>
+</div>
+
+{# ── Request cards ── #}
+{% for pr in purchase_requests %}
+<div class="card" style="margin-bottom:12px;
+  {% if pr.status == 'approved' %}border-left:4px solid #16a34a
+  {% elif pr.status == 'rejected' %}border-left:4px solid #dc2626
+  {% elif pr.status == 'completed' %}border-left:4px solid #7c3aed
+  {% else %}border-left:4px solid var(--brand-orange){% endif %}">
+
+  {# ── Header row: item name + status badge ── #}
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ pr.item_name }}</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;display:flex;align-items:center;gap:4px">
+        <span class="material-icons-round" style="font-size:13px">schedule</span>
+        {{ pr.requested_at|date:"d M Y" }}
+      </div>
+    </div>
+    <span style="padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;flex-shrink:0;margin-left:8px;
+      {% if pr.status == 'pending' %}background:#fef9c3;color:#854d0e;
+      {% elif pr.status == 'approved' %}background:#dcfce7;color:#166534;
+      {% elif pr.status == 'rejected' %}background:#fee2e2;color:#991b1b;
+      {% elif pr.status == 'completed' %}background:#ede9fe;color:#5b21b6;
+      {% endif %}">
+      {{ pr.status|upper }}
+    </span>
+  </div>
+
+  {# ── Details grid ── #}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+    <div style="background:var(--bg);padding:8px 10px;border-radius:var(--radius-sm)">
+      <div style="font-size:10px;color:var(--text-muted)">Quantity</div>
+      <div style="font-weight:700;font-size:15px;color:var(--brand-green)">
+        {{ pr.quantity_required }}{% if pr.unit %} {{ pr.unit }}{% endif %}
+      </div>
+    </div>
+    <div style="background:var(--bg);padding:8px 10px;border-radius:var(--radius-sm)">
+      <div style="font-size:10px;color:var(--text-muted)">Priority</div>
+      <div style="font-weight:700;font-size:13px;
+        {% if pr.priority == 'urgent' %}color:#dc2626
+        {% elif pr.priority == 'high' %}color:#ea580c
+        {% elif pr.priority == 'medium' %}color:#ca8a04
+        {% else %}color:#16a34a{% endif %}">
+        {{ pr.priority|title }}
+      </div>
+    </div>
+    {% if pr.estimated_cost %}
+    <div style="background:var(--bg);padding:8px 10px;border-radius:var(--radius-sm)">
+      <div style="font-size:10px;color:var(--text-muted)">Est. Cost/Unit</div>
+      <div style="font-weight:700;font-size:13px;color:var(--brand-teal)">₹{{ pr.estimated_cost|floatformat:0 }}</div>
+    </div>
+    {% endif %}
+    {% if pr.estimated_cost %}
+    <div style="background:var(--bg);padding:8px 10px;border-radius:var(--radius-sm)">
+      <div style="font-size:10px;color:var(--text-muted)">Est. Total</div>
+      <div style="font-weight:700;font-size:13px;color:var(--brand-teal)">₹{% widthratio pr.quantity_required 1 pr.estimated_cost %}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── Description ── #}
+  {% if pr.description %}
+  <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;padding:8px 10px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:10px">
+    <span class="material-icons-round" style="font-size:13px;vertical-align:middle;color:var(--text-muted)">notes</span>
+    {{ pr.description }}
+  </div>
+  {% endif %}
+
+  {# ── Admin feedback ── #}
+  {% if pr.status == 'rejected' and pr.rejection_reason %}
+  <div style="padding:8px 10px;background:#fef2f2;border:1px solid #fca5a5;border-radius:var(--radius-sm);font-size:12px;color:#991b1b;margin-bottom:6px">
+    <strong>Rejection reason:</strong> {{ pr.rejection_reason }}
+  </div>
+  {% endif %}
+  {% if pr.admin_notes %}
+  <div style="padding:8px 10px;background:#f0fdf4;border:1px solid #86efac;border-radius:var(--radius-sm);font-size:12px;color:#166534">
+    <strong>Admin note:</strong> {{ pr.admin_notes }}
+  </div>
+  {% endif %}
+
+  {# ── Reviewed by ── #}
+  {% if pr.reviewed_by %}
+  <div style="margin-top:8px;font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px">
+    <span class="material-icons-round" style="font-size:13px">admin_panel_settings</span>
+    Reviewed by {{ pr.reviewed_by.get_full_name|default:pr.reviewed_by.username }}
+    {% if pr.reviewed_at %}· {{ pr.reviewed_at|date:"d M Y" }}{% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% empty %}
+<div class="empty-state">
+  <span class="material-icons-round" style="color:#7c3aed">shopping_cart</span>
+  <div class="empty-title">No purchase requests yet</div>
+  <div class="empty-sub">Tap "New" to request procurement of an item</div>
+</div>
+{% endfor %}
+
+{# ── Pagination ── #}
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+  {% if page_obj.has_previous %}
+  <a href="?status={{ status_filter }}&page={{ page_obj.previous_page_number }}">
+    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+  </a>
+  {% else %}
+  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+  {% endif %}
+  <button class="page-btn active">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</button>
+  {% if page_obj.has_next %}
+  <a href="?status={{ status_filter }}&page={{ page_obj.next_page_number }}">
+    <button class="page-btn">Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  </a>
+  {% else %}
+  <button class="page-btn" disabled>Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
