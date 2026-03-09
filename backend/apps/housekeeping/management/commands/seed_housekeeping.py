@@ -1,4 +1,4 @@
-﻿"""
+"""
 Complete housekeeping seed with all real IITGN staff data.
 Workers: 57 permanent + 9 relievers
 Caretakers: 9 (Priyanka, Anita, Rushita, Pankaj, Anil, Nikul, Jaimin x2, Ram Singh, Vishwajeet)
@@ -36,7 +36,7 @@ class Command(BaseCommand):
         self.seed_schedules()
 
         self.stdout.write(self.style.SUCCESS(f'''
-âœ“ SEED COMPLETE
+[OK] SEED COMPLETE
   Areas:     {HKArea.objects.count()}
   Users:     {User.objects.filter(role__in=["admin","inventory_manager","housekeeping_manager","horticulture_manager","caretaker","supervisor"]).count()}
   Workers:   {HKWorker.objects.count()}
@@ -114,7 +114,7 @@ All accounts use password: {DEFAULT_PASSWORD}
         # but excluded from active dashboards and assignments.
         HKArea.objects.filter(name__in=['Academic Blocks 1-9', 'Academic Blocks 10-13']).update(is_active=False)
 
-        self.stdout.write(f'  âœ“ Areas: {HKArea.objects.count()}')
+        self.stdout.write(f'  [OK] Areas: {HKArea.objects.count()}')
 
     def area(self, name):
         return HKArea.objects.filter(name=name).first()
@@ -199,7 +199,7 @@ All accounts use password: {DEFAULT_PASSWORD}
         for username, first, last, phone, areas in supervisors:
             self.make_user(username, first, last, phone, 'supervisor', areas)
 
-        self.stdout.write(f'  âœ“ Users: {User.objects.filter(role__in=["caretaker","supervisor"]).count()}')
+        self.stdout.write(f'  [OK] Users: {User.objects.filter(role__in=["caretaker","supervisor"]).count()}')
 
     def seed_portal_accounts(self):
         """
@@ -238,7 +238,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             self.make_user(username, first, last, phone, role, areas, email=email)
 
         self.stdout.write(
-            f'  ✓ Portal users: {User.objects.filter(role__in=["admin","inventory_manager","housekeeping_manager","horticulture_manager"]).count()}'
+            f'  [OK] Portal users: {User.objects.filter(role__in=["admin","inventory_manager","housekeeping_manager","horticulture_manager"]).count()}'
         )
 
     def cleanup_legacy_accounts(self):
@@ -259,7 +259,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             except ProtectedError:
                 blocked.append(user.username)
 
-        self.stdout.write(f'  âœ“ Legacy users removed: {removed}')
+        self.stdout.write(f'  [OK] Legacy users removed: {removed}')
         if blocked:
             self.stdout.write(
                 self.style.WARNING(
@@ -690,7 +690,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                     supervisor=supervisor,
                 )
 
-        self.stdout.write(f'  âœ“ Workers: {HKWorker.objects.count()} ({created_count} new)')
+        self.stdout.write(f'  [OK] Workers: {HKWorker.objects.count()} ({created_count} new)')
 
     # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -1809,6 +1809,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                     total += 1
 
         self.stdout.write(
-            f'  âœ“ Schedule templates: {total} '
+            f'  [OK] Schedule templates: {total} '
             '(hostels + common area + research park + central arcade + sports complex + guest house + director bungalow + roads + swm + academic blocks)'
         )
+
