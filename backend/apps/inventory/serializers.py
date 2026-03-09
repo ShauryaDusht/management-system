@@ -135,12 +135,44 @@ class ItemIssueSerializer(serializers.ModelSerializer):
     item_unit = serializers.CharField(source='request.item.unit', read_only=True)
     requested_by_name = serializers.CharField(source='request.requested_by.get_full_name', read_only=True)
     return_recorded_by_name = serializers.CharField(source='return_recorded_by.get_full_name', read_only=True)
+    area_name = serializers.SerializerMethodField()
+    area_type = serializers.SerializerMethodField()
+
+    def get_area_name(self, obj):
+        try:
+            from apps.housekeeping.models import HKStockRequest
+            hk_req = HKStockRequest.objects.filter(
+                inventory_request=obj.request
+            ).select_related('area').first()
+            if hk_req and hk_req.area:
+                return hk_req.area.name
+        except Exception:
+            pass
+        # fallback: extract from purpose like "[HK - Hostel A] reason"
+        purpose = getattr(obj.request, 'purpose', '') or ''
+        if purpose.startswith('[HK - '):
+            end = purpose.find(']')
+            if end > 6:
+                return purpose[6:end]
+        return None
+
+    def get_area_type(self, obj):
+        try:
+            from apps.housekeeping.models import HKStockRequest
+            hk_req = HKStockRequest.objects.filter(
+                inventory_request=obj.request
+            ).select_related('area').first()
+            if hk_req and hk_req.area:
+                return hk_req.area.area_type
+        except Exception:
+            pass
+        return None
 
     class Meta:
         model = ItemIssue
         fields = [
             'id', 'request', 'item_name', 'item_type', 'item_unit',
-            'requested_by_name', 'issued_by', 'issued_by_name',
+            'requested_by_name', 'area_name', 'area_type', 'issued_by', 'issued_by_name',
             'issued_quantity', 'issued_at',
             'expected_return_date', 'returned_quantity', 'returned_at',
             'condition_on_return', 'return_recorded_by', 'return_recorded_by_name',

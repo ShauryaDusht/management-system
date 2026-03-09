@@ -7,6 +7,7 @@ import AdminLayout from '../../layout/AdminLayout'
 import IssuesTab from './IssuesTab'
 import ItemsTab from './ItemsTab'
 import ReportTab from './ReportTab'
+import RequestsReportTab from '../reports/RequestsReportTab'
 import RequestsTab from './RequestsTab'
 import StockLogTab from './StockLogTab'
 
@@ -17,6 +18,7 @@ const BASE_TAB_CONFIG = [
   { key: 'stocklog', label: 'Stock Log', icon: '🧾' },
 ]
 const REPORT_TAB = { key: 'report', label: 'Report', icon: '📊' }
+const REQUEST_REPORT_TAB = { key: 'request-report', label: 'Request Report', icon: 'RR' }
 
 export default function InventoryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -24,7 +26,7 @@ export default function InventoryPage() {
   const canViewReports = user?.role === 'admin'
 
   const tabConfig = useMemo(
-    () => (canViewReports ? [...BASE_TAB_CONFIG, REPORT_TAB] : BASE_TAB_CONFIG),
+    () => (canViewReports ? [...BASE_TAB_CONFIG, REPORT_TAB, REQUEST_REPORT_TAB] : BASE_TAB_CONFIG),
     [canViewReports]
   )
   const validTabs = useMemo(() => tabConfig.map((tab) => tab.key), [tabConfig])
@@ -66,6 +68,7 @@ export default function InventoryPage() {
       {active === 'issues' && <IssuesTab userRole={user?.role} />}
       {active === 'stocklog' && <StockLogTab userRole={user?.role} />}
       {active === 'report' && canViewReports && <ReportTab />}
+      {active === 'request-report' && canViewReports && <RequestsReportTab />}
     </AdminLayout>
   )
 }

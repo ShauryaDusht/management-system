@@ -88,6 +88,12 @@ export const reportsAPI = {
   deleteMonthly,
   csvUrl,
   pdfUrl,
+  getAreaIssuesReport: (params = {}) => api.get('/reports/area-issues/', { params }),
+  downloadAreaIssuesCSV: (params = {}) =>
+    api.get('/reports/area-issues/', {
+      params: { ...params, download: 'csv' },
+      responseType: 'blob',
+    }),
 
   // Item consumption reports
   getConsumptionReports,
