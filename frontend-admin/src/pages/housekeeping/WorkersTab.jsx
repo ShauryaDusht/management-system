@@ -12,6 +12,7 @@ import {
   SelectField,
   Spinner,
 } from '../../components/ui'
+import WorkerReportModal from './WorkerReportModal'
 
 const EMPTY_FORM = {
   first_name: '',
@@ -67,6 +68,7 @@ export default function WorkersTab() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [formError, setFormError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [reportWorker, setReportWorker] = useState(null)
 
   const areaGroup = (areaName, areaType) => {
     const n = String(areaName || '').trim()
@@ -297,7 +299,7 @@ export default function WorkersTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Area', 'Worker Name', 'Type', 'Shift', 'Supervisor', 'Phone', 'Punching No.', 'Reliever', 'Actions']}
+            headers={['Area', 'Worker Name', 'Type', 'Shift', 'Supervisor', 'Phone', 'Punching No.', 'Reliever', 'Edit', 'Report']}
             rows={visibleWorkers.map((w) => [
               w.area_name || '-',
               w.name,
@@ -308,6 +310,7 @@ export default function WorkersTab() {
               w.punching_no || '-',
               w.is_reliever ? <span key={`r-${w.id}`} style={{ display: 'inline-block', background: '#fff7ed', color: '#c2410c', padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700 }}>Reliever</span> : '-',
               <Btn key={`a-${w.id}`} size="sm" variant="ghost" onClick={() => openEdit(w)}>Edit</Btn>,
+              <Btn key={`report-${w.id}`} size="sm" variant="secondary" onClick={() => setReportWorker(w)}>Report</Btn>,
             ])}
             emptyMsg="No workers found for selected segment/filter."
           />
@@ -405,6 +408,12 @@ export default function WorkersTab() {
           Delete worker <strong>{deleteTarget?.name}</strong>? This will remove the worker from the live database.
         </p>
       </Modal>
+
+      <WorkerReportModal
+        open={!!reportWorker}
+        worker={reportWorker}
+        onClose={() => setReportWorker(null)}
+      />
     </div>
   )
 }

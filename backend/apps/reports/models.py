@@ -2,6 +2,8 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 
+from apps.housekeeping.models import HKWorker
+
 
 class MonthlyReport(models.Model):
     """
@@ -37,3 +39,23 @@ class MonthlyReport(models.Model):
     def period_label(self):
         import calendar
         return f"{calendar.month_name[self.month]} {self.year}"
+
+
+class WorkerMonthlyReport(models.Model):
+    worker = models.ForeignKey(
+        HKWorker,
+        on_delete=models.CASCADE,
+        related_name='monthly_reports',
+    )
+    month = models.PositiveSmallIntegerField()
+    year = models.PositiveSmallIntegerField()
+    generated_at = models.DateTimeField(default=timezone.now)
+    snapshot = models.JSONField(default=dict)
+    csv_file = models.FileField(upload_to='reports/workers/csv/', blank=True, null=True)
+
+    class Meta:
+        ordering = ['-year', '-month', 'worker__name']
+        unique_together = [('worker', 'month', 'year')]
+
+    def __str__(self):
+        return f"Worker Report {self.worker.name} {self.month:02d}/{self.year}"

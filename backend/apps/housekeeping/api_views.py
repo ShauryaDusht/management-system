@@ -3,12 +3,18 @@ import re
 
 from django.db import transaction
 from django.db.models import Count, Max, Q
+from django.http import FileResponse, HttpResponse
+from django.core.files.base import ContentFile
 from django.utils import timezone
+from django.utils.text import slugify
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from apps.reports.exporters import export_worker_report_csv
+from apps.reports.generators import generate_worker_report
+from apps.reports.models import WorkerMonthlyReport
 
 from .models import (
     HKAlert,
@@ -84,6 +90,43 @@ def _push_incharge_notice(user, assignment, message, level='info'):
         message=message,
         level=level,
     )
+
+
+def _parse_report_period(month_raw, year_raw):
+    today = timezone.localdate()
+
+    if not month_raw and not year_raw:
+        return today.month, today.year, None
+    if not month_raw or not year_raw:
+        return None, None, 'month and year must be provided together.'
+
+    try:
+        month = int(month_raw)
+        year = int(year_raw)
+    except (TypeError, ValueError):
+        return None, None, 'month and year must be integers.'
+
+    if not (1 <= month <= 12):
+        return None, None, 'month must be between 1 and 12.'
+    if year < 2000 or year > 2100:
+        return None, None, 'year must be a valid 4-digit year.'
+
+    return month, year, None
+
+
+def _is_current_month(month, year):
+    today = timezone.localdate()
+    return (year, month) == (today.year, today.month)
+
+
+def _is_past_month(month, year):
+    today = timezone.localdate()
+    return (year, month) < (today.year, today.month)
+
+
+def _worker_report_filename(worker, month, year):
+    safe_name = slugify(worker.name) or str(worker.id)
+    return f"worker_{safe_name}_{month:02d}_{year}.csv"
 
 
 class HKAreaListView(ListAPIView):
@@ -170,6 +213,143 @@ class HKWorkerDetailView(APIView):
         worker.is_active = False
         worker.save(update_fields=['is_active'])
         return Response(status=204)
+
+
+class HKWorkerReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        worker = get_object_or_404(HKWorker, pk=pk)
+
+        month, year, err = _parse_report_period(
+            request.query_params.get('month'),
+            request.query_params.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        if not _is_current_month(month, year):
+            cached_report = WorkerMonthlyReport.objects.filter(
+                worker=worker,
+                month=month,
+                year=year,
+            ).first()
+            if cached_report:
+                return Response(
+                    {
+                        'cached': True,
+                        'generated_at': cached_report.generated_at,
+                        'snapshot': cached_report.snapshot,
+                    }
+                )
+
+        snapshot = generate_worker_report(worker.id, month, year)
+        return Response(
+            {
+                'cached': False,
+                'generated_at': snapshot.get('generated_at'),
+                'snapshot': snapshot,
+            }
+        )
+
+
+class HKWorkerReportCSVView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        worker = get_object_or_404(HKWorker, pk=pk)
+
+        month, year, err = _parse_report_period(
+            request.query_params.get('month'),
+            request.query_params.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        filename = _worker_report_filename(worker, month, year)
+        cached_report = WorkerMonthlyReport.objects.filter(
+            worker=worker,
+            month=month,
+            year=year,
+        ).first()
+
+        if _is_past_month(month, year) and cached_report and cached_report.csv_file:
+            file_handle = cached_report.csv_file.open('rb')
+            return FileResponse(
+                file_handle,
+                content_type='text/csv',
+                as_attachment=True,
+                filename=filename,
+            )
+
+        if _is_past_month(month, year) and cached_report and not cached_report.csv_file:
+            snapshot = cached_report.snapshot or generate_worker_report(worker.id, month, year)
+            csv_bytes = export_worker_report_csv(snapshot)
+            cached_report.csv_file.save(filename, ContentFile(csv_bytes), save=True)
+
+            file_handle = cached_report.csv_file.open('rb')
+            return FileResponse(
+                file_handle,
+                content_type='text/csv',
+                as_attachment=True,
+                filename=filename,
+            )
+
+        snapshot = generate_worker_report(worker.id, month, year)
+        csv_bytes = export_worker_report_csv(snapshot)
+
+        response = HttpResponse(csv_bytes, content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+
+class HKWorkerReportRegenerateView(APIView):
+    permission_classes = [IsAdminOrHousekeepingManager]
+
+    def post(self, request, pk):
+        worker = get_object_or_404(HKWorker, pk=pk)
+
+        month, year, err = _parse_report_period(
+            request.data.get('month'),
+            request.data.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        today = timezone.localdate()
+        if (year, month) >= (today.year, today.month):
+            return Response(
+                {'detail': 'Only completed past months can be regenerated/cached.'},
+                status=400,
+            )
+
+        snapshot = generate_worker_report(worker.id, month, year)
+        csv_bytes = export_worker_report_csv(snapshot)
+        now = timezone.now()
+        filename = _worker_report_filename(worker, month, year)
+
+        report, created = WorkerMonthlyReport.objects.get_or_create(
+            worker=worker,
+            month=month,
+            year=year,
+            defaults={
+                'generated_at': now,
+                'snapshot': snapshot,
+            },
+        )
+        if not created:
+            if report.csv_file:
+                report.csv_file.delete(save=False)
+            report.snapshot = snapshot
+            report.generated_at = now
+        else:
+            report.generated_at = now
+            report.snapshot = snapshot
+
+        report.csv_file.save(filename, ContentFile(csv_bytes), save=False)
+        report.save()
+
+        return Response({'success': True, 'generated_at': report.generated_at})
 
 
 class HKWorkerSelectionRequestListCreateView(APIView):

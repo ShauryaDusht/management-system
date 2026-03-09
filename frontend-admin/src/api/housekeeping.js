@@ -4,6 +4,15 @@ export const hkAPI = {
   getAreas: () => api.get('/housekeeping/areas/'),
   getWorkers: (areaId) =>
     api.get('/housekeeping/workers/', { params: areaId ? { area: areaId } : {} }),
+  getWorkerReport: (workerId, month, year) =>
+    api.get(`/housekeeping/workers/${workerId}/report/`, {
+      params: { month, year },
+    }),
+  downloadWorkerReportCSV: (workerId, month, year) =>
+    api.get(`/housekeeping/workers/${workerId}/report/csv/`, {
+      params: { month, year },
+      responseType: 'blob',
+    }),
   createWorker: (payload) => api.post('/housekeeping/workers/create/', payload),
   updateWorker: (id, payload) => api.patch(`/housekeeping/workers/${id}/`, payload),
   deleteWorker: (id) => api.delete(`/housekeeping/workers/${id}/`),

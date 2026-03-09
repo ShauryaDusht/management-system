@@ -31,9 +31,64 @@ CSV_COLUMNS = [
     ('status',           'Stock Status'),
 ]
 
+WORKER_DAILY_COLUMNS = [
+    'Date',
+    'First Half',
+    'Second Half',
+    'Tasks Assigned',
+    'Tasks Completed',
+    'Extra Work',
+]
+
 
 def _filename_base(report):
     return f"monthly_report_{report.year}_{report.month:02d}"
+
+
+def _human_status(value):
+    if not value:
+        return ''
+    return str(value).replace('_', ' ').title()
+
+
+def export_worker_report_csv(snapshot: dict) -> bytes:
+    worker = snapshot.get('worker', {})
+    attendance = snapshot.get('attendance', {})
+    tasks = snapshot.get('tasks', {})
+    daily_breakdown = snapshot.get('daily_breakdown', [])
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+
+    writer.writerow(['Worker Attendance and Task Completion Report'])
+    writer.writerow(['Worker Name', worker.get('name', '')])
+    writer.writerow(['Area', worker.get('area_name', '')])
+    writer.writerow(['Month', snapshot.get('month_label', '')])
+    writer.writerow(['Attendance %', f"{snapshot.get('attendance_pct', 0):.2f}"])
+    writer.writerow(['Task Completion %', f"{tasks.get('completion_pct', 0):.2f}"])
+    writer.writerow([])
+    writer.writerow(['Days Present', attendance.get('days_present', 0)])
+    writer.writerow(['Days Absent', attendance.get('days_absent', 0)])
+    writer.writerow(['Days Late', attendance.get('days_late', 0)])
+    writer.writerow(['Days On Leave', attendance.get('days_on_leave', 0)])
+    writer.writerow(['Tasks Assigned', tasks.get('total_assigned', 0)])
+    writer.writerow(['Tasks Completed', tasks.get('total_completed', 0)])
+    writer.writerow(['Tasks Skipped', tasks.get('total_skipped', 0)])
+    writer.writerow(['Extra Work Count', snapshot.get('extra_work_count', 0)])
+    writer.writerow([])
+
+    writer.writerow(WORKER_DAILY_COLUMNS)
+    for row in daily_breakdown:
+        writer.writerow([
+            row.get('date', ''),
+            _human_status(row.get('attendance_first_half', '')),
+            _human_status(row.get('attendance_second_half', '')),
+            row.get('tasks_assigned', 0),
+            row.get('tasks_completed', 0),
+            row.get('extra_work', 0),
+        ])
+
+    return buffer.getvalue().encode('utf-8-sig')
 
 
 # ── CSV ───────────────────────────────────────────────────────────────────────
