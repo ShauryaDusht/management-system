@@ -12,7 +12,7 @@ from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from apps.reports.exporters import export_worker_report_csv
+from apps.reports.exporters import export_worker_report_csv, export_workers_combined_csv
 from apps.reports.generators import generate_worker_report
 from apps.reports.models import WorkerMonthlyReport
 
@@ -350,6 +350,86 @@ class HKWorkerReportRegenerateView(APIView):
         report.save()
 
         return Response({'success': True, 'generated_at': report.generated_at})
+
+
+class HKWorkersCombinedCSVView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        month, year, err = _parse_report_period(
+            request.query_params.get('month'),
+            request.query_params.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        area_id_raw = request.query_params.get('area')
+        group = (request.query_params.get('group') or '').strip().lower()
+        if group and group not in {'hostels', 'academic', 'others'}:
+            return Response({'detail': 'group must be hostels, academic, or others.'}, status=400)
+
+        workers_qs = HKWorker.objects.select_related('area', 'supervisor').filter(is_active=True).order_by('area__name', 'name')
+
+        area_obj = None
+        if area_id_raw:
+            try:
+                area_id = int(area_id_raw)
+            except (TypeError, ValueError):
+                return Response({'detail': 'area must be a numeric id.'}, status=400)
+
+            area_obj = HKArea.objects.filter(pk=area_id, is_active=True).first()
+            if not area_obj:
+                return Response({'detail': 'Area not found.'}, status=404)
+            workers_qs = workers_qs.filter(area=area_obj)
+
+        workers = list(workers_qs)
+        if group:
+            workers = [worker for worker in workers if _area_group(worker.area) == group]
+
+        rows = []
+        for worker in workers:
+            snapshot = generate_worker_report(worker.id, month, year)
+            attendance = snapshot.get('attendance', {})
+            tasks = snapshot.get('tasks', {})
+            rows.append({
+                'worker_name': worker.name,
+                'area_name': worker.area.name if worker.area else '',
+                'supervisor_name': (
+                    worker.supervisor.get_full_name() or worker.supervisor.username
+                    if worker.supervisor else ''
+                ),
+                'worker_type': worker.worker_type,
+                'shift': worker.shift,
+                'punching_no': worker.punching_no,
+                'phone': worker.phone,
+                'is_reliever': worker.is_reliever,
+                'attendance_pct': snapshot.get('attendance_pct', 0),
+                'days_present': attendance.get('days_present', 0),
+                'days_absent': attendance.get('days_absent', 0),
+                'days_late': attendance.get('days_late', 0),
+                'days_on_leave': attendance.get('days_on_leave', 0),
+                'tasks_assigned': tasks.get('total_assigned', 0),
+                'tasks_completed': tasks.get('total_completed', 0),
+                'tasks_skipped': tasks.get('total_skipped', 0),
+                'completion_pct': tasks.get('completion_pct', 0),
+                'extra_work_count': snapshot.get('extra_work_count', 0),
+                'reliever_days': len(snapshot.get('reliever_days', [])),
+            })
+
+        if area_obj:
+            title = f"Area Worker Report - {area_obj.name}"
+            filename_base = f"workers_area_{slugify(area_obj.name) or area_obj.id}"
+        elif group:
+            title = f"Worker Report - {group.title()}"
+            filename_base = f"workers_{group}"
+        else:
+            title = "Worker Report - All Workers"
+            filename_base = "workers_all"
+
+        csv_bytes = export_workers_combined_csv(rows=rows, month=month, year=year, title=title)
+        response = HttpResponse(csv_bytes, content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename_base}_{month:02d}_{year}.csv"'
+        return response
 
 
 class HKWorkerSelectionRequestListCreateView(APIView):

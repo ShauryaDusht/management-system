@@ -13,6 +13,11 @@ export const hkAPI = {
       params: { month, year },
       responseType: 'blob',
     }),
+  downloadWorkersCombinedCSV: (params = {}) =>
+    api.get('/housekeeping/workers/reports/combined/csv/', {
+      params,
+      responseType: 'blob',
+    }),
   createWorker: (payload) => api.post('/housekeeping/workers/create/', payload),
   updateWorker: (id, payload) => api.patch(`/housekeeping/workers/${id}/`, payload),
   deleteWorker: (id) => api.delete(`/housekeeping/workers/${id}/`),

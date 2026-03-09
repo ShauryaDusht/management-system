@@ -40,6 +40,28 @@ WORKER_DAILY_COLUMNS = [
     'Extra Work',
 ]
 
+WORKER_COMBINED_COLUMNS = [
+    'Worker Name',
+    'Area',
+    'Supervisor',
+    'Worker Type',
+    'Shift',
+    'Punching No',
+    'Phone',
+    'Reliever',
+    'Attendance %',
+    'Days Present',
+    'Days Absent',
+    'Days Late',
+    'Days On Leave',
+    'Tasks Assigned',
+    'Tasks Completed',
+    'Tasks Skipped',
+    'Completion %',
+    'Extra Work Count',
+    'Reliever Days',
+]
+
 
 def _filename_base(report):
     return f"monthly_report_{report.year}_{report.month:02d}"
@@ -86,6 +108,41 @@ def export_worker_report_csv(snapshot: dict) -> bytes:
             row.get('tasks_assigned', 0),
             row.get('tasks_completed', 0),
             row.get('extra_work', 0),
+        ])
+
+    return buffer.getvalue().encode('utf-8-sig')
+
+
+def export_workers_combined_csv(rows: list, month: int, year: int, title: str) -> bytes:
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+
+    writer.writerow([title])
+    writer.writerow([f"Period: {month:02d}/{year}"])
+    writer.writerow([])
+    writer.writerow(WORKER_COMBINED_COLUMNS)
+
+    for row in rows:
+        writer.writerow([
+            row.get('worker_name', ''),
+            row.get('area_name', ''),
+            row.get('supervisor_name', ''),
+            row.get('worker_type', ''),
+            row.get('shift', ''),
+            row.get('punching_no', ''),
+            row.get('phone', ''),
+            'Yes' if row.get('is_reliever') else 'No',
+            f"{row.get('attendance_pct', 0):.2f}",
+            row.get('days_present', 0),
+            row.get('days_absent', 0),
+            row.get('days_late', 0),
+            row.get('days_on_leave', 0),
+            row.get('tasks_assigned', 0),
+            row.get('tasks_completed', 0),
+            row.get('tasks_skipped', 0),
+            f"{row.get('completion_pct', 0):.2f}",
+            row.get('extra_work_count', 0),
+            row.get('reliever_days', 0),
         ])
 
     return buffer.getvalue().encode('utf-8-sig')
