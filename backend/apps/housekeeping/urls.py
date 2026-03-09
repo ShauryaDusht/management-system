@@ -18,6 +18,18 @@ api_urlpatterns = [
         api_views.HKWorkerSelectionRequestDecisionView.as_view(),
         name='hk-api-worker-selection-requests-decision',
     ),
+    path(
+        'incharge-assignments/',
+        api_views.HKInchargeAssignmentListView.as_view(),
+        name='hk-api-incharge-assignments',
+    ),
+    path(
+        'incharge-assignments/<uuid:pk>/decision/',
+        api_views.HKInchargeAssignmentDecisionView.as_view(),
+        name='hk-api-incharge-assignments-decision',
+    ),
+    path('leave-requests/', api_views.HKLeaveRequestListView.as_view(), name='hk-api-leave-requests'),
+    path('incharge-notifications/', api_views.HKInchargeNotificationListView.as_view(), name='hk-api-incharge-notifications'),
     path('daily-records/', api_views.HKDailyRecordListView.as_view(), name='hk-api-records'),
     path('schedule-templates/', api_views.HKScheduleTemplateListView.as_view(), name='hk-api-templates'),
     path('attendance-summary/', api_views.HKAttendanceSummaryView.as_view(), name='hk-api-attendance'),

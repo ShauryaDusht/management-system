@@ -80,6 +80,24 @@
   {{ ws_error }}
 </div>
 {% endif %}
+{% if ic_success %}
+<div class="hk-flash" style="position:fixed;top:74px;left:50%;transform:translateX(-50%);z-index:10030;background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:10px 12px;color:#166534;font-weight:700;max-width:92vw">
+  {{ ic_success }}
+</div>
+{% endif %}
+{% if ic_error %}
+<div class="hk-flash" style="position:fixed;top:74px;left:50%;transform:translateX(-50%);z-index:10030;background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:10px 12px;color:#991b1b;font-weight:700;max-width:92vw">
+  {{ ic_error }}
+</div>
+{% endif %}
+{% if incharge_notice %}
+<div class="hk-flash" style="position:fixed;top:74px;left:50%;transform:translateX(-50%);z-index:10030;
+  background:{% if incharge_notice.level == 'success' %}#dcfce7{% elif incharge_notice.level == 'warning' %}#fef3c7{% elif incharge_notice.level == 'error' %}#fee2e2{% else %}#dbeafe{% endif %};
+  border:1px solid {% if incharge_notice.level == 'success' %}#86efac{% elif incharge_notice.level == 'warning' %}#fde68a{% elif incharge_notice.level == 'error' %}#fca5a5{% else %}#93c5fd{% endif %};
+  border-radius:10px;padding:10px 12px;color:{% if incharge_notice.level == 'success' %}#166534{% elif incharge_notice.level == 'warning' %}#92400e{% elif incharge_notice.level == 'error' %}#991b1b{% else %}#1d4ed8{% endif %};font-weight:700;max-width:92vw">
+  {{ incharge_notice.message }}
+</div>
+{% endif %}
 {% if ws_decision_notice %}
 <div class="hk-flash" style="position:fixed;top:74px;left:50%;transform:translateX(-50%);z-index:10030;max-width:92vw;
   background:{% if ws_decision_notice.status == 'approved' %}#dcfce7{% else %}#fee2e2{% endif %};
@@ -155,6 +173,97 @@
 {% endif %}
 {% endif %}
 {% if selected_area %}
+{% if incharge_today_assignments %}
+<div class="card" style="border:2px solid #16a34a;background:#ecfdf5">
+  <div style="font-weight:800;color:#166534;font-size:14px">INCHARGE TODAY</div>
+  {% for ic in incharge_today_assignments %}
+  <div style="font-size:12px;color:#14532d;margin-top:5px">
+    You are temporary incharge for <b>{{ ic.area.name }}</b> on {{ ic.leave_date|date:"d M Y" }}
+    (requested by {{ ic.leave_staff_name }}).
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if incoming_incharge_requests %}
+<div class="card" style="border:1.5px solid #93c5fd;background:#eff6ff">
+  <div style="font-weight:800;color:#1d4ed8;margin-bottom:8px">Temporary Incharge Requests</div>
+  {% for ic in incoming_incharge_requests %}
+  <div style="background:#fff;border:1px solid #bfdbfe;border-radius:9px;padding:10px;margin-bottom:8px">
+    <div style="font-size:13px;font-weight:700;color:#1e3a8a">
+      {{ ic.area.name }} | {{ ic.leave_date|date:"d M Y" }}
+    </div>
+    <div style="font-size:12px;color:#475569;margin-top:3px">
+      Requested by {{ ic.leave_staff_name }}
+    </div>
+    <form method="post" action="/housekeeping/incharge/respond/" style="margin-top:8px;display:flex;gap:7px;align-items:center">
+      {% csrf_token %}
+      <input type="hidden" name="assignment_id" value="{{ ic.id }}">
+      <input type="hidden" name="area" value="{{ selected_area.id }}">
+      <input type="text" name="note" placeholder="Optional note..." style="flex:1;font-size:12px;padding:8px 9px">
+      <button type="submit" name="decision" value="accept" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer">Accept</button>
+      <button type="submit" name="decision" value="decline" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer">Decline</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if incoming_waiting_admin %}
+<div class="card" style="border:1px solid #fde68a;background:#fffbeb">
+  <div style="font-weight:800;color:#92400e;margin-bottom:6px">Awaiting Admin Approval</div>
+  {% for ic in incoming_waiting_admin %}
+  <div style="font-size:12px;color:#7c2d12;margin-bottom:3px">
+    {{ ic.area.name }} | {{ ic.leave_date|date:"d M Y" }} (requested by {{ ic.leave_staff_name }})
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if leave_reselection_cards %}
+<div class="card" style="border:1.5px solid #f59e0b;background:#fffbeb">
+  <div style="font-size:15px;font-weight:800;color:#92400e;margin-bottom:8px">Select Temporary Incharge</div>
+  <div style="font-size:12px;color:#6b7280;margin-bottom:10px">
+    Your leave request requires incharge selection.
+  </div>
+  {% for item in leave_reselection_cards %}
+  <div style="border:1px solid #fde68a;border-radius:10px;padding:10px;background:#fff;margin-bottom:10px">
+    <div style="font-size:13px;font-weight:700">{{ item.leave_request.area.name }} | {{ item.leave_request.leave_date|date:"d M Y" }}</div>
+    {% if item.latest_assignment and item.latest_assignment.status == 'declined' %}
+    <div style="font-size:12px;color:#b91c1c;margin-top:3px">
+      Previous incharge declined. Please select another.
+    </div>
+    {% elif item.latest_assignment and item.latest_assignment.status == 'admin_rejected' %}
+    <div style="font-size:12px;color:#b91c1c;margin-top:3px">
+      Admin rejected previous incharge assignment. Please select another.
+    </div>
+    {% endif %}
+    <form method="post" action="/housekeeping/incharge/assign/" style="margin-top:8px">
+      {% csrf_token %}
+      <input type="hidden" name="leave_request_id" value="{{ item.leave_request.id }}">
+      <input type="hidden" name="area" value="{{ item.leave_request.area.id }}">
+      <div class="fg">
+        <label>Temporary Incharge *</label>
+        <select name="assigned_staff_id" required>
+          <option value="">- Select incharge -</option>
+          {% for cand in item.candidates %}
+          <option value="{{ cand.user.id }}">
+            {{ cand.user.get_full_name|default:cand.user.username }} ({{ cand.user.get_role_display }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Note (optional)</label>
+        <input type="text" name="note" placeholder="Instruction for temporary incharge">
+      </div>
+      <button type="submit" class="btn-s">Assign as Incharge</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% if records %}
 <div style="display:grid;grid-template-columns:repeat({% if has_special_tasks %}5{% else %}4{% endif %},1fr);gap:6px;margin-bottom:12px" id="tab-buttons">
   <button onclick="showTab('floor')" id="btn-floor" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#2d4a3e;color:#fff;transition:opacity .2s">
@@ -301,6 +410,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var u = new URL(window.location.href);
         u.searchParams.delete('ws_ok');
         u.searchParams.delete('ws_err');
+        u.searchParams.delete('ic_ok');
+        u.searchParams.delete('ic_err');
         window.history.replaceState({}, '', u.toString());
       } catch (e) {}
     }, 5500);

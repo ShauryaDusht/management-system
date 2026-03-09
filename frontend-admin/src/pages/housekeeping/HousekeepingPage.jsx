@@ -10,21 +10,28 @@ import OverviewTab from './OverviewTab'
 import SectionsTab from './SectionsTab'
 import WorkersTab from './WorkersTab'
 import WorkerSelectionTab from './WorkerSelectionTab'
+import InchargeApprovalsTab from './InchargeApprovalsTab'
 
 export default function HousekeepingPage() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const tabs = useMemo(
-    () => [
-      { key: 'overview', label: 'Overview', icon: 'HK' },
-      { key: 'directory', label: 'Sections + Staff', icon: 'AR/CT' },
-      { key: 'assign_stock', label: 'Assign Inventory', icon: 'ST' },
-      { key: 'attendance', label: 'Attendance', icon: 'AT' },
-      { key: 'workers', label: 'Workers', icon: 'WK' },
-      { key: 'worker_selection', label: 'Worker Selection', icon: 'WS' },
-    ],
-    []
+    () => {
+      const base = [
+        { key: 'overview', label: 'Overview', icon: 'HK' },
+        { key: 'directory', label: 'Sections + Staff', icon: 'AR/CT' },
+        { key: 'assign_stock', label: 'Assign Inventory', icon: 'ST' },
+        { key: 'attendance', label: 'Attendance', icon: 'AT' },
+        { key: 'workers', label: 'Workers', icon: 'WK' },
+        { key: 'worker_selection', label: 'Worker Selection', icon: 'WS' },
+      ]
+      if (['admin', 'housekeeping_manager'].includes(user?.role)) {
+        base.push({ key: 'incharge_approvals', label: 'Incharge Approvals', icon: 'IA' })
+      }
+      return base
+    },
+    [user?.role]
   )
 
   const validTabs = useMemo(() => tabs.map((t) => t.key), [tabs])
@@ -67,6 +74,7 @@ export default function HousekeepingPage() {
       {active === 'attendance' && <AttendanceTab />}
       {active === 'workers' && <WorkersTab />}
       {active === 'worker_selection' && <WorkerSelectionTab />}
+      {active === 'incharge_approvals' && <InchargeApprovalsTab />}
     </AdminLayout>
   )
 }

@@ -15,6 +15,14 @@ export const hkAPI = {
     api.post('/housekeeping/worker-selection-requests/', payload),
   decideWorkerSelectionRequest: (id, payload) =>
     api.post(`/housekeeping/worker-selection-requests/${id}/decision/`, payload),
+  getInchargeAssignments: (status) =>
+    api.get('/housekeeping/incharge-assignments/', {
+      params: status ? { status } : {},
+    }),
+  decideInchargeAssignment: (id, payload) =>
+    api.post(`/housekeeping/incharge-assignments/${id}/decision/`, payload),
+  getLeaveRequests: () => api.get('/housekeeping/leave-requests/'),
+  getInchargeNotifications: () => api.get('/housekeeping/incharge-notifications/'),
   getAttendanceSummary: (date) =>
     api.get('/housekeeping/attendance-summary/', { params: { date } }),
   getDailyRecords: (areaId, date) =>

@@ -15,6 +15,9 @@ from .models import (
     HKArea,
     HKAttendanceRecord,
     HKDailyRecord,
+    HKInchargeAssignment,
+    HKInchargeNotification,
+    HKLeaveRequest,
     HKScheduleTemplate,
     HKStockRequest,
     HKUserArea,
@@ -25,6 +28,9 @@ from .serializers import (
     HKAlertSerializer,
     HKAreaSerializer,
     HKDailyRecordSerializer,
+    HKInchargeAssignmentSerializer,
+    HKInchargeNotificationSerializer,
+    HKLeaveRequestSerializer,
     HKScheduleTemplateSerializer,
     HKStockRequestSerializer,
     HKStockRequestStatusSerializer,
@@ -67,6 +73,17 @@ def _filter_workers_by_section(qs, section_filter):
         return qs
     worker_ids = [w.id for w in qs if _area_group(w.area) == section_filter]
     return HKWorker.objects.filter(id__in=worker_ids, is_active=True)
+
+
+def _push_incharge_notice(user, assignment, message, level='info'):
+    if not user:
+        return
+    HKInchargeNotification.objects.create(
+        user=user,
+        assignment=assignment,
+        message=message,
+        level=level,
+    )
 
 
 class HKAreaListView(ListAPIView):
@@ -323,6 +340,138 @@ class HKWorkerSelectionRequestDecisionView(APIView):
         payload = HKWorkerSelectionRequestSerializer(req_obj).data
         payload['moved_count'] = moved_count
         return Response(payload, status=200)
+
+
+class HKInchargeAssignmentListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        status_filter = (request.query_params.get('status') or '').strip().lower()
+        qs = (
+            HKInchargeAssignment.objects
+            .select_related(
+                'area',
+                'leave_request',
+                'leave_staff',
+                'assigned_staff',
+                'admin_action_by',
+            )
+            .order_by('-created_at')
+        )
+        if request.user.role not in ['admin', 'housekeeping_manager']:
+            qs = qs.filter(Q(leave_staff=request.user) | Q(assigned_staff=request.user))
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        serializer = HKInchargeAssignmentSerializer(qs, many=True)
+        return Response(serializer.data)
+
+
+class HKInchargeAssignmentDecisionView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def post(self, request, pk):
+        assignment = get_object_or_404(
+            HKInchargeAssignment.objects.select_related(
+                'leave_request',
+                'area',
+                'leave_staff',
+                'assigned_staff',
+            ),
+            pk=pk,
+        )
+        if assignment.status != 'pending_admin_approval':
+            return Response(
+                {'detail': 'Only pending_admin_approval assignments can be decided.'},
+                status=400,
+            )
+
+        decision = (request.data.get('decision') or '').strip().lower()
+        note = (request.data.get('decision_note') or '').strip()
+        if decision not in {'approved', 'rejected'}:
+            return Response({'detail': 'decision must be approved or rejected.'}, status=400)
+
+        with transaction.atomic():
+            now = timezone.now()
+            if decision == 'approved':
+                assignment.status = 'approved'
+                assignment.arrival_notified = False
+                assignment.leave_request.status = 'approved'
+            else:
+                assignment.status = 'admin_rejected'
+                assignment.leave_request.status = 'reassign_required'
+
+            assignment.admin_action_by = request.user
+            assignment.admin_action_at = now
+            assignment.admin_action_note = note
+            assignment.leave_request.save(update_fields=['status', 'updated_at'])
+            assignment.save(
+                update_fields=[
+                    'status',
+                    'arrival_notified',
+                    'admin_action_by',
+                    'admin_action_at',
+                    'admin_action_note',
+                    'updated_at',
+                ]
+            )
+
+            if decision == 'approved':
+                _push_incharge_notice(
+                    assignment.leave_staff,
+                    assignment,
+                    f'Admin approved {assignment.assigned_staff_name} as incharge for {assignment.leave_date}.',
+                    level='success',
+                )
+                _push_incharge_notice(
+                    assignment.assigned_staff,
+                    assignment,
+                    f'Admin approved you as incharge for {assignment.leave_date}.',
+                    level='success',
+                )
+            else:
+                _push_incharge_notice(
+                    assignment.leave_staff,
+                    assignment,
+                    f'Admin rejected incharge assignment for {assignment.leave_date}. Please select another incharge.',
+                    level='error',
+                )
+                _push_incharge_notice(
+                    assignment.assigned_staff,
+                    assignment,
+                    f'Admin rejected your temporary incharge assignment for {assignment.leave_date}.',
+                    level='warning',
+                )
+
+        return Response(HKInchargeAssignmentSerializer(assignment).data)
+
+
+class HKLeaveRequestListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = (
+            HKLeaveRequest.objects
+            .select_related('staff', 'area')
+            .order_by('-leave_date', '-created_at')
+        )
+        if request.user.role not in ['admin', 'housekeeping_manager']:
+            qs = qs.filter(staff=request.user)
+        serializer = HKLeaveRequestSerializer(qs, many=True)
+        return Response(serializer.data)
+
+
+class HKInchargeNotificationListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = (
+            HKInchargeNotification.objects
+            .filter(user=request.user)
+            .select_related('assignment')
+            .order_by('-created_at')[:40]
+        )
+        serializer = HKInchargeNotificationSerializer(qs, many=True)
+        return Response(serializer.data)
 
 
 class HKDailyRecordListView(ListAPIView):

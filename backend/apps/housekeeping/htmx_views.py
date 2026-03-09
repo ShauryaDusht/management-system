@@ -4,6 +4,7 @@ import logging
 
 from django.contrib.auth import (
     authenticate,
+    get_user_model,
     login as auth_login,
     logout as auth_logout,
     update_session_auth_hash,
@@ -22,8 +23,11 @@ from .models import (
     HKAttendanceRecord,
     HKDailyRecord,
     HKExtraWork,
+    HKInchargeAssignment,
+    HKInchargeNotification,
     HKRelieverSubstitution,
     HKScheduleTemplate,
+    HKLeaveRequest,
     HKStockRequest,
     HKSundayIncharge,
     HKTaskWorkerAssignment,
@@ -33,6 +37,7 @@ from .models import (
 )
 
 logger = logging.getLogger(__name__)
+UserModel = get_user_model()
 
 ATTENDANCE_CHOICES = [
     ("present", "Present", "#d1fae5", "#065f46"),
@@ -65,10 +70,112 @@ def area_bucket(area):
     return "others"
 
 
+def _create_incharge_notice(user, assignment, message, level="info"):
+    if not user:
+        return
+    HKInchargeNotification.objects.create(
+        user=user,
+        assignment=assignment,
+        message=message,
+        level=level,
+    )
+
+
+def _staff_candidates_for_area(target_area, exclude_user_id=None):
+    """
+    Return eligible caretaker/supervisor users for temporary incharge selection.
+    Group matching rule:
+    - Hostels -> hostel staff only
+    - Academic -> academic staff only
+    - Others -> others staff only
+    """
+    target_group = area_bucket(target_area)
+    links = (
+        HKUserArea.objects.select_related("user", "area")
+        .filter(
+            user__is_active=True,
+            user__role__in=["supervisor", "caretaker"],
+        )
+        .order_by("user__first_name", "user__username", "area__name")
+    )
+    by_user = {}
+    for link in links:
+        if exclude_user_id and link.user_id == exclude_user_id:
+            continue
+        if area_bucket(link.area) != target_group:
+            continue
+        by_user.setdefault(link.user_id, {"user": link.user, "areas": []})
+        by_user[link.user_id]["areas"].append(link.area)
+    return list(by_user.values())
+
+
+def _assign_incharge_for_leave(leave_req, assigned_staff, acted_by_user, note=""):
+    leave_staff_name = leave_req.staff.get_full_name() or leave_req.staff.username
+    assigned_staff_name = assigned_staff.get_full_name() or assigned_staff.username
+    assignment, _ = HKInchargeAssignment.objects.update_or_create(
+        leave_request=leave_req,
+        defaults={
+            "area": leave_req.area,
+            "leave_staff": leave_req.staff,
+            "leave_staff_name": leave_staff_name,
+            "leave_staff_area": area_bucket(leave_req.area),
+            "leave_date": leave_req.leave_date,
+            "assigned_staff": assigned_staff,
+            "assigned_staff_name": assigned_staff_name,
+            "status": "pending_acceptance",
+            "staff_action_at": None,
+            "staff_action_note": "",
+            "admin_action_by": None,
+            "admin_action_at": None,
+            "admin_action_note": "",
+            "arrival_notified": False,
+        },
+    )
+    leave_req.status = "pending_acceptance"
+    leave_req.save(update_fields=["status", "updated_at"])
+
+    note_line = (note or "").strip()
+    msg = (
+        f"You have been assigned as Temporary Incharge for {leave_req.area.name} "
+        f"on {leave_req.leave_date} by {leave_staff_name}."
+    )
+    if note_line:
+        msg = f"{msg} Note: {note_line}"
+    _create_incharge_notice(assigned_staff, assignment, msg, level="info")
+    _create_incharge_notice(
+        leave_req.staff,
+        assignment,
+        f"Incharge request sent to {assigned_staff_name} for {leave_req.leave_date}. Awaiting their confirmation.",
+        level="info",
+    )
+    if acted_by_user and acted_by_user.id != leave_req.staff_id:
+        _create_incharge_notice(
+            leave_req.staff,
+            assignment,
+            f"Admin submitted incharge request to {assigned_staff_name} for {leave_req.leave_date}.",
+            level="info",
+        )
+    return assignment
+
+
 def get_user_areas(user):
     if user.role in ["admin", "housekeeping_manager"]:
         return HKArea.objects.filter(is_active=True)
-    return HKArea.objects.filter(assigned_users__user=user, is_active=True)
+    assigned_area_ids = set(
+        HKArea.objects.filter(assigned_users__user=user, is_active=True).values_list("id", flat=True)
+    )
+    today = timezone.localdate()
+    temp_incharge_area_ids = set(
+        HKInchargeAssignment.objects.filter(
+            assigned_staff=user,
+            status="approved",
+            leave_date=today,
+        ).values_list("area_id", flat=True)
+    )
+    all_ids = assigned_area_ids | temp_incharge_area_ids
+    if not all_ids:
+        return HKArea.objects.none()
+    return HKArea.objects.filter(is_active=True, id__in=all_ids)
 
 
 def hk_required(fn):
@@ -438,6 +545,29 @@ def hk_dashboard(request):
         }
         ws_error = err_map.get(ws_err_code, "Unable to submit worker request.")
 
+    ic_success = ""
+    ic_error = ""
+    ic_ok_code = (request.GET.get("ic_ok") or "").strip().lower()
+    ic_err_code = (request.GET.get("ic_err") or "").strip().lower()
+    if ic_ok_code:
+        ok_map = {
+            "sent": "Incharge request submitted successfully.",
+            "accepted": "Incharge acceptance submitted. Awaiting Admin approval.",
+            "declined": "You declined the incharge request.",
+        }
+        ic_success = ok_map.get(ic_ok_code, "")
+    if ic_err_code:
+        err_map = {
+            "invalid_leave": "Leave request is invalid.",
+            "leave_locked": "Leave request is locked.",
+            "no_incharge": "Please select temporary incharge.",
+            "invalid_incharge": "Selected incharge is invalid.",
+            "invalid_assignment": "Assignment not found.",
+            "assignment_locked": "Assignment is already processed.",
+            "invalid_decision": "Invalid decision action.",
+        }
+        ic_error = err_map.get(ic_err_code, "Unable to process incharge action.")
+
     ws_decision_notice = None
     if user.role in ["supervisor", "caretaker"]:
         # Show a recent admin decision once (ephemeral UX, no repeated banner
@@ -463,6 +593,77 @@ def hk_dashboard(request):
             seen_ids.append(ws_decision_notice.id)
             # Keep session payload small.
             request.session["hk_ws_seen_decision_ids"] = seen_ids[-100:]
+
+    # Temporary Incharge workflow banners/cards
+    incharge_notice = None
+    unread_notice = (
+        HKInchargeNotification.objects.filter(user=user, is_seen=False)
+        .select_related("assignment", "assignment__area")
+        .order_by("-created_at")
+        .first()
+    )
+    if unread_notice:
+        incharge_notice = unread_notice
+        unread_notice.is_seen = True
+        unread_notice.save(update_fields=["is_seen"])
+
+    incoming_incharge_requests = list(
+        HKInchargeAssignment.objects.filter(
+            assigned_staff=user,
+            status="pending_acceptance",
+            leave_date__gte=today,
+        )
+        .select_related("area", "leave_staff")
+        .order_by("leave_date", "-created_at")[:10]
+    )
+    incoming_waiting_admin = list(
+        HKInchargeAssignment.objects.filter(
+            assigned_staff=user,
+            status="pending_admin_approval",
+            leave_date__gte=today,
+        )
+        .select_related("area", "leave_staff")
+        .order_by("leave_date", "-created_at")[:10]
+    )
+
+    incharge_today_assignments = list(
+        HKInchargeAssignment.objects.filter(
+            assigned_staff=user,
+            status="approved",
+            leave_date=today,
+        )
+        .select_related("area", "leave_staff")
+        .order_by("-created_at")
+    )
+    for item in incharge_today_assignments:
+        if not item.arrival_notified:
+            _create_incharge_notice(
+                user,
+                item,
+                f"Incharge mode active today for {item.area.name}.",
+                level="success",
+            )
+            item.arrival_notified = True
+            item.save(update_fields=["arrival_notified", "updated_at"])
+
+    my_open_leave_reqs = list(
+        HKLeaveRequest.objects.filter(
+            staff=user,
+            leave_date__gte=today,
+            status__in=["awaiting_incharge", "reassign_required"],
+        )
+        .select_related("area")
+        .order_by("leave_date", "-created_at")[:10]
+    )
+    leave_reselection_cards = []
+    for lr in my_open_leave_reqs:
+        candidates = _staff_candidates_for_area(lr.area, exclude_user_id=user.id)
+        latest_assignment = getattr(lr, "incharge_assignment", None)
+        leave_reselection_cards.append({
+            "leave_request": lr,
+            "candidates": candidates,
+            "latest_assignment": latest_assignment,
+        })
 
     return render(request, "housekeeping/mobile/dashboard.html", {
         "today": today,
@@ -495,6 +696,13 @@ def hk_dashboard(request):
         "ws_ok": ws_ok,
         "ws_error": ws_error,
         "ws_decision_notice": ws_decision_notice,
+        "ic_success": ic_success,
+        "ic_error": ic_error,
+        "incoming_incharge_requests": incoming_incharge_requests,
+        "incoming_waiting_admin": incoming_waiting_admin,
+        "incharge_today_assignments": incharge_today_assignments,
+        "leave_reselection_cards": leave_reselection_cards,
+        "incharge_notice": incharge_notice,
     })
 
 
@@ -576,6 +784,115 @@ def hk_worker_selection_submit(request):
     req_obj.save(update_fields=["note"])
 
     return redirect(f"/housekeeping/dashboard/?area={area.id}&ws_ok=1")
+
+
+@hk_required
+@require_POST
+def hk_incharge_assign(request):
+    user = request.user
+    user_areas = get_user_areas(user)
+    area = selected_area(request, user_areas)
+
+    leave_request_id = request.POST.get("leave_request_id")
+    assigned_staff_id = request.POST.get("assigned_staff_id")
+    note = (request.POST.get("note") or "").strip()
+    leave_req = (
+        HKLeaveRequest.objects.select_related("area", "staff")
+        .filter(pk=leave_request_id, staff=user)
+        .first()
+    )
+    if not leave_req:
+        area_q = f"&area={area.id}" if area else ""
+        return redirect(f"/housekeeping/dashboard/?ic_err=invalid_leave{area_q}")
+
+    if leave_req.status not in {"awaiting_incharge", "reassign_required", "pending_acceptance"}:
+        area_q = f"&area={area.id}" if area else ""
+        return redirect(f"/housekeeping/dashboard/?ic_err=leave_locked{area_q}")
+
+    candidate_ids = {row["user"].id for row in _staff_candidates_for_area(leave_req.area, exclude_user_id=user.id)}
+    if not assigned_staff_id or not str(assigned_staff_id).isdigit():
+        area_q = f"&area={area.id}" if area else ""
+        return redirect(f"/housekeeping/dashboard/?ic_err=no_incharge{area_q}")
+    assigned_staff_id = int(assigned_staff_id)
+    if assigned_staff_id not in candidate_ids:
+        area_q = f"&area={area.id}" if area else ""
+        return redirect(f"/housekeeping/dashboard/?ic_err=invalid_incharge{area_q}")
+
+    assigned_staff = get_object_or_404(UserModel, pk=assigned_staff_id, is_active=True)
+    _assign_incharge_for_leave(leave_req, assigned_staff, user, note=note)
+
+    area_q = f"&area={area.id}" if area else ""
+    return redirect(f"/housekeeping/dashboard/?ic_ok=sent{area_q}")
+
+
+@hk_required
+@require_POST
+def hk_incharge_respond(request):
+    user = request.user
+    user_areas = get_user_areas(user)
+    area = selected_area(request, user_areas)
+
+    assignment_id = request.POST.get("assignment_id")
+    decision = (request.POST.get("decision") or "").strip().lower()
+    note = (request.POST.get("note") or "").strip()
+    assignment = (
+        HKInchargeAssignment.objects.select_related("leave_request", "area", "leave_staff", "assigned_staff")
+        .filter(pk=assignment_id, assigned_staff=user)
+        .first()
+    )
+    if not assignment:
+        area_q = f"&area={area.id}" if area else ""
+        return redirect(f"/housekeeping/dashboard/?ic_err=invalid_assignment{area_q}")
+    if assignment.status != "pending_acceptance":
+        area_q = f"&area={area.id}" if area else ""
+        return redirect(f"/housekeeping/dashboard/?ic_err=assignment_locked{area_q}")
+
+    now = timezone.now()
+    if decision == "accept":
+        assignment.status = "pending_admin_approval"
+        assignment.staff_action_at = now
+        assignment.staff_action_note = note
+        assignment.save(update_fields=["status", "staff_action_at", "staff_action_note", "updated_at"])
+        assignment.leave_request.status = "pending_admin_approval"
+        assignment.leave_request.save(update_fields=["status", "updated_at"])
+        _create_incharge_notice(
+            assignment.leave_staff,
+            assignment,
+            f"{assignment.assigned_staff_name} accepted temporary incharge for {assignment.leave_date}. Awaiting Admin approval.",
+            level="success",
+        )
+        admins = UserModel.objects.filter(
+            is_active=True,
+            role__in=["admin", "housekeeping_manager"],
+        )
+        for admin_user in admins:
+            _create_incharge_notice(
+                admin_user,
+                assignment,
+                f"Incharge approval pending: {assignment.leave_staff_name} -> {assignment.assigned_staff_name} ({assignment.leave_date})",
+                level="warning",
+            )
+        area_q = f"&area={area.id}" if area else ""
+        return redirect(f"/housekeeping/dashboard/?ic_ok=accepted{area_q}")
+
+    if decision == "decline":
+        assignment.status = "declined"
+        assignment.staff_action_at = now
+        assignment.staff_action_note = note
+        assignment.save(update_fields=["status", "staff_action_at", "staff_action_note", "updated_at"])
+        assignment.leave_request.status = "reassign_required"
+        assignment.leave_request.save(update_fields=["status", "updated_at"])
+        _create_incharge_notice(
+            assignment.leave_staff,
+            assignment,
+            f"{assignment.assigned_staff_name} declined incharge for {assignment.leave_date}. Please select another incharge.",
+            level="error",
+        )
+        area_q = f"&area={area.id}" if area else ""
+        return redirect(f"/housekeeping/dashboard/?ic_ok=declined{area_q}")
+
+    area_q = f"&area={area.id}" if area else ""
+    return redirect(f"/housekeeping/dashboard/?ic_err=invalid_decision{area_q}")
 
 
 @hk_required
@@ -1122,7 +1439,15 @@ def hk_stock_request(request):
 def hk_profile(request):
     user = request.user
     user_areas = get_user_areas(user)
+    today = timezone.localdate()
     success = error = ""
+    show_incharge_selector = False
+    selector_leave_request = None
+    selector_candidates = []
+    selected_leave_date = ""
+    selected_leave_area_id = ""
+    leave_reason_value = ""
+
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "change_password":
@@ -1145,11 +1470,91 @@ def hk_profile(request):
             user.profile_photo = request.FILES["profile_photo"]
             user.save(update_fields=["profile_photo"])
             success = "Photo updated."
+        elif action == "submit_leave":
+            area_id = request.POST.get("leave_area_id")
+            leave_date_str = (request.POST.get("leave_date") or "").strip()
+            leave_reason_value = (request.POST.get("leave_reason") or "").strip()
+            selected_leave_date = leave_date_str
+            selected_leave_area_id = area_id or ""
+
+            area = user_areas.filter(pk=area_id).first() if area_id else selected_area(request, user_areas)
+            if not area:
+                error = "Please select a valid area."
+            else:
+                try:
+                    leave_date = datetime.datetime.strptime(leave_date_str, "%Y-%m-%d").date()
+                except (TypeError, ValueError):
+                    leave_date = None
+
+                if not leave_date:
+                    error = "Please select a valid leave date."
+                elif leave_date < today:
+                    error = "Leave date cannot be in the past."
+                else:
+                    leave_req, _ = HKLeaveRequest.objects.get_or_create(
+                        staff=user,
+                        leave_date=leave_date,
+                        defaults={
+                            "area": area,
+                            "reason": leave_reason_value,
+                            "status": "awaiting_incharge",
+                        },
+                    )
+                    if leave_req.area_id != area.id:
+                        leave_req.area = area
+                    leave_req.reason = leave_reason_value
+                    # Reset flow when creating/re-submitting from profile.
+                    if leave_req.status in {"approved", "pending_admin_approval", "pending_acceptance"}:
+                        leave_req.status = "awaiting_incharge"
+                    leave_req.save(update_fields=["area", "reason", "status", "updated_at"])
+                    show_incharge_selector = True
+                    selector_leave_request = leave_req
+                    selector_candidates = _staff_candidates_for_area(area, exclude_user_id=user.id)
+                    if not selector_candidates:
+                        error = "No eligible staff found for temporary incharge in this area group."
+                    else:
+                        success = "Leave request submitted. Select temporary incharge."
+        elif action == "assign_temp_incharge":
+            leave_req_id = request.POST.get("leave_request_id")
+            assigned_staff_id = request.POST.get("assigned_staff_id")
+            note = (request.POST.get("incharge_note") or "").strip()
+            leave_req = (
+                HKLeaveRequest.objects.select_related("area", "staff")
+                .filter(pk=leave_req_id, staff=user)
+                .first()
+            )
+            if not leave_req:
+                error = "Leave request not found."
+            else:
+                candidate_ids = {row["user"].id for row in _staff_candidates_for_area(leave_req.area, exclude_user_id=user.id)}
+                if not assigned_staff_id or not str(assigned_staff_id).isdigit():
+                    error = "Please select temporary incharge."
+                elif int(assigned_staff_id) not in candidate_ids:
+                    error = "Selected incharge is not valid for this area group."
+                else:
+                    assigned_staff = get_object_or_404(UserModel, pk=int(assigned_staff_id), is_active=True)
+                    _assign_incharge_for_leave(leave_req, assigned_staff, user, note=note)
+                    return redirect(f"/housekeeping/dashboard/?area={leave_req.area_id}&ic_ok=sent")
+
+    recent_leaves = list(
+        HKLeaveRequest.objects.filter(staff=user, leave_date__gte=today - datetime.timedelta(days=7))
+        .select_related("area")
+        .order_by("-leave_date", "-created_at")[:20]
+    )
     return render(request, "housekeeping/mobile/profile.html", {
         "user": user,
         "user_areas": user_areas,
         "success": success,
         "error": error,
+        "is_saturday": timezone.localdate().weekday() == 5,
+        "today": today,
+        "recent_leaves": recent_leaves,
+        "show_incharge_selector": show_incharge_selector,
+        "selector_leave_request": selector_leave_request,
+        "selector_candidates": selector_candidates,
+        "selected_leave_date": selected_leave_date,
+        "selected_leave_area_id": selected_leave_area_id,
+        "leave_reason_value": leave_reason_value,
     })
 
 

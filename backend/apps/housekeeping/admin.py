@@ -4,6 +4,7 @@ from .models import (
     HKExtraWork, HKAttendanceRecord, HKSundayIncharge,
     HKAreaStock, HKStockRequest, HKAlert, HKRelieverSubstitution,
     HKTaskWorkerAssignment, HKWorkerSelectionRequest,
+    HKLeaveRequest, HKInchargeAssignment, HKInchargeNotification,
 )
 
 
@@ -123,4 +124,43 @@ class HKWorkerSelectionRequestAdmin(admin.ModelAdmin):
         'approved_by__username', 'workers__name',
     )
     filter_horizontal = ('workers',)
+    date_hierarchy = 'created_at'
+
+
+@admin.register(HKLeaveRequest)
+class HKLeaveRequestAdmin(admin.ModelAdmin):
+    list_display = ('leave_date', 'staff', 'area', 'status', 'created_at')
+    list_filter = ('status', 'area', 'leave_date')
+    search_fields = ('staff__username', 'staff__first_name', 'area__name', 'reason')
+    date_hierarchy = 'leave_date'
+
+
+@admin.register(HKInchargeAssignment)
+class HKInchargeAssignmentAdmin(admin.ModelAdmin):
+    list_display = (
+        'leave_date',
+        'area',
+        'leave_staff',
+        'assigned_staff',
+        'status',
+        'admin_action_by',
+        'admin_action_at',
+    )
+    list_filter = ('status', 'leave_staff_area', 'area', 'leave_date')
+    search_fields = (
+        'leave_staff__username',
+        'assigned_staff__username',
+        'leave_staff_name',
+        'assigned_staff_name',
+        'area__name',
+    )
+    readonly_fields = ('created_at', 'updated_at')
+    date_hierarchy = 'leave_date'
+
+
+@admin.register(HKInchargeNotification)
+class HKInchargeNotificationAdmin(admin.ModelAdmin):
+    list_display = ('created_at', 'user', 'assignment', 'level', 'is_seen')
+    list_filter = ('level', 'is_seen')
+    search_fields = ('user__username', 'message')
     date_hierarchy = 'created_at'
