@@ -29,6 +29,7 @@ from .models import (
     HKTaskWorkerAssignment,
     HKUserArea,
     HKWorker,
+    HKWorkerSelectionRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,21 @@ WORKER_TAG_LABELS = {
     "all": ("all", "All Staff"),
     "general": ("general", "General"),
 }
+
+
+def area_bucket(area):
+    if not area:
+        return "others"
+    n = (area.name or "").strip()
+    if n.lower() in {"hostel common area", "common area", "hostels reliever"}:
+        return "hostels"
+    if n in {"Academic Common Area", "New AB U-Shape", "New Academy"}:
+        return "academic"
+    if n.startswith("Academic Block "):
+        return "academic"
+    if area.area_type == "hostel":
+        return "hostels"
+    return "others"
 
 
 def get_user_areas(user):
@@ -148,6 +164,28 @@ def get_today_records(area, date):
 def current_half():
     h = timezone.localtime(timezone.now()).hour
     return "first" if h < 13 else "second"
+
+
+def worker_options_for_selection_request(req_obj, current_area):
+    """
+    Build eligible worker options for a pending worker-selection request.
+    This powers the mobile staff selection UI.
+    """
+    options_qs = HKWorker.objects.filter(is_active=True).select_related("area").order_by("name")
+
+    if req_obj.source_area_id:
+        options_qs = options_qs.filter(area_id=req_obj.source_area_id)
+    elif current_area and req_obj.target_area_id == current_area.id:
+        # Add-to-area request: pick from outside the current area.
+        options_qs = options_qs.exclude(area_id=current_area.id)
+    elif current_area and req_obj.source_area_id == current_area.id:
+        # Move-out request from current area.
+        options_qs = options_qs.filter(area_id=current_area.id)
+
+    options = list(options_qs)
+    if req_obj.section_filter in {"hostels", "academic", "others"}:
+        options = [w for w in options if area_bucket(w.area) == req_obj.section_filter]
+    return options
 
 
 def get_active_alerts(user, user_areas):
@@ -331,6 +369,101 @@ def hk_dashboard(request):
 
     extra_works = HKExtraWork.objects.filter(area=sel_area, date=today).order_by("-logged_at") if sel_area else []
 
+    worker_selection_cards = []
+    if user.role in ["supervisor", "caretaker"]:
+        user_area_list = list(user_areas)
+        user_area_ids = {a.id for a in user_area_list}
+        if user_area_ids:
+            area_by_id = {a.id: a for a in user_area_list}
+            worker_selection_requests = list(
+                HKWorkerSelectionRequest.objects.filter(
+                    status="pending",
+                ).select_related(
+                    "source_area", "target_area", "requested_by",
+                ).prefetch_related("workers").order_by("-created_at")[:40]
+            )
+
+            for req in worker_selection_requests:
+                # Mobile should show only fresh admin requests where staff must select workers.
+                if req.workers.exists():
+                    continue
+
+                candidate_areas = []
+                if req.target_area_id and req.target_area_id in user_area_ids:
+                    candidate_areas.append(area_by_id[req.target_area_id])
+                if req.source_area_id and req.source_area_id in user_area_ids:
+                    candidate_areas.append(area_by_id[req.source_area_id])
+
+                req_group = (req.target_group or "all").strip().lower()
+                if req_group == "all":
+                    candidate_areas.extend(user_area_list)
+                elif req_group in {"hostels", "academic", "others"}:
+                    candidate_areas.extend([a for a in user_area_list if area_bucket(a) == req_group])
+
+                # Deduplicate by area id
+                dedup = {}
+                for a in candidate_areas:
+                    dedup[a.id] = a
+                candidate_areas = list(dedup.values())
+                if not candidate_areas:
+                    continue
+
+                staff_area = None
+                if sel_area and any(a.id == sel_area.id for a in candidate_areas):
+                    staff_area = sel_area
+                else:
+                    staff_area = candidate_areas[0]
+
+                options = worker_options_for_selection_request(req, staff_area)
+                worker_selection_cards.append({
+                    "request": req,
+                    "selected_workers": [],
+                    "options": options,
+                    "staff_area": staff_area,
+                })
+
+    ws_ok = request.GET.get("ws_ok") == "1"
+    ws_error = ""
+    ws_err_code = (request.GET.get("ws_err") or "").strip().lower()
+    if ws_err_code:
+        err_map = {
+            "no_area": "Please select a valid area.",
+            "bad_type": "Invalid worker request type.",
+            "no_workers": "Please select at least one worker.",
+            "invalid_destination": "Please select a valid destination area for remove request.",
+            "same_destination": "Destination area must be different.",
+            "admin_only": "Only admin can create worker selection requests.",
+            "invalid_request": "Worker selection request is invalid for this area.",
+            "request_locked": "Workers already submitted for this request.",
+        }
+        ws_error = err_map.get(ws_err_code, "Unable to submit worker request.")
+
+    ws_decision_notice = None
+    if user.role in ["supervisor", "caretaker"]:
+        # Show a recent admin decision once (ephemeral UX, no repeated banner
+        # on every auto-refresh/reload).
+        since = timezone.now() - datetime.timedelta(minutes=30)
+        seen_ids = request.session.get("hk_ws_seen_decision_ids", [])
+        if not isinstance(seen_ids, list):
+            seen_ids = []
+        seen_ids = [int(x) for x in seen_ids if str(x).isdigit()]
+
+        staff_decisions = (
+            HKWorkerSelectionRequest.objects.filter(
+                status__in=["approved", "rejected"],
+                decided_at__gte=since,
+                note__icontains=user.username,
+            )
+            .exclude(id__in=seen_ids)
+            .select_related("target_area", "approved_by")
+            .order_by("-decided_at")
+        )
+        ws_decision_notice = staff_decisions.first()
+        if ws_decision_notice:
+            seen_ids.append(ws_decision_notice.id)
+            # Keep session payload small.
+            request.session["hk_ws_seen_decision_ids"] = seen_ids[-100:]
+
     return render(request, "housekeeping/mobile/dashboard.html", {
         "today": today,
         "today_dow": today_dow,
@@ -357,7 +490,92 @@ def hk_dashboard(request):
         # It can be empty by default and then receive admin-assigned area tasks.
         "has_special_tasks": bool(sel_area),
         "can_assign_tasks": user.role in ["admin", "housekeeping_manager", "supervisor", "caretaker"],
+        "worker_selection_cards": worker_selection_cards,
+        "show_ws_overlay": bool(worker_selection_cards) and user.role in ["supervisor", "caretaker"],
+        "ws_ok": ws_ok,
+        "ws_error": ws_error,
+        "ws_decision_notice": ws_decision_notice,
     })
+
+
+@hk_required
+@require_POST
+def hk_worker_selection_request(request):
+    """
+    Deprecated mobile-create endpoint.
+    Worker selection request creation is now admin-only (admin dashboard).
+    """
+    user_areas = get_user_areas(request.user)
+    area = selected_area(request, user_areas)
+    if not area:
+        return redirect("/housekeeping/dashboard/?ws_err=no_area")
+    return redirect(f"/housekeeping/dashboard/?area={area.id}&ws_err=admin_only")
+
+
+@hk_required
+@require_POST
+def hk_worker_selection_submit(request):
+    """
+    Area staff flow:
+    - admin creates request in admin dashboard
+    - caretaker/supervisor selects workers on mobile and submits
+    - admin approves/rejects from admin dashboard
+    """
+    user = request.user
+    user_areas = get_user_areas(user)
+    area = selected_area(request, user_areas)
+    if not area:
+        return redirect("/housekeeping/dashboard/?ws_err=no_area")
+
+    req_id = request.POST.get("request_id")
+    req_obj = (
+        HKWorkerSelectionRequest.objects
+        .filter(pk=req_id, status="pending")
+        .select_related("source_area", "target_area", "requested_by")
+        .prefetch_related("workers")
+        .first()
+    )
+    if not req_obj:
+        return redirect(f"/housekeeping/dashboard/?area={area.id}&ws_err=invalid_request")
+
+    req_group = (req_obj.target_group or "all").strip().lower()
+    group_allowed = req_group == "all" or req_group == area_bucket(area)
+    area_allowed = req_obj.target_area_id == area.id or req_obj.source_area_id == area.id or group_allowed
+    if not area_allowed:
+        return redirect(f"/housekeeping/dashboard/?area={area.id}&ws_err=invalid_request")
+
+    # Once workers are submitted, lock re-submit to prevent accidental overwrite.
+    if req_obj.workers.exists():
+        return redirect(f"/housekeeping/dashboard/?area={area.id}&ws_err=request_locked")
+
+    # If admin created group-level request without explicit target area,
+    # lock destination to submitting staff area.
+    if not req_obj.target_area_id:
+        req_obj.target_area = area
+        req_obj.save(update_fields=["target_area"])
+
+    selected_ids = {int(wid) for wid in request.POST.getlist("worker_ids") if str(wid).isdigit()}
+    if not selected_ids:
+        return redirect(f"/housekeeping/dashboard/?area={area.id}&ws_err=no_workers")
+
+    eligible_workers = worker_options_for_selection_request(req_obj, area)
+    eligible_ids = {w.id for w in eligible_workers}
+    final_ids = sorted(selected_ids & eligible_ids)
+    if not final_ids:
+        return redirect(f"/housekeeping/dashboard/?area={area.id}&ws_err=no_workers")
+
+    req_obj.workers.set(final_ids)
+
+    staff_note = (request.POST.get("note") or "").strip()
+    staff_name = user.get_full_name() or user.username
+    staff_line = f"[Staff Selection by {staff_name} ({user.username})]"
+    if staff_note:
+        staff_line = f"{staff_line} {staff_note}"
+    base_note = (req_obj.note or "").strip()
+    req_obj.note = f"{base_note}\n{staff_line}".strip() if base_note else staff_line
+    req_obj.save(update_fields=["note"])
+
+    return redirect(f"/housekeeping/dashboard/?area={area.id}&ws_ok=1")
 
 
 @hk_required

@@ -9,6 +9,7 @@ import AssignInventoryTab from './AssignInventoryTab'
 import OverviewTab from './OverviewTab'
 import SectionsTab from './SectionsTab'
 import WorkersTab from './WorkersTab'
+import WorkerSelectionTab from './WorkerSelectionTab'
 
 export default function HousekeepingPage() {
   const { user } = useAuth()
@@ -18,9 +19,10 @@ export default function HousekeepingPage() {
     () => [
       { key: 'overview', label: 'Overview', icon: 'HK' },
       { key: 'directory', label: 'Sections + Staff', icon: 'AR/CT' },
-      { key: 'workers', label: 'Workers', icon: 'WK' },
-      { key: 'attendance', label: 'Attendance', icon: 'AT' },
       { key: 'assign_stock', label: 'Assign Inventory', icon: 'ST' },
+      { key: 'attendance', label: 'Attendance', icon: 'AT' },
+      { key: 'workers', label: 'Workers', icon: 'WK' },
+      { key: 'worker_selection', label: 'Worker Selection', icon: 'WS' },
     ],
     []
   )
@@ -28,6 +30,7 @@ export default function HousekeepingPage() {
   const validTabs = useMemo(() => tabs.map((t) => t.key), [tabs])
   const mapLegacyTab = (tab) => {
     if (tab === 'sections' || tab === 'caretakers') return 'directory'
+    if (tab === 'worker-selection') return 'worker_selection'
     return tab
   }
   const initialTab = mapLegacyTab(searchParams.get('tab'))
@@ -60,9 +63,10 @@ export default function HousekeepingPage() {
 
       {active === 'overview' && <OverviewTab />}
       {active === 'directory' && <SectionsTab />}
-      {active === 'workers' && <WorkersTab />}
-      {active === 'attendance' && <AttendanceTab />}
       {active === 'assign_stock' && <AssignInventoryTab userRole={user?.role} />}
+      {active === 'attendance' && <AttendanceTab />}
+      {active === 'workers' && <WorkersTab />}
+      {active === 'worker_selection' && <WorkerSelectionTab />}
     </AdminLayout>
   )
 }

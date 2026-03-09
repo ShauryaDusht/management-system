@@ -388,3 +388,84 @@ class HKRelieverSubstitution(models.Model):
 
     def __str__(self):
         return f"{self.date} | {self.original_worker.name} -> {self.reliever.name}"
+
+
+class HKWorkerSelectionRequest(models.Model):
+    """
+    Admin workflow for moving workers across areas with explicit approval.
+    A request can include one worker or many workers.
+    """
+    SELECTION_TYPE_CHOICES = [
+        ('all', 'All Workers'),
+        ('section', 'Section Workers'),
+        ('specific', 'Specific Workers'),
+    ]
+    SECTION_FILTER_CHOICES = [
+        ('all', 'All'),
+        ('hostels', 'Hostels'),
+        ('academic', 'Academic Blocks'),
+        ('others', 'Others'),
+    ]
+    TARGET_GROUP_CHOICES = [
+        ('all', 'All'),
+        ('hostels', 'Hostels'),
+        ('academic', 'Academic Blocks'),
+        ('others', 'Others'),
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    selection_type = models.CharField(max_length=20, choices=SELECTION_TYPE_CHOICES, default='specific')
+    section_filter = models.CharField(max_length=20, choices=SECTION_FILTER_CHOICES, default='all')
+    target_group = models.CharField(max_length=20, choices=TARGET_GROUP_CHOICES, default='all')
+    source_area = models.ForeignKey(
+        HKArea,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='worker_selection_source_requests',
+    )
+    target_area = models.ForeignKey(
+        HKArea,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='worker_selection_target_requests',
+    )
+    target_supervisor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='hk_worker_selection_target_requests',
+        limit_choices_to={'role__in': ['supervisor', 'caretaker']},
+    )
+    workers = models.ManyToManyField(HKWorker, related_name='selection_requests')
+    note = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='hk_worker_selection_requests_created',
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='hk_worker_selection_requests_decided',
+    )
+    decision_note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        target = self.target_area.name if self.target_area else self.get_target_group_display()
+        return f"Worker selection #{self.pk} -> {target} ({self.status})"

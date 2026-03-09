@@ -277,44 +277,14 @@ export default function WorkersTab() {
         >
           <div style={{ fontWeight: 700 }}>Workers</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <Btn
-              size="sm"
-              variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'}
-              onClick={() => setAreaClassFilter('hostels')}
-            >
-              Hostels
-            </Btn>
-            <Btn
-              size="sm"
-              variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'}
-              onClick={() => setAreaClassFilter('academic')}
-            >
-              Academic Blocks
-            </Btn>
-            <Btn
-              size="sm"
-              variant={areaClassFilter === 'others' ? 'primary' : 'secondary'}
-              onClick={() => setAreaClassFilter('others')}
-            >
-              Others
-            </Btn>
-            <Btn
-              size="sm"
-              variant={areaClassFilter === 'all' ? 'primary' : 'secondary'}
-              onClick={() => setAreaClassFilter('all')}
-            >
-              All
-            </Btn>
-            <SelectField
-              value={selectedArea}
-              onChange={(e) => setSelectedArea(e.target.value)}
-              style={{ width: 220 }}
-            >
+            <Btn size="sm" variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('hostels')}>Hostels</Btn>
+            <Btn size="sm" variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('academic')}>Academic Blocks</Btn>
+            <Btn size="sm" variant={areaClassFilter === 'others' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('others')}>Others</Btn>
+            <Btn size="sm" variant={areaClassFilter === 'all' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('all')}>All</Btn>
+            <SelectField value={selectedArea} onChange={(e) => setSelectedArea(e.target.value)} style={{ width: 220 }}>
               <option value="">All filtered areas</option>
               {filteredAreaOptions.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
+                <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </SelectField>
             <Btn size="sm" onClick={openCreate}>+ Add Worker</Btn>
@@ -331,36 +301,13 @@ export default function WorkersTab() {
             rows={visibleWorkers.map((w) => [
               w.area_name || '-',
               w.name,
-              <span key={`t-${w.id}`} style={{ textTransform: 'capitalize' }}>
-                {String(w.worker_type || '').replace(/_/g, ' ')}
-              </span>,
-              <span key={`sh-${w.id}`} style={{ textTransform: 'capitalize' }}>
-                {w.shift || '-'}
-              </span>,
+              <span key={`t-${w.id}`} style={{ textTransform: 'capitalize' }}>{String(w.worker_type || '').replace(/_/g, ' ')}</span>,
+              <span key={`sh-${w.id}`} style={{ textTransform: 'capitalize' }}>{w.shift || '-'}</span>,
               w.supervisor_name || '-',
               w.phone || '-',
               w.punching_no || '-',
-              w.is_reliever ? (
-                <span
-                  key={`r-${w.id}`}
-                  style={{
-                    display: 'inline-block',
-                    background: '#fff7ed',
-                    color: '#c2410c',
-                    padding: '3px 9px',
-                    borderRadius: 99,
-                    fontSize: 11,
-                    fontWeight: 700,
-                  }}
-                >
-                  Reliever
-                </span>
-              ) : (
-                '-'
-              ),
-              <Btn key={`a-${w.id}`} size="sm" variant="ghost" onClick={() => openEdit(w)}>
-                Edit
-              </Btn>,
+              w.is_reliever ? <span key={`r-${w.id}`} style={{ display: 'inline-block', background: '#fff7ed', color: '#c2410c', padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700 }}>Reliever</span> : '-',
+              <Btn key={`a-${w.id}`} size="sm" variant="ghost" onClick={() => openEdit(w)}>Edit</Btn>,
             ])}
             emptyMsg="No workers found for selected segment/filter."
           />
@@ -375,85 +322,41 @@ export default function WorkersTab() {
         footer={
           <>
             {modal?.mode === 'edit' && (
-              <Btn
-                variant="danger"
-                onClick={() => setDeleteTarget(modal.worker)}
-                disabled={saving}
-                style={{ marginRight: 'auto' }}
-              >
+              <Btn variant="danger" onClick={() => setDeleteTarget(modal.worker)} disabled={saving} style={{ marginRight: 'auto' }}>
                 Delete Worker
               </Btn>
             )}
-            <Btn variant="ghost" onClick={() => setModal(null)} disabled={saving}>
-              Cancel
-            </Btn>
-            <Btn onClick={onSave} disabled={saving}>
-              {saving ? 'Saving...' : modal?.mode === 'create' ? 'Add Worker' : 'Save Changes'}
-            </Btn>
+            <Btn variant="ghost" onClick={() => setModal(null)} disabled={saving}>Cancel</Btn>
+            <Btn onClick={onSave} disabled={saving}>{saving ? 'Saving...' : modal?.mode === 'create' ? 'Add Worker' : 'Save Changes'}</Btn>
           </>
         }
       >
         <Alert message={formError} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Field label="First Name" required>
-            <Input
-              value={form.first_name}
-              onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))}
-            />
-          </Field>
-          <Field label="Last Name">
-            <Input
-              value={form.last_name}
-              onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))}
-            />
-          </Field>
-          <Field label="Phone">
-            <Input
-              value={form.phone}
-              onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-            />
-          </Field>
-          <Field label="Punching No.">
-            <Input
-              value={form.punching_no}
-              onChange={(e) => setForm((p) => ({ ...p, punching_no: e.target.value }))}
-            />
-          </Field>
+          <Field label="First Name" required><Input value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} /></Field>
+          <Field label="Last Name"><Input value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} /></Field>
+          <Field label="Phone"><Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} /></Field>
+          <Field label="Punching No."><Input value={form.punching_no} onChange={(e) => setForm((p) => ({ ...p, punching_no: e.target.value }))} /></Field>
           <Field label="Area / Section" required>
-            <SelectField
-              value={form.area}
-              onChange={(e) => setForm((p) => ({ ...p, area: e.target.value }))}
-            >
+            <SelectField value={form.area} onChange={(e) => setForm((p) => ({ ...p, area: e.target.value }))}>
               <option value="">Select area</option>
               {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
+                <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </SelectField>
           </Field>
           <Field label="Supervisor / Caretaker">
-            <SelectField
-              value={form.supervisor}
-              onChange={(e) => setForm((p) => ({ ...p, supervisor: e.target.value }))}
-            >
+            <SelectField value={form.supervisor} onChange={(e) => setForm((p) => ({ ...p, supervisor: e.target.value }))}>
               <option value="">Not assigned</option>
               {supervisors.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {fullName(u)} ({u.username})
-                </option>
+                <option key={u.id} value={u.id}>{fullName(u)} ({u.username})</option>
               ))}
             </SelectField>
           </Field>
           <Field label="Shift">
-            <SelectField
-              value={form.shift}
-              onChange={(e) => setForm((p) => ({ ...p, shift: e.target.value }))}
-            >
+            <SelectField value={form.shift} onChange={(e) => setForm((p) => ({ ...p, shift: e.target.value }))}>
               {SHIFT_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
+                <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </SelectField>
           </Field>
@@ -480,9 +383,7 @@ export default function WorkersTab() {
               style={form.is_reliever ? { background: '#f3f4f6' } : {}}
             >
               {WORKER_TYPE_OPTIONS.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
+                <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </SelectField>
           </Field>
@@ -495,12 +396,8 @@ export default function WorkersTab() {
         title="Delete Worker"
         footer={
           <>
-            <Btn variant="ghost" onClick={() => setDeleteTarget(null)} disabled={saving}>
-              Cancel
-            </Btn>
-            <Btn variant="danger" onClick={confirmDelete} disabled={saving}>
-              {saving ? 'Deleting...' : 'Delete'}
-            </Btn>
+            <Btn variant="ghost" onClick={() => setDeleteTarget(null)} disabled={saving}>Cancel</Btn>
+            <Btn variant="danger" onClick={confirmDelete} disabled={saving}>{saving ? 'Deleting...' : 'Delete'}</Btn>
           </>
         }
       >

@@ -6,6 +6,7 @@ from .models import (
     HKDailyRecord,
     HKScheduleTemplate,
     HKStockRequest,
+    HKWorkerSelectionRequest,
     HKWorker,
 )
 
@@ -157,3 +158,60 @@ class HKAlertSerializer(serializers.ModelSerializer):
     class Meta:
         model = HKAlert
         fields = ['id', 'title', 'message', 'priority', 'is_active', 'created_at', 'expires_at']
+
+
+class HKWorkerSelectionRequestSerializer(serializers.ModelSerializer):
+    source_area_name = serializers.CharField(source='source_area.name', read_only=True, default='')
+    target_area_name = serializers.CharField(source='target_area.name', read_only=True, default='')
+    target_supervisor_name = serializers.SerializerMethodField()
+    requested_by_name = serializers.SerializerMethodField()
+    approved_by_name = serializers.SerializerMethodField()
+    worker_count = serializers.SerializerMethodField()
+    workers_preview = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HKWorkerSelectionRequest
+        fields = [
+            'id',
+            'selection_type',
+            'section_filter',
+            'target_group',
+            'source_area',
+            'source_area_name',
+            'target_area',
+            'target_area_name',
+            'target_supervisor',
+            'target_supervisor_name',
+            'note',
+            'status',
+            'requested_by',
+            'requested_by_name',
+            'approved_by',
+            'approved_by_name',
+            'decision_note',
+            'worker_count',
+            'workers_preview',
+            'created_at',
+            'decided_at',
+        ]
+
+    def get_target_supervisor_name(self, obj):
+        if obj.target_supervisor:
+            return obj.target_supervisor.get_full_name() or obj.target_supervisor.username
+        return ''
+
+    def get_requested_by_name(self, obj):
+        if obj.requested_by:
+            return obj.requested_by.get_full_name() or obj.requested_by.username
+        return ''
+
+    def get_approved_by_name(self, obj):
+        if obj.approved_by:
+            return obj.approved_by.get_full_name() or obj.approved_by.username
+        return ''
+
+    def get_worker_count(self, obj):
+        return obj.workers.count()
+
+    def get_workers_preview(self, obj):
+        return list(obj.workers.values_list('name', flat=True)[:6])

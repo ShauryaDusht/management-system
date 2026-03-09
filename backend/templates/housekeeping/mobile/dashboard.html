@@ -70,6 +70,91 @@
 {% endif %}
 
 {% if selected_area %}
+{% if ws_ok %}
+<div class="hk-flash" style="position:fixed;top:74px;left:50%;transform:translateX(-50%);z-index:10030;background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:10px 12px;color:#065f46;font-weight:700;max-width:92vw">
+  Worker selection submitted successfully. Waiting for admin approval.
+</div>
+{% endif %}
+{% if ws_error %}
+<div class="hk-flash" style="position:fixed;top:74px;left:50%;transform:translateX(-50%);z-index:10030;background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:10px 12px;color:#991b1b;font-weight:700;max-width:92vw">
+  {{ ws_error }}
+</div>
+{% endif %}
+{% if ws_decision_notice %}
+<div class="hk-flash" style="position:fixed;top:74px;left:50%;transform:translateX(-50%);z-index:10030;max-width:92vw;
+  background:{% if ws_decision_notice.status == 'approved' %}#dcfce7{% else %}#fee2e2{% endif %};
+  border:1px solid {% if ws_decision_notice.status == 'approved' %}#86efac{% else %}#fca5a5{% endif %};
+  border-radius:10px;padding:10px 12px;color:{% if ws_decision_notice.status == 'approved' %}#166534{% else %}#991b1b{% endif %};font-weight:700">
+  {% if ws_decision_notice.status == 'approved' %}
+    Worker selection approved by admin. Mapping updated{% if ws_decision_notice.target_area %} for {{ ws_decision_notice.target_area.name }}{% endif %}.
+  {% else %}
+    Worker selection request was rejected by admin.
+  {% endif %}
+  {% if ws_decision_notice.decision_note %}
+  <div style="font-size:11px;font-weight:600;margin-top:4px;opacity:.9">
+    Note: {{ ws_decision_notice.decision_note }}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if show_ws_overlay %}
+<div style="position:fixed;inset:0;z-index:10020;background:rgba(15,23,42,.42);display:flex;align-items:flex-start;justify-content:center;padding:14px;overflow:auto">
+  <div style="width:min(560px,100%);background:#fff;border-radius:14px;padding:12px;box-shadow:0 20px 50px rgba(0,0,0,.35)">
+    <div style="font-size:17px;font-weight:800;color:#1f2937">Worker Selection Required</div>
+    <div style="font-size:12px;color:#6b7280;margin-top:3px;margin-bottom:10px">
+      Admin has requested worker selection. Please submit this first to continue normal dashboard work.
+    </div>
+    {% for item in worker_selection_cards %}
+    <div style="border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-bottom:10px;background:#f9fafb">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="font-size:12px;font-weight:700;color:#111827">
+          {% if item.request.source_area %}{{ item.request.source_area.name }} to {% endif %}{{ item.request.target_area.name }}
+        </div>
+        <span class="bdg y">PENDING</span>
+      </div>
+      <div style="font-size:11px;color:#6b7280;margin-top:3px">
+        Created by {{ item.request.requested_by.get_full_name|default:item.request.requested_by.username }} | {{ item.request.created_at|date:"d M g:i A" }}
+      </div>
+      {% if item.staff_area %}
+      <div style="font-size:11px;color:#6b7280;margin-top:2px">
+        Area: {{ item.staff_area.name }}
+      </div>
+      {% endif %}
+
+      <form method="post" action="/housekeeping/worker-selection/submit/" style="margin-top:8px">
+        {% csrf_token %}
+        <input type="hidden" name="area" value="{{ item.staff_area.id }}">
+        <input type="hidden" name="request_id" value="{{ item.request.id }}">
+
+        <div style="max-height:210px;overflow:auto;border:1px solid #e5e7eb;border-radius:8px;padding:8px;background:#fff">
+          {% for w in item.options %}
+          <label style="display:flex;align-items:center;gap:8px;padding:7px 6px;border-bottom:1px solid #f3f4f6;font-size:13px">
+            <input type="checkbox" name="worker_ids" value="{{ w.id }}" style="width:16px;height:16px">
+            <span style="font-weight:700">{{ w.name }}</span>
+            {% if w.area %}<span style="color:#6b7280;font-size:11px">({{ w.area.name }})</span>{% endif %}
+          </label>
+          {% empty %}
+          <div style="font-size:12px;color:#9ca3af">No workers available for this request.</div>
+          {% endfor %}
+        </div>
+
+        <div class="fg" style="margin-top:8px">
+          <label>Reason (optional)</label>
+          <input type="text" name="note" placeholder="Reason for selected workers...">
+        </div>
+        <button type="submit" class="btn-s">Submit Selection to Admin</button>
+      </form>
+      {% if item.request.note %}
+      <div style="font-size:11px;color:#4b5563;margin-top:6px">Note: {{ item.request.note }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endif %}
+{% if selected_area %}
 {% if records %}
 <div style="display:grid;grid-template-columns:repeat({% if has_special_tasks %}5{% else %}4{% endif %},1fr);gap:6px;margin-bottom:12px" id="tab-buttons">
   <button onclick="showTab('floor')" id="btn-floor" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#2d4a3e;color:#fff;transition:opacity .2s">
@@ -207,6 +292,20 @@ function shouldSkipAutoRefresh() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  // Auto-hide flash messages after a short duration.
+  var flashes = document.querySelectorAll('.hk-flash');
+  if (flashes.length) {
+    setTimeout(function() {
+      flashes.forEach(function(el) { el.style.display = 'none'; });
+      try {
+        var u = new URL(window.location.href);
+        u.searchParams.delete('ws_ok');
+        u.searchParams.delete('ws_err');
+        window.history.replaceState({}, '', u.toString());
+      } catch (e) {}
+    }, 5500);
+  }
+
   var saved = null;
   try { saved = sessionStorage.getItem('hk_active_tab'); } catch (e) {}
   var initial = (saved && TABS.indexOf(saved) !== -1) ? saved : 'floor';

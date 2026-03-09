@@ -8,6 +8,16 @@ api_urlpatterns = [
     path('workers/', api_views.HKWorkerListView.as_view(), name='hk-api-workers'),
     path('workers/create/', api_views.HKWorkerCreateView.as_view(), name='hk-api-workers-create'),
     path('workers/<int:pk>/', api_views.HKWorkerDetailView.as_view(), name='hk-api-workers-detail'),
+    path(
+        'worker-selection-requests/',
+        api_views.HKWorkerSelectionRequestListCreateView.as_view(),
+        name='hk-api-worker-selection-requests',
+    ),
+    path(
+        'worker-selection-requests/<int:pk>/decision/',
+        api_views.HKWorkerSelectionRequestDecisionView.as_view(),
+        name='hk-api-worker-selection-requests-decision',
+    ),
     path('daily-records/', api_views.HKDailyRecordListView.as_view(), name='hk-api-records'),
     path('schedule-templates/', api_views.HKScheduleTemplateListView.as_view(), name='hk-api-templates'),
     path('attendance-summary/', api_views.HKAttendanceSummaryView.as_view(), name='hk-api-attendance'),

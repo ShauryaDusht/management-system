@@ -1,5 +1,7 @@
 from datetime import timedelta
+import re
 
+from django.db import transaction
 from django.db.models import Count, Max, Q
 from django.utils import timezone
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView
@@ -15,7 +17,9 @@ from .models import (
     HKDailyRecord,
     HKScheduleTemplate,
     HKStockRequest,
+    HKUserArea,
     HKWorker,
+    HKWorkerSelectionRequest,
 )
 from .serializers import (
     HKAlertSerializer,
@@ -25,6 +29,7 @@ from .serializers import (
     HKStockRequestSerializer,
     HKStockRequestStatusSerializer,
     HKWorkerSerializer,
+    HKWorkerSelectionRequestSerializer,
 )
 
 
@@ -34,6 +39,34 @@ class IsAdminOrHousekeepingManager(BasePermission):
         return user.is_authenticated and (
             user.is_admin or user.is_housekeeping_manager
         )
+
+
+class IsAdminOnly(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user.is_authenticated and user.is_admin)
+
+
+def _area_group(area):
+    if not area:
+        return 'others'
+    name = (area.name or '').strip()
+    if re.match(r'^Academic Block\s+([1-9]|1[0-3])$', name, re.IGNORECASE):
+        return 'academic'
+    if name in {'Academic Common Area', 'New AB U-Shape', 'New Academy'}:
+        return 'academic'
+    if name.lower() in {'hostel common area', 'common area', 'hostels reliever'}:
+        return 'hostels'
+    if area.area_type == 'hostel':
+        return 'hostels'
+    return 'others'
+
+
+def _filter_workers_by_section(qs, section_filter):
+    if section_filter == 'all':
+        return qs
+    worker_ids = [w.id for w in qs if _area_group(w.area) == section_filter]
+    return HKWorker.objects.filter(id__in=worker_ids, is_active=True)
 
 
 class HKAreaListView(ListAPIView):
@@ -120,6 +153,176 @@ class HKWorkerDetailView(APIView):
         worker.is_active = False
         worker.save(update_fields=['is_active'])
         return Response(status=204)
+
+
+class HKWorkerSelectionRequestListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        status_filter = (request.query_params.get('status') or '').strip().lower()
+        qs = (
+            HKWorkerSelectionRequest.objects
+            .select_related(
+                'source_area',
+                'target_area',
+                'target_supervisor',
+                'requested_by',
+                'approved_by',
+            )
+            .prefetch_related('workers')
+            .order_by('-created_at')
+        )
+        if status_filter in {'pending', 'approved', 'rejected'}:
+            qs = qs.filter(status=status_filter)
+        serializer = HKWorkerSelectionRequestSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if not request.user.is_admin:
+            return Response({'detail': 'Only admin can create worker selection requests.'}, status=403)
+
+        data = request.data
+        selection_type = (data.get('selection_type') or 'specific').strip().lower()
+        section_filter = (data.get('section_filter') or 'all').strip().lower()
+        target_group = (data.get('target_group') or '').strip().lower()
+        target_area_id = data.get('target_area_id') or data.get('target_area')
+        source_area_id = data.get('source_area_id') or data.get('source_area')
+        target_supervisor_id = data.get('target_supervisor_id') or data.get('target_supervisor')
+        note = (data.get('note') or '').strip()
+
+        if selection_type not in {'all', 'section', 'specific'}:
+            return Response({'detail': 'selection_type must be all, section, or specific.'}, status=400)
+        if section_filter not in {'all', 'hostels', 'academic', 'others'}:
+            return Response({'detail': 'section_filter must be all, hostels, academic, or others.'}, status=400)
+        if target_group not in {'all', 'hostels', 'academic', 'others'}:
+            return Response({'detail': 'target_group is required and must be all, hostels, academic, or others.'}, status=400)
+
+        target_area = None
+        if target_area_id:
+            target_area = HKArea.objects.filter(pk=target_area_id, is_active=True).first()
+            if not target_area:
+                return Response({'detail': 'Target area not found.'}, status=404)
+            if target_group != 'all' and _area_group(target_area) != target_group:
+                return Response({'detail': 'Target area does not belong to selected target group.'}, status=400)
+
+        source_area = None
+        if source_area_id:
+            source_area = HKArea.objects.filter(pk=source_area_id, is_active=True).first()
+            if not source_area:
+                return Response({'detail': 'Source area not found.'}, status=404)
+
+        target_supervisor = None
+        if target_supervisor_id:
+            from apps.users.models import User
+
+            target_supervisor = User.objects.filter(pk=target_supervisor_id).first()
+            if not target_supervisor:
+                return Response({'detail': 'Target supervisor not found.'}, status=404)
+            if target_supervisor.role not in {'supervisor', 'caretaker'}:
+                return Response({'detail': 'Target supervisor must have role supervisor or caretaker.'}, status=400)
+
+        workers_qs = HKWorker.objects.select_related('area').filter(is_active=True)
+        if source_area:
+            workers_qs = workers_qs.filter(area=source_area)
+
+        raw_worker_ids = data.get('worker_ids') or []
+        selected_worker_ids = []
+        if raw_worker_ids:
+            if not isinstance(raw_worker_ids, (list, tuple)):
+                return Response({'detail': 'worker_ids must be a list.'}, status=400)
+            try:
+                worker_ids = [int(wid) for wid in raw_worker_ids]
+            except (TypeError, ValueError):
+                return Response({'detail': 'worker_ids must contain numeric ids only.'}, status=400)
+            pre_qs = workers_qs.filter(id__in=worker_ids)
+            if section_filter != 'all':
+                pre_qs = _filter_workers_by_section(pre_qs, section_filter)
+            selected_worker_ids = list(pre_qs.values_list('id', flat=True).distinct())
+
+        req_obj = HKWorkerSelectionRequest.objects.create(
+            selection_type=selection_type,
+            section_filter=section_filter,
+            target_group=target_group,
+            source_area=source_area,
+            target_area=target_area,
+            target_supervisor=target_supervisor,
+            note=note,
+            status='pending',
+            requested_by=request.user,
+        )
+        # Strict workflow: staff must submit workers first from mobile overlay.
+        # Admin pre-selection is stored as note hint only; workers remain empty.
+        if selected_worker_ids:
+            suggested = list(
+                HKWorker.objects.filter(id__in=selected_worker_ids).values_list('name', flat=True)[:30]
+            )
+            hint = f"[Admin Suggested Workers] {', '.join(suggested)}"
+            req_obj.note = f"{req_obj.note}\n{hint}".strip() if req_obj.note else hint
+            req_obj.save(update_fields=['note'])
+
+        serializer = HKWorkerSelectionRequestSerializer(req_obj)
+        return Response(serializer.data, status=201)
+
+
+class HKWorkerSelectionRequestDecisionView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def post(self, request, pk):
+        req_obj = get_object_or_404(
+            HKWorkerSelectionRequest.objects.prefetch_related('workers'),
+            pk=pk,
+        )
+        if req_obj.status != 'pending':
+            return Response({'detail': 'Only pending requests can be decided.'}, status=400)
+
+        decision = (request.data.get('decision') or '').strip().lower()
+        decision_note = (request.data.get('decision_note') or '').strip()
+        if decision not in {'approved', 'rejected'}:
+            return Response({'detail': 'decision must be approved or rejected.'}, status=400)
+
+        moved_count = req_obj.workers.filter(is_active=True).count()
+        if decision == 'approved' and moved_count == 0:
+            return Response(
+                {'detail': 'Staff worker selection is pending. No workers selected yet.'},
+                status=400,
+            )
+        if decision == 'approved' and not req_obj.target_area_id:
+            return Response(
+                {'detail': 'Staff selection is pending destination area. Ask staff to submit from mobile dashboard.'},
+                status=400,
+            )
+
+        with transaction.atomic():
+            if decision == 'approved':
+                workers_qs = req_obj.workers.filter(is_active=True)
+                # Ensure area + supervisor mapping both update after approval.
+                # If explicit target supervisor is not set, map to area assignee.
+                target_supervisor = req_obj.target_supervisor
+                if not target_supervisor:
+                    area_links = list(
+                        HKUserArea.objects.select_related('user').filter(
+                            area=req_obj.target_area,
+                            user__is_active=True,
+                            user__role__in=['caretaker', 'supervisor'],
+                        )
+                    )
+                    if area_links:
+                        area_links.sort(key=lambda link: 0 if link.user.role == 'caretaker' else 1)
+                        target_supervisor = area_links[0].user
+
+                workers_qs.update(area=req_obj.target_area, supervisor=target_supervisor)
+
+            req_obj.status = decision
+            req_obj.approved_by = request.user
+            req_obj.decision_note = decision_note
+            req_obj.decided_at = timezone.now()
+            req_obj.save(
+                update_fields=['status', 'approved_by', 'decision_note', 'decided_at']
+            )
+
+        payload = HKWorkerSelectionRequestSerializer(req_obj).data
+        payload['moved_count'] = moved_count
+        return Response(payload, status=200)
 
 
 class HKDailyRecordListView(ListAPIView):

@@ -7,6 +7,14 @@ export const hkAPI = {
   createWorker: (payload) => api.post('/housekeeping/workers/create/', payload),
   updateWorker: (id, payload) => api.patch(`/housekeeping/workers/${id}/`, payload),
   deleteWorker: (id) => api.delete(`/housekeeping/workers/${id}/`),
+  getWorkerSelectionRequests: (status) =>
+    api.get('/housekeeping/worker-selection-requests/', {
+      params: status ? { status } : {},
+    }),
+  createWorkerSelectionRequest: (payload) =>
+    api.post('/housekeeping/worker-selection-requests/', payload),
+  decideWorkerSelectionRequest: (id, payload) =>
+    api.post(`/housekeeping/worker-selection-requests/${id}/decision/`, payload),
   getAttendanceSummary: (date) =>
     api.get('/housekeeping/attendance-summary/', { params: { date } }),
   getDailyRecords: (areaId, date) =>

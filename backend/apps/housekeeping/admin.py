@@ -3,7 +3,7 @@ from .models import (
     HKArea, HKUserArea, HKWorker, HKScheduleTemplate, HKDailyRecord,
     HKExtraWork, HKAttendanceRecord, HKSundayIncharge,
     HKAreaStock, HKStockRequest, HKAlert, HKRelieverSubstitution,
-    HKTaskWorkerAssignment,
+    HKTaskWorkerAssignment, HKWorkerSelectionRequest,
 )
 
 
@@ -109,3 +109,18 @@ class HKTaskWorkerAssignmentAdmin(admin.ModelAdmin):
     list_filter = ('daily_record__area', 'daily_record__date')
     search_fields = ('daily_record__schedule__task_name', 'worker__name', 'daily_record__area__name')
     date_hierarchy = 'assigned_at'
+
+
+@admin.register(HKWorkerSelectionRequest)
+class HKWorkerSelectionRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'selection_type', 'section_filter', 'source_area', 'target_area',
+        'target_supervisor', 'status', 'requested_by', 'approved_by', 'created_at',
+    )
+    list_filter = ('status', 'selection_type', 'section_filter', 'target_area', 'source_area')
+    search_fields = (
+        'target_area__name', 'source_area__name', 'requested_by__username',
+        'approved_by__username', 'workers__name',
+    )
+    filter_horizontal = ('workers',)
+    date_hierarchy = 'created_at'
