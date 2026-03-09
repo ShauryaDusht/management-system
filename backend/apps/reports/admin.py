@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import MonthlyReport, SupervisorMonthlyReport, WorkerMonthlyReport
+from .models import ItemConsumptionReport, MonthlyReport, SupervisorMonthlyReport, WorkerMonthlyReport
 
 
 @admin.register(MonthlyReport)
@@ -21,4 +21,11 @@ class WorkerMonthlyReportAdmin(admin.ModelAdmin):
 class SupervisorMonthlyReportAdmin(admin.ModelAdmin):
     list_display = ('id', 'supervisor', 'month', 'year', 'generated_at')
     search_fields = ('supervisor__username', 'supervisor__first_name', 'supervisor__last_name', 'year')
+    list_filter = ('year', 'month')
+
+
+@admin.register(ItemConsumptionReport)
+class ItemConsumptionReportAdmin(admin.ModelAdmin):
+    list_display = ('id', 'month', 'year', 'generated_at', 'generated_by')
+    search_fields = ('year',)
     list_filter = ('year', 'month')

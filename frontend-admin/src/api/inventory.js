@@ -68,6 +68,14 @@ export const getMonthly = (id) => api.get(`/reports/monthly/${id}/`)
 export const deleteMonthly = (id) => api.delete(`/reports/monthly/${id}/`)
 export const csvUrl = (id) => `${api.defaults.baseURL}/reports/monthly/${id}/csv/`
 export const pdfUrl = (id) => `${api.defaults.baseURL}/reports/monthly/${id}/pdf/`
+export const getConsumptionReports = () => api.get('/reports/consumption/')
+export const generateConsumptionReport = (month, year, overwrite = false) =>
+  api.post('/reports/consumption/generate/', { month, year, overwrite })
+export const getConsumptionReportDetail = (id) => api.get(`/reports/consumption/${id}/`)
+export const downloadConsumptionItemCSV = (id) =>
+  api.get(`/reports/consumption/${id}/csv/items/`, { responseType: 'blob' })
+export const downloadConsumptionRequesterCSV = (id) =>
+  api.get(`/reports/consumption/${id}/csv/requesters/`, { responseType: 'blob' })
 
 export const reportsAPI = {
   getInventoryReport,
@@ -80,4 +88,11 @@ export const reportsAPI = {
   deleteMonthly,
   csvUrl,
   pdfUrl,
+
+  // Item consumption reports
+  getConsumptionReports,
+  generateConsumptionReport,
+  getConsumptionReportDetail,
+  downloadConsumptionItemCSV,
+  downloadConsumptionRequesterCSV,
 }

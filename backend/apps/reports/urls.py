@@ -1,5 +1,10 @@
 from django.urls import path
 from .views import (
+    ConsumptionReportDetailView,
+    ConsumptionReportGenerateView,
+    ConsumptionReportItemCSVView,
+    ConsumptionReportListView,
+    ConsumptionReportRequesterCSVView,
     InventoryReportView,
     RequestsReportView,
     MonthlyReportListView,
@@ -22,4 +27,11 @@ urlpatterns = [
     # Phase 3B — File downloads
     path('monthly/<int:pk>/csv/', MonthlyReportCSVView.as_view(), name='monthly-report-csv'),
     path('monthly/<int:pk>/pdf/', MonthlyReportPDFView.as_view(), name='monthly-report-pdf'),
+
+    # Item consumption reports
+    path('consumption/', ConsumptionReportListView.as_view(), name='consumption-report-list'),
+    path('consumption/generate/', ConsumptionReportGenerateView.as_view(), name='consumption-report-generate'),
+    path('consumption/<int:pk>/', ConsumptionReportDetailView.as_view(), name='consumption-report-detail'),
+    path('consumption/<int:pk>/csv/items/', ConsumptionReportItemCSVView.as_view(), name='consumption-report-item-csv'),
+    path('consumption/<int:pk>/csv/requesters/', ConsumptionReportRequesterCSVView.as_view(), name='consumption-report-requester-csv'),
 ]

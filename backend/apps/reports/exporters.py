@@ -211,6 +211,143 @@ def export_supervisor_report_csv(snapshot: dict) -> bytes:
     return buffer.getvalue().encode('utf-8-sig')
 
 
+def export_consumption_item_csv(snapshot: dict) -> bytes:
+    summary = snapshot.get('summary') or {}
+    item_rows = list(snapshot.get('item_rows') or [])
+
+    item_rows.sort(
+        key=lambda row: (
+            (row.get('category_name') or '').lower(),
+            (row.get('item_name') or '').lower(),
+        )
+    )
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+
+    writer.writerow(['Report Title', 'Item Consumption Report'])
+    writer.writerow(['Period', snapshot.get('period_label', '')])
+    writer.writerow(['Generated At', snapshot.get('generated_at', '')])
+    writer.writerow([])
+
+    writer.writerow(['Total Active Items', summary.get('total_items_active', 0)])
+    writer.writerow(['Total Issued Transactions', summary.get('total_issued_transactions', 0)])
+    writer.writerow(['Total Stock Added This Month', summary.get('total_stock_added', 0)])
+    writer.writerow(['Total Estimated Cost (₹)', summary.get('total_estimated_cost', 0)])
+    writer.writerow(['Unfinalized Consumables', summary.get('unfinalized_consumables', 0)])
+    writer.writerow(['Pending Asset Returns', summary.get('pending_asset_returns', 0)])
+    writer.writerow([])
+
+    writer.writerow(
+        [
+            'Item Name',
+            'Category',
+            'Type',
+            'Unit',
+            'Stock Added',
+            'Total Issued',
+            'Actual Consumed',
+            'Assets Returned',
+            'Pending Returns',
+            'Unfinalized',
+            'Unit Cost (₹)',
+            'Estimated Cost (₹)',
+            'Current Stock',
+            'Status',
+        ]
+    )
+
+    for row in item_rows:
+        writer.writerow(
+            [
+                row.get('item_name', ''),
+                row.get('category_name', ''),
+                row.get('item_type', ''),
+                row.get('unit', ''),
+                row.get('stock_added', 0),
+                row.get('total_issued', 0),
+                row.get('actual_consumed', 0),
+                row.get('assets_returned', 0),
+                row.get('pending_return', 0),
+                row.get('unfinalized_count', 0),
+                row.get('unit_cost', 0),
+                row.get('estimated_cost', 0),
+                row.get('current_stock', 0),
+                row.get('status', ''),
+            ]
+        )
+
+    return buffer.getvalue().encode('utf-8-sig')
+
+
+def export_consumption_requester_csv(snapshot: dict) -> bytes:
+    requester_rows = list(snapshot.get('requester_rows') or [])
+    requester_rows.sort(key=lambda row: row.get('total_estimated_cost', 0), reverse=True)
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+
+    writer.writerow(['Report Title', 'Item Consumption Report'])
+    writer.writerow(['Period', snapshot.get('period_label', '')])
+    writer.writerow(['Generated At', snapshot.get('generated_at', '')])
+    writer.writerow([])
+
+    writer.writerow(
+        [
+            'Requester',
+            'Role',
+            'Total Requests',
+            'Issued',
+            'Rejected',
+            'Urgent',
+            'Est. Cost (₹)',
+        ]
+    )
+    for row in requester_rows:
+        writer.writerow(
+            [
+                row.get('requester_name', ''),
+                row.get('role', ''),
+                row.get('total_requests', 0),
+                row.get('issued_requests', 0),
+                row.get('rejected_requests', 0),
+                row.get('urgent_requests', 0),
+                row.get('total_estimated_cost', 0),
+            ]
+        )
+    writer.writerow([])
+
+    writer.writerow(
+        [
+            'Requester',
+            'Item',
+            'Category',
+            'Unit',
+            'Qty Issued',
+            'Actual Used',
+            'Finalized',
+        ]
+    )
+    for idx, row in enumerate(requester_rows):
+        requester_name = row.get('requester_name', '')
+        for item in row.get('items_received', []) or []:
+            writer.writerow(
+                [
+                    requester_name,
+                    item.get('item_name', ''),
+                    item.get('category', ''),
+                    item.get('unit', ''),
+                    item.get('quantity_issued', 0),
+                    item.get('actual_used', 0),
+                    'Yes' if item.get('usage_finalized') else 'No',
+                ]
+            )
+        if idx != len(requester_rows) - 1:
+            writer.writerow([])
+
+    return buffer.getvalue().encode('utf-8-sig')
+
+
 def export_workers_combined_csv(rows: list, month: int, year: int, title: str) -> bytes:
     buffer = io.StringIO()
     writer = csv.writer(buffer)

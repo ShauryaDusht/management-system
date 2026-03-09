@@ -12,6 +12,7 @@ Recommended order:
 
 import calendar
 import math
+from collections import defaultdict
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
@@ -29,7 +30,7 @@ from apps.housekeeping.models import (
     HKWorker,
     HKWorkerSelectionRequest,
 )
-from apps.inventory.models import Item, ItemIssue
+from apps.inventory.models import Item, ItemIssue, ItemRequest, StockEntry
 
 
 # ── Inventory report ──────────────────────────────────────────────────────────
@@ -207,6 +208,241 @@ def generate_monthly_report(month: int, year: int) -> dict:
         'items_needing_reorder': sum(1 for r in rows if r['recommended_order'] > 0),
         'total_estimated_cost': round(total_estimated_cost, 2),
         'items': rows,
+    }
+
+
+def generate_consumption_report(month: int, year: int) -> dict:
+    last_day = calendar.monthrange(year, month)[1]
+    period_start = date(year, month, 1)
+    period_end = date(year, month, last_day)
+
+    issues_in_period = list(
+        ItemIssue.objects
+        .filter(
+            issued_at__date__gte=period_start,
+            issued_at__date__lte=period_end,
+        )
+        .select_related('request__item__category', 'request__requested_by')
+    )
+    stock_entries_in_period = list(
+        StockEntry.objects
+        .filter(
+            added_at__date__gte=period_start,
+            added_at__date__lte=period_end,
+        )
+        .select_related('item__category')
+    )
+    returned_asset_issues_in_period = list(
+        ItemIssue.objects
+        .filter(
+            returned_at__date__gte=period_start,
+            returned_at__date__lte=period_end,
+            request__item__item_type='asset',
+        )
+        .select_related('request__item')
+    )
+
+    item_ids_with_activity = set()
+    for issue in issues_in_period:
+        item_ids_with_activity.add(issue.request.item_id)
+    for entry in stock_entries_in_period:
+        item_ids_with_activity.add(entry.item_id)
+    for issue in returned_asset_issues_in_period:
+        item_ids_with_activity.add(issue.request.item_id)
+
+    active_items = {
+        item.id: item
+        for item in Item.objects
+        .filter(id__in=item_ids_with_activity)
+        .select_related('category')
+    }
+
+    item_metrics = defaultdict(
+        lambda: {
+            'stock_added': 0,
+            'total_issued': 0,
+            'actual_consumed_finalized_sum': 0,
+            'has_finalized_usage': False,
+            'unfinalized_count': 0,
+            'pending_return': 0,
+            'request_count': 0,
+            'assets_returned': 0,
+        }
+    )
+
+    for entry in stock_entries_in_period:
+        item_metrics[entry.item_id]['stock_added'] += entry.quantity_added
+
+    requester_issue_buckets = defaultdict(list)
+    for issue in issues_in_period:
+        item = issue.request.item
+        metrics = item_metrics[item.id]
+        metrics['total_issued'] += issue.issued_quantity
+        metrics['request_count'] += 1
+
+        if item.item_type == 'consumable':
+            if issue.usage_finalized and issue.actual_quantity_used is not None:
+                metrics['actual_consumed_finalized_sum'] += issue.actual_quantity_used
+                metrics['has_finalized_usage'] = True
+            if not issue.usage_finalized:
+                metrics['unfinalized_count'] += 1
+        else:
+            if issue.returned_at is None:
+                metrics['pending_return'] += 1
+
+        requester_issue_buckets[issue.request.requested_by_id].append(issue)
+
+    for issue in returned_asset_issues_in_period:
+        metrics = item_metrics[issue.request.item_id]
+        metrics['assets_returned'] += issue.returned_quantity or 0
+
+    item_rows = []
+    for item_id in sorted(item_ids_with_activity):
+        item = active_items.get(item_id)
+        if not item:
+            continue
+        metrics = item_metrics[item_id]
+        unit_cost = float(item.unit_cost or 0)
+        total_issued = metrics['total_issued']
+
+        if item.item_type == 'consumable':
+            if metrics['has_finalized_usage']:
+                actual_consumed = metrics['actual_consumed_finalized_sum']
+            else:
+                actual_consumed = total_issued
+            estimated_cost = actual_consumed * unit_cost
+        else:
+            actual_consumed = total_issued
+            estimated_cost = total_issued * unit_cost
+
+        item_rows.append(
+            {
+                'item_id': item.id,
+                'item_name': item.name,
+                'category_name': item.category.name if item.category else '',
+                'item_type': item.item_type,
+                'unit': item.unit,
+                'unit_cost': unit_cost,
+                'stock_added': metrics['stock_added'],
+                'total_issued': total_issued,
+                'actual_consumed': actual_consumed,
+                'assets_returned': metrics['assets_returned'] if item.item_type == 'asset' else 0,
+                'pending_return': metrics['pending_return'] if item.item_type == 'asset' else 0,
+                'unfinalized_count': metrics['unfinalized_count'] if item.item_type == 'consumable' else 0,
+                'estimated_cost': round(estimated_cost, 2),
+                'current_stock': item.available_quantity,
+                'status': item.status,
+                'request_count': metrics['request_count'],
+            }
+        )
+
+    requester_request_rows = list(
+        ItemRequest.objects
+        .filter(
+            requested_at__date__gte=period_start,
+            requested_at__date__lte=period_end,
+        )
+        .select_related('requested_by')
+    )
+    requester_counts = defaultdict(
+        lambda: {
+            'total_requests': 0,
+            'issued_requests': 0,
+            'rejected_requests': 0,
+            'urgent_requests': 0,
+        }
+    )
+    for req in requester_request_rows:
+        counts = requester_counts[req.requested_by_id]
+        counts['total_requests'] += 1
+        if req.status == ItemRequest.Status.ISSUED:
+            counts['issued_requests'] += 1
+        if req.status == ItemRequest.Status.REJECTED:
+            counts['rejected_requests'] += 1
+        if req.is_urgent:
+            counts['urgent_requests'] += 1
+
+    requester_rows = []
+    requester_ids = set(requester_counts.keys()) | set(requester_issue_buckets.keys())
+    for requester_id in requester_ids:
+        issues = requester_issue_buckets.get(requester_id, [])
+        request_counts = requester_counts.get(requester_id, {})
+
+        requester_obj = None
+        for issue in issues:
+            requester_obj = issue.request.requested_by
+            break
+        if requester_obj is None:
+            for req in requester_request_rows:
+                if req.requested_by_id == requester_id:
+                    requester_obj = req.requested_by
+                    break
+        if requester_obj is None:
+            continue
+
+        items_received = []
+        total_estimated_cost = 0.0
+        for issue in issues:
+            item = issue.request.item
+            unit_cost = float(item.unit_cost or 0)
+            if item.item_type == 'consumable':
+                if issue.usage_finalized and issue.actual_quantity_used is not None:
+                    actual_used = issue.actual_quantity_used
+                else:
+                    actual_used = issue.issued_quantity
+                line_cost = actual_used * unit_cost
+            else:
+                actual_used = issue.issued_quantity
+                line_cost = issue.issued_quantity * unit_cost
+
+            total_estimated_cost += line_cost
+            items_received.append(
+                {
+                    'item_name': item.name,
+                    'category': item.category.name if item.category else '',
+                    'unit': item.unit,
+                    'quantity_issued': issue.issued_quantity,
+                    'actual_used': actual_used,
+                    'usage_finalized': issue.usage_finalized,
+                }
+            )
+
+        requester_rows.append(
+            {
+                'requester_id': requester_obj.id,
+                'requester_name': requester_obj.get_full_name() or requester_obj.username,
+                'role': requester_obj.role,
+                'username': requester_obj.username,
+                'total_requests': request_counts.get('total_requests', 0),
+                'issued_requests': request_counts.get('issued_requests', 0),
+                'rejected_requests': request_counts.get('rejected_requests', 0),
+                'urgent_requests': request_counts.get('urgent_requests', 0),
+                'items_received': items_received,
+                'total_estimated_cost': round(total_estimated_cost, 2),
+            }
+        )
+
+    total_stock_added = sum(row['stock_added'] for row in item_rows)
+    total_estimated_cost = round(sum(row['estimated_cost'] for row in item_rows), 2)
+    summary = {
+        'total_items_active': len(item_rows),
+        'total_issued_transactions': len(issues_in_period),
+        'total_stock_added': total_stock_added,
+        'total_estimated_cost': total_estimated_cost,
+        'unfinalized_consumables': sum(row['unfinalized_count'] for row in item_rows),
+        'pending_asset_returns': sum(row['pending_return'] for row in item_rows),
+        'top_consumed_items': sorted(item_rows, key=lambda row: row['actual_consumed'], reverse=True)[:5],
+    }
+
+    return {
+        'report_type': 'item_consumption',
+        'month': month,
+        'year': year,
+        'period_label': f"{calendar.month_name[month]} {year}",
+        'generated_at': str(timezone.now()),
+        'summary': summary,
+        'item_rows': item_rows,
+        'requester_rows': requester_rows,
     }
 
 

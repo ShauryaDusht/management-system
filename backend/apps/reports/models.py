@@ -80,3 +80,30 @@ class SupervisorMonthlyReport(models.Model):
     def __str__(self):
         name = self.supervisor.get_full_name() or self.supervisor.username
         return f"Supervisor Report {name} {self.month:02d}/{self.year}"
+
+
+class ItemConsumptionReport(models.Model):
+    month = models.PositiveSmallIntegerField()
+    year = models.PositiveSmallIntegerField()
+    generated_at = models.DateTimeField(default=timezone.now)
+    generated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='item_consumption_reports_generated',
+    )
+    snapshot = models.JSONField(default=dict)
+    csv_item_file = models.FileField(upload_to='reports/consumption/item/', blank=True, null=True)
+    csv_requester_file = models.FileField(upload_to='reports/consumption/requester/', blank=True, null=True)
+
+    class Meta:
+        ordering = ['-year', '-month']
+        unique_together = [('month', 'year')]
+
+    def __str__(self):
+        return f"Item Consumption Report {self.month:02d}/{self.year}"
+
+    @property
+    def period_label(self):
+        import calendar
+        return f"{calendar.month_name[self.month]} {self.year}"
