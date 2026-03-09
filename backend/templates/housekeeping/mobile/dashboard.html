@@ -828,10 +828,17 @@ document.addEventListener('DOMContentLoaded', function() {
     resetProgress(form);
   });
 
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+      if (shouldSkipAutoRefresh()) return;
+      window.location.reload();
+    }
+  });
+
   setInterval(function() {
     if (shouldSkipAutoRefresh()) return;
     window.location.reload();
-  }, 10000);
+  }, 60000);
 });
 </script>
 <script src="{% static 'housekeeping/mobile/camera_capture.js' %}?v=20260309_2"></script>

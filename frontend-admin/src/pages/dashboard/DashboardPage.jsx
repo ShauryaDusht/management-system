@@ -12,7 +12,7 @@ export default function DashboardPage() {
   const [hkSummary, setHkSummary] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const fetchData = () => {
     Promise.all([
       inventoryAPI.getDashboard().catch(() => null),
       hkAPI.getDashboardSummary().catch(() => null),
@@ -21,6 +21,12 @@ export default function DashboardPage() {
       setHkSummary(hk?.data || null)
       setLoading(false)
     })
+  }
+
+  useEffect(() => {
+    fetchData()
+    const interval = setInterval(fetchData, 30000)
+    return () => clearInterval(interval)
   }, [])
 
   const todayLabel = useMemo(
