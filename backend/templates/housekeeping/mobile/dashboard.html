@@ -1,4 +1,5 @@
 {% extends 'housekeeping/mobile/base_hk.html' %}
+{% load static %}
 {% block title %}Dashboard{% endblock %}
 {% block hdr_title %}HOUSEKEEPING{% endblock %}
 {% block n1 %}on{% endblock %}
@@ -80,6 +81,24 @@
   {{ ws_error }}
 </div>
 {% endif %}
+{% if ic_success %}
+<div class="hk-flash" style="position:fixed;top:74px;left:50%;transform:translateX(-50%);z-index:10030;background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:10px 12px;color:#166534;font-weight:700;max-width:92vw">
+  {{ ic_success }}
+</div>
+{% endif %}
+{% if ic_error %}
+<div class="hk-flash" style="position:fixed;top:74px;left:50%;transform:translateX(-50%);z-index:10030;background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:10px 12px;color:#991b1b;font-weight:700;max-width:92vw">
+  {{ ic_error }}
+</div>
+{% endif %}
+{% if incharge_notice %}
+<div class="hk-flash" style="position:fixed;top:74px;left:50%;transform:translateX(-50%);z-index:10030;
+  background:{% if incharge_notice.level == 'success' %}#dcfce7{% elif incharge_notice.level == 'warning' %}#fef3c7{% elif incharge_notice.level == 'error' %}#fee2e2{% else %}#dbeafe{% endif %};
+  border:1px solid {% if incharge_notice.level == 'success' %}#86efac{% elif incharge_notice.level == 'warning' %}#fde68a{% elif incharge_notice.level == 'error' %}#fca5a5{% else %}#93c5fd{% endif %};
+  border-radius:10px;padding:10px 12px;color:{% if incharge_notice.level == 'success' %}#166534{% elif incharge_notice.level == 'warning' %}#92400e{% elif incharge_notice.level == 'error' %}#991b1b{% else %}#1d4ed8{% endif %};font-weight:700;max-width:92vw">
+  {{ incharge_notice.message }}
+</div>
+{% endif %}
 {% if ws_decision_notice %}
 <div class="hk-flash" style="position:fixed;top:74px;left:50%;transform:translateX(-50%);z-index:10030;max-width:92vw;
   background:{% if ws_decision_notice.status == 'approved' %}#dcfce7{% else %}#fee2e2{% endif %};
@@ -155,6 +174,97 @@
 {% endif %}
 {% endif %}
 {% if selected_area %}
+{% if incharge_today_assignments %}
+<div class="card" style="border:2px solid #16a34a;background:#ecfdf5">
+  <div style="font-weight:800;color:#166534;font-size:14px">INCHARGE TODAY</div>
+  {% for ic in incharge_today_assignments %}
+  <div style="font-size:12px;color:#14532d;margin-top:5px">
+    You are temporary incharge for <b>{{ ic.area.name }}</b> on {{ ic.leave_date|date:"d M Y" }}
+    (requested by {{ ic.leave_staff_name }}).
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if incoming_incharge_requests %}
+<div class="card" style="border:1.5px solid #93c5fd;background:#eff6ff">
+  <div style="font-weight:800;color:#1d4ed8;margin-bottom:8px">Temporary Incharge Requests</div>
+  {% for ic in incoming_incharge_requests %}
+  <div style="background:#fff;border:1px solid #bfdbfe;border-radius:9px;padding:10px;margin-bottom:8px">
+    <div style="font-size:13px;font-weight:700;color:#1e3a8a">
+      {{ ic.area.name }} | {{ ic.leave_date|date:"d M Y" }}
+    </div>
+    <div style="font-size:12px;color:#475569;margin-top:3px">
+      Requested by {{ ic.leave_staff_name }}
+    </div>
+    <form method="post" action="/housekeeping/incharge/respond/" style="margin-top:8px;display:flex;gap:7px;align-items:center">
+      {% csrf_token %}
+      <input type="hidden" name="assignment_id" value="{{ ic.id }}">
+      <input type="hidden" name="area" value="{{ selected_area.id }}">
+      <input type="text" name="note" placeholder="Optional note..." style="flex:1;font-size:12px;padding:8px 9px">
+      <button type="submit" name="decision" value="accept" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer">Accept</button>
+      <button type="submit" name="decision" value="decline" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer">Decline</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if incoming_waiting_admin %}
+<div class="card" style="border:1px solid #fde68a;background:#fffbeb">
+  <div style="font-weight:800;color:#92400e;margin-bottom:6px">Awaiting Admin Approval</div>
+  {% for ic in incoming_waiting_admin %}
+  <div style="font-size:12px;color:#7c2d12;margin-bottom:3px">
+    {{ ic.area.name }} | {{ ic.leave_date|date:"d M Y" }} (requested by {{ ic.leave_staff_name }})
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if leave_reselection_cards %}
+<div class="card" style="border:1.5px solid #f59e0b;background:#fffbeb">
+  <div style="font-size:15px;font-weight:800;color:#92400e;margin-bottom:8px">Select Temporary Incharge</div>
+  <div style="font-size:12px;color:#6b7280;margin-bottom:10px">
+    Your leave request requires incharge selection.
+  </div>
+  {% for item in leave_reselection_cards %}
+  <div style="border:1px solid #fde68a;border-radius:10px;padding:10px;background:#fff;margin-bottom:10px">
+    <div style="font-size:13px;font-weight:700">{{ item.leave_request.area.name }} | {{ item.leave_request.leave_date|date:"d M Y" }}</div>
+    {% if item.latest_assignment and item.latest_assignment.status == 'declined' %}
+    <div style="font-size:12px;color:#b91c1c;margin-top:3px">
+      Previous incharge declined. Please select another.
+    </div>
+    {% elif item.latest_assignment and item.latest_assignment.status == 'admin_rejected' %}
+    <div style="font-size:12px;color:#b91c1c;margin-top:3px">
+      Admin rejected previous incharge assignment. Please select another.
+    </div>
+    {% endif %}
+    <form method="post" action="/housekeeping/incharge/assign/" style="margin-top:8px">
+      {% csrf_token %}
+      <input type="hidden" name="leave_request_id" value="{{ item.leave_request.id }}">
+      <input type="hidden" name="area" value="{{ item.leave_request.area.id }}">
+      <div class="fg">
+        <label>Temporary Incharge *</label>
+        <select name="assigned_staff_id" required>
+          <option value="">- Select incharge -</option>
+          {% for cand in item.candidates %}
+          <option value="{{ cand.user.id }}">
+            {{ cand.user.get_full_name|default:cand.user.username }} ({{ cand.user.get_role_display }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Note (optional)</label>
+        <input type="text" name="note" placeholder="Instruction for temporary incharge">
+      </div>
+      <button type="submit" class="btn-s">Assign as Incharge</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% if records %}
 <div style="display:grid;grid-template-columns:repeat({% if has_special_tasks %}5{% else %}4{% endif %},1fr);gap:6px;margin-bottom:12px" id="tab-buttons">
   <button onclick="showTab('floor')" id="btn-floor" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#2d4a3e;color:#fff;transition:opacity .2s">
@@ -253,6 +363,15 @@
 <script>
 const TABS = ['floor', 'room', 'washroom'{% if has_special_tasks %}, 'all'{% endif %}, 'extra'];
 let hkBusy = false;
+let hkCamera = null;
+let hkLightbox = null;
+const hkCapturedFiles = new WeakMap();
+const hkDevLogs = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+function hkLog() {
+  if (!hkDevLogs || !window.console || typeof console.log !== 'function') return;
+  console.log.apply(console, arguments);
+}
 
 document.body.addEventListener('htmx:beforeRequest', function() {
   hkBusy = true;
@@ -281,6 +400,7 @@ function showTab(tab, skipScroll) {
 
 function shouldSkipAutoRefresh() {
   if (document.hidden || hkBusy) return true;
+  if (hkCamera && hkCamera.isOpen && hkCamera.isOpen()) return true;
   var active = document.activeElement;
   if (active && ['INPUT', 'TEXTAREA', 'SELECT'].indexOf(active.tagName) !== -1) return true;
 
@@ -288,10 +408,308 @@ function shouldSkipAutoRefresh() {
   for (var i = 0; i < fileInputs.length; i++) {
     if (fileInputs[i].files && fileInputs[i].files.length > 0) return true;
   }
+  if (document.querySelector('.js-task-complete-form[data-has-photo="1"]')) return true;
   return false;
 }
 
+function isMobileHK() {
+  return /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || '') || window.innerWidth < 768;
+}
+
+function supportsCameraHK() {
+  var secure = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  return secure && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+}
+
+function updatePhotoPreview(form, file, meta) {
+  if (!form || !file) return;
+  var selected = form.querySelector('.js-photo-selected');
+  var thumb = form.querySelector('.js-photo-thumb');
+  var metaEl = form.querySelector('.js-photo-meta');
+  var sizeEl = form.querySelector('.js-photo-size');
+  var error = form.querySelector('.js-photo-error');
+  if (error) { error.style.display = 'none'; error.textContent = ''; }
+  if (!selected || !thumb) return;
+  var url = URL.createObjectURL(file);
+  thumb.src = url;
+  thumb.dataset.objectUrl = url;
+  selected.style.display = 'block';
+  if (metaEl) {
+    if (meta && meta.captureMethod === 'camera' && Number(meta.savedPercent || 0) > 0) {
+      metaEl.textContent = 'Captured with camera • ' + Number(meta.savedPercent) + '% optimized';
+    } else {
+      metaEl.textContent = (meta && meta.captureMethod === 'camera') ? 'Captured with camera' : 'Selected from device';
+    }
+  }
+  if (sizeEl) {
+    var originalBytes = Number((meta && meta.originalSize) || file.size || 0);
+    var compressedBytes = Number((meta && meta.compressedSize) || file.size || 0);
+    var originalKB = originalBytes / 1024;
+    var compressedKB = compressedBytes / 1024;
+    var originalLabel = originalKB >= 1024 ? (originalKB / 1024).toFixed(2) + ' MB' : originalKB.toFixed(0) + ' KB';
+    var compressedLabel = compressedKB >= 1024 ? (compressedKB / 1024).toFixed(2) + ' MB' : compressedKB.toFixed(0) + ' KB';
+    sizeEl.textContent = 'Original: ' + originalLabel + ' | Compressed: ' + compressedLabel;
+  }
+}
+
+function clearPhotoPreview(form) {
+  if (!form) return;
+  var selected = form.querySelector('.js-photo-selected');
+  var thumb = form.querySelector('.js-photo-thumb');
+  var sizeEl = form.querySelector('.js-photo-size');
+  var capturedAt = form.querySelector('.js-photo-captured-at');
+  var captureMethod = form.querySelector('.js-photo-capture-method');
+  var originalSize = form.querySelector('.js-photo-original-size');
+  var compressedSize = form.querySelector('.js-photo-compressed-size');
+  var thumbSize = form.querySelector('.js-photo-thumb-size');
+  var format = form.querySelector('.js-photo-format');
+  var fileInput = form.querySelector('.js-photo-file-input');
+  if (thumb && thumb.dataset.objectUrl) {
+    URL.revokeObjectURL(thumb.dataset.objectUrl);
+    thumb.dataset.objectUrl = '';
+  }
+  if (thumb) thumb.removeAttribute('src');
+  if (sizeEl) sizeEl.textContent = '';
+  if (selected) selected.style.display = 'none';
+  if (capturedAt) capturedAt.value = '';
+  if (captureMethod) captureMethod.value = '';
+  if (originalSize) originalSize.value = '';
+  if (compressedSize) compressedSize.value = '';
+  if (thumbSize) thumbSize.value = '';
+  if (format) format.value = '';
+  if (fileInput) fileInput.value = '';
+  hkCapturedFiles.delete(form);
+  form.dataset.hasPhoto = '0';
+  var retryBtn = form.querySelector('.js-upload-retry-btn');
+  if (retryBtn) retryBtn.style.display = 'none';
+}
+
+function setFormFile(form, file, meta) {
+  var fileInput = form.querySelector('.js-photo-file-input');
+  var capturedAt = form.querySelector('.js-photo-captured-at');
+  var captureMethod = form.querySelector('.js-photo-capture-method');
+  var originalSize = form.querySelector('.js-photo-original-size');
+  var compressedSize = form.querySelector('.js-photo-compressed-size');
+  var thumbSize = form.querySelector('.js-photo-thumb-size');
+  var format = form.querySelector('.js-photo-format');
+  if (!fileInput || !file) return;
+  hkCapturedFiles.set(form, {
+    file: file,
+    meta: meta || {},
+  });
+  try {
+    if (typeof DataTransfer !== 'undefined') {
+      var dt = new DataTransfer();
+      dt.items.add(file);
+      fileInput.files = dt.files;
+    }
+  } catch (err) {
+    hkLog('📸 DataTransfer assignment failed, using captured file fallback only.', err);
+  }
+  if (capturedAt) capturedAt.value = (meta && meta.capturedAt) ? meta.capturedAt : new Date().toISOString();
+  if (captureMethod) captureMethod.value = (meta && meta.captureMethod) ? meta.captureMethod : 'file_upload';
+  if (originalSize) originalSize.value = String((meta && meta.originalSize) || file.size || 0);
+  if (compressedSize) compressedSize.value = String((meta && meta.compressedSize) || file.size || 0);
+  if (thumbSize) thumbSize.value = String((meta && meta.thumbnailSize) || 0);
+  if (format) format.value = (meta && meta.format) || (file.type ? file.type.split('/').pop() : 'jpg');
+  form.dataset.hasPhoto = '1';
+  updatePhotoPreview(form, file, meta || { captureMethod: 'file_upload' });
+}
+
+function showPhotoError(form, msg) {
+  var error = form ? form.querySelector('.js-photo-error') : null;
+  if (!error) return;
+  if (!msg) {
+    error.textContent = '';
+    error.style.display = 'none';
+    return;
+  }
+  error.textContent = msg;
+  error.style.display = 'block';
+}
+
+function setProgress(form, percent) {
+  var wrap = form.querySelector('.js-upload-progress-wrap');
+  var fill = form.querySelector('.js-upload-progress-fill');
+  var label = form.querySelector('.js-upload-progress-label');
+  if (!wrap || !fill || !label) return;
+  wrap.style.display = 'block';
+  fill.style.width = percent + '%';
+  label.textContent = 'Uploading photo... ' + percent + '%';
+}
+
+function resetProgress(form) {
+  var wrap = form.querySelector('.js-upload-progress-wrap');
+  var fill = form.querySelector('.js-upload-progress-fill');
+  var label = form.querySelector('.js-upload-progress-label');
+  if (!wrap || !fill || !label) return;
+  wrap.style.display = 'none';
+  fill.style.width = '0%';
+  label.textContent = 'Uploading photo... 0%';
+}
+
+function setSubmitting(form, isSubmitting) {
+  if (!form) return;
+  form.dataset.uploading = isSubmitting ? '1' : '0';
+  var submitBtn = form.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = !!isSubmitting;
+    submitBtn.textContent = isSubmitting ? 'Uploading...' : 'Mark Completed';
+  }
+}
+
+function sleep(ms) {
+  return new Promise(function(resolve) { setTimeout(resolve, ms); });
+}
+
+function getSubmitUrl(form) {
+  return form.getAttribute('hx-post') || form.getAttribute('action') || window.location.pathname;
+}
+
+function getSelectedPhoto(form) {
+  if (!form) return null;
+  var stored = hkCapturedFiles.get(form);
+  if (stored && stored.file) return stored.file;
+  var input = form.querySelector('.js-photo-file-input');
+  if (input && input.files && input.files.length) return input.files[0];
+  return null;
+}
+
+function buildTaskFormData(form) {
+  var fd = new FormData(form);
+  var stored = hkCapturedFiles.get(form) || null;
+  var selectedFile = (stored && stored.file) ? stored.file : getSelectedPhoto(form);
+  if (selectedFile) {
+    fd.set('photo_after', selectedFile, selectedFile.name || ('task-photo-' + Date.now() + '.jpg'));
+  }
+  if (stored && stored.meta) {
+    var meta = stored.meta;
+    if (meta.thumbnailFile) {
+      fd.set('photo_after_thumbnail', meta.thumbnailFile, meta.thumbnailFile.name || ('task-photo-thumb-' + Date.now() + '.jpg'));
+    }
+    if (meta.capturedAt) fd.set('capturedAt', meta.capturedAt);
+    if (meta.captureMethod) fd.set('captureMethod', meta.captureMethod);
+    if (meta.originalSize) fd.set('originalSize', String(meta.originalSize));
+    if (meta.compressedSize) fd.set('compressedSize', String(meta.compressedSize));
+    if (meta.thumbnailSize) fd.set('thumbnailSize', String(meta.thumbnailSize));
+    if (meta.format) fd.set('format', meta.format);
+  }
+  return fd;
+}
+
+function replaceTaskCardHtml(form, html) {
+  var current = form ? form.closest('.card') : null;
+  if (!current) {
+    window.location.reload();
+    return;
+  }
+  var wrap = document.createElement('div');
+  wrap.innerHTML = String(html || '').trim();
+  var next = wrap.firstElementChild;
+  if (!next) {
+    window.location.reload();
+    return;
+  }
+  current.outerHTML = next.outerHTML;
+}
+
+function uploadTaskCompleteRequest(form, attempt, maxAttempts) {
+  return new Promise(function(resolve, reject) {
+    var formData = buildTaskFormData(form);
+    var csrf = formData.get('csrfmiddlewaretoken');
+    var xhr = new XMLHttpRequest();
+    var submitUrl = getSubmitUrl(form);
+    hkLog('📤 Uploading to:', submitUrl, '| attempt', attempt + '/' + maxAttempts);
+    xhr.open('POST', submitUrl, true);
+    xhr.setRequestHeader('HX-Request', 'true');
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    if (csrf) xhr.setRequestHeader('X-CSRFToken', csrf);
+    xhr.upload.onprogress = function(evt) {
+      if (!evt.lengthComputable || !evt.total) return;
+      var pct = Math.min(100, Math.max(0, Math.round((evt.loaded / evt.total) * 100)));
+      setProgress(form, pct);
+    };
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        setProgress(form, 100);
+        resolve(xhr.responseText);
+      } else {
+        reject(new Error('Upload failed with status ' + xhr.status));
+      }
+    };
+    xhr.onerror = function() {
+      reject(new Error('Network error while uploading photo.'));
+    };
+    xhr.send(formData);
+  });
+}
+
+async function submitTaskCompleteWithRetry(form) {
+  if (!form) return;
+  var maxAttempts = 3;
+  var retryBtn = form.querySelector('.js-upload-retry-btn');
+  if (retryBtn) retryBtn.style.display = 'none';
+  hkBusy = true;
+  setSubmitting(form, true);
+  setProgress(form, 0);
+  for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      var selected = getSelectedPhoto(form);
+      if (selected) hkLog('📸 Photo captured:', Math.round((selected.size || 0) / 1024) + 'KB');
+      var html = await uploadTaskCompleteRequest(form, attempt, maxAttempts);
+      hkLog('✅ Upload success for task form');
+      clearPhotoPreview(form);
+      replaceTaskCardHtml(form, html);
+      hkLog('💾 State updated with new photo (task card replaced)');
+      hkBusy = false;
+      return;
+    } catch (err) {
+      hkLog('❌ Upload attempt failed', attempt, err);
+      if (attempt < maxAttempts) {
+        showPhotoError(form, 'Upload failed. Retrying (' + attempt + '/' + maxAttempts + ')...');
+        await sleep(500 * Math.pow(2, attempt - 1));
+      } else {
+        showPhotoError(form, 'Upload failed. Please retry.');
+        if (retryBtn) retryBtn.style.display = 'inline-block';
+      }
+    }
+  }
+  resetProgress(form);
+  setSubmitting(form, false);
+  hkBusy = false;
+}
+
+function ensureCameraInit() {
+  if (hkCamera || typeof HKCameraCapture === 'undefined') return;
+  hkCamera = new HKCameraCapture();
+}
+
+function buildLightbox() {
+  if (hkLightbox) return hkLightbox;
+  var root = document.createElement('div');
+  root.style.position = 'fixed';
+  root.style.inset = '0';
+  root.style.zIndex = '10080';
+  root.style.background = 'rgba(0,0,0,.82)';
+  root.style.display = 'none';
+  root.style.alignItems = 'center';
+  root.style.justifyContent = 'center';
+  root.style.padding = '14px';
+  root.innerHTML = '<div style="max-width:980px;width:100%;position:relative"><button type="button" id="hk-lightbox-close" style="position:absolute;top:-10px;right:-2px;border:none;background:rgba(255,255,255,.22);color:#fff;border-radius:999px;width:34px;height:34px;font-size:18px;font-weight:700;cursor:pointer">x</button><img id="hk-lightbox-img" alt=\"Task photo\" style=\"width:100%;max-height:85vh;object-fit:contain;border-radius:10px;background:#111\"><div id=\"hk-lightbox-cap\" style=\"color:#e5e7eb;font-size:12px;margin-top:8px;text-align:center\"></div></div>';
+  document.body.appendChild(root);
+  root.addEventListener('click', function(e) {
+    if (e.target === root) root.style.display = 'none';
+  });
+  root.querySelector('#hk-lightbox-close').addEventListener('click', function() {
+    root.style.display = 'none';
+  });
+  hkLightbox = root;
+  return root;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+  ensureCameraInit();
+
   // Auto-hide flash messages after a short duration.
   var flashes = document.querySelectorAll('.hk-flash');
   if (flashes.length) {
@@ -301,6 +719,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var u = new URL(window.location.href);
         u.searchParams.delete('ws_ok');
         u.searchParams.delete('ws_err');
+        u.searchParams.delete('ic_ok');
+        u.searchParams.delete('ic_err');
         window.history.replaceState({}, '', u.toString());
       } catch (e) {}
     }, 5500);
@@ -311,10 +731,115 @@ document.addEventListener('DOMContentLoaded', function() {
   var initial = (saved && TABS.indexOf(saved) !== -1) ? saved : 'floor';
   showTab(initial, true);
 
+  document.body.addEventListener('click', function(e) {
+    var openBtn = e.target.closest('.js-open-camera');
+    if (openBtn) {
+      e.preventDefault();
+      ensureCameraInit();
+      var formId = openBtn.getAttribute('data-form-id');
+      var form = document.getElementById(formId);
+      if (!form) return;
+      if (!supportsCameraHK() || !hkCamera) {
+        var secure = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        showPhotoError(form, secure ? 'Camera is not available on this device/browser.' : 'Camera requires secure HTTPS connection.');
+        return;
+      }
+      hkCamera.open({
+        taskId: openBtn.getAttribute('data-task-id') || '',
+        taskName: openBtn.getAttribute('data-task-name') || 'Task',
+        onUsePhoto: function(payload) {
+          setFormFile(form, payload.file, payload);
+        }
+      });
+      return;
+    }
+
+    var clearBtn = e.target.closest('.js-photo-clear');
+    if (clearBtn) {
+      e.preventDefault();
+      clearPhotoPreview(clearBtn.closest('form'));
+      return;
+    }
+
+    var retryBtn = e.target.closest('.js-upload-retry-btn');
+    if (retryBtn) {
+      e.preventDefault();
+      var retryForm = retryBtn.closest('form');
+      showPhotoError(retryForm, '');
+      submitTaskCompleteWithRetry(retryForm);
+      return;
+    }
+
+    var thumb = e.target.closest('.js-task-photo-thumb');
+    if (thumb) {
+      e.preventDefault();
+      var box = buildLightbox();
+      box.querySelector('#hk-lightbox-img').src = thumb.getAttribute('data-photo-url') || thumb.getAttribute('src');
+      box.querySelector('#hk-lightbox-cap').textContent = thumb.getAttribute('data-photo-title') || '';
+      box.style.display = 'flex';
+    }
+  });
+
+  document.body.addEventListener('change', function(e) {
+    var input = e.target.closest('.js-photo-file-input');
+    if (!input || !input.files || !input.files.length) return;
+    var form = input.closest('form');
+    if (!form) return;
+    var file = input.files[0];
+    setFormFile(form, file, {
+      captureMethod: 'file_upload',
+      capturedAt: new Date().toISOString(),
+    });
+  });
+
+  document.body.addEventListener('submit', function(e) {
+    var form = e.target.closest('.js-task-complete-form');
+    if (!form) return;
+    if (form.dataset.uploading === '1') {
+      e.preventDefault();
+      return;
+    }
+    var required = form.getAttribute('data-requires-photo') === '1';
+    if (!required) return;
+    var hasFile = !!getSelectedPhoto(form);
+    if (!hasFile) {
+      e.preventDefault();
+      showPhotoError(form, 'Task completion photo is required. Please take a photo first.');
+      return;
+    }
+    e.preventDefault();
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+    showPhotoError(form, '');
+    submitTaskCompleteWithRetry(form);
+  });
+
+  document.body.addEventListener('htmx:xhr:progress', function(e) {
+    var form = e.detail && e.detail.elt ? e.detail.elt.closest('.js-task-complete-form') : null;
+    if (!form) return;
+    if (!e.detail.total) return;
+    var pct = Math.min(100, Math.max(0, Math.round((e.detail.loaded / e.detail.total) * 100)));
+    setProgress(form, pct);
+  });
+
+  document.body.addEventListener('htmx:afterRequest', function(e) {
+    var form = e.detail && e.detail.elt ? e.detail.elt.closest('.js-task-complete-form') : null;
+    if (!form) return;
+    resetProgress(form);
+  });
+
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+      if (shouldSkipAutoRefresh()) return;
+      window.location.reload();
+    }
+  });
+
   setInterval(function() {
     if (shouldSkipAutoRefresh()) return;
     window.location.reload();
-  }, 10000);
+  }, 60000);
 });
 </script>
+<script src="{% static 'housekeeping/mobile/camera_capture.js' %}?v=20260309_2"></script>
 {% endblock %}

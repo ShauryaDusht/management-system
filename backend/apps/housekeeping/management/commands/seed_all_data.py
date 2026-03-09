@@ -25,14 +25,14 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Starting full data bootstrap...'))
 
         call_command('loaddata', 'apps/inventory/fixtures/inventory.json', verbosity=0)
-        self.stdout.write(self.style.SUCCESS('  ✓ Inventory fixture loaded'))
+        self.stdout.write(self.style.SUCCESS('  [OK] Inventory fixture loaded'))
 
         call_command('seed_housekeeping', verbosity=0)
-        self.stdout.write(self.style.SUCCESS('  ✓ Housekeeping/users seeded'))
+        self.stdout.write(self.style.SUCCESS('  [OK] Housekeeping/users seeded'))
 
         if options.get('dump_fixtures'):
             self._dump_fixtures()
-            self.stdout.write(self.style.SUCCESS('  ✓ UTF-8 fixtures refreshed'))
+            self.stdout.write(self.style.SUCCESS('  [OK] UTF-8 fixtures refreshed'))
 
         User = get_user_model()
         self.stdout.write(self.style.SUCCESS(
@@ -57,3 +57,4 @@ class Command(BaseCommand):
         users_buffer = StringIO()
         call_command('dumpdata', 'users', indent=2, stdout=users_buffer)
         (fixtures_dir / 'users_hk.json').write_text(users_buffer.getvalue(), encoding='utf-8')
+

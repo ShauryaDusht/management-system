@@ -363,6 +363,14 @@ class IssueItemView(APIView):
 
         item_request.status = ItemRequest.Status.ISSUED
         item_request.save()
+        try:
+            from apps.housekeeping.models import HKStockRequest
+            hk_req = HKStockRequest.objects.filter(inventory_request=item_request).first()
+            if hk_req:
+                hk_req.status = 'issued'
+                hk_req.save(update_fields=['status'])
+        except Exception:
+            pass
 
         return Response(ItemIssueSerializer(issue).data, status=201)
 

@@ -19,11 +19,6 @@
 <div class="card" style="position:sticky;top:62px;z-index:50">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
     <div style="font-weight:800;color:#2d4a3e">📅 {{ sel_date|date:"d M Y" }}</div>
-    <form method="get" style="display:flex;gap:6px">
-      {% if sel_area %}<input type="hidden" name="area" value="{{ sel_area.id }}">{% endif %}
-      <input type="date" name="date" value="{{ sel_date|date:'Y-m-d' }}" onchange="this.form.submit()"
-        style="padding:6px 8px;border:1px solid #d1d5db;border-radius:8px;font-size:12px;width:auto">
-    </form>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
     <div style="text-align:center;padding:7px;background:#d1fae5;border-radius:8px">

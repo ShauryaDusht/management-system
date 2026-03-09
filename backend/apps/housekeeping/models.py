@@ -1,4 +1,5 @@
 import datetime
+import uuid
 
 from django.db import models
 from django.conf import settings
@@ -174,6 +175,24 @@ class HKDailyRecord(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     photo_before = models.ImageField(upload_to='housekeeping/photos/%Y/%m/%d/', null=True, blank=True)
     photo_after = models.ImageField(upload_to='housekeeping/photos/%Y/%m/%d/', null=True, blank=True)
+    photo_after_thumbnail = models.ImageField(upload_to='housekeeping/photos/%Y/%m/%d/thumbs/', null=True, blank=True)
+    photo_after_captured_at = models.DateTimeField(null=True, blank=True)
+    photo_after_capture_method = models.CharField(max_length=20, blank=True)
+    photo_after_original_size = models.PositiveIntegerField(default=0)
+    photo_after_saved_size = models.PositiveIntegerField(default=0)
+    photo_after_thumb_size = models.PositiveIntegerField(default=0)
+    photo_after_compression_ratio = models.PositiveSmallIntegerField(default=0)
+    photo_after_format = models.CharField(max_length=20, blank=True)
+    photo_after_flagged = models.BooleanField(default=False)
+    photo_after_flag_note = models.CharField(max_length=300, blank=True)
+    photo_after_flagged_at = models.DateTimeField(null=True, blank=True)
+    photo_after_flagged_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='hk_flagged_task_photos',
+    )
     note = models.CharField(max_length=300, blank=True)
     latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
@@ -469,3 +488,129 @@ class HKWorkerSelectionRequest(models.Model):
     def __str__(self):
         target = self.target_area.name if self.target_area else self.get_target_group_display()
         return f"Worker selection #{self.pk} -> {target} ({self.status})"
+
+
+class HKLeaveRequest(models.Model):
+    STATUS_CHOICES = [
+        ('awaiting_incharge', 'Awaiting Incharge Selection'),
+        ('pending_acceptance', 'Pending Incharge Acceptance'),
+        ('pending_admin_approval', 'Pending Admin Approval'),
+        ('approved', 'Approved'),
+        ('reassign_required', 'Reassign Required'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='hk_leave_requests',
+    )
+    area = models.ForeignKey(
+        HKArea,
+        on_delete=models.CASCADE,
+        related_name='hk_leave_requests',
+    )
+    leave_date = models.DateField()
+    reason = models.CharField(max_length=300, blank=True)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='awaiting_incharge')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-leave_date', '-created_at']
+        unique_together = ['staff', 'leave_date']
+
+    def __str__(self):
+        return f"Leave {self.leave_date} | {self.staff} | {self.status}"
+
+
+class HKInchargeAssignment(models.Model):
+    STATUS_CHOICES = [
+        ('pending_acceptance', 'Pending Acceptance'),
+        ('declined', 'Declined'),
+        ('pending_admin_approval', 'Pending Admin Approval'),
+        ('admin_rejected', 'Admin Rejected'),
+        ('approved', 'Approved'),
+    ]
+    AREA_GROUP_CHOICES = [
+        ('hostels', 'Hostels'),
+        ('academic', 'Academic Blocks'),
+        ('others', 'Others'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    leave_request = models.OneToOneField(
+        HKLeaveRequest,
+        on_delete=models.CASCADE,
+        related_name='incharge_assignment',
+    )
+    area = models.ForeignKey(
+        HKArea,
+        on_delete=models.CASCADE,
+        related_name='incharge_assignments',
+    )
+    leave_staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='hk_incharge_leave_requests',
+    )
+    leave_staff_name = models.CharField(max_length=120)
+    leave_staff_area = models.CharField(max_length=20, choices=AREA_GROUP_CHOICES)
+    leave_date = models.DateField()
+    assigned_staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='hk_incharge_assigned_requests',
+    )
+    assigned_staff_name = models.CharField(max_length=120)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending_acceptance')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    admin_action_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='hk_incharge_admin_actions',
+    )
+    admin_action_at = models.DateTimeField(null=True, blank=True)
+    admin_action_note = models.CharField(max_length=300, blank=True)
+    staff_action_at = models.DateTimeField(null=True, blank=True)
+    staff_action_note = models.CharField(max_length=300, blank=True)
+    arrival_notified = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-leave_date', '-created_at']
+
+    def __str__(self):
+        return f"Incharge {self.leave_date} | {self.leave_staff_name} -> {self.assigned_staff_name} ({self.status})"
+
+
+class HKInchargeNotification(models.Model):
+    LEVEL_CHOICES = [
+        ('info', 'Info'),
+        ('success', 'Success'),
+        ('warning', 'Warning'),
+        ('error', 'Error'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='hk_incharge_notifications',
+    )
+    assignment = models.ForeignKey(
+        HKInchargeAssignment,
+        on_delete=models.CASCADE,
+        related_name='notifications',
+    )
+    message = models.CharField(max_length=300)
+    level = models.CharField(max_length=10, choices=LEVEL_CHOICES, default='info')
+    is_seen = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user} | {self.level} | {self.message[:60]}"

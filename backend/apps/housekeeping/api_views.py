@@ -1,20 +1,40 @@
 from datetime import timedelta
+import csv
+import io
 import re
+import zipfile
+from urllib.parse import urlparse, urlunparse
 
-from django.db import transaction
-from django.db.models import Count, Max, Q
+from django.contrib.auth import get_user_model
+from django.db import OperationalError, ProgrammingError, transaction
+from django.db.models import Count, Max, Q, Sum
+from django.db.models.functions import Coalesce
+from django.http import FileResponse, HttpResponse
+from django.core.files.base import ContentFile
+from django.core.cache import cache
 from django.utils import timezone
+from django.utils.text import slugify
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from apps.reports.exporters import (
+    export_supervisor_report_csv,
+    export_worker_report_csv,
+    export_workers_combined_csv,
+)
+from apps.reports.generators import generate_supervisor_report, generate_worker_report
+from apps.reports.models import SupervisorMonthlyReport, WorkerMonthlyReport
 
 from .models import (
     HKAlert,
     HKArea,
     HKAttendanceRecord,
     HKDailyRecord,
+    HKInchargeAssignment,
+    HKInchargeNotification,
+    HKLeaveRequest,
     HKScheduleTemplate,
     HKStockRequest,
     HKUserArea,
@@ -25,6 +45,9 @@ from .serializers import (
     HKAlertSerializer,
     HKAreaSerializer,
     HKDailyRecordSerializer,
+    HKInchargeAssignmentSerializer,
+    HKInchargeNotificationSerializer,
+    HKLeaveRequestSerializer,
     HKScheduleTemplateSerializer,
     HKStockRequestSerializer,
     HKStockRequestStatusSerializer,
@@ -67,6 +90,68 @@ def _filter_workers_by_section(qs, section_filter):
         return qs
     worker_ids = [w.id for w in qs if _area_group(w.area) == section_filter]
     return HKWorker.objects.filter(id__in=worker_ids, is_active=True)
+
+
+def _push_incharge_notice(user, assignment, message, level='info'):
+    if not user:
+        return
+    HKInchargeNotification.objects.create(
+        user=user,
+        assignment=assignment,
+        message=message,
+        level=level,
+    )
+
+
+def _parse_report_period(month_raw, year_raw):
+    today = timezone.localdate()
+
+    if not month_raw and not year_raw:
+        return today.month, today.year, None
+    if not month_raw or not year_raw:
+        return None, None, 'month and year must be provided together.'
+
+    try:
+        month = int(month_raw)
+        year = int(year_raw)
+    except (TypeError, ValueError):
+        return None, None, 'month and year must be integers.'
+
+    if not (1 <= month <= 12):
+        return None, None, 'month must be between 1 and 12.'
+    if year < 2000 or year > 2100:
+        return None, None, 'year must be a valid 4-digit year.'
+
+    return month, year, None
+
+
+def _is_current_month(month, year):
+    today = timezone.localdate()
+    return (year, month) == (today.year, today.month)
+
+
+def _is_past_month(month, year):
+    today = timezone.localdate()
+    return (year, month) < (today.year, today.month)
+
+
+def _worker_report_filename(worker, month, year):
+    safe_name = slugify(worker.name) or str(worker.id)
+    return f"worker_{safe_name}_{month:02d}_{year}.csv"
+
+
+def _get_supervisor_or_404(pk):
+    User = get_user_model()
+    return get_object_or_404(
+        User,
+        pk=pk,
+        role__in=['supervisor', 'caretaker'],
+    )
+
+
+def _supervisor_report_filename(supervisor, month, year):
+    safe_name = slugify(supervisor.username) or str(supervisor.id)
+    return f"supervisor_{safe_name}_{month:02d}_{year}.csv"
 
 
 class HKAreaListView(ListAPIView):
@@ -153,6 +238,366 @@ class HKWorkerDetailView(APIView):
         worker.is_active = False
         worker.save(update_fields=['is_active'])
         return Response(status=204)
+
+
+class HKWorkerReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        worker = get_object_or_404(HKWorker, pk=pk)
+
+        month, year, err = _parse_report_period(
+            request.query_params.get('month'),
+            request.query_params.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        if not _is_current_month(month, year):
+            cached_report = WorkerMonthlyReport.objects.filter(
+                worker=worker,
+                month=month,
+                year=year,
+            ).first()
+            if cached_report:
+                return Response(
+                    {
+                        'cached': True,
+                        'generated_at': cached_report.generated_at,
+                        'snapshot': cached_report.snapshot,
+                    }
+                )
+
+        snapshot = generate_worker_report(worker.id, month, year)
+        return Response(
+            {
+                'cached': False,
+                'generated_at': snapshot.get('generated_at'),
+                'snapshot': snapshot,
+            }
+        )
+
+
+class HKWorkerReportCSVView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        worker = get_object_or_404(HKWorker, pk=pk)
+
+        month, year, err = _parse_report_period(
+            request.query_params.get('month'),
+            request.query_params.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        filename = _worker_report_filename(worker, month, year)
+        cached_report = WorkerMonthlyReport.objects.filter(
+            worker=worker,
+            month=month,
+            year=year,
+        ).first()
+
+        if _is_past_month(month, year) and cached_report and cached_report.csv_file:
+            file_handle = cached_report.csv_file.open('rb')
+            return FileResponse(
+                file_handle,
+                content_type='text/csv',
+                as_attachment=True,
+                filename=filename,
+            )
+
+        if _is_past_month(month, year) and cached_report and not cached_report.csv_file:
+            snapshot = cached_report.snapshot or generate_worker_report(worker.id, month, year)
+            csv_bytes = export_worker_report_csv(snapshot)
+            cached_report.csv_file.save(filename, ContentFile(csv_bytes), save=True)
+
+            file_handle = cached_report.csv_file.open('rb')
+            return FileResponse(
+                file_handle,
+                content_type='text/csv',
+                as_attachment=True,
+                filename=filename,
+            )
+
+        snapshot = generate_worker_report(worker.id, month, year)
+        csv_bytes = export_worker_report_csv(snapshot)
+
+        response = HttpResponse(csv_bytes, content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+
+class HKWorkerReportRegenerateView(APIView):
+    permission_classes = [IsAdminOrHousekeepingManager]
+
+    def post(self, request, pk):
+        worker = get_object_or_404(HKWorker, pk=pk)
+
+        month, year, err = _parse_report_period(
+            request.data.get('month'),
+            request.data.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        today = timezone.localdate()
+        if (year, month) >= (today.year, today.month):
+            return Response(
+                {'detail': 'Only completed past months can be regenerated/cached.'},
+                status=400,
+            )
+
+        snapshot = generate_worker_report(worker.id, month, year)
+        csv_bytes = export_worker_report_csv(snapshot)
+        now = timezone.now()
+        filename = _worker_report_filename(worker, month, year)
+
+        report, created = WorkerMonthlyReport.objects.get_or_create(
+            worker=worker,
+            month=month,
+            year=year,
+            defaults={
+                'generated_at': now,
+                'snapshot': snapshot,
+            },
+        )
+        if not created:
+            if report.csv_file:
+                report.csv_file.delete(save=False)
+            report.snapshot = snapshot
+            report.generated_at = now
+        else:
+            report.generated_at = now
+            report.snapshot = snapshot
+
+        report.csv_file.save(filename, ContentFile(csv_bytes), save=False)
+        report.save()
+
+        return Response({'success': True, 'generated_at': report.generated_at})
+
+
+class SupervisorReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        supervisor = _get_supervisor_or_404(pk)
+
+        month, year, err = _parse_report_period(
+            request.query_params.get('month'),
+            request.query_params.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        if _is_past_month(month, year):
+            try:
+                cached_report = SupervisorMonthlyReport.objects.filter(
+                    supervisor=supervisor,
+                    month=month,
+                    year=year,
+                ).first()
+            except (OperationalError, ProgrammingError):
+                cached_report = None
+            if cached_report:
+                return Response(
+                    {
+                        'cached': True,
+                        'generated_at': cached_report.generated_at,
+                        'snapshot': cached_report.snapshot,
+                    }
+                )
+
+        snapshot = generate_supervisor_report(supervisor.id, month, year)
+        return Response(
+            {
+                'cached': False,
+                'generated_at': snapshot.get('generated_at'),
+                'snapshot': snapshot,
+            }
+        )
+
+
+class SupervisorReportCSVView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        supervisor = _get_supervisor_or_404(pk)
+
+        month, year, err = _parse_report_period(
+            request.query_params.get('month'),
+            request.query_params.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        filename = _supervisor_report_filename(supervisor, month, year)
+        if _is_past_month(month, year):
+            try:
+                cached_report = SupervisorMonthlyReport.objects.filter(
+                    supervisor=supervisor,
+                    month=month,
+                    year=year,
+                ).first()
+            except (OperationalError, ProgrammingError):
+                cached_report = None
+
+            if cached_report and cached_report.csv_file:
+                file_handle = cached_report.csv_file.open('rb')
+                return FileResponse(
+                    file_handle,
+                    content_type='text/csv',
+                    as_attachment=True,
+                    filename=filename,
+                )
+
+            if cached_report and not cached_report.csv_file:
+                snapshot = cached_report.snapshot or generate_supervisor_report(supervisor.id, month, year)
+                csv_bytes = export_supervisor_report_csv(snapshot)
+                cached_report.csv_file.save(filename, ContentFile(csv_bytes), save=True)
+
+                file_handle = cached_report.csv_file.open('rb')
+                return FileResponse(
+                    file_handle,
+                    content_type='text/csv',
+                    as_attachment=True,
+                    filename=filename,
+                )
+
+        snapshot = generate_supervisor_report(supervisor.id, month, year)
+        csv_bytes = export_supervisor_report_csv(snapshot)
+
+        response = HttpResponse(csv_bytes, content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+
+class SupervisorReportRegenerateView(APIView):
+    permission_classes = [IsAdminOrHousekeepingManager]
+
+    def post(self, request, pk):
+        supervisor = _get_supervisor_or_404(pk)
+
+        month, year, err = _parse_report_period(
+            request.data.get('month'),
+            request.data.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        if not _is_past_month(month, year):
+            return Response(
+                {'detail': 'Only completed past months can be regenerated/cached.'},
+                status=400,
+            )
+
+        snapshot = generate_supervisor_report(supervisor.id, month, year)
+        csv_bytes = export_supervisor_report_csv(snapshot)
+        now = timezone.now()
+        filename = _supervisor_report_filename(supervisor, month, year)
+
+        report, created = SupervisorMonthlyReport.objects.get_or_create(
+            supervisor=supervisor,
+            month=month,
+            year=year,
+            defaults={
+                'generated_at': now,
+                'snapshot': snapshot,
+            },
+        )
+        if not created:
+            if report.csv_file:
+                report.csv_file.delete(save=False)
+            report.snapshot = snapshot
+            report.generated_at = now
+        else:
+            report.generated_at = now
+            report.snapshot = snapshot
+
+        report.csv_file.save(filename, ContentFile(csv_bytes), save=False)
+        report.save()
+
+        return Response({'success': True, 'generated_at': report.generated_at})
+
+
+class HKWorkersCombinedCSVView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        month, year, err = _parse_report_period(
+            request.query_params.get('month'),
+            request.query_params.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        area_id_raw = request.query_params.get('area')
+        group = (request.query_params.get('group') or '').strip().lower()
+        if group and group not in {'hostels', 'academic', 'others'}:
+            return Response({'detail': 'group must be hostels, academic, or others.'}, status=400)
+
+        workers_qs = HKWorker.objects.select_related('area', 'supervisor').filter(is_active=True).order_by('area__name', 'name')
+
+        area_obj = None
+        if area_id_raw:
+            try:
+                area_id = int(area_id_raw)
+            except (TypeError, ValueError):
+                return Response({'detail': 'area must be a numeric id.'}, status=400)
+
+            area_obj = HKArea.objects.filter(pk=area_id, is_active=True).first()
+            if not area_obj:
+                return Response({'detail': 'Area not found.'}, status=404)
+            workers_qs = workers_qs.filter(area=area_obj)
+
+        workers = list(workers_qs)
+        if group:
+            workers = [worker for worker in workers if _area_group(worker.area) == group]
+
+        rows = []
+        for worker in workers:
+            snapshot = generate_worker_report(worker.id, month, year)
+            attendance = snapshot.get('attendance', {})
+            tasks = snapshot.get('tasks', {})
+            rows.append({
+                'worker_name': worker.name,
+                'area_name': worker.area.name if worker.area else '',
+                'supervisor_name': (
+                    worker.supervisor.get_full_name() or worker.supervisor.username
+                    if worker.supervisor else ''
+                ),
+                'worker_type': worker.worker_type,
+                'shift': worker.shift,
+                'punching_no': worker.punching_no,
+                'phone': worker.phone,
+                'is_reliever': worker.is_reliever,
+                'attendance_pct': snapshot.get('attendance_pct', 0),
+                'days_present': attendance.get('days_present', 0),
+                'days_absent': attendance.get('days_absent', 0),
+                'days_late': attendance.get('days_late', 0),
+                'days_on_leave': attendance.get('days_on_leave', 0),
+                'tasks_assigned': tasks.get('total_assigned', 0),
+                'tasks_completed': tasks.get('total_completed', 0),
+                'tasks_skipped': tasks.get('total_skipped', 0),
+                'completion_pct': tasks.get('completion_pct', 0),
+                'extra_work_count': snapshot.get('extra_work_count', 0),
+                'reliever_days': len(snapshot.get('reliever_days', [])),
+            })
+
+        if area_obj:
+            title = f"Area Worker Report - {area_obj.name}"
+            filename_base = f"workers_area_{slugify(area_obj.name) or area_obj.id}"
+        elif group:
+            title = f"Worker Report - {group.title()}"
+            filename_base = f"workers_{group}"
+        else:
+            title = "Worker Report - All Workers"
+            filename_base = "workers_all"
+
+        csv_bytes = export_workers_combined_csv(rows=rows, month=month, year=year, title=title)
+        response = HttpResponse(csv_bytes, content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename_base}_{month:02d}_{year}.csv"'
+        return response
 
 
 class HKWorkerSelectionRequestListCreateView(APIView):
@@ -323,6 +768,138 @@ class HKWorkerSelectionRequestDecisionView(APIView):
         payload = HKWorkerSelectionRequestSerializer(req_obj).data
         payload['moved_count'] = moved_count
         return Response(payload, status=200)
+
+
+class HKInchargeAssignmentListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        status_filter = (request.query_params.get('status') or '').strip().lower()
+        qs = (
+            HKInchargeAssignment.objects
+            .select_related(
+                'area',
+                'leave_request',
+                'leave_staff',
+                'assigned_staff',
+                'admin_action_by',
+            )
+            .order_by('-created_at')
+        )
+        if request.user.role not in ['admin', 'housekeeping_manager']:
+            qs = qs.filter(Q(leave_staff=request.user) | Q(assigned_staff=request.user))
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        serializer = HKInchargeAssignmentSerializer(qs, many=True)
+        return Response(serializer.data)
+
+
+class HKInchargeAssignmentDecisionView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def post(self, request, pk):
+        assignment = get_object_or_404(
+            HKInchargeAssignment.objects.select_related(
+                'leave_request',
+                'area',
+                'leave_staff',
+                'assigned_staff',
+            ),
+            pk=pk,
+        )
+        if assignment.status != 'pending_admin_approval':
+            return Response(
+                {'detail': 'Only pending_admin_approval assignments can be decided.'},
+                status=400,
+            )
+
+        decision = (request.data.get('decision') or '').strip().lower()
+        note = (request.data.get('decision_note') or '').strip()
+        if decision not in {'approved', 'rejected'}:
+            return Response({'detail': 'decision must be approved or rejected.'}, status=400)
+
+        with transaction.atomic():
+            now = timezone.now()
+            if decision == 'approved':
+                assignment.status = 'approved'
+                assignment.arrival_notified = False
+                assignment.leave_request.status = 'approved'
+            else:
+                assignment.status = 'admin_rejected'
+                assignment.leave_request.status = 'reassign_required'
+
+            assignment.admin_action_by = request.user
+            assignment.admin_action_at = now
+            assignment.admin_action_note = note
+            assignment.leave_request.save(update_fields=['status', 'updated_at'])
+            assignment.save(
+                update_fields=[
+                    'status',
+                    'arrival_notified',
+                    'admin_action_by',
+                    'admin_action_at',
+                    'admin_action_note',
+                    'updated_at',
+                ]
+            )
+
+            if decision == 'approved':
+                _push_incharge_notice(
+                    assignment.leave_staff,
+                    assignment,
+                    f'Admin approved {assignment.assigned_staff_name} as incharge for {assignment.leave_date}.',
+                    level='success',
+                )
+                _push_incharge_notice(
+                    assignment.assigned_staff,
+                    assignment,
+                    f'Admin approved you as incharge for {assignment.leave_date}.',
+                    level='success',
+                )
+            else:
+                _push_incharge_notice(
+                    assignment.leave_staff,
+                    assignment,
+                    f'Admin rejected incharge assignment for {assignment.leave_date}. Please select another incharge.',
+                    level='error',
+                )
+                _push_incharge_notice(
+                    assignment.assigned_staff,
+                    assignment,
+                    f'Admin rejected your temporary incharge assignment for {assignment.leave_date}.',
+                    level='warning',
+                )
+
+        return Response(HKInchargeAssignmentSerializer(assignment).data)
+
+
+class HKLeaveRequestListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = (
+            HKLeaveRequest.objects
+            .select_related('staff', 'area')
+            .order_by('-leave_date', '-created_at')
+        )
+        if request.user.role not in ['admin', 'housekeeping_manager']:
+            qs = qs.filter(staff=request.user)
+        serializer = HKLeaveRequestSerializer(qs, many=True)
+        return Response(serializer.data)
+
+
+class HKInchargeNotificationListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = (
+            HKInchargeNotification.objects
+            .filter(user=request.user)
+            .select_related('assignment')
+            .order_by('-created_at')[:40]
+        )
+        serializer = HKInchargeNotificationSerializer(qs, many=True)
+        return Response(serializer.data)
 
 
 class HKDailyRecordListView(ListAPIView):
@@ -638,3 +1215,492 @@ class HKDashboardSummaryView(APIView):
             'pending_stock_requests': pending_stock,
             'total_areas': HKArea.objects.filter(is_active=True).count(),
         })
+
+
+def _gallery_base_queryset():
+    return (
+        HKDailyRecord.objects
+        .select_related('schedule', 'area', 'completed_by', 'assigned_worker', 'photo_after_flagged_by')
+        .filter(photo_after__isnull=False)
+        .exclude(photo_after='')
+        .annotate(capture_ts=Coalesce('photo_after_captured_at', 'completed_at'))
+    )
+
+
+def _parse_int(value, default=0, min_value=None, max_value=None):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    if min_value is not None:
+        parsed = max(min_value, parsed)
+    if max_value is not None:
+        parsed = min(max_value, parsed)
+    return parsed
+
+
+def _parse_iso_date(value):
+    if not value:
+        return None
+    try:
+        return timezone.datetime.strptime(value, '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return None
+
+
+def _apply_gallery_filters(request, qs):
+    area = (request.query_params.get('area') or request.query_params.get('areaId') or '').strip()
+    task_id = (request.query_params.get('taskId') or '').strip()
+    staff_id = (request.query_params.get('staffId') or '').strip()
+    search = (request.query_params.get('search') or '').strip()
+    date_from = _parse_iso_date(request.query_params.get('dateFrom'))
+    date_to = _parse_iso_date(request.query_params.get('dateTo'))
+
+    if area:
+        if area.isdigit():
+            qs = qs.filter(area_id=int(area))
+        else:
+            qs = qs.filter(area__name__icontains=area)
+
+    if task_id:
+        try:
+            qs = qs.filter(schedule_id=int(task_id))
+        except (TypeError, ValueError):
+            pass
+
+    if staff_id:
+        try:
+            qs = qs.filter(completed_by_id=int(staff_id))
+        except (TypeError, ValueError):
+            pass
+
+    if date_from:
+        qs = qs.filter(capture_ts__date__gte=date_from)
+    if date_to:
+        qs = qs.filter(capture_ts__date__lte=date_to)
+
+    if search:
+        qs = qs.filter(
+            Q(area__name__icontains=search)
+            | Q(schedule__task_name__icontains=search)
+            | Q(completed_by__first_name__icontains=search)
+            | Q(completed_by__last_name__icontains=search)
+            | Q(completed_by__username__icontains=search)
+            | Q(assigned_worker__name__icontains=search)
+        )
+
+    return qs
+
+
+def _public_gallery_host(request):
+    forwarded = (request.META.get("HTTP_X_FORWARDED_HOST") or "").split(",")[0].strip()
+    host = forwarded or request.get_host() or "localhost:8000"
+    hostname = host.split(":")[0].lower()
+    if hostname in {"backend", "web", "app", "django", "server"}:
+        return "localhost:8000"
+    return host
+
+
+def _public_media_url(request, raw_url):
+    if not raw_url:
+        return ""
+    try:
+        absolute = request.build_absolute_uri(raw_url)
+    except Exception:
+        absolute = raw_url
+
+    try:
+        parsed = urlparse(absolute)
+        hostname = (parsed.hostname or "").lower()
+        if hostname in {"backend", "web", "app", "django", "server"}:
+            parsed = parsed._replace(netloc=_public_gallery_host(request))
+            return urlunparse(parsed)
+    except Exception:
+        return absolute
+    return absolute
+
+
+def _file_field_url(request, file_field):
+    if not file_field:
+        return ""
+    try:
+        return _public_media_url(request, file_field.url)
+    except Exception:
+        return ""
+
+
+def _serialize_gallery_photo(request, record):
+    photo_url = _file_field_url(request, record.photo_after)
+    thumbnail_url = _file_field_url(request, record.photo_after_thumbnail) or photo_url
+    staff_name = ''
+    staff_id = None
+    if record.completed_by:
+        staff_name = record.completed_by.get_full_name() or record.completed_by.username
+        staff_id = record.completed_by_id
+    elif record.assigned_worker:
+        staff_name = record.assigned_worker.name
+    else:
+        staff_name = 'Unknown'
+
+    capture_ts = record.photo_after_captured_at or record.completed_at
+    return {
+        'id': record.id,
+        'url': photo_url,
+        'thumbnailUrl': thumbnail_url,
+        'taskId': record.schedule_id,
+        'taskName': record.schedule.task_name if record.schedule else '',
+        'areaId': record.area_id,
+        'areaName': record.area.name if record.area else '',
+        'staffId': staff_id,
+        'staffName': staff_name,
+        'capturedAt': capture_ts,
+        'captureMethod': record.photo_after_capture_method or 'file_upload',
+        'fileSize': int(record.photo_after_saved_size or (record.photo_after.size if record.photo_after else 0)),
+        'originalSize': int(record.photo_after_original_size or 0),
+        'savedSize': int(record.photo_after_saved_size or 0),
+        'thumbSize': int(record.photo_after_thumb_size or 0),
+        'compressionRatio': int(record.photo_after_compression_ratio or 0),
+        'format': record.photo_after_format or "jpeg",
+        'flagged': bool(record.photo_after_flagged),
+        'flagNote': record.photo_after_flag_note or '',
+    }
+
+
+class HKAdminGalleryView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def get(self, request):
+        page = _parse_int(request.query_params.get('page'), default=1, min_value=1)
+        limit = _parse_int(request.query_params.get('limit'), default=50, min_value=1, max_value=200)
+        sort = (request.query_params.get('sort') or 'newest').strip().lower()
+
+        qs = _apply_gallery_filters(request, _gallery_base_queryset())
+
+        if sort in {'oldest', 'oldest_first'}:
+            qs = qs.order_by('capture_ts', 'id')
+        elif sort in {'area_a-z', 'area_az'}:
+            qs = qs.order_by('area__name', '-capture_ts', '-id')
+        elif sort in {'most_photos', 'task_most'}:
+            qs = qs.annotate(task_photo_count=Count('schedule_id')).order_by('-task_photo_count', '-capture_ts', '-id')
+        else:
+            qs = qs.order_by('-capture_ts', '-id')
+
+        total = qs.count()
+        start = (page - 1) * limit
+        end = start + limit
+        records = list(qs[start:end])
+
+        photos = [_serialize_gallery_photo(request, rec) for rec in records]
+        return Response(
+            {
+                'photos': photos,
+                'total': total,
+                'page': page,
+                'limit': limit,
+                'hasMore': end < total,
+            }
+        )
+
+
+class HKAdminGalleryGroupedByAreaView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def get(self, request):
+        params_key = '&'.join(
+            [f'{k}={v}' for k, v in sorted(request.query_params.items()) if v not in [None, '']]
+        )
+        cache_key = f'hk_gallery_grouped_v3::{params_key or "all"}'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        qs = _apply_gallery_filters(request, _gallery_base_queryset()).order_by('area__name', 'schedule__task_name', '-capture_ts', '-id')
+        grouped = {}
+        for rec in qs:
+            area = rec.area
+            schedule = rec.schedule
+            if not area or not schedule:
+                continue
+
+            area_bucket = grouped.setdefault(
+                area.id,
+                {
+                    'areaId': area.id,
+                    'areaName': area.name,
+                    'areaIcon': '🏢',
+                    'totalPhotos': 0,
+                    'tasks_map': {},
+                },
+            )
+            area_bucket['totalPhotos'] += 1
+
+            task_bucket = area_bucket['tasks_map'].setdefault(
+                schedule.id,
+                {
+                    'taskId': schedule.id,
+                    'taskName': schedule.task_name,
+                    'photoCount': 0,
+                    'recentPhotos': [],
+                },
+            )
+            task_bucket['photoCount'] += 1
+            if len(task_bucket['recentPhotos']) < 4:
+                task_bucket['recentPhotos'].append(_serialize_gallery_photo(request, rec))
+
+        payload = []
+        for area_id in sorted(grouped.keys(), key=lambda aid: grouped[aid]['areaName'].lower()):
+            area_bucket = grouped[area_id]
+            tasks = list(area_bucket['tasks_map'].values())
+            tasks.sort(key=lambda t: (-t['photoCount'], (t['taskName'] or '').lower()))
+            payload.append(
+                {
+                    'areaId': area_bucket['areaId'],
+                    'areaName': area_bucket['areaName'],
+                    'areaIcon': area_bucket['areaIcon'],
+                    'totalPhotos': area_bucket['totalPhotos'],
+                    'tasks': tasks,
+                }
+            )
+
+        cache.set(cache_key, payload, timeout=60)
+        return Response(payload)
+
+
+class HKAdminGalleryStatsView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def get(self, request):
+        qs = _apply_gallery_filters(request, _gallery_base_queryset())
+        total = qs.count()
+
+        today = timezone.localdate()
+        week_start = today - timedelta(days=today.weekday())
+        this_week = qs.filter(capture_ts__date__gte=week_start, capture_ts__date__lte=today).count()
+
+        areas_with_photos = qs.values('area_id').distinct().count()
+        total_areas = HKArea.objects.filter(is_active=True).count()
+        tasks_with_photos = qs.values('schedule_id').distinct().count()
+        avg_photos_per_task = round((total / tasks_with_photos), 2) if tasks_with_photos else 0
+        size_agg = qs.aggregate(
+            original_total=Coalesce(Sum('photo_after_original_size'), 0),
+            saved_total=Coalesce(Sum('photo_after_saved_size'), 0),
+            thumb_total=Coalesce(Sum('photo_after_thumb_size'), 0),
+        )
+        original_total = int(size_agg.get('original_total') or 0)
+        saved_total = int(size_agg.get('saved_total') or 0)
+        thumb_total = int(size_agg.get('thumb_total') or 0)
+        storage_used_total = saved_total + thumb_total
+        if original_total <= 0:
+            # fallback for legacy rows where metadata is absent.
+            original_total = storage_used_total
+        storage_saved = max(0, original_total - storage_used_total)
+        storage_saved_pct = int(round((storage_saved / float(original_total)) * 100)) if original_total > 0 else 0
+
+        return Response(
+            {
+                'totalPhotos': total,
+                'thisWeekPhotos': this_week,
+                'areasWithPhotos': areas_with_photos,
+                'totalAreas': total_areas,
+                'avgPhotosPerTask': avg_photos_per_task,
+                'storageOriginalBytes': original_total,
+                'storageUsedBytes': storage_used_total,
+                'storageSavedBytes': storage_saved,
+                'storageSavedPercent': storage_saved_pct,
+            }
+        )
+
+
+class HKAdminGalleryTaskPhotosView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def get(self, request, task_id):
+        qs = _apply_gallery_filters(
+            request,
+            _gallery_base_queryset().filter(schedule_id=task_id).order_by('-capture_ts', '-id'),
+        )
+        photos = [_serialize_gallery_photo(request, rec) for rec in qs]
+        return Response({'taskId': task_id, 'photos': photos})
+
+
+class HKAdminGalleryPhotoDeleteView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def delete(self, request, photo_id):
+        record = get_object_or_404(HKDailyRecord, pk=photo_id)
+        if not record.photo_after:
+            return Response({'detail': 'Photo not found.'}, status=404)
+
+        old_name = record.photo_after.name
+        old_storage = record.photo_after.storage
+        thumb_name = record.photo_after_thumbnail.name if record.photo_after_thumbnail else ''
+        thumb_storage = record.photo_after_thumbnail.storage if record.photo_after_thumbnail else old_storage
+
+        record.photo_after = None
+        record.photo_after_thumbnail = None
+        record.photo_after_captured_at = None
+        record.photo_after_capture_method = ''
+        record.photo_after_original_size = 0
+        record.photo_after_saved_size = 0
+        record.photo_after_thumb_size = 0
+        record.photo_after_compression_ratio = 0
+        record.photo_after_format = ''
+        record.photo_after_flagged = False
+        record.photo_after_flag_note = ''
+        record.photo_after_flagged_at = None
+        record.photo_after_flagged_by = None
+        record.save(
+            update_fields=[
+                'photo_after',
+                'photo_after_thumbnail',
+                'photo_after_captured_at',
+                'photo_after_capture_method',
+                'photo_after_original_size',
+                'photo_after_saved_size',
+                'photo_after_thumb_size',
+                'photo_after_compression_ratio',
+                'photo_after_format',
+                'photo_after_flagged',
+                'photo_after_flag_note',
+                'photo_after_flagged_at',
+                'photo_after_flagged_by',
+            ]
+        )
+
+        try:
+            if old_name:
+                old_storage.delete(old_name)
+        except Exception:
+            pass
+        try:
+            if thumb_name:
+                thumb_storage.delete(thumb_name)
+        except Exception:
+            pass
+
+        return Response({'success': True})
+
+
+class HKAdminGalleryPhotoFlagView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def post(self, request, photo_id):
+        record = get_object_or_404(HKDailyRecord, pk=photo_id)
+        if not record.photo_after:
+            return Response({'detail': 'Photo not found.'}, status=404)
+
+        raw_flagged = str(request.data.get('flagged', 'true')).strip().lower()
+        flagged = raw_flagged in {'1', 'true', 'yes', 'on'}
+        note = (request.data.get('note') or '').strip()
+
+        if flagged:
+            record.photo_after_flagged = True
+            record.photo_after_flag_note = note
+            record.photo_after_flagged_at = timezone.now()
+            record.photo_after_flagged_by = request.user
+        else:
+            record.photo_after_flagged = False
+            record.photo_after_flag_note = ''
+            record.photo_after_flagged_at = None
+            record.photo_after_flagged_by = None
+
+        record.save(
+            update_fields=[
+                'photo_after_flagged',
+                'photo_after_flag_note',
+                'photo_after_flagged_at',
+                'photo_after_flagged_by',
+            ]
+        )
+
+        return Response({'success': True, 'flagged': record.photo_after_flagged})
+
+
+class HKAdminGalleryExportCSVView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def get(self, request):
+        qs = _apply_gallery_filters(request, _gallery_base_queryset()).order_by('-capture_ts', '-id')
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(
+            [
+                'area',
+                'task',
+                'staff',
+                'captured_at',
+                'capture_method',
+                'photo_url',
+                'thumbnail_url',
+                'original_size',
+                'saved_size',
+                'thumbnail_size',
+                'compression_ratio',
+                'format',
+            ]
+        )
+        for rec in qs:
+            photo_url = _file_field_url(request, rec.photo_after)
+            thumbnail_url = _file_field_url(request, rec.photo_after_thumbnail)
+            staff_name = ''
+            if rec.completed_by:
+                staff_name = rec.completed_by.get_full_name() or rec.completed_by.username
+            elif rec.assigned_worker:
+                staff_name = rec.assigned_worker.name
+            writer.writerow(
+                [
+                    rec.area.name if rec.area else '',
+                    rec.schedule.task_name if rec.schedule else '',
+                    staff_name,
+                    (rec.photo_after_captured_at or rec.completed_at or '').isoformat() if (rec.photo_after_captured_at or rec.completed_at) else '',
+                    rec.photo_after_capture_method or 'file_upload',
+                    photo_url,
+                    thumbnail_url,
+                    int(rec.photo_after_original_size or 0),
+                    int(rec.photo_after_saved_size or (rec.photo_after.size if rec.photo_after else 0)),
+                    int(rec.photo_after_thumb_size or 0),
+                    int(rec.photo_after_compression_ratio or 0),
+                    rec.photo_after_format or 'jpeg',
+                ]
+            )
+
+        response = HttpResponse(output.getvalue(), content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="housekeeping_gallery_export.csv"'
+        return response
+
+
+class HKAdminGalleryTaskZipView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def get(self, request, task_id):
+        records = list(
+            _gallery_base_queryset()
+            .filter(schedule_id=task_id)
+            .order_by('-capture_ts', '-id')
+        )
+        if not records:
+            return Response({'detail': 'No photos available for this task.'}, status=404)
+
+        mem_file = io.BytesIO()
+        with zipfile.ZipFile(mem_file, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
+            for rec in records:
+                if not rec.photo_after:
+                    continue
+                stamp = timezone.localtime(rec.photo_after_captured_at or rec.completed_at or timezone.now()).strftime('%Y%m%d_%H%M%S')
+                area_slug = slugify(rec.area.name if rec.area else 'area') or 'area'
+                ext = (rec.photo_after_format or '').strip().lower() or 'jpg'
+                filename = f'{area_slug}_{stamp}_{rec.id}.{ext}'
+                try:
+                    rec.photo_after.open('rb')
+                    zf.writestr(filename, rec.photo_after.read())
+                finally:
+                    try:
+                        rec.photo_after.close()
+                    except Exception:
+                        pass
+
+        mem_file.seek(0)
+        response = HttpResponse(mem_file.getvalue(), content_type='application/zip')
+        response['Content-Disposition'] = f'attachment; filename="task_{task_id}_photos.zip"'
+        return response

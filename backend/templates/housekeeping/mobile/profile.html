@@ -4,37 +4,122 @@
 {% block back_btn %}<a href="/housekeeping/dashboard/" class="bk">←</a>{% endblock %}
 
 {% block content %}
-{% if success %}<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:11px;margin-bottom:12px;color:#065f46;font-weight:700">✓ {{ success }}</div>{% endif %}
-{% if error %}<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:11px;margin-bottom:12px;color:#991b1b;font-weight:700">⚠ {{ error }}</div>{% endif %}
+{% if success %}
+<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:11px;margin-bottom:12px;color:#065f46;font-weight:700">{{ success }}</div>
+{% endif %}
+{% if error %}
+<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:11px;margin-bottom:12px;color:#991b1b;font-weight:700">{{ error }}</div>
+{% endif %}
 
 <div class="card" style="text-align:center;padding:22px">
   <div style="width:88px;height:88px;border-radius:50%;background:#2d4a3e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;border:3px solid #c2622a;overflow:hidden;margin:0 auto 12px">
     {% if user.profile_photo %}<img src="{{ user.profile_photo.url }}" style="width:100%;height:100%;object-fit:cover">{% else %}{{ user.first_name|default:user.username|first|upper }}{% endif %}
   </div>
   <div style="font-size:20px;font-weight:800">{{ user.get_full_name|default:user.username }}</div>
-  <div style="color:#2d4a3e;font-size:13px;margin-top:3px">📞 {{ user.phone|default:'No phone registered' }}</div>
+  <div style="color:#2d4a3e;font-size:13px;margin-top:3px">Phone: {{ user.phone|default:'No phone registered' }}</div>
   <span class="bdg g" style="margin-top:8px;font-size:12px">{{ user.get_role_display }}</span>
 </div>
 
-<div class="card"><div style="font-weight:700;color:#2d4a3e;margin-bottom:10px">📷 Update Photo</div>
-  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+<div class="card">
+  <div style="font-weight:700;color:#2d4a3e;margin-bottom:10px">Update Photo</div>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
     <input type="hidden" name="action" value="upload_photo">
     <input type="file" name="profile_photo" accept="image/*" capture="user" style="margin-bottom:10px;font-size:13px">
     <button type="submit" class="btn-g">Upload Photo</button>
   </form>
 </div>
 
-<div class="card"><div style="font-weight:700;color:#2d4a3e;margin-bottom:10px">🏢 Areas In Charge</div>
+<div class="card">
+  <div style="font-weight:700;color:#2d4a3e;margin-bottom:10px">Areas In Charge</div>
   {% for area in user_areas %}
-  <div style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px">📍 {{ area.name }} <span style="font-size:11px;color:#9ca3af">({{ area.get_area_type_display }})</span></div>
-  {% empty %}<div style="color:#9ca3af;font-size:13px">No areas assigned.</div>{% endfor %}
+  <div style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px">
+    {{ area.name }} <span style="font-size:11px;color:#9ca3af">({{ area.get_area_type_display }})</span>
+  </div>
+  {% empty %}
+  <div style="color:#9ca3af;font-size:13px">No areas assigned.</div>
+  {% endfor %}
 </div>
 
-<div class="card"><div style="font-weight:700;color:#2d4a3e;margin-bottom:12px">🔒 Change Password</div>
-  <form method="post">{% csrf_token %}
+{% if not is_saturday %}
+<div class="card" id="leave-ui-block">
+  <div style="font-weight:700;color:#2d4a3e;margin-bottom:10px">Leave Request</div>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="submit_leave">
+    <div class="fg">
+      <label>Area / Hostel *</label>
+      <select name="leave_area_id" required>
+        <option value="">- Select area -</option>
+        {% for area in user_areas %}
+        <option value="{{ area.id }}" {% if selected_leave_area_id|stringformat:'s' == area.id|stringformat:'s' %}selected{% endif %}>{{ area.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="fg">
+      <label>Leave Date *</label>
+      <input type="date" name="leave_date" min="{{ today|date:'Y-m-d' }}" value="{{ selected_leave_date }}" required>
+    </div>
+    <div class="fg">
+      <label>Reason (optional)</label>
+      <input type="text" name="leave_reason" value="{{ leave_reason_value }}" placeholder="Reason for leave...">
+    </div>
+    <button type="submit" class="btn-g">Submit Leave & Select Temporary Incharge</button>
+  </form>
+</div>
+{% endif %}
+
+{% if show_incharge_selector and selector_leave_request %}
+<div class="card" style="border:1.5px solid #fde68a;background:#fffbeb">
+  <div style="font-weight:800;color:#92400e;margin-bottom:7px">Select Temporary Incharge for {{ selector_leave_request.leave_date|date:"d M Y" }}</div>
+  <div style="font-size:12px;color:#6b7280;margin-bottom:10px">Area: {{ selector_leave_request.area.name }}</div>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="assign_temp_incharge">
+    <input type="hidden" name="leave_request_id" value="{{ selector_leave_request.id }}">
+    <div style="display:grid;gap:8px;margin-bottom:10px">
+      {% for cand in selector_candidates %}
+      <label style="display:flex;align-items:flex-start;gap:10px;border:1px solid #fde68a;border-radius:10px;background:#fff;padding:10px;cursor:pointer">
+        <input type="radio" name="assigned_staff_id" value="{{ cand.user.id }}" required style="width:16px;height:16px;margin-top:2px">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#111827">{{ cand.user.get_full_name|default:cand.user.username }}</div>
+          <div style="font-size:11px;color:#6b7280">{{ cand.user.get_role_display }}</div>
+          <div style="font-size:11px;color:#6b7280">{% for a in cand.areas %}{{ a.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+        </div>
+      </label>
+      {% empty %}
+      <div style="font-size:12px;color:#9ca3af">No eligible staff found for this area group.</div>
+      {% endfor %}
+    </div>
+    <div class="fg">
+      <label>Note (optional)</label>
+      <input type="text" name="incharge_note" placeholder="Instruction for temporary incharge">
+    </div>
+    <button type="submit" class="btn-s">Assign as Incharge</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <div style="font-weight:700;color:#2d4a3e;margin-bottom:10px">Leave Status</div>
+  {% for lr in recent_leaves %}
+  <div style="padding:8px 0;border-bottom:1px solid #f3f4f6">
+    <div style="font-size:13px;font-weight:700">{{ lr.leave_date|date:"d M Y" }} - {{ lr.area.name }}</div>
+    <div style="font-size:12px;color:#6b7280">Status: {{ lr.get_status_display }}</div>
+    {% if lr.reason %}<div style="font-size:12px;color:#6b7280">Reason: {{ lr.reason }}</div>{% endif %}
+  </div>
+  {% empty %}
+  <div style="font-size:12px;color:#9ca3af">No leave requests yet.</div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <div style="font-weight:700;color:#2d4a3e;margin-bottom:12px">Change Password</div>
+  <form method="post">
+    {% csrf_token %}
     <input type="hidden" name="action" value="change_password">
     <div class="fg"><label>Current Password</label><input type="password" name="current_password" required></div>
-    <div class="fg"><label>New Password (min 6 chars)</label><input type="password" name="new_password" required></div>
+    <div class="fg"><label>New Password (min 8 chars)</label><input type="password" name="new_password" required></div>
     <div class="fg"><label>Confirm Password</label><input type="password" name="confirm_password" required></div>
     <button type="submit" class="btn-s">Update Password</button>
   </form>
@@ -44,4 +129,14 @@
   {% csrf_token %}
   <button type="submit" class="btn-p">Logout</button>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var isSaturday = new Date().getDay() === 6;
+  var leaveBlock = document.getElementById('leave-ui-block');
+  if (isSaturday && leaveBlock) {
+    leaveBlock.remove();
+  }
+});
+</script>
 {% endblock %}

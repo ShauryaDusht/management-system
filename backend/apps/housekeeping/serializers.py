@@ -4,6 +4,9 @@ from .models import (
     HKAlert,
     HKArea,
     HKDailyRecord,
+    HKInchargeAssignment,
+    HKInchargeNotification,
+    HKLeaveRequest,
     HKScheduleTemplate,
     HKStockRequest,
     HKWorkerSelectionRequest,
@@ -94,6 +97,15 @@ class HKDailyRecordSerializer(serializers.ModelSerializer):
             'assigned_at',
             'started_at',
             'completed_at',
+            'photo_after',
+            'photo_after_thumbnail',
+            'photo_after_captured_at',
+            'photo_after_capture_method',
+            'photo_after_original_size',
+            'photo_after_saved_size',
+            'photo_after_thumb_size',
+            'photo_after_compression_ratio',
+            'photo_after_format',
             'note',
         ]
 
@@ -215,3 +227,73 @@ class HKWorkerSelectionRequestSerializer(serializers.ModelSerializer):
 
     def get_workers_preview(self, obj):
         return list(obj.workers.values_list('name', flat=True)[:6])
+
+
+class HKLeaveRequestSerializer(serializers.ModelSerializer):
+    staff_name = serializers.SerializerMethodField()
+    area_name = serializers.CharField(source='area.name', read_only=True, default='')
+
+    class Meta:
+        model = HKLeaveRequest
+        fields = [
+            'id',
+            'staff',
+            'staff_name',
+            'area',
+            'area_name',
+            'leave_date',
+            'reason',
+            'status',
+            'created_at',
+            'updated_at',
+        ]
+
+    def get_staff_name(self, obj):
+        return obj.staff.get_full_name() or obj.staff.username
+
+
+class HKInchargeAssignmentSerializer(serializers.ModelSerializer):
+    area_name = serializers.CharField(source='area.name', read_only=True, default='')
+    leave_staff_username = serializers.CharField(source='leave_staff.username', read_only=True, default='')
+    assigned_staff_username = serializers.CharField(source='assigned_staff.username', read_only=True, default='')
+    admin_action_by_name = serializers.SerializerMethodField()
+    leave_request = HKLeaveRequestSerializer(read_only=True)
+
+    class Meta:
+        model = HKInchargeAssignment
+        fields = [
+            'id',
+            'leave_request',
+            'leave_staff',
+            'leave_staff_name',
+            'leave_staff_username',
+            'leave_staff_area',
+            'leave_date',
+            'area',
+            'area_name',
+            'assigned_staff',
+            'assigned_staff_name',
+            'assigned_staff_username',
+            'status',
+            'created_at',
+            'updated_at',
+            'admin_action_by',
+            'admin_action_by_name',
+            'admin_action_at',
+            'admin_action_note',
+            'staff_action_at',
+            'staff_action_note',
+        ]
+
+    def get_admin_action_by_name(self, obj):
+        if obj.admin_action_by:
+            return obj.admin_action_by.get_full_name() or obj.admin_action_by.username
+        return ''
+
+
+class HKInchargeNotificationSerializer(serializers.ModelSerializer):
+    assignment_id = serializers.UUIDField(read_only=True)
+
+    class Meta:
+        model = HKInchargeNotification
+        fields = ['id', 'assignment_id', 'message', 'level', 'is_seen', 'created_at']

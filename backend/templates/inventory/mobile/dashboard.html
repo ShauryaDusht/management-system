@@ -21,139 +21,25 @@
 {% endif %}
 
 {# ── Stats Grid ── #}
-<style>
-  .stat-card-link { display:block; text-decoration:none; border-radius:var(--radius-md); }
-  .stat-card-clickable {
-    border-radius: var(--radius-md);
-    padding: 16px;
-    color: #fff;
-    cursor: pointer;
-    transition: transform 0.13s, box-shadow 0.13s, outline-offset 0.13s;
-    outline: 3px solid transparent;
-    outline-offset: 0px;
-    position: relative;
-  }
-  .stat-card-clickable::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: var(--radius-md);
-    border: 2.5px solid rgba(255,255,255,0.35);
-    pointer-events: none;
-    transition: border-color 0.13s;
-  }
-  .stat-card-clickable .tap-hint {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 10px;
-    opacity: 0.7;
-    margin-top: 10px;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-  }
-  .stat-card-link:active .stat-card-clickable {
-    transform: scale(0.96);
-    box-shadow: 0 0 0 3px rgba(255,255,255,0.4);
-    outline-offset: 2px;
-  }
-  .stat-card-link:hover .stat-card-clickable::after { border-color: rgba(255,255,255,0.6); }
-
-  /* Green card outline */
-  .stat-link-green { outline-color: #2d4a3e33; }
-  .stat-link-green:active .stat-card-clickable { box-shadow: 0 0 0 3px rgba(45,74,62,0.35); }
-
-  /* Teal card outline */
-  .stat-link-teal { outline-color: #1e6b7a33; }
-  .stat-link-teal:active .stat-card-clickable { box-shadow: 0 0 0 3px rgba(30,107,122,0.4); }
-
-  /* Orange card outline */
-  .stat-link-orange { outline-color: #c2622a33; }
-  .stat-link-orange:active .stat-card-clickable { box-shadow: 0 0 0 3px rgba(194,98,42,0.4); }
-
-  /* Brown card outline */
-  .stat-link-brown { outline-color: #8b5e3c33; }
-  .stat-link-brown:active .stat-card-clickable { box-shadow: 0 0 0 3px rgba(139,94,60,0.4); }
-
-  /* Request button */
-  .request-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    width: 100%;
-    height: 52px;
-    border: none;
-    border-radius: var(--radius-md);
-    background: linear-gradient(135deg, #1e6b7a 0%, #2d4a3e 100%);
-    color: #fff;
-    font-size: 15px;
-    font-weight: 700;
-    font-family: 'Inter', sans-serif;
-    cursor: pointer;
-    box-shadow: 0 3px 12px rgba(30,107,122,0.35);
-    outline: 2.5px solid rgba(30,107,122,0.3);
-    outline-offset: 2px;
-    transition: transform 0.13s, box-shadow 0.13s;
-    letter-spacing: 0.2px;
-  }
-  .request-btn:active { transform: scale(0.97); box-shadow: 0 1px 6px rgba(30,107,122,0.2); }
-</style>
-
 <div class="section-title" style="margin-top:4px">Inventory Overview</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-
-  <a href="{% url 'mobile_inventory_list' %}" class="stat-card-link stat-link-green">
-    <div class="stat-card-clickable" style="background:var(--brand-green)">
-      <div class="stat-label">Total Items</div>
-      <div class="stat-value">{{ total_items }}</div>
-      <div class="tap-hint">
-        <span class="material-icons-round" style="font-size:12px">touch_app</span> View all
-      </div>
-    </div>
-  </a>
-
-  <a href="{% url 'mobile_inventory_list' %}?low_stock=true" class="stat-card-link stat-link-teal">
-    <div class="stat-card-clickable" style="background:var(--brand-teal)">
-      <div class="stat-label">Low Stock</div>
-      <div class="stat-value">{{ low_stock_count }}</div>
-      <div class="tap-hint">
-        <span class="material-icons-round" style="font-size:12px">touch_app</span> Filter list
-      </div>
-    </div>
-  </a>
-
-  <a href="{% if role == 'admin' or role == 'inventory_manager' %}{% url 'mobile_manager_requests' %}{% else %}{% url 'mobile_my_requests' %}{% endif %}" class="stat-card-link stat-link-orange">
-    <div class="stat-card-clickable" style="background:var(--brand-orange)">
-      <div class="stat-label">Pending Requests</div>
-      <div class="stat-value">{{ pending_count }}</div>
-      <div class="tap-hint">
-        <span class="material-icons-round" style="font-size:12px">touch_app</span> Review
-      </div>
-    </div>
-  </a>
-
-  <a href="{% url 'mobile_inventory_list' %}?out_of_stock=true" class="stat-card-link stat-link-brown">
-    <div class="stat-card-clickable" style="background:var(--brand-brown)">
-      <div class="stat-label">Out of Stock</div>
-      <div class="stat-value">{{ out_of_stock_count }}</div>
-      <div class="tap-hint">
-        <span class="material-icons-round" style="font-size:12px">touch_app</span> Filter list
-      </div>
-    </div>
-  </a>
-
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+  <div class="stat-card" style="background:var(--brand-green)">
+    <div class="stat-label">Total Items</div>
+    <div class="stat-value">{{ total_items }}</div>
+  </div>
+  <div class="stat-card" style="background:var(--brand-teal)">
+    <div class="stat-label">Low Stock</div>
+    <div class="stat-value">{{ low_stock_count }}</div>
+  </div>
+  <div class="stat-card" style="background:var(--brand-orange)">
+    <div class="stat-label">Pending Requests</div>
+    <div class="stat-value">{{ pending_count }}</div>
+  </div>
+  <div class="stat-card" style="background:var(--brand-brown)">
+    <div class="stat-label">Out of Stock</div>
+    <div class="stat-value">{{ out_of_stock_count }}</div>
+  </div>
 </div>
-
-{# ── Request Inventory Item Button ── #}
-{% if request.user.role != 'admin' and request.user.role != 'inventory_manager' %}
-<a href="{% url 'mobile_request_form' %}" style="display:block;margin-bottom:18px;text-decoration:none">
-  <button class="request-btn">
-    <span class="material-icons-round" style="font-size:22px">add_shopping_cart</span>
-    Request Inventory Item
-  </button>
-</a>
-{% endif %}
 
 {# ── Manager Quick Links ── #}
 {% if role == 'admin' or role == 'inventory_manager' %}

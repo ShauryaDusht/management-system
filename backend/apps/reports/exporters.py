@@ -31,9 +31,356 @@ CSV_COLUMNS = [
     ('status',           'Stock Status'),
 ]
 
+WORKER_DAILY_COLUMNS = [
+    'Date',
+    'First Half',
+    'Second Half',
+    'Tasks Assigned',
+    'Tasks Completed',
+    'Extra Work',
+]
+
+WORKER_COMBINED_COLUMNS = [
+    'Worker Name',
+    'Area',
+    'Supervisor',
+    'Worker Type',
+    'Shift',
+    'Punching No',
+    'Phone',
+    'Reliever',
+    'Attendance %',
+    'Days Present',
+    'Days Absent',
+    'Days Late',
+    'Days On Leave',
+    'Tasks Assigned',
+    'Tasks Completed',
+    'Tasks Skipped',
+    'Completion %',
+    'Extra Work Count',
+    'Reliever Days',
+]
+
 
 def _filename_base(report):
     return f"monthly_report_{report.year}_{report.month:02d}"
+
+
+def _human_status(value):
+    if not value:
+        return ''
+    return str(value).replace('_', ' ').title()
+
+
+def export_worker_report_csv(snapshot: dict) -> bytes:
+    worker = snapshot.get('worker', {})
+    attendance = snapshot.get('attendance', {})
+    tasks = snapshot.get('tasks', {})
+    daily_breakdown = snapshot.get('daily_breakdown', [])
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+
+    writer.writerow(['Worker Attendance and Task Completion Report'])
+    writer.writerow(['Worker Name', worker.get('name', '')])
+    writer.writerow(['Area', worker.get('area_name', '')])
+    writer.writerow(['Month', snapshot.get('month_label', '')])
+    writer.writerow(['Attendance %', f"{snapshot.get('attendance_pct', 0):.2f}"])
+    writer.writerow(['Task Completion %', f"{tasks.get('completion_pct', 0):.2f}"])
+    writer.writerow([])
+    writer.writerow(['Days Present', attendance.get('days_present', 0)])
+    writer.writerow(['Days Absent', attendance.get('days_absent', 0)])
+    writer.writerow(['Days Late', attendance.get('days_late', 0)])
+    writer.writerow(['Days On Leave', attendance.get('days_on_leave', 0)])
+    writer.writerow(['Tasks Assigned', tasks.get('total_assigned', 0)])
+    writer.writerow(['Tasks Completed', tasks.get('total_completed', 0)])
+    writer.writerow(['Tasks Skipped', tasks.get('total_skipped', 0)])
+    writer.writerow(['Extra Work Count', snapshot.get('extra_work_count', 0)])
+    writer.writerow([])
+
+    writer.writerow(WORKER_DAILY_COLUMNS)
+    for row in daily_breakdown:
+        writer.writerow([
+            row.get('date', ''),
+            _human_status(row.get('attendance_first_half', '')),
+            _human_status(row.get('attendance_second_half', '')),
+            row.get('tasks_assigned', 0),
+            row.get('tasks_completed', 0),
+            row.get('extra_work', 0),
+        ])
+
+    return buffer.getvalue().encode('utf-8-sig')
+
+
+def export_supervisor_report_csv(snapshot: dict) -> bytes:
+    supervisor_info = snapshot.get('supervisor_info', {})
+    task_oversight = snapshot.get('task_oversight', {})
+    attendance = snapshot.get('attendance_management', {})
+    daily_rows = snapshot.get('daily_activity_breakdown', [])
+    extra_work_rows = (snapshot.get('extra_work') or {}).get('list', [])
+    reliever_rows = (snapshot.get('reliever_management') or {}).get('list', [])
+    stock_rows = (snapshot.get('stock_requests') or {}).get('list', [])
+
+    month_label = snapshot.get('month_label') or f"{snapshot.get('month', '')}/{snapshot.get('year', '')}"
+    generated_at = snapshot.get('generated_at', '')
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+
+    # Section 1 - Header block
+    writer.writerow(['Supervisor Name', supervisor_info.get('full_name', '')])
+    writer.writerow(['Username', supervisor_info.get('username', '')])
+    writer.writerow(['Role', supervisor_info.get('role', '')])
+    writer.writerow(['Areas Assigned', ', '.join(supervisor_info.get('areas', []) or [])])
+    writer.writerow(['Workers Under Supervision', supervisor_info.get('workers_under', 0)])
+    writer.writerow(['Report Period', month_label])
+    writer.writerow(['Generated At', generated_at])
+    writer.writerow([])
+
+    # Section 2 - Task Oversight Summary
+    writer.writerow(['Task Oversight Summary'])
+    writer.writerow(['Metric', 'Value'])
+    writer.writerow(['Tasks Assigned', task_oversight.get('total_tasks_assigned', 0)])
+    writer.writerow(['Tasks Completed', task_oversight.get('tasks_completed', 0)])
+    writer.writerow(['Tasks Skipped', task_oversight.get('tasks_skipped', 0)])
+    writer.writerow(['Tasks Pending', task_oversight.get('tasks_pending', 0)])
+    writer.writerow(['Completion Rate %', task_oversight.get('completion_rate_pct', 0)])
+    writer.writerow(['Avg Completion Time (mins)', task_oversight.get('avg_completion_time_minutes', 0)])
+    writer.writerow([])
+
+    # Section 3 - Attendance Management Summary
+    writer.writerow(['Attendance Management Summary'])
+    writer.writerow(['Metric', 'Value'])
+    writer.writerow(['Working Days', attendance.get('working_days_in_month', 0)])
+    writer.writerow(['Days Submitted', attendance.get('unique_days_submitted', 0)])
+    writer.writerow(['Submission Rate %', attendance.get('submission_rate_pct', 0)])
+    writer.writerow(['Workers Marked Absent', attendance.get('workers_marked_absent', 0)])
+    writer.writerow(['Workers Marked Late', attendance.get('workers_marked_late', 0)])
+    writer.writerow([])
+
+    # Section 4 - Daily Activity Breakdown
+    writer.writerow(['Daily Activity Breakdown'])
+    writer.writerow(['Date', 'Tasks Assigned', 'Tasks Completed', 'Attendance Submissions', 'Extra Work Logged'])
+    for row in daily_rows:
+        writer.writerow([
+            row.get('date', ''),
+            row.get('tasks_assigned', 0),
+            row.get('tasks_completed', 0),
+            row.get('attendance_submissions', 0),
+            row.get('extra_work_logged', 0),
+        ])
+    writer.writerow([])
+
+    # Section 5 - Extra Work Log
+    writer.writerow(['Extra Work Log'])
+    writer.writerow(['Date', 'Task Name', 'Area', 'Verified'])
+    for row in extra_work_rows:
+        writer.writerow([
+            row.get('date', ''),
+            row.get('task_name', ''),
+            row.get('area_name', ''),
+            'Yes' if row.get('is_verified') else 'No',
+        ])
+    writer.writerow([])
+
+    # Section 6 - Reliever Substitutions
+    writer.writerow(['Reliever Substitutions'])
+    writer.writerow(['Date', 'Original Worker', 'Reliever', 'Area'])
+    for row in reliever_rows:
+        writer.writerow([
+            row.get('date', ''),
+            row.get('original_worker_name', ''),
+            row.get('reliever_name', ''),
+            row.get('area_name', ''),
+        ])
+    writer.writerow([])
+
+    # Section 7 - Stock Requests
+    writer.writerow(['Stock Requests'])
+    writer.writerow(['Item', 'Quantity', 'Status', 'Urgent', 'Date'])
+    for row in stock_rows:
+        writer.writerow([
+            row.get('item_name', ''),
+            row.get('quantity', 0),
+            row.get('status', ''),
+            'Yes' if row.get('is_urgent') else 'No',
+            row.get('created_at', ''),
+        ])
+
+    return buffer.getvalue().encode('utf-8-sig')
+
+
+def export_consumption_item_csv(snapshot: dict) -> bytes:
+    summary = snapshot.get('summary') or {}
+    item_rows = list(snapshot.get('item_rows') or [])
+
+    item_rows.sort(
+        key=lambda row: (
+            (row.get('category_name') or '').lower(),
+            (row.get('item_name') or '').lower(),
+        )
+    )
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+
+    writer.writerow(['Report Title', 'Item Consumption Report'])
+    writer.writerow(['Period', snapshot.get('period_label', '')])
+    writer.writerow(['Generated At', snapshot.get('generated_at', '')])
+    writer.writerow([])
+
+    writer.writerow(['Total Active Items', summary.get('total_items_active', 0)])
+    writer.writerow(['Total Issued Transactions', summary.get('total_issued_transactions', 0)])
+    writer.writerow(['Total Stock Added This Month', summary.get('total_stock_added', 0)])
+    writer.writerow(['Total Estimated Cost (₹)', summary.get('total_estimated_cost', 0)])
+    writer.writerow(['Unfinalized Consumables', summary.get('unfinalized_consumables', 0)])
+    writer.writerow(['Pending Asset Returns', summary.get('pending_asset_returns', 0)])
+    writer.writerow([])
+
+    writer.writerow(
+        [
+            'Item Name',
+            'Category',
+            'Type',
+            'Unit',
+            'Stock Added',
+            'Total Issued',
+            'Actual Consumed',
+            'Assets Returned',
+            'Pending Returns',
+            'Unfinalized',
+            'Unit Cost (₹)',
+            'Estimated Cost (₹)',
+            'Current Stock',
+            'Status',
+        ]
+    )
+
+    for row in item_rows:
+        writer.writerow(
+            [
+                row.get('item_name', ''),
+                row.get('category_name', ''),
+                row.get('item_type', ''),
+                row.get('unit', ''),
+                row.get('stock_added', 0),
+                row.get('total_issued', 0),
+                row.get('actual_consumed', 0),
+                row.get('assets_returned', 0),
+                row.get('pending_return', 0),
+                row.get('unfinalized_count', 0),
+                row.get('unit_cost', 0),
+                row.get('estimated_cost', 0),
+                row.get('current_stock', 0),
+                row.get('status', ''),
+            ]
+        )
+
+    return buffer.getvalue().encode('utf-8-sig')
+
+
+def export_consumption_requester_csv(snapshot: dict) -> bytes:
+    requester_rows = list(snapshot.get('requester_rows') or [])
+    requester_rows.sort(key=lambda row: row.get('total_estimated_cost', 0), reverse=True)
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+
+    writer.writerow(['Report Title', 'Item Consumption Report'])
+    writer.writerow(['Period', snapshot.get('period_label', '')])
+    writer.writerow(['Generated At', snapshot.get('generated_at', '')])
+    writer.writerow([])
+
+    writer.writerow(
+        [
+            'Requester',
+            'Role',
+            'Total Requests',
+            'Issued',
+            'Rejected',
+            'Urgent',
+            'Est. Cost (₹)',
+        ]
+    )
+    for row in requester_rows:
+        writer.writerow(
+            [
+                row.get('requester_name', ''),
+                row.get('role', ''),
+                row.get('total_requests', 0),
+                row.get('issued_requests', 0),
+                row.get('rejected_requests', 0),
+                row.get('urgent_requests', 0),
+                row.get('total_estimated_cost', 0),
+            ]
+        )
+    writer.writerow([])
+
+    writer.writerow(
+        [
+            'Requester',
+            'Item',
+            'Category',
+            'Unit',
+            'Qty Issued',
+            'Actual Used',
+            'Finalized',
+        ]
+    )
+    for idx, row in enumerate(requester_rows):
+        requester_name = row.get('requester_name', '')
+        for item in row.get('items_received', []) or []:
+            writer.writerow(
+                [
+                    requester_name,
+                    item.get('item_name', ''),
+                    item.get('category', ''),
+                    item.get('unit', ''),
+                    item.get('quantity_issued', 0),
+                    item.get('actual_used', 0),
+                    'Yes' if item.get('usage_finalized') else 'No',
+                ]
+            )
+        if idx != len(requester_rows) - 1:
+            writer.writerow([])
+
+    return buffer.getvalue().encode('utf-8-sig')
+
+
+def export_workers_combined_csv(rows: list, month: int, year: int, title: str) -> bytes:
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+
+    writer.writerow([title])
+    writer.writerow([f"Period: {month:02d}/{year}"])
+    writer.writerow([])
+    writer.writerow(WORKER_COMBINED_COLUMNS)
+
+    for row in rows:
+        writer.writerow([
+            row.get('worker_name', ''),
+            row.get('area_name', ''),
+            row.get('supervisor_name', ''),
+            row.get('worker_type', ''),
+            row.get('shift', ''),
+            row.get('punching_no', ''),
+            row.get('phone', ''),
+            'Yes' if row.get('is_reliever') else 'No',
+            f"{row.get('attendance_pct', 0):.2f}",
+            row.get('days_present', 0),
+            row.get('days_absent', 0),
+            row.get('days_late', 0),
+            row.get('days_on_leave', 0),
+            row.get('tasks_assigned', 0),
+            row.get('tasks_completed', 0),
+            row.get('tasks_skipped', 0),
+            f"{row.get('completion_pct', 0):.2f}",
+            row.get('extra_work_count', 0),
+            row.get('reliever_days', 0),
+        ])
+
+    return buffer.getvalue().encode('utf-8-sig')
 
 
 # ── CSV ───────────────────────────────────────────────────────────────────────

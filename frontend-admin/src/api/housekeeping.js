@@ -4,6 +4,31 @@ export const hkAPI = {
   getAreas: () => api.get('/housekeeping/areas/'),
   getWorkers: (areaId) =>
     api.get('/housekeeping/workers/', { params: areaId ? { area: areaId } : {} }),
+  getWorkerReport: (workerId, month, year) =>
+    api.get(`/housekeeping/workers/${workerId}/report/`, {
+      params: { month, year },
+    }),
+  getSupervisorReport: (supervisorId, month, year) =>
+    api.get(`/housekeeping/supervisors/${supervisorId}/report/`, {
+      params: { month, year },
+    }),
+  downloadWorkerReportCSV: (workerId, month, year) =>
+    api.get(`/housekeeping/workers/${workerId}/report/csv/`, {
+      params: { month, year },
+      responseType: 'blob',
+    }),
+  downloadSupervisorReportCSV: (supervisorId, month, year) =>
+    api.get(`/housekeeping/supervisors/${supervisorId}/report/csv/`, {
+      params: { month, year },
+      responseType: 'blob',
+    }),
+  regenerateSupervisorReport: (supervisorId, month, year) =>
+    api.post(`/housekeeping/supervisors/${supervisorId}/report/regenerate/`, { month, year }),
+  downloadWorkersCombinedCSV: (params = {}) =>
+    api.get('/housekeeping/workers/reports/combined/csv/', {
+      params,
+      responseType: 'blob',
+    }),
   createWorker: (payload) => api.post('/housekeeping/workers/create/', payload),
   updateWorker: (id, payload) => api.patch(`/housekeeping/workers/${id}/`, payload),
   deleteWorker: (id) => api.delete(`/housekeeping/workers/${id}/`),
@@ -15,6 +40,26 @@ export const hkAPI = {
     api.post('/housekeeping/worker-selection-requests/', payload),
   decideWorkerSelectionRequest: (id, payload) =>
     api.post(`/housekeeping/worker-selection-requests/${id}/decision/`, payload),
+  getInchargeAssignments: (status) =>
+    api.get('/housekeeping/incharge-assignments/', {
+      params: status ? { status } : {},
+    }),
+  decideInchargeAssignment: (id, payload) =>
+    api.post(`/housekeeping/incharge-assignments/${id}/decision/`, payload),
+  getLeaveRequests: () => api.get('/housekeeping/leave-requests/'),
+  getInchargeNotifications: () => api.get('/housekeeping/incharge-notifications/'),
+  getGallery: (params) => api.get('/admin/gallery/', { params: params || {} }),
+  getGalleryGroupedByArea: (params) =>
+    api.get('/admin/gallery/grouped-by-area/', { params: params || {} }),
+  getGalleryStats: (params) => api.get('/admin/gallery/stats/', { params: params || {} }),
+  getGalleryTaskPhotos: (taskId, params) =>
+    api.get(`/admin/gallery/photos/${taskId}/`, { params: params || {} }),
+  deleteGalleryPhoto: (photoId) => api.delete(`/admin/gallery/photo/${photoId}/delete/`),
+  flagGalleryPhoto: (photoId, payload) => api.post(`/admin/gallery/photo/${photoId}/flag/`, payload || {}),
+  exportGalleryCsv: (params) =>
+    api.get('/admin/gallery/export-csv/', { params: params || {}, responseType: 'blob' }),
+  downloadTaskPhotosZip: (taskId) =>
+    api.get(`/admin/gallery/task/${taskId}/download-zip/`, { responseType: 'blob' }),
   getAttendanceSummary: (date) =>
     api.get('/housekeeping/attendance-summary/', { params: { date } }),
   getDailyRecords: (areaId, date) =>
