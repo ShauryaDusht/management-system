@@ -1212,11 +1212,7 @@ def hk_attendance(request):
     user_areas = get_user_areas(user)
     sel_area = selected_area(request, user_areas)
 
-    date_str = request.GET.get("date", "")
-    try:
-        sel_date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
-    except (ValueError, TypeError):
-        sel_date = timezone.localdate()
+    sel_date = timezone.localdate()
 
     workers = HKWorker.objects.filter(
         area=sel_area, is_active=True, is_reliever=False
