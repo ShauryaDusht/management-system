@@ -5,7 +5,6 @@ import { useAuth } from '../../context/AuthContext'
 import { Tabs } from '../../components/ui'
 import AdminLayout from '../../layout/AdminLayout'
 import AttendanceTab from './AttendanceTab'
-import AssignInventoryTab from './AssignInventoryTab'
 import OverviewTab from './OverviewTab'
 import SectionsTab from './SectionsTab'
 import SupervisorsTab from './SupervisorsTab'
@@ -24,7 +23,6 @@ export default function HousekeepingPage() {
         { key: 'overview', label: 'Overview', icon: 'HK' },
         { key: 'directory', label: 'Sections + Staff', icon: 'AR/CT' },
         { key: 'supervisors', label: 'Supervisors', icon: 'SP' },
-        { key: 'assign_stock', label: 'Assign Inventory', icon: 'ST' },
         { key: 'attendance', label: 'Attendance', icon: 'AT' },
         { key: 'workers', label: 'Workers', icon: 'WK' },
         { key: 'worker_selection', label: 'Worker Selection', icon: 'WS' },
@@ -77,7 +75,6 @@ export default function HousekeepingPage() {
       {active === 'overview' && <OverviewTab />}
       {active === 'directory' && <SectionsTab />}
       {active === 'supervisors' && <SupervisorsTab />}
-      {active === 'assign_stock' && <AssignInventoryTab userRole={user?.role} />}
       {active === 'attendance' && <AttendanceTab />}
       {active === 'workers' && <WorkersTab />}
       {active === 'worker_selection' && <WorkerSelectionTab />}

@@ -133,11 +133,10 @@
         </form>
       </div>
     </div>
-    <form method="POST" action="{% url 'mobile_issue_request' req.id %}" style="flex:2">
+    <form method="POST" action="{% url 'mobile_approve_request' req.id %}" style="flex:2">
       {% csrf_token %}
-      <input type="hidden" name="quantity" id="qty-input-{{ req.id }}" value="{{ req.quantity_requested }}">
       <button type="submit" class="btn btn-secondary btn-full" style="height:44px">
-        <span class="material-icons-round" style="font-size:18px">move_to_inbox</span> Issue Item
+        <span class="material-icons-round" style="font-size:18px">check_circle</span> Approve
       </button>
     </form>
   </div>

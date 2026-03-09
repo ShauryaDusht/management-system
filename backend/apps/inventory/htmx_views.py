@@ -398,6 +398,14 @@ def mobile_reject_request(request, pk):
             item_request.save(update_fields=[
                 'status', 'approved_by', 'rejection_reason', 'reviewed_at', 'units_remaining'
             ])
+            try:
+                from apps.housekeeping.models import HKStockRequest
+                hk_req = HKStockRequest.objects.filter(inventory_request=item_request).first()
+                if hk_req:
+                    hk_req.status = 'rejected'
+                    hk_req.save(update_fields=['status'])
+            except Exception:
+                pass
     return redirect('mobile_manager_requests')
 
 
