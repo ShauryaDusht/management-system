@@ -46,15 +46,6 @@
 </div>
 {% endif %}
 
-{# ── Out of stock filter ── #}
-{% if out_of_stock_filter %}
-<div class="alert alert-error" style="margin-bottom:12px">
-  <span class="material-icons-round" style="font-size:18px;flex-shrink:0">filter_list</span>
-  Showing out of stock items only —
-  <a href="{% url 'mobile_inventory_list' %}" style="font-weight:700;text-decoration:underline;color:inherit;margin-left:4px">Clear filter</a>
-</div>
-{% endif %}
-
 {# ── Items list with pagination ── #}
 {% for item in items %}
 <a href="#item-{{ item.id }}" id="item-{{ item.id }}"
@@ -137,7 +128,7 @@
 {% if page_obj.has_other_pages %}
 <div class="pagination">
   {% if page_obj.has_previous %}
-  <a href="?page={{ page_obj.previous_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if low_stock_filter %}&low_stock=true{% endif %}{% if out_of_stock_filter %}&out_of_stock=true{% endif %}">
+  <a href="?page={{ page_obj.previous_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if low_stock_filter %}&low_stock=true{% endif %}">
     <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span></button>
   </a>
   {% else %}
@@ -147,7 +138,7 @@
   <span style="font-size:13px;color:var(--text-secondary)">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
 
   {% if page_obj.has_next %}
-  <a href="?page={{ page_obj.next_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if low_stock_filter %}&low_stock=true{% endif %}{% if out_of_stock_filter %}&out_of_stock=true{% endif %}">
+  <a href="?page={{ page_obj.next_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if low_stock_filter %}&low_stock=true{% endif %}">
     <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
   </a>
   {% else %}
