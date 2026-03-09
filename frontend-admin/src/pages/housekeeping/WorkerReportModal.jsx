@@ -144,30 +144,39 @@ export default function WorkerReportModal({ open, worker, onClose }) {
       title={worker?.name || 'Worker Report'}
       width={980}
       footer={(
-        <>
-          <Btn variant="ghost" onClick={onClose} disabled={loading || downloading}>Close</Btn>
-          <Btn onClick={onDownloadCSV} disabled={loading || downloading || !worker}>
-            {downloading ? 'Downloading...' : 'Download CSV'}
-          </Btn>
-        </>
+        <Btn variant="ghost" onClick={onClose} disabled={loading || downloading}>Close</Btn>
       )}
     >
       <Alert message={error} />
 
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 12, color: 'var(--text-3)', minWidth: 110 }}>Select Month</div>
-        <SelectField
-          value={selectedValue}
-          onChange={(e) => setSelectedValue(e.target.value)}
-          style={{ width: 240 }}
-        >
-          {monthOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </SelectField>
-        <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-          Area: <strong>{snap?.worker?.area_name || worker?.area_name || '-'}</strong>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 12,
+          gap: 10,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', minWidth: 110 }}>Select Month</div>
+          <SelectField
+            value={selectedValue}
+            onChange={(e) => setSelectedValue(e.target.value)}
+            style={{ width: 240 }}
+          >
+            {monthOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </SelectField>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+            Area: <strong>{snap?.worker?.area_name || worker?.area_name || '-'}</strong>
+          </div>
         </div>
+        <Btn size="sm" onClick={onDownloadCSV} disabled={loading || downloading || !worker}>
+          {downloading ? 'Downloading...' : 'Download CSV'}
+        </Btn>
       </div>
 
       {isCurrentMonth && (
