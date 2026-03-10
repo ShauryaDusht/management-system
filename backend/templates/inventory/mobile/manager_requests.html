@@ -8,6 +8,13 @@
 {% endblock %}
 
 {% block content %}
+{% if request.GET.pr == 'created' %}
+<div class="alert alert-success">
+  <span class="material-icons-round" style="font-size:18px">check_circle</span>
+  Purchase request submitted successfully.
+</div>
+{% endif %}
+
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
   <div>
     <div class="section-title" style="margin:0">Pending Requests</div>
@@ -15,7 +22,13 @@
       Review item requests from staff
     </div>
   </div>
-  <span class="badge badge-pending" style="font-size:13px;padding:5px 12px">{{ total_pending }}</span>
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="{% url 'mobile_purchase_request_form' %}" class="btn btn-outline" style="height:36px;padding:0 10px;font-size:12px">
+      <span class="material-icons-round" style="font-size:16px">add_shopping_cart</span>
+      Purchase Request
+    </a>
+    <span class="badge badge-pending" style="font-size:13px;padding:5px 12px">{{ total_pending }}</span>
+  </div>
 </div>
 
 {% for req in requests %}
@@ -154,18 +167,18 @@
 <div class="pagination">
   {% if page_obj.has_previous %}
   <a href="?page={{ page_obj.previous_page_number }}">
-    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span></button>
   </a>
   {% else %}
-  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_left</span></button>
   {% endif %}
-  <button class="page-btn active">{{ page_obj.number }}</button>
+  <span class="page-info">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
   {% if page_obj.has_next %}
   <a href="?page={{ page_obj.next_page_number }}">
-    <button class="page-btn">Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
   </a>
   {% else %}
-  <button class="page-btn" disabled>Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
   {% endif %}
 </div>
 {% endif %}

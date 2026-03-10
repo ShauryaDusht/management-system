@@ -30,7 +30,9 @@ class InventoryReportView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        data = generate_inventory_report()
+        status_filter = (request.query_params.get('status') or '').strip().lower() or None
+        item_type_filter = (request.query_params.get('item_type') or '').strip().lower() or None
+        data = generate_inventory_report(status_filter=status_filter, item_type_filter=item_type_filter)
         return Response(data)
 
 

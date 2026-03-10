@@ -35,6 +35,9 @@ export const inventoryAPI = {
   createRequest: (data) => api.post('/inventory/requests/', data),
   reviewRequest: (id, data) => api.post(`/inventory/requests/${id}/review/`, data),
   issueRequest: (id, data) => api.post(`/inventory/requests/${id}/issue/`, data),
+  getPurchaseRequests: (params = {}) => api.get('/inventory/purchase-requests/', { params: { page_size: 200, ...params } }),
+  createPurchaseRequest: (data) => api.post('/inventory/purchase-requests/', data),
+  decidePurchaseRequest: (id, data) => api.post(`/inventory/purchase-requests/${id}/decision/`, data),
 
   // approve / reject use the /api/ legacy routes because those are the ones
   // the frontend has always called and they work correctly after BUG-05 was fixed.
@@ -59,7 +62,7 @@ export const inventoryAPI = {
 
 // ── Reports API ────────────────────────────────────────────────────────────
 // Kept as a separate export since it belongs to the reports domain, not inventory.
-export const getInventoryReport = () => api.get('/reports/inventory/')
+export const getInventoryReport = (params = {}) => api.get('/reports/inventory/', { params })
 export const getRequestsReport = (params = {}) => api.get('/reports/requests/', { params })
 export const listMonthly = () => api.get('/reports/monthly/')
 export const generateMonthly = (month, year, overwrite = false) =>

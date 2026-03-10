@@ -201,6 +201,68 @@ class ItemRequest(models.Model):
         return self.reviewed_at or self.requested_at
 
 
+class PurchaseRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        APPROVED = 'approved', 'Approved'
+        REJECTED = 'rejected', 'Rejected'
+
+    class Urgency(models.TextChoices):
+        NORMAL = 'normal', 'Normal'
+        HIGH = 'high', 'High'
+
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='purchase_requests_made',
+        limit_choices_to={'role__in': ['inventory_manager', 'admin']},
+    )
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='purchase_requests',
+    )
+    item_name = models.CharField(max_length=200)
+    item_type = models.CharField(
+        max_length=20,
+        choices=Item.ItemType.choices,
+        default=Item.ItemType.CONSUMABLE,
+    )
+    quantity_requested = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    unit = models.CharField(max_length=30, default='pieces')
+    estimated_unit_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    reason = models.TextField(help_text='Why this purchase is needed.')
+    needed_by = models.DateField(null=True, blank=True)
+    urgency = models.CharField(max_length=10, choices=Urgency.choices, default=Urgency.NORMAL)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    admin_note = models.TextField(blank=True)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='purchase_requests_decided',
+        limit_choices_to={'role': 'admin'},
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"PR-{self.id} {self.item_name} x{self.quantity_requested} [{self.status}]"
+
+    @property
+    def estimated_total_cost(self):
+        if self.estimated_unit_cost is None:
+            return None
+        return self.estimated_unit_cost * self.quantity_requested
+
+
 class ItemIssue(models.Model):
     """
     Tracks the physical issuing of items, asset returns, and consumable finalization.

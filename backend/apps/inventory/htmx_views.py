@@ -6,8 +6,9 @@ from django.db.models import F
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
+from decimal import Decimal, InvalidOperation
 
-from .models import Category, Item, ItemIssue, ItemRequest, StockEntry
+from .models import Category, Item, ItemIssue, ItemRequest, PurchaseRequest, StockEntry
 
 
 # ─────────────────────────────────────────────────
@@ -95,6 +96,9 @@ def mobile_inventory_list(request):
     category_id = request.GET.get('category', '')
     search_query = request.GET.get('search', '').strip()
     low_stock_filter = request.GET.get('low_stock') == 'true'
+    item_type_filter = (request.GET.get('item_type') or 'all').strip().lower()
+    if item_type_filter not in {'all', 'asset', 'consumable'}:
+        item_type_filter = 'all'
 
     categories = Category.objects.all()
     items_qs = Item.objects.select_related('category').all()
@@ -104,6 +108,9 @@ def mobile_inventory_list(request):
 
     if search_query:
         items_qs = items_qs.filter(name__icontains=search_query)
+
+    if item_type_filter in {'asset', 'consumable'}:
+        items_qs = items_qs.filter(item_type=item_type_filter)
 
     if low_stock_filter:
         items_qs = items_qs.filter(
@@ -123,6 +130,7 @@ def mobile_inventory_list(request):
         'total_count': Item.objects.count(),
         'search_query': search_query,
         'low_stock_filter': low_stock_filter,
+        'selected_item_type': item_type_filter,
         'highlight_id': request.GET.get('highlight', ''),
     })
 
@@ -222,6 +230,100 @@ def mobile_manager_requests(request):
     })
 
 
+@login_required
+def mobile_purchase_request_form(request):
+    role = getattr(request.user, 'role', '')
+    if role not in ['admin', 'inventory_manager']:
+        return redirect('mobile_dashboard')
+
+    categories = Category.objects.all().order_by('name')
+    form_data = {
+        'item_name': '',
+        'item_type': 'consumable',
+        'category': '',
+        'quantity_requested': '1',
+        'unit': 'pieces',
+        'estimated_unit_cost': '',
+        'needed_by': '',
+        'urgency': 'normal',
+        'reason': '',
+    }
+
+    if request.method == 'POST':
+        form_data = {
+            'item_name': (request.POST.get('item_name') or '').strip(),
+            'item_type': (request.POST.get('item_type') or 'consumable').strip().lower(),
+            'category': (request.POST.get('category') or '').strip(),
+            'quantity_requested': (request.POST.get('quantity_requested') or '1').strip(),
+            'unit': (request.POST.get('unit') or 'pieces').strip(),
+            'estimated_unit_cost': (request.POST.get('estimated_unit_cost') or '').strip(),
+            'needed_by': (request.POST.get('needed_by') or '').strip(),
+            'urgency': (request.POST.get('urgency') or 'normal').strip(),
+            'reason': (request.POST.get('reason') or '').strip(),
+        }
+
+        error = None
+        category_obj = None
+
+        if not form_data['item_name']:
+            error = 'Please enter item/material name.'
+        if not form_data['reason']:
+            error = 'Please provide purchase reason.'
+
+        try:
+            quantity_requested = int(form_data['quantity_requested'])
+            if quantity_requested < 1:
+                raise ValueError
+        except (TypeError, ValueError):
+            error = error or 'Quantity must be at least 1.'
+            quantity_requested = 1
+
+        estimated_unit_cost = None
+        if form_data['estimated_unit_cost']:
+            try:
+                estimated_unit_cost = Decimal(form_data['estimated_unit_cost'])
+                if estimated_unit_cost < 0:
+                    raise InvalidOperation
+            except (InvalidOperation, ValueError):
+                error = error or 'Estimated unit cost must be a valid non-negative number.'
+
+        if form_data['urgency'] not in ['normal', 'high']:
+            form_data['urgency'] = 'normal'
+        if form_data['item_type'] not in ['asset', 'consumable']:
+            form_data['item_type'] = 'consumable'
+
+        if form_data['category']:
+            category_obj = Category.objects.filter(pk=form_data['category']).first()
+            if not category_obj:
+                error = error or 'Invalid category selected.'
+
+        if error:
+            return render(request, 'inventory/mobile/purchase_request_form.html', {
+                'categories': categories,
+                'error': error,
+                'form': form_data,
+            })
+
+        PurchaseRequest.objects.create(
+            requested_by=request.user,
+            category=category_obj,
+            item_name=form_data['item_name'],
+            item_type=form_data['item_type'],
+            quantity_requested=quantity_requested,
+            unit=form_data['unit'] or 'pieces',
+            estimated_unit_cost=estimated_unit_cost,
+            needed_by=form_data['needed_by'] or None,
+            urgency=form_data['urgency'],
+            reason=form_data['reason'],
+        )
+        return redirect('/inventory/mobile/manager-requests/?pr=created')
+
+    return render(request, 'inventory/mobile/purchase_request_form.html', {
+        'categories': categories,
+        'form': form_data,
+    })
+
+
 # ─────────────────────────────────────────────────
 # ISSUED ITEMS
 # ─────────────────────────────────────────────────
@@ -242,7 +344,7 @@ def mobile_issued_items(request):
     if not is_manager:
         issues_qs = issues_qs.filter(request__requested_by=request.user)
 
-    paginator = Paginator(issues_qs, 10)
+    paginator = Paginator(issues_qs, 15)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
     return render(request, 'inventory/mobile/issued_items.html', {
@@ -286,24 +388,38 @@ def mobile_reports(request):
 
     report_type = request.GET.get('type', 'inventory')
     status_filter = request.GET.get('filter', 'all')
+    item_type_filter = (request.GET.get('item_type') or 'all').strip().lower()
+    if item_type_filter not in {'all', 'asset', 'consumable'}:
+        item_type_filter = 'all'
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
+    page_number = request.GET.get('page', 1)
 
     inventory_data = None
     requests_data = None
+    inventory_page_obj = None
+    requests_page_obj = None
 
     if report_type == 'requests':
         requests_data = generate_requests_report(date_from or None, date_to or None)
+        requests_rows = requests_data.get('requests', [])
+        requests_page_obj = Paginator(requests_rows, 15).get_page(page_number)
     else:
         inventory_data = generate_inventory_report(
-            status_filter=status_filter if status_filter and status_filter != 'all' else None
+            status_filter=status_filter if status_filter and status_filter != 'all' else None,
+            item_type_filter=item_type_filter if item_type_filter != 'all' else None,
         )
+        inventory_rows = inventory_data.get('items', [])
+        inventory_page_obj = Paginator(inventory_rows, 15).get_page(page_number)
 
     return render(request, 'inventory/mobile/reports.html', {
         'report_type': report_type,
         'inventory_data': inventory_data,
+        'inventory_page_obj': inventory_page_obj,
         'requests_data': requests_data,
+        'requests_page_obj': requests_page_obj,
         'status_filter': status_filter or 'all',
+        'item_type_filter': item_type_filter,
         'date_from': date_from,
         'date_to': date_to,
     })

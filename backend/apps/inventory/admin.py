@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Item, ItemRequest, ItemIssue, StockEntry
+from .models import Category, Item, ItemRequest, ItemIssue, PurchaseRequest, StockEntry
 
 
 @admin.register(Category)
@@ -45,3 +45,14 @@ class ItemIssueAdmin(admin.ModelAdmin):
     list_filter = ['usage_finalized']
     search_fields = ['request__item__name']
     readonly_fields = ['issued_at', 'usage_finalized_at']
+
+
+@admin.register(PurchaseRequest)
+class PurchaseRequestAdmin(admin.ModelAdmin):
+    list_display = [
+        'id', 'item_name', 'item_type', 'requested_by', 'quantity_requested',
+        'urgency', 'status', 'created_at', 'decided_at',
+    ]
+    list_filter = ['status', 'urgency', 'category']
+    search_fields = ['item_name', 'requested_by__username', 'requested_by__first_name', 'requested_by__last_name']
+    readonly_fields = ['created_at', 'updated_at', 'decided_at']

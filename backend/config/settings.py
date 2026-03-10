@@ -131,6 +131,8 @@ LOGGING = {
                 path in record.getMessage() for path in [
                     '/api/inventory/items/low-stock/',
                     '/api/inventory/requests/?page_size=1&status=pending',
+                    '/api/inventory/requests/?page_size=1000&status=pending',
+                    '/api/inventory/purchase-requests/',
                     '/api/housekeeping/incharge-assignments/',
                     '/api/housekeeping/leave-requests/',
                     '/api/auth/me/',

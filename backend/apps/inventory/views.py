@@ -7,11 +7,12 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 
-from .models import Category, Item, ItemRequest, ItemIssue, StockEntry
+from .models import Category, Item, ItemRequest, ItemIssue, PurchaseRequest, StockEntry
 from .serializers import (
     CategorySerializer, ItemSerializer,
     StockEntrySerializer,
     ItemRequestSerializer, ItemRequestReviewSerializer,
+    PurchaseRequestSerializer,
     ItemIssueSerializer,
     ReturnAssetSerializer, FinalizeConsumableSerializer,
     UserActivitySerializer,
@@ -263,6 +264,61 @@ class ItemRequestDetailView(generics.RetrieveAPIView):
         if getattr(user, 'role', '') in ['supervisor', 'caretaker']:
             return qs.filter(requested_by=user)
         return qs
+
+
+class PurchaseRequestListCreateView(generics.ListCreateAPIView):
+    serializer_class = PurchaseRequestSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = PurchaseRequest.objects.select_related(
+            'requested_by',
+            'category',
+            'decided_by',
+        ).order_by('-created_at')
+        status_filter = (self.request.query_params.get('status') or '').strip().lower()
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        item_type_filter = (self.request.query_params.get('item_type') or '').strip().lower()
+        if item_type_filter in ['asset', 'consumable']:
+            qs = qs.filter(item_type=item_type_filter)
+        if getattr(user, 'role', '') != 'admin':
+            qs = qs.filter(requested_by=user)
+        return qs
+
+    def perform_create(self, serializer):
+        role = getattr(self.request.user, 'role', '')
+        if role not in ['inventory_manager', 'admin']:
+            raise PermissionDenied('Only inventory managers/admin can create purchase requests.')
+        serializer.save(requested_by=self.request.user)
+
+
+class PurchaseRequestDecisionView(APIView):
+    permission_classes = [IsAdmin]
+
+    def post(self, request, pk):
+        try:
+            purchase_request = PurchaseRequest.objects.select_related('requested_by').get(pk=pk)
+        except PurchaseRequest.DoesNotExist:
+            return Response({'detail': 'Purchase request not found.'}, status=404)
+
+        if purchase_request.status != PurchaseRequest.Status.PENDING:
+            return Response({'detail': 'Only pending purchase requests can be decided.'}, status=400)
+
+        decision = (request.data.get('decision') or '').strip().lower()
+        note = (request.data.get('admin_note') or '').strip()
+        if decision not in {PurchaseRequest.Status.APPROVED, PurchaseRequest.Status.REJECTED}:
+            return Response({'detail': 'decision must be approved or rejected.'}, status=400)
+
+        purchase_request.status = decision
+        purchase_request.admin_note = note
+        purchase_request.decided_by = request.user
+        purchase_request.decided_at = timezone.now()
+        purchase_request.save(update_fields=['status', 'admin_note', 'decided_by', 'decided_at', 'updated_at'])
+
+        return Response(PurchaseRequestSerializer(purchase_request).data, status=200)
 
 
 class ReviewRequestView(APIView):

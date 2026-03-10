@@ -47,17 +47,35 @@
 
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
   <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
-    <a href="?type=inventory&filter=all"><div class="chip {% if status_filter == 'all' %}active{% endif %}">All</div></a>
-    <a href="?type=inventory&filter=in_stock"><div class="chip {% if status_filter == 'in_stock' %}active{% endif %}">In Stock</div></a>
-    <a href="?type=inventory&filter=low_stock"><div class="chip {% if status_filter == 'low_stock' %}active{% endif %}">Low Stock</div></a>
-    <a href="?type=inventory&filter=out_of_stock"><div class="chip {% if status_filter == 'out_of_stock' %}active{% endif %}">Out of Stock</div></a>
+    <a href="?type=inventory&filter=all{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}"><div class="chip {% if status_filter == 'all' %}active{% endif %}">All</div></a>
+    <a href="?type=inventory&filter=in_stock{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}"><div class="chip {% if status_filter == 'in_stock' %}active{% endif %}">In Stock</div></a>
+    <a href="?type=inventory&filter=low_stock{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}"><div class="chip {% if status_filter == 'low_stock' %}active{% endif %}">Low Stock</div></a>
+    <a href="?type=inventory&filter=out_of_stock{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}"><div class="chip {% if status_filter == 'out_of_stock' %}active{% endif %}">Out of Stock</div></a>
   </div>
   <button type="button" onclick="exportInventoryCSV()" class="btn btn-outline" style="height:36px;padding:0 12px;font-size:12px;flex-shrink:0;margin-left:8px">
     <span class="material-icons-round" style="font-size:16px">download</span> CSV
   </button>
 </div>
 
-{% for item in inventory_data.items %}
+<div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px">
+  <a href="?type=inventory&filter={{ status_filter }}{% if item_type_filter and item_type_filter != 'all' %}{% endif %}">
+    <div class="chip {% if not item_type_filter or item_type_filter == 'all' %}active{% endif %}">
+      All Types
+    </div>
+  </a>
+  <a href="?type=inventory&filter={{ status_filter }}&item_type=asset">
+    <div class="chip {% if item_type_filter == 'asset' %}active{% endif %}">
+      Assets
+    </div>
+  </a>
+  <a href="?type=inventory&filter={{ status_filter }}&item_type=consumable">
+    <div class="chip {% if item_type_filter == 'consumable' %}active{% endif %}">
+      Consumables
+    </div>
+  </a>
+</div>
+
+{% for item in inventory_page_obj %}
 <div class="card" style="margin-bottom:8px;padding:12px 14px">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
     <div style="min-width:0;flex:1">
@@ -93,6 +111,26 @@
   <div class="empty-title">No items found</div>
 </div>
 {% endfor %}
+
+{% if inventory_page_obj and inventory_page_obj.has_other_pages %}
+<div class="pagination">
+  {% if inventory_page_obj.has_previous %}
+  <a href="?type=inventory&filter={{ status_filter }}{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}&page={{ inventory_page_obj.previous_page_number }}">
+    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span></button>
+  </a>
+  {% else %}
+  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_left</span></button>
+  {% endif %}
+  <span class="page-info">Page {{ inventory_page_obj.number }} of {{ inventory_page_obj.paginator.num_pages }}</span>
+  {% if inventory_page_obj.has_next %}
+  <a href="?type=inventory&filter={{ status_filter }}{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}&page={{ inventory_page_obj.next_page_number }}">
+    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  </a>
+  {% else %}
+  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  {% endif %}
+</div>
+{% endif %}
 {{ inventory_data.items|json_script:"mobile-inventory-data" }}
 
 {# ── Requests Report ── #}
@@ -147,7 +185,7 @@
   </button>
 </div>
 
-{% for req in requests_data.requests %}
+{% for req in requests_page_obj %}
 <div class="card" style="margin-bottom:8px;padding:12px 14px">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
     <div>
@@ -184,6 +222,26 @@
   <div class="empty-title">No requests found</div>
 </div>
 {% endfor %}
+
+{% if requests_page_obj and requests_page_obj.has_other_pages %}
+<div class="pagination">
+  {% if requests_page_obj.has_previous %}
+  <a href="?type=requests{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}&page={{ requests_page_obj.previous_page_number }}">
+    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span></button>
+  </a>
+  {% else %}
+  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_left</span></button>
+  {% endif %}
+  <span class="page-info">Page {{ requests_page_obj.number }} of {{ requests_page_obj.paginator.num_pages }}</span>
+  {% if requests_page_obj.has_next %}
+  <a href="?type=requests{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}&page={{ requests_page_obj.next_page_number }}">
+    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  </a>
+  {% else %}
+  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  {% endif %}
+</div>
+{% endif %}
 {{ requests_data.requests|json_script:"mobile-requests-data" }}
 {% endif %}
 {% endif %}

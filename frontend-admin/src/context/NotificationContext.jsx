@@ -59,8 +59,9 @@ export function NotificationProvider({ children }) {
   const fetchBadges = useCallback(async () => {
     if (loading || !user) return
     try {
-      const [reqRes, stockRes, inchargeRes, leaveRes] = await Promise.allSettled([
+      const [reqRes, purchaseRes, stockRes, inchargeRes, leaveRes] = await Promise.allSettled([
         inventoryAPI.getRequests({ status: 'pending', page_size: 1000 }),
+        inventoryAPI.getPurchaseRequests({ status: 'pending', page_size: 1000 }),
         inventoryAPI.getLowStockItems(),
         hkAPI.getInchargeAssignments('pending_acceptance'),
         hkAPI.getLeaveRequests(),
@@ -74,6 +75,16 @@ export function NotificationProvider({ children }) {
           list
             .map((r) => buildId('req', r?.id))
             .filter(Boolean)
+        )
+      }
+      if (purchaseRes.status === 'fulfilled') {
+        const list = normalizeList(purchaseRes.value?.data)
+        invIds = uniqueIds(
+          invIds.concat(
+            list
+              .map((r) => buildId('purchase', r?.id))
+              .filter(Boolean)
+          )
         )
       }
 

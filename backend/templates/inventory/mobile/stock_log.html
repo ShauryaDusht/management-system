@@ -50,21 +50,24 @@
   <div class="empty-sub">Stock replenishments will appear here</div>
 </div>
 {% endfor %}
-{% endblock %}
 
-{# ── Pagination ── #}
 {% if page_obj.has_other_pages %}
 <div class="pagination">
   {% if page_obj.has_previous %}
-  <a href="?page={{ page_obj.previous_page_number }}"><button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button></a>
+  <a href="?page={{ page_obj.previous_page_number }}">
+    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_left</span></button>
+  </a>
   {% else %}
-  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_left</span> Prev</button>
+  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_left</span></button>
   {% endif %}
-  <button class="page-btn active">{{ page_obj.number }}</button>
+  <span class="page-info">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
   {% if page_obj.has_next %}
-  <a href="?page={{ page_obj.next_page_number }}"><button class="page-btn">Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button></a>
+  <a href="?page={{ page_obj.next_page_number }}">
+    <button class="page-btn"><span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  </a>
   {% else %}
-  <button class="page-btn" disabled>Next <span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
+  <button class="page-btn" disabled><span class="material-icons-round" style="font-size:18px">chevron_right</span></button>
   {% endif %}
 </div>
 {% endif %}
+{% endblock %}

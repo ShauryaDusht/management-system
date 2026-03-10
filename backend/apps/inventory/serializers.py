@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Item, ItemRequest, ItemIssue, StockEntry
+from .models import Category, Item, ItemRequest, ItemIssue, PurchaseRequest, StockEntry
 
 
 # Plan to remove this shim in a future cleanup once all callers are updated.
@@ -126,6 +126,61 @@ class ItemRequestReviewSerializer(serializers.Serializer):
         if data['action'] == 'reject' and not data.get('rejection_reason'):
             raise serializers.ValidationError({'rejection_reason': 'Reason required when rejecting.'})
         return data
+
+
+class PurchaseRequestSerializer(serializers.ModelSerializer):
+    requested_by_name = serializers.SerializerMethodField()
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    decided_by_name = serializers.SerializerMethodField()
+    estimated_total_cost = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PurchaseRequest
+        fields = [
+            'id',
+            'requested_by',
+            'requested_by_name',
+            'category',
+            'category_name',
+            'item_name',
+            'item_type',
+            'quantity_requested',
+            'unit',
+            'estimated_unit_cost',
+            'estimated_total_cost',
+            'reason',
+            'needed_by',
+            'urgency',
+            'status',
+            'admin_note',
+            'decided_by',
+            'decided_by_name',
+            'decided_at',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'id',
+            'requested_by',
+            'status',
+            'admin_note',
+            'decided_by',
+            'decided_at',
+            'created_at',
+            'updated_at',
+        ]
+
+    def get_requested_by_name(self, obj):
+        return obj.requested_by.get_full_name() or obj.requested_by.username
+
+    def get_decided_by_name(self, obj):
+        if not obj.decided_by:
+            return None
+        return obj.decided_by.get_full_name() or obj.decided_by.username
+
+    def get_estimated_total_cost(self, obj):
+        val = obj.estimated_total_cost
+        return float(val) if val is not None else None
 
 
 class ItemIssueSerializer(serializers.ModelSerializer):

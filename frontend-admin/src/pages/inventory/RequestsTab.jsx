@@ -14,6 +14,7 @@ import {
   Input,
   Modal,
   SelectField,
+  Textarea,
   Tabs,
 } from '../../components/ui'
 
@@ -22,8 +23,10 @@ export default function RequestsTab({ userRole }) {
   const { refresh: refreshBadges } = useNotifications()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [requests, setRequests] = useState([])
   const [items, setItems] = useState([])
+  const [categories, setCategories] = useState([])
   const [filter, setFilter] = useState('all')
 
   const [newModal, setNewModal] = useState(false)
@@ -48,20 +51,36 @@ export default function RequestsTab({ userRole }) {
   })
 
   const [actingId, setActingId] = useState(null)
+  const [purchaseModal, setPurchaseModal] = useState(false)
+  const [savingPurchase, setSavingPurchase] = useState(false)
+  const [purchaseForm, setPurchaseForm] = useState({
+    item_name: '',
+    category: '',
+    item_type: 'consumable',
+    quantity_requested: 1,
+    unit: 'pieces',
+    estimated_unit_cost: '',
+    needed_by: '',
+    urgency: 'normal',
+    reason: '',
+  })
 
   const canCreate = isSupervisor || isCaretaker
   const canReview = userRole === 'admin'
+  const canCreatePurchase = userRole === 'inventory_manager' || userRole === 'admin'
 
   const load = async () => {
     setLoading(true)
     setError('')
     try {
-      const [reqRes, itemsRes] = await Promise.all([
+      const [reqRes, itemsRes, catRes] = await Promise.all([
         inventoryAPI.getRequests(),
         inventoryAPI.getItems(),
+        inventoryAPI.getCategories(),
       ])
       setRequests(asList(reqRes.data))
       setItems(asList(itemsRes.data))
+      setCategories(asList(catRes.data))
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed to load requests.')
     } finally {
@@ -96,6 +115,7 @@ export default function RequestsTab({ userRole }) {
   const reviewRequest = async (id, action, reason = '') => {
     setActingId(id)
     setError('')
+    setSuccess('')
     try {
       await inventoryAPI.reviewRequest(id, {
         action,
@@ -125,6 +145,7 @@ export default function RequestsTab({ userRole }) {
     if (!issueTarget) return
     setIssuing(true)
     setError('')
+    setSuccess('')
     try {
       const payload = {
         issued_quantity: Number(issueForm.issued_quantity || 0),
@@ -146,6 +167,7 @@ export default function RequestsTab({ userRole }) {
   const createRequest = async () => {
     setSavingNew(true)
     setError('')
+    setSuccess('')
     try {
       await inventoryAPI.createRequest({
         item: Number(form.item),
@@ -170,9 +192,47 @@ export default function RequestsTab({ userRole }) {
     }
   }
 
+  const createPurchaseRequest = async () => {
+    setSavingPurchase(true)
+    setError('')
+    setSuccess('')
+    try {
+      await inventoryAPI.createPurchaseRequest({
+        item_name: purchaseForm.item_name,
+        category: purchaseForm.category ? Number(purchaseForm.category) : null,
+        item_type: purchaseForm.item_type || 'consumable',
+        quantity_requested: Number(purchaseForm.quantity_requested || 1),
+        unit: purchaseForm.unit || 'pieces',
+        estimated_unit_cost: purchaseForm.estimated_unit_cost ? Number(purchaseForm.estimated_unit_cost) : null,
+        needed_by: purchaseForm.needed_by || null,
+        urgency: purchaseForm.urgency || 'normal',
+        reason: purchaseForm.reason,
+      })
+      setPurchaseModal(false)
+      setPurchaseForm({
+        item_name: '',
+        category: '',
+        item_type: 'consumable',
+        quantity_requested: 1,
+        unit: 'pieces',
+        estimated_unit_cost: '',
+        needed_by: '',
+        urgency: 'normal',
+        reason: '',
+      })
+      setSuccess('Purchase request submitted to admin.')
+      refreshBadges()
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Could not submit purchase request.')
+    } finally {
+      setSavingPurchase(false)
+    }
+  }
+
   return (
     <div>
       <Alert message={error} />
+      <Alert message={success} type="success" />
 
       <Card style={{ marginBottom: 14 }}>
         <div
@@ -184,7 +244,14 @@ export default function RequestsTab({ userRole }) {
           }}
         >
           <div style={{ fontWeight: 700 }}>Pending Requests</div>
-          {canCreate && <Btn onClick={() => setNewModal(true)}>+ New Request</Btn>}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {canCreatePurchase && (
+              <Btn variant="orange" onClick={() => setPurchaseModal(true)}>
+                + Purchase Request
+              </Btn>
+            )}
+            {canCreate && <Btn onClick={() => setNewModal(true)}>+ New Request</Btn>}
+          </div>
         </div>
 
         {pending.length === 0 ? (
@@ -437,6 +504,100 @@ export default function RequestsTab({ userRole }) {
           />
           Mark as urgent
         </label>
+      </Modal>
+
+      <Modal
+        open={purchaseModal}
+        onClose={() => setPurchaseModal(false)}
+        title="Create Purchase Request"
+        width={620}
+        footer={
+          <>
+            <Btn variant="ghost" onClick={() => setPurchaseModal(false)}>
+              Cancel
+            </Btn>
+            <Btn onClick={createPurchaseRequest} disabled={savingPurchase}>
+              {savingPurchase ? 'Submitting...' : 'Submit Request'}
+            </Btn>
+          </>
+        }
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <Field label="Item / Material Name" required>
+            <Input
+              value={purchaseForm.item_name}
+              onChange={(e) => setPurchaseForm((p) => ({ ...p, item_name: e.target.value }))}
+            />
+          </Field>
+          <Field label="Category">
+            <SelectField
+              value={purchaseForm.category}
+              onChange={(e) => setPurchaseForm((p) => ({ ...p, category: e.target.value }))}
+            >
+              <option value="">Select category</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </SelectField>
+          </Field>
+          <Field label="Type">
+            <SelectField
+              value={purchaseForm.item_type}
+              onChange={(e) => setPurchaseForm((p) => ({ ...p, item_type: e.target.value }))}
+            >
+              <option value="consumable">Consumable</option>
+              <option value="asset">Asset</option>
+            </SelectField>
+          </Field>
+          <Field label="Quantity" required>
+            <Input
+              type="number"
+              min="1"
+              value={purchaseForm.quantity_requested}
+              onChange={(e) => setPurchaseForm((p) => ({ ...p, quantity_requested: e.target.value }))}
+            />
+          </Field>
+          <Field label="Unit">
+            <Input
+              value={purchaseForm.unit}
+              onChange={(e) => setPurchaseForm((p) => ({ ...p, unit: e.target.value }))}
+            />
+          </Field>
+          <Field label="Estimated Unit Cost (INR)">
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={purchaseForm.estimated_unit_cost}
+              onChange={(e) => setPurchaseForm((p) => ({ ...p, estimated_unit_cost: e.target.value }))}
+            />
+          </Field>
+          <Field label="Needed By">
+            <Input
+              type="date"
+              value={purchaseForm.needed_by}
+              onChange={(e) => setPurchaseForm((p) => ({ ...p, needed_by: e.target.value }))}
+            />
+          </Field>
+          <Field label="Urgency">
+            <SelectField
+              value={purchaseForm.urgency}
+              onChange={(e) => setPurchaseForm((p) => ({ ...p, urgency: e.target.value }))}
+            >
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+            </SelectField>
+          </Field>
+        </div>
+        <Field label="Reason / Justification" required>
+          <Textarea
+            rows={4}
+            value={purchaseForm.reason}
+            onChange={(e) => setPurchaseForm((p) => ({ ...p, reason: e.target.value }))}
+          />
+        </Field>
       </Modal>
 
       <Modal

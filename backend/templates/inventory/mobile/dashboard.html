@@ -45,24 +45,6 @@
 {% if role == 'admin' or role == 'inventory_manager' %}
 <div class="section-title">Quick Actions</div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
-  <a href="{% url 'mobile_manager_requests' %}">
-    <div class="card" style="margin:0;padding:14px;display:flex;align-items:center;gap:10px">
-      <span class="material-icons-round" style="color:var(--brand-orange);font-size:24px">pending_actions</span>
-      <div>
-        <div style="font-weight:700;color:var(--brand-green);font-size:13px">Pending Requests</div>
-        <div style="font-size:11px;color:var(--text-secondary);margin-top:1px">{{ pending_count }} awaiting</div>
-      </div>
-    </div>
-  </a>
-  <a href="{% url 'mobile_reports' %}">
-    <div class="card" style="margin:0;padding:14px;display:flex;align-items:center;gap:10px">
-      <span class="material-icons-round" style="color:var(--brand-teal);font-size:24px">bar_chart</span>
-      <div>
-        <div style="font-weight:700;color:var(--brand-green);font-size:13px">Reports</div>
-        <div style="font-size:11px;color:var(--text-secondary);margin-top:1px">Inventory &amp; requests</div>
-      </div>
-    </div>
-  </a>
   <a href="{% url 'mobile_issued_items' %}">
     <div class="card" style="margin:0;padding:14px;display:flex;align-items:center;gap:10px">
       <span class="material-icons-round" style="color:var(--brand-green);font-size:24px">move_to_inbox</span>

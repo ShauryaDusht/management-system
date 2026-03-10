@@ -10,6 +10,11 @@ const STATUS_OPTIONS = [
   { key: 'low_stock', label: 'Low Stock' },
   { key: 'out_of_stock', label: 'Out of Stock' },
 ]
+const TYPE_OPTIONS = [
+  { key: 'all', label: 'All Types' },
+  { key: 'asset', label: 'Assets' },
+  { key: 'consumable', label: 'Consumables' },
+]
 
 function csvEscape(value) {
   if (value === null || value === undefined) return ''
@@ -39,6 +44,7 @@ export default function ReportTab() {
   const [error, setError] = useState('')
   const [report, setReport] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
 
   useEffect(() => {
     ;(async () => {
@@ -57,9 +63,12 @@ export default function ReportTab() {
 
   const items = useMemo(() => {
     const list = asList(report?.items)
-    if (statusFilter === 'all') return list
-    return list.filter((item) => item.status === statusFilter)
-  }, [report, statusFilter])
+    return list.filter((item) => {
+      const statusOk = statusFilter === 'all' || item.status === statusFilter
+      const typeOk = typeFilter === 'all' || item.type === typeFilter
+      return statusOk && typeOk
+    })
+  }, [report, statusFilter, typeFilter])
 
   const csvRows = useMemo(
     () =>
@@ -75,7 +84,7 @@ export default function ReportTab() {
     [items]
   )
 
-  const csvFilename = statusFilter === 'all' ? 'inventory_report.csv' : `inventory_report_${statusFilter}.csv`
+  const csvFilename = `inventory_report_${statusFilter}_${typeFilter}.csv`
 
   return (
     <div>
@@ -107,22 +116,36 @@ export default function ReportTab() {
             borderBottom: '1px solid var(--border)',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             gap: 10,
             flexWrap: 'wrap',
           }}
         >
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {STATUS_OPTIONS.map((option) => (
-              <Btn
-                key={option.key}
-                size="sm"
-                variant={statusFilter === option.key ? 'primary' : 'secondary'}
-                onClick={() => setStatusFilter(option.key)}
-              >
-                {option.label}
-              </Btn>
-            ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {STATUS_OPTIONS.map((option) => (
+                <Btn
+                  key={option.key}
+                  size="sm"
+                  variant={statusFilter === option.key ? 'primary' : 'secondary'}
+                  onClick={() => setStatusFilter(option.key)}
+                >
+                  {option.label}
+                </Btn>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {TYPE_OPTIONS.map((option) => (
+                <Btn
+                  key={option.key}
+                  size="sm"
+                  variant={typeFilter === option.key ? 'primary' : 'secondary'}
+                  onClick={() => setTypeFilter(option.key)}
+                >
+                  {option.label}
+                </Btn>
+              ))}
+            </div>
           </div>
 
           <Btn

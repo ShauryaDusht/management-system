@@ -35,8 +35,11 @@ from apps.inventory.models import Item, ItemIssue, ItemRequest, StockEntry
 
 # ── Inventory report ──────────────────────────────────────────────────────────
 
-def generate_inventory_report(status_filter=None):
+def generate_inventory_report(status_filter=None, item_type_filter=None):
     qs = Item.objects.all().select_related('category')
+
+    if item_type_filter in {'asset', 'consumable'}:
+        qs = qs.filter(item_type=item_type_filter)
 
     if status_filter == 'out_of_stock':
         qs = qs.filter(available_quantity=0)

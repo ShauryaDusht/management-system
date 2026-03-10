@@ -5,6 +5,7 @@ import AdminLayout from '../../layout/AdminLayout'
 import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner, StatCard, Tabs } from '../../components/ui'
 import RequestsReportTab from './RequestsReportTab'
 import {
+  inventoryAPI,
   csvUrl,
   downloadConsumptionItemCSV,
   downloadConsumptionRequesterCSV,
@@ -18,6 +19,7 @@ import {
   listMonthly,
   pdfUrl,
 } from '../../api/inventory'
+import { useNotifications } from '../../context/NotificationContext'
 
 async function downloadWithToken(url, filename) {
   try {
@@ -71,6 +73,7 @@ function InventoryReportTab() {
   const [error, setError] = useState('')
   const [report, setReport] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
 
   useEffect(() => {
     ;(async () => {
@@ -89,9 +92,20 @@ function InventoryReportTab() {
 
   const items = useMemo(() => {
     const base = report?.items || []
-    if (statusFilter === 'all') return base
-    return base.filter((i) => i.status === statusFilter)
-  }, [report, statusFilter])
+    return base.filter((i) => {
+      const statusOk = statusFilter === 'all' || i.status === statusFilter
+      const typeOk = typeFilter === 'all' || i.type === typeFilter
+      return statusOk && typeOk
+    })
+  }, [report, statusFilter, typeFilter])
+
+  const typeCounts = useMemo(() => {
+    const base = report?.items || []
+    return {
+      assets: base.filter((i) => i.type === 'asset').length,
+      consumables: base.filter((i) => i.type === 'consumable').length,
+    }
+  }, [report])
 
   return (
     <div>
@@ -101,6 +115,8 @@ function InventoryReportTab() {
         <StatCard label="Total Value" value={`INR ${Number(report?.total_value || 0).toLocaleString('en-IN')}`} icon="VL" color="#16a34a" />
         <StatCard label="Low Stock" value={report?.low_stock_count ?? 0} icon="LS" color="#f59e0b" />
         <StatCard label="Out of Stock" value={report?.out_of_stock_count ?? 0} icon="OS" color="#dc2626" />
+        <StatCard label="Assets" value={typeCounts.assets} icon="AS" color="#2563eb" />
+        <StatCard label="Consumables" value={typeCounts.consumables} icon="CS" color="#7c3aed" />
       </div>
 
       <Card noPad>
@@ -110,21 +126,31 @@ function InventoryReportTab() {
             borderBottom: '1px solid var(--border)',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             gap: 10,
+            flexWrap: 'wrap',
           }}
         >
           <div style={{ fontWeight: 700 }}>Inventory Report</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <SelectField value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: 170 }}>
-              <option value="all">All</option>
-              <option value="in_stock">In Stock</option>
-              <option value="low_stock">Low Stock</option>
-              <option value="out_of_stock">Out of Stock</option>
-            </SelectField>
-            <Btn variant="secondary" onClick={() => exportCsv(items, 'inventory_report.csv')}>
-              Export CSV
-            </Btn>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <SelectField value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: 170 }}>
+                <option value="all">All</option>
+                <option value="in_stock">In Stock</option>
+                <option value="low_stock">Low Stock</option>
+                <option value="out_of_stock">Out of Stock</option>
+              </SelectField>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <SelectField value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={{ width: 150 }}>
+                <option value="all">All Types</option>
+                <option value="asset">Assets</option>
+                <option value="consumable">Consumables</option>
+              </SelectField>
+              <Btn variant="secondary" onClick={() => exportCsv(items, `inventory_report_${statusFilter}_${typeFilter}.csv`)}>
+                Export CSV
+              </Btn>
+            </div>
           </div>
         </div>
         {loading ? (
@@ -155,6 +181,7 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 
 function MonthlyTab() {
   const now = new Date()
+  const { refresh: refreshBadges, markSeen } = useNotifications()
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(now.getFullYear())
   const [history, setHistory] = useState([])
@@ -163,6 +190,10 @@ function MonthlyTab() {
   const [loadingSelected, setLoadingSelected] = useState(false)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [purchaseRows, setPurchaseRows] = useState([])
+  const [purchaseFilter, setPurchaseFilter] = useState('pending')
+  const [purchaseLoading, setPurchaseLoading] = useState(true)
+  const [purchaseActingId, setPurchaseActingId] = useState(null)
 
   const years = useMemo(() => Array.from({ length: 5 }, (_, i) => now.getFullYear() - i), [now])
 
@@ -182,6 +213,42 @@ function MonthlyTab() {
   useEffect(() => {
     loadHistory()
   }, [])
+
+  const loadPurchaseRequests = async () => {
+    setPurchaseLoading(true)
+    setError('')
+    try {
+      const params = purchaseFilter === 'all' ? {} : { status: purchaseFilter }
+      const { data } = await inventoryAPI.getPurchaseRequests(params)
+      const rows = Array.isArray(data) ? data : data?.results || []
+      setPurchaseRows(rows)
+      if (rows.length > 0) {
+        markSeen('inventory')
+      }
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Failed to load purchase requests.')
+    } finally {
+      setPurchaseLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadPurchaseRequests()
+  }, [purchaseFilter])
+
+  const decidePurchaseRequest = async (id, decision) => {
+    setPurchaseActingId(id)
+    setError('')
+    try {
+      await inventoryAPI.decidePurchaseRequest(id, { decision })
+      await loadPurchaseRequests()
+      refreshBadges()
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Failed to update purchase request.')
+    } finally {
+      setPurchaseActingId(null)
+    }
+  }
 
   const generate = async (overwrite = false) => {
     setError('')
@@ -253,7 +320,7 @@ function MonthlyTab() {
         </div>
       </Card>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '380px minmax(0, 1fr) 360px', gap: 14 }}>
         <Card noPad>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700 }}>
             Monthly History
@@ -335,6 +402,107 @@ function MonthlyTab() {
           ) : (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-3)' }}>
               Select a monthly report from history to view details.
+            </div>
+          )}
+        </Card>
+
+        <Card noPad>
+          <div
+            style={{
+              padding: '12px 16px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <div style={{ fontWeight: 700 }}>MP Notifications</div>
+            <Badge value="pending" style={{ fontSize: 10, padding: '2px 8px' }} />
+          </div>
+          <div
+            style={{
+              padding: '10px 12px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              gap: 6,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Btn
+              size="sm"
+              variant={purchaseFilter === 'pending' ? 'primary' : 'secondary'}
+              onClick={() => setPurchaseFilter('pending')}
+            >
+              Pending
+            </Btn>
+            <Btn
+              size="sm"
+              variant={purchaseFilter === 'all' ? 'primary' : 'secondary'}
+              onClick={() => setPurchaseFilter('all')}
+            >
+              All
+            </Btn>
+          </div>
+          {purchaseLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 22 }}>
+              <Spinner />
+            </div>
+          ) : purchaseRows.length === 0 ? (
+            <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-3)', fontSize: 12 }}>
+              No purchase requests found.
+            </div>
+          ) : (
+            <div style={{ maxHeight: 560, overflow: 'auto', padding: 10 }}>
+              {purchaseRows.map((row) => (
+                <div
+                  key={row.id}
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    padding: 10,
+                    marginBottom: 8,
+                    background: row.status === 'pending' ? '#fff7ed' : 'var(--surface)',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, marginBottom: 5 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>{row.item_name}</div>
+                    <Badge value={row.status} />
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 2 }}>
+                    {row.quantity_requested} {row.unit} - {String(row.item_type || 'consumable').replace(/^./, (x) => x.toUpperCase())} - {row.category_name || 'No category'}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 2 }}>
+                    By: {row.requested_by_name}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4 }}>
+                    {new Date(row.created_at).toLocaleString('en-IN')}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-2)' }}>
+                    {row.reason}
+                  </div>
+                  {row.status === 'pending' && (
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      <Btn
+                        size="sm"
+                        variant="success"
+                        onClick={() => decidePurchaseRequest(row.id, 'approved')}
+                        disabled={purchaseActingId === row.id}
+                      >
+                        Approve
+                      </Btn>
+                      <Btn
+                        size="sm"
+                        variant="danger"
+                        onClick={() => decidePurchaseRequest(row.id, 'rejected')}
+                        disabled={purchaseActingId === row.id}
+                      >
+                        Reject
+                      </Btn>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </Card>
