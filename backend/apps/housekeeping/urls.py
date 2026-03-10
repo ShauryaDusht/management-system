@@ -51,6 +51,11 @@ api_urlpatterns = [
         name='hk-api-incharge-assignments',
     ),
     path(
+        'incharge-assignments/report/',
+        api_views.HKInchargeReportView.as_view(),
+        name='hk-api-incharge-report',
+    ),
+    path(
         'incharge-assignments/<uuid:pk>/decision/',
         api_views.HKInchargeAssignmentDecisionView.as_view(),
         name='hk-api-incharge-assignments-decision',

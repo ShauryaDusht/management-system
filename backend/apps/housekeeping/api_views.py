@@ -520,6 +520,69 @@ class SupervisorReportRegenerateView(APIView):
         return Response({'success': True, 'generated_at': report.generated_at})
 
 
+class HKInchargeReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        month, year, err = _parse_report_period(
+            request.query_params.get('month'),
+            request.query_params.get('year'),
+        )
+        if err:
+            return Response({'detail': err}, status=400)
+
+        from calendar import month_name
+        import datetime
+        period_start = datetime.date(year, month, 1)
+        import calendar
+        period_end = datetime.date(year, month, calendar.monthrange(year, month)[1])
+
+        qs = (
+            HKInchargeAssignment.objects
+            .filter(leave_date__gte=period_start, leave_date__lte=period_end)
+            .select_related('leave_staff', 'assigned_staff', 'area', 'admin_action_by')
+            .order_by('leave_date', 'leave_staff__first_name')
+        )
+
+        rows = []
+        for a in qs:
+            rows.append({
+                'leave_staff': a.leave_staff_name,
+                'area': a.area.name if a.area else '',
+                'cover_all_areas': a.cover_all_areas,
+                'leave_date': a.leave_date.isoformat(),
+                'incharge': a.assigned_staff_name,
+                'status': a.status,
+                'reason': a.leave_request.reason if hasattr(a, 'leave_request') and a.leave_request else '',
+                'admin_action_by': (
+                    a.admin_action_by.get_full_name() or a.admin_action_by.username
+                    if a.admin_action_by else ''
+                ),
+                'admin_action_note': a.admin_action_note or '',
+                'admin_action_at': a.admin_action_at.isoformat() if a.admin_action_at else '',
+            })
+
+        total = len(rows)
+        approved = sum(1 for r in rows if r['status'] == 'approved')
+        rejected = sum(1 for r in rows if r['status'] == 'admin_rejected')
+        pending = sum(1 for r in rows if r['status'] in ('pending_acceptance', 'pending_admin_approval'))
+        declined = sum(1 for r in rows if r['status'] == 'declined')
+
+        return Response({
+            'month': month,
+            'year': year,
+            'period_label': f"{month_name[month]} {year}",
+            'summary': {
+                'total': total,
+                'approved': approved,
+                'rejected': rejected,
+                'pending': pending,
+                'declined': declined,
+            },
+            'rows': rows,
+        })
+
+
 class HKWorkersCombinedCSVView(APIView):
     permission_classes = [IsAuthenticated]
 
