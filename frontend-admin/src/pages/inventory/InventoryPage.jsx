@@ -11,12 +11,14 @@ import ReportTab from './ReportTab'
 import RequestsReportTab from '../reports/RequestsReportTab'
 import RequestsTab from './RequestsTab'
 import StockLogTab from './StockLogTab'
+import MonthlyReportTab from './MonthlyReportTab'
 
 const BASE_TAB_CONFIG = [
   { key: 'items', label: 'Items', icon: '📦' },
   { key: 'requests', label: 'Requests', icon: '📋' },
   { key: 'issues', label: 'Issued Items', icon: '🔄' },
   { key: 'stocklog', label: 'Stock Log', icon: '🧾' },
+  { key: 'monthly', label: 'Monthly Procurement', icon: '📅' },
 ]
 const REPORT_TAB = { key: 'report', label: 'Report', icon: '📊' }
 const REQUEST_REPORT_TAB = { key: 'request-report', label: 'Request Report', icon: 'RR' }
@@ -95,6 +97,7 @@ export default function InventoryPage() {
       {active === 'issues' && <IssuesTab userRole={user?.role} />}
       {active === 'stocklog' && <StockLogTab userRole={user?.role} />}
       {active === 'report' && canViewReports && <ReportTab />}
+      {active === 'monthly' && canViewReports && <MonthlyReportTab />}
       {active === 'request-report' && canViewReports && <RequestsReportTab />}
     </AdminLayout>
   )

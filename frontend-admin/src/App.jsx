@@ -9,7 +9,6 @@ import HousekeepingPage from './pages/housekeeping/HousekeepingPage'
 import InventoryPage from './pages/inventory/InventoryPage'
 import LoginPage from './pages/LoginPage'
 import ProfilePage from './pages/profile/ProfilePage'
-import ReportsPage from './pages/reports/ReportsPage'
 import UsersPage from './pages/users/UsersPage'
 
 const ADMIN_ONLY = ['admin']
@@ -60,14 +59,6 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={ADMIN_ONLY}>
                 <HorticulturePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/reports"
-            element={
-              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
-                <ReportsPage />
               </ProtectedRoute>
             }
           />

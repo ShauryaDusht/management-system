@@ -46,7 +46,6 @@ export default function Sidebar() {
       badge: badges.housekeeping,
     },
     { to: '/horticulture', icon: 'HT', label: 'Horticulture' },
-    { to: '/reports', icon: 'RP', label: 'Reports' },
     { to: '/users', icon: 'US', label: 'Manage Users' },
     { to: '/profile', icon: 'PR', label: 'Profile' },
   ]
