@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 
 import { Tabs } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationContext'
 import AdminLayout from '../../layout/AdminLayout'
 import IssuesTab from './IssuesTab'
 import ItemsTab from './ItemsTab'
@@ -23,12 +24,29 @@ const REQUEST_REPORT_TAB = { key: 'request-report', label: 'Request Report', ico
 export default function InventoryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
+  const { badges, markSeen } = useNotifications()
   const canViewReports = user?.role === 'admin'
 
-  const tabConfig = useMemo(
-    () => (canViewReports ? [...BASE_TAB_CONFIG, REPORT_TAB, REQUEST_REPORT_TAB] : BASE_TAB_CONFIG),
-    [canViewReports]
-  )
+  const tabConfig = useMemo(() => {
+    const base = BASE_TAB_CONFIG.map((tab) => {
+      if (tab.key === 'items') {
+        return {
+          ...tab,
+          count: badges.lowStock > 0 ? badges.lowStock : null,
+          countTone: 'yellow',
+        }
+      }
+      if (tab.key === 'requests') {
+        return {
+          ...tab,
+          count: badges.inventory > 0 ? badges.inventory : null,
+          countTone: 'red',
+        }
+      }
+      return tab
+    })
+    return canViewReports ? [...base, REPORT_TAB, REQUEST_REPORT_TAB] : base
+  }, [badges.inventory, badges.lowStock, canViewReports])
   const validTabs = useMemo(() => tabConfig.map((tab) => tab.key), [tabConfig])
 
   const initialTab = searchParams.get('tab')
@@ -46,6 +64,15 @@ export default function InventoryPage() {
       setActive('items')
     }
   }, [active, searchParams, validTabs])
+
+  useEffect(() => {
+    if (active === 'requests' && badges.inventory > 0) {
+      markSeen('inventory')
+    }
+    if (active === 'items' && badges.lowStock > 0) {
+      markSeen('lowStock')
+    }
+  }, [active, badges.inventory, badges.lowStock, markSeen])
 
   const onTabChange = (nextTab) => {
     setActive(nextTab)

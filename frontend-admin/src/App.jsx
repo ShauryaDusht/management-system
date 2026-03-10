@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { NotificationProvider } from './context/NotificationContext'
 import DashboardPage from './pages/dashboard/DashboardPage'
 import HorticulturePage from './pages/horticulture/HorticulturePage'
 import HousekeepingPage from './pages/housekeeping/HousekeepingPage'
@@ -26,6 +27,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <NotificationProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
 
@@ -89,6 +91,7 @@ export default function App() {
           <Route path="/" element={<RoleRedirect />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   )

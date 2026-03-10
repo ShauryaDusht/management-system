@@ -62,8 +62,16 @@ export const hkAPI = {
     api.get(`/admin/gallery/task/${taskId}/download-zip/`, { responseType: 'blob' }),
   getAttendanceSummary: (date) =>
     api.get('/housekeeping/attendance-summary/', { params: { date } }),
-  getDailyRecords: (areaId, date) =>
-    api.get('/housekeeping/daily-records/', { params: { area: areaId, date } }),
+  getDailyRecords: (areaOrParams, date) => {
+    const params = {}
+    if (areaOrParams && typeof areaOrParams === 'object' && !Array.isArray(areaOrParams)) {
+      Object.assign(params, areaOrParams)
+    } else {
+      if (areaOrParams != null && areaOrParams !== '') params.area = areaOrParams
+      if (date) params.date = date
+    }
+    return api.get('/housekeeping/daily-records/', { params })
+  },
   assignAreaTask: (payload) => api.post('/housekeeping/assign-area-task/', payload),
   promoteTaskToDaily: (recordId) =>
     api.post('/housekeeping/promote-task-to-daily/', { record_id: recordId }),

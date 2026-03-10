@@ -50,7 +50,7 @@
     <div class="fg">
       <label>Area / Hostel *</label>
       <select name="leave_area_id" required>
-        <option value="">- Select area -</option>
+        <option value="all" {% if selected_leave_area_id == 'all' or not selected_leave_area_id %}selected{% endif %}>All Assigned Areas</option>
         {% for area in user_areas %}
         <option value="{{ area.id }}" {% if selected_leave_area_id|stringformat:'s' == area.id|stringformat:'s' %}selected{% endif %}>{{ area.name }}</option>
         {% endfor %}
@@ -72,7 +72,14 @@
 {% if show_incharge_selector and selector_leave_request %}
 <div class="card" style="border:1.5px solid #fde68a;background:#fffbeb">
   <div style="font-weight:800;color:#92400e;margin-bottom:7px">Select Temporary Incharge for {{ selector_leave_request.leave_date|date:"d M Y" }}</div>
-  <div style="font-size:12px;color:#6b7280;margin-bottom:10px">Area: {{ selector_leave_request.area.name }}</div>
+  <div style="font-size:12px;color:#6b7280;margin-bottom:10px">
+    Area:
+    {% if selector_leave_request.all_areas %}
+      All Assigned Areas
+    {% else %}
+      {{ selector_leave_request.area.name }}
+    {% endif %}
+  </div>
   <form method="post">
     {% csrf_token %}
     <input type="hidden" name="action" value="assign_temp_incharge">
@@ -104,7 +111,9 @@
   <div style="font-weight:700;color:#2d4a3e;margin-bottom:10px">Leave Status</div>
   {% for lr in recent_leaves %}
   <div style="padding:8px 0;border-bottom:1px solid #f3f4f6">
-    <div style="font-size:13px;font-weight:700">{{ lr.leave_date|date:"d M Y" }} - {{ lr.area.name }}</div>
+    <div style="font-size:13px;font-weight:700">
+      {{ lr.leave_date|date:"d M Y" }} - {% if lr.all_areas %}All Assigned Areas{% else %}{{ lr.area.name }}{% endif %}
+    </div>
     <div style="font-size:12px;color:#6b7280">Status: {{ lr.get_status_display }}</div>
     {% if lr.reason %}<div style="font-size:12px;color:#6b7280">Reason: {{ lr.reason }}</div>{% endif %}
   </div>

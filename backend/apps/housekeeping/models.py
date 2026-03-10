@@ -512,6 +512,10 @@ class HKLeaveRequest(models.Model):
     )
     leave_date = models.DateField()
     reason = models.CharField(max_length=300, blank=True)
+    all_areas = models.BooleanField(
+        default=False,
+        help_text='If true, this leave request covers all areas assigned to the leave staff.',
+    )
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='awaiting_incharge')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -563,6 +567,10 @@ class HKInchargeAssignment(models.Model):
         related_name='hk_incharge_assigned_requests',
     )
     assigned_staff_name = models.CharField(max_length=120)
+    cover_all_areas = models.BooleanField(
+        default=False,
+        help_text='If true, approved assignment grants temporary incharge access to all leave-staff areas for that date.',
+    )
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending_acceptance')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

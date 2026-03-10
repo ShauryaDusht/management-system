@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationContext'
 import { Tabs } from '../../components/ui'
 import AdminLayout from '../../layout/AdminLayout'
 import AttendanceTab from './AttendanceTab'
@@ -15,6 +16,7 @@ import GalleryTab from './GalleryTab'
 
 export default function HousekeepingPage() {
   const { user } = useAuth()
+  const { badges, markSeen } = useNotifications()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const tabs = useMemo(
@@ -28,14 +30,20 @@ export default function HousekeepingPage() {
         { key: 'worker_selection', label: 'Worker Selection', icon: 'WS' },
       ]
       if (['admin', 'housekeeping_manager'].includes(user?.role)) {
-        base.push({ key: 'incharge_approvals', label: 'Incharge Approvals', icon: 'IA' })
+        base.push({
+          key: 'incharge_approvals',
+          label: 'Incharge Approvals',
+          icon: 'IA',
+          count: badges.housekeeping > 0 ? badges.housekeeping : null,
+          countTone: 'red',
+        })
       }
       if (user?.role === 'admin') {
         base.push({ key: 'gallery', label: 'Gallery', icon: 'GL' })
       }
       return base
     },
-    [user?.role]
+    [badges.housekeeping, user?.role]
   )
 
   const validTabs = useMemo(() => tabs.map((t) => t.key), [tabs])
@@ -55,6 +63,12 @@ export default function HousekeepingPage() {
       setActive(tab)
     }
   }, [active, searchParams, validTabs])
+
+  useEffect(() => {
+    if (active === 'incharge_approvals' && badges.housekeeping > 0) {
+      markSeen('housekeeping')
+    }
+  }, [active, badges.housekeeping, markSeen])
 
   const onTabChange = (nextTab) => {
     setActive(nextTab)

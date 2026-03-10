@@ -43,22 +43,27 @@ export default function OverviewTab() {
     try {
       const { data: areaData } = await hkAPI.getAreas()
       const areaList = Array.isArray(areaData) ? areaData : areaData?.results || []
-      const today = new Date().toISOString().slice(0, 10)
-      const recResults = await Promise.all(
-        areaList.map(async (a) => {
-          try {
-            const { data } = await hkAPI.getDailyRecords(a.id, today)
-            return { area: a, records: Array.isArray(data) ? data : data?.results || [] }
-          } catch {
-            return { area: a, records: [] }
-          }
-        }),
-      )
+      const todayStr = new Date().toISOString().slice(0, 10)
+      let records = []
+      try {
+        const { data } = await hkAPI.getDailyRecords({ date: todayStr })
+        records = Array.isArray(data) ? data : data?.results || []
+      } catch {
+        records = []
+      }
 
-      const mapped = recResults.map(({ area, records }) => {
-        const completed = records.filter((r) => r.status === 'done').length
-        const pending = records.filter((r) => r.status === 'pending').length
-        const skipped = records.filter((r) => r.status === 'skipped').length
+      const byArea = {}
+      records.forEach(r => {
+        const key = r.area || r.area_id
+        if (!byArea[key]) byArea[key] = []
+        byArea[key].push(r)
+      })
+
+      const mapped = areaList.map((area) => {
+        const areaRecords = byArea[area.id] || byArea[String(area.id)] || []
+        const completed = areaRecords.filter((r) => r.status === 'done').length
+        const pending = areaRecords.filter((r) => r.status === 'pending').length
+        const skipped = areaRecords.filter((r) => r.status === 'skipped').length
         return {
           area_id: area.id,
           area: area.name,
@@ -66,7 +71,7 @@ export default function OverviewTab() {
           pending,
           skipped,
           completed,
-          total: records.length,
+          total: areaRecords.length,
           supervisor_caretaker: (area.caretakers || []).join(', ') || '-',
         }
       })

@@ -402,6 +402,17 @@ export function StatCard({
 
 // -- Tabs ---------------------------------------------------------------------
 export function Tabs({ tabs, active, onChange }) {
+  const defaultCountStyle = (isActive) => ({
+    background: isActive ? 'rgba(255,255,255,0.25)' : 'var(--border)',
+    color: isActive ? '#fff' : 'var(--text-3)',
+  })
+
+  const toneCountStyle = (tone) => {
+    if (tone === 'red') return { background: '#ef4444', color: '#fff' }
+    if (tone === 'yellow') return { background: '#f59e0b', color: '#fff' }
+    return null
+  }
+
   return (
     <div
       style={{
@@ -414,7 +425,10 @@ export function Tabs({ tabs, active, onChange }) {
         width: 'fit-content',
       }}
     >
-      {tabs.map((tab) => (
+      {tabs.map((tab) => {
+        const isActive = active === tab.key
+        const countStyle = toneCountStyle(tab.countTone) || defaultCountStyle(isActive)
+        return (
         <button
           key={tab.key}
           onClick={() => onChange(tab.key)}
@@ -423,8 +437,8 @@ export function Tabs({ tabs, active, onChange }) {
             borderRadius: 8,
             fontSize: 13,
             fontWeight: 600,
-            background: active === tab.key ? 'var(--green-800)' : 'transparent',
-            color: active === tab.key ? '#fff' : 'var(--text-3)',
+            background: isActive ? 'var(--green-800)' : 'transparent',
+            color: isActive ? '#fff' : 'var(--text-3)',
             border: 'none',
             cursor: 'pointer',
             transition: 'all 0.15s',
@@ -438,8 +452,7 @@ export function Tabs({ tabs, active, onChange }) {
           {tab.count != null && (
             <span
               style={{
-                background: active === tab.key ? 'rgba(255,255,255,0.25)' : 'var(--border)',
-                color: active === tab.key ? '#fff' : 'var(--text-3)',
+                ...countStyle,
                 borderRadius: 99,
                 padding: '1px 6px',
                 fontSize: 11,
@@ -450,7 +463,8 @@ export function Tabs({ tabs, active, onChange }) {
             </span>
           )}
         </button>
-      ))}
+        )
+      })}
     </div>
   )
 }

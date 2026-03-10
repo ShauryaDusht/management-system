@@ -15,6 +15,7 @@ export default function SectionsTab() {
   const [assignModal, setAssignModal] = useState(null)
   const [selectedUserId, setSelectedUserId] = useState('')
   const [assignSaving, setAssignSaving] = useState(false)
+  const [downloadingReport, setDownloadingReport] = useState(false)
 
   const areaGroup = (areaName, areaType) => {
     const n = String(areaName || '').trim()
@@ -204,6 +205,66 @@ export default function SectionsTab() {
     }
   }
 
+  const toCsvValue = (value) => {
+    const s = String(value ?? '')
+    if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+    return s
+  }
+
+  const triggerCsvDownload = (csvContent, filename) => {
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv' })
+    const href = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = href
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(href)
+  }
+
+  const downloadAreaInchargeReport = () => {
+    if (!filteredRows.length) {
+      setError('No rows available to generate report for selected segment.')
+      return
+    }
+
+    setDownloadingReport(true)
+    setError('')
+    setSuccess('')
+    try {
+      const headers = [
+        'Area Name',
+        'Caretaker / Supervisor',
+        'Username',
+        'Phone No',
+        'Worker Count',
+        'Status',
+        'Change Supervisor/Caretaker',
+      ]
+      const rows = filteredRows.map((row) => [
+        row.areaName,
+        row.role === '-' ? '-' : `${row.assignedTo} (${row.role})`,
+        row.username,
+        row.phone,
+        row.workerCount,
+        row.role === '-' ? 'Unassigned' : row.isActive ? 'Active' : 'Inactive',
+        row.userId ? 'Change' : 'Assign',
+      ])
+      const csvBody = [headers, ...rows]
+        .map((r) => r.map((cell) => toCsvValue(cell)).join(','))
+        .join('\n')
+
+      const now = new Date()
+      const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+      const filename = `area_incharge_report_${areaClassFilter}_${stamp}.csv`
+      triggerCsvDownload(csvBody, filename)
+      setSuccess('Area-wise incharge report generated.')
+    } catch {
+      setError('Failed to generate area-wise incharge report.')
+    } finally {
+      setDownloadingReport(false)
+    }
+  }
+
   return (
     <div>
       <Alert message={error} />
@@ -249,6 +310,14 @@ export default function SectionsTab() {
               onClick={() => setAreaClassFilter('all')}
             >
               All
+            </Btn>
+            <Btn
+              size="sm"
+              variant="secondary"
+              onClick={downloadAreaInchargeReport}
+              disabled={downloadingReport}
+            >
+              {downloadingReport ? 'Generating Report...' : 'Area Incharge Report CSV'}
             </Btn>
           </div>
         </div>

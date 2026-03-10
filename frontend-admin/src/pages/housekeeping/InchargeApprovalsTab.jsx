@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
 import { Alert, Badge, Btn, Card, DataTable, Spinner } from '../../components/ui'
+import { useNotifications } from '../../context/NotificationContext'
 
 function normalizeList(payload) {
   if (Array.isArray(payload)) return payload
@@ -23,6 +24,7 @@ export default function InchargeApprovalsTab() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [decisionLoadingId, setDecisionLoadingId] = useState(null)
+  const { refresh: refreshBadges } = useNotifications()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -49,6 +51,7 @@ export default function InchargeApprovalsTab() {
       await hkAPI.decideInchargeAssignment(id, { decision })
       setSuccess(decision === 'approved' ? 'Incharge assignment approved.' : 'Incharge assignment rejected.')
       await load()
+      refreshBadges()
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed to update assignment decision.')
     } finally {
@@ -73,7 +76,7 @@ export default function InchargeApprovalsTab() {
       })
       .map((r) => [
         r.leave_staff_name || r.leave_staff_username || '-',
-        r.area_name || '-',
+        r.area_label || r.area_name || '-',
         r.leave_date || '-',
         r.assigned_staff_name || r.assigned_staff_username || '-',
         <Badge key={`st-${r.id}`} value={r.status} />,
