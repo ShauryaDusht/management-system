@@ -323,13 +323,29 @@ def get_today_records(area, date):
                     # check and insert — safe to ignore, record already exists.
                     pass
 
-    return (
+    active_records = (
         HKDailyRecord.objects
         .filter(area=area, date=date, schedule__in=template_list)
         .select_related("schedule", "completed_by", "assigned_worker", "assigned_by", "area")
         .prefetch_related("worker_assignments__worker")
         .order_by("schedule__worker_tag", "schedule__order", "schedule__start_time")
     )
+
+    temporary_task_records = (
+        HKDailyRecord.objects
+        .filter(
+            area=area,
+            date=date,
+            schedule__is_active=False,
+            schedule__worker_tag="all",
+        )
+        .exclude(schedule__in=template_list)
+        .select_related("schedule", "completed_by", "assigned_worker", "assigned_by", "area")
+        .prefetch_related("worker_assignments__worker")
+        .order_by("schedule__order", "schedule__start_time")
+    )
+
+    return list(active_records) + list(temporary_task_records)
 
 
 def current_half():
