@@ -22,24 +22,23 @@ export default function HousekeepingPage() {
   const tabs = useMemo(
     () => {
       const base = [
-        { key: 'overview', label: 'Overview', icon: 'HK' },
-        { key: 'directory', label: 'Sections + Staff', icon: 'AR/CT' },
-        { key: 'supervisors', label: 'Supervisors', icon: 'SP' },
-        { key: 'attendance', label: 'Attendance', icon: 'AT' },
-        { key: 'workers', label: 'Workers', icon: 'WK' },
-        { key: 'worker_selection', label: 'Worker Selection', icon: 'WS' },
+        { key: 'overview', label: 'Overview' },
+        { key: 'directory', label: 'Sections + Staff' },
+        { key: 'supervisors', label: 'Supervisors' },
+        { key: 'attendance', label: 'Attendance' },
+        { key: 'workers', label: 'Workers' },
+        { key: 'worker_selection', label: 'Worker Selection' },
       ]
       if (['admin', 'housekeeping_manager'].includes(user?.role)) {
         base.push({
           key: 'incharge_approvals',
           label: 'Incharge Approvals',
-          icon: 'IA',
           count: badges.housekeeping > 0 ? badges.housekeeping : null,
           countTone: 'red',
         })
       }
       if (user?.role === 'admin') {
-        base.push({ key: 'gallery', label: 'Gallery', icon: 'GL' })
+        base.push({ key: 'gallery', label: 'Gallery' })
       }
       return base
     },

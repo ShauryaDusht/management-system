@@ -146,7 +146,6 @@ function SupervisorReportModal({ open, supervisor, onClose }) {
   const taskOversight = snapshot.task_oversight || {}
   const attendance = snapshot.attendance_management || {}
   const extraWork = snapshot.extra_work || {}
-  const reliever = snapshot.reliever_management || {}
   const stock = snapshot.stock_requests || {}
   const dailyRows = snapshot.daily_activity_breakdown || []
 
@@ -275,13 +274,6 @@ function SupervisorReportModal({ open, supervisor, onClose }) {
             </Btn>
             <Btn
               size="sm"
-              variant={activeSection === 'substitutions' ? 'primary' : 'secondary'}
-              onClick={() => setActiveSection('substitutions')}
-            >
-              Substitutions
-            </Btn>
-            <Btn
-              size="sm"
               variant={activeSection === 'stock' ? 'primary' : 'secondary'}
               onClick={() => setActiveSection('stock')}
             >
@@ -316,21 +308,6 @@ function SupervisorReportModal({ open, supervisor, onClose }) {
                   row.is_verified ? 'Yes' : 'No',
                 ]))}
                 emptyMsg="No extra work entries."
-              />
-            </Card>
-          )}
-
-          {activeSection === 'substitutions' && (
-            <Card noPad>
-              <DataTable
-                headers={['Date', 'Original Worker', 'Reliever', 'Area']}
-                rows={(reliever.list || []).map((row) => ([
-                  formatDate(row.date),
-                  row.original_worker_name || '-',
-                  row.reliever_name || '-',
-                  row.area_name || '-',
-                ]))}
-                emptyMsg="No substitution entries."
               />
             </Card>
           )}
@@ -605,7 +582,8 @@ export default function SupervisorsTab() {
 
         if (!mounted) return
 
-        const areaList = Array.isArray(areaData) ? areaData : areaData?.results || []
+        const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
+          .filter((a) => a.name?.toLowerCase() !== 'hostels reliever')
         const caretakers = normalizeUsers(caretakersData).map((u) => ({ ...u, role: 'caretaker' }))
         const supervisors = normalizeUsers(supervisorsData).map((u) => ({ ...u, role: 'supervisor' }))
         const sortedUsers = [...caretakers, ...supervisors].sort((a, b) => toDisplayName(a).localeCompare(toDisplayName(b)))

@@ -447,7 +447,6 @@ export function Tabs({ tabs, active, onChange }) {
             gap: 6,
           }}
         >
-          {tab.icon && <span>{tab.icon}</span>}
           {tab.label}
           {tab.count != null && (
             <span

@@ -42,7 +42,8 @@ export default function OverviewTab() {
     }
     try {
       const { data: areaData } = await hkAPI.getAreas()
-      const areaList = Array.isArray(areaData) ? areaData : areaData?.results || []
+      const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
+        .filter((a) => a.name?.toLowerCase() !== 'hostels reliever')
       const todayStr = new Date().toISOString().slice(0, 10)
       let records = []
       try {

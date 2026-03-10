@@ -38,7 +38,8 @@ export default function SectionsTab() {
       const [{ data: areaData }, { data: caretakersData }, { data: supervisorsData }] =
         await Promise.all([hkAPI.getAreas(), hkAPI.getCaretakers(), hkAPI.getSupervisors()])
 
-      const areaList = Array.isArray(areaData) ? areaData : areaData?.results || []
+      const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
+        .filter((a) => a.name?.toLowerCase() !== 'hostels reliever')
       const caretakers = Array.isArray(caretakersData) ? caretakersData : caretakersData?.results || []
       const supervisors = Array.isArray(supervisorsData) ? supervisorsData : supervisorsData?.results || []
 
