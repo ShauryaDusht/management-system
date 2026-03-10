@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
+import { reportsAPI } from '../../api/inventory'
 import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
+import { TrendArea } from '../../components/ui/Charts'
+
+function localDateISO() {
+  const d = new Date()
+  const tzOffset = d.getTimezoneOffset() * 60000
+  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10)
+}
 
 export default function OverviewTab() {
   const [loading, setLoading] = useState(true)
@@ -9,6 +17,9 @@ export default function OverviewTab() {
   const [success, setSuccess] = useState('')
   const [rows, setRows] = useState([])
   const [areaClassFilter, setAreaClassFilter] = useState('all')
+  const [trendRange, setTrendRange] = useState('weekly')
+  const [trendData, setTrendData] = useState([])
+  const [trendLoading, setTrendLoading] = useState(true)
 
   const [assignArea, setAssignArea] = useState(null)
   const [assignSaving, setAssignSaving] = useState(false)
@@ -44,7 +55,7 @@ export default function OverviewTab() {
       const { data: areaData } = await hkAPI.getAreas()
       const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
         .filter((a) => a.name?.toLowerCase() !== 'hostels reliever')
-      const todayStr = new Date().toISOString().slice(0, 10)
+      const todayStr = localDateISO()
       let records = []
       try {
         const { data } = await hkAPI.getDailyRecords({ date: todayStr })
@@ -63,7 +74,7 @@ export default function OverviewTab() {
       const mapped = areaList.map((area) => {
         const areaRecords = byArea[area.id] || byArea[String(area.id)] || []
         const completed = areaRecords.filter((r) => r.status === 'done').length
-        const pending = areaRecords.filter((r) => r.status === 'pending').length
+        const pending = areaRecords.filter((r) => r.status === 'pending' || r.status === 'in_progress').length
         const skipped = areaRecords.filter((r) => r.status === 'skipped').length
         return {
           area_id: area.id,
@@ -110,6 +121,26 @@ export default function OverviewTab() {
     }
   }, [])
 
+  const loadTrend = useCallback(async () => {
+    setTrendLoading(true)
+    try {
+      const { data } = await reportsAPI.getActivityTrend({ range: trendRange })
+      const series = Array.isArray(data?.series) ? data.series : []
+      setTrendData(
+        series.map((row) => ({
+          name: row.label || row.date,
+          done: Number(row.hk_done || 0),
+          pending: Number(row.hk_pending || 0) + Number(row.hk_in_progress || 0),
+          skipped: Number(row.hk_skipped || 0),
+        })),
+      )
+    } catch {
+      setTrendData([])
+    } finally {
+      setTrendLoading(false)
+    }
+  }, [trendRange])
+
   const visibleRows = useMemo(
     () => (
       areaClassFilter === 'all'
@@ -121,11 +152,13 @@ export default function OverviewTab() {
 
   useEffect(() => {
     load()
+    loadTrend()
     const timer = setInterval(() => {
       load({ silent: true })
-    }, 10000)
+      loadTrend()
+    }, 30000)
     return () => clearInterval(timer)
-  }, [load])
+  }, [load, loadTrend])
 
   const openAssignModal = (row) => {
     setAssignArea(row)
@@ -312,27 +345,64 @@ export default function OverviewTab() {
           </Card>
 
           <Card>
-            <div style={{ fontWeight: 700, marginBottom: 10 }}>Report Trends</div>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: 220,
-                color: 'var(--text-3)',
-                fontSize: 12,
-                gap: 8,
-                border: '1px dashed var(--border)',
-                borderRadius: 8,
-              }}
-            >
-              <span style={{ fontSize: 24 }}>Chart</span>
-              <div style={{ textAlign: 'center' }}>Historical trend data not yet available</div>
-              <div style={{ fontSize: 11, textAlign: 'center' }}>
-                This chart will populate once daily records accumulate
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ fontWeight: 700 }}>Activity Trend</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <Btn
+                  size="sm"
+                  variant={trendRange === 'today' ? 'primary' : 'secondary'}
+                  onClick={() => setTrendRange('today')}
+                >
+                  Today
+                </Btn>
+                <Btn
+                  size="sm"
+                  variant={trendRange === 'weekly' ? 'primary' : 'secondary'}
+                  onClick={() => setTrendRange('weekly')}
+                >
+                  Weekly
+                </Btn>
+                <Btn
+                  size="sm"
+                  variant={trendRange === 'monthly' ? 'primary' : 'secondary'}
+                  onClick={() => setTrendRange('monthly')}
+                >
+                  Monthly
+                </Btn>
               </div>
             </div>
+            {trendLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+                <Spinner />
+              </div>
+            ) : trendData.length > 0 ? (
+              <TrendArea
+                data={trendData}
+                lines={[
+                  { key: 'done', label: 'Completed' },
+                  { key: 'pending', label: 'Pending + Ongoing' },
+                  { key: 'skipped', label: 'Skipped' },
+                ]}
+                height={220}
+              />
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: 220,
+                  color: 'var(--text-3)',
+                  fontSize: 12,
+                  gap: 8,
+                  border: '1px dashed var(--border)',
+                  borderRadius: 8,
+                }}
+              >
+                <div style={{ textAlign: 'center' }}>No activity trend available for this range.</div>
+              </div>
+            )}
           </Card>
         </div>
       )}

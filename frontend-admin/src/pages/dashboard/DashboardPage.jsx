@@ -1,24 +1,43 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { inventoryAPI } from '../../api/inventory'
+import { inventoryAPI, reportsAPI } from '../../api/inventory'
 import { hkAPI } from '../../api/housekeeping'
 import { Badge, Btn, Card, Spinner, StatCard } from '../../components/ui'
-import { DonutChart } from '../../components/ui/Charts'
+import { DonutChart, TrendArea } from '../../components/ui/Charts'
 import AdminLayout from '../../layout/AdminLayout'
 
 export default function DashboardPage() {
   const [invSummary, setInvSummary] = useState(null)
   const [hkSummary, setHkSummary] = useState(null)
+  const [trendRange, setTrendRange] = useState('weekly')
+  const [trendData, setTrendData] = useState([])
+  const [trendTotals, setTrendTotals] = useState(null)
+  const [trendLoading, setTrendLoading] = useState(true)
   const [loading, setLoading] = useState(true)
 
   const fetchData = () => {
+    setTrendLoading(true)
     Promise.all([
       inventoryAPI.getDashboard().catch(() => null),
       hkAPI.getDashboardSummary().catch(() => null),
-    ]).then(([inv, hk]) => {
+      reportsAPI.getActivityTrend({ range: trendRange }).catch(() => null),
+    ]).then(([inv, hk, trend]) => {
       setInvSummary(inv?.data || null)
       setHkSummary(hk?.data || null)
+
+      const series = Array.isArray(trend?.data?.series) ? trend.data.series : []
+      setTrendData(
+        series.map((row) => ({
+          name: row.label || row.date,
+          inventory: Number(row.inventory || 0),
+          housekeeping: Number(row.housekeeping || 0),
+          horticulture: Number(row.horticulture || 0),
+          total: Number(row.total || 0),
+        })),
+      )
+      setTrendTotals(trend?.data?.totals || null)
+      setTrendLoading(false)
       setLoading(false)
     })
   }
@@ -27,7 +46,7 @@ export default function DashboardPage() {
     fetchData()
     const interval = setInterval(fetchData, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [trendRange])
 
   const todayLabel = useMemo(
     () =>
@@ -77,6 +96,9 @@ export default function DashboardPage() {
 
   const hkHasActivity = hkDonut.some((d) => d.value > 0)
   const hkDonutData = hkHasActivity ? hkDonut : [{ name: 'No Activity', value: 1 }]
+  const trendHasActivity = trendData.some(
+    (d) => (d.inventory || 0) + (d.housekeeping || 0) + (d.horticulture || 0) > 0,
+  )
 
   const statCards = [
     {
@@ -104,11 +126,11 @@ export default function DashboardPage() {
       to: '/housekeeping?tab=overview',
     },
     {
-      label: 'Workers Present',
-      value: hkSummary?.present_today ?? '-',
+      label: 'HK Workers',
+      value: hkSummary?.total_workers ?? '-',
       icon: '👷',
       color: '#3b82f6',
-      sub: `of ${hkSummary?.total_workers ?? 0} workers`,
+      sub: `${hkSummary?.present_today ?? 0} present today`,
       to: '/housekeeping?tab=attendance',
     },
     {
@@ -130,7 +152,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <AdminLayout title="Admin Dashboard" subtitle={`Welcome back — ${todayLabel}`}>
+    <AdminLayout title="Admin Dashboard" subtitle={`Welcome back - ${todayLabel}`}>
       <div
         style={{
           display: 'grid',
@@ -211,7 +233,7 @@ export default function DashboardPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: 14 }}>🧹 Housekeeping</div>
-              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>Today&apos;s tasks</div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>Today's tasks</div>
             </div>
             <Link to="/housekeeping">
               <Btn size="sm" variant="ghost">
@@ -273,27 +295,85 @@ export default function DashboardPage() {
       </div>
 
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>📈 Weekly Activity Trend</div>
-        </div>
         <div
           style={{
             display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
-            justifyContent: 'center',
-            height: 220,
-            color: 'var(--text-3)',
-            fontSize: 13,
-            flexDirection: 'column',
-            gap: 8,
-            border: '1px dashed var(--border)',
-            borderRadius: 8,
+            marginBottom: 16,
+            gap: 10,
+            flexWrap: 'wrap',
           }}
         >
-          <span style={{ fontSize: 24 }}>📊</span>
-          <div>Historical trend data not yet available</div>
-          <div style={{ fontSize: 11 }}>This chart will populate once daily records accumulate</div>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>Activity Trend</div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Btn
+              size="sm"
+              variant={trendRange === 'today' ? 'primary' : 'secondary'}
+              onClick={() => setTrendRange('today')}
+            >
+              Today
+            </Btn>
+            <Btn
+              size="sm"
+              variant={trendRange === 'weekly' ? 'primary' : 'secondary'}
+              onClick={() => setTrendRange('weekly')}
+            >
+              Weekly
+            </Btn>
+            <Btn
+              size="sm"
+              variant={trendRange === 'monthly' ? 'primary' : 'secondary'}
+              onClick={() => setTrendRange('monthly')}
+            >
+              Monthly
+            </Btn>
+          </div>
         </div>
+        {trendLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+            <Spinner />
+          </div>
+        ) : trendData.length > 0 ? (
+          <>
+            <TrendArea
+              data={trendData}
+              lines={[
+                { key: 'inventory', label: 'Inventory' },
+                { key: 'housekeeping', label: 'Housekeeping' },
+                { key: 'horticulture', label: 'Horticulture' },
+              ]}
+              height={220}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+              <div style={{ fontSize: 12 }}>Inventory: <strong>{trendTotals?.inventory ?? 0}</strong></div>
+              <div style={{ fontSize: 12 }}>Housekeeping: <strong>{trendTotals?.housekeeping ?? 0}</strong></div>
+              <div style={{ fontSize: 12 }}>Horticulture: <strong>{trendTotals?.horticulture ?? 0}</strong></div>
+            </div>
+            {!trendHasActivity ? (
+              <div style={{ marginTop: 8, color: 'var(--text-3)', fontSize: 11 }}>
+                No module activity found for this time range yet.
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: 220,
+              color: 'var(--text-3)',
+              fontSize: 13,
+              flexDirection: 'column',
+              gap: 8,
+              border: '1px dashed var(--border)',
+              borderRadius: 8,
+            }}
+          >
+            <div>No trend rows available.</div>
+          </div>
+        )}
       </Card>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginTop: 20 }}>

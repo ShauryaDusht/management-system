@@ -71,6 +71,7 @@ export const getMonthly = (id) => api.get(`/reports/monthly/${id}/`)
 export const deleteMonthly = (id) => api.delete(`/reports/monthly/${id}/`)
 export const csvUrl = (id) => `${api.defaults.baseURL}/reports/monthly/${id}/csv/`
 export const pdfUrl = (id) => `${api.defaults.baseURL}/reports/monthly/${id}/pdf/`
+export const getActivityTrend = (params = {}) => api.get('/reports/activity-trend/', { params })
 export const getConsumptionReports = () => api.get('/reports/consumption/')
 export const generateConsumptionReport = (month, year, overwrite = false) =>
   api.post('/reports/consumption/generate/', { month, year, overwrite })
@@ -83,6 +84,7 @@ export const downloadConsumptionRequesterCSV = (id) =>
 export const reportsAPI = {
   getInventoryReport,
   getRequestsReport,
+  getActivityTrend,
 
   // Monthly procurement reports (Phase 3 — backend not yet wired)
   listMonthly,

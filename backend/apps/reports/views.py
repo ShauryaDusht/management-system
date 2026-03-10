@@ -1,5 +1,9 @@
+from datetime import timedelta
+
 from django.http import FileResponse
 from django.core.files.base import ContentFile
+from django.db.models import Count, Q
+from django.db.models.functions import TruncDate
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -44,6 +48,158 @@ class RequestsReportView(APIView):
         date_to = request.query_params.get('date_to')
         data = generate_requests_report(date_from, date_to)
         return Response(data)
+
+
+class ActivityTrendView(APIView):
+    """
+    GET /api/reports/activity-trend/?range=today|weekly|monthly
+    Returns cross-module activity trend rows for admin dashboard charts.
+    """
+    permission_classes = [IsAdminUser]
+
+    @staticmethod
+    def _resolve_range(range_key):
+        key = (range_key or 'weekly').strip().lower()
+        if key not in {'today', 'weekly', 'monthly'}:
+            key = 'weekly'
+        days = 1 if key == 'today' else (30 if key == 'monthly' else 7)
+        end_date = timezone.localdate()
+        start_date = end_date - timedelta(days=days - 1)
+        dates = [start_date + timedelta(days=i) for i in range(days)]
+        return key, start_date, end_date, dates
+
+    @staticmethod
+    def _annotated_day_map(qs, datetime_field):
+        return dict(
+            qs.annotate(day=TruncDate(datetime_field))
+            .values('day')
+            .annotate(c=Count('id'))
+            .values_list('day', 'c')
+        )
+
+    def get(self, request):
+        range_key, start_date, end_date, dates = self._resolve_range(request.query_params.get('range'))
+
+        from apps.inventory.models import ItemIssue, ItemRequest, PurchaseRequest, StockEntry
+        from apps.housekeeping.models import HKArea, HKDailyRecord
+
+        if end_date == timezone.localdate():
+            from apps.housekeeping.htmx_views import get_today_records
+
+            for area in HKArea.objects.filter(is_active=True):
+                get_today_records(area, end_date)
+
+        inv_requests_map = self._annotated_day_map(
+            ItemRequest.objects.filter(requested_at__date__range=(start_date, end_date)),
+            'requested_at',
+        )
+        inv_issues_map = self._annotated_day_map(
+            ItemIssue.objects.filter(issued_at__date__range=(start_date, end_date)),
+            'issued_at',
+        )
+        inv_stock_map = self._annotated_day_map(
+            StockEntry.objects.filter(added_at__date__range=(start_date, end_date)),
+            'added_at',
+        )
+        inv_purchase_map = self._annotated_day_map(
+            PurchaseRequest.objects.filter(created_at__date__range=(start_date, end_date)),
+            'created_at',
+        )
+
+        hk_rows = (
+            HKDailyRecord.objects.filter(date__range=(start_date, end_date))
+            .values('date')
+            .annotate(
+                total=Count('id'),
+                done=Count('id', filter=Q(status='done')),
+                pending=Count('id', filter=Q(status='pending')),
+                in_progress=Count('id', filter=Q(status='in_progress')),
+                skipped=Count('id', filter=Q(status='skipped')),
+            )
+        )
+        hk_map = {
+            row['date']: {
+                'total': row['total'],
+                'done': row['done'],
+                'pending': row['pending'],
+                'in_progress': row['in_progress'],
+                'skipped': row['skipped'],
+            }
+            for row in hk_rows
+        }
+
+        series = []
+        totals = {
+            'inventory': 0,
+            'housekeeping': 0,
+            'horticulture': 0,
+            'inventory_requests': 0,
+            'inventory_issues': 0,
+            'inventory_stock_additions': 0,
+            'inventory_purchase_requests': 0,
+            'hk_done': 0,
+            'hk_pending': 0,
+            'hk_in_progress': 0,
+            'hk_skipped': 0,
+        }
+
+        for dt in dates:
+            inv_requests = int(inv_requests_map.get(dt, 0) or 0)
+            inv_issues = int(inv_issues_map.get(dt, 0) or 0)
+            inv_stock = int(inv_stock_map.get(dt, 0) or 0)
+            inv_purchase = int(inv_purchase_map.get(dt, 0) or 0)
+            inventory_total = inv_requests + inv_issues + inv_stock + inv_purchase
+
+            hk = hk_map.get(dt, {})
+            hk_total = int(hk.get('total', 0) or 0)
+            hk_done = int(hk.get('done', 0) or 0)
+            hk_pending = int(hk.get('pending', 0) or 0)
+            hk_in_progress = int(hk.get('in_progress', 0) or 0)
+            hk_skipped = int(hk.get('skipped', 0) or 0)
+
+            horticulture_total = 0
+            total = inventory_total + hk_total + horticulture_total
+            label = 'Today' if range_key == 'today' else dt.strftime('%d %b')
+
+            row = {
+                'date': dt.isoformat(),
+                'label': label,
+                'inventory': inventory_total,
+                'housekeeping': hk_total,
+                'horticulture': horticulture_total,
+                'total': total,
+                'inventory_requests': inv_requests,
+                'inventory_issues': inv_issues,
+                'inventory_stock_additions': inv_stock,
+                'inventory_purchase_requests': inv_purchase,
+                'hk_done': hk_done,
+                'hk_pending': hk_pending,
+                'hk_in_progress': hk_in_progress,
+                'hk_skipped': hk_skipped,
+            }
+            series.append(row)
+
+            totals['inventory'] += inventory_total
+            totals['housekeeping'] += hk_total
+            totals['horticulture'] += horticulture_total
+            totals['inventory_requests'] += inv_requests
+            totals['inventory_issues'] += inv_issues
+            totals['inventory_stock_additions'] += inv_stock
+            totals['inventory_purchase_requests'] += inv_purchase
+            totals['hk_done'] += hk_done
+            totals['hk_pending'] += hk_pending
+            totals['hk_in_progress'] += hk_in_progress
+            totals['hk_skipped'] += hk_skipped
+
+        return Response(
+            {
+                'range': range_key,
+                'start_date': start_date.isoformat(),
+                'end_date': end_date.isoformat(),
+                'series': series,
+                'totals': totals,
+            }
+        )
 
 
 # ── Monthly report views ──────────────────────────────────────────────────────
