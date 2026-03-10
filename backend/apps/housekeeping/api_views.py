@@ -784,6 +784,7 @@ class HKInchargeAssignmentListView(APIView):
                 'assigned_staff',
                 'admin_action_by',
             )
+            .prefetch_related('leave_staff__hk_areas__area')
             .order_by('-created_at')
         )
         if request.user.role not in ['admin', 'housekeeping_manager']:
@@ -804,7 +805,7 @@ class HKInchargeAssignmentDecisionView(APIView):
                 'area',
                 'leave_staff',
                 'assigned_staff',
-            ),
+            ).prefetch_related('leave_staff__hk_areas__area'),
             pk=pk,
         )
         if assignment.status != 'pending_admin_approval':
@@ -926,6 +927,14 @@ class HKDailyRecordListView(ListAPIView):
                 qs = qs.filter(area=area_obj)
             else:
                 return qs.none()
+        else:
+            # Admin overview fetches daily records without area filter.
+            # Ensure all active areas have today's records generated so counts
+            # are real (not zeros caused by missing pre-generated rows).
+            if parsed_date == timezone.localdate():
+                from .htmx_views import get_today_records
+                for area_obj in HKArea.objects.filter(is_active=True):
+                    get_today_records(area_obj, parsed_date)
 
         return qs.filter(date=parsed_date)
 

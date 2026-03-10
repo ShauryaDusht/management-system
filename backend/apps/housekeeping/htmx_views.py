@@ -118,9 +118,47 @@ def _staff_candidates_for_area(target_area, exclude_user_id=None):
     return list(by_user.values())
 
 
+def _staff_candidates_for_all_areas(exclude_user_id=None):
+    """
+    Return active caretaker/supervisor users from all area groups.
+    Used when leave scope is all assigned areas.
+    """
+    links = (
+        HKUserArea.objects.select_related("user", "area")
+        .filter(
+            user__is_active=True,
+            user__role__in=["supervisor", "caretaker"],
+        )
+        .order_by("user__first_name", "user__username", "area__name")
+    )
+    by_user = {}
+    for link in links:
+        if exclude_user_id and link.user_id == exclude_user_id:
+            continue
+        by_user.setdefault(link.user_id, {"user": link.user, "areas": []})
+        if not any(a.id == link.area_id for a in by_user[link.user_id]["areas"]):
+            by_user[link.user_id]["areas"].append(link.area)
+    return list(by_user.values())
+
+
+def _staff_candidates_for_leave_request(leave_req, exclude_user_id=None):
+    if getattr(leave_req, "all_areas", False):
+        return _staff_candidates_for_all_areas(exclude_user_id=exclude_user_id)
+    return _staff_candidates_for_area(leave_req.area, exclude_user_id=exclude_user_id)
+
+
+def _leave_scope_label(leave_req):
+    if getattr(leave_req, "all_areas", False):
+        return "all assigned areas"
+    if leave_req.area:
+        return leave_req.area.name
+    return "assigned area"
+
+
 def _assign_incharge_for_leave(leave_req, assigned_staff, acted_by_user, note=""):
     leave_staff_name = leave_req.staff.get_full_name() or leave_req.staff.username
     assigned_staff_name = assigned_staff.get_full_name() or assigned_staff.username
+    scope_label = _leave_scope_label(leave_req)
     assignment, _ = HKInchargeAssignment.objects.update_or_create(
         leave_request=leave_req,
         defaults={
@@ -131,6 +169,7 @@ def _assign_incharge_for_leave(leave_req, assigned_staff, acted_by_user, note=""
             "leave_date": leave_req.leave_date,
             "assigned_staff": assigned_staff,
             "assigned_staff_name": assigned_staff_name,
+            "cover_all_areas": bool(getattr(leave_req, "all_areas", False)),
             "status": "pending_acceptance",
             "staff_action_at": None,
             "staff_action_note": "",
@@ -145,7 +184,7 @@ def _assign_incharge_for_leave(leave_req, assigned_staff, acted_by_user, note=""
 
     note_line = (note or "").strip()
     msg = (
-        f"You have been assigned as Temporary Incharge for {leave_req.area.name} "
+        f"You have been assigned as Temporary Incharge for {scope_label} "
         f"on {leave_req.leave_date} by {leave_staff_name}."
     )
     if note_line:
@@ -154,14 +193,14 @@ def _assign_incharge_for_leave(leave_req, assigned_staff, acted_by_user, note=""
     _create_incharge_notice(
         leave_req.staff,
         assignment,
-        f"Incharge request sent to {assigned_staff_name} for {leave_req.leave_date}. Awaiting their confirmation.",
+        f"Incharge request sent to {assigned_staff_name} for {scope_label} on {leave_req.leave_date}. Awaiting their confirmation.",
         level="info",
     )
     if acted_by_user and acted_by_user.id != leave_req.staff_id:
         _create_incharge_notice(
             leave_req.staff,
             assignment,
-            f"Admin submitted incharge request to {assigned_staff_name} for {leave_req.leave_date}.",
+            f"Admin submitted incharge request to {assigned_staff_name} for {scope_label} on {leave_req.leave_date}.",
             level="info",
         )
     return assignment
@@ -174,13 +213,29 @@ def get_user_areas(user):
         HKArea.objects.filter(assigned_users__user=user, is_active=True).values_list("id", flat=True)
     )
     today = timezone.localdate()
-    temp_incharge_area_ids = set(
+    approved_assignments = list(
         HKInchargeAssignment.objects.filter(
             assigned_staff=user,
             status="approved",
             leave_date=today,
-        ).values_list("area_id", flat=True)
+        ).select_related("leave_staff")
     )
+    temp_incharge_area_ids = set()
+    leave_staff_ids_for_all_scope = set()
+    for assignment in approved_assignments:
+        if assignment.cover_all_areas:
+            leave_staff_ids_for_all_scope.add(assignment.leave_staff_id)
+        elif assignment.area_id:
+            temp_incharge_area_ids.add(assignment.area_id)
+
+    if leave_staff_ids_for_all_scope:
+        temp_incharge_area_ids.update(
+            HKUserArea.objects.filter(
+                user_id__in=leave_staff_ids_for_all_scope,
+                area__is_active=True,
+            ).values_list("area_id", flat=True)
+        )
+
     all_ids = assigned_area_ids | temp_incharge_area_ids
     if not all_ids:
         return HKArea.objects.none()
@@ -268,13 +323,29 @@ def get_today_records(area, date):
                     # check and insert — safe to ignore, record already exists.
                     pass
 
-    return (
+    active_records = (
         HKDailyRecord.objects
         .filter(area=area, date=date, schedule__in=template_list)
         .select_related("schedule", "completed_by", "assigned_worker", "assigned_by", "area")
         .prefetch_related("worker_assignments__worker")
         .order_by("schedule__worker_tag", "schedule__order", "schedule__start_time")
     )
+
+    temporary_task_records = (
+        HKDailyRecord.objects
+        .filter(
+            area=area,
+            date=date,
+            schedule__is_active=False,
+            schedule__worker_tag="all",
+        )
+        .exclude(schedule__in=template_list)
+        .select_related("schedule", "completed_by", "assigned_worker", "assigned_by", "area")
+        .prefetch_related("worker_assignments__worker")
+        .order_by("schedule__order", "schedule__start_time")
+    )
+
+    return list(active_records) + list(temporary_task_records)
 
 
 def current_half():
@@ -649,7 +720,11 @@ def hk_dashboard(request):
             _create_incharge_notice(
                 user,
                 item,
-                f"Incharge mode active today for {item.area.name}.",
+                (
+                    "Incharge mode active today for all assigned areas."
+                    if item.cover_all_areas
+                    else f"Incharge mode active today for {item.area.name}."
+                ),
                 level="success",
             )
             item.arrival_notified = True
@@ -666,7 +741,7 @@ def hk_dashboard(request):
     )
     leave_reselection_cards = []
     for lr in my_open_leave_reqs:
-        candidates = _staff_candidates_for_area(lr.area, exclude_user_id=user.id)
+        candidates = _staff_candidates_for_leave_request(lr, exclude_user_id=user.id)
         latest_assignment = getattr(lr, "incharge_assignment", None)
         leave_reselection_cards.append({
             "leave_request": lr,
@@ -818,7 +893,7 @@ def hk_incharge_assign(request):
         area_q = f"&area={area.id}" if area else ""
         return redirect(f"/housekeeping/dashboard/?ic_err=leave_locked{area_q}")
 
-    candidate_ids = {row["user"].id for row in _staff_candidates_for_area(leave_req.area, exclude_user_id=user.id)}
+    candidate_ids = {row["user"].id for row in _staff_candidates_for_leave_request(leave_req, exclude_user_id=user.id)}
     if not assigned_staff_id or not str(assigned_staff_id).isdigit():
         area_q = f"&area={area.id}" if area else ""
         return redirect(f"/housekeeping/dashboard/?ic_err=no_incharge{area_q}")
@@ -1555,7 +1630,11 @@ def hk_profile(request):
             selected_leave_date = leave_date_str
             selected_leave_area_id = area_id or ""
 
-            area = user_areas.filter(pk=area_id).first() if area_id else selected_area(request, user_areas)
+            all_areas = str(area_id or "").strip().lower() == "all"
+            if all_areas:
+                area = user_areas.first()
+            else:
+                area = user_areas.filter(pk=area_id).first() if area_id else selected_area(request, user_areas)
             if not area:
                 error = "Please select a valid area."
             else:
@@ -1575,21 +1654,23 @@ def hk_profile(request):
                         defaults={
                             "area": area,
                             "reason": leave_reason_value,
+                            "all_areas": all_areas,
                             "status": "awaiting_incharge",
                         },
                     )
                     if leave_req.area_id != area.id:
                         leave_req.area = area
                     leave_req.reason = leave_reason_value
+                    leave_req.all_areas = all_areas
                     # Reset flow when creating/re-submitting from profile.
                     if leave_req.status in {"approved", "pending_admin_approval", "pending_acceptance"}:
                         leave_req.status = "awaiting_incharge"
-                    leave_req.save(update_fields=["area", "reason", "status", "updated_at"])
+                    leave_req.save(update_fields=["area", "reason", "all_areas", "status", "updated_at"])
                     show_incharge_selector = True
                     selector_leave_request = leave_req
-                    selector_candidates = _staff_candidates_for_area(area, exclude_user_id=user.id)
+                    selector_candidates = _staff_candidates_for_leave_request(leave_req, exclude_user_id=user.id)
                     if not selector_candidates:
-                        error = "No eligible staff found for temporary incharge in this area group."
+                        error = "No eligible staff found for temporary incharge."
                     else:
                         success = "Leave request submitted. Select temporary incharge."
         elif action == "assign_temp_incharge":
@@ -1604,11 +1685,11 @@ def hk_profile(request):
             if not leave_req:
                 error = "Leave request not found."
             else:
-                candidate_ids = {row["user"].id for row in _staff_candidates_for_area(leave_req.area, exclude_user_id=user.id)}
+                candidate_ids = {row["user"].id for row in _staff_candidates_for_leave_request(leave_req, exclude_user_id=user.id)}
                 if not assigned_staff_id or not str(assigned_staff_id).isdigit():
                     error = "Please select temporary incharge."
                 elif int(assigned_staff_id) not in candidate_ids:
-                    error = "Selected incharge is not valid for this area group."
+                    error = "Selected incharge is not valid."
                 else:
                     assigned_staff = get_object_or_404(UserModel, pk=int(assigned_staff_id), is_active=True)
                     _assign_incharge_for_leave(leave_req, assigned_staff, user, note=note)

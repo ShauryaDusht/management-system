@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { asList } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
 import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationContext'
 import {
   Alert,
   Badge,
@@ -17,7 +18,8 @@ import {
 } from '../../components/ui'
 
 export default function RequestsTab({ userRole }) {
-  const { isSupervisor, isCaretaker, isInventoryManager } = useAuth()
+  const { isSupervisor, isCaretaker } = useAuth()
+  const { refresh: refreshBadges } = useNotifications()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [requests, setRequests] = useState([])
@@ -106,6 +108,7 @@ export default function RequestsTab({ userRole }) {
         rejection_reason: reason,
       })
       await load()
+      refreshBadges()
       setRejectTarget(null)
       setRejectReason('')
     } catch (e) {

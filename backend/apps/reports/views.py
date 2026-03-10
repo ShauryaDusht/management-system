@@ -15,6 +15,7 @@ from .exporters import (
 )
 from .generators import (
     generate_consumption_report,
+    generate_area_issues_report,
     generate_inventory_report,
     generate_monthly_report,
     generate_requests_report,
@@ -416,3 +417,66 @@ class ConsumptionReportRequesterCSVView(APIView):
             as_attachment=True,
             filename=filename,
         )
+
+
+class AreaIssuesReportView(APIView):
+    """
+    GET /api/reports/area-issues/
+    Optional params: ?month=3&year=2026
+    Returns area-wise issued items report.
+    Also supports ?download=csv to get a CSV file.
+    """
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
+        area_class = request.query_params.get('area_class', 'all')
+        area_name = request.query_params.get('area_name', '')
+        download = request.query_params.get('download', '')
+
+        try:
+            month = int(month) if month else None
+            year = int(year) if year else None
+        except (ValueError, TypeError):
+            month = year = None
+
+        data = generate_area_issues_report(
+            month=month,
+            year=year,
+            area_class=area_class,
+            area_name=area_name,
+        )
+
+        if download == 'csv':
+            import csv
+            import io
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow([
+                'Area', 'Area Type', 'Item', 'Item Type', 'Unit',
+                'Requested By', 'Qty Requested', 'Qty Issued',
+                'Issued At', 'Issued By', 'Status', 'Returned/Finalized'
+            ])
+            for row in data['rows']:
+                writer.writerow([
+                    row['area_name'], row['area_type'], row['item_name'],
+                    row['item_type'], row['item_unit'], row['requested_by'],
+                    row['quantity_requested'], row['quantity_issued'],
+                    row['issued_at'], row['issued_by'], row['status'],
+                    'Yes' if (row['returned'] or row['usage_finalized']) else 'No'
+                ])
+            output.seek(0)
+            from django.http import HttpResponse
+            period = f"_{year}_{month:02d}" if month and year else "_all"
+            if data.get('area_class') and data.get('area_class') != 'all':
+                period += f"_{data['area_class']}"
+            if data.get('area_name'):
+                safe_area = ''.join(ch if ch.isalnum() else '_' for ch in data['area_name']).strip('_')
+                if safe_area:
+                    period += f"_{safe_area.lower()}"
+            response = HttpResponse(output.getvalue(), content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="area_issues{period}.csv"'
+            return response
+
+        return Response(data)

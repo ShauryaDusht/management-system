@@ -179,7 +179,7 @@
   <div style="font-weight:800;color:#166534;font-size:14px">INCHARGE TODAY</div>
   {% for ic in incharge_today_assignments %}
   <div style="font-size:12px;color:#14532d;margin-top:5px">
-    You are temporary incharge for <b>{{ ic.area.name }}</b> on {{ ic.leave_date|date:"d M Y" }}
+    You are temporary incharge for <b>{% if ic.cover_all_areas %}All Assigned Areas{% else %}{{ ic.area.name }}{% endif %}</b> on {{ ic.leave_date|date:"d M Y" }}
     (requested by {{ ic.leave_staff_name }}).
   </div>
   {% endfor %}
@@ -192,7 +192,7 @@
   {% for ic in incoming_incharge_requests %}
   <div style="background:#fff;border:1px solid #bfdbfe;border-radius:9px;padding:10px;margin-bottom:8px">
     <div style="font-size:13px;font-weight:700;color:#1e3a8a">
-      {{ ic.area.name }} | {{ ic.leave_date|date:"d M Y" }}
+      {% if ic.cover_all_areas %}All Assigned Areas{% else %}{{ ic.area.name }}{% endif %} | {{ ic.leave_date|date:"d M Y" }}
     </div>
     <div style="font-size:12px;color:#475569;margin-top:3px">
       Requested by {{ ic.leave_staff_name }}
@@ -215,7 +215,7 @@
   <div style="font-weight:800;color:#92400e;margin-bottom:6px">Awaiting Admin Approval</div>
   {% for ic in incoming_waiting_admin %}
   <div style="font-size:12px;color:#7c2d12;margin-bottom:3px">
-    {{ ic.area.name }} | {{ ic.leave_date|date:"d M Y" }} (requested by {{ ic.leave_staff_name }})
+    {% if ic.cover_all_areas %}All Assigned Areas{% else %}{{ ic.area.name }}{% endif %} | {{ ic.leave_date|date:"d M Y" }} (requested by {{ ic.leave_staff_name }})
   </div>
   {% endfor %}
 </div>
@@ -229,7 +229,9 @@
   </div>
   {% for item in leave_reselection_cards %}
   <div style="border:1px solid #fde68a;border-radius:10px;padding:10px;background:#fff;margin-bottom:10px">
-    <div style="font-size:13px;font-weight:700">{{ item.leave_request.area.name }} | {{ item.leave_request.leave_date|date:"d M Y" }}</div>
+    <div style="font-size:13px;font-weight:700">
+      {% if item.leave_request.all_areas %}All Assigned Areas{% else %}{{ item.leave_request.area.name }}{% endif %} | {{ item.leave_request.leave_date|date:"d M Y" }}
+    </div>
     {% if item.latest_assignment and item.latest_assignment.status == 'declined' %}
     <div style="font-size:12px;color:#b91c1c;margin-top:3px">
       Previous incharge declined. Please select another.

@@ -9,6 +9,7 @@ from .models import (
     HKLeaveRequest,
     HKScheduleTemplate,
     HKStockRequest,
+    HKUserArea,
     HKWorkerSelectionRequest,
     HKWorker,
 )
@@ -243,6 +244,7 @@ class HKLeaveRequestSerializer(serializers.ModelSerializer):
             'area_name',
             'leave_date',
             'reason',
+            'all_areas',
             'status',
             'created_at',
             'updated_at',
@@ -254,6 +256,8 @@ class HKLeaveRequestSerializer(serializers.ModelSerializer):
 
 class HKInchargeAssignmentSerializer(serializers.ModelSerializer):
     area_name = serializers.CharField(source='area.name', read_only=True, default='')
+    area_label = serializers.SerializerMethodField()
+    coverage_area_names = serializers.SerializerMethodField()
     leave_staff_username = serializers.CharField(source='leave_staff.username', read_only=True, default='')
     assigned_staff_username = serializers.CharField(source='assigned_staff.username', read_only=True, default='')
     admin_action_by_name = serializers.SerializerMethodField()
@@ -271,9 +275,12 @@ class HKInchargeAssignmentSerializer(serializers.ModelSerializer):
             'leave_date',
             'area',
             'area_name',
+            'area_label',
+            'coverage_area_names',
             'assigned_staff',
             'assigned_staff_name',
             'assigned_staff_username',
+            'cover_all_areas',
             'status',
             'created_at',
             'updated_at',
@@ -289,6 +296,39 @@ class HKInchargeAssignmentSerializer(serializers.ModelSerializer):
         if obj.admin_action_by:
             return obj.admin_action_by.get_full_name() or obj.admin_action_by.username
         return ''
+
+    def get_coverage_area_names(self, obj):
+        if not getattr(obj, 'cover_all_areas', False) or not getattr(obj, 'leave_staff_id', None):
+            return []
+        try:
+            names = []
+            seen = set()
+            links = (
+                HKUserArea.objects
+                .select_related('area')
+                .filter(user_id=obj.leave_staff_id, area__is_active=True)
+                .order_by('area__name')
+            )
+            for link in links:
+                area = getattr(link, 'area', None)
+                if not area:
+                    continue
+                n = (area.name or '').strip()
+                if not n or n in seen:
+                    continue
+                seen.add(n)
+                names.append(n)
+            return names
+        except Exception:
+            return []
+
+    def get_area_label(self, obj):
+        if getattr(obj, 'cover_all_areas', False):
+            names = self.get_coverage_area_names(obj)
+            if names:
+                return f"All Assigned Areas: {', '.join(names)}"
+            return 'All Assigned Areas'
+        return obj.area_name or ''
 
 
 class HKInchargeNotificationSerializer(serializers.ModelSerializer):

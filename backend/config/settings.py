@@ -115,3 +115,48 @@ CORS_ALLOWED_ORIGINS = os.getenv(
 ).split(',')
 
 LOGIN_URL = '/housekeeping/login/'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '[%(levelname)s] %(message)s'
+        },
+    },
+    'filters': {
+        'suppress_api_polls': {
+            '()': 'django.utils.log.CallbackFilter',
+            'callback': lambda record: not any(
+                path in record.getMessage() for path in [
+                    '/api/inventory/items/low-stock/',
+                    '/api/inventory/requests/?page_size=1&status=pending',
+                    '/api/housekeeping/incharge-assignments/',
+                    '/api/housekeeping/leave-requests/',
+                    '/api/auth/me/',
+                    '/api/housekeeping/daily-records/',
+                    '/api/housekeeping/areas/',
+                ]
+            ),
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+            'filters': ['suppress_api_polls'],
+        },
+    },
+    'loggers': {
+        'django.server': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    },
+}

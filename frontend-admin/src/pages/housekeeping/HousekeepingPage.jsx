@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationContext'
 import { Tabs } from '../../components/ui'
 import AdminLayout from '../../layout/AdminLayout'
 import AttendanceTab from './AttendanceTab'
@@ -15,27 +16,33 @@ import GalleryTab from './GalleryTab'
 
 export default function HousekeepingPage() {
   const { user } = useAuth()
+  const { badges, markSeen } = useNotifications()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const tabs = useMemo(
     () => {
       const base = [
-        { key: 'overview', label: 'Overview', icon: 'HK' },
-        { key: 'directory', label: 'Sections + Staff', icon: 'AR/CT' },
-        { key: 'supervisors', label: 'Supervisors', icon: 'SP' },
-        { key: 'attendance', label: 'Attendance', icon: 'AT' },
-        { key: 'workers', label: 'Workers', icon: 'WK' },
-        { key: 'worker_selection', label: 'Worker Selection', icon: 'WS' },
+        { key: 'overview', label: 'Overview' },
+        { key: 'directory', label: 'Sections + Staff' },
+        { key: 'supervisors', label: 'Supervisors' },
+        { key: 'attendance', label: 'Attendance' },
+        { key: 'workers', label: 'Workers' },
+        { key: 'worker_selection', label: 'Worker Selection' },
       ]
       if (['admin', 'housekeeping_manager'].includes(user?.role)) {
-        base.push({ key: 'incharge_approvals', label: 'Incharge Approvals', icon: 'IA' })
+        base.push({
+          key: 'incharge_approvals',
+          label: 'Incharge Approvals',
+          count: badges.housekeeping > 0 ? badges.housekeeping : null,
+          countTone: 'red',
+        })
       }
       if (user?.role === 'admin') {
-        base.push({ key: 'gallery', label: 'Gallery', icon: 'GL' })
+        base.push({ key: 'gallery', label: 'Gallery' })
       }
       return base
     },
-    [user?.role]
+    [badges.housekeeping, user?.role]
   )
 
   const validTabs = useMemo(() => tabs.map((t) => t.key), [tabs])
@@ -55,6 +62,12 @@ export default function HousekeepingPage() {
       setActive(tab)
     }
   }, [active, searchParams, validTabs])
+
+  useEffect(() => {
+    if (active === 'incharge_approvals' && badges.housekeeping > 0) {
+      markSeen('housekeeping')
+    }
+  }, [active, badges.housekeeping, markSeen])
 
   const onTabChange = (nextTab) => {
     setActive(nextTab)

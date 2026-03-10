@@ -631,22 +631,32 @@ def generate_supervisor_report(supervisor_id: int, month: int, year: int) -> dic
         .order_by('area__name')
         .values_list('area__name', flat=True)
     )
+    supervisor_area_ids = list(
+        HKUserArea.objects
+        .filter(user=supervisor)
+        .values_list('area_id', flat=True)
+    )
     workers_under = HKWorker.objects.filter(supervisor=supervisor, is_active=True).count()
 
+    area_tasks_qs = HKDailyRecord.objects.filter(
+        area_id__in=supervisor_area_ids,
+        date__gte=period_start,
+        date__lte=period_end,
+    )
     assigned_qs = HKDailyRecord.objects.filter(
         assigned_by=supervisor,
         date__gte=period_start,
         date__lte=period_end,
     )
-    total_tasks_assigned = assigned_qs.count()
-    tasks_completed = assigned_qs.filter(status='done').count()
-    tasks_skipped = assigned_qs.filter(status='skipped').count()
-    tasks_pending = assigned_qs.filter(status__in=['pending', 'in_progress']).count()
+    total_tasks_assigned = area_tasks_qs.count()
+    tasks_completed = area_tasks_qs.filter(status='done').count()
+    tasks_skipped = area_tasks_qs.filter(status='skipped').count()
+    tasks_pending = area_tasks_qs.filter(status__in=['pending', 'in_progress']).count()
     completion_rate_pct = round((tasks_completed / total_tasks_assigned * 100), 2) if total_tasks_assigned else 0.0
 
     completion_minutes = []
     for started_at, completed_at in (
-        assigned_qs
+        area_tasks_qs
         .filter(started_at__isnull=False, completed_at__isnull=False)
         .values_list('started_at', 'completed_at')
     ):
@@ -752,13 +762,13 @@ def generate_supervisor_report(supervisor_id: int, month: int, year: int) -> dic
     )
 
     tasks_assigned_by_day = dict(
-        assigned_qs
+        area_tasks_qs
         .values('date')
         .annotate(total=Count('id'))
         .values_list('date', 'total')
     )
     tasks_completed_by_day = dict(
-        assigned_qs
+        area_tasks_qs
         .filter(status='done')
         .values('date')
         .annotate(total=Count('id'))
@@ -810,6 +820,7 @@ def generate_supervisor_report(supervisor_id: int, month: int, year: int) -> dic
             'tasks_pending': tasks_pending,
             'completion_rate_pct': completion_rate_pct,
             'avg_completion_time_minutes': avg_completion_time_minutes,
+            'tasks_personally_dispatched': assigned_qs.count(),
         },
         'task_marking': {
             'total_tasks_personally_marked_done': total_tasks_personally_marked_done,
@@ -848,4 +859,127 @@ def generate_supervisor_report(supervisor_id: int, month: int, year: int) -> dic
             'pending': worker_selection_qs.filter(status='pending').count(),
         },
         'daily_activity_breakdown': daily_activity_breakdown,
+    }
+
+
+def _area_class_label(area_type: str, area_name: str) -> str:
+    name = (area_name or '').strip()
+    type_value = (area_type or '').strip().lower()
+    if type_value == 'hostel':
+        return 'hostels'
+    if name.startswith('Academic Block') or name in ['Academic Common Area', 'New AB U-Shape', 'New Academy']:
+        return 'academic'
+    if name.lower() in ['hostel common area', 'common area', 'hostels reliever']:
+        return 'hostels'
+    if type_value == 'academic':
+        return 'academic'
+    return 'others'
+
+
+def generate_area_issues_report(month=None, year=None, area_class='all', area_name=None):
+    """
+    Generate area-wise issued items report.
+    If month/year given, filter by that period. Otherwise all time.
+    """
+    from apps.inventory.models import ItemIssue, ItemRequest
+    from apps.housekeeping.models import HKStockRequest
+
+    qs = ItemIssue.objects.select_related(
+        'request', 'request__item', 'request__requested_by',
+        'issued_by'
+    ).order_by('-issued_at')
+
+    if month and year:
+        last_day = calendar.monthrange(year, month)[1]
+        start_date = date(year, month, 1)
+        end_date = date(year, month, last_day)
+        qs = qs.filter(issued_at__date__gte=start_date, issued_at__date__lte=end_date)
+
+    target_area_name = area_name
+    rows = []
+    for issue in qs:
+        # Get area from HKStockRequest
+        issue_area_name = None
+        issue_area_type = None
+        try:
+            hk_req = HKStockRequest.objects.filter(
+                inventory_request=issue.request
+            ).select_related('area').first()
+            if hk_req and hk_req.area:
+                issue_area_name = hk_req.area.name
+                issue_area_type = hk_req.area.area_type
+        except Exception:
+            pass
+
+        if not issue_area_name:
+            purpose = getattr(issue.request, 'purpose', '') or ''
+            if purpose.startswith('[HK - '):
+                end = purpose.find(']')
+                if end > 6:
+                    issue_area_name = purpose[6:end]
+
+        rows.append({
+            'issue_id': issue.id,
+            'area_name': issue_area_name or 'Direct Request',
+            'area_type': issue_area_type or 'other',
+            'item_name': issue.request.item.name,
+            'item_type': issue.request.item.item_type,
+            'item_unit': issue.request.item.unit,
+            'requested_by': issue.request.requested_by.get_full_name() or issue.request.requested_by.username,
+            'quantity_requested': issue.request.quantity_requested,
+            'quantity_issued': issue.issued_quantity,
+            'issued_at': str(issue.issued_at.date()),
+            'issued_by': issue.issued_by.get_full_name() or issue.issued_by.username,
+            'status': issue.request.status,
+            'returned': bool(issue.returned_at),
+            'usage_finalized': issue.usage_finalized,
+        })
+
+    normalized_area_class = (area_class or 'all').strip().lower()
+    normalized_area_name = (target_area_name or '').strip()
+
+    if normalized_area_class != 'all':
+        rows = [
+            row for row in rows
+            if _area_class_label(row.get('area_type', ''), row.get('area_name', '')) == normalized_area_class
+        ]
+
+    if normalized_area_name and normalized_area_name.lower() != 'all':
+        rows = [row for row in rows if str(row.get('area_name', '')).strip() == normalized_area_name]
+
+    # Build area summary
+    area_summary = {}
+    for row in rows:
+        key = row['area_name']
+        if key not in area_summary:
+            area_summary[key] = {
+                'area_name': key,
+                'area_type': row['area_type'],
+                'total_issued': 0,
+                'total_qty_issued': 0,
+                'assets_out': 0,
+                'consumables_used': 0,
+                'returned': 0,
+            }
+        area_summary[key]['total_issued'] += 1
+        area_summary[key]['total_qty_issued'] += row['quantity_issued']
+        if row['item_type'] == 'asset':
+            if not row['returned']:
+                area_summary[key]['assets_out'] += 1
+            else:
+                area_summary[key]['returned'] += 1
+        else:
+            if row['usage_finalized']:
+                area_summary[key]['consumables_used'] += 1
+
+    return {
+        'report_type': 'area_issues',
+        'month': month,
+        'year': year,
+        'area_class': normalized_area_class,
+        'area_name': normalized_area_name or None,
+        'generated_at': str(timezone.now()),
+        'total_issues': len(rows),
+        'area_summary': sorted(area_summary.values(), key=lambda x: x['total_issued'], reverse=True),
+        'rows': rows,
     }
