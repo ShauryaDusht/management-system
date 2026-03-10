@@ -329,15 +329,13 @@ class HKInchargeAssignmentSerializer(serializers.ModelSerializer):
             return []
 
     def get_area_label(self, obj):
-        try:
-            if getattr(obj, 'cover_all_areas', False):
-                names = self.get_coverage_area_names(obj)
-                if names:
-                    return f"All Assigned Areas: {', '.join(names)}"
-                return 'All Assigned Areas'
-            return getattr(obj, 'area_name', '') or ''
-        except Exception:
-            return ''
+        if getattr(obj, 'cover_all_areas', False):
+            names = self.get_coverage_area_names(obj)
+            if names:
+                return f"All Assigned Areas: {', '.join(names)}"
+            return 'All Assigned Areas'
+        area = getattr(obj, 'area', None)
+        return ((getattr(area, 'name', '') or '').strip())
 
 
 class HKInchargeNotificationSerializer(serializers.ModelSerializer):
