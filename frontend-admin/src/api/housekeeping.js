@@ -44,6 +44,8 @@ export const hkAPI = {
     api.get('/housekeeping/incharge-assignments/', {
       params: status ? { status } : {},
     }),
+  getInchargeReport: (month, year) =>
+    api.get('/housekeeping/incharge-assignments/report/', { params: { month, year } }),
   decideInchargeAssignment: (id, payload) =>
     api.post(`/housekeeping/incharge-assignments/${id}/decision/`, payload),
   getLeaveRequests: () => api.get('/housekeeping/leave-requests/'),

@@ -233,6 +233,7 @@ class HKWorkerSelectionRequestSerializer(serializers.ModelSerializer):
 class HKLeaveRequestSerializer(serializers.ModelSerializer):
     staff_name = serializers.SerializerMethodField()
     area_name = serializers.CharField(source='area.name', read_only=True, default='')
+    all_areas = serializers.SerializerMethodField()
 
     class Meta:
         model = HKLeaveRequest
@@ -252,6 +253,9 @@ class HKLeaveRequestSerializer(serializers.ModelSerializer):
 
     def get_staff_name(self, obj):
         return obj.staff.get_full_name() or obj.staff.username
+
+    def get_all_areas(self, obj):
+        return getattr(obj, 'all_areas', False)
 
 
 class HKInchargeAssignmentSerializer(serializers.ModelSerializer):
@@ -298,15 +302,17 @@ class HKInchargeAssignmentSerializer(serializers.ModelSerializer):
         return ''
 
     def get_coverage_area_names(self, obj):
-        if not getattr(obj, 'cover_all_areas', False) or not getattr(obj, 'leave_staff_id', None):
-            return []
         try:
+            cover_all = getattr(obj, 'cover_all_areas', False)
+            leave_staff_id = getattr(obj, 'leave_staff_id', None)
+            if not cover_all or not leave_staff_id:
+                return []
             names = []
             seen = set()
             links = (
                 HKUserArea.objects
                 .select_related('area')
-                .filter(user_id=obj.leave_staff_id, area__is_active=True)
+                .filter(user_id=leave_staff_id, area__is_active=True)
                 .order_by('area__name')
             )
             for link in links:
@@ -323,12 +329,15 @@ class HKInchargeAssignmentSerializer(serializers.ModelSerializer):
             return []
 
     def get_area_label(self, obj):
-        if getattr(obj, 'cover_all_areas', False):
-            names = self.get_coverage_area_names(obj)
-            if names:
-                return f"All Assigned Areas: {', '.join(names)}"
-            return 'All Assigned Areas'
-        return obj.area_name or ''
+        try:
+            if getattr(obj, 'cover_all_areas', False):
+                names = self.get_coverage_area_names(obj)
+                if names:
+                    return f"All Assigned Areas: {', '.join(names)}"
+                return 'All Assigned Areas'
+            return getattr(obj, 'area_name', '') or ''
+        except Exception:
+            return ''
 
 
 class HKInchargeNotificationSerializer(serializers.ModelSerializer):
