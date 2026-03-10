@@ -631,22 +631,32 @@ def generate_supervisor_report(supervisor_id: int, month: int, year: int) -> dic
         .order_by('area__name')
         .values_list('area__name', flat=True)
     )
+    supervisor_area_ids = list(
+        HKUserArea.objects
+        .filter(user=supervisor)
+        .values_list('area_id', flat=True)
+    )
     workers_under = HKWorker.objects.filter(supervisor=supervisor, is_active=True).count()
 
+    area_tasks_qs = HKDailyRecord.objects.filter(
+        area_id__in=supervisor_area_ids,
+        date__gte=period_start,
+        date__lte=period_end,
+    )
     assigned_qs = HKDailyRecord.objects.filter(
         assigned_by=supervisor,
         date__gte=period_start,
         date__lte=period_end,
     )
-    total_tasks_assigned = assigned_qs.count()
-    tasks_completed = assigned_qs.filter(status='done').count()
-    tasks_skipped = assigned_qs.filter(status='skipped').count()
-    tasks_pending = assigned_qs.filter(status__in=['pending', 'in_progress']).count()
+    total_tasks_assigned = area_tasks_qs.count()
+    tasks_completed = area_tasks_qs.filter(status='done').count()
+    tasks_skipped = area_tasks_qs.filter(status='skipped').count()
+    tasks_pending = area_tasks_qs.filter(status__in=['pending', 'in_progress']).count()
     completion_rate_pct = round((tasks_completed / total_tasks_assigned * 100), 2) if total_tasks_assigned else 0.0
 
     completion_minutes = []
     for started_at, completed_at in (
-        assigned_qs
+        area_tasks_qs
         .filter(started_at__isnull=False, completed_at__isnull=False)
         .values_list('started_at', 'completed_at')
     ):
@@ -752,13 +762,13 @@ def generate_supervisor_report(supervisor_id: int, month: int, year: int) -> dic
     )
 
     tasks_assigned_by_day = dict(
-        assigned_qs
+        area_tasks_qs
         .values('date')
         .annotate(total=Count('id'))
         .values_list('date', 'total')
     )
     tasks_completed_by_day = dict(
-        assigned_qs
+        area_tasks_qs
         .filter(status='done')
         .values('date')
         .annotate(total=Count('id'))
@@ -810,6 +820,7 @@ def generate_supervisor_report(supervisor_id: int, month: int, year: int) -> dic
             'tasks_pending': tasks_pending,
             'completion_rate_pct': completion_rate_pct,
             'avg_completion_time_minutes': avg_completion_time_minutes,
+            'tasks_personally_dispatched': assigned_qs.count(),
         },
         'task_marking': {
             'total_tasks_personally_marked_done': total_tasks_personally_marked_done,
