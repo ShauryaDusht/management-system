@@ -124,8 +124,11 @@ export default function WorkerReportModal({ open, worker, onClose }) {
       const a = document.createElement('a')
       a.href = href
       a.download = `worker_${toSafeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}.csv`
+      a.style.display = 'none'
+      document.body.appendChild(a)
       a.click()
-      URL.revokeObjectURL(href)
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(href), 150)
     } catch (e) {
       setError(e.response?.data?.detail || 'CSV download failed.')
     } finally {

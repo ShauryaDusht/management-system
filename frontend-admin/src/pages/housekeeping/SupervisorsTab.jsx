@@ -65,8 +65,11 @@ function downloadBlob(data, filename) {
   const a = document.createElement('a')
   a.href = href
   a.download = filename
+  a.style.display = 'none'
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(href)
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(href), 150)
 }
 
 function toCsvValue(value) {
@@ -133,8 +136,11 @@ function SupervisorReportModal({ open, supervisor, onClose }) {
       const safeUsername = toCsvSafe(supervisor.username, String(supervisor.id))
       a.href = href
       a.download = `supervisor_${safeUsername}_${String(month).padStart(2, '0')}_${year}.csv`
+      a.style.display = 'none'
+      document.body.appendChild(a)
       a.click()
-      URL.revokeObjectURL(href)
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(href), 150)
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed to download CSV.')
     } finally {
