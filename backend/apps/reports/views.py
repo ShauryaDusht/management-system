@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import timedelta
+from statistics import median
 
 from django.http import FileResponse
 from django.core.files.base import ContentFile
@@ -247,6 +248,45 @@ class DashboardInsightsView(APIView):
             return 'academic'
         return 'others'
 
+    @staticmethod
+    def _apply_fair_scoring(rows):
+        """
+        Fair score balances completion percentage with:
+        - sample confidence (enough task volume)
+        - workload intensity (tasks handled per worker)
+        - attendance reliability
+        """
+        if not rows:
+            return rows
+
+        task_values = [float(r.get('total', 0) or 0) for r in rows if float(r.get('total', 0) or 0) > 0]
+        load_values = [
+            float(r.get('tasks_per_worker', 0) or 0)
+            for r in rows
+            if float(r.get('tasks_per_worker', 0) or 0) > 0
+        ]
+        baseline_tasks = max(8.0, float(median(task_values))) if task_values else 8.0
+        baseline_load = max(0.1, float(median(load_values))) if load_values else 1.0
+
+        for row in rows:
+            total = float(row.get('total', 0) or 0)
+            completion_pct = float(row.get('completion_pct', 0) or 0)
+            attendance_pct = max(0.0, min(100.0, float(row.get('attendance_pct', 0) or 0)))
+            tasks_per_worker = float(row.get('tasks_per_worker', 0) or 0)
+
+            confidence = min(1.0, (total / baseline_tasks)) if total > 0 else 0.0
+            load_ratio = (tasks_per_worker / baseline_load) if tasks_per_worker > 0 else 1.0
+            load_ratio = max(0.85, min(1.15, load_ratio))
+            attendance_factor = 0.9 + (0.1 * (attendance_pct / 100.0))
+
+            fair_score = completion_pct * (0.6 + 0.4 * confidence) * load_ratio * attendance_factor
+
+            row['confidence_pct'] = round(confidence * 100, 1)
+            row['load_index'] = round(load_ratio, 2)
+            row['fair_score'] = round(fair_score, 2)
+
+        return rows
+
     def get(self, request):
         range_key, start_date, end_date, dates = self._resolve_range(request.query_params.get('range'))
         area_class = self._normalize_area_class(request.query_params.get('area_class'))
@@ -364,7 +404,86 @@ class DashboardInsightsView(APIView):
             trend_totals['hk_in_progress'] += hk_in_progress
             trend_totals['hk_skipped'] += hk_skipped
 
-        # 2) Housekeeping area + worker performance.
+        # 2) Housekeeping area + worker performance (fair comparison + attendance aware).
+        from apps.housekeeping.models import HKAttendanceRecord, HKWorker
+
+        active_workers = list(
+            HKWorker.objects.select_related('area').filter(is_active=True, is_reliever=False).order_by('name')
+        )
+        area_worker_ids_map = defaultdict(set)
+        staff_worker_ids_map = defaultdict(set)
+        active_worker_ids = set()
+
+        for wk in active_workers:
+            area_obj = wk.area
+            area_name = area_obj.name if area_obj else ''
+            area_label = self._area_class_label(area_obj.area_type if area_obj else 'other', area_name)
+            if area_class != 'all' and area_label != area_class:
+                continue
+            active_worker_ids.add(wk.id)
+            if area_obj:
+                area_worker_ids_map[area_obj.id].add(wk.id)
+            if wk.supervisor_id:
+                staff_worker_ids_map[wk.supervisor_id].add(wk.id)
+
+        attendance_by_worker_id = defaultdict(
+            lambda: {
+                'total_halves': 0,
+                'present_halves': 0,
+                'late_halves': 0,
+                'absent_halves': 0,
+                'leave_halves': 0,
+            }
+        )
+        if active_worker_ids:
+            attendance_rows = (
+                HKAttendanceRecord.objects.filter(
+                    date__range=(start_date, end_date),
+                    worker_id__in=active_worker_ids,
+                )
+                .values('worker_id')
+                .annotate(
+                    total_halves=Count('id'),
+                    present_halves=Count('id', filter=Q(status__in=['present', 'late'])),
+                    late_halves=Count('id', filter=Q(status='late')),
+                    absent_halves=Count('id', filter=Q(status='absent')),
+                    leave_halves=Count('id', filter=Q(status='leave')),
+                )
+            )
+            for row in attendance_rows:
+                attendance_by_worker_id[row['worker_id']] = {
+                    'total_halves': int(row.get('total_halves', 0) or 0),
+                    'present_halves': int(row.get('present_halves', 0) or 0),
+                    'late_halves': int(row.get('late_halves', 0) or 0),
+                    'absent_halves': int(row.get('absent_halves', 0) or 0),
+                    'leave_halves': int(row.get('leave_halves', 0) or 0),
+                }
+
+        def aggregate_attendance(worker_ids):
+            total_halves = 0
+            present_halves = 0
+            late_halves = 0
+            absent_halves = 0
+            leave_halves = 0
+            for worker_id in worker_ids:
+                att = attendance_by_worker_id.get(worker_id)
+                if not att:
+                    continue
+                total_halves += int(att.get('total_halves', 0) or 0)
+                present_halves += int(att.get('present_halves', 0) or 0)
+                late_halves += int(att.get('late_halves', 0) or 0)
+                absent_halves += int(att.get('absent_halves', 0) or 0)
+                leave_halves += int(att.get('leave_halves', 0) or 0)
+            attendance_pct = round((present_halves / total_halves) * 100, 1) if total_halves else 0.0
+            return {
+                'total_halves': total_halves,
+                'present_halves': present_halves,
+                'late_halves': late_halves,
+                'absent_halves': absent_halves,
+                'leave_halves': leave_halves,
+                'attendance_pct': attendance_pct,
+            }
+
         area_owner_by_area_id = {}
         area_links = (
             HKUserArea.objects.select_related('user')
@@ -379,9 +498,11 @@ class DashboardInsightsView(APIView):
             existing = area_owner_by_area_id.get(link.area_id)
             if existing is None:
                 area_owner_by_area_id[link.area_id] = link.user
-                continue
-            if existing.role != 'caretaker' and link.user.role == 'caretaker':
+            elif existing.role != 'caretaker' and link.user.role == 'caretaker':
                 area_owner_by_area_id[link.area_id] = link.user
+            worker_ids = area_worker_ids_map.get(link.area_id, set())
+            if worker_ids:
+                staff_worker_ids_map[link.user_id].update(worker_ids)
 
         hk_records = (
             HKDailyRecord.objects.filter(date__range=(start_date, end_date))
@@ -419,12 +540,12 @@ class DashboardInsightsView(APIView):
             if rec.status in {'done', 'pending', 'in_progress', 'skipped'}:
                 area_row[rec.status] += 1
 
-            # Real worker performance (only HKWorker assignment).
             if rec.assigned_worker:
                 worker_key = f"worker-{rec.assigned_worker.id}"
                 worker_row = worker_stats.setdefault(
                     worker_key,
                     {
+                        'worker_pk': rec.assigned_worker.id,
                         'worker_id': worker_key,
                         'worker_name': rec.assigned_worker.name,
                         'area_class': area_label,
@@ -441,7 +562,6 @@ class DashboardInsightsView(APIView):
                 if rec.status in {'done', 'pending', 'in_progress', 'skipped'}:
                     worker_row[rec.status] += 1
 
-            # Caretaker/supervisor trend.
             owner_user = None
             if rec.completed_by and rec.completed_by.role in {'caretaker', 'supervisor'}:
                 owner_user = rec.completed_by
@@ -458,6 +578,7 @@ class DashboardInsightsView(APIView):
             caretaker_row = caretaker_stats.setdefault(
                 owner_key,
                 {
+                    'staff_pk': owner_user.id,
                     'staff_id': owner_key,
                     'staff_name': owner_name,
                     'role': owner_user.role,
@@ -479,13 +600,22 @@ class DashboardInsightsView(APIView):
         for row in area_stats.values():
             total = int(row['total'] or 0)
             done = int(row['done'] or 0)
+            worker_ids = area_worker_ids_map.get(row['area_id'], set())
+            attendance = aggregate_attendance(worker_ids)
+
+            row['worker_count'] = len(worker_ids)
+            row['tasks_per_worker'] = round((total / row['worker_count']), 2) if row['worker_count'] else 0.0
             row['completion_pct'] = round((done / total * 100), 1) if total else 0.0
             row['pending_total'] = int(row['pending'] or 0) + int(row['in_progress'] or 0)
+            row.update(attendance)
             area_rows.append(row)
 
+        self._apply_fair_scoring(area_rows)
         area_rows.sort(
             key=lambda r: (
+                -float(r.get('fair_score', 0)),
                 -float(r.get('completion_pct', 0)),
+                -float(r.get('attendance_pct', 0)),
                 -int(r.get('done', 0)),
                 -int(r.get('total', 0)),
                 str(r.get('area_name', '')),
@@ -497,15 +627,24 @@ class DashboardInsightsView(APIView):
         for row in caretaker_stats.values():
             total = int(row['total'] or 0)
             done = int(row['done'] or 0)
+            worker_ids = staff_worker_ids_map.get(row['staff_pk'], set())
+            attendance = aggregate_attendance(worker_ids)
+
+            row['worker_count'] = len(worker_ids)
+            row['tasks_per_worker'] = round((total / row['worker_count']), 2) if row['worker_count'] else 0.0
             row['completion_pct'] = round((done / total * 100), 1) if total else 0.0
             row['pending_total'] = int(row['pending'] or 0) + int(row['in_progress'] or 0)
             row['areas_count'] = len(row['areas'])
             row['areas'] = sorted(list(row['areas']))
+            row.update(attendance)
             caretaker_rows.append(row)
 
+        self._apply_fair_scoring(caretaker_rows)
         caretaker_rows.sort(
             key=lambda r: (
+                -float(r.get('fair_score', 0)),
                 -float(r.get('completion_pct', 0)),
+                -float(r.get('attendance_pct', 0)),
                 -int(r.get('done', 0)),
                 -int(r.get('total', 0)),
                 str(r.get('staff_name', '')),
@@ -517,28 +656,34 @@ class DashboardInsightsView(APIView):
         for row in worker_stats.values():
             total = int(row['total'] or 0)
             done = int(row['done'] or 0)
+            worker_id = row.get('worker_pk')
+            attendance = aggregate_attendance({worker_id} if worker_id else set())
+
+            row['worker_count'] = 1
+            row['tasks_per_worker'] = float(total)
             row['completion_pct'] = round((done / total * 100), 1) if total else 0.0
             row['pending_total'] = int(row['pending'] or 0) + int(row['in_progress'] or 0)
             row['areas_count'] = len(row['areas'])
             row['areas'] = sorted(list(row['areas']))
+            row.update(attendance)
             worker_rows.append(row)
 
         if not worker_rows:
-            from apps.housekeeping.models import HKWorker
-
-            workers_qs = HKWorker.objects.select_related('area').filter(is_active=True, is_reliever=False)
-            for wk in workers_qs:
+            for wk in active_workers:
                 area_name = wk.area.name if wk.area else ''
                 area_label = self._area_class_label(wk.area.area_type if wk.area else 'other', area_name)
                 if area_class != 'all' and area_label != area_class:
                     continue
+                attendance = aggregate_attendance({wk.id})
                 worker_rows.append(
                     {
+                        'worker_pk': wk.id,
                         'worker_id': f"worker-{wk.id}",
                         'worker_name': wk.name,
                         'area_class': area_label,
                         'areas': [area_name] if area_name else [],
                         'areas_count': 1 if area_name else 0,
+                        'worker_count': 1,
                         'total': 0,
                         'done': 0,
                         'pending': 0,
@@ -546,12 +691,17 @@ class DashboardInsightsView(APIView):
                         'skipped': 0,
                         'pending_total': 0,
                         'completion_pct': 0.0,
+                        'tasks_per_worker': 0.0,
+                        **attendance,
                     }
                 )
 
+        self._apply_fair_scoring(worker_rows)
         worker_rows.sort(
             key=lambda r: (
+                -float(r.get('fair_score', 0)),
                 -float(r.get('completion_pct', 0)),
+                -float(r.get('attendance_pct', 0)),
                 -int(r.get('done', 0)),
                 -int(r.get('total', 0)),
                 str(r.get('worker_name', '')),
@@ -693,14 +843,17 @@ class DashboardInsightsView(APIView):
                     'totals': trend_totals,
                 },
                 'area_performance': {
+                    'ranking_metric': 'fair_score',
                     'winner': area_winner,
                     'rows': area_rows,
                 },
                 'caretaker_supervisor_performance': {
+                    'ranking_metric': 'fair_score',
                     'winner': caretaker_winner,
                     'rows': caretaker_rows,
                 },
                 'worker_performance': {
+                    'ranking_metric': 'fair_score',
                     'winner': worker_winner,
                     'rows': worker_rows,
                 },

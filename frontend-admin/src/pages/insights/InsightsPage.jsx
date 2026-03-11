@@ -6,8 +6,8 @@ import { BarGroupChart } from '../../components/ui/Charts'
 import AdminLayout from '../../layout/AdminLayout'
 
 const VIEW_OPTIONS = [
-  { key: 'area_hk', label: 'Area-wise HK Completion' },
   { key: 'caretaker', label: 'Caretaker/Supervisor Trend' },
+  { key: 'area_hk', label: 'Area-wise HK Completion' },
   { key: 'area_inventory', label: 'Area-wise Inventory Consumption' },
   { key: 'top_items', label: 'Most Consumed Inventory Items' },
   { key: 'workers', label: 'Worker Performance Trend' },
@@ -24,10 +24,31 @@ function formatNum(value) {
   return Number(value || 0).toLocaleString('en-IN')
 }
 
+function escapeCsvCell(value) {
+  const raw = String(value ?? '')
+  if (raw.includes('"') || raw.includes(',') || raw.includes('\n')) {
+    return `"${raw.replace(/"/g, '""')}"`
+  }
+  return raw
+}
+
+function downloadCsv(filename, headers, rows) {
+  const head = headers.map(escapeCsvCell).join(',')
+  const body = rows.map((row) => row.map(escapeCsvCell).join(',')).join('\n')
+  const csv = `${head}\n${body}`
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function InsightsPage() {
   const [range, setRange] = useState('weekly')
   const [areaClass, setAreaClass] = useState('all')
-  const [activeView, setActiveView] = useState('area_hk')
+  const [activeView, setActiveView] = useState('caretaker')
 
   const [insights, setInsights] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -86,9 +107,9 @@ export default function InsightsPage() {
     () =>
       areaRows.slice(0, 15).map((row) => ({
         name: row.area_name,
-        completed: Number(row.done || 0),
-        pending: Number(row.pending_total || 0),
-        total: Number(row.total || 0),
+        completion_pct: Number(row.completion_pct || 0),
+        attendance_pct: Number(row.attendance_pct || 0),
+        fair_score: Number(row.fair_score || 0),
       })),
     [areaRows],
   )
@@ -97,9 +118,9 @@ export default function InsightsPage() {
     () =>
       caretakerRows.slice(0, 15).map((row) => ({
         name: row.staff_name,
-        completed: Number(row.done || 0),
-        pending: Number(row.pending_total || 0),
-        total: Number(row.total || 0),
+        completion_pct: Number(row.completion_pct || 0),
+        attendance_pct: Number(row.attendance_pct || 0),
+        fair_score: Number(row.fair_score || 0),
       })),
     [caretakerRows],
   )
@@ -108,9 +129,9 @@ export default function InsightsPage() {
     () =>
       workerRows.slice(0, 15).map((row) => ({
         name: row.worker_name,
-        completed: Number(row.done || 0),
-        pending: Number(row.pending_total || 0),
-        total: Number(row.total || 0),
+        completion_pct: Number(row.completion_pct || 0),
+        attendance_pct: Number(row.attendance_pct || 0),
+        fair_score: Number(row.fair_score || 0),
       })),
     [workerRows],
   )
@@ -135,6 +156,143 @@ export default function InsightsPage() {
       })),
     [topItemRows],
   )
+
+  const exportCurrentCsv = () => {
+    const day = new Date().toISOString().slice(0, 10)
+    const baseName = `insights_${activeView}_${range}_${areaClass}_${day}.csv`
+
+    if (activeView === 'caretaker') {
+      downloadCsv(
+        baseName,
+        [
+          'Staff',
+          'Role',
+          'Areas',
+          'Worker Count',
+          'Total Tasks',
+          'Completed',
+          'Pending',
+          'In Progress',
+          'Skipped',
+          'Completion %',
+          'Attendance %',
+          'Tasks/Worker',
+          'Fair Score',
+        ],
+        caretakerRows.map((r) => [
+          r.staff_name,
+          r.role,
+          (r.areas || []).join(' | '),
+          r.worker_count || 0,
+          r.total || 0,
+          r.done || 0,
+          r.pending || 0,
+          r.in_progress || 0,
+          r.skipped || 0,
+          Number(r.completion_pct || 0).toFixed(1),
+          Number(r.attendance_pct || 0).toFixed(1),
+          Number(r.tasks_per_worker || 0).toFixed(2),
+          Number(r.fair_score || 0).toFixed(2),
+        ]),
+      )
+      return
+    }
+
+    if (activeView === 'area_hk') {
+      downloadCsv(
+        baseName,
+        [
+          'Area',
+          'Area Class',
+          'Worker Count',
+          'Total Tasks',
+          'Completed',
+          'Pending',
+          'In Progress',
+          'Skipped',
+          'Completion %',
+          'Attendance %',
+          'Tasks/Worker',
+          'Fair Score',
+        ],
+        areaRows.map((r) => [
+          r.area_name,
+          r.area_class,
+          r.worker_count || 0,
+          r.total || 0,
+          r.done || 0,
+          r.pending || 0,
+          r.in_progress || 0,
+          r.skipped || 0,
+          Number(r.completion_pct || 0).toFixed(1),
+          Number(r.attendance_pct || 0).toFixed(1),
+          Number(r.tasks_per_worker || 0).toFixed(2),
+          Number(r.fair_score || 0).toFixed(2),
+        ]),
+      )
+      return
+    }
+
+    if (activeView === 'workers') {
+      downloadCsv(
+        baseName,
+        [
+          'Worker',
+          'Areas',
+          'Total Tasks',
+          'Completed',
+          'Pending',
+          'In Progress',
+          'Skipped',
+          'Completion %',
+          'Attendance %',
+          'Fair Score',
+        ],
+        workerRows.map((r) => [
+          r.worker_name,
+          (r.areas || []).join(' | '),
+          r.total || 0,
+          r.done || 0,
+          r.pending || 0,
+          r.in_progress || 0,
+          r.skipped || 0,
+          Number(r.completion_pct || 0).toFixed(1),
+          Number(r.attendance_pct || 0).toFixed(1),
+          Number(r.fair_score || 0).toFixed(2),
+        ]),
+      )
+      return
+    }
+
+    if (activeView === 'area_inventory') {
+      downloadCsv(
+        baseName,
+        ['Area', 'Area Class', 'Transactions', 'Consumable Qty', 'Asset Qty', 'Total Qty'],
+        invAreaRows.map((r) => [
+          r.area_name,
+          r.area_class,
+          r.transactions || 0,
+          r.consumable_qty || 0,
+          r.asset_qty || 0,
+          r.total_qty || 0,
+        ]),
+      )
+      return
+    }
+
+    downloadCsv(
+      baseName,
+      ['Item', 'Type', 'Quantity', 'Transactions', 'Area Count', 'Areas'],
+      topItemRows.map((r) => [
+        r.item_name,
+        r.item_type,
+        r.quantity || 0,
+        r.transactions || 0,
+        r.areas_count || 0,
+        (r.areas || []).join(' | '),
+      ]),
+    )
+  }
 
   return (
     <AdminLayout
@@ -181,6 +339,10 @@ export default function InsightsPage() {
             ))}
           </div>
         </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+          <Btn size="sm" variant="secondary" onClick={exportCurrentCsv}>Export CSV</Btn>
+        </div>
       </Card>
 
       {error ? (
@@ -194,28 +356,6 @@ export default function InsightsPage() {
           <div style={{ display: 'flex', justifyContent: 'center', padding: 50 }}>
             <Spinner />
           </div>
-        ) : activeView === 'area_hk' ? (
-          <>
-            <div style={{ fontWeight: 700, marginBottom: 10 }}>Area-wise HK Completion</div>
-            {areaChartData.length > 0 ? (
-              <>
-                <BarGroupChart
-                  data={areaChartData}
-                  bars={[
-                    { key: 'completed', label: 'Completed' },
-                    { key: 'pending', label: 'Pending + In Progress' },
-                    { key: 'total', label: 'Total Tasks' },
-                  ]}
-                  height={320}
-                />
-                <div style={{ marginTop: 10, fontSize: 12 }}>
-                  Winner: <strong>{areaWinner?.area_name || '-'}</strong> ({Number(areaWinner?.completion_pct || 0).toFixed(1)}%)
-                </div>
-              </>
-            ) : (
-              <div style={{ color: 'var(--text-3)', fontSize: 12 }}>No area-wise HK data for selected filters.</div>
-            )}
-          </>
         ) : activeView === 'caretaker' ? (
           <>
             <div style={{ fontWeight: 700, marginBottom: 10 }}>Caretaker / Supervisor Trend</div>
@@ -224,18 +364,52 @@ export default function InsightsPage() {
                 <BarGroupChart
                   data={caretakerChartData}
                   bars={[
-                    { key: 'completed', label: 'Completed' },
-                    { key: 'pending', label: 'Pending + In Progress' },
-                    { key: 'total', label: 'Total Tasks' },
+                    { key: 'completion_pct', label: 'Completion %' },
+                    { key: 'attendance_pct', label: 'Attendance %' },
+                    { key: 'fair_score', label: 'Fair Score' },
                   ]}
                   height={320}
                 />
                 <div style={{ marginTop: 10, fontSize: 12 }}>
-                  Top performer: <strong>{caretakerWinner?.staff_name || '-'}</strong> ({Number(caretakerWinner?.completion_pct || 0).toFixed(1)}%)
+                  Winner: <strong>{caretakerWinner?.staff_name || '-'}</strong>
+                  {' '}| Score {Number(caretakerWinner?.fair_score || 0).toFixed(2)}
+                  {' '}| Completion {Number(caretakerWinner?.completion_pct || 0).toFixed(1)}%
+                  {' '}| Attendance {Number(caretakerWinner?.attendance_pct || 0).toFixed(1)}%
+                </div>
+                <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-3)' }}>
+                  Comparison is fairness-based: completion, attendance, task-volume confidence and workload per worker.
                 </div>
               </>
             ) : (
               <div style={{ color: 'var(--text-3)', fontSize: 12 }}>No caretaker/supervisor data for selected filters.</div>
+            )}
+          </>
+        ) : activeView === 'area_hk' ? (
+          <>
+            <div style={{ fontWeight: 700, marginBottom: 10 }}>Area-wise HK Completion</div>
+            {areaChartData.length > 0 ? (
+              <>
+                <BarGroupChart
+                  data={areaChartData}
+                  bars={[
+                    { key: 'completion_pct', label: 'Completion %' },
+                    { key: 'attendance_pct', label: 'Attendance %' },
+                    { key: 'fair_score', label: 'Fair Score' },
+                  ]}
+                  height={320}
+                />
+                <div style={{ marginTop: 10, fontSize: 12 }}>
+                  Winner: <strong>{areaWinner?.area_name || '-'}</strong>
+                  {' '}| Score {Number(areaWinner?.fair_score || 0).toFixed(2)}
+                  {' '}| Completion {Number(areaWinner?.completion_pct || 0).toFixed(1)}%
+                  {' '}| Attendance {Number(areaWinner?.attendance_pct || 0).toFixed(1)}%
+                </div>
+                <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-3)' }}>
+                  Fair score balances completion quality with worker strength and load, so low-volume areas are not over-favored.
+                </div>
+              </>
+            ) : (
+              <div style={{ color: 'var(--text-3)', fontSize: 12 }}>No area-wise HK data for selected filters.</div>
             )}
           </>
         ) : activeView === 'workers' ? (
@@ -246,14 +420,20 @@ export default function InsightsPage() {
                 <BarGroupChart
                   data={workerChartData}
                   bars={[
-                    { key: 'completed', label: 'Completed' },
-                    { key: 'pending', label: 'Pending + In Progress' },
-                    { key: 'total', label: 'Total Tasks' },
+                    { key: 'completion_pct', label: 'Completion %' },
+                    { key: 'attendance_pct', label: 'Attendance %' },
+                    { key: 'fair_score', label: 'Fair Score' },
                   ]}
                   height={320}
                 />
                 <div style={{ marginTop: 10, fontSize: 12 }}>
-                  Top worker: <strong>{workerWinner?.worker_name || '-'}</strong> ({Number(workerWinner?.completion_pct || 0).toFixed(1)}%)
+                  Top worker: <strong>{workerWinner?.worker_name || '-'}</strong>
+                  {' '}| Score {Number(workerWinner?.fair_score || 0).toFixed(2)}
+                  {' '}| Completion {Number(workerWinner?.completion_pct || 0).toFixed(1)}%
+                  {' '}| Attendance {Number(workerWinner?.attendance_pct || 0).toFixed(1)}%
+                </div>
+                <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-3)' }}>
+                  Ranking uses fair score so very small task samples do not dominate.
                 </div>
               </>
             ) : (
