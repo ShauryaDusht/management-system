@@ -5,7 +5,7 @@ Housekeeping includes HTMX pages (`/housekeeping/`) and JSON APIs (`/api/houseke
 ## Progress Snapshot
 - Core mobile + records + attendance: ██████████ 100%
 - Stock request + alerts + dashboard summary: ██████████ 100%
-- Advanced CRUD/admin analytics: ████░░░░░░ 40%
+- Advanced CRUD/admin analytics + reporting workflows: ████████░░ 80%
 
 ## Quick Start (Docker)
 ```bash
@@ -22,12 +22,21 @@ docker compose up --build
 - `profile/`, `alerts/`
 
 ## JSON APIs (`/api/housekeeping/`)
-- `areas/`
-- `workers/`, `workers/create/`, `workers/<id>/` (PATCH, DELETE)
-- `daily-records/`, `schedule-templates/`, `attendance-summary/`
-- `stock-requests/`, `stock-requests/<id>/status/`
-- `assign-area-task/`, `promote-task-to-daily/`
-- `alerts/`, `dashboard-summary/`
+- Core data + operations:
+  - `areas/`
+  - `workers/`, `workers/create/`, `workers/<id>/` (PATCH, DELETE)
+  - `daily-records/`, `schedule-templates/`, `attendance-summary/`
+  - `stock-requests/`, `stock-requests/<id>/status/`
+  - `assign-area-task/`, `promote-task-to-daily/`
+  - `alerts/`, `dashboard-summary/`
+- Reporting:
+  - `workers/reports/combined/csv/`
+  - `workers/<id>/report/`, `workers/<id>/report/csv/`, `workers/<id>/report/regenerate/`
+  - `supervisors/<id>/report/`, `supervisors/<id>/report/csv/`, `supervisors/<id>/report/regenerate/`
+- Workforce governance:
+  - `worker-selection-requests/`, `worker-selection-requests/<id>/decision/`
+  - `incharge-assignments/`, `incharge-assignments/<uuid>/decision/`, `incharge-assignments/report/`
+  - `leave-requests/`, `incharge-notifications/`
 
 ## API Access Map
 | Endpoint | Method | Admin | Housekeeping Manager | Inventory Manager | Supervisor/Caretaker |
@@ -42,6 +51,11 @@ docker compose up --build
 | `/api/housekeeping/assign-area-task/` | POST | ✅ | ✅ | ❌ | ❌ |
 | `/api/housekeeping/promote-task-to-daily/` | POST | ✅ | ✅ | ❌ | ❌ |
 | `/api/housekeeping/dashboard-summary/` | GET | ✅ | ✅ | ✅ | ✅ |
+| `/api/housekeeping/workers/<id>/report/` | GET | ✅ | ✅ | ❌ | ❌ |
+| `/api/housekeeping/workers/<id>/report/csv/` | GET | ✅ | ✅ | ❌ | ❌ |
+| `/api/housekeeping/supervisors/<id>/report/` | GET | ✅ | ✅ | ❌ | ❌ |
+| `/api/housekeeping/worker-selection-requests/` | GET/POST | ✅ | ✅ | ❌ | ✅ (request own scope) |
+| `/api/housekeeping/incharge-assignments/<uuid>/decision/` | POST | ✅ | ✅ | ❌ | ✅ |
 
 ## Seed commands
 ```bash
