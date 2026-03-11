@@ -6,6 +6,7 @@ import { NotificationProvider } from './context/NotificationContext'
 import DashboardPage from './pages/dashboard/DashboardPage'
 import HorticulturePage from './pages/horticulture/HorticulturePage'
 import HousekeepingPage from './pages/housekeeping/HousekeepingPage'
+import InsightsPage from './pages/insights/InsightsPage'
 import InventoryPage from './pages/inventory/InventoryPage'
 import LoginPage from './pages/LoginPage'
 import ProfilePage from './pages/profile/ProfilePage'
@@ -59,6 +60,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={ADMIN_ONLY}>
                 <HorticulturePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/insights"
+            element={
+              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+                <InsightsPage />
               </ProtectedRoute>
             }
           />

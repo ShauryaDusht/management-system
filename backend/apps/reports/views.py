@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import timedelta
 
 from django.http import FileResponse
@@ -203,6 +204,514 @@ class ActivityTrendView(APIView):
 
 
 # ── Monthly report views ──────────────────────────────────────────────────────
+
+class DashboardInsightsView(APIView):
+    """
+    GET /api/reports/dashboard-insights/?range=today|weekly|monthly&area_class=all|hostels|academic|others
+
+    Returns:
+      - cross-module activity trend
+      - housekeeping area-wise performance
+      - housekeeping worker-wise performance
+      - inventory area-wise consumption + top consumed items
+    """
+    permission_classes = [IsAdminUser]
+
+    @staticmethod
+    def _resolve_range(range_key):
+        key = (range_key or 'weekly').strip().lower()
+        if key not in {'today', 'weekly', 'monthly'}:
+            key = 'weekly'
+        days = 1 if key == 'today' else (30 if key == 'monthly' else 7)
+        end_date = timezone.localdate()
+        start_date = end_date - timedelta(days=days - 1)
+        dates = [start_date + timedelta(days=i) for i in range(days)]
+        return key, start_date, end_date, dates
+
+    @staticmethod
+    def _normalize_area_class(area_class):
+        normalized = (area_class or 'all').strip().lower()
+        return normalized if normalized in {'all', 'hostels', 'academic', 'others'} else 'all'
+
+    @staticmethod
+    def _area_class_label(area_type, area_name):
+        name = (area_name or '').strip()
+        type_value = (area_type or '').strip().lower()
+        if type_value == 'hostel':
+            return 'hostels'
+        if name.startswith('Academic Block') or name in {'Academic Common Area', 'New AB U-Shape', 'New Academy'}:
+            return 'academic'
+        if name.lower() in {'hostel common area', 'common area', 'hostels reliever'}:
+            return 'hostels'
+        if type_value == 'academic':
+            return 'academic'
+        return 'others'
+
+    def get(self, request):
+        range_key, start_date, end_date, dates = self._resolve_range(request.query_params.get('range'))
+        area_class = self._normalize_area_class(request.query_params.get('area_class'))
+
+        from apps.inventory.models import ItemIssue, ItemRequest, PurchaseRequest, StockEntry
+        from apps.housekeeping.htmx_views import get_today_records
+        from apps.housekeeping.models import HKArea, HKDailyRecord, HKStockRequest, HKUserArea
+
+        # Ensure same-day records exist before analytics.
+        if end_date == timezone.localdate():
+            for area in HKArea.objects.filter(is_active=True):
+                get_today_records(area, end_date)
+
+        # 1) Cross-module activity trend.
+        inv_requests_map = ActivityTrendView._annotated_day_map(
+            ItemRequest.objects.filter(requested_at__date__range=(start_date, end_date)),
+            'requested_at',
+        )
+        inv_issues_map = ActivityTrendView._annotated_day_map(
+            ItemIssue.objects.filter(issued_at__date__range=(start_date, end_date)),
+            'issued_at',
+        )
+        inv_stock_map = ActivityTrendView._annotated_day_map(
+            StockEntry.objects.filter(added_at__date__range=(start_date, end_date)),
+            'added_at',
+        )
+        inv_purchase_map = ActivityTrendView._annotated_day_map(
+            PurchaseRequest.objects.filter(created_at__date__range=(start_date, end_date)),
+            'created_at',
+        )
+
+        hk_rows = (
+            HKDailyRecord.objects.filter(date__range=(start_date, end_date))
+            .values('date')
+            .annotate(
+                total=Count('id'),
+                done=Count('id', filter=Q(status='done')),
+                pending=Count('id', filter=Q(status='pending')),
+                in_progress=Count('id', filter=Q(status='in_progress')),
+                skipped=Count('id', filter=Q(status='skipped')),
+            )
+        )
+        hk_map = {
+            row['date']: {
+                'total': row['total'],
+                'done': row['done'],
+                'pending': row['pending'],
+                'in_progress': row['in_progress'],
+                'skipped': row['skipped'],
+            }
+            for row in hk_rows
+        }
+
+        trend_series = []
+        trend_totals = {
+            'inventory': 0,
+            'housekeeping': 0,
+            'horticulture': 0,
+            'inventory_requests': 0,
+            'inventory_issues': 0,
+            'inventory_stock_additions': 0,
+            'inventory_purchase_requests': 0,
+            'hk_done': 0,
+            'hk_pending': 0,
+            'hk_in_progress': 0,
+            'hk_skipped': 0,
+        }
+
+        for dt in dates:
+            inv_requests = int(inv_requests_map.get(dt, 0) or 0)
+            inv_issues = int(inv_issues_map.get(dt, 0) or 0)
+            inv_stock = int(inv_stock_map.get(dt, 0) or 0)
+            inv_purchase = int(inv_purchase_map.get(dt, 0) or 0)
+            inventory_total = inv_requests + inv_issues + inv_stock + inv_purchase
+
+            hk = hk_map.get(dt, {})
+            hk_total = int(hk.get('total', 0) or 0)
+            hk_done = int(hk.get('done', 0) or 0)
+            hk_pending = int(hk.get('pending', 0) or 0)
+            hk_in_progress = int(hk.get('in_progress', 0) or 0)
+            hk_skipped = int(hk.get('skipped', 0) or 0)
+
+            horticulture_total = 0
+            total = inventory_total + hk_total + horticulture_total
+            label = 'Today' if range_key == 'today' else dt.strftime('%d %b')
+
+            trend_series.append(
+                {
+                    'date': dt.isoformat(),
+                    'label': label,
+                    'inventory': inventory_total,
+                    'housekeeping': hk_total,
+                    'horticulture': horticulture_total,
+                    'total': total,
+                    'inventory_requests': inv_requests,
+                    'inventory_issues': inv_issues,
+                    'inventory_stock_additions': inv_stock,
+                    'inventory_purchase_requests': inv_purchase,
+                    'hk_done': hk_done,
+                    'hk_pending': hk_pending,
+                    'hk_in_progress': hk_in_progress,
+                    'hk_skipped': hk_skipped,
+                }
+            )
+
+            trend_totals['inventory'] += inventory_total
+            trend_totals['housekeeping'] += hk_total
+            trend_totals['horticulture'] += horticulture_total
+            trend_totals['inventory_requests'] += inv_requests
+            trend_totals['inventory_issues'] += inv_issues
+            trend_totals['inventory_stock_additions'] += inv_stock
+            trend_totals['inventory_purchase_requests'] += inv_purchase
+            trend_totals['hk_done'] += hk_done
+            trend_totals['hk_pending'] += hk_pending
+            trend_totals['hk_in_progress'] += hk_in_progress
+            trend_totals['hk_skipped'] += hk_skipped
+
+        # 2) Housekeeping area + worker performance.
+        area_owner_by_area_id = {}
+        area_links = (
+            HKUserArea.objects.select_related('user')
+            .filter(
+                area__is_active=True,
+                user__is_active=True,
+                user__role__in=['caretaker', 'supervisor'],
+            )
+            .order_by('area_id', 'user_id')
+        )
+        for link in area_links:
+            existing = area_owner_by_area_id.get(link.area_id)
+            if existing is None:
+                area_owner_by_area_id[link.area_id] = link.user
+                continue
+            if existing.role != 'caretaker' and link.user.role == 'caretaker':
+                area_owner_by_area_id[link.area_id] = link.user
+
+        hk_records = (
+            HKDailyRecord.objects.filter(date__range=(start_date, end_date))
+            .select_related('area', 'assigned_worker', 'completed_by', 'assigned_by')
+            .order_by('area__name', 'date')
+        )
+
+        area_stats = {}
+        caretaker_stats = {}
+        worker_stats = {}
+
+        for rec in hk_records:
+            area = rec.area
+            if not area:
+                continue
+            area_label = self._area_class_label(area.area_type, area.name)
+            if area_class != 'all' and area_label != area_class:
+                continue
+
+            area_row = area_stats.setdefault(
+                area.id,
+                {
+                    'area_id': area.id,
+                    'area_name': area.name,
+                    'area_type': area.area_type,
+                    'area_class': area_label,
+                    'total': 0,
+                    'done': 0,
+                    'pending': 0,
+                    'in_progress': 0,
+                    'skipped': 0,
+                },
+            )
+            area_row['total'] += 1
+            if rec.status in {'done', 'pending', 'in_progress', 'skipped'}:
+                area_row[rec.status] += 1
+
+            # Real worker performance (only HKWorker assignment).
+            if rec.assigned_worker:
+                worker_key = f"worker-{rec.assigned_worker.id}"
+                worker_row = worker_stats.setdefault(
+                    worker_key,
+                    {
+                        'worker_id': worker_key,
+                        'worker_name': rec.assigned_worker.name,
+                        'area_class': area_label,
+                        'areas': set(),
+                        'total': 0,
+                        'done': 0,
+                        'pending': 0,
+                        'in_progress': 0,
+                        'skipped': 0,
+                    },
+                )
+                worker_row['areas'].add(area.name)
+                worker_row['total'] += 1
+                if rec.status in {'done', 'pending', 'in_progress', 'skipped'}:
+                    worker_row[rec.status] += 1
+
+            # Caretaker/supervisor trend.
+            owner_user = None
+            if rec.completed_by and rec.completed_by.role in {'caretaker', 'supervisor'}:
+                owner_user = rec.completed_by
+            elif rec.assigned_by and rec.assigned_by.role in {'caretaker', 'supervisor'}:
+                owner_user = rec.assigned_by
+            elif area.id in area_owner_by_area_id:
+                owner_user = area_owner_by_area_id[area.id]
+
+            if not owner_user:
+                continue
+
+            owner_key = f"user-{owner_user.id}"
+            owner_name = owner_user.get_full_name() or owner_user.username
+            caretaker_row = caretaker_stats.setdefault(
+                owner_key,
+                {
+                    'staff_id': owner_key,
+                    'staff_name': owner_name,
+                    'role': owner_user.role,
+                    'area_class': area_label,
+                    'areas': set(),
+                    'total': 0,
+                    'done': 0,
+                    'pending': 0,
+                    'in_progress': 0,
+                    'skipped': 0,
+                },
+            )
+            caretaker_row['areas'].add(area.name)
+            caretaker_row['total'] += 1
+            if rec.status in {'done', 'pending', 'in_progress', 'skipped'}:
+                caretaker_row[rec.status] += 1
+
+        area_rows = []
+        for row in area_stats.values():
+            total = int(row['total'] or 0)
+            done = int(row['done'] or 0)
+            row['completion_pct'] = round((done / total * 100), 1) if total else 0.0
+            row['pending_total'] = int(row['pending'] or 0) + int(row['in_progress'] or 0)
+            area_rows.append(row)
+
+        area_rows.sort(
+            key=lambda r: (
+                -float(r.get('completion_pct', 0)),
+                -int(r.get('done', 0)),
+                -int(r.get('total', 0)),
+                str(r.get('area_name', '')),
+            )
+        )
+        area_winner = next((row for row in area_rows if row.get('total', 0) > 0), None)
+
+        caretaker_rows = []
+        for row in caretaker_stats.values():
+            total = int(row['total'] or 0)
+            done = int(row['done'] or 0)
+            row['completion_pct'] = round((done / total * 100), 1) if total else 0.0
+            row['pending_total'] = int(row['pending'] or 0) + int(row['in_progress'] or 0)
+            row['areas_count'] = len(row['areas'])
+            row['areas'] = sorted(list(row['areas']))
+            caretaker_rows.append(row)
+
+        caretaker_rows.sort(
+            key=lambda r: (
+                -float(r.get('completion_pct', 0)),
+                -int(r.get('done', 0)),
+                -int(r.get('total', 0)),
+                str(r.get('staff_name', '')),
+            )
+        )
+        caretaker_winner = next((row for row in caretaker_rows if row.get('total', 0) > 0), None)
+
+        worker_rows = []
+        for row in worker_stats.values():
+            total = int(row['total'] or 0)
+            done = int(row['done'] or 0)
+            row['completion_pct'] = round((done / total * 100), 1) if total else 0.0
+            row['pending_total'] = int(row['pending'] or 0) + int(row['in_progress'] or 0)
+            row['areas_count'] = len(row['areas'])
+            row['areas'] = sorted(list(row['areas']))
+            worker_rows.append(row)
+
+        if not worker_rows:
+            from apps.housekeeping.models import HKWorker
+
+            workers_qs = HKWorker.objects.select_related('area').filter(is_active=True, is_reliever=False)
+            for wk in workers_qs:
+                area_name = wk.area.name if wk.area else ''
+                area_label = self._area_class_label(wk.area.area_type if wk.area else 'other', area_name)
+                if area_class != 'all' and area_label != area_class:
+                    continue
+                worker_rows.append(
+                    {
+                        'worker_id': f"worker-{wk.id}",
+                        'worker_name': wk.name,
+                        'area_class': area_label,
+                        'areas': [area_name] if area_name else [],
+                        'areas_count': 1 if area_name else 0,
+                        'total': 0,
+                        'done': 0,
+                        'pending': 0,
+                        'in_progress': 0,
+                        'skipped': 0,
+                        'pending_total': 0,
+                        'completion_pct': 0.0,
+                    }
+                )
+
+        worker_rows.sort(
+            key=lambda r: (
+                -float(r.get('completion_pct', 0)),
+                -int(r.get('done', 0)),
+                -int(r.get('total', 0)),
+                str(r.get('worker_name', '')),
+            )
+        )
+        worker_winner = next((row for row in worker_rows if row.get('total', 0) > 0), None)
+
+        # 3) Inventory consumption analytics.
+        areas_by_id = {
+            area.id: area
+            for area in HKArea.objects.filter(is_active=True).only('id', 'name', 'area_type')
+        }
+
+        user_primary_area = {}
+        for link in (
+            HKUserArea.objects.select_related('area')
+            .filter(area__is_active=True)
+            .order_by('user_id', 'id')
+        ):
+            if link.user_id not in user_primary_area and link.area_id:
+                user_primary_area[link.user_id] = link.area_id
+
+        issues = list(
+            ItemIssue.objects.filter(issued_at__date__range=(start_date, end_date))
+            .select_related('request__item', 'request__requested_by')
+            .order_by('-issued_at')
+        )
+        request_ids = [issue.request_id for issue in issues]
+        hk_req_area_map = dict(
+            HKStockRequest.objects.filter(inventory_request_id__in=request_ids, area_id__isnull=False)
+            .values_list('inventory_request_id', 'area_id')
+        )
+
+        area_consumption = defaultdict(
+            lambda: {
+                'area_name': '',
+                'area_class': 'others',
+                'transactions': 0,
+                'consumable_qty': 0,
+                'asset_qty': 0,
+                'total_qty': 0,
+            }
+        )
+        top_items = defaultdict(
+            lambda: {
+                'item_name': '',
+                'item_type': '',
+                'quantity': 0,
+                'transactions': 0,
+                'areas': set(),
+            }
+        )
+
+        for issue in issues:
+            area_obj = None
+            area_id = hk_req_area_map.get(issue.request_id)
+            if area_id:
+                area_obj = areas_by_id.get(area_id)
+            if not area_obj:
+                fallback_area_id = user_primary_area.get(issue.request.requested_by_id)
+                if fallback_area_id:
+                    area_obj = areas_by_id.get(fallback_area_id)
+
+            if area_obj:
+                issue_area_name = area_obj.name
+                issue_area_class = self._area_class_label(area_obj.area_type, area_obj.name)
+            else:
+                issue_area_name = 'Direct Request'
+                issue_area_class = 'others'
+
+            if area_class != 'all' and issue_area_class != area_class:
+                continue
+
+            item = issue.request.item
+            item_name = item.name if item else f'Item #{issue.request.item_id}'
+            item_type = (item.item_type if item else '').strip().lower()
+
+            if item_type == 'consumable':
+                quantity = issue.actual_quantity_used if issue.actual_quantity_used is not None else issue.issued_quantity
+            else:
+                quantity = issue.issued_quantity
+            quantity = int(quantity or 0)
+
+            area_key = issue_area_name
+            area_row = area_consumption[area_key]
+            area_row['area_name'] = issue_area_name
+            area_row['area_class'] = issue_area_class
+            area_row['transactions'] += 1
+            area_row['total_qty'] += quantity
+            if item_type == 'asset':
+                area_row['asset_qty'] += quantity
+            else:
+                area_row['consumable_qty'] += quantity
+
+            item_row = top_items[item_name]
+            item_row['item_name'] = item_name
+            item_row['item_type'] = item_type or 'consumable'
+            item_row['quantity'] += quantity
+            item_row['transactions'] += 1
+            item_row['areas'].add(issue_area_name)
+
+        area_consumption_rows = list(area_consumption.values())
+        area_consumption_rows.sort(
+            key=lambda r: (
+                -int(r.get('total_qty', 0)),
+                -int(r.get('transactions', 0)),
+                str(r.get('area_name', '')),
+            )
+        )
+
+        top_item_rows = []
+        for row in top_items.values():
+            row['areas_count'] = len(row['areas'])
+            row['areas'] = sorted(list(row['areas']))
+            top_item_rows.append(row)
+        top_item_rows.sort(
+            key=lambda r: (
+                -int(r.get('quantity', 0)),
+                -int(r.get('transactions', 0)),
+                str(r.get('item_name', '')),
+            )
+        )
+
+        consumption_totals = {
+            'transactions': sum(int(r.get('transactions', 0)) for r in area_consumption_rows),
+            'consumable_qty': sum(int(r.get('consumable_qty', 0)) for r in area_consumption_rows),
+            'asset_qty': sum(int(r.get('asset_qty', 0)) for r in area_consumption_rows),
+            'total_qty': sum(int(r.get('total_qty', 0)) for r in area_consumption_rows),
+        }
+
+        return Response(
+            {
+                'range': range_key,
+                'area_class': area_class,
+                'start_date': start_date.isoformat(),
+                'end_date': end_date.isoformat(),
+                'module_trend': {
+                    'series': trend_series,
+                    'totals': trend_totals,
+                },
+                'area_performance': {
+                    'winner': area_winner,
+                    'rows': area_rows,
+                },
+                'caretaker_supervisor_performance': {
+                    'winner': caretaker_winner,
+                    'rows': caretaker_rows,
+                },
+                'worker_performance': {
+                    'winner': worker_winner,
+                    'rows': worker_rows,
+                },
+                'inventory_consumption': {
+                    'totals': consumption_totals,
+                    'areas': area_consumption_rows,
+                    'top_items': top_item_rows,
+                },
+            }
+        )
+
 
 class MonthlyReportListView(APIView):
     """

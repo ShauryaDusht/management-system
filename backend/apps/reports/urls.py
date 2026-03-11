@@ -2,6 +2,7 @@ from django.urls import path
 from .views import (
     ActivityTrendView,
     AreaIssuesReportView,
+    DashboardInsightsView,
     ConsumptionReportDetailView,
     ConsumptionReportGenerateView,
     ConsumptionReportItemCSVView,
@@ -21,6 +22,7 @@ urlpatterns = [
     path('inventory/', InventoryReportView.as_view(), name='reports-inventory'),
     path('requests/', RequestsReportView.as_view(), name='reports-requests'),
     path('activity-trend/', ActivityTrendView.as_view(), name='reports-activity-trend'),
+    path('dashboard-insights/', DashboardInsightsView.as_view(), name='reports-dashboard-insights'),
     path('area-issues/', AreaIssuesReportView.as_view(), name='area-issues-report'),
 
     # Phase 3A — Monthly procurement reports
