@@ -1,9 +1,12 @@
+import csv
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import F
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateparse import parse_date
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from decimal import Decimal, InvalidOperation
@@ -423,6 +426,101 @@ def mobile_reports(request):
         'date_from': date_from,
         'date_to': date_to,
     })
+
+
+@login_required
+def mobile_export_inventory_report_csv(request):
+    role = getattr(request.user, 'role', '')
+    if role not in ['admin', 'inventory_manager']:
+        return redirect('mobile_dashboard')
+
+    from apps.reports.generators import generate_inventory_report
+
+    status_filter = (request.GET.get('filter') or 'all').strip().lower()
+    item_type_filter = (request.GET.get('item_type') or 'all').strip().lower()
+
+    if status_filter not in {'all', 'in_stock', 'low_stock', 'out_of_stock'}:
+        status_filter = 'all'
+    if item_type_filter not in {'all', 'asset', 'consumable'}:
+        item_type_filter = 'all'
+
+    report = generate_inventory_report(
+        status_filter=status_filter if status_filter != 'all' else None,
+        item_type_filter=item_type_filter if item_type_filter != 'all' else None,
+    )
+
+    filename = f'inventory_report_{status_filter}_{item_type_filter}.csv'
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response.write('\ufeff')
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'ID', 'Name', 'Category', 'Type', 'Unit',
+        'Total Quantity', 'Available Quantity', 'Threshold Quantity',
+        'Unit Cost', 'Total Value', 'Status',
+    ])
+    for row in report.get('items', []):
+        writer.writerow([
+            row.get('id'),
+            row.get('name'),
+            row.get('category'),
+            row.get('type'),
+            row.get('unit'),
+            row.get('total_quantity'),
+            row.get('available_quantity'),
+            row.get('threshold_quantity'),
+            row.get('unit_cost'),
+            row.get('total_value'),
+            row.get('status'),
+        ])
+
+    return response
+
+
+@login_required
+def mobile_export_requests_report_csv(request):
+    role = getattr(request.user, 'role', '')
+    if role not in ['admin', 'inventory_manager']:
+        return redirect('mobile_dashboard')
+
+    from apps.reports.generators import generate_requests_report
+
+    date_from_raw = (request.GET.get('date_from') or '').strip()
+    date_to_raw = (request.GET.get('date_to') or '').strip()
+    date_from = parse_date(date_from_raw)
+    date_to = parse_date(date_to_raw)
+
+    report = generate_requests_report(
+        date_from.isoformat() if date_from else None,
+        date_to.isoformat() if date_to else None,
+    )
+
+    filename = 'requests_report.csv'
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response.write('\ufeff')
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'ID', 'Requester', 'Item', 'Quantity', 'Status', 'Urgent',
+        'Reason', 'Created At', 'Reviewed By', 'Reviewed At',
+    ])
+    for row in report.get('requests', []):
+        writer.writerow([
+            row.get('id'),
+            row.get('requester'),
+            row.get('item'),
+            row.get('quantity'),
+            row.get('status'),
+            'Yes' if row.get('is_urgent') else 'No',
+            row.get('reason'),
+            row.get('created_at'),
+            row.get('reviewed_by') or '',
+            row.get('reviewed_at') or '',
+        ])
+
+    return response
 
 
 # ─────────────────────────────────────────────────
