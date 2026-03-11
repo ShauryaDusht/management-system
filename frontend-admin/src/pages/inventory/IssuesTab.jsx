@@ -267,25 +267,6 @@ export default function IssuesTab({ userRole }) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 10, marginBottom: 12 }}>
-          <Card style={{ padding: '12px 14px' }}>
-            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Filtered Total</div>
-            <div style={{ fontSize: 24, fontWeight: 800 }}>{totals.total}</div>
-          </Card>
-          <Card style={{ padding: '12px 14px' }}>
-            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Ongoing</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#c2410c' }}>{totals.ongoing}</div>
-          </Card>
-          <Card style={{ padding: '12px 14px' }}>
-            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Completed</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#065f46' }}>{totals.completed}</div>
-          </Card>
-          <Card style={{ padding: '12px 14px' }}>
-            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Assets Out</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#991b1b' }}>{totals.assetsOut}</div>
-          </Card>
-        </div>
-
         <div
           style={{
             display: 'flex',
@@ -363,6 +344,25 @@ export default function IssuesTab({ userRole }) {
           >
             {downloadingReport ? 'Downloading...' : 'Download CSV'}
           </Btn>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 10, marginTop: 12 }}>
+          <Card style={{ padding: '12px 14px' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Filtered Total</div>
+            <div style={{ fontSize: 24, fontWeight: 800 }}>{totals.total}</div>
+          </Card>
+          <Card style={{ padding: '12px 14px' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Ongoing</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: '#c2410c' }}>{totals.ongoing}</div>
+          </Card>
+          <Card style={{ padding: '12px 14px' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Completed</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: '#065f46' }}>{totals.completed}</div>
+          </Card>
+          <Card style={{ padding: '12px 14px' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Assets Out</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: '#991b1b' }}>{totals.assetsOut}</div>
+          </Card>
         </div>
       </Card>
 
