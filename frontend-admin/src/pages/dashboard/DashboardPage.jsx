@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { inventoryAPI, reportsAPI } from '../../api/inventory'
 import { hkAPI } from '../../api/housekeeping'
-import { Badge, Btn, Card, Spinner, StatCard } from '../../components/ui'
+import { Btn, Card, Spinner, StatCard } from '../../components/ui'
 import { DonutChart, TrendArea } from '../../components/ui/Charts'
 import AdminLayout from '../../layout/AdminLayout'
 
@@ -376,32 +376,6 @@ export default function DashboardPage() {
         )}
       </Card>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginTop: 20 }}>
-        <Card>
-          <div style={{ fontWeight: 700, marginBottom: 10 }}>Inventory Tasks</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Badge value="pending" />
-            <Badge value="approved" />
-            <Badge value="issued" />
-          </div>
-        </Card>
-        <Card>
-          <div style={{ fontWeight: 700, marginBottom: 10 }}>Housekeeping Tasks</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Badge value="ongoing" />
-            <Badge value="completed" />
-            <Badge value="pending" />
-          </div>
-        </Card>
-        <Card>
-          <div style={{ fontWeight: 700, marginBottom: 10 }}>Horticulture Tasks</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Badge value="pending" />
-            <Badge value="ongoing" />
-            <Badge value="completed" />
-          </div>
-        </Card>
-      </div>
     </AdminLayout>
   )
 }
