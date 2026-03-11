@@ -423,6 +423,21 @@ function supportsCameraHK() {
   return secure && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 }
 
+function openNativeCameraFallback(form) {
+  if (!form) return false;
+  var input = form.querySelector('.js-photo-file-input');
+  if (!input) return false;
+  try {
+    input.setAttribute('accept', 'image/*');
+    input.setAttribute('capture', 'environment');
+    input.click();
+    return true;
+  } catch (err) {
+    hkLog('📷 Native camera fallback failed.', err);
+    return false;
+  }
+}
+
 function updatePhotoPreview(form, file, meta) {
   if (!form || !file) return;
   var selected = form.querySelector('.js-photo-selected');
@@ -741,18 +756,29 @@ document.addEventListener('DOMContentLoaded', function() {
       var formId = openBtn.getAttribute('data-form-id');
       var form = document.getElementById(formId);
       if (!form) return;
+      showPhotoError(form, '');
       if (!supportsCameraHK() || !hkCamera) {
-        var secure = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        showPhotoError(form, secure ? 'Camera is not available on this device/browser.' : 'Camera requires secure HTTPS connection.');
+        var openedFallback = openNativeCameraFallback(form);
+        if (!openedFallback) {
+          showPhotoError(form, 'Camera is not available on this device/browser.');
+        }
         return;
       }
-      hkCamera.open({
-        taskId: openBtn.getAttribute('data-task-id') || '',
-        taskName: openBtn.getAttribute('data-task-name') || 'Task',
-        onUsePhoto: function(payload) {
-          setFormFile(form, payload.file, payload);
+      try {
+        hkCamera.open({
+          taskId: openBtn.getAttribute('data-task-id') || '',
+          taskName: openBtn.getAttribute('data-task-name') || 'Task',
+          onUsePhoto: function(payload) {
+            setFormFile(form, payload.file, payload);
+          }
+        });
+      } catch (err) {
+        hkLog('📷 Camera modal failed, falling back to native picker.', err);
+        var fallbackOpened = openNativeCameraFallback(form);
+        if (!fallbackOpened) {
+          showPhotoError(form, 'Camera is not available on this device/browser.');
         }
-      });
+      }
       return;
     }
 

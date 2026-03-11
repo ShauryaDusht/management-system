@@ -67,7 +67,7 @@ export default function RequestsTab({ userRole }) {
 
   const canCreate = isSupervisor || isCaretaker
   const canReview = userRole === 'admin'
-  const canCreatePurchase = userRole === 'inventory_manager' || userRole === 'admin'
+  const canCreatePurchase = userRole === 'inventory_manager'
 
   const load = async () => {
     setLoading(true)
