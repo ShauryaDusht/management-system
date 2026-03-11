@@ -19,11 +19,16 @@ Dockerized management system with Django backend + React admin frontend.
 - Admin SPA (Vite dev): http://localhost:5173/
 - Staff login portal: http://localhost:8000/portal/login/
 
+## Recent Highlights
+- Inventory manager flow now includes a stronger issued-items review experience with pending-action handling and improved dashboard visibility.
+- Reporting has been expanded for inventory operations (monthly procurement history, CSV/PDF export support, area-wise issued reports, and activity trends).
+- Housekeeping and inventory reporting support has expanded with role-oriented CSV workflows and better cross-module visibility from admin dashboards.
+
 ## Phase Progress Snapshot
 - Phase 1 (Core inventory workflow): ██████████ 100%
 - Phase 2 (Returns/tracking/integrity): ██████████ 100%
 - Phase 3 (Manual reporting/procurement): ██████████ 100%
-- Phase 4 (Advanced analytics/dashboard UX): ███░░░░░░░ 30%
+- Phase 4 (Advanced analytics/dashboard UX): ████████░░ 80%
 
 ## Quick Start (Docker)
 1. **Clone the repository**
