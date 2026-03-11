@@ -147,7 +147,7 @@ export default function DashboardPage() {
       icon: '📋',
       color: 'var(--orange-600)',
       sub: 'Open approval queue',
-      to: '/housekeeping?tab=assign_stock',
+      to: '/inventory?tab=requests',
     },
   ]
 
