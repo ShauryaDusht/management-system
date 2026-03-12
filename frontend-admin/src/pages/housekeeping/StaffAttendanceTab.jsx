@@ -9,13 +9,6 @@ function todayISO() {
   return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10)
 }
 
-function formatDateTime(value) {
-  if (!value) return '-'
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return value
-  return d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
-}
-
 const STATUS_META = {
   present: { label: 'Present', color: '#166534', bg: '#dcfce7' },
   absent: { label: 'Absent', color: '#b91c1c', bg: '#fee2e2' },
@@ -84,7 +77,6 @@ export default function StaffAttendanceTab() {
       Array.isArray(r.staff_areas) && r.staff_areas.length ? r.staff_areas.join(', ') : '-',
       r.staff_role || '-',
       <StatusPill status={r.status} />,
-      formatDateTime(r.marked_at),
     ]),
     [rows],
   )
@@ -123,7 +115,7 @@ export default function StaffAttendanceTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Staff Name', 'Area', 'Role', 'Status', 'Time Marked']}
+            headers={['Staff Name', 'Area', 'Role', 'Status']}
             rows={tableRows}
             emptyMsg="No staff attendance records found for this date."
           />
