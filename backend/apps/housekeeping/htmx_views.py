@@ -22,6 +22,7 @@ from .models import (
     HKArea,
     HKAreaStock,
     HKAttendanceRecord,
+    HKStaffAttendanceRecord,
     HKDailyRecord,
     HKExtraWork,
     HKInchargeAssignment,
@@ -1305,6 +1306,11 @@ def hk_attendance(request):
             HKAttendanceRecord.objects.filter(
                 worker__in=workers, date=sel_date, half=half, is_submitted=False
             ).update(is_submitted=True, submitted_at=timezone.now())
+            HKStaffAttendanceRecord.objects.get_or_create(
+                staff=user,
+                date=sel_date,
+                defaults={"status": "present", "source": "auto_attendance"},
+            )
             return redirect(f"/housekeeping/attendance/?date={sel_date}{area_param}")
 
         elif action == "mark":

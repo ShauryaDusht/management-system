@@ -289,6 +289,42 @@ class HKAttendanceRecord(models.Model):
         return f"{self.worker.name} | {self.date} | {self.half} | {self.status}"
 
 
+class HKStaffAttendanceRecord(models.Model):
+    STATUS_CHOICES = [
+        ('present', 'Present'),
+        ('absent', 'Absent'),
+        ('leave', 'On Leave'),
+    ]
+    SOURCE_CHOICES = [
+        ('auto_attendance', 'Auto Attendance'),
+        ('auto_leave', 'Auto Leave'),
+        ('manual', 'Manual'),
+    ]
+    staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='hk_staff_attendance_records',
+    )
+    date = models.DateField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='present')
+    marked_at = models.DateTimeField(auto_now_add=True)
+    source = models.CharField(max_length=30, choices=SOURCE_CHOICES, default='manual')
+    note = models.CharField(max_length=200, blank=True)
+    leave_request = models.ForeignKey(
+        'HKLeaveRequest',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='staff_attendance_records',
+    )
+
+    class Meta:
+        unique_together = ['staff', 'date']
+
+    def __str__(self):
+        return f"{self.staff} | {self.date} | {self.status}"
+
+
 class HKSundayIncharge(models.Model):
     """
     Set on Saturday: which worker covers Sunday for this area.

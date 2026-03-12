@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     HKArea, HKUserArea, HKWorker, HKScheduleTemplate, HKDailyRecord,
-    HKExtraWork, HKAttendanceRecord, HKSundayIncharge,
+    HKExtraWork, HKAttendanceRecord, HKStaffAttendanceRecord, HKSundayIncharge,
     HKAreaStock, HKStockRequest, HKAlert, HKRelieverSubstitution,
     HKTaskWorkerAssignment, HKWorkerSelectionRequest,
     HKLeaveRequest, HKInchargeAssignment, HKInchargeNotification,
@@ -69,6 +69,14 @@ class HKAttendanceRecordAdmin(admin.ModelAdmin):
     list_display = ('worker', 'date', 'half', 'status', 'is_submitted', 'marked_by')
     list_filter = ('status', 'half', 'is_submitted', 'date', 'worker__area')
     search_fields = ('worker__name',)
+    date_hierarchy = 'date'
+
+
+@admin.register(HKStaffAttendanceRecord)
+class HKStaffAttendanceRecordAdmin(admin.ModelAdmin):
+    list_display = ('staff', 'date', 'status', 'source', 'marked_at', 'leave_request')
+    list_filter = ('status', 'source', 'date')
+    search_fields = ('staff__username', 'staff__first_name', 'staff__last_name')
     date_hierarchy = 'date'
 
 

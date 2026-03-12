@@ -8,6 +8,7 @@ from .models import (
     HKInchargeNotification,
     HKLeaveRequest,
     HKScheduleTemplate,
+    HKStaffAttendanceRecord,
     HKStockRequest,
     HKUserArea,
     HKWorkerSelectionRequest,
@@ -114,6 +115,29 @@ class HKDailyRecordSerializer(serializers.ModelSerializer):
     def get_assigned_by_name(self, obj):
         if obj.assigned_by:
             return obj.assigned_by.get_full_name() or obj.assigned_by.username
+        return ''
+
+
+class HKStaffAttendanceRecordSerializer(serializers.ModelSerializer):
+    staff_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HKStaffAttendanceRecord
+        fields = [
+            'id',
+            'staff',
+            'staff_name',
+            'date',
+            'status',
+            'source',
+            'note',
+            'marked_at',
+            'leave_request',
+        ]
+
+    def get_staff_name(self, obj):
+        if obj.staff:
+            return obj.staff.get_full_name() or obj.staff.username
         return ''
 
 

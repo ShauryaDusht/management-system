@@ -1,18 +1,26 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../context/NotificationContext'
-import { Tabs } from '../../components/ui'
+import { Spinner, Tabs } from '../../components/ui'
 import AdminLayout from '../../layout/AdminLayout'
-import AttendanceTab from './AttendanceTab'
 import OverviewTab from './OverviewTab'
 import SectionsTab from './SectionsTab'
 import SupervisorsTab from './SupervisorsTab'
 import WorkersTab from './WorkersTab'
-import WorkerSelectionTab from './WorkerSelectionTab'
-import InchargeApprovalsTab from './InchargeApprovalsTab'
-import GalleryTab from './GalleryTab'
+
+const AttendanceTab = lazy(() => import('./AttendanceTab'))
+const StaffAttendanceTab = lazy(() => import('./StaffAttendanceTab'))
+const WorkerSelectionTab = lazy(() => import('./WorkerSelectionTab'))
+const InchargeApprovalsTab = lazy(() => import('./InchargeApprovalsTab'))
+const GalleryTab = lazy(() => import('./GalleryTab'))
+
+const tabFallback = (
+  <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
+    <Spinner />
+  </div>
+)
 
 export default function HousekeepingPage() {
   const { user } = useAuth()
@@ -25,7 +33,8 @@ export default function HousekeepingPage() {
         { key: 'overview', label: 'Overview' },
         { key: 'directory', label: 'Sections + Staff' },
         { key: 'supervisors', label: 'Supervisors' },
-        { key: 'attendance', label: 'Attendance' },
+        { key: 'attendance', label: 'Worker Attendance' },
+        { key: 'staff_attendance', label: 'Staff Attendance' },
         { key: 'workers', label: 'Workers' },
         { key: 'worker_selection', label: 'Worker Selection' },
       ]
@@ -88,11 +97,32 @@ export default function HousekeepingPage() {
       {active === 'overview' && <OverviewTab />}
       {active === 'directory' && <SectionsTab />}
       {active === 'supervisors' && <SupervisorsTab />}
-      {active === 'attendance' && <AttendanceTab />}
+      {active === 'attendance' && (
+        <Suspense fallback={tabFallback}>
+          <AttendanceTab />
+        </Suspense>
+      )}
+      {active === 'staff_attendance' && (
+        <Suspense fallback={tabFallback}>
+          <StaffAttendanceTab />
+        </Suspense>
+      )}
       {active === 'workers' && <WorkersTab />}
-      {active === 'worker_selection' && <WorkerSelectionTab />}
-      {active === 'incharge_approvals' && <InchargeApprovalsTab />}
-      {active === 'gallery' && <GalleryTab />}
+      {active === 'worker_selection' && (
+        <Suspense fallback={tabFallback}>
+          <WorkerSelectionTab />
+        </Suspense>
+      )}
+      {active === 'incharge_approvals' && (
+        <Suspense fallback={tabFallback}>
+          <InchargeApprovalsTab />
+        </Suspense>
+      )}
+      {active === 'gallery' && (
+        <Suspense fallback={tabFallback}>
+          <GalleryTab />
+        </Suspense>
+      )}
     </AdminLayout>
   )
 }

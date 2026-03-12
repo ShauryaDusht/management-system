@@ -32,6 +32,7 @@ from .models import (
     HKArea,
     HKAttendanceRecord,
     HKDailyRecord,
+    HKStaffAttendanceRecord,
     HKInchargeAssignment,
     HKInchargeNotification,
     HKLeaveRequest,
@@ -49,6 +50,7 @@ from .serializers import (
     HKInchargeNotificationSerializer,
     HKLeaveRequestSerializer,
     HKScheduleTemplateSerializer,
+    HKStaffAttendanceRecordSerializer,
     HKStockRequestSerializer,
     HKStockRequestStatusSerializer,
     HKWorkerSerializer,
@@ -908,6 +910,30 @@ class HKInchargeAssignmentDecisionView(APIView):
             )
 
             if decision == 'approved':
+                leave_request = assignment.leave_request
+                leave_att, _ = HKStaffAttendanceRecord.objects.get_or_create(
+                    staff=assignment.leave_staff,
+                    date=assignment.leave_date,
+                    defaults={
+                        'status': 'leave',
+                        'source': 'auto_leave',
+                        'leave_request': leave_request,
+                    },
+                )
+                leave_att.status = 'leave'
+                leave_att.source = 'auto_leave'
+                leave_att.leave_request = leave_request
+                leave_att.save(update_fields=['status', 'source', 'leave_request'])
+
+                HKStaffAttendanceRecord.objects.get_or_create(
+                    staff=assignment.assigned_staff,
+                    date=assignment.leave_date,
+                    defaults={
+                        'status': 'present',
+                        'source': 'auto_attendance',
+                    },
+                )
+
                 _push_incharge_notice(
                     assignment.leave_staff,
                     assignment,
@@ -1077,6 +1103,21 @@ class HKAttendanceSummaryView(APIView):
             })
 
         return Response(summary)
+
+
+class HKStaffAttendanceListView(ListAPIView):
+    serializer_class = HKStaffAttendanceRecordSerializer
+    permission_classes = [IsAdminOrHousekeepingManager]
+
+    def get_queryset(self):
+        date_str = self.request.query_params.get('date', str(timezone.localdate()))
+        parsed_date = _parse_iso_date(date_str) or timezone.localdate()
+        return (
+            HKStaffAttendanceRecord.objects
+            .select_related('staff', 'leave_request')
+            .filter(date=parsed_date)
+            .order_by('staff__first_name', 'staff__username', 'id')
+        )
 
 
 class HKStockRequestListView(ListAPIView):
