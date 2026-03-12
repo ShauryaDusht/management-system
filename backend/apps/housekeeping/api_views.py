@@ -1402,6 +1402,7 @@ def _file_field_url(request, file_field):
 
 
 def _serialize_gallery_photo(request, record):
+    before_url = _file_field_url(request, record.photo_before)
     photo_url = _file_field_url(request, record.photo_after)
     thumbnail_url = _file_field_url(request, record.photo_after_thumbnail) or photo_url
     staff_name = ''
@@ -1417,6 +1418,8 @@ def _serialize_gallery_photo(request, record):
     capture_ts = record.photo_after_captured_at or record.completed_at
     return {
         'id': record.id,
+        'beforeUrl': before_url,
+        'beforeThumbnailUrl': before_url,
         'url': photo_url,
         'thumbnailUrl': thumbnail_url,
         'taskId': record.schedule_id,

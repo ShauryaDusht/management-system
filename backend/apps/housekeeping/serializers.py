@@ -98,6 +98,7 @@ class HKDailyRecordSerializer(serializers.ModelSerializer):
             'assigned_at',
             'started_at',
             'completed_at',
+            'photo_before',
             'photo_after',
             'photo_after_thumbnail',
             'photo_after_captured_at',

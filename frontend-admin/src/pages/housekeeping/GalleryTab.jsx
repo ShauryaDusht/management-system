@@ -58,6 +58,44 @@ function handlePhotoError(e) {
   el.src = PHOTO_PLACEHOLDER
 }
 
+function PhotoTile({ src, label, height, onClick }) {
+  return (
+    <div style={{ position: 'relative', width: '100%', height }}>
+      <img
+        src={src}
+        alt={label}
+        loading="lazy"
+        onError={handlePhotoError}
+        onClick={onClick}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', cursor: onClick ? 'pointer' : 'default' }}
+      />
+      <span style={{ position: 'absolute', left: 6, top: 6, background: 'rgba(15,23,42,.72)', color: '#fff', fontSize: 10, borderRadius: 6, padding: '2px 6px', letterSpacing: 0.2 }}>
+        {label}
+      </span>
+    </div>
+  )
+}
+
+function BeforeAfterBlock({ beforeUrl, afterUrl, height, layout = 'split', onBeforeClick, onAfterClick }) {
+  if (!beforeUrl) {
+    return <PhotoTile src={afterUrl} label="After" height={height} onClick={onAfterClick} />
+  }
+  if (layout === 'stack') {
+    return (
+      <div style={{ display: 'grid', gap: 6 }}>
+        <PhotoTile src={beforeUrl} label="Before" height={height} onClick={onBeforeClick} />
+        <PhotoTile src={afterUrl} label="After" height={height} onClick={onAfterClick} />
+      </div>
+    )
+  }
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+      <PhotoTile src={beforeUrl} label="Before" height={height} onClick={onBeforeClick} />
+      <PhotoTile src={afterUrl} label="After" height={height} onClick={onAfterClick} />
+    </div>
+  )
+}
+
 export default function GalleryTab() {
   const [view, setView] = useState('area')
   const [sort, setSort] = useState('newest')
@@ -83,7 +121,12 @@ export default function GalleryTab() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [box, setBox] = useState({ open: false, photos: [], index: 0, loading: false })
+  const [box, setBox] = useState({ open: false, photos: [], index: 0, loading: false, view: 'after' })
+
+  const resolveView = useCallback((photo, preferred = 'after') => {
+    if (!photo?.beforeUrl) return 'after'
+    return preferred === 'before' ? 'before' : 'after'
+  }, [])
 
   const params = useMemo(() => {
     const p = {}
@@ -120,6 +163,8 @@ export default function GalleryTab() {
           ...task,
           recentPhotos: list(task.recentPhotos).map((photo) => ({
             ...photo,
+            beforeUrl: normalizeMediaUrl(photo.beforeUrl),
+            beforeThumbnailUrl: normalizeMediaUrl(photo.beforeThumbnailUrl || photo.beforeUrl),
             url: normalizeMediaUrl(photo.url),
             thumbnailUrl: normalizeMediaUrl(photo.thumbnailUrl || photo.url),
           })),
@@ -128,6 +173,8 @@ export default function GalleryTab() {
       setGrouped(groupedIncoming)
       const incoming = list(p.data?.photos).map((photo) => ({
         ...photo,
+        beforeUrl: normalizeMediaUrl(photo.beforeUrl),
+        beforeThumbnailUrl: normalizeMediaUrl(photo.beforeThumbnailUrl || photo.beforeUrl),
         url: normalizeMediaUrl(photo.url),
         thumbnailUrl: normalizeMediaUrl(photo.thumbnailUrl || photo.url),
       }))
@@ -166,20 +213,26 @@ export default function GalleryTab() {
     return Array.from(m.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
   }, [photos])
 
-  const openLightbox = async (photo) => {
+  const openLightbox = async (photo, preferredView = 'after') => {
     if (!photo) return
-    setBox({ open: true, photos: [photo], index: 0, loading: true })
+    const initialView = resolveView(photo, preferredView)
+    setBox({ open: true, photos: [photo], index: 0, loading: true, view: initialView })
     try {
       const { data } = await hkAPI.getGalleryTaskPhotos(photo.taskId, params)
       const arr = list(data?.photos).map((p) => ({
         ...p,
+        beforeUrl: normalizeMediaUrl(p.beforeUrl),
+        beforeThumbnailUrl: normalizeMediaUrl(p.beforeThumbnailUrl || p.beforeUrl),
         url: normalizeMediaUrl(p.url),
         thumbnailUrl: normalizeMediaUrl(p.thumbnailUrl || p.url),
       }))
       const idx = Math.max(0, arr.findIndex((p) => Number(p.id) === Number(photo.id)))
-      setBox({ open: true, photos: arr.length ? arr : [photo], index: arr.length ? idx : 0, loading: false })
+      const selected = arr.length ? arr[idx] : photo
+      const view = resolveView(selected, preferredView)
+      setBox({ open: true, photos: arr.length ? arr : [photo], index: arr.length ? idx : 0, loading: false, view })
     } catch {
-      setBox({ open: true, photos: [photo], index: 0, loading: false })
+      const view = resolveView(photo, preferredView)
+      setBox({ open: true, photos: [photo], index: 0, loading: false, view })
     }
   }
 
@@ -187,16 +240,20 @@ export default function GalleryTab() {
     setBox((prev) => {
       if (!prev.photos.length) return prev
       const idx = (prev.index + delta + prev.photos.length) % prev.photos.length
-      return { ...prev, index: idx }
+      const next = prev.photos[idx]
+      const view = resolveView(next, prev.view)
+      return { ...prev, index: idx, view }
     })
-  }, [])
+  }, [resolveView])
 
   const current = box.photos[box.index]
+  const currentView = resolveView(current, box.view)
+  const currentUrl = currentView === 'before' ? (current?.beforeUrl || current?.url) : current?.url
 
   useEffect(() => {
     if (!box.open) return undefined
     const onKey = (e) => {
-      if (e.key === 'Escape') setBox({ open: false, photos: [], index: 0, loading: false })
+      if (e.key === 'Escape') setBox({ open: false, photos: [], index: 0, loading: false, view: 'after' })
       if (e.key === 'ArrowLeft') moveBox(-1)
       if (e.key === 'ArrowRight') moveBox(1)
     }
@@ -246,14 +303,16 @@ export default function GalleryTab() {
   }
 
   const listRows = photos.map((p) => [
-    <img
-      src={p.thumbnailUrl || p.url}
-      alt={p.taskName}
-      loading="lazy"
-      onError={handlePhotoError}
-      onClick={() => openLightbox(p)}
-      style={{ width: 58, height: 48, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', cursor: 'pointer' }}
-    />,
+    <div style={{ width: 80 }}>
+      <BeforeAfterBlock
+        beforeUrl={p.beforeThumbnailUrl}
+        afterUrl={p.thumbnailUrl || p.url}
+        height={36}
+        layout="stack"
+        onBeforeClick={() => openLightbox(p, 'before')}
+        onAfterClick={() => openLightbox(p, 'after')}
+      />
+    </div>,
     p.areaName || '-',
     p.taskName || '-',
     p.staffName || '-',
@@ -354,14 +413,14 @@ export default function GalleryTab() {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 8, marginTop: 8 }}>
                       {list(task.recentPhotos).map((p) => (
-                        <img
+                        <BeforeAfterBlock
                           key={p.id}
-                          src={p.thumbnailUrl || p.url}
-                          loading="lazy"
-                          alt={p.taskName}
-                          onError={handlePhotoError}
-                          onClick={() => openLightbox(p)}
-                          style={{ width: '100%', height: 96, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', cursor: 'pointer' }}
+                          beforeUrl={p.beforeThumbnailUrl}
+                          afterUrl={p.thumbnailUrl || p.url}
+                          height={96}
+                          layout="split"
+                          onBeforeClick={() => openLightbox(p, 'before')}
+                          onAfterClick={() => openLightbox(p, 'after')}
                         />
                       ))}
                     </div>
@@ -376,13 +435,13 @@ export default function GalleryTab() {
           {photos.map((p) => (
             <Card key={p.id} noPad>
               <div style={{ position: 'relative' }}>
-                <img
-                  src={p.thumbnailUrl || p.url}
-                  alt={p.taskName}
-                  loading="lazy"
-                  onError={handlePhotoError}
-                  onClick={() => openLightbox(p)}
-                  style={{ width: '100%', height: 145, objectFit: 'cover', cursor: 'pointer' }}
+                <BeforeAfterBlock
+                  beforeUrl={p.beforeThumbnailUrl}
+                  afterUrl={p.thumbnailUrl || p.url}
+                  height={145}
+                  layout="split"
+                  onBeforeClick={() => openLightbox(p, 'before')}
+                  onAfterClick={() => openLightbox(p, 'after')}
                 />
                 <span style={{ position: 'absolute', left: 8, bottom: 8, background: 'rgba(15,23,42,.72)', color: '#fff', fontSize: 10, borderRadius: 8, padding: '2px 6px' }}>
                   {(p.format || 'img').toUpperCase()} · {fmtBytes(p.fileSize)}
@@ -414,7 +473,7 @@ export default function GalleryTab() {
       {box.open ? (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.86)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}
-          onClick={(e) => { if (e.target === e.currentTarget) setBox({ open: false, photos: [], index: 0, loading: false }) }}
+          onClick={(e) => { if (e.target === e.currentTarget) setBox({ open: false, photos: [], index: 0, loading: false, view: 'after' }) }}
           onTouchStart={(e) => { e.currentTarget.dataset.touchStartX = String(e.changedTouches?.[0]?.clientX || 0) }}
           onTouchEnd={(e) => {
             const start = Number(e.currentTarget.dataset.touchStartX || 0)
@@ -430,20 +489,33 @@ export default function GalleryTab() {
                 <Btn size="sm" variant="secondary" onClick={() => moveBox(1)}>Next</Btn>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
-                {current ? <Btn size="sm" variant="secondary" onClick={() => window.open(normalizeMediaUrl(current.url), '_blank')}>Download</Btn> : null}
-                <Btn size="sm" variant="danger" onClick={() => setBox({ open: false, photos: [], index: 0, loading: false })}>Close</Btn>
+                {current ? <Btn size="sm" variant="secondary" onClick={() => window.open(normalizeMediaUrl(currentUrl), '_blank')}>Download</Btn> : null}
+                <Btn size="sm" variant="danger" onClick={() => setBox({ open: false, photos: [], index: 0, loading: false, view: 'after' })}>Close</Btn>
               </div>
             </div>
+            {current?.beforeUrl ? (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 6, paddingBottom: 6 }}>
+                <Btn size="sm" variant={currentView === 'before' ? 'primary' : 'secondary'} onClick={() => setBox((prev) => ({ ...prev, view: 'before' }))}>Before</Btn>
+                <Btn size="sm" variant={currentView === 'after' ? 'primary' : 'secondary'} onClick={() => setBox((prev) => ({ ...prev, view: 'after' }))}>After</Btn>
+              </div>
+            ) : null}
             <div style={{ minHeight: 380, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {box.loading ? (
                 <Spinner />
               ) : current ? (
-                <img
-                  src={current.url}
-                  alt={current.taskName}
-                  onError={handlePhotoError}
-                  style={{ maxWidth: '100%', maxHeight: '72vh', objectFit: 'contain' }}
-                />
+                <div style={{ position: 'relative', maxWidth: '100%', maxHeight: '72vh' }}>
+                  <img
+                    src={currentUrl}
+                    alt={current.taskName}
+                    onError={handlePhotoError}
+                    style={{ maxWidth: '100%', maxHeight: '72vh', objectFit: 'contain' }}
+                  />
+                  {current?.beforeUrl ? (
+                    <span style={{ position: 'absolute', left: 10, top: 10, background: 'rgba(15,23,42,.72)', color: '#fff', fontSize: 11, borderRadius: 6, padding: '3px 7px', letterSpacing: 0.2 }}>
+                      {currentView === 'before' ? 'Before' : 'After'}
+                    </span>
+                  ) : null}
+                </div>
               ) : null}
             </div>
             <div style={{ padding: '8px 10px', color: '#dbeafe', fontSize: 12 }}>
