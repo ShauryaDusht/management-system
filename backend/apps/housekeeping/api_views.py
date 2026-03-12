@@ -14,7 +14,12 @@ from django.core.files.base import ContentFile
 from django.core.cache import cache
 from django.utils import timezone
 from django.utils.text import slugify
-from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView
+from rest_framework.generics import (
+    ListAPIView,
+    ListCreateAPIView,
+    RetrieveUpdateAPIView,
+    RetrieveUpdateDestroyAPIView,
+)
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -156,9 +161,13 @@ def _supervisor_report_filename(supervisor, month, year):
     return f"supervisor_{safe_name}_{month:02d}_{year}.csv"
 
 
-class HKAreaListView(ListAPIView):
+class HKAreaListCreateView(ListCreateAPIView):
     serializer_class = HKAreaSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method in {'POST', 'PUT', 'PATCH', 'DELETE'}:
+            return [IsAdminOrHousekeepingManager()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         from django.db.models import Prefetch
@@ -1028,16 +1037,27 @@ class HKDailyRecordListView(ListAPIView):
         return qs.filter(date=parsed_date)
 
 
-class HKScheduleTemplateListView(ListAPIView):
+class HKScheduleTemplateListCreateView(ListCreateAPIView):
     serializer_class = HKScheduleTemplateSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrHousekeepingManager]
 
     def get_queryset(self):
-        qs = HKScheduleTemplate.objects.select_related('area').filter(is_active=True)
+        qs = HKScheduleTemplate.objects.select_related('area')
         area = self.request.query_params.get('area')
+        active = (self.request.query_params.get('is_active') or self.request.query_params.get('active') or '').strip().lower()
         if area:
             qs = qs.filter(area_id=area)
-        return qs
+        if active in {'true', '1', 'yes', 'on'}:
+            qs = qs.filter(is_active=True)
+        elif active in {'false', '0', 'no', 'off'}:
+            qs = qs.filter(is_active=False)
+        return qs.order_by('area__name', 'worker_tag', 'order', 'start_time')
+
+
+class HKScheduleTemplateDetailView(RetrieveUpdateDestroyAPIView):
+    serializer_class = HKScheduleTemplateSerializer
+    permission_classes = [IsAdminOrHousekeepingManager]
+    queryset = HKScheduleTemplate.objects.select_related('area')
 
 
 class HKAttendanceSummaryView(APIView):

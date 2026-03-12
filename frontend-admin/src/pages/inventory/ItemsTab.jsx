@@ -24,11 +24,26 @@ function itemStatus(item) {
   if (Number(item.available_quantity || 0) <= Number(item.threshold_quantity || 0)) return 'low_stock'
   return 'in_stock'
 }
+
+function getErrorMessage(error, fallback) {
+  const detail = error?.response?.data?.detail || error?.response?.data?.message
+  if (detail) return detail
+  const data = error?.response?.data
+  if (data !== undefined) {
+    if (typeof data === 'string') return data
+    try {
+      return JSON.stringify(data)
+    } catch {
+      // ignore JSON stringify errors
+    }
+  }
+  return fallback
+}
 const EMPTY_ITEM = {
   name: '',
   category: '',
   item_type: 'consumable',
-  unit: 'pcs',
+  unit: 'pieces',
   total_quantity: 0,
   available_quantity: 0,
   threshold_quantity: 1,
@@ -47,12 +62,15 @@ export default function ItemsTab({ userRole }) {
   const [typeFilter, setTypeFilter] = useState('all')
   const [adjustModal, setAdjustModal] = useState(null)
   const [addModal, setAddModal] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
   const [historyModal, setHistoryModal] = useState(null)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyEvents, setHistoryEvents] = useState([])
   const [adjustData, setAdjustData] = useState({ action: 'increase', quantity: 1 })
   const [newItem, setNewItem] = useState(EMPTY_ITEM)
+  const [formErrors, setFormErrors] = useState({})
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const canAdmin = userRole === 'admin'
 
@@ -69,7 +87,7 @@ export default function ItemsTab({ userRole }) {
       setCategories(asList(categoriesRes.data))
       setSummary(summaryRes.data || null)
     } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to load inventory items.')
+      setError(getErrorMessage(e, 'Failed to load inventory items.'))
     } finally {
       setLoading(false)
     }
@@ -120,7 +138,7 @@ export default function ItemsTab({ userRole }) {
       setAdjustModal(null)
       await load()
     } catch (e) {
-      setError(e.response?.data?.detail || 'Stock adjustment failed.')
+      setError(getErrorMessage(e, 'Stock adjustment failed.'))
     }
   }
 
@@ -132,17 +150,25 @@ export default function ItemsTab({ userRole }) {
       const { data } = await inventoryAPI.getItemHistory(item.id)
       setHistoryEvents(data?.events || [])
     } catch (e) {
-      setError(e.response?.data?.detail || 'Could not load item history.')
+      setError(getErrorMessage(e, 'Could not load item history.'))
     } finally {
       setHistoryLoading(false)
     }
   }
 
   const doCreateItem = async () => {
+    const trimmedName = String(newItem.name || '').trim()
+    const errors = {}
+    if (!trimmedName) errors.name = 'Name is required.'
+    if (!newItem.category) errors.category = 'Category is required.'
+    setFormErrors(errors)
+    if (Object.keys(errors).length > 0) return
+
     setSaving(true)
     try {
       await inventoryAPI.createItem({
         ...newItem,
+        name: trimmedName,
         total_quantity: Number(newItem.total_quantity || 0),
         available_quantity: Number(newItem.available_quantity || 0),
         threshold_quantity: Number(newItem.threshold_quantity || 0),
@@ -150,11 +176,27 @@ export default function ItemsTab({ userRole }) {
       })
       setAddModal(false)
       setNewItem(EMPTY_ITEM)
+      setFormErrors({})
       await load()
     } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to create item.')
+      setError(getErrorMessage(e, 'Failed to create item.'))
     } finally {
       setSaving(false)
+    }
+  }
+
+  const doDeleteItem = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setError('')
+    try {
+      await inventoryAPI.deleteItem(deleteTarget.id)
+      setDeleteTarget(null)
+      await load()
+    } catch (e) {
+      setError(getErrorMessage(e, 'Failed to delete item.'))
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -229,7 +271,15 @@ export default function ItemsTab({ userRole }) {
               Assets
             </Btn>
             {canAdmin && (
-              <Btn style={{ marginLeft: 'auto' }} onClick={() => setAddModal(true)}>
+              <Btn
+                style={{ marginLeft: 'auto' }}
+                onClick={() => {
+                  setError('')
+                  setFormErrors({})
+                  setNewItem(EMPTY_ITEM)
+                  setAddModal(true)
+                }}
+              >
                 + Add Item
               </Btn>
             )}
@@ -252,6 +302,11 @@ export default function ItemsTab({ userRole }) {
                 {canAdmin && (
                   <Btn size="sm" variant="ghost" onClick={() => setAdjustModal(it)}>
                     Adjust
+                  </Btn>
+                )}
+                {canAdmin && (
+                  <Btn size="sm" variant="danger" onClick={() => setDeleteTarget(it)}>
+                    Delete
                   </Btn>
                 )}
                 <Btn size="sm" variant="ghost" onClick={() => openHistory(it)}>
@@ -326,12 +381,21 @@ export default function ItemsTab({ userRole }) {
 
       <Modal
         open={addModal}
-        onClose={() => setAddModal(false)}
+        onClose={() => {
+          setAddModal(false)
+          setFormErrors({})
+        }}
         title="Add Inventory Item"
         width={620}
         footer={
           <>
-            <Btn variant="ghost" onClick={() => setAddModal(false)}>
+            <Btn
+              variant="ghost"
+              onClick={() => {
+                setAddModal(false)
+                setFormErrors({})
+              }}
+            >
               Cancel
             </Btn>
             <Btn onClick={doCreateItem} disabled={saving}>
@@ -342,12 +406,30 @@ export default function ItemsTab({ userRole }) {
       >
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <Field label="Name" required>
-            <Input value={newItem.name} onChange={(e) => setNewItem((p) => ({ ...p, name: e.target.value }))} />
+            <Input
+              value={newItem.name}
+              onChange={(e) => {
+                const value = e.target.value
+                setNewItem((p) => ({ ...p, name: value }))
+                if (formErrors.name && value.trim()) {
+                  setFormErrors((p) => ({ ...p, name: '' }))
+                }
+              }}
+            />
+            {formErrors.name && (
+              <div style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>{formErrors.name}</div>
+            )}
           </Field>
           <Field label="Category" required>
             <SelectField
               value={newItem.category}
-              onChange={(e) => setNewItem((p) => ({ ...p, category: e.target.value }))}
+              onChange={(e) => {
+                const value = e.target.value
+                setNewItem((p) => ({ ...p, category: value }))
+                if (formErrors.category && value) {
+                  setFormErrors((p) => ({ ...p, category: '' }))
+                }
+              }}
             >
               <option value="">Choose category</option>
               {categories.map((c) => (
@@ -356,6 +438,9 @@ export default function ItemsTab({ userRole }) {
                 </option>
               ))}
             </SelectField>
+            {formErrors.category && (
+              <div style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>{formErrors.category}</div>
+            )}
           </Field>
           <Field label="Type">
             <SelectField
@@ -367,7 +452,18 @@ export default function ItemsTab({ userRole }) {
             </SelectField>
           </Field>
           <Field label="Unit">
-            <Input value={newItem.unit} onChange={(e) => setNewItem((p) => ({ ...p, unit: e.target.value }))} />
+            <SelectField
+              value={newItem.unit}
+              onChange={(e) => setNewItem((p) => ({ ...p, unit: e.target.value }))}
+            >
+              <option value="pieces">Pieces</option>
+              <option value="litres">Litres</option>
+              <option value="kg">Kilograms</option>
+              <option value="metres">Metres</option>
+              <option value="packets">Packets</option>
+              <option value="bottles">Bottles</option>
+              <option value="boxes">Boxes</option>
+            </SelectField>
           </Field>
           <Field label="Total Quantity">
             <Input
@@ -432,6 +528,26 @@ export default function ItemsTab({ userRole }) {
             </div>
           ))
         )}
+      </Modal>
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Delete Item"
+        footer={
+          <>
+            <Btn variant="ghost" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+              Cancel
+            </Btn>
+            <Btn variant="danger" onClick={doDeleteItem} disabled={deleting}>
+              {deleting ? 'Deleting...' : 'Delete'}
+            </Btn>
+          </>
+        }
+      >
+        <p style={{ fontSize: 14, color: 'var(--text-2)' }}>
+          Delete item <strong>{deleteTarget?.name}</strong>? This action cannot be undone.
+        </p>
       </Modal>
     </div>
   )

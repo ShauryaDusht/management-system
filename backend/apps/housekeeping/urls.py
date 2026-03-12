@@ -4,7 +4,7 @@ from . import api_views
 from .htmx_urls import urlpatterns as htmx_patterns
 
 api_urlpatterns = [
-    path('areas/', api_views.HKAreaListView.as_view(), name='hk-api-areas'),
+    path('areas/', api_views.HKAreaListCreateView.as_view(), name='hk-api-areas'),
     path('workers/', api_views.HKWorkerListView.as_view(), name='hk-api-workers'),
     path('workers/create/', api_views.HKWorkerCreateView.as_view(), name='hk-api-workers-create'),
     path('workers/<int:pk>/', api_views.HKWorkerDetailView.as_view(), name='hk-api-workers-detail'),
@@ -63,7 +63,8 @@ api_urlpatterns = [
     path('leave-requests/', api_views.HKLeaveRequestListView.as_view(), name='hk-api-leave-requests'),
     path('incharge-notifications/', api_views.HKInchargeNotificationListView.as_view(), name='hk-api-incharge-notifications'),
     path('daily-records/', api_views.HKDailyRecordListView.as_view(), name='hk-api-records'),
-    path('schedule-templates/', api_views.HKScheduleTemplateListView.as_view(), name='hk-api-templates'),
+    path('schedule-templates/', api_views.HKScheduleTemplateListCreateView.as_view(), name='hk-api-templates'),
+    path('schedule-templates/<int:pk>/', api_views.HKScheduleTemplateDetailView.as_view(), name='hk-api-templates-detail'),
     path('attendance-summary/', api_views.HKAttendanceSummaryView.as_view(), name='hk-api-attendance'),
     path('staff-attendance/', api_views.HKStaffAttendanceListView.as_view(), name='hk-api-staff-attendance'),
     path('stock-requests/', api_views.HKStockRequestListView.as_view(), name='hk-api-stock'),

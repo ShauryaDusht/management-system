@@ -2,6 +2,7 @@ import api from './client'
 
 export const hkAPI = {
   getAreas: () => api.get('/housekeeping/areas/'),
+  createArea: (payload) => api.post('/housekeeping/areas/', payload),
   getWorkers: (areaId) =>
     api.get('/housekeeping/workers/', { params: areaId ? { area: areaId } : {} }),
   getWorkerReport: (workerId, month, year) =>
@@ -79,8 +80,13 @@ export const hkAPI = {
   assignAreaTask: (payload) => api.post('/housekeeping/assign-area-task/', payload),
   promoteTaskToDaily: (recordId) =>
     api.post('/housekeeping/promote-task-to-daily/', { record_id: recordId }),
+  listScheduleTemplates: (params = {}) =>
+    api.get('/housekeeping/schedule-templates/', { params }),
+  createScheduleTemplate: (payload) => api.post('/housekeeping/schedule-templates/', payload),
+  updateScheduleTemplate: (id, payload) => api.patch(`/housekeeping/schedule-templates/${id}/`, payload),
+  deleteScheduleTemplate: (id) => api.delete(`/housekeeping/schedule-templates/${id}/`),
   getScheduleTemplates: (areaId) =>
-    api.get('/housekeeping/schedule-templates/', { params: { area: areaId } }),
+    api.get('/housekeeping/schedule-templates/', { params: areaId ? { area: areaId } : {} }),
   getStockRequests: () => api.get('/housekeeping/stock-requests/'),
   updateStockRequestStatus: (id, status) =>
     api.patch(`/housekeeping/stock-requests/${id}/status/`, { status }),

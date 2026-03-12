@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useNotifications } from '../context/NotificationContext'
+import { APP_NAME } from '../shared/constants'
 
 function Badge({ count, yellow }) {
   if (!count || count === 0) return null
@@ -79,14 +80,32 @@ export default function Sidebar() {
               width: 36, height: 36, borderRadius: 10,
               background: 'linear-gradient(135deg, var(--green-700), var(--orange-600))',
               display: 'grid', placeItems: 'center',
-              fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0,
+              color: '#fff', flexShrink: 0,
             }}
+            aria-hidden="true"
           >
-            CM
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 20h16M6 19V9M10 19V9M14 19V9M18 19V9M4 9l8-4 8 4"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </div>
           <div>
-            <div style={{ color: '#fff', fontWeight: 800, fontSize: 13, lineHeight: 1.2 }}>IITGN Campus</div>
-            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>Management System</div>
+            <div
+              style={{
+                color: '#fff',
+                fontWeight: 800,
+                fontSize: 13,
+                lineHeight: 1.2,
+                letterSpacing: 0.2,
+              }}
+            >
+              {APP_NAME}
+            </div>
           </div>
         </div>
       </div>

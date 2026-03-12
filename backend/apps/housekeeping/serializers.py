@@ -24,7 +24,7 @@ class HKAreaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = HKArea
-        fields = ['id', 'name', 'area_type', 'is_active', 'worker_count', 'caretakers', 'caretaker_ids']
+        fields = ['id', 'name', 'area_type', 'description', 'is_active', 'worker_count', 'caretakers', 'caretaker_ids']
 
     def get_worker_count(self, obj):
         if hasattr(obj, '_worker_count_cache'):
