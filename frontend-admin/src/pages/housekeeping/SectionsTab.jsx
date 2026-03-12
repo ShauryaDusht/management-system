@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
 import { usersAPI } from '../../api/users'
 import { Alert, Btn, Card, DataTable, Modal, SelectField, Spinner } from '../../components/ui'
-import { triggerDownload } from '../../shared/utils'
+import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
+import { getAreaGroup, triggerDownload } from '../../shared/utils'
 
 export default function SectionsTab() {
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [areas, setAreas] = useState([])
   const [users, setUsers] = useState([])
@@ -15,54 +14,36 @@ export default function SectionsTab() {
 
   const [assignModal, setAssignModal] = useState(null)
   const [selectedUserId, setSelectedUserId] = useState('')
-  const [assignSaving, setAssignSaving] = useState(false)
   const [downloadingReport, setDownloadingReport] = useState(false)
-
-  const areaGroup = (areaName, areaType) => {
-    const n = String(areaName || '').trim()
-    if (/^Academic Block\s+([1-9]|1[0-3])$/i.test(n)) return 'academic'
-    if (['Academic Common Area', 'New AB U-Shape', 'New Academy'].includes(n)) return 'academic'
-    if (['hostel common area', 'common area'].includes(n.toLowerCase())) return 'hostels'
-    if (areaType === 'hostel') return 'hostels'
-    return 'others'
-  }
 
   const extractBlockNo = (name) => {
     const m = String(name || '').match(/Academic Block\s+(\d+)/i)
     return m ? Number(m[1]) : Number.POSITIVE_INFINITY
   }
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const [{ data: areaData }, { data: caretakersData }, { data: supervisorsData }] =
-        await Promise.all([
-          hkAPI.getAreas(),
-          usersAPI.getByRole('caretaker'),
-          usersAPI.getByRole('supervisor'),
-        ])
-
-      const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
-        .filter((a) => a.name?.toLowerCase() !== 'hostels reliever')
-      const caretakers = Array.isArray(caretakersData) ? caretakersData : caretakersData?.results || []
-      const supervisors = Array.isArray(supervisorsData) ? supervisorsData : supervisorsData?.results || []
-
-      setAreas(areaList)
-      setUsers([
-        ...caretakers.map((u) => ({ ...u, role: 'caretaker' })),
-        ...supervisors.map((u) => ({ ...u, role: 'supervisor' })),
+  const { run: runAction, saving: assignSaving, error: actionError, clearError } = useAsyncAction()
+  const { loading, error: loadError, reload } = useAsyncLoad(async () => {
+    const [{ data: areaData }, { data: caretakersData }, { data: supervisorsData }] =
+      await Promise.all([
+        hkAPI.getAreas(),
+        usersAPI.getByRole('caretaker'),
+        usersAPI.getByRole('supervisor'),
       ])
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to load sections/staff data.')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
-  useEffect(() => {
-    loadData()
-  }, [loadData])
+    const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
+      .filter((a) => a.name?.toLowerCase() !== 'hostels reliever')
+    const caretakers = Array.isArray(caretakersData) ? caretakersData : caretakersData?.results || []
+    const supervisors = Array.isArray(supervisorsData) ? supervisorsData : supervisorsData?.results || []
+
+    setAreas(areaList)
+    setUsers([
+      ...caretakers.map((u) => ({ ...u, role: 'caretaker' })),
+      ...supervisors.map((u) => ({ ...u, role: 'supervisor' })),
+    ])
+    return null
+  }, [], 'Failed to load sections/staff data.')
+
+  const error = actionError || loadError
 
   const userById = useMemo(() => {
     const map = new Map()
@@ -112,8 +93,8 @@ export default function SectionsTab() {
     })
 
     return rows.sort((a, b) => {
-      const ga = areaGroup(a.areaName, a.areaType)
-      const gb = areaGroup(b.areaName, b.areaType)
+      const ga = getAreaGroup(a.areaName, a.areaType)
+      const gb = getAreaGroup(b.areaName, b.areaType)
       const order = { hostels: 0, academic: 1, others: 2 }
       if (order[ga] !== order[gb]) return order[ga] - order[gb]
       if (ga === 'academic') {
@@ -131,7 +112,7 @@ export default function SectionsTab() {
     () =>
       areaClassFilter === 'all'
         ? allRows
-        : allRows.filter((r) => areaGroup(r.areaName, r.areaType) === areaClassFilter),
+        : allRows.filter((r) => getAreaGroup(r.areaName, r.areaType) === areaClassFilter),
     [allRows, areaClassFilter],
   )
 
@@ -159,20 +140,24 @@ export default function SectionsTab() {
       currentUserLabel: row.assignedTo,
     })
     setSelectedUserId(row.userId ? String(row.userId) : '')
-    setError('')
+    clearError()
     setSuccess('')
   }
 
   const submitAssignmentChange = async () => {
     if (!assignModal) return
     if (!selectedUserId) {
-      setError('Please select supervisor/caretaker.')
+      await runAction(async () => {
+        throw new Error('Please select supervisor/caretaker.')
+      })
       return
     }
 
     const newUser = users.find((u) => String(u.id) === String(selectedUserId))
     if (!newUser) {
-      setError('Selected user is invalid.')
+      await runAction(async () => {
+        throw new Error('Selected user is invalid.')
+      })
       return
     }
 
@@ -182,32 +167,31 @@ export default function SectionsTab() {
       return
     }
 
-    setAssignSaving(true)
-    setError('')
+    clearError()
     setSuccess('')
     try {
-      const areaId = assignModal.areaId
-      const updates = []
+      await runAction(async () => {
+        const areaId = assignModal.areaId
+        const updates = []
 
-      if (assignModal.currentUserId) {
-        const oldUser = users.find((u) => u.id === assignModal.currentUserId)
-        if (oldUser) {
-          const oldAreaIds = (oldUser.assigned_area_ids || []).filter((id) => id !== areaId)
-          updates.push(usersAPI.update(oldUser.id, { area_ids: oldAreaIds }))
+        if (assignModal.currentUserId) {
+          const oldUser = users.find((u) => u.id === assignModal.currentUserId)
+          if (oldUser) {
+            const oldAreaIds = (oldUser.assigned_area_ids || []).filter((id) => id !== areaId)
+            updates.push(usersAPI.update(oldUser.id, { area_ids: oldAreaIds }))
+          }
         }
-      }
 
-      const newAreaIds = Array.from(new Set([...(newUser.assigned_area_ids || []), areaId]))
-      updates.push(usersAPI.update(newUser.id, { area_ids: newAreaIds }))
+        const newAreaIds = Array.from(new Set([...(newUser.assigned_area_ids || []), areaId]))
+        updates.push(usersAPI.update(newUser.id, { area_ids: newAreaIds }))
 
-      await Promise.all(updates)
-      setAssignModal(null)
-      setSuccess(`Updated assignment for ${assignModal.areaName}.`)
-      await loadData()
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to update assignment.')
-    } finally {
-      setAssignSaving(false)
+        await Promise.all(updates)
+        setAssignModal(null)
+        setSuccess(`Updated assignment for ${assignModal.areaName}.`)
+        await reload()
+      }, 'Failed to update assignment.')
+    } catch {
+      // runAction handles errors
     }
   }
 
@@ -222,45 +206,47 @@ export default function SectionsTab() {
     triggerDownload(blob, filename)
   }
 
-  const downloadAreaInchargeReport = () => {
+  const downloadAreaInchargeReport = async () => {
     if (!filteredRows.length) {
-      setError('No rows available to generate report for selected segment.')
+      await runAction(async () => {
+        throw new Error('No rows available to generate report for selected segment.')
+      })
       return
     }
 
     setDownloadingReport(true)
-    setError('')
+    clearError()
     setSuccess('')
     try {
-      const headers = [
-        'Area Name',
-        'Caretaker / Supervisor',
-        'Username',
-        'Phone No',
-        'Worker Count',
-        'Status',
-        'Change Supervisor/Caretaker',
-      ]
-      const rows = filteredRows.map((row) => [
-        row.areaName,
-        row.role === '-' ? '-' : `${row.assignedTo} (${row.role})`,
-        row.username,
-        row.phone,
-        row.workerCount,
-        row.role === '-' ? 'Unassigned' : row.isActive ? 'Active' : 'Inactive',
-        row.userId ? 'Change' : 'Assign',
-      ])
-      const csvBody = [headers, ...rows]
-        .map((r) => r.map((cell) => toCsvValue(cell)).join(','))
-        .join('\n')
+      await runAction(async () => {
+        const headers = [
+          'Area Name',
+          'Caretaker / Supervisor',
+          'Username',
+          'Phone No',
+          'Worker Count',
+          'Status',
+          'Change Supervisor/Caretaker',
+        ]
+        const rows = filteredRows.map((row) => [
+          row.areaName,
+          row.role === '-' ? '-' : `${row.assignedTo} (${row.role})`,
+          row.username,
+          row.phone,
+          row.workerCount,
+          row.role === '-' ? 'Unassigned' : row.isActive ? 'Active' : 'Inactive',
+          row.userId ? 'Change' : 'Assign',
+        ])
+        const csvBody = [headers, ...rows]
+          .map((r) => r.map((cell) => toCsvValue(cell)).join(','))
+          .join('\n')
 
-      const now = new Date()
-      const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-      const filename = `area_incharge_report_${areaClassFilter}_${stamp}.csv`
-      triggerCsvDownload(csvBody, filename)
-      setSuccess('Area-wise incharge report generated.')
-    } catch {
-      setError('Failed to generate area-wise incharge report.')
+        const now = new Date()
+        const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+        const filename = `area_incharge_report_${areaClassFilter}_${stamp}.csv`
+        triggerCsvDownload(csvBody, filename)
+        setSuccess('Area-wise incharge report generated.')
+      }, 'Failed to generate area-wise incharge report.')
     } finally {
       setDownloadingReport(false)
     }

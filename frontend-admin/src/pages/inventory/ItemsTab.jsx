@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
-import { asList, getErrorMessage } from '../../shared/utils'
+import { asList } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
+import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import {
   Alert,
   Badge,
@@ -16,6 +17,7 @@ import {
   StatCard,
 } from '../../components/ui'
 import { BarGroupChart } from '../../components/ui/Charts'
+import ConfirmModal from '../../shared/components/ConfirmModal'
 
 
 
@@ -39,8 +41,7 @@ const EMPTY_ITEM = {
 }
 
 export default function ItemsTab({ userRole }) {
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { run: runAction, saving, error: actionError, clearError } = useAsyncAction()
   const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
   const [summary, setSummary] = useState(null)
@@ -48,6 +49,7 @@ export default function ItemsTab({ userRole }) {
   const [typeFilter, setTypeFilter] = useState('all')
   const [adjustModal, setAdjustModal] = useState(null)
   const [addModal, setAddModal] = useState(false)
+  const [editItem, setEditItem] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [historyModal, setHistoryModal] = useState(null)
   const [historyLoading, setHistoryLoading] = useState(false)
@@ -55,33 +57,52 @@ export default function ItemsTab({ userRole }) {
   const [adjustData, setAdjustData] = useState({ action: 'increase', quantity: 1 })
   const [newItem, setNewItem] = useState(EMPTY_ITEM)
   const [formErrors, setFormErrors] = useState({})
-  const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   const canAdmin = userRole === 'admin'
+  const { loading, error: loadError, reload } = useAsyncLoad(async () => {
+    const [itemsRes, categoriesRes, summaryRes] = await Promise.all([
+      inventoryAPI.getItems(),
+      inventoryAPI.getCategories(),
+      inventoryAPI.getDashboard(),
+    ])
+    setItems(asList(itemsRes.data))
+    setCategories(asList(categoriesRes.data))
+    setSummary(summaryRes.data || null)
+    return null
+  }, [])
 
-  const load = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const [itemsRes, categoriesRes, summaryRes] = await Promise.all([
-        inventoryAPI.getItems(),
-        inventoryAPI.getCategories(),
-        inventoryAPI.getDashboard(),
-      ])
-      setItems(asList(itemsRes.data))
-      setCategories(asList(categoriesRes.data))
-      setSummary(summaryRes.data || null)
-    } catch (e) {
-      setError(getErrorMessage(e, 'Failed to load inventory items.'))
-    } finally {
-      setLoading(false)
+  const error = actionError || loadError
+
+  const resolveCategoryId = (item) => {
+    if (item?.category) return item.category
+    if (item?.category_id) return item.category_id
+    if (item?.category_name) {
+      const match = categories.find((c) => c.name === item.category_name)
+      return match?.id || ''
     }
+    return ''
   }
 
-  useEffect(() => {
-    load()
-  }, [])
+  const openEdit = (item) => {
+    if (!item) return
+    clearError()
+    setFormErrors({})
+    setEditItem(item)
+    setNewItem({
+      name: item.name || '',
+      category: resolveCategoryId(item),
+      item_type: item.item_type || 'consumable',
+      unit: item.unit || 'pieces',
+      total_quantity: item.total_quantity ?? 0,
+      available_quantity: item.available_quantity ?? 0,
+      threshold_quantity: item.threshold_quantity ?? 1,
+      unit_cost: item.unit_cost ?? 0,
+      description: item.description || '',
+      location: item.location || '',
+    })
+    setAddModal(true)
+  }
 
   const filtered = useMemo(() => {
     return items.filter((it) => {
@@ -119,13 +140,11 @@ export default function ItemsTab({ userRole }) {
 
   const doAdjust = async () => {
     if (!adjustModal) return
-    try {
+    await runAction(async () => {
       await inventoryAPI.adjustStock(adjustModal.id, adjustData.action, Number(adjustData.quantity || 0))
       setAdjustModal(null)
-      await load()
-    } catch (e) {
-      setError(getErrorMessage(e, 'Stock adjustment failed.'))
-    }
+      await reload()
+    }, 'Stock adjustment failed.')
   }
 
   const openHistory = async (item) => {
@@ -133,10 +152,10 @@ export default function ItemsTab({ userRole }) {
     setHistoryLoading(true)
     setHistoryEvents([])
     try {
-      const { data } = await inventoryAPI.getItemHistory(item.id)
-      setHistoryEvents(data?.events || [])
-    } catch (e) {
-      setError(getErrorMessage(e, 'Could not load item history.'))
+      await runAction(async () => {
+        const { data } = await inventoryAPI.getItemHistory(item.id)
+        setHistoryEvents(data?.events || [])
+      }, 'Could not load item history.')
     } finally {
       setHistoryLoading(false)
     }
@@ -150,37 +169,37 @@ export default function ItemsTab({ userRole }) {
     setFormErrors(errors)
     if (Object.keys(errors).length > 0) return
 
-    setSaving(true)
-    try {
-      await inventoryAPI.createItem({
+    await runAction(async () => {
+      const payload = {
         ...newItem,
         name: trimmedName,
         total_quantity: Number(newItem.total_quantity || 0),
         available_quantity: Number(newItem.available_quantity || 0),
         threshold_quantity: Number(newItem.threshold_quantity || 0),
         unit_cost: Number(newItem.unit_cost || 0),
-      })
+      }
+      if (editItem) {
+        await inventoryAPI.updateItem(editItem.id, payload)
+      } else {
+        await inventoryAPI.createItem(payload)
+      }
       setAddModal(false)
+      setEditItem(null)
       setNewItem(EMPTY_ITEM)
       setFormErrors({})
-      await load()
-    } catch (e) {
-      setError(getErrorMessage(e, 'Failed to create item.'))
-    } finally {
-      setSaving(false)
-    }
+      await reload()
+    }, editItem ? 'Failed to update item.' : 'Failed to create item.')
   }
 
   const doDeleteItem = async () => {
     if (!deleteTarget) return
     setDeleting(true)
-    setError('')
     try {
-      await inventoryAPI.deleteItem(deleteTarget.id)
-      setDeleteTarget(null)
-      await load()
-    } catch (e) {
-      setError(getErrorMessage(e, 'Failed to delete item.'))
+      await runAction(async () => {
+        await inventoryAPI.deleteItem(deleteTarget.id)
+        setDeleteTarget(null)
+        await reload()
+      }, 'Failed to delete item.')
     } finally {
       setDeleting(false)
     }
@@ -260,9 +279,10 @@ export default function ItemsTab({ userRole }) {
               <Btn
                 style={{ marginLeft: 'auto' }}
                 onClick={() => {
-                  setError('')
+                  clearError()
                   setFormErrors({})
                   setNewItem(EMPTY_ITEM)
+                  setEditItem(null)
                   setAddModal(true)
                 }}
               >
@@ -288,6 +308,11 @@ export default function ItemsTab({ userRole }) {
                 {canAdmin && (
                   <Btn size="sm" variant="ghost" onClick={() => setAdjustModal(it)}>
                     Adjust
+                  </Btn>
+                )}
+                {canAdmin && (
+                  <Btn size="sm" variant="secondary" onClick={() => openEdit(it)}>
+                    Edit
                   </Btn>
                 )}
                 {canAdmin && (
@@ -370,8 +395,9 @@ export default function ItemsTab({ userRole }) {
         onClose={() => {
           setAddModal(false)
           setFormErrors({})
+          setEditItem(null)
         }}
-        title="Add Inventory Item"
+        title={editItem ? `Edit Item â€” ${editItem.name || ''}` : 'Add Inventory Item'}
         width={620}
         footer={
           <>
@@ -380,12 +406,13 @@ export default function ItemsTab({ userRole }) {
               onClick={() => {
                 setAddModal(false)
                 setFormErrors({})
+                setEditItem(null)
               }}
             >
               Cancel
             </Btn>
             <Btn onClick={doCreateItem} disabled={saving}>
-              {saving ? 'Saving…' : 'Create'}
+              {saving ? 'Saving…' : editItem ? 'Save Changes' : 'Create'}
             </Btn>
           </>
         }
@@ -516,25 +543,16 @@ export default function ItemsTab({ userRole }) {
         )}
       </Modal>
 
-      <Modal
+      <ConfirmModal
         open={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
         title="Delete Item"
-        footer={
-          <>
-            <Btn variant="ghost" onClick={() => setDeleteTarget(null)} disabled={deleting}>
-              Cancel
-            </Btn>
-            <Btn variant="danger" onClick={doDeleteItem} disabled={deleting}>
-              {deleting ? 'Deleting...' : 'Delete'}
-            </Btn>
-          </>
-        }
-      >
-        <p style={{ fontSize: 14, color: 'var(--text-2)' }}>
-          Delete item <strong>{deleteTarget?.name}</strong>? This action cannot be undone.
-        </p>
-      </Modal>
+        message={`Delete item ${deleteTarget?.name || ''}? This action cannot be undone.`}
+        confirmLabel={deleting ? 'Deleting...' : 'Delete'}
+        onConfirm={doDeleteItem}
+        onCancel={() => setDeleteTarget(null)}
+        confirmDisabled={deleting}
+        cancelDisabled={deleting}
+      />
     </div>
   )
 }

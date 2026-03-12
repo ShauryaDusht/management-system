@@ -1,45 +1,34 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import { asList } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
+import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField } from '../../components/ui'
 
 
 
 export default function StockLogTab({ userRole }) {
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [entries, setEntries] = useState([])
   const [items, setItems] = useState([])
   const [modal, setModal] = useState(false)
-  const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ item: '', quantity_added: 1, notes: '' })
   const canAdmin = userRole === 'admin'
 
-  const load = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const [entryRes, itemRes] = await Promise.all([
-        inventoryAPI.getStockEntries(),
-        inventoryAPI.getItems(),
-      ])
-      setEntries(asList(entryRes.data))
-      setItems(asList(itemRes.data))
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to load stock log.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { run: runAction, saving, error: actionError } = useAsyncAction()
+  const { loading, error: loadError, reload } = useAsyncLoad(async () => {
+    const [entryRes, itemRes] = await Promise.all([
+      inventoryAPI.getStockEntries(),
+      inventoryAPI.getItems(),
+    ])
+    setEntries(asList(entryRes.data))
+    setItems(asList(itemRes.data))
+    return null
+  }, [], 'Failed to load stock log.')
 
-  useEffect(() => {
-    load()
-  }, [])
+  const error = actionError || loadError
 
   const addStock = async () => {
-    setSaving(true)
-    try {
+    await runAction(async () => {
       await inventoryAPI.createStockEntry({
         item: Number(form.item),
         quantity_added: Number(form.quantity_added),
@@ -47,12 +36,8 @@ export default function StockLogTab({ userRole }) {
       })
       setModal(false)
       setForm({ item: '', quantity_added: 1, notes: '' })
-      await load()
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to add stock.')
-    } finally {
-      setSaving(false)
-    }
+      await reload()
+    }, 'Failed to add stock.')
   }
 
   return (

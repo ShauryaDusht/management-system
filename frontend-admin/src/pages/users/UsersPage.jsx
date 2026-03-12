@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
 import { usersAPI } from '../../api/users'
@@ -15,6 +15,8 @@ import {
   Spinner,
 } from '../../components/ui'
 import AdminLayout from '../../layout/AdminLayout'
+import ConfirmModal from '../../shared/components/ConfirmModal'
+import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 
 const ROLES = [
   'admin',
@@ -47,37 +49,26 @@ const EMPTY = {
 export default function UsersPage() {
   const [users, setUsers] = useState([])
   const [areas, setAreas] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
-  const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const [usersRes, areasRes] = await Promise.all([
-        usersAPI.getAll(),
-        hkAPI.getAreas().catch(() => ({ data: [] })),
-      ])
-      setUsers(Array.isArray(usersRes.data) ? usersRes.data : usersRes.data.results || [])
-      const areaList = Array.isArray(areasRes.data) ? areasRes.data : areasRes.data.results || []
-      setAreas(areaList)
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to load users. Make sure you are logged in as Admin.')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const { run: runAction, saving, error: actionError } = useAsyncAction()
+  const { loading, error: loadError, reload } = useAsyncLoad(async () => {
+    const [usersRes, areasRes] = await Promise.all([
+      usersAPI.getAll(),
+      hkAPI.getAreas().catch(() => ({ data: [] })),
+    ])
+    setUsers(Array.isArray(usersRes.data) ? usersRes.data : usersRes.data.results || [])
+    const areaList = Array.isArray(areasRes.data) ? areasRes.data : areasRes.data.results || []
+    setAreas(areaList)
+    return null
+  }, [], 'Failed to load users. Make sure you are logged in as Admin.')
 
-  useEffect(() => {
-    load()
-  }, [load])
+  const error = actionError || loadError
 
   const openCreate = () => {
     setForm(EMPTY)
@@ -109,46 +100,43 @@ export default function UsersPage() {
       setFormError('Password required for new users.')
       return
     }
-    setSaving(true)
-    setFormError('')
-    try {
-      const payload = {
-        username: form.username,
-        first_name: form.first_name,
-        last_name: form.last_name,
-        email: form.email,
-        phone: form.phone,
-        role: form.role,
-        area_ids: HK_ROLES.includes(form.role) ? form.area_ids : [],
+    await runAction(async () => {
+      setFormError('')
+      try {
+        const payload = {
+          username: form.username,
+          first_name: form.first_name,
+          last_name: form.last_name,
+          email: form.email,
+          phone: form.phone,
+          role: form.role,
+          area_ids: HK_ROLES.includes(form.role) ? form.area_ids : [],
+        }
+
+        if (form.password) payload.password = form.password
+
+        if (modal.mode === 'create') {
+          await usersAPI.create(payload)
+        } else {
+          await usersAPI.update(modal.user.id, payload)
+        }
+
+        setModal(null)
+        await reload()
+      } catch (e) {
+        const d = e.response?.data
+        setFormError(d ? JSON.stringify(d) : 'Save failed.')
       }
-
-      if (form.password) payload.password = form.password
-
-      if (modal.mode === 'create') {
-        await usersAPI.create(payload)
-      } else {
-        await usersAPI.update(modal.user.id, payload)
-      }
-
-      setModal(null)
-      await load()
-    } catch (e) {
-      const d = e.response?.data
-      setFormError(d ? JSON.stringify(d) : 'Save failed.')
-    } finally {
-      setSaving(false)
-    }
+    })
   }
 
   const doDelete = async () => {
     if (!deleteTarget) return
-    try {
+    await runAction(async () => {
       await usersAPI.delete(deleteTarget.id)
       setDeleteTarget(null)
-      await load()
-    } catch {
-      setError('Delete failed.')
-    }
+      await reload()
+    }, 'Delete failed.')
   }
 
   const toggleArea = (areaId) => {
@@ -432,25 +420,13 @@ export default function UsersPage() {
         </Field>
       </Modal>
 
-      <Modal
+      <ConfirmModal
         open={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
         title="Delete User"
-        footer={
-          <>
-            <Btn variant="ghost" onClick={() => setDeleteTarget(null)}>
-              Cancel
-            </Btn>
-            <Btn variant="danger" onClick={doDelete}>
-              Delete
-            </Btn>
-          </>
-        }
-      >
-        <p style={{ fontSize: 14, color: 'var(--text-2)' }}>
-          Delete user <strong>{deleteTarget?.username}</strong>? This cannot be undone.
-        </p>
-      </Modal>
+        message={`Delete user ${deleteTarget?.username || ''}? This cannot be undone.`}
+        onConfirm={doDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </AdminLayout>
   )
 }

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
 import { usersAPI } from '../../api/users'
+import { getAreaGroup } from '../../shared/utils'
+import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import {
   Alert,
   Btn,
@@ -14,6 +16,7 @@ import {
   Spinner,
 } from '../../components/ui'
 import WorkerReportModal from './WorkerReportModal'
+import ConfirmModal from '../../shared/components/ConfirmModal'
 
 const EMPTY_FORM = {
   first_name: '',
@@ -61,9 +64,6 @@ export default function WorkersTab() {
   const [supervisors, setSupervisors] = useState([])
   const [selectedArea, setSelectedArea] = useState('')
   const [areaClassFilter, setAreaClassFilter] = useState('all')
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
 
   const [modal, setModal] = useState(null) // null | { mode: 'create' | 'edit', worker? }
   const [form, setForm] = useState(EMPTY_FORM)
@@ -71,54 +71,35 @@ export default function WorkersTab() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [reportWorker, setReportWorker] = useState(null)
 
-  const areaGroup = (areaName, areaType) => {
-    const n = String(areaName || '').trim()
-    if (/^Academic Block\s+([1-9]|1[0-3])$/i.test(n)) return 'academic'
-    if (['Academic Common Area', 'New AB U-Shape', 'New Academy'].includes(n)) return 'academic'
-    if (['hostel common area', 'common area', 'hostels reliever'].includes(n.toLowerCase())) return 'hostels'
-    if (areaType === 'hostel') return 'hostels'
-    return 'others'
-  }
-
   const extractBlockNo = (name) => {
     const m = String(name || '').match(/Academic Block\s+(\d+)/i)
     return m ? Number(m[1]) : Number.POSITIVE_INFINITY
   }
 
-  const load = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const [areaRes, workerRes, supRes, ctRes] = await Promise.all([
-        hkAPI.getAreas(),
-        hkAPI.getWorkers(),
-        usersAPI.getByRole('supervisor').catch(() => ({ data: [] })),
-        usersAPI.getByRole('caretaker').catch(() => ({ data: [] })),
-      ])
+  const { run: runAction, saving } = useAsyncAction()
+  const { loading, error, reload } = useAsyncLoad(async () => {
+    const [areaRes, workerRes, supRes, ctRes] = await Promise.all([
+      hkAPI.getAreas(),
+      hkAPI.getWorkers(),
+      usersAPI.getByRole('supervisor').catch(() => ({ data: [] })),
+      usersAPI.getByRole('caretaker').catch(() => ({ data: [] })),
+    ])
 
-      const areaList = Array.isArray(areaRes.data) ? areaRes.data : areaRes.data?.results || []
-      const workerList = Array.isArray(workerRes.data) ? workerRes.data : workerRes.data?.results || []
-      const supList = Array.isArray(supRes.data) ? supRes.data : supRes.data?.results || []
-      const ctList = Array.isArray(ctRes.data) ? ctRes.data : ctRes.data?.results || []
+    const areaList = Array.isArray(areaRes.data) ? areaRes.data : areaRes.data?.results || []
+    const workerList = Array.isArray(workerRes.data) ? workerRes.data : workerRes.data?.results || []
+    const supList = Array.isArray(supRes.data) ? supRes.data : supRes.data?.results || []
+    const ctList = Array.isArray(ctRes.data) ? ctRes.data : ctRes.data?.results || []
 
-      const byId = new Map()
-      ;[...supList, ...ctList].forEach((u) => {
-        if (!byId.has(u.id)) byId.set(u.id, u)
-      })
+    const byId = new Map()
+    ;[...supList, ...ctList].forEach((u) => {
+      if (!byId.has(u.id)) byId.set(u.id, u)
+    })
 
-      setAreas(areaList)
-      setWorkers(workerList)
-      setSupervisors(Array.from(byId.values()))
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to load workers.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    load()
-  }, [])
+    setAreas(areaList)
+    setWorkers(workerList)
+    setSupervisors(Array.from(byId.values()))
+    return null
+  }, [], 'Failed to load workers.')
 
   const areaById = useMemo(() => {
     const map = new Map()
@@ -129,11 +110,11 @@ export default function WorkersTab() {
   const filteredAreaOptions = useMemo(() => {
     const list = areaClassFilter === 'all'
       ? areas
-      : areas.filter((a) => areaGroup(a.name, a.area_type) === areaClassFilter)
+      : areas.filter((a) => getAreaGroup(a.name, a.area_type) === areaClassFilter)
 
     return [...list].sort((a, b) => {
-      const ga = areaGroup(a.name, a.area_type)
-      const gb = areaGroup(b.name, b.area_type)
+      const ga = getAreaGroup(a.name, a.area_type)
+      const gb = getAreaGroup(b.name, b.area_type)
       const order = { hostels: 0, academic: 1, others: 2 }
       if (order[ga] !== order[gb]) return order[ga] - order[gb]
       if (ga === 'academic') {
@@ -148,7 +129,7 @@ export default function WorkersTab() {
   useEffect(() => {
     if (!selectedArea) return
     const areaObj = areaById.get(Number(selectedArea))
-    if (areaObj && areaClassFilter !== 'all' && areaGroup(areaObj.name, areaObj.area_type) !== areaClassFilter) {
+    if (areaObj && areaClassFilter !== 'all' && getAreaGroup(areaObj.name, areaObj.area_type) !== areaClassFilter) {
       setSelectedArea('')
     }
   }, [areaById, areaClassFilter, selectedArea])
@@ -158,7 +139,7 @@ export default function WorkersTab() {
     if (areaClassFilter !== 'all') {
       list = list.filter((w) => {
         const areaObj = areaById.get(w.area)
-        return areaGroup(areaObj?.name, areaObj?.area_type) === areaClassFilter
+        return getAreaGroup(areaObj?.name, areaObj?.area_type) === areaClassFilter
       })
     }
     if (selectedArea) {
@@ -230,37 +211,37 @@ export default function WorkersTab() {
       return
     }
 
-    setSaving(true)
-    setFormError('')
-    try {
-      if (modal.mode === 'create') {
-        await hkAPI.createWorker(payload)
-      } else {
-        await hkAPI.updateWorker(modal.worker.id, payload)
+    await runAction(async () => {
+      setFormError('')
+      try {
+        if (modal.mode === 'create') {
+          await hkAPI.createWorker(payload)
+        } else {
+          await hkAPI.updateWorker(modal.worker.id, payload)
+        }
+        setModal(null)
+        await reload()
+      } catch (e) {
+        setFormError(
+          e.response?.data?.detail || JSON.stringify(e.response?.data || {}) || 'Failed to save worker.'
+        )
       }
-      setModal(null)
-      await load()
-    } catch (e) {
-      setFormError(e.response?.data?.detail || JSON.stringify(e.response?.data || {}) || 'Failed to save worker.')
-    } finally {
-      setSaving(false)
-    }
+    })
   }
 
   const confirmDelete = async () => {
     if (!deleteTarget) return
-    setSaving(true)
-    setFormError('')
-    try {
-      await hkAPI.deleteWorker(deleteTarget.id)
-      setDeleteTarget(null)
-      setModal(null)
-      await load()
-    } catch (e) {
-      setFormError(e.response?.data?.detail || 'Failed to delete worker.')
-    } finally {
-      setSaving(false)
-    }
+    await runAction(async () => {
+      setFormError('')
+      try {
+        await hkAPI.deleteWorker(deleteTarget.id)
+        setDeleteTarget(null)
+        setModal(null)
+        await reload()
+      } catch (e) {
+        setFormError(e.response?.data?.detail || 'Failed to delete worker.')
+      }
+    })
   }
 
   return (
@@ -394,21 +375,16 @@ export default function WorkersTab() {
         </div>
       </Modal>
 
-      <Modal
+      <ConfirmModal
         open={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
         title="Delete Worker"
-        footer={
-          <>
-            <Btn variant="ghost" onClick={() => setDeleteTarget(null)} disabled={saving}>Cancel</Btn>
-            <Btn variant="danger" onClick={confirmDelete} disabled={saving}>{saving ? 'Deleting...' : 'Delete'}</Btn>
-          </>
-        }
-      >
-        <p style={{ fontSize: 14, color: 'var(--text-2)' }}>
-          Delete worker <strong>{deleteTarget?.name}</strong>? This will remove the worker from the live database.
-        </p>
-      </Modal>
+        message={`Delete worker ${deleteTarget?.name || ''}? This will remove the worker from the live database.`}
+        confirmLabel={saving ? 'Deleting...' : 'Delete'}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+        confirmDisabled={saving}
+        cancelDisabled={saving}
+      />
 
       <WorkerReportModal
         open={!!reportWorker}

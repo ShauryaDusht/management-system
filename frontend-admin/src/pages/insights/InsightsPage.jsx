@@ -4,7 +4,7 @@ import { reportsAPI } from '../../api/inventory'
 import { Btn, Card, Spinner } from '../../components/ui'
 import { BarGroupChart } from '../../components/ui/Charts'
 import AdminLayout from '../../layout/AdminLayout'
-import { todayISO, triggerDownload } from '../../shared/utils'
+import { exportCsv, todayISO } from '../../shared/utils'
 
 const VIEW_OPTIONS = [
   { key: 'caretaker', label: 'Caretaker/Supervisor Trend' },
@@ -23,22 +23,6 @@ const AREA_CLASS_OPTIONS = [
 
 function formatNum(value) {
   return Number(value || 0).toLocaleString('en-IN')
-}
-
-function escapeCsvCell(value) {
-  const raw = String(value ?? '')
-  if (raw.includes('"') || raw.includes(',') || raw.includes('\n')) {
-    return `"${raw.replace(/"/g, '""')}"`
-  }
-  return raw
-}
-
-function downloadCsv(filename, headers, rows) {
-  const head = headers.map(escapeCsvCell).join(',')
-  const body = rows.map((row) => row.map(escapeCsvCell).join(',')).join('\n')
-  const csv = `${head}\n${body}`
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-  triggerDownload(blob, filename)
 }
 
 export default function InsightsPage() {
@@ -158,7 +142,7 @@ export default function InsightsPage() {
     const baseName = `insights_${activeView}_${range}_${areaClass}_${day}.csv`
 
     if (activeView === 'caretaker') {
-      downloadCsv(
+      exportCsv(
         baseName,
         [
           'Staff',
@@ -195,7 +179,7 @@ export default function InsightsPage() {
     }
 
     if (activeView === 'area_hk') {
-      downloadCsv(
+      exportCsv(
         baseName,
         [
           'Area',
@@ -230,7 +214,7 @@ export default function InsightsPage() {
     }
 
     if (activeView === 'workers') {
-      downloadCsv(
+      exportCsv(
         baseName,
         [
           'Worker',
@@ -261,7 +245,7 @@ export default function InsightsPage() {
     }
 
     if (activeView === 'area_inventory') {
-      downloadCsv(
+      exportCsv(
         baseName,
         ['Area', 'Area Class', 'Transactions', 'Consumable Qty', 'Asset Qty', 'Total Qty'],
         invAreaRows.map((r) => [
@@ -276,7 +260,7 @@ export default function InsightsPage() {
       return
     }
 
-    downloadCsv(
+    exportCsv(
       baseName,
       ['Item', 'Type', 'Quantity', 'Transactions', 'Area Count', 'Areas'],
       topItemRows.map((r) => [

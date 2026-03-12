@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { useAuth } from '../../context/AuthContext'
 import { hkAPI } from '../../api/housekeeping'
+import { getAreaGroup } from '../../shared/utils'
 import {
   Alert,
   Badge,
@@ -21,15 +22,6 @@ const EMPTY_FORM = {
   target_area: '',
   note: '',
   selected_workers: [],
-}
-
-function areaGroup(areaName, areaType) {
-  const n = String(areaName || '').trim()
-  if (/^Academic Block\s+([1-9]|1[0-3])$/i.test(n)) return 'academic'
-  if (['Academic Common Area', 'New AB U-Shape', 'New Academy'].includes(n)) return 'academic'
-  if (['hostel common area', 'common area', 'hostels reliever'].includes(n.toLowerCase())) return 'hostels'
-  if (areaType === 'hostel') return 'hostels'
-  return 'others'
 }
 
 function extractBlockNo(name) {
@@ -93,8 +85,8 @@ export default function WorkerSelectionTab() {
   const sortedAreas = useMemo(() => {
     return [...areas].sort((a, b) => {
       const order = { hostels: 0, academic: 1, others: 2 }
-      const ga = areaGroup(a.name, a.area_type)
-      const gb = areaGroup(b.name, b.area_type)
+      const ga = getAreaGroup(a.name, a.area_type)
+      const gb = getAreaGroup(b.name, b.area_type)
       if (order[ga] !== order[gb]) return order[ga] - order[gb]
       if (ga === 'academic') {
         const an = extractBlockNo(a.name)
@@ -113,12 +105,12 @@ export default function WorkerSelectionTab() {
 
   const targetAreaOptions = useMemo(() => {
     if (!form.target_area_group || form.target_area_group === 'all') return sortedAreas
-    return sortedAreas.filter((a) => areaGroup(a.name, a.area_type) === form.target_area_group)
+    return sortedAreas.filter((a) => getAreaGroup(a.name, a.area_type) === form.target_area_group)
   }, [form.target_area_group, sortedAreas])
 
   const workerAreaOptions = useMemo(() => {
     if (!form.worker_group || form.worker_group === 'all') return sortedAreas
-    return sortedAreas.filter((a) => areaGroup(a.name, a.area_type) === form.worker_group)
+    return sortedAreas.filter((a) => getAreaGroup(a.name, a.area_type) === form.worker_group)
   }, [form.worker_group, sortedAreas])
 
   const workerOptions = useMemo(() => {
@@ -126,7 +118,7 @@ export default function WorkerSelectionTab() {
     return workers
       .filter((w) => {
         const a = areaMap.get(Number(w.area))
-        const g = areaGroup(a?.name || w.area_name, a?.area_type)
+        const g = getAreaGroup(a?.name || w.area_name, a?.area_type)
         if (form.worker_group !== 'all' && g !== form.worker_group) return false
         if (form.worker_area && Number(w.area) !== Number(form.worker_area)) return false
         return true

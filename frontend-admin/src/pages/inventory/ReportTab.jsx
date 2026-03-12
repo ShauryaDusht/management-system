@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { getInventoryReport } from '../../api/inventory'
 import { Alert, Badge, Btn, Card, DataTable, Spinner, StatCard } from '../../components/ui'
-import { asList, triggerDownload } from '../../shared/utils'
+import { asList, exportCsv } from '../../shared/utils'
 
 const STATUS_OPTIONS = [
   { key: 'all', label: 'All' },
@@ -15,24 +15,6 @@ const TYPE_OPTIONS = [
   { key: 'asset', label: 'Assets' },
   { key: 'consumable', label: 'Consumables' },
 ]
-
-function csvEscape(value) {
-  if (value === null || value === undefined) return ''
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-  const str = String(value)
-  if (str.includes(',') || str.includes('\n') || str.includes('"')) {
-    return `"${str.replace(/"/g, '""')}"`
-  }
-  return str
-}
-
-function downloadCsv(data, filename) {
-  if (!Array.isArray(data) || data.length === 0) return
-  const headers = Object.keys(data[0])
-  const rows = data.map((row) => headers.map((key) => csvEscape(row[key])).join(','))
-  const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' })
-  triggerDownload(blob, filename)
-}
 
 export default function ReportTab() {
   const [loading, setLoading] = useState(true)
@@ -145,7 +127,7 @@ export default function ReportTab() {
 
           <Btn
             variant="secondary"
-            onClick={() => downloadCsv(csvRows, csvFilename)}
+            onClick={() => exportCsv(csvRows, csvFilename)}
             disabled={csvRows.length === 0}
           >
             Download CSV

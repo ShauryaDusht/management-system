@@ -41,8 +41,54 @@ export function triggerDownload(blob, filename) {
   URL.revokeObjectURL(href)
 }
 
+function csvEscape(value) {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  const str = String(value)
+  if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+    return `"${str.replace(/"/g, '""')}"`
+  }
+  return str
+}
+
+// Export data as CSV and trigger a download
+export function exportCsv(rowsOrFilename, filenameOrHeaders, rowsArg) {
+  if (Array.isArray(rowsOrFilename)) {
+    const rows = rowsOrFilename
+    const filename = filenameOrHeaders
+    if (!Array.isArray(rows) || !rows.length) return
+    const headers = Object.keys(rows[0])
+    const bodyRows = rows.map((row) => headers.map((k) => csvEscape(row[k])).join(','))
+    const blob = new Blob([[headers.join(','), ...bodyRows].join('\n')], { type: 'text/csv' })
+    triggerDownload(blob, filename)
+    return
+  }
+
+  if (typeof rowsOrFilename === 'string' && Array.isArray(filenameOrHeaders) && Array.isArray(rowsArg)) {
+    const filename = rowsOrFilename
+    const headers = filenameOrHeaders
+    const rows = rowsArg
+    const head = headers.map((cell) => csvEscape(cell)).join(',')
+    const body = rows.map((row) => row.map((cell) => csvEscape(cell)).join(',')).join('\n')
+    const csv = `${head}\n${body}`
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    triggerDownload(blob, filename)
+  }
+}
+
 // Get today's date as YYYY-MM-DD in local time
 export function todayISO() {
   const d = new Date()
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+}
+
+// Classify area names into academic | hostels | others
+export function getAreaGroup(areaName, areaType) {
+  const n = String(areaName || '').trim()
+  if (/^Academic Block\s+([1-9]|1[0-3])$/i.test(n)) return 'academic'
+  if (['Academic Common Area', 'New AB U-Shape', 'New Academy'].includes(n)) return 'academic'
+  if (['hostel common area', 'common area', 'hostels reliever'].includes(n.toLowerCase())) return 'hostels'
+  if (areaType === 'hostel') return 'hostels'
+  if (areaType === 'academic') return 'academic'
+  return 'others'
 }

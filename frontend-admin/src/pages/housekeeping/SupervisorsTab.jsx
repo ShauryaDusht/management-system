@@ -7,23 +7,10 @@ import {
   getConsumptionReports,
 } from '../../api/inventory'
 import { usersAPI } from '../../api/users'
-import { Alert, Badge, Btn, Card, DataTable, Modal, SelectField, Spinner } from '../../components/ui'
+import { Alert, Badge, Btn, Card, DataTable, Modal, Spinner } from '../../components/ui'
 import { triggerDownload } from '../../shared/utils'
-
-const MONTHS = [
-  { value: 1, label: 'Jan' },
-  { value: 2, label: 'Feb' },
-  { value: 3, label: 'Mar' },
-  { value: 4, label: 'Apr' },
-  { value: 5, label: 'May' },
-  { value: 6, label: 'Jun' },
-  { value: 7, label: 'Jul' },
-  { value: 8, label: 'Aug' },
-  { value: 9, label: 'Sep' },
-  { value: 10, label: 'Oct' },
-  { value: 11, label: 'Nov' },
-  { value: 12, label: 'Dec' },
-]
+import MonthYearPicker from '../../shared/components/MonthYearPicker'
+import { useMonthYear } from '../../shared/hooks/useMonthYear'
 
 function normalizeUsers(payload) {
   if (Array.isArray(payload)) return payload
@@ -62,10 +49,6 @@ function formatPct(value) {
   return `${Number(value || 0).toFixed(2)}%`
 }
 
-function downloadBlob(data, filename) {
-  triggerDownload(data, filename)
-}
-
 function toCsvValue(value) {
   if (value === null || value === undefined) return ''
   const str = String(value)
@@ -79,18 +62,12 @@ function SupervisorReportModal({ open, supervisor, onClose }) {
   const initialDate = useMemo(() => new Date(), [])
   const currentMonth = initialDate.getMonth() + 1
   const currentYear = initialDate.getFullYear()
-  const [month, setMonth] = useState(currentMonth)
-  const [year, setYear] = useState(currentYear)
+  const { month, year, setMonth, setYear } = useMonthYear()
   const [loading, setLoading] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [error, setError] = useState('')
   const [report, setReport] = useState(null)
   const [activeSection, setActiveSection] = useState('task')
-
-  const yearOptions = useMemo(
-    () => [currentYear, currentYear - 1],
-    [currentYear],
-  )
 
   useEffect(() => {
     if (!open || !supervisor?.id) return
@@ -164,20 +141,12 @@ function SupervisorReportModal({ open, supervisor, onClose }) {
         }}
       >
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ width: 130 }}>
-            <SelectField value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-              {MONTHS.map((item) => (
-                <option key={item.value} value={item.value}>{item.label}</option>
-              ))}
-            </SelectField>
-          </div>
-          <div style={{ width: 120 }}>
-            <SelectField value={year} onChange={(e) => setYear(Number(e.target.value))}>
-              {yearOptions.map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </SelectField>
-          </div>
+          <MonthYearPicker
+            month={month}
+            year={year}
+            onMonthChange={setMonth}
+            onYearChange={setYear}
+          />
           <Btn onClick={loadReport} disabled={loading || downloading || !supervisor}>
             {loading ? 'Loading...' : 'Load Report'}
           </Btn>
@@ -329,14 +298,11 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
   const initialDate = useMemo(() => new Date(), [])
   const currentMonth = initialDate.getMonth() + 1
   const currentYear = initialDate.getFullYear()
-  const [month, setMonth] = useState(currentMonth)
-  const [year, setYear] = useState(currentYear)
+  const { month, year, setMonth, setYear } = useMonthYear()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [reportMeta, setReportMeta] = useState(null)
   const [requesterRow, setRequesterRow] = useState(null)
-
-  const yearOptions = useMemo(() => [currentYear, currentYear - 1, currentYear - 2], [currentYear])
 
   useEffect(() => {
     if (!open || !supervisor?.id) return
@@ -425,7 +391,7 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
     const csvBody = rows.map((row) => row.map((cell) => toCsvValue(cell)).join(',')).join('\n')
     const blob = new Blob([`\uFEFF${csvBody}`], { type: 'text/csv' })
     const safeUsername = toCsvSafe(supervisor?.username, String(supervisor?.id || 'supervisor'))
-    downloadBlob(blob, `supervisor_inventory_usage_${safeUsername}_${String(month).padStart(2, '0')}_${year}.csv`)
+    triggerDownload(blob, `supervisor_inventory_usage_${safeUsername}_${String(month).padStart(2, '0')}_${year}.csv`)
   }
 
   return (
@@ -449,20 +415,12 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
         }}
       >
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ width: 130 }}>
-            <SelectField value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-              {MONTHS.map((item) => (
-                <option key={item.value} value={item.value}>{item.label}</option>
-              ))}
-            </SelectField>
-          </div>
-          <div style={{ width: 120 }}>
-            <SelectField value={year} onChange={(e) => setYear(Number(e.target.value))}>
-              {yearOptions.map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </SelectField>
-          </div>
+          <MonthYearPicker
+            month={month}
+            year={year}
+            onMonthChange={setMonth}
+            onYearChange={setYear}
+          />
           <Btn onClick={loadInventoryUsage} disabled={loading || !supervisor}>
             {loading ? 'Loading...' : 'Load Usage'}
           </Btn>

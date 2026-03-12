@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { inventoryAPI, reportsAPI } from '../../api/inventory'
 import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, SelectField } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
+import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import { asList, triggerDownload } from '../../shared/utils'
 
 const AREA_CLASS_LABELS = {
@@ -54,8 +55,6 @@ function isIssueInMonth(issue, month, year) {
 
 export default function IssuesTab({ userRole }) {
   const { isSupervisor, isCaretaker } = useAuth()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [issues, setIssues] = useState([])
 
   const [actionModal, setActionModal] = useState(null)
@@ -79,22 +78,14 @@ export default function IssuesTab({ userRole }) {
   const canManager = userRole === 'admin'
   const canSupervisor = isSupervisor || isCaretaker
 
-  const load = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const { data } = await inventoryAPI.getIssues()
-      setIssues(asList(data))
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to load issued items.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { run: runAction, error: actionError, clearError } = useAsyncAction()
+  const { loading, error: loadError, reload } = useAsyncLoad(async () => {
+    const { data } = await inventoryAPI.getIssues()
+    setIssues(asList(data))
+    return null
+  }, [], 'Failed to load issued items.')
 
-  useEffect(() => {
-    load()
-  }, [])
+  const error = actionError || loadError
 
   const allAreas = useMemo(() => {
     const seen = new Map()
@@ -152,7 +143,7 @@ export default function IssuesTab({ userRole }) {
 
   const submitAction = async () => {
     if (!actionModal) return
-    try {
+    await runAction(async () => {
       if (actionModal.type === 'asset') {
         await inventoryAPI.returnAsset(actionModal.id, {
           returned_quantity: Number(form.returned_quantity || 0),
@@ -172,28 +163,26 @@ export default function IssuesTab({ userRole }) {
         actual_quantity_used: 1,
         notes: '',
       })
-      await load()
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Action failed.')
-    }
+      await reload()
+    }, 'Action failed.')
   }
 
   const generateReport = async () => {
     setGeneratingReport(true)
-    setError('')
+    clearError()
     try {
-      const params = {
-        month: reportMonth,
-        year: reportYear,
-      }
-      if (areaClass !== 'all') params.area_class = areaClass
-      if (selectedArea !== 'all') params.area_name = selectedArea
+      await runAction(async () => {
+        const params = {
+          month: reportMonth,
+          year: reportYear,
+        }
+        if (areaClass !== 'all') params.area_class = areaClass
+        if (selectedArea !== 'all') params.area_name = selectedArea
 
-      const { data } = await reportsAPI.getAreaIssuesReport(params)
-      setReportData(data)
-      setReportModal(true)
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to generate report.')
+        const { data } = await reportsAPI.getAreaIssuesReport(params)
+        setReportData(data)
+        setReportModal(true)
+      }, 'Failed to generate report.')
     } finally {
       setGeneratingReport(false)
     }
@@ -201,25 +190,25 @@ export default function IssuesTab({ userRole }) {
 
   const downloadMonthlyReportCsv = async () => {
     setDownloadingReport(true)
-    setError('')
+    clearError()
     try {
-      const params = {
-        month: reportMonth,
-        year: reportYear,
-      }
-      if (areaClass !== 'all') params.area_class = areaClass
-      if (selectedArea !== 'all') params.area_name = selectedArea
+      await runAction(async () => {
+        const params = {
+          month: reportMonth,
+          year: reportYear,
+        }
+        if (areaClass !== 'all') params.area_class = areaClass
+        if (selectedArea !== 'all') params.area_name = selectedArea
 
-      const response = await reportsAPI.downloadAreaIssuesCSV(params)
-      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
-      const disposition = response.headers?.['content-disposition'] || ''
-      const match = disposition.match(/filename=\"?([^\"]+)\"?/)
-      const filename =
-        match?.[1] ||
-        `area_issues_${reportYear}_${String(reportMonth).padStart(2, '0')}.csv`
-      triggerDownload(blob, filename)
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to download report CSV.')
+        const response = await reportsAPI.downloadAreaIssuesCSV(params)
+        const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
+        const disposition = response.headers?.['content-disposition'] || ''
+        const match = disposition.match(/filename=\"?([^\"]+)\"?/)
+        const filename =
+          match?.[1] ||
+          `area_issues_${reportYear}_${String(reportMonth).padStart(2, '0')}.csv`
+        triggerDownload(blob, filename)
+      }, 'Failed to download report CSV.')
     } finally {
       setDownloadingReport(false)
     }

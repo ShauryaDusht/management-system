@@ -2,25 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { getRequestsReport } from '../../api/inventory'
 import { Alert, Btn, Card, DataTable, Field, Input, Spinner, StatCard } from '../../components/ui'
-import { triggerDownload } from '../../shared/utils'
-
-function csvEscape(value) {
-  if (value === null || value === undefined) return ''
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-  const str = String(value)
-  if (str.includes(',') || str.includes('\n') || str.includes('"')) {
-    return `"${str.replace(/"/g, '""')}"`
-  }
-  return str
-}
-
-function exportCsv(data, filename) {
-  if (!Array.isArray(data) || !data.length) return
-  const headers = Object.keys(data[0])
-  const rows = data.map((row) => headers.map((k) => csvEscape(row[k])).join(','))
-  const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' })
-  triggerDownload(blob, filename)
-}
+import { exportCsv } from '../../shared/utils'
 
 export default function RequestsReportTab() {
   const [loading, setLoading] = useState(true)

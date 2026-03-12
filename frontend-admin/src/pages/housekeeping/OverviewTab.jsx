@@ -4,7 +4,7 @@ import { hkAPI } from '../../api/housekeeping'
 import { reportsAPI } from '../../api/inventory'
 import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
 import { TrendArea } from '../../components/ui/Charts'
-import { todayISO } from '../../shared/utils'
+import { getAreaGroup, todayISO } from '../../shared/utils'
 
 export default function OverviewTab() {
   const [loading, setLoading] = useState(true)
@@ -29,15 +29,6 @@ export default function OverviewTab() {
     requires_photo: true,
     note: '',
   })
-
-  const areaGroup = (areaName, areaType) => {
-    const n = String(areaName || '').trim()
-    if (/^Academic Block\s+([1-9]|1[0-3])$/i.test(n)) return 'academic'
-    if (['Academic Common Area', 'New AB U-Shape', 'New Academy'].includes(n)) return 'academic'
-    if (['hostel common area', 'common area'].includes(n.toLowerCase())) return 'hostels'
-    if (areaType === 'hostel') return 'hostels'
-    return 'others'
-  }
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (loadInProgressRef.current) return
@@ -84,7 +75,7 @@ export default function OverviewTab() {
       })
 
       const groupOrder = (areaName, areaType) => {
-        const g = areaGroup(areaName, areaType)
+        const g = getAreaGroup(areaName, areaType)
         if (g === 'hostels') return 0
         if (g === 'academic') return 1
         return 2
@@ -140,7 +131,7 @@ export default function OverviewTab() {
     () => (
       areaClassFilter === 'all'
         ? rows
-        : rows.filter((r) => areaGroup(r.area, r.area_type) === areaClassFilter)
+        : rows.filter((r) => getAreaGroup(r.area, r.area_type) === areaClassFilter)
     ),
     [rows, areaClassFilter],
   )

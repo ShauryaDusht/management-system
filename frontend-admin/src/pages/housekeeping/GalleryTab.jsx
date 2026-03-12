@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { Alert, Btn, Card, DataTable, Input, Modal, SelectField, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, Input, SelectField, Spinner } from '../../components/ui'
 import { triggerDownload } from '../../shared/utils'
+import ConfirmModal from '../../shared/components/ConfirmModal'
 
 function list(data) {
   if (Array.isArray(data)) return data
@@ -522,9 +523,13 @@ export default function GalleryTab() {
         </div>
       ) : null}
 
-      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Photo" footer={<><Btn variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Btn><Btn variant="danger" onClick={doDelete}>Delete</Btn></>}>
-        <p style={{ fontSize: 13, color: 'var(--text-2)' }}>Delete this photo? This cannot be undone.</p>
-      </Modal>
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete Photo"
+        message="Delete this photo? This cannot be undone."
+        onConfirm={doDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }

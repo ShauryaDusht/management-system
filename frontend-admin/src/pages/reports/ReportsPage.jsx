@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 
 import api from '../../api/client'
 import AdminLayout from '../../layout/AdminLayout'
-import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner, StatCard, Tabs } from '../../components/ui'
+import { Alert, Badge, Btn, Card, DataTable, Input, Modal, SelectField, Spinner, StatCard, Tabs } from '../../components/ui'
 import RequestsReportTab from './RequestsReportTab'
-import { triggerDownload } from '../../shared/utils'
+import { exportCsv, triggerDownload } from '../../shared/utils'
+import MonthYearPicker from '../../shared/components/MonthYearPicker'
+import { useMonthYear } from '../../shared/hooks/useMonthYear'
+import ConfirmModal from '../../shared/components/ConfirmModal'
 import {
   inventoryAPI,
   csvUrl,
@@ -29,29 +32,6 @@ async function downloadWithToken(url, filename) {
   } catch {
     window.alert('Download failed.')
   }
-}
-
-function downloadBlob(data, filename) {
-  triggerDownload(data, filename)
-}
-
-function csvEscape(value) {
-  if (value === null || value === undefined) return ''
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-  const str = String(value)
-  // Only wrap in quotes if the value contains a delimiter or quote character
-  if (str.includes(',') || str.includes('\n') || str.includes('"')) {
-    return `"${str.replace(/"/g, '""')}"`
-  }
-  return str
-}
-
-function exportCsv(data, filename) {
-  if (!Array.isArray(data) || !data.length) return
-  const headers = Object.keys(data[0])
-  const rows = data.map((row) => headers.map((k) => csvEscape(row[k])).join(','))
-  const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' })
-  triggerDownload(blob, filename)
 }
 
 function InventoryReportTab() {
@@ -166,10 +146,8 @@ function InventoryReportTab() {
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 function MonthlyTab() {
-  const now = new Date()
   const { refresh: refreshBadges, markSeen } = useNotifications()
-  const [month, setMonth] = useState(now.getMonth() + 1)
-  const [year, setYear] = useState(now.getFullYear())
+  const { month, year, setMonth, setYear } = useMonthYear()
   const [history, setHistory] = useState([])
   const [selected, setSelected] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -180,8 +158,6 @@ function MonthlyTab() {
   const [purchaseFilter, setPurchaseFilter] = useState('pending')
   const [purchaseLoading, setPurchaseLoading] = useState(true)
   const [purchaseActingId, setPurchaseActingId] = useState(null)
-
-  const years = useMemo(() => Array.from({ length: 5 }, (_, i) => now.getFullYear() - i), [now])
 
   const loadHistory = async () => {
     setLoading(true)
@@ -279,24 +255,12 @@ function MonthlyTab() {
 
       <Card style={{ marginBottom: 12 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'end', flexWrap: 'wrap' }}>
-          <Field label="Month">
-            <SelectField value={month} onChange={(e) => setMonth(Number(e.target.value))} style={{ width: 160 }}>
-              {MONTHS.map((m, idx) => (
-                <option key={m} value={idx + 1}>
-                  {m}
-                </option>
-              ))}
-            </SelectField>
-          </Field>
-          <Field label="Year">
-            <SelectField value={year} onChange={(e) => setYear(Number(e.target.value))} style={{ width: 120 }}>
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </SelectField>
-          </Field>
+          <MonthYearPicker
+            month={month}
+            year={year}
+            onMonthChange={setMonth}
+            onYearChange={setYear}
+          />
           <Btn onClick={() => generate(false)} style={{ marginBottom: 14 }}>
             Generate Report
           </Btn>
@@ -494,33 +458,19 @@ function MonthlyTab() {
         </Card>
       </div>
 
-      <Modal
+      <ConfirmModal
         open={!!confirmDelete}
-        onClose={() => setConfirmDelete(null)}
         title="Delete Monthly Report"
-        footer={
-          <>
-            <Btn variant="ghost" onClick={() => setConfirmDelete(null)}>
-              Cancel
-            </Btn>
-            <Btn variant="danger" onClick={doDelete}>
-              Delete
-            </Btn>
-          </>
-        }
-      >
-        <p style={{ fontSize: 14 }}>
-          Delete report <strong>{confirmDelete?.period_label}</strong>?
-        </p>
-      </Modal>
+        message={`Delete report ${confirmDelete?.period_label || ''}?`}
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }
 
 function ConsumptionTab() {
-  const now = new Date()
-  const [month, setMonth] = useState(now.getMonth() + 1)
-  const [year, setYear] = useState(now.getFullYear())
+  const { month, year, setMonth, setYear } = useMonthYear()
   const [history, setHistory] = useState([])
   const [report, setReport] = useState(null)
   const [loadingHistory, setLoadingHistory] = useState(true)
@@ -529,8 +479,6 @@ function ConsumptionTab() {
   const [error, setError] = useState('')
   const [subTab, setSubTab] = useState('item')
   const [selectedRequesterId, setSelectedRequesterId] = useState(null)
-
-  const years = useMemo(() => Array.from({ length: 3 }, (_, i) => now.getFullYear() - i), [now])
 
   const selectedCachedReport = useMemo(
     () => history.find((row) => Number(row.month) === month && Number(row.year) === year),
@@ -601,7 +549,7 @@ function ConsumptionTab() {
     setError('')
     try {
       const response = await downloadConsumptionItemCSV(report.id)
-      downloadBlob(response.data, `consumption_items_${report.year}_${String(report.month).padStart(2, '0')}.csv`)
+      triggerDownload(response.data, `consumption_items_${report.year}_${String(report.month).padStart(2, '0')}.csv`)
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed to download item CSV.')
     } finally {
@@ -615,7 +563,7 @@ function ConsumptionTab() {
     setError('')
     try {
       const response = await downloadConsumptionRequesterCSV(report.id)
-      downloadBlob(
+      triggerDownload(
         response.data,
         `consumption_requesters_${report.year}_${String(report.month).padStart(2, '0')}.csv`
       )
@@ -665,24 +613,12 @@ function ConsumptionTab() {
       <Card style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Item Consumption</div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'end', flexWrap: 'wrap' }}>
-          <Field label="Month">
-            <SelectField value={month} onChange={(e) => setMonth(Number(e.target.value))} style={{ width: 160 }}>
-              {MONTHS.map((m, idx) => (
-                <option key={m} value={idx + 1}>
-                  {m}
-                </option>
-              ))}
-            </SelectField>
-          </Field>
-          <Field label="Year">
-            <SelectField value={year} onChange={(e) => setYear(Number(e.target.value))} style={{ width: 120 }}>
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </SelectField>
-          </Field>
+          <MonthYearPicker
+            month={month}
+            year={year}
+            onMonthChange={setMonth}
+            onYearChange={setYear}
+          />
           <Btn onClick={handleGenerateOrLoad} disabled={busy || loadingHistory || loadingReport} style={{ marginBottom: 14 }}>
             {busy || loadingReport ? 'Please wait...' : 'Generate / Load Report'}
           </Btn>

@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import api from '../../api/client'
-import { Alert, Btn, Card, DataTable, Field, Modal, SelectField, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, Spinner } from '../../components/ui'
 import { csvUrl, deleteMonthly, generateMonthly, getMonthly, listMonthly, pdfUrl } from '../../api/inventory'
 import { triggerDownload } from '../../shared/utils'
+import MonthYearPicker from '../../shared/components/MonthYearPicker'
+import { useMonthYear } from '../../shared/hooks/useMonthYear'
+import ConfirmModal from '../../shared/components/ConfirmModal'
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
@@ -16,17 +19,13 @@ async function downloadWithToken(url, filename) {
 }
 
 export default function MonthlyReportTab() {
-  const now = new Date()
-  const [month, setMonth] = useState(now.getMonth() + 1)
-  const [year, setYear] = useState(now.getFullYear())
+  const { month, year, setMonth, setYear } = useMonthYear()
   const [history, setHistory] = useState([])
   const [selected, setSelected] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loadingSelected, setLoadingSelected] = useState(false)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
-
-  const years = useMemo(() => Array.from({ length: 5 }, (_, i) => now.getFullYear() - i), [])
 
   const loadHistory = async () => {
     setLoading(true)
@@ -85,16 +84,12 @@ export default function MonthlyReportTab() {
 
       <Card style={{ marginBottom: 12 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'end', flexWrap: 'wrap' }}>
-          <Field label="Month">
-            <SelectField value={month} onChange={(e) => setMonth(Number(e.target.value))} style={{ width: 160 }}>
-              {MONTHS.map((m, idx) => <option key={m} value={idx + 1}>{m}</option>)}
-            </SelectField>
-          </Field>
-          <Field label="Year">
-            <SelectField value={year} onChange={(e) => setYear(Number(e.target.value))} style={{ width: 120 }}>
-              {years.map((y) => <option key={y} value={y}>{y}</option>)}
-            </SelectField>
-          </Field>
+          <MonthYearPicker
+            month={month}
+            year={year}
+            onMonthChange={setMonth}
+            onYearChange={setYear}
+          />
           <Btn onClick={() => generate(false)} style={{ marginBottom: 14 }}>Generate Report</Btn>
           <Btn variant="danger" onClick={() => generate(true)} style={{ marginBottom: 14 }}>Overwrite</Btn>
         </div>
@@ -160,19 +155,13 @@ export default function MonthlyReportTab() {
         </Card>
       </div>
 
-      <Modal
+      <ConfirmModal
         open={!!confirmDelete}
-        onClose={() => setConfirmDelete(null)}
         title="Delete Monthly Report"
-        footer={
-          <>
-            <Btn variant="ghost" onClick={() => setConfirmDelete(null)}>Cancel</Btn>
-            <Btn variant="danger" onClick={doDelete}>Delete</Btn>
-          </>
-        }
-      >
-        <p style={{ fontSize: 14 }}>Delete report <strong>{confirmDelete?.period_label}</strong>?</p>
-      </Modal>
+        message={`Delete report ${confirmDelete?.period_label || ''}?`}
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

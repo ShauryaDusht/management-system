@@ -20,7 +20,7 @@ from rest_framework.generics import (
     RetrieveUpdateAPIView,
     RetrieveUpdateDestroyAPIView,
 )
-from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
@@ -31,6 +31,7 @@ from apps.reports.exporters import (
 )
 from apps.reports.generators import generate_supervisor_report, generate_worker_report
 from apps.reports.models import SupervisorMonthlyReport, WorkerMonthlyReport
+from apps.core.permissions import IsAdminOnly, IsAdminOrHousekeepingManager
 
 from .models import (
     HKAlert,
@@ -61,20 +62,6 @@ from .serializers import (
     HKWorkerSerializer,
     HKWorkerSelectionRequestSerializer,
 )
-
-
-class IsAdminOrHousekeepingManager(BasePermission):
-    def has_permission(self, request, view):
-        user = request.user
-        return user.is_authenticated and (
-            user.is_admin or user.is_housekeeping_manager
-        )
-
-
-class IsAdminOnly(BasePermission):
-    def has_permission(self, request, view):
-        user = request.user
-        return bool(user.is_authenticated and user.is_admin)
 
 
 def _area_group(area):
@@ -159,6 +146,38 @@ def _get_supervisor_or_404(pk):
 def _supervisor_report_filename(supervisor, month, year):
     safe_name = slugify(supervisor.username) or str(supervisor.id)
     return f"supervisor_{safe_name}_{month:02d}_{year}.csv"
+
+
+def _stream_or_generate_csv(cached_report, generate_fn, export_fn, filename):
+    """
+    Given an optional cached report object, a generate function, an export function,
+    and a filename, return the appropriate FileResponse or (csv_bytes, filename) tuple.
+    """
+    if cached_report and cached_report.csv_file:
+        file_handle = cached_report.csv_file.open('rb')
+        return FileResponse(
+            file_handle,
+            content_type='text/csv',
+            as_attachment=True,
+            filename=filename,
+        )
+
+    if cached_report and not cached_report.csv_file:
+        snapshot = cached_report.snapshot or generate_fn()
+        csv_bytes = export_fn(snapshot)
+        cached_report.csv_file.save(filename, ContentFile(csv_bytes), save=True)
+
+        file_handle = cached_report.csv_file.open('rb')
+        return FileResponse(
+            file_handle,
+            content_type='text/csv',
+            as_attachment=True,
+            filename=filename,
+        )
+
+    snapshot = generate_fn()
+    csv_bytes = export_fn(snapshot)
+    return csv_bytes, filename
 
 
 class HKAreaListCreateView(ListCreateAPIView):
@@ -303,37 +322,24 @@ class HKWorkerReportCSVView(APIView):
             return Response({'detail': err}, status=400)
 
         filename = _worker_report_filename(worker, month, year)
-        cached_report = WorkerMonthlyReport.objects.filter(
-            worker=worker,
-            month=month,
-            year=year,
-        ).first()
+        cached_report = None
+        if _is_past_month(month, year):
+            cached_report = WorkerMonthlyReport.objects.filter(
+                worker=worker,
+                month=month,
+                year=year,
+            ).first()
 
-        if _is_past_month(month, year) and cached_report and cached_report.csv_file:
-            file_handle = cached_report.csv_file.open('rb')
-            return FileResponse(
-                file_handle,
-                content_type='text/csv',
-                as_attachment=True,
-                filename=filename,
-            )
+        result = _stream_or_generate_csv(
+            cached_report,
+            lambda: generate_worker_report(worker.id, month, year),
+            export_worker_report_csv,
+            filename,
+        )
+        if isinstance(result, FileResponse):
+            return result
 
-        if _is_past_month(month, year) and cached_report and not cached_report.csv_file:
-            snapshot = cached_report.snapshot or generate_worker_report(worker.id, month, year)
-            csv_bytes = export_worker_report_csv(snapshot)
-            cached_report.csv_file.save(filename, ContentFile(csv_bytes), save=True)
-
-            file_handle = cached_report.csv_file.open('rb')
-            return FileResponse(
-                file_handle,
-                content_type='text/csv',
-                as_attachment=True,
-                filename=filename,
-            )
-
-        snapshot = generate_worker_report(worker.id, month, year)
-        csv_bytes = export_worker_report_csv(snapshot)
-
+        csv_bytes, filename = result
         response = HttpResponse(csv_bytes, content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
@@ -394,6 +400,7 @@ class SupervisorReportCSVView(APIView):
             return Response({'detail': err}, status=400)
 
         filename = _supervisor_report_filename(supervisor, month, year)
+        cached_report = None
         if _is_past_month(month, year):
             try:
                 cached_report = SupervisorMonthlyReport.objects.filter(
@@ -404,31 +411,16 @@ class SupervisorReportCSVView(APIView):
             except (OperationalError, ProgrammingError):
                 cached_report = None
 
-            if cached_report and cached_report.csv_file:
-                file_handle = cached_report.csv_file.open('rb')
-                return FileResponse(
-                    file_handle,
-                    content_type='text/csv',
-                    as_attachment=True,
-                    filename=filename,
-                )
+        result = _stream_or_generate_csv(
+            cached_report,
+            lambda: generate_supervisor_report(supervisor.id, month, year),
+            export_supervisor_report_csv,
+            filename,
+        )
+        if isinstance(result, FileResponse):
+            return result
 
-            if cached_report and not cached_report.csv_file:
-                snapshot = cached_report.snapshot or generate_supervisor_report(supervisor.id, month, year)
-                csv_bytes = export_supervisor_report_csv(snapshot)
-                cached_report.csv_file.save(filename, ContentFile(csv_bytes), save=True)
-
-                file_handle = cached_report.csv_file.open('rb')
-                return FileResponse(
-                    file_handle,
-                    content_type='text/csv',
-                    as_attachment=True,
-                    filename=filename,
-                )
-
-        snapshot = generate_supervisor_report(supervisor.id, month, year)
-        csv_bytes = export_supervisor_report_csv(snapshot)
-
+        csv_bytes, filename = result
         response = HttpResponse(csv_bytes, content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response

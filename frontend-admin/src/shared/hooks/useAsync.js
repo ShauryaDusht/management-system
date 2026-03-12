@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 
-export function useAsync(asyncFn, deps = []) {
+import { getErrorMessage } from '../utils'
+
+export function useAsyncLoad(asyncFn, deps = [], fallback) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [data, setData] = useState(null)
@@ -12,13 +14,37 @@ export function useAsync(asyncFn, deps = []) {
       const result = await asyncFn()
       setData(result)
     } catch (e) {
-      setError(e?.response?.data?.detail || e?.message || 'Something went wrong.')
+      setError(getErrorMessage(e, fallback))
     } finally {
       setLoading(false)
     }
-  }, deps)
+  }, [...deps, fallback])
 
-  useEffect(() => { run() }, [run])
+  useEffect(() => {
+    run()
+  }, [run])
 
-  return { loading, error, data, reload: run }
+  return { data, loading, error, reload: run }
+}
+
+export function useAsyncAction() {
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const run = useCallback(async (asyncFn, fallback) => {
+    setSaving(true)
+    setError('')
+    try {
+      return await asyncFn()
+    } catch (e) {
+      setError(getErrorMessage(e, fallback))
+      return null
+    } finally {
+      setSaving(false)
+    }
+  }, [])
+
+  const clearError = useCallback(() => setError(''), [])
+
+  return { run, saving, error, clearError }
 }

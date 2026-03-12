@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { getErrorMessage } from '../../shared/utils'
+import { getAreaGroup, getErrorMessage } from '../../shared/utils'
+import ConfirmModal from '../../shared/components/ConfirmModal'
 import {
   Alert,
   Btn,
@@ -51,16 +52,6 @@ const EMPTY_AREA_FORM = {
   name: '',
   category: 'hostels',
   description: '',
-}
-
-function areaGroup(areaName, areaType) {
-  const n = String(areaName || '').trim()
-  if (/^Academic Block\s+([1-9]|1[0-3])$/i.test(n)) return 'academic'
-  if (['Academic Common Area', 'New AB U-Shape', 'New Academy'].includes(n)) return 'academic'
-  if (['hostel common area', 'common area', 'hostels reliever'].includes(n.toLowerCase())) return 'hostels'
-  if (areaType === 'hostel') return 'hostels'
-  if (areaType === 'academic') return 'academic'
-  return 'others'
 }
 
 function formatTime(value) {
@@ -180,7 +171,7 @@ export default function ScheduleTab() {
   const filteredGroups = useMemo(() => {
     const query = areaSearch.trim().toLowerCase()
     return grouped.filter((group) => {
-      const groupClass = areaGroup(group.areaName, group.areaType)
+      const groupClass = getAreaGroup(group.areaName, group.areaType)
       if (areaFilter !== 'all' && groupClass !== areaFilter) return false
       if (query && !group.areaName.toLowerCase().includes(query)) return false
       return true
@@ -776,23 +767,16 @@ export default function ScheduleTab() {
         )}
       </Modal>
 
-      <Modal
+      <ConfirmModal
         open={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
         title="Delete Schedule Template"
-        footer={
-          <>
-            <Btn variant="ghost" onClick={() => setDeleteTarget(null)} disabled={saving}>Cancel</Btn>
-            <Btn variant="danger" onClick={confirmDelete} disabled={saving}>
-              {saving ? 'Deleting...' : 'Delete'}
-            </Btn>
-          </>
-        }
-      >
-        <p style={{ fontSize: 14, color: 'var(--text-2)' }}>
-          Delete template <strong>{deleteTarget?.task_name}</strong> from {deleteTarget?.area_name || 'this area'}?
-        </p>
-      </Modal>
+        message={`Delete template ${deleteTarget?.task_name || ''} from ${deleteTarget?.area_name || 'this area'}?`}
+        confirmLabel={saving ? 'Deleting...' : 'Delete'}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+        confirmDisabled={saving}
+        cancelDisabled={saving}
+      />
 
       <Modal
         open={areaModal}

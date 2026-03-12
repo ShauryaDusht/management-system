@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { asList } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../context/NotificationContext'
+import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import {
   Alert,
   Badge,
@@ -21,8 +22,6 @@ import {
 export default function RequestsTab({ userRole }) {
   const { isSupervisor, isCaretaker } = useAuth()
   const { refresh: refreshBadges } = useNotifications()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [requests, setRequests] = useState([])
   const [items, setItems] = useState([])
@@ -69,28 +68,20 @@ export default function RequestsTab({ userRole }) {
   const canReview = userRole === 'admin'
   const canCreatePurchase = userRole === 'inventory_manager'
 
-  const load = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const [reqRes, itemsRes, catRes] = await Promise.all([
-        inventoryAPI.getRequests(),
-        inventoryAPI.getItems(),
-        inventoryAPI.getCategories(),
-      ])
-      setRequests(asList(reqRes.data))
-      setItems(asList(itemsRes.data))
-      setCategories(asList(catRes.data))
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to load requests.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { run: runAction, error: actionError, clearError } = useAsyncAction()
+  const { loading, error: loadError, reload } = useAsyncLoad(async () => {
+    const [reqRes, itemsRes, catRes] = await Promise.all([
+      inventoryAPI.getRequests(),
+      inventoryAPI.getItems(),
+      inventoryAPI.getCategories(),
+    ])
+    setRequests(asList(reqRes.data))
+    setItems(asList(itemsRes.data))
+    setCategories(asList(catRes.data))
+    return null
+  }, [], 'Failed to load requests.')
 
-  useEffect(() => {
-    load()
-  }, [])
+  const error = actionError || loadError
 
   const selectedItem = useMemo(() => {
     const id = Number(form.item)
@@ -114,19 +105,34 @@ export default function RequestsTab({ userRole }) {
 
   const reviewRequest = async (id, action, reason = '') => {
     setActingId(id)
-    setError('')
+    clearError()
     setSuccess('')
     try {
-      await inventoryAPI.reviewRequest(id, {
-        action,
-        rejection_reason: reason,
-      })
-      await load()
-      refreshBadges()
-      setRejectTarget(null)
-      setRejectReason('')
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Review failed.')
+      await runAction(async () => {
+        if (action === 'approve') {
+          await inventoryAPI.approveRequest(id)
+        } else if (action === 'reject') {
+          await inventoryAPI.rejectRequest(id, reason)
+        }
+        await reload()
+        refreshBadges()
+        setRejectTarget(null)
+        setRejectReason('')
+      }, 'Review failed.')
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const toggleUrgent = async (request) => {
+    if (!request) return
+    setActingId(request.id)
+    clearError()
+    try {
+      await runAction(async () => {
+        await inventoryAPI.markUrgent(request.id, !request.is_urgent)
+        await reload()
+      }, 'Failed to update urgency.')
     } finally {
       setActingId(null)
     }
@@ -144,21 +150,21 @@ export default function RequestsTab({ userRole }) {
   const issueRequest = async () => {
     if (!issueTarget) return
     setIssuing(true)
-    setError('')
+    clearError()
     setSuccess('')
     try {
-      const payload = {
-        issued_quantity: Number(issueForm.issued_quantity || 0),
-        notes: issueForm.notes || '',
-      }
-      if (issueTarget.item_type === 'asset' && issueForm.expected_return_date) {
-        payload.expected_return_date = issueForm.expected_return_date
-      }
-      await inventoryAPI.issueRequest(issueTarget.id, payload)
-      setIssueTarget(null)
-      await load()
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Issue failed.')
+      await runAction(async () => {
+        const payload = {
+          issued_quantity: Number(issueForm.issued_quantity || 0),
+          notes: issueForm.notes || '',
+        }
+        if (issueTarget.item_type === 'asset' && issueForm.expected_return_date) {
+          payload.expected_return_date = issueForm.expected_return_date
+        }
+        await inventoryAPI.issueRequest(issueTarget.id, payload)
+        setIssueTarget(null)
+        await reload()
+      }, 'Issue failed.')
     } finally {
       setIssuing(false)
     }
@@ -166,27 +172,27 @@ export default function RequestsTab({ userRole }) {
 
   const createRequest = async () => {
     setSavingNew(true)
-    setError('')
+    clearError()
     setSuccess('')
     try {
-      await inventoryAPI.createRequest({
-        item: Number(form.item),
-        quantity_requested: Number(form.quantity_requested || 1),
-        purpose: form.purpose,
-        notes: form.notes,
-        is_urgent: Boolean(form.is_urgent),
-      })
-      setNewModal(false)
-      setForm({
-        item: '',
-        quantity_requested: 1,
-        purpose: '',
-        notes: '',
-        is_urgent: false,
-      })
-      await load()
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Could not create request.')
+      await runAction(async () => {
+        await inventoryAPI.createRequest({
+          item: Number(form.item),
+          quantity_requested: Number(form.quantity_requested || 1),
+          purpose: form.purpose,
+          notes: form.notes,
+          is_urgent: Boolean(form.is_urgent),
+        })
+        setNewModal(false)
+        setForm({
+          item: '',
+          quantity_requested: 1,
+          purpose: '',
+          notes: '',
+          is_urgent: false,
+        })
+        await reload()
+      }, 'Could not create request.')
     } finally {
       setSavingNew(false)
     }
@@ -194,36 +200,36 @@ export default function RequestsTab({ userRole }) {
 
   const createPurchaseRequest = async () => {
     setSavingPurchase(true)
-    setError('')
+    clearError()
     setSuccess('')
     try {
-      await inventoryAPI.createPurchaseRequest({
-        item_name: purchaseForm.item_name,
-        category: purchaseForm.category ? Number(purchaseForm.category) : null,
-        item_type: purchaseForm.item_type || 'consumable',
-        quantity_requested: Number(purchaseForm.quantity_requested || 1),
-        unit: purchaseForm.unit || 'pieces',
-        estimated_unit_cost: purchaseForm.estimated_unit_cost ? Number(purchaseForm.estimated_unit_cost) : null,
-        needed_by: purchaseForm.needed_by || null,
-        urgency: purchaseForm.urgency || 'normal',
-        reason: purchaseForm.reason,
-      })
-      setPurchaseModal(false)
-      setPurchaseForm({
-        item_name: '',
-        category: '',
-        item_type: 'consumable',
-        quantity_requested: 1,
-        unit: 'pieces',
-        estimated_unit_cost: '',
-        needed_by: '',
-        urgency: 'normal',
-        reason: '',
-      })
-      setSuccess('Purchase request submitted to admin.')
-      refreshBadges()
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Could not submit purchase request.')
+      await runAction(async () => {
+        await inventoryAPI.createPurchaseRequest({
+          item_name: purchaseForm.item_name,
+          category: purchaseForm.category ? Number(purchaseForm.category) : null,
+          item_type: purchaseForm.item_type || 'consumable',
+          quantity_requested: Number(purchaseForm.quantity_requested || 1),
+          unit: purchaseForm.unit || 'pieces',
+          estimated_unit_cost: purchaseForm.estimated_unit_cost ? Number(purchaseForm.estimated_unit_cost) : null,
+          needed_by: purchaseForm.needed_by || null,
+          urgency: purchaseForm.urgency || 'normal',
+          reason: purchaseForm.reason,
+        })
+        setPurchaseModal(false)
+        setPurchaseForm({
+          item_name: '',
+          category: '',
+          item_type: 'consumable',
+          quantity_requested: 1,
+          unit: 'pieces',
+          estimated_unit_cost: '',
+          needed_by: '',
+          urgency: 'normal',
+          reason: '',
+        })
+        setSuccess('Purchase request submitted to admin.')
+        refreshBadges()
+      }, 'Could not submit purchase request.')
     } finally {
       setSavingPurchase(false)
     }
@@ -306,6 +312,14 @@ export default function RequestsTab({ userRole }) {
                         disabled={actingId === r.id}
                       >
                         Reject
+                      </Btn>
+                      <Btn
+                        size="sm"
+                        variant={r.is_urgent ? 'secondary' : 'orange'}
+                        onClick={() => toggleUrgent(r)}
+                        disabled={actingId === r.id}
+                      >
+                        {r.is_urgent ? 'Unmark Urgent' : 'Mark Urgent'}
                       </Btn>
                     </div>
                   )}
@@ -421,6 +435,14 @@ export default function RequestsTab({ userRole }) {
                   disabled={actingId === r.id}
                 >
                   Reject
+                </Btn>
+                <Btn
+                  size="sm"
+                  variant={r.is_urgent ? 'secondary' : 'orange'}
+                  onClick={() => toggleUrgent(r)}
+                  disabled={actingId === r.id}
+                >
+                  {r.is_urgent ? 'Unmark' : 'Urgent'}
                 </Btn>
               </div>
             ) : canReview && r.status === 'approved' ? (
