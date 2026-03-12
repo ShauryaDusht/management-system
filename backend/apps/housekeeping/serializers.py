@@ -121,6 +121,7 @@ class HKDailyRecordSerializer(serializers.ModelSerializer):
 class HKStaffAttendanceRecordSerializer(serializers.ModelSerializer):
     staff_name = serializers.SerializerMethodField()
     staff_role = serializers.SerializerMethodField()
+    staff_areas = serializers.SerializerMethodField()
 
     class Meta:
         model = HKStaffAttendanceRecord
@@ -129,6 +130,7 @@ class HKStaffAttendanceRecordSerializer(serializers.ModelSerializer):
             'staff',
             'staff_name',
             'staff_role',
+            'staff_areas',
             'date',
             'status',
             'source',
@@ -146,6 +148,24 @@ class HKStaffAttendanceRecordSerializer(serializers.ModelSerializer):
         if obj.staff:
             return getattr(obj.staff, 'role', '') or ''
         return ''
+
+    def get_staff_areas(self, obj):
+        staff = getattr(obj, 'staff', None)
+        if not staff:
+            return []
+        links = getattr(staff, 'hk_areas', None)
+        if not links:
+            return []
+        names = []
+        seen = set()
+        for link in links.all():
+            area = getattr(link, 'area', None)
+            name = (getattr(area, 'name', '') or '').strip()
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            names.append(name)
+        return names
 
 
 class HKScheduleTemplateSerializer(serializers.ModelSerializer):

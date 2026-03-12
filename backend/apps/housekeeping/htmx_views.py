@@ -1306,11 +1306,15 @@ def hk_attendance(request):
             HKAttendanceRecord.objects.filter(
                 worker__in=workers, date=sel_date, half=half, is_submitted=False
             ).update(is_submitted=True, submitted_at=timezone.now())
-            HKStaffAttendanceRecord.objects.get_or_create(
+            staff_att, created = HKStaffAttendanceRecord.objects.get_or_create(
                 staff=user,
                 date=sel_date,
                 defaults={"status": "present", "source": "auto_attendance"},
             )
+            if not created and staff_att.source != "auto_leave" and staff_att.status != "present":
+                staff_att.status = "present"
+                staff_att.source = "auto_attendance"
+                staff_att.save(update_fields=["status", "source"])
             return redirect(f"/housekeeping/attendance/?date={sel_date}{area_param}")
 
         elif action == "mark":

@@ -1112,9 +1112,32 @@ class HKStaffAttendanceListView(ListAPIView):
     def get_queryset(self):
         date_str = self.request.query_params.get('date', str(timezone.localdate()))
         parsed_date = _parse_iso_date(date_str) or timezone.localdate()
+        User = get_user_model()
+        staff_qs = User.objects.filter(is_active=True, role__in=['supervisor', 'caretaker'])
+        existing_ids = set(
+            HKStaffAttendanceRecord.objects.filter(
+                date=parsed_date,
+                staff__in=staff_qs,
+            ).values_list('staff_id', flat=True)
+        )
+        missing = [s for s in staff_qs if s.id not in existing_ids]
+        if missing:
+            HKStaffAttendanceRecord.objects.bulk_create(
+                [
+                    HKStaffAttendanceRecord(
+                        staff=staff,
+                        date=parsed_date,
+                        status='absent',
+                        source='manual',
+                    )
+                    for staff in missing
+                ],
+                ignore_conflicts=True,
+            )
         return (
             HKStaffAttendanceRecord.objects
             .select_related('staff', 'leave_request')
+            .prefetch_related('staff__hk_areas__area')
             .filter(date=parsed_date)
             .order_by('staff__first_name', 'staff__username', 'id')
         )

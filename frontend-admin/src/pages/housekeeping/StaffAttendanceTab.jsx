@@ -22,19 +22,6 @@ const STATUS_META = {
   leave: { label: 'Leave', color: '#c2410c', bg: '#ffedd5' },
 }
 
-const SOURCE_LABELS = {
-  auto_attendance: 'Submitted Attendance',
-  auto_leave: 'Leave Approved',
-  manual: 'Manual Entry',
-}
-
-function formatSource(value) {
-  if (!value) return '-'
-  return SOURCE_LABELS[value] || String(value)
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
 function StatusPill({ status }) {
   const meta = STATUS_META[status] || { label: status || '-', color: '#0f172a', bg: '#e2e8f0' }
   return (
@@ -94,9 +81,9 @@ export default function StaffAttendanceTab() {
   const tableRows = useMemo(
     () => rows.map((r) => [
       r.staff_name || '-',
+      Array.isArray(r.staff_areas) && r.staff_areas.length ? r.staff_areas.join(', ') : '-',
       r.staff_role || '-',
       <StatusPill status={r.status} />,
-      formatSource(r.source),
       formatDateTime(r.marked_at),
     ]),
     [rows],
@@ -136,7 +123,7 @@ export default function StaffAttendanceTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Staff Name', 'Role', 'Status', 'Source', 'Time Marked']}
+            headers={['Staff Name', 'Area', 'Role', 'Status', 'Time Marked']}
             rows={tableRows}
             emptyMsg="No staff attendance records found for this date."
           />
