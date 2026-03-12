@@ -38,14 +38,6 @@ class CategoryListCreateView(generics.ListCreateAPIView):
         return [IsAuthenticated()]
 
 
-class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
-    def get_queryset(self):
-        return Category.objects.annotate(item_count=Count('items')).all()
-
-    serializer_class = CategorySerializer
-    permission_classes = [IsAdmin]
-
-
 # ─────────────────────────────────────────────────
 # ITEM VIEWS
 # ─────────────────────────────────────────────────

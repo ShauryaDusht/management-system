@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { authAPI } from '../../api/auth'
 import { hkAPI } from '../../api/housekeeping'
+import { usersAPI } from '../../api/users'
 import {
   Alert,
   Badge,
@@ -62,7 +62,7 @@ export default function UsersPage() {
     setError('')
     try {
       const [usersRes, areasRes] = await Promise.all([
-        authAPI.getUsers(),
+        usersAPI.getAll(),
         hkAPI.getAreas().catch(() => ({ data: [] })),
       ])
       setUsers(Array.isArray(usersRes.data) ? usersRes.data : usersRes.data.results || [])
@@ -125,9 +125,9 @@ export default function UsersPage() {
       if (form.password) payload.password = form.password
 
       if (modal.mode === 'create') {
-        await authAPI.createUser(payload)
+        await usersAPI.create(payload)
       } else {
-        await authAPI.updateUser(modal.user.id, payload)
+        await usersAPI.update(modal.user.id, payload)
       }
 
       setModal(null)
@@ -143,7 +143,7 @@ export default function UsersPage() {
   const doDelete = async () => {
     if (!deleteTarget) return
     try {
-      await authAPI.deleteUser(deleteTarget.id)
+      await usersAPI.delete(deleteTarget.id)
       setDeleteTarget(null)
       await load()
     } catch {

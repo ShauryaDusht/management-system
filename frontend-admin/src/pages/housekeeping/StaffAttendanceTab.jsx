@@ -2,12 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
 import { Alert, Card, DataTable, Input, Spinner } from '../../components/ui'
-
-function todayISO() {
-  const d = new Date()
-  const tzOffset = d.getTimezoneOffset() * 60000
-  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10)
-}
+import { todayISO } from '../../shared/utils'
 
 const STATUS_META = {
   present: { label: 'Present', color: '#166534', bg: '#dcfce7' },

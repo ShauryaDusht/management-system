@@ -3,12 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { hkAPI } from '../../api/housekeeping'
 import { Alert, Btn, Card, DataTable, Input, Spinner, StatCard } from '../../components/ui'
 import { BarGroupChart } from '../../components/ui/Charts'
-
-function todayISO() {
-  const d = new Date()
-  const tzOffset = d.getTimezoneOffset() * 60000
-  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10)
-}
+import { todayISO } from '../../shared/utils'
 
 export default function AttendanceTab() {
   const [date, setDate] = useState(todayISO())

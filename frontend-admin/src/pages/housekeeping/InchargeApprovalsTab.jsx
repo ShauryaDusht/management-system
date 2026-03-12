@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { hkAPI } from '../../api/housekeeping'
 import { Alert, Badge, Btn, Card, DataTable, Modal, SelectField, Spinner } from '../../components/ui'
 import { useNotifications } from '../../context/NotificationContext'
+import { triggerDownload } from '../../shared/utils'
 
 const MONTHS = [
   { value: 1, label: 'Jan' },
@@ -49,15 +50,7 @@ function toCsvValue(value) {
 }
 
 function downloadBlob(data, filename) {
-  const href = URL.createObjectURL(data)
-  const a = document.createElement('a')
-  a.href = href
-  a.download = filename
-  a.style.display = 'none'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(href), 150)
+  triggerDownload(data, filename)
 }
 
 function InchargeReportModal({ open, onClose }) {

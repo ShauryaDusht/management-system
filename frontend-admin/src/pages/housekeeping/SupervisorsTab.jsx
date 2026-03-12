@@ -6,7 +6,9 @@ import {
   getConsumptionReportDetail,
   getConsumptionReports,
 } from '../../api/inventory'
+import { usersAPI } from '../../api/users'
 import { Alert, Badge, Btn, Card, DataTable, Modal, SelectField, Spinner } from '../../components/ui'
+import { triggerDownload } from '../../shared/utils'
 
 const MONTHS = [
   { value: 1, label: 'Jan' },
@@ -61,12 +63,7 @@ function formatPct(value) {
 }
 
 function downloadBlob(data, filename) {
-  const href = URL.createObjectURL(data)
-  const a = document.createElement('a')
-  a.href = href
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(href)
+  triggerDownload(data, filename)
 }
 
 function toCsvValue(value) {
@@ -128,13 +125,8 @@ function SupervisorReportModal({ open, supervisor, onClose }) {
     try {
       const response = await hkAPI.downloadSupervisorReportCSV(supervisor.id, month, year)
       const blob = new Blob([response.data], { type: 'text/csv' })
-      const href = URL.createObjectURL(blob)
-      const a = document.createElement('a')
       const safeUsername = toCsvSafe(supervisor.username, String(supervisor.id))
-      a.href = href
-      a.download = `supervisor_${safeUsername}_${String(month).padStart(2, '0')}_${year}.csv`
-      a.click()
-      URL.revokeObjectURL(href)
+      triggerDownload(blob, `supervisor_${safeUsername}_${String(month).padStart(2, '0')}_${year}.csv`)
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed to download CSV.')
     } finally {
@@ -578,7 +570,11 @@ export default function SupervisorsTab() {
       setError('')
       try {
         const [{ data: areaData }, { data: caretakersData }, { data: supervisorsData }] =
-          await Promise.all([hkAPI.getAreas(), hkAPI.getCaretakers(), hkAPI.getSupervisors()])
+          await Promise.all([
+            hkAPI.getAreas(),
+            usersAPI.getByRole('caretaker'),
+            usersAPI.getByRole('supervisor'),
+          ])
 
         if (!mounted) return
 

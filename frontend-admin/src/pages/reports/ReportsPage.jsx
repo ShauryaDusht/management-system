@@ -4,6 +4,7 @@ import api from '../../api/client'
 import AdminLayout from '../../layout/AdminLayout'
 import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner, StatCard, Tabs } from '../../components/ui'
 import RequestsReportTab from './RequestsReportTab'
+import { triggerDownload } from '../../shared/utils'
 import {
   inventoryAPI,
   csvUrl,
@@ -24,24 +25,14 @@ import { useNotifications } from '../../context/NotificationContext'
 async function downloadWithToken(url, filename) {
   try {
     const response = await api.get(url, { responseType: 'blob' })
-    const href = URL.createObjectURL(response.data)
-    const a = document.createElement('a')
-    a.href = href
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(href)
+    triggerDownload(response.data, filename)
   } catch {
     window.alert('Download failed.')
   }
 }
 
 function downloadBlob(data, filename) {
-  const href = URL.createObjectURL(data)
-  const a = document.createElement('a')
-  a.href = href
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(href)
+  triggerDownload(data, filename)
 }
 
 function csvEscape(value) {
@@ -60,12 +51,7 @@ function exportCsv(data, filename) {
   const headers = Object.keys(data[0])
   const rows = data.map((row) => headers.map((k) => csvEscape(row[k])).join(','))
   const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' })
-  const href = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = href
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(href)
+  triggerDownload(blob, filename)
 }
 
 function InventoryReportTab() {

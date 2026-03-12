@@ -22,3 +22,27 @@ export function asList(data) {
   if (Array.isArray(data?.items)) return data.items
   return []
 }
+
+// Error message extractor — replaces all local getErrorMessage copies
+export function getErrorMessage(error, fallback = 'Something went wrong.') {
+  return error?.response?.data?.detail
+    || error?.response?.data?.message
+    || error?.message
+    || fallback
+}
+
+// Trigger a file download from a blob response
+export function triggerDownload(blob, filename) {
+  const href = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = href
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(href)
+}
+
+// Get today's date as YYYY-MM-DD in local time
+export function todayISO() {
+  const d = new Date()
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+}

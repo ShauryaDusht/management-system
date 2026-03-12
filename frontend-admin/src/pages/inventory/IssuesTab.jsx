@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { inventoryAPI, reportsAPI } from '../../api/inventory'
 import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, SelectField } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
-import { asList } from '../../shared/utils'
+import { asList, triggerDownload } from '../../shared/utils'
 
 const AREA_CLASS_LABELS = {
   all: 'All Areas',
@@ -217,14 +217,7 @@ export default function IssuesTab({ userRole }) {
       const filename =
         match?.[1] ||
         `area_issues_${reportYear}_${String(reportMonth).padStart(2, '0')}.csv`
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', filename)
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
+      triggerDownload(blob, filename)
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed to download report CSV.')
     } finally {

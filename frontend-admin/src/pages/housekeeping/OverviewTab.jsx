@@ -4,12 +4,7 @@ import { hkAPI } from '../../api/housekeeping'
 import { reportsAPI } from '../../api/inventory'
 import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
 import { TrendArea } from '../../components/ui/Charts'
-
-function localDateISO() {
-  const d = new Date()
-  const tzOffset = d.getTimezoneOffset() * 60000
-  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10)
-}
+import { todayISO } from '../../shared/utils'
 
 export default function OverviewTab() {
   const [loading, setLoading] = useState(true)
@@ -55,7 +50,7 @@ export default function OverviewTab() {
       const { data: areaData } = await hkAPI.getAreas()
       const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
         .filter((a) => a.name?.toLowerCase() !== 'hostels reliever')
-      const todayStr = localDateISO()
+      const todayStr = todayISO()
       let records = []
       try {
         const { data } = await hkAPI.getDailyRecords({ date: todayStr })

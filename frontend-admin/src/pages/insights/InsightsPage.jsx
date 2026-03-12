@@ -4,6 +4,7 @@ import { reportsAPI } from '../../api/inventory'
 import { Btn, Card, Spinner } from '../../components/ui'
 import { BarGroupChart } from '../../components/ui/Charts'
 import AdminLayout from '../../layout/AdminLayout'
+import { todayISO, triggerDownload } from '../../shared/utils'
 
 const VIEW_OPTIONS = [
   { key: 'caretaker', label: 'Caretaker/Supervisor Trend' },
@@ -37,12 +38,7 @@ function downloadCsv(filename, headers, rows) {
   const body = rows.map((row) => row.map(escapeCsvCell).join(',')).join('\n')
   const csv = `${head}\n${body}`
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+  triggerDownload(blob, filename)
 }
 
 export default function InsightsPage() {
@@ -158,7 +154,7 @@ export default function InsightsPage() {
   )
 
   const exportCurrentCsv = () => {
-    const day = new Date().toISOString().slice(0, 10)
+    const day = todayISO()
     const baseName = `insights_${activeView}_${range}_${areaClass}_${day}.csv`
 
     if (activeView === 'caretaker') {

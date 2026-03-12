@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { authAPI } from '../../api/auth'
 import { hkAPI } from '../../api/housekeeping'
+import { usersAPI } from '../../api/users'
 import { Alert, Btn, Card, DataTable, Modal, SelectField, Spinner } from '../../components/ui'
+import { triggerDownload } from '../../shared/utils'
 
 export default function SectionsTab() {
   const [loading, setLoading] = useState(true)
@@ -36,7 +37,11 @@ export default function SectionsTab() {
     setError('')
     try {
       const [{ data: areaData }, { data: caretakersData }, { data: supervisorsData }] =
-        await Promise.all([hkAPI.getAreas(), hkAPI.getCaretakers(), hkAPI.getSupervisors()])
+        await Promise.all([
+          hkAPI.getAreas(),
+          usersAPI.getByRole('caretaker'),
+          usersAPI.getByRole('supervisor'),
+        ])
 
       const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
         .filter((a) => a.name?.toLowerCase() !== 'hostels reliever')
@@ -188,12 +193,12 @@ export default function SectionsTab() {
         const oldUser = users.find((u) => u.id === assignModal.currentUserId)
         if (oldUser) {
           const oldAreaIds = (oldUser.assigned_area_ids || []).filter((id) => id !== areaId)
-          updates.push(authAPI.updateUser(oldUser.id, { area_ids: oldAreaIds }))
+          updates.push(usersAPI.update(oldUser.id, { area_ids: oldAreaIds }))
         }
       }
 
       const newAreaIds = Array.from(new Set([...(newUser.assigned_area_ids || []), areaId]))
-      updates.push(authAPI.updateUser(newUser.id, { area_ids: newAreaIds }))
+      updates.push(usersAPI.update(newUser.id, { area_ids: newAreaIds }))
 
       await Promise.all(updates)
       setAssignModal(null)
@@ -214,12 +219,7 @@ export default function SectionsTab() {
 
   const triggerCsvDownload = (csvContent, filename) => {
     const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv' })
-    const href = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = href
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(href)
+    triggerDownload(blob, filename)
   }
 
   const downloadAreaInchargeReport = () => {

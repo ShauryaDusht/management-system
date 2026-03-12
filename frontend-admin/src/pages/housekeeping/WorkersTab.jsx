@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
+import { usersAPI } from '../../api/users'
 import {
   Alert,
   Btn,
@@ -69,8 +70,6 @@ export default function WorkersTab() {
   const [formError, setFormError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [reportWorker, setReportWorker] = useState(null)
-  const [downloadingAll, setDownloadingAll] = useState(false)
-  const [downloadingArea, setDownloadingArea] = useState(false)
 
   const areaGroup = (areaName, areaType) => {
     const n = String(areaName || '').trim()
@@ -93,8 +92,8 @@ export default function WorkersTab() {
       const [areaRes, workerRes, supRes, ctRes] = await Promise.all([
         hkAPI.getAreas(),
         hkAPI.getWorkers(),
-        hkAPI.getSupervisors().catch(() => ({ data: [] })),
-        hkAPI.getCaretakers().catch(() => ({ data: [] })),
+        usersAPI.getByRole('supervisor').catch(() => ({ data: [] })),
+        usersAPI.getByRole('caretaker').catch(() => ({ data: [] })),
       ])
 
       const areaList = Array.isArray(areaRes.data) ? areaRes.data : areaRes.data?.results || []
@@ -201,79 +200,6 @@ export default function WorkersTab() {
     setModal({ mode: 'edit', worker })
   }
 
-  const triggerBlobDownload = (blobData, filename) => {
-    const blob = new Blob([blobData], { type: 'text/csv' })
-    const href = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = href
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(href)
-  }
-
-  const currentMonthYear = () => {
-    const now = new Date()
-    return { month: now.getMonth() + 1, year: now.getFullYear() }
-  }
-
-  const downloadAllWorkersCSV = async () => {
-    setDownloadingAll(true)
-    setError('')
-    try {
-      const { month, year } = currentMonthYear()
-      const response = await hkAPI.downloadWorkersCombinedCSV({ month, year })
-      triggerBlobDownload(response.data, `workers_all_${String(month).padStart(2, '0')}_${year}.csv`)
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to download all workers CSV.')
-    } finally {
-      setDownloadingAll(false)
-    }
-  }
-
-  const downloadAreaWorkersCSV = async () => {
-    if (!selectedArea && areaClassFilter === 'all') {
-      setError('Select an area or choose Hostels/Academic/Others for area-wise report CSV.')
-      return
-    }
-
-    setDownloadingArea(true)
-    setError('')
-    try {
-      const { month, year } = currentMonthYear()
-      if (selectedArea) {
-        const areaObj = areaById.get(Number(selectedArea))
-        const areaLabel = String(areaObj?.name || 'area')
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '_')
-          .replace(/^_+|_+$/g, '')
-
-        const response = await hkAPI.downloadWorkersCombinedCSV({
-          area: Number(selectedArea),
-          month,
-          year,
-        })
-        triggerBlobDownload(
-          response.data,
-          `workers_area_${areaLabel || selectedArea}_${String(month).padStart(2, '0')}_${year}.csv`,
-        )
-      } else {
-        const response = await hkAPI.downloadWorkersCombinedCSV({
-          group: areaClassFilter,
-          month,
-          year,
-        })
-        triggerBlobDownload(
-          response.data,
-          `workers_${areaClassFilter}_${String(month).padStart(2, '0')}_${year}.csv`,
-        )
-      }
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to download area-wise worker report CSV.')
-    } finally {
-      setDownloadingArea(false)
-    }
-  }
-
   const buildPayload = () => {
     const first = String(form.first_name || '').trim()
     const last = String(form.last_name || '').trim()
@@ -364,12 +290,6 @@ export default function WorkersTab() {
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </SelectField>
-            <Btn size="sm" variant="secondary" onClick={downloadAreaWorkersCSV} disabled={downloadingArea}>
-              {downloadingArea ? 'Preparing Area CSV...' : 'Area Report CSV'}
-            </Btn>
-            <Btn size="sm" variant="secondary" onClick={downloadAllWorkersCSV} disabled={downloadingAll}>
-              {downloadingAll ? 'Preparing All CSV...' : 'All Workers CSV'}
-            </Btn>
             <Btn size="sm" onClick={openCreate}>+ Add Worker</Btn>
           </div>
         </div>

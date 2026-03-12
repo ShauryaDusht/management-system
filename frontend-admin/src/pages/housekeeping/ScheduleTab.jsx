@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
+import { getErrorMessage } from '../../shared/utils'
 import {
   Alert,
   Btn,
@@ -60,21 +61,6 @@ function areaGroup(areaName, areaType) {
   if (areaType === 'hostel') return 'hostels'
   if (areaType === 'academic') return 'academic'
   return 'others'
-}
-
-function getErrorMessage(error, fallback) {
-  const detail = error?.response?.data?.detail || error?.response?.data?.message
-  if (detail) return detail
-  const data = error?.response?.data
-  if (data !== undefined) {
-    if (typeof data === 'string') return data
-    try {
-      return JSON.stringify(data)
-    } catch {
-      // ignore JSON stringify errors
-    }
-  }
-  return fallback
 }
 
 function formatTime(value) {

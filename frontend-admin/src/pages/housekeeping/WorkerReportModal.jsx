@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
 import { Alert, Btn, Card, DataTable, Modal, SelectField, Spinner } from '../../components/ui'
+import { triggerDownload } from '../../shared/utils'
 
 const MONTH_NAMES = [
   'January',
@@ -120,12 +121,10 @@ export default function WorkerReportModal({ open, worker, onClose }) {
     try {
       const response = await hkAPI.downloadWorkerReportCSV(worker.id, selectedPeriod.month, selectedPeriod.year)
       const blob = new Blob([response.data], { type: 'text/csv' })
-      const href = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = href
-      a.download = `worker_${toSafeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}.csv`
-      a.click()
-      URL.revokeObjectURL(href)
+      triggerDownload(
+        blob,
+        `worker_${toSafeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}.csv`,
+      )
     } catch (e) {
       setError(e.response?.data?.detail || 'CSV download failed.')
     } finally {

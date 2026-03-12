@@ -3,7 +3,6 @@ import api from './client'
 export const inventoryAPI = {
   // ── Dashboard ──────────────────────────────────────────────────────────────
   getDashboard: () => api.get('/inventory/dashboard/'),
-  getStats: () => api.get('/inventory/dashboard/'),   // alias — same endpoint as getDashboard
 
   // ── Categories ─────────────────────────────────────────────────────────────
   getCategories: () => api.get('/inventory/categories/'),
@@ -109,3 +108,4 @@ export const reportsAPI = {
   downloadConsumptionItemCSV,
   downloadConsumptionRequesterCSV,
 }
+

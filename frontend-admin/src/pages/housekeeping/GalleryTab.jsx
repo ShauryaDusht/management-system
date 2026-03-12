@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
 import { Alert, Btn, Card, DataTable, Input, Modal, SelectField, Spinner } from '../../components/ui'
+import { triggerDownload } from '../../shared/utils'
 
 function list(data) {
   if (Array.isArray(data)) return data
@@ -17,12 +18,7 @@ function fmt(v) {
 }
 
 function saveBlob(blob, name) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(url), 800)
+  triggerDownload(blob, name)
 }
 
 function fmtBytes(bytes) {

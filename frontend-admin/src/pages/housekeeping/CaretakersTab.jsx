@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
+import { usersAPI } from '../../api/users'
 import { Alert, Badge, Card, DataTable, Spinner } from '../../components/ui'
 
 function normalizeUsers(payload) {
@@ -22,7 +23,11 @@ export default function CaretakersTab() {
       setError('')
       try {
         const [{ data: areaData }, { data: caretakersData }, { data: supervisorsData }] =
-          await Promise.all([hkAPI.getAreas(), hkAPI.getCaretakers(), hkAPI.getSupervisors()])
+          await Promise.all([
+            hkAPI.getAreas(),
+            usersAPI.getByRole('caretaker'),
+            usersAPI.getByRole('supervisor'),
+          ])
 
         if (!mounted) return
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { asList } from '../../shared/utils'
+import { asList, getErrorMessage } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
 import {
   Alert,
@@ -25,20 +25,6 @@ function itemStatus(item) {
   return 'in_stock'
 }
 
-function getErrorMessage(error, fallback) {
-  const detail = error?.response?.data?.detail || error?.response?.data?.message
-  if (detail) return detail
-  const data = error?.response?.data
-  if (data !== undefined) {
-    if (typeof data === 'string') return data
-    try {
-      return JSON.stringify(data)
-    } catch {
-      // ignore JSON stringify errors
-    }
-  }
-  return fallback
-}
 const EMPTY_ITEM = {
   name: '',
   category: '',

@@ -2,47 +2,14 @@ from django.db import transaction
 from django.db.models import F
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
-from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.viewsets import ModelViewSet
 
 from apps.users.permissions import IsAdmin
-from .models import Category, Item, ItemRequest
-from .serializers import CategorySerializer, ItemSerializer, ItemRequestSerializer
-
-
-class ItemViewSet(ModelViewSet):
-    queryset = Item.objects.all().order_by('-created_at')
-    serializer_class = ItemSerializer
-    pagination_class = None
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['item_type', 'category']
-    search_fields = ['name', 'description']
-    ordering_fields = ['name', 'available_quantity', 'created_at']
-    
-    # class-level declaration and a proper write-guard below.
-    permission_classes = [IsAuthenticated]
-
-    def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAdmin()]
-        return [IsAuthenticated()]
-
-
-class CategoryViewSet(ModelViewSet):
-    queryset = Category.objects.all()
-    serializer_class = CategorySerializer
-    pagination_class = None
-    permission_classes = [IsAuthenticated]
-
-    def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAdmin()]
-        return [IsAuthenticated()]
+from .models import Item, ItemRequest
+from .serializers import ItemSerializer, ItemRequestSerializer
 
 
 class AdjustStockView(APIView):
@@ -214,20 +181,3 @@ class MarkUrgentView(APIView):
         return Response({'status': 'updated', 'is_urgent': item_request.is_urgent}, status=status.HTTP_200_OK)
 
 
-class InventoryStatsView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        stats = {
-            # Field names aligned with DashboardSummaryView to reduce drift
-            'total_items': Item.objects.count(),
-            'low_stock_count': Item.objects.filter(
-                available_quantity__gt=0,
-                available_quantity__lte=F('threshold_quantity'),
-            ).count(),
-            'out_of_stock_count': Item.objects.filter(available_quantity=0).count(),
-            'pending_requests': ItemRequest.objects.filter(status='pending').count(),
-            # Legacy alias kept so existing callers don't break immediately
-            'pending_requests_count': ItemRequest.objects.filter(status='pending').count(),
-        }
-        return Response(stats, status=status.HTTP_200_OK)

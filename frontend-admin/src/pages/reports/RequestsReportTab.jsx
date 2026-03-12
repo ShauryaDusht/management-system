@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { getRequestsReport } from '../../api/inventory'
 import { Alert, Btn, Card, DataTable, Field, Input, Spinner, StatCard } from '../../components/ui'
+import { triggerDownload } from '../../shared/utils'
 
 function csvEscape(value) {
   if (value === null || value === undefined) return ''
@@ -18,12 +19,7 @@ function exportCsv(data, filename) {
   const headers = Object.keys(data[0])
   const rows = data.map((row) => headers.map((k) => csvEscape(row[k])).join(','))
   const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' })
-  const href = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = href
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(href)
+  triggerDownload(blob, filename)
 }
 
 export default function RequestsReportTab() {

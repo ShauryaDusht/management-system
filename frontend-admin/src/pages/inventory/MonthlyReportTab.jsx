@@ -2,18 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import api from '../../api/client'
 import { Alert, Btn, Card, DataTable, Field, Modal, SelectField, Spinner } from '../../components/ui'
 import { csvUrl, deleteMonthly, generateMonthly, getMonthly, listMonthly, pdfUrl } from '../../api/inventory'
+import { triggerDownload } from '../../shared/utils'
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 async function downloadWithToken(url, filename) {
   try {
     const response = await api.get(url, { responseType: 'blob' })
-    const href = URL.createObjectURL(response.data)
-    const a = document.createElement('a')
-    a.href = href
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(href)
+    triggerDownload(response.data, filename)
   } catch {
     window.alert('Download failed.')
   }

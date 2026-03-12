@@ -2,12 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
 import { Alert, Card, DataTable, Input, Spinner, StatCard } from '../../components/ui'
-
-function todayISO() {
-  const d = new Date()
-  const tzOffset = d.getTimezoneOffset() * 60000
-  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10)
-}
+import { todayISO } from '../../shared/utils'
 
 export default function AttendanceTab() {
   const [date, setDate] = useState(todayISO())

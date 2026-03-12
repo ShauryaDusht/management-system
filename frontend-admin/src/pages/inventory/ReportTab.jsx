@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { getInventoryReport } from '../../api/inventory'
 import { Alert, Badge, Btn, Card, DataTable, Spinner, StatCard } from '../../components/ui'
-import { asList } from '../../shared/utils'
+import { asList, triggerDownload } from '../../shared/utils'
 
 const STATUS_OPTIONS = [
   { key: 'all', label: 'All' },
@@ -31,12 +31,7 @@ function downloadCsv(data, filename) {
   const headers = Object.keys(data[0])
   const rows = data.map((row) => headers.map((key) => csvEscape(row[key])).join(','))
   const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' })
-  const href = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = href
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(href)
+  triggerDownload(blob, filename)
 }
 
 export default function ReportTab() {

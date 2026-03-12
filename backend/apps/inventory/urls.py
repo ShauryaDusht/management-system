@@ -1,11 +1,11 @@
 from django.urls import path
 
 from .api_views import (
-    AdjustStockView, InventoryStatsView,
+    AdjustStockView,
     ApproveRequestView, RejectRequestView, MarkUrgentView,
 )
 from .views import (
-    CategoryListCreateView, CategoryDetailView,
+    CategoryListCreateView,
     ItemListCreateView, ItemDetailView, LowStockItemsView,
     ItemHistoryView, ItemStockEntriesView,
     StockEntryListCreateView,
@@ -31,20 +31,18 @@ from .views import (
 # The LEGACY /api/items/ and /api/requests/ routes have been REMOVED.
 # Every frontend page has been updated to use the PRIMARY routes via inventoryAPI.*.
 #
-# The five /api/ routes below are KEPT because they have NO equivalent in views.py:
+# The /api/ routes below are KEPT because they have NO equivalent in views.py:
 #   - adjust-stock   → AdjustStockView   (no equivalent ItemAdjustView in views.py)
-#   - stats          → InventoryStatsView (lightweight public stats, now fixed BUG-03)
 #   - approve        → ApproveRequestView (separate from ReviewRequestView by design)
 #   - reject         → RejectRequestView
 #   - mark-urgent    → MarkUrgentView
 #
-# These five are the ONLY remaining api_views.py routes. Everything else is primary.
+# These are the ONLY remaining api_views.py routes. Everything else is primary.
 # ─────────────────────────────────────────────────────────────────────────────
 
 urlpatterns = [
     # ── Categories ──────────────────────────────────────────────────────────
     path('categories/', CategoryListCreateView.as_view(), name='category-list'),
-    path('categories/<int:pk>/', CategoryDetailView.as_view(), name='category-detail'),
 
     # ── Items ────────────────────────────────────────────────────────────────
     path('items/', ItemListCreateView.as_view(), name='item-list'),
@@ -76,11 +74,18 @@ urlpatterns = [
     path('dashboard/', DashboardSummaryView.as_view(), name='dashboard-summary'),
 
     # ── Retained /api/ routes (no primary equivalent exists for these) ────────
-    # These five endpoints have no counterpart in views.py and are still actively
+    # These endpoints have no counterpart in views.py and are still actively
     # used by the frontend. They are kept intentionally and are NOT duplicates.
     path('api/items/<int:pk>/adjust-stock/', AdjustStockView.as_view(), name='item-adjust-stock'),
-    path('api/stats/', InventoryStatsView.as_view(), name='inventory-stats'),
     path('api/requests/<int:pk>/approve/', ApproveRequestView.as_view(), name='api-request-approve'),
     path('api/requests/<int:pk>/reject/', RejectRequestView.as_view(), name='api-request-reject'),
     path('api/requests/<int:pk>/mark-urgent/', MarkUrgentView.as_view(), name='api-request-mark-urgent'),
 ]
+
+
+
+
+
+
+
+
