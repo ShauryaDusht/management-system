@@ -120,6 +120,7 @@ class HKDailyRecordSerializer(serializers.ModelSerializer):
 
 class HKStaffAttendanceRecordSerializer(serializers.ModelSerializer):
     staff_name = serializers.SerializerMethodField()
+    staff_role = serializers.SerializerMethodField()
 
     class Meta:
         model = HKStaffAttendanceRecord
@@ -127,6 +128,7 @@ class HKStaffAttendanceRecordSerializer(serializers.ModelSerializer):
             'id',
             'staff',
             'staff_name',
+            'staff_role',
             'date',
             'status',
             'source',
@@ -138,6 +140,11 @@ class HKStaffAttendanceRecordSerializer(serializers.ModelSerializer):
     def get_staff_name(self, obj):
         if obj.staff:
             return obj.staff.get_full_name() or obj.staff.username
+        return ''
+
+    def get_staff_role(self, obj):
+        if obj.staff:
+            return getattr(obj.staff, 'role', '') or ''
         return ''
 
 

@@ -9,15 +9,28 @@ function todayISO() {
   return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10)
 }
 
+function formatDateTime(value) {
+  if (!value) return '-'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return value
+  return d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
 const STATUS_META = {
   present: { label: 'Present', color: '#166534', bg: '#dcfce7' },
   absent: { label: 'Absent', color: '#b91c1c', bg: '#fee2e2' },
   leave: { label: 'Leave', color: '#c2410c', bg: '#ffedd5' },
 }
 
+const SOURCE_LABELS = {
+  auto_attendance: 'Submitted Attendance',
+  auto_leave: 'Leave Approved',
+  manual: 'Manual Entry',
+}
+
 function formatSource(value) {
   if (!value) return '-'
-  return String(value)
+  return SOURCE_LABELS[value] || String(value)
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
@@ -67,13 +80,24 @@ export default function StaffAttendanceTab() {
     load(date)
   }, [date])
 
+  const totals = useMemo(
+    () => rows.reduce((acc, r) => {
+      acc.total += 1
+      if (r.status === 'present') acc.present += 1
+      else if (r.status === 'absent') acc.absent += 1
+      else if (r.status === 'leave') acc.leave += 1
+      return acc
+    }, { total: 0, present: 0, absent: 0, leave: 0 }),
+    [rows],
+  )
+
   const tableRows = useMemo(
     () => rows.map((r) => [
       r.staff_name || '-',
-      r.date || '-',
+      r.staff_role || '-',
       <StatusPill status={r.status} />,
       formatSource(r.source),
-      r.note || '-',
+      formatDateTime(r.marked_at),
     ]),
     [rows],
   )
@@ -82,13 +106,28 @@ export default function StaffAttendanceTab() {
     <div>
       <Alert message={error} />
 
-      <Card style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <div style={{ fontWeight: 700, fontSize: 15 }}>Staff Attendance</div>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 12 }}>
+        <Card>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Total Staff</div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.total}</div>
+        </Card>
+        <Card>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Present</div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.present}</div>
+        </Card>
+        <Card>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Absent</div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.absent}</div>
+        </Card>
+        <Card>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>On Leave</div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.leave}</div>
+        </Card>
+        <Card style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Date</div>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       <Card noPad>
         {loading ? (
@@ -97,7 +136,7 @@ export default function StaffAttendanceTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Staff Name', 'Date', 'Status', 'Source', 'Note']}
+            headers={['Staff Name', 'Role', 'Status', 'Source', 'Time Marked']}
             rows={tableRows}
             emptyMsg="No staff attendance records found for this date."
           />
