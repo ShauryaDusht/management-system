@@ -1,19 +1,21 @@
 from django.utils import timezone
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from django.db import transaction
-from django.db.models import Sum, F, Count
+from django.db.models import Sum, F, Count, Value, DecimalField
+from django.db.models.functions import Coalesce
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 
-from .models import Category, Item, ItemRequest, ItemIssue, PurchaseRequest, StockEntry
+from .models import Category, Item, ItemRequest, ItemIssue, ItemUsageLog, PurchaseRequest, StockEntry
 from .serializers import (
     CategorySerializer, ItemSerializer,
     StockEntrySerializer,
     ItemRequestSerializer, ItemRequestReviewSerializer,
     PurchaseRequestSerializer,
-    ItemIssueSerializer,
+    ItemIssueSerializer, ItemUsageLogSerializer,
     ReturnAssetSerializer, FinalizeConsumableSerializer,
     UserActivitySerializer,
     StandardPagination,
@@ -434,6 +436,12 @@ class ItemIssueListView(generics.ListAPIView):
         user = self.request.user
         qs = ItemIssue.objects.select_related(
             'request__item', 'request__requested_by', 'issued_by', 'return_recorded_by'
+        ).annotate(
+            total_consumed=Coalesce(
+                Sum('usage_logs__quantity_used'),
+                Value(0),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            )
         )
         if getattr(user, 'role', '') in ['supervisor', 'caretaker']:
             return qs.filter(request__requested_by=user)
@@ -541,9 +549,125 @@ class FinalizeConsumableView(APIView):
         issue.usage_finalized = True
         issue.usage_finalized_at = timezone.now()
         issue.notes = serializer.validated_data.get('notes', issue.notes)
-        issue.save()
+        issue.save(update_fields=[
+            'actual_quantity_used', 'usage_finalized', 'usage_finalized_at',
+            'notes',
+        ])
 
         return Response(ItemIssueSerializer(issue).data)
+
+
+class IssueUsageLogView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get_issue(self, user, pk, for_update=False):
+        base_qs = ItemIssue.objects.select_related(
+            'request__item', 'request__requested_by'
+        )
+        if for_update:
+            base_qs = base_qs.select_for_update()
+
+        if user.is_admin or user.is_inventory_manager:
+            return base_qs.get(pk=pk)
+        if user.is_supervisor or user.is_caretaker:
+            return base_qs.get(pk=pk, request__requested_by=user)
+        raise PermissionDenied('Permission denied.')
+
+    def get(self, request, pk):
+        try:
+            issue = self._get_issue(request.user, pk)
+        except ItemIssue.DoesNotExist:
+            return Response({'detail': 'Issue record not found.'}, status=404)
+        except PermissionDenied as exc:
+            return Response({'detail': str(exc)}, status=403)
+
+        logs = (
+            ItemUsageLog.objects
+            .filter(issue=issue)
+            .select_related('logged_by')
+            .order_by('-logged_at')
+        )
+        total_consumed = logs.aggregate(
+            total=Coalesce(
+                Sum('quantity_used'),
+                Value(0),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            )
+        )['total']
+        issued_qty = issue.issued_quantity
+        remaining = max(Decimal(issued_qty) - total_consumed, Decimal('0'))
+        issue.total_consumed = total_consumed
+
+        return Response({
+            'issue': ItemIssueSerializer(issue).data,
+            'total_consumed': total_consumed,
+            'issued_quantity': issued_qty,
+            'remaining_quantity': remaining,
+            'total_used': total_consumed,
+            'logs': ItemUsageLogSerializer(logs, many=True).data,
+        })
+
+    @transaction.atomic
+    def post(self, request, pk):
+        user = request.user
+        if not (user.is_supervisor or user.is_caretaker):
+            return Response({'detail': 'Permission denied.'}, status=403)
+
+        try:
+            issue = self._get_issue(user, pk, for_update=True)
+        except ItemIssue.DoesNotExist:
+            return Response({'detail': 'Issue record not found.'}, status=404)
+
+        raw_qty = request.data.get('quantity_used')
+        purpose = (request.data.get('purpose') or '').strip()
+        notes = (request.data.get('notes') or '').strip()
+
+        try:
+            quantity_used = Decimal(str(raw_qty))
+        except (TypeError, ValueError, InvalidOperation):
+            return Response({'quantity_used': 'Enter a valid number.'}, status=400)
+
+        if quantity_used <= 0:
+            return Response({'quantity_used': 'Quantity must be greater than 0.'}, status=400)
+
+        quantity_used = quantity_used.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        if issue.request.item.item_type == 'asset':
+            if quantity_used != quantity_used.to_integral_value():
+                return Response({'quantity_used': 'Enter a whole number for assets.'}, status=400)
+
+        if not purpose:
+            return Response({'purpose': 'Please describe what the item was used for.'}, status=400)
+
+        total_consumed = ItemUsageLog.objects.filter(issue=issue).aggregate(
+            total=Coalesce(
+                Sum('quantity_used'),
+                Value(0),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            )
+        )['total']
+        remaining = Decimal(issue.issued_quantity) - total_consumed
+        if remaining <= 0:
+            return Response({'quantity_used': 'All issued quantity has already been logged.'}, status=400)
+        if quantity_used > remaining:
+            remaining_display = remaining.quantize(Decimal('0.01'))
+            return Response(
+                {
+                    'quantity_used': (
+                        f'Cannot exceed remaining quantity ({remaining_display} {issue.request.item.unit}).'
+                    )
+                },
+                status=400
+            )
+
+        log = ItemUsageLog.objects.create(
+            issue=issue,
+            quantity_used=quantity_used,
+            purpose=purpose,
+            notes=notes,
+            logged_by=user,
+        )
+
+        return Response(ItemUsageLogSerializer(log).data, status=201)
 
 
 # ─────────────────────────────────────────────────

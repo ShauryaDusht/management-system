@@ -1,6 +1,7 @@
 import datetime
 import functools
 import logging
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from django.contrib.auth import (
     authenticate,
@@ -10,6 +11,9 @@ from django.contrib.auth import (
     update_session_auth_hash,
 )
 from django.db import models as dm
+from django.db import transaction
+from django.db.models import Prefetch, Sum, Value, DecimalField
+from django.db.models.functions import Coalesce
 from django.http import HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_datetime
@@ -38,6 +42,7 @@ from .models import (
     HKWorkerSelectionRequest,
 )
 from .photo_utils import process_task_photo
+from apps.inventory.models import ItemIssue, ItemUsageLog
 
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
@@ -78,6 +83,44 @@ def area_bucket(area):
     if area.area_type == "hostel":
         return "hostels"
     return "others"
+
+
+def _build_usage_issues(user, limit=None):
+    usage_logs_qs = ItemUsageLog.objects.select_related('logged_by').order_by('-logged_at')
+    issues_qs = ItemIssue.objects.select_related(
+        'request',
+        'request__item',
+        'request__item__category',
+        'request__requested_by',
+        'issued_by',
+    ).prefetch_related(
+        Prefetch('usage_logs', queryset=usage_logs_qs)
+    ).annotate(
+        total_consumed=Coalesce(
+            Sum('usage_logs__quantity_used'),
+            Value(0),
+            output_field=DecimalField(max_digits=10, decimal_places=2),
+        )
+    ).filter(
+        request__requested_by=user
+    ).order_by('-issued_at')
+
+    if limit:
+        issues = list(issues_qs[:limit])
+    else:
+        issues = list(issues_qs)
+
+    for issue in issues:
+        total_used = issue.total_consumed or Decimal('0')
+        issued_qty = Decimal(issue.issued_quantity)
+        remaining = issued_qty - total_used
+        issue.remaining_quantity = remaining if remaining > 0 else Decimal('0')
+        issue.has_remaining = remaining > 0
+        if issued_qty > 0:
+            issue.consumption_percent = int(min((total_used / issued_qty) * 100, 100))
+        else:
+            issue.consumption_percent = 0
+    return issues
 
 
 def _create_incharge_notice(user, assignment, message, level="info"):
@@ -1523,13 +1566,110 @@ def hk_stock(request):
     sel_area = selected_area(request, user_areas)
     area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
     my_requests = HKStockRequest.objects.filter(requested_by=user).order_by("-created_at")[:10]
+    issued_items = _build_usage_issues(user, limit=10)
     return render(request, "housekeeping/mobile/stock.html", {
         "area_stocks": area_stocks,
         "low_stocks": [s for s in area_stocks if s.is_low],
         "my_requests": my_requests,
+        "issued_items": issued_items,
         "user_areas": user_areas,
         "selected_area": sel_area,
         "requested": request.GET.get("requested"),
+    })
+
+
+@hk_required
+def hk_log_usage(request, pk):
+    if request.method != "POST":
+        return redirect("/housekeeping/stock/")
+
+    user = request.user
+    issue = get_object_or_404(
+        ItemIssue.objects.select_related(
+            'request', 'request__item', 'request__requested_by'
+        ),
+        pk=pk,
+        request__requested_by=user,
+    )
+
+    raw_qty = (request.POST.get("quantity_used") or "").strip()
+    purpose = (request.POST.get("purpose") or "").strip()
+    notes = request.POST.get("notes", "")
+    error = None
+    quantity_used = None
+
+    try:
+        quantity_used = Decimal(raw_qty)
+    except (ValueError, TypeError, InvalidOperation):
+        error = "Enter a valid number."
+
+    if error is None:
+        if quantity_used <= 0:
+            error = "Quantity must be greater than 0."
+        else:
+            quantity_used = quantity_used.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            if issue.request.item.item_type == "asset":
+                if quantity_used != quantity_used.to_integral_value():
+                    error = "Enter a whole number for assets."
+
+    if error is None and not purpose:
+        error = "Please describe what the item was used for."
+
+    if error is None:
+        with transaction.atomic():
+            issue = (
+                ItemIssue.objects
+                .select_for_update()
+                .select_related('request__item', 'request__requested_by')
+                .get(pk=pk, request__requested_by=user)
+            )
+            total_used = ItemUsageLog.objects.filter(issue=issue).aggregate(
+                total=Coalesce(
+                    Sum('quantity_used'),
+                    Value(0),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                )
+            )['total']
+            remaining = Decimal(issue.issued_quantity) - total_used
+            if remaining <= 0:
+                error = "All issued quantity has already been logged."
+            elif quantity_used > remaining:
+                remaining_display = remaining.quantize(Decimal("0.01"))
+                error = (
+                    f"Cannot exceed remaining quantity ({remaining_display} "
+                    f"{issue.request.item.unit})."
+                )
+            else:
+                ItemUsageLog.objects.create(
+                    issue=issue,
+                    quantity_used=quantity_used,
+                    purpose=purpose,
+                    notes=notes,
+                    logged_by=user,
+                )
+
+    if error is None:
+        area_id = request.POST.get("area_id") or ""
+        if area_id:
+            return redirect(f"/housekeeping/stock/?area={area_id}")
+        return redirect("/housekeeping/stock/")
+
+    user_areas = get_user_areas(user)
+    sel_area = selected_area(request, user_areas)
+    area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
+    my_requests = HKStockRequest.objects.filter(requested_by=user).order_by("-created_at")[:10]
+    issued_items = _build_usage_issues(user, limit=10)
+    return render(request, "housekeeping/mobile/stock.html", {
+        "area_stocks": area_stocks,
+        "low_stocks": [s for s in area_stocks if s.is_low],
+        "my_requests": my_requests,
+        "issued_items": issued_items,
+        "user_areas": user_areas,
+        "selected_area": sel_area,
+        "requested": request.GET.get("requested"),
+        "form_error": error,
+        "error_issue_id": issue.id,
+        "open_form_issue_id": issue.id,
     })
 
 

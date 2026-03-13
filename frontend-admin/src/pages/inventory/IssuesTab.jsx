@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { inventoryAPI, reportsAPI } from '../../api/inventory'
 import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, SelectField } from '../../components/ui'
-import { useAuth } from '../../context/AuthContext'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import { asList, triggerDownload } from '../../shared/utils'
 
@@ -40,7 +39,9 @@ function getAreaClass(areaType, areaName) {
 
 function isIssueCompleted(issue) {
   if (issue.item_type === 'asset') return Boolean(issue.returned_at)
-  return Boolean(issue.usage_finalized)
+  const consumed = Number(issue.total_consumed || 0)
+  const issued = Number(issue.issued_quantity || 0)
+  return consumed >= issued && issued > 0
 }
 
 function isIssueInMonth(issue, month, year) {
@@ -54,19 +55,26 @@ function isIssueInMonth(issue, month, year) {
 }
 
 export default function IssuesTab({ userRole }) {
-  const { isSupervisor, isCaretaker } = useAuth()
   const [issues, setIssues] = useState([])
 
   const [actionModal, setActionModal] = useState(null)
   const [form, setForm] = useState({
     returned_quantity: 1,
     condition_on_return: '',
-    actual_quantity_used: 1,
     notes: '',
   })
+  const [usageIssue, setUsageIssue] = useState(null)
+  const [usageLogs, setUsageLogs] = useState([])
+  const [usageTotal, setUsageTotal] = useState(0)
+  const [usageRemaining, setUsageRemaining] = useState(0)
+  const [usageLoading, setUsageLoading] = useState(false)
 
   const [areaClass, setAreaClass] = useState('all')
   const [selectedArea, setSelectedArea] = useState('all')
+  const [personFilter, setPersonFilter] = useState('all')
+  const [itemFilter, setItemFilter] = useState('all')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
 
   const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1)
   const [reportYear, setReportYear] = useState(new Date().getFullYear())
@@ -76,7 +84,6 @@ export default function IssuesTab({ userRole }) {
   const [reportModal, setReportModal] = useState(false)
 
   const canManager = userRole === 'admin'
-  const canSupervisor = isSupervisor || isCaretaker
 
   const { run: runAction, error: actionError, clearError } = useAsyncAction()
   const { loading, error: loadError, reload } = useAsyncLoad(async () => {
@@ -105,21 +112,65 @@ export default function IssuesTab({ userRole }) {
     return allAreas.filter((area) => getAreaClass(area.type, area.name) === areaClass)
   }, [allAreas, areaClass])
 
+  const peopleOptions = useMemo(() => {
+    const names = new Set()
+    issues.forEach((issue) => {
+      if (issue.requested_by_name) {
+        names.add(issue.requested_by_name)
+      }
+    })
+    return Array.from(names).sort((a, b) => a.localeCompare(b))
+  }, [issues])
+
+  const itemOptions = useMemo(() => {
+    const names = new Set()
+    issues.forEach((issue) => {
+      if (issue.item_name) {
+        names.add(issue.item_name)
+      }
+    })
+    return Array.from(names).sort((a, b) => a.localeCompare(b))
+  }, [issues])
+
   useEffect(() => {
     setSelectedArea('all')
   }, [areaClass])
 
   const filtered = useMemo(() => {
     let list = [...issues]
-    list = list.filter((issue) => isIssueInMonth(issue, reportMonth, reportYear))
+    if (!dateFrom && !dateTo) {
+      list = list.filter((issue) => isIssueInMonth(issue, reportMonth, reportYear))
+    }
     if (areaClass !== 'all') {
       list = list.filter((issue) => getAreaClass(issue.area_type, issue.area_name) === areaClass)
     }
     if (selectedArea !== 'all') {
       list = list.filter((issue) => issue.area_name === selectedArea)
     }
+    if (personFilter !== 'all') {
+      list = list.filter((issue) => (issue.requested_by_name || '') === personFilter)
+    }
+    if (itemFilter !== 'all') {
+      list = list.filter((issue) => (issue.item_name || '') === itemFilter)
+    }
+    if (dateFrom) {
+      const from = new Date(`${dateFrom}T00:00:00`)
+      list = list.filter((issue) => {
+        if (!issue.issued_at) return false
+        const issued = new Date(issue.issued_at)
+        return issued >= from
+      })
+    }
+    if (dateTo) {
+      const to = new Date(`${dateTo}T23:59:59`)
+      list = list.filter((issue) => {
+        if (!issue.issued_at) return false
+        const issued = new Date(issue.issued_at)
+        return issued <= to
+      })
+    }
     return list
-  }, [issues, areaClass, selectedArea, reportMonth, reportYear])
+  }, [issues, areaClass, selectedArea, reportMonth, reportYear, personFilter, itemFilter, dateFrom, dateTo])
 
   const totals = useMemo(() => {
     const total = filtered.length
@@ -134,9 +185,7 @@ export default function IssuesTab({ userRole }) {
   const pendingIssues = useMemo(
     () =>
       filtered.filter(
-        (issue) =>
-          (issue.item_type === 'asset' && !issue.returned_at) ||
-          (issue.item_type === 'consumable' && !issue.usage_finalized)
+        (issue) => issue.item_type === 'asset' && !issue.returned_at
       ),
     [filtered]
   )
@@ -144,27 +193,55 @@ export default function IssuesTab({ userRole }) {
   const submitAction = async () => {
     if (!actionModal) return
     await runAction(async () => {
-      if (actionModal.type === 'asset') {
-        await inventoryAPI.returnAsset(actionModal.id, {
-          returned_quantity: Number(form.returned_quantity || 0),
-          condition_on_return: form.condition_on_return,
-          notes: form.notes,
-        })
-      } else {
-        await inventoryAPI.finalizeConsumable(actionModal.id, {
-          actual_quantity_used: Number(form.actual_quantity_used || 0),
-          notes: form.notes,
-        })
-      }
+      await inventoryAPI.returnAsset(actionModal.id, {
+        returned_quantity: Number(form.returned_quantity || 0),
+        condition_on_return: form.condition_on_return,
+        notes: form.notes,
+      })
       setActionModal(null)
       setForm({
         returned_quantity: 1,
         condition_on_return: '',
-        actual_quantity_used: 1,
         notes: '',
       })
       await reload()
     }, 'Action failed.')
+  }
+
+  const openUsageModal = async (issue) => {
+    setUsageIssue(issue)
+    setUsageLogs([])
+    setUsageTotal(Number(issue.total_consumed || 0))
+    setUsageRemaining(
+      Math.max(Number(issue.issued_quantity || 0) - Number(issue.total_consumed || 0), 0)
+    )
+    setUsageLoading(true)
+    clearError()
+    try {
+      await runAction(async () => {
+        const { data } = await inventoryAPI.getUserIssueLogs(issue.id)
+        const logs = data?.logs || data || []
+        setUsageLogs(asList(logs))
+        if (data?.issue) {
+          setUsageIssue(data.issue)
+        }
+        if (data?.total_consumed !== undefined && data?.total_consumed !== null) {
+          setUsageTotal(Number(data.total_consumed))
+        }
+        if (data?.remaining_quantity !== undefined && data?.remaining_quantity !== null) {
+          setUsageRemaining(Number(data.remaining_quantity))
+        }
+      }, 'Failed to load usage logs.')
+    } finally {
+      setUsageLoading(false)
+    }
+  }
+
+  const closeUsageModal = () => {
+    setUsageIssue(null)
+    setUsageLogs([])
+    setUsageTotal(0)
+    setUsageRemaining(0)
   }
 
   const generateReport = async () => {
@@ -384,16 +461,6 @@ export default function IssuesTab({ userRole }) {
                 >
                   Return Asset
                 </Btn>
-              ) : issue.item_type === 'consumable' && (canSupervisor || canManager) ? (
-                <Btn
-                  size="sm"
-                  variant="success"
-                  onClick={() =>
-                    setActionModal({ id: issue.id, type: 'consumable', item: issue })
-                  }
-                >
-                  Finalize
-                </Btn>
               ) : (
                 <Badge value="pending" />
               )}
@@ -401,6 +468,57 @@ export default function IssuesTab({ userRole }) {
           ))}
         </Card>
       )}
+
+      <Card style={{ marginBottom: 14 }}>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>Usage Tracking Filters</div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ flex: '0 0 220px' }}>
+            <SelectField value={personFilter} onChange={(e) => setPersonFilter(e.target.value)}>
+              <option value="all">All People</option>
+              {peopleOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </SelectField>
+          </div>
+          <div style={{ flex: '0 0 240px' }}>
+            <SelectField value={itemFilter} onChange={(e) => setItemFilter(e.target.value)}>
+              <option value="all">All Items</option>
+              {itemOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </SelectField>
+          </div>
+          <div style={{ flex: '0 0 160px' }}>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+          </div>
+          <div style={{ flex: '0 0 160px' }}>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </div>
+          <Btn
+            variant="ghost"
+            onClick={() => {
+              setPersonFilter('all')
+              setItemFilter('all')
+              setDateFrom('')
+              setDateTo('')
+            }}
+          >
+            Clear Filters
+          </Btn>
+        </div>
+      </Card>
 
       <Card noPad style={{ marginBottom: 14 }}>
         <DataTable
@@ -411,12 +529,14 @@ export default function IssuesTab({ userRole }) {
             'Type',
             'Requested By',
             'Issued Qty',
+            'Consumed',
             'Issued At',
             'Status',
             'Actions',
           ]}
           rows={filtered.map((issue) => {
             const status = isIssueCompleted(issue) ? 'completed' : 'ongoing'
+            const consumed = Number(issue.total_consumed || 0)
             return [
               <span
                 key={`area-${issue.id}`}
@@ -428,6 +548,9 @@ export default function IssuesTab({ userRole }) {
               issue.item_type || '-',
               issue.requested_by_name || '-',
               `${issue.issued_quantity} ${issue.item_unit || ''}`,
+              issue.item_type === 'consumable'
+                ? `${consumed} / ${issue.issued_quantity} ${issue.item_unit || ''}`
+                : '-',
               issue.issued_at
                 ? new Date(issue.issued_at).toLocaleDateString('en-IN')
                 : '-',
@@ -441,18 +564,14 @@ export default function IssuesTab({ userRole }) {
                 >
                   Return
                 </Btn>
-              ) : issue.item_type === 'consumable' &&
-                (canSupervisor || canManager) &&
-                !issue.usage_finalized ? (
+              ) : issue.item_type === 'consumable' ? (
                 <Btn
-                  key={`finalize-${issue.id}`}
+                  key={`usage-${issue.id}`}
                   size="sm"
-                  variant="success"
-                  onClick={() =>
-                    setActionModal({ id: issue.id, type: 'consumable', item: issue })
-                  }
+                  variant="secondary"
+                  onClick={() => openUsageModal(issue)}
                 >
-                  Finalize
+                  View Usage
                 </Btn>
               ) : (
                 '-'
@@ -521,9 +640,56 @@ export default function IssuesTab({ userRole }) {
       </Modal>
 
       <Modal
+        open={!!usageIssue}
+        onClose={closeUsageModal}
+        title={usageIssue ? `Usage Logs - ${usageIssue.item_name || 'Item'}` : 'Usage Logs'}
+        footer={
+          <Btn variant="ghost" onClick={closeUsageModal}>
+            Close
+          </Btn>
+        }
+      >
+        {usageIssue && (
+          <div style={{ marginBottom: 12, fontSize: 13, color: 'var(--text-2)' }}>
+            Issued: <strong>{usageIssue.issued_quantity} {usageIssue.item_unit || ''}</strong> •
+            Used: <strong>{usageTotal} {usageIssue.item_unit || ''}</strong> •
+            Remaining: <strong>{usageRemaining} {usageIssue.item_unit || ''}</strong>
+          </div>
+        )}
+        {usageLoading ? (
+          <div style={{ fontSize: 13, color: 'var(--text-3)' }}>Loading usage logs...</div>
+        ) : usageLogs.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {usageLogs.map((log) => (
+              <Card key={log.id} style={{ padding: '10px 12px' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                  {log.logged_at
+                    ? new Date(log.logged_at).toLocaleString('en-IN')
+                    : '-'}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                  {log.logged_by_name || 'Logged by user'}
+                </div>
+                <div style={{ fontWeight: 700, marginTop: 2 }}>
+                  {log.quantity_used} {usageIssue?.item_unit || ''}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 4 }}>
+                  {log.purpose}
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: 13, color: 'var(--text-3)' }}>
+            No usage logs recorded yet.
+          </div>
+        )}
+      </Modal>
+
+      <Modal
         open={!!actionModal}
         onClose={() => setActionModal(null)}
-        title={actionModal?.type === 'asset' ? 'Return Asset' : 'Finalize Consumable'}
+        title="Return Asset"
         footer={
           <>
             <Btn variant="ghost" onClick={() => setActionModal(null)}>
@@ -533,39 +699,26 @@ export default function IssuesTab({ userRole }) {
           </>
         }
       >
-        {actionModal?.type === 'asset' ? (
-          <>
-            <Field label="Returned Quantity">
-              <Input
-                type="number"
-                min="1"
-                value={form.returned_quantity}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, returned_quantity: e.target.value }))
-                }
-              />
-            </Field>
-            <Field label="Condition on Return">
-              <Input
-                value={form.condition_on_return}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, condition_on_return: e.target.value }))
-                }
-              />
-            </Field>
-          </>
-        ) : (
-          <Field label="Actual Quantity Used">
+        <>
+          <Field label="Returned Quantity">
             <Input
               type="number"
-              min="0"
-              value={form.actual_quantity_used}
+              min="1"
+              value={form.returned_quantity}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, actual_quantity_used: e.target.value }))
+                setForm((prev) => ({ ...prev, returned_quantity: e.target.value }))
               }
             />
           </Field>
-        )}
+          <Field label="Condition on Return">
+            <Input
+              value={form.condition_on_return}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, condition_on_return: e.target.value }))
+              }
+            />
+          </Field>
+        </>
         <Field label="Notes">
           <Input
             value={form.notes}

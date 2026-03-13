@@ -3,15 +3,16 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Prefetch, Sum, Value, DecimalField
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
-from .models import Category, Item, ItemIssue, ItemRequest, PurchaseRequest, StockEntry
+from .models import Category, Item, ItemIssue, ItemUsageLog, ItemRequest, PurchaseRequest, StockEntry
 
 
 # ─────────────────────────────────────────────────
@@ -336,12 +337,21 @@ def mobile_issued_items(request):
     role = getattr(request.user, 'role', '')
     is_manager = role in ['admin', 'inventory_manager']
 
+    usage_logs_qs = ItemUsageLog.objects.select_related('logged_by').order_by('-logged_at')
     issues_qs = ItemIssue.objects.select_related(
         'request',
         'request__item',
         'request__item__category',
         'request__requested_by',
         'issued_by',
+    ).prefetch_related(
+        Prefetch('usage_logs', queryset=usage_logs_qs)
+    ).annotate(
+        total_consumed=Coalesce(
+            Sum('usage_logs__quantity_used'),
+            Value(0),
+            output_field=DecimalField(max_digits=10, decimal_places=2),
+        )
     ).order_by('-issued_at')
 
     if not is_manager:
@@ -350,10 +360,130 @@ def mobile_issued_items(request):
     paginator = Paginator(issues_qs, 15)
     page_obj = paginator.get_page(request.GET.get('page', 1))
 
+    for issue in page_obj:
+        total_used = issue.total_consumed or Decimal('0')
+        issued_qty = Decimal(issue.issued_quantity)
+        remaining = issued_qty - total_used
+        issue.remaining_quantity = remaining if remaining > 0 else Decimal('0')
+        if issued_qty > 0:
+            issue.consumption_percent = int(min((total_used / issued_qty) * 100, 100))
+        else:
+            issue.consumption_percent = 0
+
     return render(request, 'inventory/mobile/issued_items.html', {
         'issues': page_obj,
         'page_obj': page_obj,
         'is_manager': is_manager,
+    })
+
+
+@login_required
+def mobile_log_usage(request, pk):
+    role = getattr(request.user, 'role', '')
+    if role not in ['supervisor', 'caretaker']:
+        return redirect('mobile_issued_items')
+
+    if request.method != 'POST':
+        return redirect('mobile_issued_items')
+
+    issue = get_object_or_404(
+        ItemIssue.objects.select_related(
+            'request', 'request__item', 'request__requested_by'
+        ),
+        pk=pk,
+        request__requested_by=request.user,
+    )
+
+    raw_qty = request.POST.get('quantity_used', '').strip()
+    purpose = request.POST.get('purpose', '').strip()
+    error = None
+    quantity_used = None
+
+    try:
+        quantity_used = Decimal(raw_qty)
+    except (ValueError, TypeError, InvalidOperation):
+        error = 'Enter a valid number.'
+
+    if error is None:
+        if quantity_used <= 0:
+            error = 'Quantity must be greater than 0.'
+        else:
+            quantity_used = quantity_used.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            if issue.request.item.item_type == 'asset':
+                if quantity_used != quantity_used.to_integral_value():
+                    error = 'Enter a whole number for assets.'
+
+    if error is None and not purpose:
+        error = 'Please describe what the item was used for.'
+
+    if error is None:
+        with transaction.atomic():
+            issue = (
+                ItemIssue.objects
+                .select_for_update()
+                .select_related('request__item', 'request__requested_by')
+                .get(pk=pk, request__requested_by=request.user)
+            )
+            total_used = ItemUsageLog.objects.filter(issue=issue).aggregate(
+                total=Coalesce(
+                    Sum('quantity_used'),
+                    Value(0),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                )
+            )['total']
+            remaining = Decimal(issue.issued_quantity) - total_used
+            if remaining <= 0:
+                error = 'All issued quantity has already been logged.'
+            elif quantity_used > remaining:
+                remaining_display = remaining.quantize(Decimal('0.01'))
+                error = (
+                    f'Cannot exceed remaining quantity ({remaining_display} '
+                    f'{issue.request.item.unit}).'
+                )
+            else:
+                ItemUsageLog.objects.create(
+                    issue=issue,
+                    quantity_used=quantity_used,
+                    purpose=purpose,
+                    logged_by=request.user,
+                )
+        if error is None:
+            return redirect('mobile_issued_items')
+
+    usage_logs_qs = ItemUsageLog.objects.select_related('logged_by').order_by('-logged_at')
+    issues_qs = ItemIssue.objects.select_related(
+        'request', 'request__item', 'request__item__category',
+        'request__requested_by', 'issued_by',
+    ).prefetch_related(
+        Prefetch('usage_logs', queryset=usage_logs_qs)
+    ).annotate(
+        total_consumed=Coalesce(
+            Sum('usage_logs__quantity_used'),
+            Value(0),
+            output_field=DecimalField(max_digits=10, decimal_places=2),
+        )
+    ).filter(request__requested_by=request.user).order_by('-issued_at')
+
+    paginator = Paginator(issues_qs, 15)
+    page_obj = paginator.get_page(1)
+
+    for issue in page_obj:
+        total_used = issue.total_consumed or Decimal('0')
+        issued_qty = Decimal(issue.issued_quantity)
+        remaining = issued_qty - total_used
+        issue.remaining_quantity = remaining if remaining > 0 else Decimal('0')
+        if issued_qty > 0:
+            issue.consumption_percent = int(min((total_used / issued_qty) * 100, 100))
+        else:
+            issue.consumption_percent = 0
+
+    return render(request, 'inventory/mobile/issued_items.html', {
+        'issues': page_obj,
+        'page_obj': page_obj,
+        'is_manager': False,
+        'form_error': error,
+        'error_issue_id': issue.id,
+        'open_form_issue_id': issue.id,
     })
 
 

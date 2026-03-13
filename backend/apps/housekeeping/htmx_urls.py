@@ -3,6 +3,7 @@ from .htmx_views import (
     hk_login, hk_logout, hk_dashboard, hk_mark_task, hk_log_extra_work,
     hk_schedule, hk_attendance, hk_sunday_incharge,
     hk_stock, hk_stock_request, hk_profile, hk_alerts_manage,
+    hk_log_usage,
     hk_assign_reliever, hk_worker_selection_request, hk_worker_selection_submit,
     hk_incharge_assign, hk_incharge_respond,
 )
@@ -23,6 +24,7 @@ urlpatterns = [
     path('incharge/respond/', hk_incharge_respond, name='hk_incharge_respond'),
     path('stock/',    hk_stock,             name='hk_stock'),
     path('stock/request/', hk_stock_request, name='hk_stock_request'),
+    path('stock/usage/<int:pk>/', hk_log_usage, name='hk_log_usage'),
     path('profile/',  hk_profile,           name='hk_profile'),
     path('alerts/',   hk_alerts_manage,     name='hk_alerts_manage'),
 ]
