@@ -83,12 +83,7 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.SeparateDatabaseAndState(
-            database_operations=[
-                migrations.RunPython(
-                    create_itemusagelog_if_missing,
-                    reverse_code=drop_itemusagelog_if_exists,
-                ),
-            ],
+            database_operations=[],
             state_operations=[
                 migrations.CreateModel(
                     name='ItemUsageLog',
@@ -105,5 +100,9 @@ class Migration(migrations.Migration):
                     },
                 ),
             ],
+        ),
+        migrations.RunPython(
+            create_itemusagelog_if_missing,
+            reverse_code=drop_itemusagelog_if_exists,
         ),
     ]
