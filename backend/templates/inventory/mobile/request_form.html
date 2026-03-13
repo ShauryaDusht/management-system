@@ -37,7 +37,7 @@
           data-available="{{ item.available_quantity }}"
           data-unit="{{ item.unit }}"
           {% if preselected_item == item.id|stringformat:'s' %}selected{% endif %}>
-          {{ item.name }} — {{ item.available_quantity }} {{ item.unit }} available
+          {{ item.item_code|default:'No code' }} — {{ item.name }} — &#8377;{{ item.unit_price|floatformat:2 }} — {{ item.available_quantity }} {{ item.unit }} available
         </option>
         {% endfor %}
       </select>

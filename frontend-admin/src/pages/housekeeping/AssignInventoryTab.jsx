@@ -5,6 +5,10 @@ import { Alert, Badge, Btn, Card, DataTable, SelectField, Spinner } from '../../
 
 const STATUS_OPTIONS = ['pending', 'approved', 'issued', 'rejected']
 
+function formatCurrency(value) {
+  return `INR ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
 export default function AssignInventoryTab({ userRole }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -96,12 +100,17 @@ export default function AssignInventoryTab({ userRole }) {
           </div>
         ) : (
           <DataTable
-            headers={['Date', 'Area', 'Item', 'Qty', 'Requested By', 'Priority', 'Status', 'Action']}
+            headers={['Date', 'Area', 'Item', 'Qty', 'Unit Price', 'Total Price', 'Requested By', 'Priority', 'Status', 'Action']}
             rows={filtered.map((r) => [
               new Date(r.created_at).toLocaleDateString('en-IN'),
               r.area_name || '-',
-              r.item_name,
+              <div key={`item-${r.id}`}>
+                <div>{r.item_name}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{r.item_code || 'No code'}</div>
+              </div>,
               `${r.quantity} ${r.unit || ''}`.trim(),
+              formatCurrency(r.item_unit_price),
+              formatCurrency(r.request_total_amount),
               r.requested_by_name || '-',
               r.is_urgent ? <Badge key={`u-${r.id}`} value="urgent" /> : '-',
               <Badge key={`s-${r.id}`} value={r.status} />,

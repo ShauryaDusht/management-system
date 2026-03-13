@@ -69,6 +69,7 @@ export default function SectionsTab() {
           role: '-',
           username: '-',
           phone: '-',
+          payCode: '-',
           isActive: false,
         })
         return
@@ -87,6 +88,7 @@ export default function SectionsTab() {
           role: u.role,
           username: u.username,
           phone: u.phone || '-',
+          payCode: u.pay_code || '-',
           isActive: !!u.is_active,
         })
       })
@@ -128,7 +130,7 @@ export default function SectionsTab() {
       })
       .map((u) => ({
         id: u.id,
-        label: `${u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username} (${u.role})`,
+        label: `${u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username} (${u.role})${u.pay_code ? ` - ${u.pay_code}` : ''}`,
       }))
   }, [users])
 
@@ -224,6 +226,7 @@ export default function SectionsTab() {
           'Caretaker / Supervisor',
           'Username',
           'Phone No',
+          'Pay Code',
           'Worker Count',
           'Status',
           'Change Supervisor/Caretaker',
@@ -233,6 +236,7 @@ export default function SectionsTab() {
           row.role === '-' ? '-' : `${row.assignedTo} (${row.role})`,
           row.username,
           row.phone,
+          row.payCode,
           row.workerCount,
           row.role === '-' ? 'Unassigned' : row.isActive ? 'Active' : 'Inactive',
           row.userId ? 'Change' : 'Assign',
@@ -319,6 +323,7 @@ export default function SectionsTab() {
               'Caretaker / Supervisor',
               'Username',
               'Phone No',
+              'Pay Code',
               'Worker Count',
               'Status',
               'Change Supervisor/Caretaker',
@@ -337,6 +342,7 @@ export default function SectionsTab() {
                 </code>
               ),
               row.phone,
+              row.payCode,
               row.workerCount,
               row.role === '-' ? (
                 <span key={`status-none-${row.areaName}`} style={{ color: '#9ca3af', fontSize: 12, fontWeight: 600 }}>

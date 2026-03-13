@@ -16,6 +16,10 @@ const TYPE_OPTIONS = [
   { key: 'consumable', label: 'Consumables' },
 ]
 
+function formatCurrency(value) {
+  return `INR ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
 export default function ReportTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -50,12 +54,14 @@ export default function ReportTab() {
   const csvRows = useMemo(
     () =>
       items.map((item) => ({
+        Code: item.item_code || '',
         Item: item.name || '',
         Category: item.category || '',
         Type: item.type || '',
         Available: `${item.available_quantity ?? 0} ${item.unit || ''}`.trim(),
         Threshold: item.threshold_quantity ?? 0,
-        UnitCost: Number(item.unit_cost || 0).toFixed(2),
+        UnitPrice: Number(item.unit_price ?? item.unit_cost ?? 0).toFixed(2),
+        TotalPrice: Number(item.stock_total_amount ?? item.total_value ?? 0).toFixed(2),
         Status: String(item.status || '').replace(/_/g, ' ').toUpperCase(),
       })),
     [items]
@@ -77,8 +83,8 @@ export default function ReportTab() {
       >
         <StatCard label="Total Items" value={report?.total_items ?? 0} icon="IT" color="#1d4ed8" />
         <StatCard
-          label="Total Value"
-          value={`INR ${Number(report?.total_value || 0).toLocaleString('en-IN')}`}
+          label="Total Stock Amount"
+          value={formatCurrency(report?.total_value || 0)}
           icon="VL"
           color="#16a34a"
         />
@@ -140,14 +146,16 @@ export default function ReportTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Name', 'Category', 'Type', 'Available', 'Threshold', 'Unit Cost', 'Status']}
+            headers={['Code', 'Name', 'Category', 'Type', 'Available', 'Threshold', 'Unit Price', 'Total Price', 'Status']}
             rows={items.map((item) => [
+              item.item_code || '-',
               item.name || '-',
               item.category || '-',
               String(item.type || '').toUpperCase(),
               `${item.available_quantity ?? 0} ${item.unit || ''}`.trim(),
               item.threshold_quantity ?? 0,
-              `INR ${Number(item.unit_cost || 0).toFixed(2)}`,
+              formatCurrency(item.unit_price ?? item.unit_cost),
+              formatCurrency(item.stock_total_amount ?? item.total_value),
               <Badge key={`st-${item.id}`} value={item.status} />,
             ])}
             emptyMsg="No items found for the selected filter."

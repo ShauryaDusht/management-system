@@ -19,6 +19,10 @@ import {
   Tabs,
 } from '../../components/ui'
 
+function formatCurrency(value) {
+  return `INR ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
 export default function RequestsTab({ userRole }) {
   const { isSupervisor, isCaretaker } = useAuth()
   const { refresh: refreshBadges } = useNotifications()
@@ -279,11 +283,17 @@ export default function RequestsTab({ userRole }) {
                   style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 12 }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ fontWeight: 700 }}>{r.item_name || 'Item'}</div>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{r.item_name || 'Item'}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{r.item_code || 'No code'}</div>
+                    </div>
                     {r.is_urgent && <Badge value="urgent" />}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
                     Qty Requested: {r.quantity_requested} {r.item_unit || ''}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
+                    Unit Price: {formatCurrency(r.item_unit_price)} | Total: {formatCurrency(r.request_total_amount)}
                   </div>
                   <div style={{ fontSize: 12, color: low ? '#c2410c' : 'var(--text-2)', marginTop: 2 }}>
                     Available Now: {r.item_available ?? 0} {r.item_unit || ''}
@@ -345,11 +355,17 @@ export default function RequestsTab({ userRole }) {
                   style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 12 }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ fontWeight: 700 }}>{r.item_name || 'Item'}</div>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{r.item_name || 'Item'}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{r.item_code || 'No code'}</div>
+                    </div>
                     <Badge value="approved" />
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
                     Qty Requested: {r.quantity_requested} {r.item_unit || ''}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
+                    Unit Price: {formatCurrency(r.item_unit_price)} | Total: {formatCurrency(r.request_total_amount)}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
                     Available Now: {r.item_available ?? r.units_remaining ?? 0} {r.item_unit || ''}
@@ -402,6 +418,8 @@ export default function RequestsTab({ userRole }) {
             'Requester',
             'Item',
             'Qty',
+            'Unit Price',
+            'Total Price',
             'Available',
             'Purpose',
             'Status',
@@ -410,8 +428,13 @@ export default function RequestsTab({ userRole }) {
           ]}
           rows={filtered.map((r) => [
             r.requester_name || r.requested_by_name || '—',
-            r.item_name || '—',
+            <div key={`item-${r.id}`}>
+              <div>{r.item_name || '—'}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{r.item_code || 'No code'}</div>
+            </div>,
             `${r.quantity_requested} ${r.item_unit || ''}`,
+            formatCurrency(r.item_unit_price),
+            formatCurrency(r.request_total_amount),
             `${r.item_available ?? r.units_remaining ?? 0} ${r.item_unit || ''}`,
             <span key={`purpose-${r.id}`} style={{ fontSize: 12, color: 'var(--text-2)' }}>
               {r.purpose || '—'}
@@ -483,15 +506,15 @@ export default function RequestsTab({ userRole }) {
             <option value="">Select item</option>
             {items.map((it) => (
               <option key={it.id} value={it.id}>
-                {it.name} ({it.available_quantity} {it.unit})
+                {(it.item_code ? `${it.item_code} - ` : '') + it.name} ({it.available_quantity} {it.unit} | {formatCurrency(it.unit_price ?? it.unit_cost)})
               </option>
             ))}
           </SelectField>
         </Field>
         {selectedItem && (
           <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: -8, marginBottom: 10 }}>
-            Available: {selectedItem.available_quantity} {selectedItem.unit} | Type:{' '}
-            {selectedItem.item_type}
+            Code: {selectedItem.item_code || '—'} | Available: {selectedItem.available_quantity} {selectedItem.unit} | Type:{' '}
+            {selectedItem.item_type} | Unit Price: {formatCurrency(selectedItem.unit_price ?? selectedItem.unit_cost)}
           </div>
         )}
         <Field label="Quantity" required>
@@ -679,7 +702,8 @@ export default function RequestsTab({ userRole }) {
             <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 10 }}>
               Requested: {issueTarget.quantity_requested} {issueTarget.item_unit || ''} | Available:{' '}
               {issueTarget.item_available ?? issueTarget.units_remaining ?? 0}{' '}
-              {issueTarget.item_unit || ''}
+              {issueTarget.item_unit || ''} | Unit Price: {formatCurrency(issueTarget.item_unit_price)} | Total:{' '}
+              {formatCurrency(issueTarget.request_total_amount)}
             </div>
             <Field label="Issued Quantity" required>
               <Input

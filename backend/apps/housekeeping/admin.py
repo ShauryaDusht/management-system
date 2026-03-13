@@ -24,9 +24,13 @@ class HKUserAreaAdmin(admin.ModelAdmin):
 
 @admin.register(HKWorker)
 class HKWorkerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'phone', 'punching_no', 'worker_type', 'shift', 'area', 'supervisor', 'is_active', 'is_reliever')
+    list_display = ('name', 'phone', 'pay_code_display', 'worker_type', 'shift', 'area', 'supervisor', 'is_active', 'is_reliever')
     list_filter = ('worker_type', 'shift', 'area', 'supervisor', 'is_active', 'is_reliever')
     search_fields = ('name', 'phone', 'punching_no', 'supervisor__username', 'supervisor__first_name')
+
+    @admin.display(description='Pay Code')
+    def pay_code_display(self, obj):
+        return obj.punching_no
 
 
 @admin.register(HKScheduleTemplate)

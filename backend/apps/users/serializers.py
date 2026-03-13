@@ -31,6 +31,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'full_name': user.get_full_name(),
             'role': user.role,
             'phone': user.phone,
+            'pay_code': user.pay_code,
             'portal_redirect': self._get_portal_redirect(user),
         }
         return data
@@ -58,6 +59,7 @@ class UserSerializer(serializers.ModelSerializer):
             'full_name',
             'role',
             'phone',
+            'pay_code',
             'is_active',
             'areas_incharge',
             'assigned_area_ids',
@@ -116,7 +118,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'role', 'phone', 'password', 'area_ids']
+        fields = ['username', 'email', 'first_name', 'last_name', 'role', 'phone', 'pay_code', 'password', 'area_ids']
 
     def create(self, validated_data):
         area_ids = validated_data.pop('area_ids', [])

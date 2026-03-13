@@ -172,6 +172,9 @@ export default function WorkerReportModal({ open, worker, onClose }) {
           <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
             Area: <strong>{snap?.worker?.area_name || worker?.area_name || '-'}</strong>
           </div>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+            Pay Code: <strong>{snap?.worker?.pay_code || worker?.pay_code || '-'}</strong>
+          </div>
         </div>
         <Btn size="sm" onClick={onDownloadCSV} disabled={loading || downloading || !worker}>
           {downloading ? 'Downloading...' : 'Download CSV'}

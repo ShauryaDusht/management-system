@@ -1,1374 +1,1448 @@
 [
-{
-  "model": "inventory.category",
-  "pk": 1,
-  "fields": {
-    "name": "Cleaning Supplies",
-    "description": ""
+  {
+    "model": "inventory.category",
+    "pk": 1,
+    "fields": {
+      "name": "Cleaning Supplies",
+      "description": ""
+    }
+  },
+  {
+    "model": "inventory.category",
+    "pk": 2,
+    "fields": {
+      "name": "Housekeeping Supplies",
+      "description": ""
+    }
+  },
+  {
+    "model": "inventory.category",
+    "pk": 3,
+    "fields": {
+      "name": "Maintenance Supplies",
+      "description": ""
+    }
+  },
+  {
+    "model": "inventory.category",
+    "pk": 4,
+    "fields": {
+      "name": "Garden & Horticulture Equipment",
+      "description": ""
+    }
+  },
+  {
+    "model": "inventory.category",
+    "pk": 5,
+    "fields": {
+      "name": "Tools & Equipment",
+      "description": ""
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 1,
+    "fields": {
+      "name": "Cleaning Acid",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Ltr",
+      "total_quantity": 30,
+      "available_quantity": 30,
+      "threshold_quantity": 5,
+      "unit_cost": "17",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.795Z",
+      "updated_at": "2026-02-25T20:01:49.795Z",
+      "item_code": "3.01"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 2,
+    "fields": {
+      "name": "Aluminium Stick",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 110,
+      "available_quantity": 110,
+      "threshold_quantity": 2,
+      "unit_cost": "160",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.808Z",
+      "updated_at": "2026-02-25T20:01:49.808Z",
+      "item_code": "3.02"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 3,
+    "fields": {
+      "name": "Air freshener (R5)",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Ltr",
+      "total_quantity": 1000,
+      "available_quantity": 1000,
+      "threshold_quantity": 3,
+      "unit_cost": "175",
+      "description": "Diversey / Taski / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.815Z",
+      "updated_at": "2026-02-25T20:01:49.815Z",
+      "item_code": "3.03"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 4,
+    "fields": {
+      "name": "Floor cleaner (R2)",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Ltr",
+      "total_quantity": 1800,
+      "available_quantity": 1800,
+      "threshold_quantity": 5,
+      "unit_cost": "185",
+      "description": "Diversey / Taski / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.823Z",
+      "updated_at": "2026-02-25T20:01:49.823Z",
+      "item_code": "3.04"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 5,
+    "fields": {
+      "name": "Hand wash liquid",
+      "category": 2,
+      "item_type": "consumable",
+      "unit": "Ltr",
+      "total_quantity": 1500,
+      "available_quantity": 1500,
+      "threshold_quantity": 5,
+      "unit_cost": "90",
+      "description": "Dettol / Lifebuoy / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.829Z",
+      "updated_at": "2026-02-25T20:01:49.829Z",
+      "item_code": "3.05"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 6,
+    "fields": {
+      "name": "Surface cleaner (R1)",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Ltr",
+      "total_quantity": 2300,
+      "available_quantity": 2300,
+      "threshold_quantity": 5,
+      "unit_cost": "205",
+      "description": "Diversey / Taski / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.835Z",
+      "updated_at": "2026-02-25T20:01:49.835Z",
+      "item_code": "3.06"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 7,
+    "fields": {
+      "name": "Bamboo stick 5 ft long",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 50,
+      "available_quantity": 50,
+      "threshold_quantity": 5,
+      "unit_cost": "35",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.841Z",
+      "updated_at": "2026-02-25T20:01:49.841Z",
+      "item_code": "3.07"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 8,
+    "fields": {
+      "name": "Baygon spray",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 700,
+      "available_quantity": 700,
+      "threshold_quantity": 3,
+      "unit_cost": "98",
+      "description": "SC Johnson / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.847Z",
+      "updated_at": "2026-02-25T20:01:49.847Z",
+      "item_code": "3.08"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 9,
+    "fields": {
+      "name": "Broom Hard",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 5000,
+      "available_quantity": 5000,
+      "threshold_quantity": 5,
+      "unit_cost": "30",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.853Z",
+      "updated_at": "2026-02-25T20:01:49.853Z",
+      "item_code": "3.09"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 10,
+    "fields": {
+      "name": "Broom Soft",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 2200,
+      "available_quantity": 2200,
+      "threshold_quantity": 5,
+      "unit_cost": "45",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.860Z",
+      "updated_at": "2026-02-25T20:01:49.860Z",
+      "item_code": "3.10"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 11,
+    "fields": {
+      "name": "Plastic bucket 10 Ltr",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 60,
+      "available_quantity": 60,
+      "threshold_quantity": 3,
+      "unit_cost": "90",
+      "description": "Cello / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.865Z",
+      "updated_at": "2026-02-25T20:01:49.865Z",
+      "item_code": "3.11"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 12,
+    "fields": {
+      "name": "Carpet Shampoo 101",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Ltr",
+      "total_quantity": 50,
+      "available_quantity": 50,
+      "threshold_quantity": 2,
+      "unit_cost": "300",
+      "description": "Diversey Taski TR101 / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.871Z",
+      "updated_at": "2026-02-25T20:01:49.871Z",
+      "item_code": "3.12"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 13,
+    "fields": {
+      "name": "Carpet Brush",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 60,
+      "available_quantity": 60,
+      "threshold_quantity": 2,
+      "unit_cost": "55",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.877Z",
+      "updated_at": "2026-02-25T20:01:49.877Z",
+      "item_code": "3.13"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 14,
+    "fields": {
+      "name": "Ceramic cleaner R6",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Ltr",
+      "total_quantity": 3500,
+      "available_quantity": 3500,
+      "threshold_quantity": 3,
+      "unit_cost": "135",
+      "description": "Diversey / Taski / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.884Z",
+      "updated_at": "2026-02-25T20:01:49.884Z",
+      "item_code": "3.14"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 15,
+    "fields": {
+      "name": "Check Duster 250mm x 250mm",
+      "category": 2,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 3000,
+      "available_quantity": 3000,
+      "threshold_quantity": 10,
+      "unit_cost": "10",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.889Z",
+      "updated_at": "2026-02-25T20:01:49.889Z",
+      "item_code": "3.15"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 16,
+    "fields": {
+      "name": "Dry mop refill size 24 inch",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 110,
+      "available_quantity": 110,
+      "threshold_quantity": 5,
+      "unit_cost": "86",
+      "description": "Gala / Scotch-Brite / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.894Z",
+      "updated_at": "2026-02-25T20:01:49.894Z",
+      "item_code": "3.16"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 17,
+    "fields": {
+      "name": "Dry mop set 24 inch",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 120,
+      "available_quantity": 120,
+      "threshold_quantity": 2,
+      "unit_cost": "300",
+      "description": "Gala / Scotch-Brite / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.899Z",
+      "updated_at": "2026-02-25T20:01:49.899Z",
+      "item_code": "3.17"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 18,
+    "fields": {
+      "name": "Dustpan Plastic 200mm x 200mm",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 225,
+      "available_quantity": 225,
+      "threshold_quantity": 3,
+      "unit_cost": "30",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.905Z",
+      "updated_at": "2026-02-25T20:01:49.905Z",
+      "item_code": "3.18"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 19,
+    "fields": {
+      "name": "Feather Brush 250mm",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 15,
+      "available_quantity": 15,
+      "threshold_quantity": 3,
+      "unit_cost": "40",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.910Z",
+      "updated_at": "2026-02-25T20:01:49.910Z",
+      "item_code": "3.19"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 20,
+    "fields": {
+      "name": "Floor Detergent Powder",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Kg",
+      "total_quantity": 50,
+      "available_quantity": 50,
+      "threshold_quantity": 8,
+      "unit_cost": "30",
+      "description": "Surf Excel / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.915Z",
+      "updated_at": "2026-02-25T20:01:49.915Z",
+      "item_code": "3.20"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 21,
+    "fields": {
+      "name": "Floor Duster cotton",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 1200,
+      "available_quantity": 1200,
+      "threshold_quantity": 5,
+      "unit_cost": "14",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.920Z",
+      "updated_at": "2026-02-25T20:01:49.920Z",
+      "item_code": "3.21"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 22,
+    "fields": {
+      "name": "Glass Cleaner Colin",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Ltr",
+      "total_quantity": 300,
+      "available_quantity": 300,
+      "threshold_quantity": 5,
+      "unit_cost": "95",
+      "description": "Colin / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.925Z",
+      "updated_at": "2026-02-25T20:01:49.925Z",
+      "item_code": "3.22"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 23,
+    "fields": {
+      "name": "Glass Duster 18x18 White",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 2500,
+      "available_quantity": 2500,
+      "threshold_quantity": 5,
+      "unit_cost": "12",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.930Z",
+      "updated_at": "2026-02-25T20:01:49.930Z",
+      "item_code": "3.23"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 24,
+    "fields": {
+      "name": "Glass Squeegee 2 in 1 Wiper",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 10,
+      "available_quantity": 10,
+      "threshold_quantity": 2,
+      "unit_cost": "450",
+      "description": "Unger / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.934Z",
+      "updated_at": "2026-02-25T20:01:49.934Z",
+      "item_code": "3.24"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 25,
+    "fields": {
+      "name": "Rubber Gloves",
+      "category": 2,
+      "item_type": "consumable",
+      "unit": "Pair",
+      "total_quantity": 800,
+      "available_quantity": 800,
+      "threshold_quantity": 10,
+      "unit_cost": "35",
+      "description": "Scotch-Brite / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.939Z",
+      "updated_at": "2026-02-25T20:01:49.939Z",
+      "item_code": "3.25"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 26,
+    "fields": {
+      "name": "Gun Spray",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 90,
+      "available_quantity": 90,
+      "threshold_quantity": 2,
+      "unit_cost": "45",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.945Z",
+      "updated_at": "2026-02-25T20:01:49.945Z",
+      "item_code": "3.26"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 27,
+    "fields": {
+      "name": "Kitchen wiper 250mm",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 100,
+      "available_quantity": 100,
+      "threshold_quantity": 5,
+      "unit_cost": "15",
+      "description": "Gala / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.951Z",
+      "updated_at": "2026-02-25T20:01:49.951Z",
+      "item_code": "3.27"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 28,
+    "fields": {
+      "name": "Liquid Repellent All Out Refill",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 50,
+      "available_quantity": 50,
+      "threshold_quantity": 5,
+      "unit_cost": "75",
+      "description": "SC Johnson / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.956Z",
+      "updated_at": "2026-02-25T20:01:49.956Z",
+      "item_code": "3.28"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 29,
+    "fields": {
+      "name": "Odonil",
+      "category": 2,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 6000,
+      "available_quantity": 6000,
+      "threshold_quantity": 6,
+      "unit_cost": "33",
+      "description": "Dabur Odonil / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.961Z",
+      "updated_at": "2026-02-25T20:01:49.961Z",
+      "item_code": "3.29"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 30,
+    "fields": {
+      "name": "Paper Napkin",
+      "category": 2,
+      "item_type": "consumable",
+      "unit": "Packet",
+      "total_quantity": 50,
+      "available_quantity": 50,
+      "threshold_quantity": 8,
+      "unit_cost": "20",
+      "description": "Premier / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:49.996Z",
+      "updated_at": "2026-02-25T20:01:49.996Z",
+      "item_code": "3.30"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 31,
+    "fields": {
+      "name": "Phenyl",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Ltr",
+      "total_quantity": 3000,
+      "available_quantity": 3000,
+      "threshold_quantity": 5,
+      "unit_cost": "160",
+      "description": "Trishul / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.020Z",
+      "updated_at": "2026-02-25T20:01:50.020Z",
+      "item_code": "3.31"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 32,
+    "fields": {
+      "name": "Road Brush with stick",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 5,
+      "available_quantity": 5,
+      "threshold_quantity": 2,
+      "unit_cost": "650",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.027Z",
+      "updated_at": "2026-02-25T20:01:50.027Z",
+      "item_code": "3.32"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 33,
+    "fields": {
+      "name": "Room Freshener",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 700,
+      "available_quantity": 700,
+      "threshold_quantity": 5,
+      "unit_cost": "90",
+      "description": "Godrej Aer / Ambi Pur / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.033Z",
+      "updated_at": "2026-02-25T20:01:50.033Z",
+      "item_code": "3.33"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 34,
+    "fields": {
+      "name": "Scotch Brite 152mm x 96mm",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 3500,
+      "available_quantity": 3500,
+      "threshold_quantity": 10,
+      "unit_cost": "21",
+      "description": "Scotch-Brite / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.048Z",
+      "updated_at": "2026-02-25T20:01:50.048Z",
+      "item_code": "3.34"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 35,
+    "fields": {
+      "name": "Soap",
+      "category": 2,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 400,
+      "available_quantity": 400,
+      "threshold_quantity": 15,
+      "unit_cost": "8.40",
+      "description": "Lifebuoy / Lux / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.055Z",
+      "updated_at": "2026-02-25T20:01:50.055Z",
+      "item_code": "3.35"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 36,
+    "fields": {
+      "name": "Iron Scrapper Patra",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 350,
+      "available_quantity": 350,
+      "threshold_quantity": 2,
+      "unit_cost": "15",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.061Z",
+      "updated_at": "2026-02-25T20:01:50.061Z",
+      "item_code": "3.36"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 37,
+    "fields": {
+      "name": "Steel Polish",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 60,
+      "available_quantity": 60,
+      "threshold_quantity": 2,
+      "unit_cost": "310",
+      "description": "Brasso / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.066Z",
+      "updated_at": "2026-02-25T20:01:50.066Z",
+      "item_code": "3.37"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 38,
+    "fields": {
+      "name": "Wooden polish",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 1,
+      "available_quantity": 1,
+      "threshold_quantity": 2,
+      "unit_cost": "380",
+      "description": "Pidilite / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.071Z",
+      "updated_at": "2026-02-25T20:01:50.071Z",
+      "item_code": "3.38"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 39,
+    "fields": {
+      "name": "Tissue paper soft",
+      "category": 2,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 1,
+      "available_quantity": 1,
+      "threshold_quantity": 10,
+      "unit_cost": "40",
+      "description": "Premier / Origami / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.076Z",
+      "updated_at": "2026-02-25T20:01:50.076Z",
+      "item_code": "3.39"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 40,
+    "fields": {
+      "name": "Toilet cleaning brush",
+      "category": 2,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 300,
+      "available_quantity": 300,
+      "threshold_quantity": 5,
+      "unit_cost": "35",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.082Z",
+      "updated_at": "2026-02-25T20:01:50.082Z",
+      "item_code": "3.40"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 41,
+    "fields": {
+      "name": "Toilet paper Roll",
+      "category": 2,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 16000,
+      "available_quantity": 16000,
+      "threshold_quantity": 20,
+      "unit_cost": "18",
+      "description": "Premier / Origami / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.087Z",
+      "updated_at": "2026-02-25T20:01:50.087Z",
+      "item_code": "3.41"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 42,
+    "fields": {
+      "name": "Wet mop refill clip 6 inch",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 350,
+      "available_quantity": 350,
+      "threshold_quantity": 5,
+      "unit_cost": "36",
+      "description": "Gala / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.092Z",
+      "updated_at": "2026-02-25T20:01:50.092Z",
+      "item_code": "3.42"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 43,
+    "fields": {
+      "name": "Wet mop refill",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 2000,
+      "available_quantity": 2000,
+      "threshold_quantity": 5,
+      "unit_cost": "50",
+      "description": "Gala / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.098Z",
+      "updated_at": "2026-02-25T20:01:50.098Z",
+      "item_code": "3.43"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 44,
+    "fields": {
+      "name": "Wiper Big size With Steel Rod",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 90,
+      "available_quantity": 90,
+      "threshold_quantity": 2,
+      "unit_cost": "140",
+      "description": "Gala / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.103Z",
+      "updated_at": "2026-02-25T20:01:50.103Z",
+      "item_code": "3.44"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 45,
+    "fields": {
+      "name": "Wiper Small",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 90,
+      "available_quantity": 90,
+      "threshold_quantity": 3,
+      "unit_cost": "120",
+      "description": "Gala / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.108Z",
+      "updated_at": "2026-02-25T20:01:50.108Z",
+      "item_code": "3.45"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 46,
+    "fields": {
+      "name": "Naphthalene balls",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Kg",
+      "total_quantity": 120,
+      "available_quantity": 120,
+      "threshold_quantity": 6,
+      "unit_cost": "190",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.113Z",
+      "updated_at": "2026-02-25T20:01:50.113Z",
+      "item_code": "3.46"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 47,
+    "fields": {
+      "name": "Plunger Choking Pump",
+      "category": 3,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 60,
+      "available_quantity": 60,
+      "threshold_quantity": 2,
+      "unit_cost": "40",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.119Z",
+      "updated_at": "2026-02-25T20:01:50.119Z",
+      "item_code": "3.47"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 48,
+    "fields": {
+      "name": "Bleaching Liquid",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Ltr",
+      "total_quantity": 2000,
+      "available_quantity": 2000,
+      "threshold_quantity": 5,
+      "unit_cost": "17",
+      "description": "Rin / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.125Z",
+      "updated_at": "2026-02-25T20:01:50.125Z",
+      "item_code": "3.48"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 49,
+    "fields": {
+      "name": "Scrubbing pad",
+      "category": 1,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 10,
+      "available_quantity": 10,
+      "threshold_quantity": 10,
+      "unit_cost": "450",
+      "description": "Scotch-Brite / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.130Z",
+      "updated_at": "2026-02-25T20:01:50.130Z",
+      "item_code": "3.49"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 50,
+    "fields": {
+      "name": "Garden pipe 30mtr roll",
+      "category": 4,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 5,
+      "available_quantity": 5,
+      "threshold_quantity": 2,
+      "unit_cost": "1250",
+      "description": "Zoflaro / Ahititi / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.135Z",
+      "updated_at": "2026-02-25T20:01:50.135Z",
+      "item_code": "3.50"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 51,
+    "fields": {
+      "name": "Soap Dispenser",
+      "category": 2,
+      "item_type": "consumable",
+      "unit": "Each",
+      "total_quantity": 100,
+      "available_quantity": 100,
+      "threshold_quantity": 3,
+      "unit_cost": "1400",
+      "description": "Dolphy / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.140Z",
+      "updated_at": "2026-02-25T20:01:50.140Z",
+      "item_code": "3.51"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 52,
+    "fields": {
+      "name": "Vacuum cleaner",
+      "category": 5,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 5,
+      "available_quantity": 5,
+      "threshold_quantity": 1,
+      "unit_cost": "1200",
+      "description": "Eureka Forbes / Philips / Dyson",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.145Z",
+      "updated_at": "2026-02-25T20:01:50.145Z",
+      "item_code": "4.01"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 53,
+    "fields": {
+      "name": "Ladders",
+      "category": 5,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 15,
+      "available_quantity": 15,
+      "threshold_quantity": 3,
+      "unit_cost": "769.2",
+      "description": "Bathla / Youngman / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.151Z",
+      "updated_at": "2026-02-25T20:01:50.151Z",
+      "item_code": "4.02"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 54,
+    "fields": {
+      "name": "Single disc machine",
+      "category": 5,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 3,
+      "available_quantity": 3,
+      "threshold_quantity": 1,
+      "unit_cost": "5500",
+      "description": "Karcher / Nilfisk / Taski / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.156Z",
+      "updated_at": "2026-02-25T20:01:50.156Z",
+      "item_code": "4.03"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 55,
+    "fields": {
+      "name": "Telescopic rod",
+      "category": 5,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 5,
+      "available_quantity": 5,
+      "threshold_quantity": 1,
+      "unit_cost": "2564",
+      "description": "Unger / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.162Z",
+      "updated_at": "2026-02-25T20:01:50.162Z",
+      "item_code": "4.04"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 56,
+    "fields": {
+      "name": "Hydraulic ladder",
+      "category": 5,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 2,
+      "available_quantity": 2,
+      "threshold_quantity": 1,
+      "unit_cost": "17500",
+      "description": "Bathla / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.167Z",
+      "updated_at": "2026-02-25T20:01:50.167Z",
+      "item_code": "4.05"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 57,
+    "fields": {
+      "name": "40 feet extension ladder",
+      "category": 5,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 1,
+      "available_quantity": 1,
+      "threshold_quantity": 1,
+      "unit_cost": "12280",
+      "description": "Youngman / Bathla / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.172Z",
+      "updated_at": "2026-02-25T20:01:50.172Z",
+      "item_code": "4.06"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 58,
+    "fields": {
+      "name": "Blower",
+      "category": 5,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 2,
+      "available_quantity": 2,
+      "threshold_quantity": 1,
+      "unit_cost": "2699",
+      "description": "Bosch / Jakmister / STIHL",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.178Z",
+      "updated_at": "2026-02-25T20:01:50.178Z",
+      "item_code": "4.07"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 59,
+    "fields": {
+      "name": "Spades Pavda",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 15,
+      "available_quantity": 15,
+      "threshold_quantity": 3,
+      "unit_cost": "455",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.184Z",
+      "updated_at": "2026-02-25T20:01:50.184Z",
+      "item_code": "4.08"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 60,
+    "fields": {
+      "name": "Garden Fork Panja",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 15,
+      "available_quantity": 15,
+      "threshold_quantity": 3,
+      "unit_cost": "395",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.189Z",
+      "updated_at": "2026-02-25T20:01:50.189Z",
+      "item_code": "4.09"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 61,
+    "fields": {
+      "name": "Sickle Datards",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 15,
+      "available_quantity": 15,
+      "threshold_quantity": 3,
+      "unit_cost": "499",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.195Z",
+      "updated_at": "2026-02-25T20:01:50.195Z",
+      "item_code": "4.10"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 62,
+    "fields": {
+      "name": "Grab Hoe Kodali",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 15,
+      "available_quantity": 15,
+      "threshold_quantity": 3,
+      "unit_cost": "589",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.200Z",
+      "updated_at": "2026-02-25T20:01:50.200Z",
+      "item_code": "4.11"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 63,
+    "fields": {
+      "name": "Rake Dantali",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 15,
+      "available_quantity": 15,
+      "threshold_quantity": 3,
+      "unit_cost": "744",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.206Z",
+      "updated_at": "2026-02-25T20:01:50.206Z",
+      "item_code": "4.12"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 64,
+    "fields": {
+      "name": "Garden Shovel Khurpi",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 30,
+      "available_quantity": 30,
+      "threshold_quantity": 5,
+      "unit_cost": "100",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.211Z",
+      "updated_at": "2026-02-25T20:01:50.211Z",
+      "item_code": "4.13"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 65,
+    "fields": {
+      "name": "Manual Branch Cutter",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 10,
+      "available_quantity": 10,
+      "threshold_quantity": 2,
+      "unit_cost": "1075",
+      "description": "Sharpex / Falcon / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.217Z",
+      "updated_at": "2026-02-25T20:01:50.217Z",
+      "item_code": "4.14"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 66,
+    "fields": {
+      "name": "Pick mattock Trikam",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 10,
+      "available_quantity": 10,
+      "threshold_quantity": 2,
+      "unit_cost": "878",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.223Z",
+      "updated_at": "2026-02-25T20:01:50.223Z",
+      "item_code": "4.15"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 67,
+    "fields": {
+      "name": "Talvar Jungle cutting",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 10,
+      "available_quantity": 10,
+      "threshold_quantity": 2,
+      "unit_cost": "350",
+      "description": "Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.228Z",
+      "updated_at": "2026-02-25T20:01:50.228Z",
+      "item_code": "4.16"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 68,
+    "fields": {
+      "name": "Riding lawn mowers machine",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 1,
+      "available_quantity": 1,
+      "threshold_quantity": 1,
+      "unit_cost": "90000",
+      "description": "Sharpex / Cub Cadet / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.234Z",
+      "updated_at": "2026-02-25T20:01:50.234Z",
+      "item_code": "4.17"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 69,
+    "fields": {
+      "name": "Electrical lawnmower machine 22 inch blade",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 4,
+      "available_quantity": 4,
+      "threshold_quantity": 1,
+      "unit_cost": "21999.5",
+      "description": "Sharpex / Bosch / Black Decker / Falcon",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.241Z",
+      "updated_at": "2026-02-25T20:01:50.241Z",
+      "item_code": "4.18"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 70,
+    "fields": {
+      "name": "Brush cutter",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 4,
+      "available_quantity": 4,
+      "threshold_quantity": 1,
+      "unit_cost": "14336",
+      "description": "Sharpex / STIHL / Husqvarna",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.247Z",
+      "updated_at": "2026-02-25T20:01:50.247Z",
+      "item_code": "4.19"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 71,
+    "fields": {
+      "name": "Hedge cutter machine",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 4,
+      "available_quantity": 4,
+      "threshold_quantity": 1,
+      "unit_cost": "11470",
+      "description": "Sharpex / STIHL / Bosch",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.252Z",
+      "updated_at": "2026-02-25T20:01:50.252Z",
+      "item_code": "4.20"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 72,
+    "fields": {
+      "name": "Hedge cutter manual",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 4,
+      "available_quantity": 4,
+      "threshold_quantity": 1,
+      "unit_cost": "11412",
+      "description": "Sharpex / Falcon / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.258Z",
+      "updated_at": "2026-02-25T20:01:50.258Z",
+      "item_code": "4.21"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 73,
+    "fields": {
+      "name": "Garden Pipe 100 ft 30mtr roll",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 50,
+      "available_quantity": 50,
+      "threshold_quantity": 5,
+      "unit_cost": "1115",
+      "description": "Zoflaro / Ahititi / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.263Z",
+      "updated_at": "2026-02-25T20:01:50.263Z",
+      "item_code": "4.22"
+    }
+  },
+  {
+    "model": "inventory.item",
+    "pk": 74,
+    "fields": {
+      "name": "Trolly mounted Brush cutter",
+      "category": 4,
+      "item_type": "asset",
+      "unit": "Each",
+      "total_quantity": 2,
+      "available_quantity": 2,
+      "threshold_quantity": 1,
+      "unit_cost": "16368",
+      "description": "STIHL (custom) / Local Standard",
+      "location": "",
+      "created_at": "2026-02-25T20:01:50.269Z",
+      "updated_at": "2026-02-25T20:14:11.072Z",
+      "item_code": "4.23"
+    }
   }
-},
-{
-  "model": "inventory.category",
-  "pk": 2,
-  "fields": {
-    "name": "Housekeeping Supplies",
-    "description": ""
-  }
-},
-{
-  "model": "inventory.category",
-  "pk": 3,
-  "fields": {
-    "name": "Maintenance Supplies",
-    "description": ""
-  }
-},
-{
-  "model": "inventory.category",
-  "pk": 4,
-  "fields": {
-    "name": "Garden & Horticulture Equipment",
-    "description": ""
-  }
-},
-{
-  "model": "inventory.category",
-  "pk": 5,
-  "fields": {
-    "name": "Tools & Equipment",
-    "description": ""
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 1,
-  "fields": {
-    "name": "Cleaning Acid",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Litre",
-    "total_quantity": 20,
-    "available_quantity": 20,
-    "threshold_quantity": 5,
-    "unit_cost": "50.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.795Z",
-    "updated_at": "2026-02-25T20:01:49.795Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 2,
-  "fields": {
-    "name": "Aluminium Stick",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "80.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.808Z",
-    "updated_at": "2026-02-25T20:01:49.808Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 3,
-  "fields": {
-    "name": "Air Freshener (R5)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 15,
-    "available_quantity": 15,
-    "threshold_quantity": 3,
-    "unit_cost": "120.00",
-    "description": "Diversey / Taski / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.815Z",
-    "updated_at": "2026-02-25T20:01:49.815Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 4,
-  "fields": {
-    "name": "Floor Cleaner (R2)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Litre",
-    "total_quantity": 20,
-    "available_quantity": 20,
-    "threshold_quantity": 5,
-    "unit_cost": "95.00",
-    "description": "Diversey / Taski / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.823Z",
-    "updated_at": "2026-02-25T20:01:49.823Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 5,
-  "fields": {
-    "name": "Hand Wash Liquid",
-    "category": 2,
-    "item_type": "consumable",
-    "unit": "Litre",
-    "total_quantity": 25,
-    "available_quantity": 25,
-    "threshold_quantity": 5,
-    "unit_cost": "80.00",
-    "description": "Dettol / Lifebuoy / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.829Z",
-    "updated_at": "2026-02-25T20:01:49.829Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 6,
-  "fields": {
-    "name": "Surface Cleaner (R1)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Litre",
-    "total_quantity": 20,
-    "available_quantity": 20,
-    "threshold_quantity": 5,
-    "unit_cost": "90.00",
-    "description": "Diversey / Taski / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.835Z",
-    "updated_at": "2026-02-25T20:01:49.835Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 7,
-  "fields": {
-    "name": "Bamboo Stick (5 ft long)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 30,
-    "available_quantity": 30,
-    "threshold_quantity": 5,
-    "unit_cost": "25.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.841Z",
-    "updated_at": "2026-02-25T20:01:49.841Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 8,
-  "fields": {
-    "name": "Baygon Spray",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 3,
-    "unit_cost": "150.00",
-    "description": "SC Johnson / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.847Z",
-    "updated_at": "2026-02-25T20:01:49.847Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 9,
-  "fields": {
-    "name": "Broom (Hard)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 20,
-    "available_quantity": 20,
-    "threshold_quantity": 5,
-    "unit_cost": "60.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.853Z",
-    "updated_at": "2026-02-25T20:01:49.853Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 10,
-  "fields": {
-    "name": "Broom (Soft)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 20,
-    "available_quantity": 20,
-    "threshold_quantity": 5,
-    "unit_cost": "55.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.860Z",
-    "updated_at": "2026-02-25T20:01:49.860Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 11,
-  "fields": {
-    "name": "Plastic Bucket (10 Ltr)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 15,
-    "available_quantity": 15,
-    "threshold_quantity": 3,
-    "unit_cost": "80.00",
-    "description": "Cello / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.865Z",
-    "updated_at": "2026-02-25T20:01:49.865Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 12,
-  "fields": {
-    "name": "Carpet Shampoo 101",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Litre",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "200.00",
-    "description": "Diversey Taski TR101 / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.871Z",
-    "updated_at": "2026-02-25T20:01:49.871Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 13,
-  "fields": {
-    "name": "Carpet Brush",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "70.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.877Z",
-    "updated_at": "2026-02-25T20:01:49.877Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 14,
-  "fields": {
-    "name": "Ceramic Cleaner (R6)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Litre",
-    "total_quantity": 15,
-    "available_quantity": 15,
-    "threshold_quantity": 3,
-    "unit_cost": "110.00",
-    "description": "Diversey / Taski / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.884Z",
-    "updated_at": "2026-02-25T20:01:49.884Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 15,
-  "fields": {
-    "name": "Check Duster (250mm x 250mm)",
-    "category": 2,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 50,
-    "available_quantity": 50,
-    "threshold_quantity": 10,
-    "unit_cost": "20.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.889Z",
-    "updated_at": "2026-02-25T20:01:49.889Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 16,
-  "fields": {
-    "name": "Dry Mop Refill (24 inch)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 20,
-    "available_quantity": 20,
-    "threshold_quantity": 5,
-    "unit_cost": "90.00",
-    "description": "Gala / Scotch-Brite / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.894Z",
-    "updated_at": "2026-02-25T20:01:49.894Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 17,
-  "fields": {
-    "name": "Dry Mop Set (24 inch)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "350.00",
-    "description": "Gala / Scotch-Brite / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.899Z",
-    "updated_at": "2026-02-25T20:01:49.899Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 18,
-  "fields": {
-    "name": "Dustpan (Plastic 200x200mm)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 15,
-    "available_quantity": 15,
-    "threshold_quantity": 3,
-    "unit_cost": "45.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.905Z",
-    "updated_at": "2026-02-25T20:01:49.905Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 19,
-  "fields": {
-    "name": "Feather Brush (250mm)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 15,
-    "available_quantity": 15,
-    "threshold_quantity": 3,
-    "unit_cost": "55.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.910Z",
-    "updated_at": "2026-02-25T20:01:49.910Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 20,
-  "fields": {
-    "name": "Floor Detergent (Powder)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Kg",
-    "total_quantity": 30,
-    "available_quantity": 30,
-    "threshold_quantity": 8,
-    "unit_cost": "85.00",
-    "description": "Surf Excel / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.915Z",
-    "updated_at": "2026-02-25T20:01:49.915Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 21,
-  "fields": {
-    "name": "Floor Duster (Cotton)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 25,
-    "available_quantity": 25,
-    "threshold_quantity": 5,
-    "unit_cost": "35.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.920Z",
-    "updated_at": "2026-02-25T20:01:49.920Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 22,
-  "fields": {
-    "name": "Glass Cleaner",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 20,
-    "available_quantity": 20,
-    "threshold_quantity": 5,
-    "unit_cost": "95.00",
-    "description": "Colin / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.925Z",
-    "updated_at": "2026-02-25T20:01:49.925Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 23,
-  "fields": {
-    "name": "Glass Duster (18x18 White)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 30,
-    "available_quantity": 30,
-    "threshold_quantity": 5,
-    "unit_cost": "25.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.930Z",
-    "updated_at": "2026-02-25T20:01:49.930Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 24,
-  "fields": {
-    "name": "Glass Squeeze/Wiper (2-in-1)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "120.00",
-    "description": "Unger / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.934Z",
-    "updated_at": "2026-02-25T20:01:49.934Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 25,
-  "fields": {
-    "name": "Rubber Gloves",
-    "category": 2,
-    "item_type": "consumable",
-    "unit": "Pair",
-    "total_quantity": 50,
-    "available_quantity": 50,
-    "threshold_quantity": 10,
-    "unit_cost": "40.00",
-    "description": "Scotch-Brite / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.939Z",
-    "updated_at": "2026-02-25T20:01:49.939Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 26,
-  "fields": {
-    "name": "Gun Spray",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "75.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.945Z",
-    "updated_at": "2026-02-25T20:01:49.945Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 27,
-  "fields": {
-    "name": "Kitchen Wiper (250mm)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 20,
-    "available_quantity": 20,
-    "threshold_quantity": 5,
-    "unit_cost": "30.00",
-    "description": "Gala / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.951Z",
-    "updated_at": "2026-02-25T20:01:49.951Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 28,
-  "fields": {
-    "name": "Liquid Repellent (All Out Refill)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 20,
-    "available_quantity": 20,
-    "threshold_quantity": 5,
-    "unit_cost": "120.00",
-    "description": "SC Johnson / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.956Z",
-    "updated_at": "2026-02-25T20:01:49.956Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 29,
-  "fields": {
-    "name": "Odonil",
-    "category": 2,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 30,
-    "available_quantity": 30,
-    "threshold_quantity": 6,
-    "unit_cost": "45.00",
-    "description": "Dabur Odonil / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.961Z",
-    "updated_at": "2026-02-25T20:01:49.961Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 30,
-  "fields": {
-    "name": "Paper Napkin",
-    "category": 2,
-    "item_type": "consumable",
-    "unit": "Pack",
-    "total_quantity": 40,
-    "available_quantity": 40,
-    "threshold_quantity": 8,
-    "unit_cost": "60.00",
-    "description": "Premier / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:49.996Z",
-    "updated_at": "2026-02-25T20:01:49.996Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 31,
-  "fields": {
-    "name": "Phenyl",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Litre",
-    "total_quantity": 25,
-    "available_quantity": 25,
-    "threshold_quantity": 5,
-    "unit_cost": "55.00",
-    "description": "Trishul / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.020Z",
-    "updated_at": "2026-02-25T20:01:50.020Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 32,
-  "fields": {
-    "name": "Road Brush with Stick",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "85.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.027Z",
-    "updated_at": "2026-02-25T20:01:50.027Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 33,
-  "fields": {
-    "name": "Room Freshener",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 20,
-    "available_quantity": 20,
-    "threshold_quantity": 5,
-    "unit_cost": "130.00",
-    "description": "Godrej Aer / Ambi Pur / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.033Z",
-    "updated_at": "2026-02-25T20:01:50.033Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 34,
-  "fields": {
-    "name": "Scotch-Brite Pad (152x96mm)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 60,
-    "available_quantity": 60,
-    "threshold_quantity": 10,
-    "unit_cost": "25.00",
-    "description": "Scotch-Brite / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.048Z",
-    "updated_at": "2026-02-25T20:01:50.048Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 35,
-  "fields": {
-    "name": "Soap",
-    "category": 2,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 80,
-    "available_quantity": 80,
-    "threshold_quantity": 15,
-    "unit_cost": "30.00",
-    "description": "Lifebuoy / Lux / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.055Z",
-    "updated_at": "2026-02-25T20:01:50.055Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 36,
-  "fields": {
-    "name": "Iron Scrapper (Patra)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "50.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.061Z",
-    "updated_at": "2026-02-25T20:01:50.061Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 37,
-  "fields": {
-    "name": "Steel Polish",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "110.00",
-    "description": "Brasso / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.066Z",
-    "updated_at": "2026-02-25T20:01:50.066Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 38,
-  "fields": {
-    "name": "Wooden Polish",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "130.00",
-    "description": "Pidilite / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.071Z",
-    "updated_at": "2026-02-25T20:01:50.071Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 39,
-  "fields": {
-    "name": "Tissue Paper (Soft)",
-    "category": 2,
-    "item_type": "consumable",
-    "unit": "Pack",
-    "total_quantity": 50,
-    "available_quantity": 50,
-    "threshold_quantity": 10,
-    "unit_cost": "40.00",
-    "description": "Premier / Origami / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.076Z",
-    "updated_at": "2026-02-25T20:01:50.076Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 40,
-  "fields": {
-    "name": "Toilet Cleaning Brush",
-    "category": 2,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 20,
-    "available_quantity": 20,
-    "threshold_quantity": 5,
-    "unit_cost": "55.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.082Z",
-    "updated_at": "2026-02-25T20:01:50.082Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 41,
-  "fields": {
-    "name": "Toilet Paper Roll",
-    "category": 2,
-    "item_type": "consumable",
-    "unit": "Roll",
-    "total_quantity": 100,
-    "available_quantity": 100,
-    "threshold_quantity": 20,
-    "unit_cost": "15.00",
-    "description": "Premier / Origami / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.087Z",
-    "updated_at": "2026-02-25T20:01:50.087Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 42,
-  "fields": {
-    "name": "Wet Mop Refill Clip (6 inch)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 20,
-    "available_quantity": 20,
-    "threshold_quantity": 5,
-    "unit_cost": "60.00",
-    "description": "Gala / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.092Z",
-    "updated_at": "2026-02-25T20:01:50.092Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 43,
-  "fields": {
-    "name": "Wet Mop Refill",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 20,
-    "available_quantity": 20,
-    "threshold_quantity": 5,
-    "unit_cost": "80.00",
-    "description": "Gala / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.098Z",
-    "updated_at": "2026-02-25T20:01:50.098Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 44,
-  "fields": {
-    "name": "Wiper (Big with Steel Rod)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "180.00",
-    "description": "Gala / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.103Z",
-    "updated_at": "2026-02-25T20:01:50.103Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 45,
-  "fields": {
-    "name": "Wiper (Small)",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 15,
-    "available_quantity": 15,
-    "threshold_quantity": 3,
-    "unit_cost": "90.00",
-    "description": "Gala / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.108Z",
-    "updated_at": "2026-02-25T20:01:50.108Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 46,
-  "fields": {
-    "name": "Naphthalene Balls",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Pack",
-    "total_quantity": 30,
-    "available_quantity": 30,
-    "threshold_quantity": 6,
-    "unit_cost": "35.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.113Z",
-    "updated_at": "2026-02-25T20:01:50.113Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 47,
-  "fields": {
-    "name": "Plunger (Chowking Pump)",
-    "category": 3,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "75.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.119Z",
-    "updated_at": "2026-02-25T20:01:50.119Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 48,
-  "fields": {
-    "name": "Bleaching Liquid",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Litre",
-    "total_quantity": 20,
-    "available_quantity": 20,
-    "threshold_quantity": 5,
-    "unit_cost": "60.00",
-    "description": "Rin / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.125Z",
-    "updated_at": "2026-02-25T20:01:50.125Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 49,
-  "fields": {
-    "name": "Scrubbing Pad",
-    "category": 1,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 50,
-    "available_quantity": 50,
-    "threshold_quantity": 10,
-    "unit_cost": "20.00",
-    "description": "Scotch-Brite / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.130Z",
-    "updated_at": "2026-02-25T20:01:50.130Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 50,
-  "fields": {
-    "name": "Garden Pipe 30mtr Roll",
-    "category": 4,
-    "item_type": "consumable",
-    "unit": "Roll",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "450.00",
-    "description": "Zoflaro / Ahititi / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.135Z",
-    "updated_at": "2026-02-25T20:01:50.135Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 51,
-  "fields": {
-    "name": "Soap Dispenser",
-    "category": 2,
-    "item_type": "consumable",
-    "unit": "Each",
-    "total_quantity": 15,
-    "available_quantity": 15,
-    "threshold_quantity": 3,
-    "unit_cost": "350.00",
-    "description": "Dolphy / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.140Z",
-    "updated_at": "2026-02-25T20:01:50.140Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 52,
-  "fields": {
-    "name": "Vacuum Cleaner",
-    "category": 5,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 5,
-    "available_quantity": 5,
-    "threshold_quantity": 1,
-    "unit_cost": "8500.00",
-    "description": "Eureka Forbes / Philips / Dyson",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.145Z",
-    "updated_at": "2026-02-25T20:01:50.145Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 53,
-  "fields": {
-    "name": "Ladder",
-    "category": 5,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 15,
-    "available_quantity": 15,
-    "threshold_quantity": 3,
-    "unit_cost": "1200.00",
-    "description": "Bathla / Youngman / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.151Z",
-    "updated_at": "2026-02-25T20:01:50.151Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 54,
-  "fields": {
-    "name": "Single Disc Machine",
-    "category": 5,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 3,
-    "available_quantity": 3,
-    "threshold_quantity": 1,
-    "unit_cost": "25000.00",
-    "description": "Karcher / Nilfisk / Taski / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.156Z",
-    "updated_at": "2026-02-25T20:01:50.156Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 55,
-  "fields": {
-    "name": "Telescopic Rod",
-    "category": 5,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 5,
-    "available_quantity": 5,
-    "threshold_quantity": 1,
-    "unit_cost": "800.00",
-    "description": "Unger / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.162Z",
-    "updated_at": "2026-02-25T20:01:50.162Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 56,
-  "fields": {
-    "name": "Aluminium Tilting Tower Ladder",
-    "category": 5,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 2,
-    "available_quantity": 2,
-    "threshold_quantity": 1,
-    "unit_cost": "18000.00",
-    "description": "Bathla / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.167Z",
-    "updated_at": "2026-02-25T20:01:50.167Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 57,
-  "fields": {
-    "name": "40 Feet Extension Ladder",
-    "category": 5,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 1,
-    "available_quantity": 1,
-    "threshold_quantity": 1,
-    "unit_cost": "22000.00",
-    "description": "Youngman / Bathla / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.172Z",
-    "updated_at": "2026-02-25T20:01:50.172Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 58,
-  "fields": {
-    "name": "Blower",
-    "category": 5,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 2,
-    "available_quantity": 2,
-    "threshold_quantity": 1,
-    "unit_cost": "5500.00",
-    "description": "Bosch / Jakmister / STIHL",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.178Z",
-    "updated_at": "2026-02-25T20:01:50.178Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 59,
-  "fields": {
-    "name": "Spade (Pavda)",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 15,
-    "available_quantity": 15,
-    "threshold_quantity": 3,
-    "unit_cost": "350.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.184Z",
-    "updated_at": "2026-02-25T20:01:50.184Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 60,
-  "fields": {
-    "name": "Garden Fork (Panja)",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 15,
-    "available_quantity": 15,
-    "threshold_quantity": 3,
-    "unit_cost": "320.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.189Z",
-    "updated_at": "2026-02-25T20:01:50.189Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 61,
-  "fields": {
-    "name": "Sickle (Datards)",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 15,
-    "available_quantity": 15,
-    "threshold_quantity": 3,
-    "unit_cost": "180.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.195Z",
-    "updated_at": "2026-02-25T20:01:50.195Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 62,
-  "fields": {
-    "name": "Grab Hoe (Kodali)",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 15,
-    "available_quantity": 15,
-    "threshold_quantity": 3,
-    "unit_cost": "280.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.200Z",
-    "updated_at": "2026-02-25T20:01:50.200Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 63,
-  "fields": {
-    "name": "Rake (Dantali)",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 15,
-    "available_quantity": 15,
-    "threshold_quantity": 3,
-    "unit_cost": "260.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.206Z",
-    "updated_at": "2026-02-25T20:01:50.206Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 64,
-  "fields": {
-    "name": "Garden Shovel (Khurpi)",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 30,
-    "available_quantity": 30,
-    "threshold_quantity": 5,
-    "unit_cost": "120.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.211Z",
-    "updated_at": "2026-02-25T20:01:50.211Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 65,
-  "fields": {
-    "name": "Manual Branch Cutter",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "650.00",
-    "description": "Sharpex / Falcon / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.217Z",
-    "updated_at": "2026-02-25T20:01:50.217Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 66,
-  "fields": {
-    "name": "Pick Mattock (Trikam)",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "380.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.223Z",
-    "updated_at": "2026-02-25T20:01:50.223Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 67,
-  "fields": {
-    "name": "Talvar (Jungle Cutting Tool)",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 10,
-    "available_quantity": 10,
-    "threshold_quantity": 2,
-    "unit_cost": "290.00",
-    "description": "Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.228Z",
-    "updated_at": "2026-02-25T20:01:50.228Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 68,
-  "fields": {
-    "name": "Riding Lawn Mower (Cub Cadet LX42)",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 1,
-    "available_quantity": 1,
-    "threshold_quantity": 1,
-    "unit_cost": "185000.00",
-    "description": "Sharpex / Cub Cadet / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.234Z",
-    "updated_at": "2026-02-25T20:01:50.234Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 69,
-  "fields": {
-    "name": "Electrical Lawnmower 22 inch",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 4,
-    "available_quantity": 4,
-    "threshold_quantity": 1,
-    "unit_cost": "12000.00",
-    "description": "Sharpex / Bosch / Black Decker / Falcon",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.241Z",
-    "updated_at": "2026-02-25T20:01:50.241Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 70,
-  "fields": {
-    "name": "Brush Cutter (Petrol)",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 4,
-    "available_quantity": 4,
-    "threshold_quantity": 1,
-    "unit_cost": "18000.00",
-    "description": "Sharpex / STIHL / Husqvarna",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.247Z",
-    "updated_at": "2026-02-25T20:01:50.247Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 71,
-  "fields": {
-    "name": "Hedge Cutter (Electrical)",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 4,
-    "available_quantity": 4,
-    "threshold_quantity": 1,
-    "unit_cost": "14000.00",
-    "description": "Sharpex / STIHL / Bosch",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.252Z",
-    "updated_at": "2026-02-25T20:01:50.252Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 72,
-  "fields": {
-    "name": "Hedge Cutter (Manual)",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 4,
-    "available_quantity": 4,
-    "threshold_quantity": 1,
-    "unit_cost": "950.00",
-    "description": "Sharpex / Falcon / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.258Z",
-    "updated_at": "2026-02-25T20:01:50.258Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 73,
-  "fields": {
-    "name": "Garden Pipe 100ft 30mtr Roll",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Roll",
-    "total_quantity": 50,
-    "available_quantity": 50,
-    "threshold_quantity": 5,
-    "unit_cost": "450.00",
-    "description": "Zoflaro / Ahititi / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.263Z",
-    "updated_at": "2026-02-25T20:01:50.263Z"
-  }
-},
-{
-  "model": "inventory.item",
-  "pk": 74,
-  "fields": {
-    "name": "Trolley-Mounted Brush Cutter",
-    "category": 4,
-    "item_type": "asset",
-    "unit": "Each",
-    "total_quantity": 2,
-    "available_quantity": 2,
-    "threshold_quantity": 1,
-    "unit_cost": "35000.00",
-    "description": "STIHL (custom) / Local Standard",
-    "location": "",
-    "created_at": "2026-02-25T20:01:50.269Z",
-    "updated_at": "2026-02-25T20:14:11.072Z"
-  }
-}
 ]

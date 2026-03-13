@@ -374,16 +374,19 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
     rows.push(['Urgent Requests', requesterRow.urgent_requests || 0])
     rows.push(['Estimated Cost (INR)', requesterRow.total_estimated_cost || 0])
     rows.push([])
-    rows.push(['Item', 'Category', 'Unit', 'Qty Issued', 'Actual Used', 'Finalized'])
+    rows.push(['Item Code', 'Item', 'Category', 'Unit', 'Unit Price (INR)', 'Qty Issued', 'Actual Used', 'Line Total (INR)', 'Finalized'])
 
     const items = requesterRow.items_received || []
     items.forEach((item) => {
       rows.push([
+        item.item_code || '',
         item.item_name || '',
         item.category || '',
         item.unit || '',
+        item.unit_price || 0,
         item.quantity_issued || 0,
         item.actual_used || 0,
+        item.line_total || 0,
         item.usage_finalized ? 'Yes' : 'No',
       ])
     })
@@ -495,13 +498,16 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
 
           <Card noPad>
             <DataTable
-              headers={['Item', 'Category', 'Unit', 'Qty Issued', 'Actual Used', 'Finalized']}
+              headers={['Code', 'Item', 'Category', 'Unit', 'Unit Price', 'Qty Issued', 'Actual Used', 'Line Total', 'Finalized']}
               rows={(requesterRow.items_received || []).map((item) => ([
+                item.item_code || '-',
                 item.item_name || '-',
                 item.category || '-',
                 item.unit || '-',
+                `INR ${Number(item.unit_price || 0).toFixed(2)}`,
                 item.quantity_issued || 0,
                 item.actual_used || 0,
+                `INR ${Number(item.line_total || 0).toFixed(2)}`,
                 item.usage_finalized ? 'Yes' : 'No',
               ]))}
               emptyMsg="No issued inventory items."
@@ -581,7 +587,7 @@ export default function SupervisorsTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Role', 'Name', 'Username', 'Phone', 'Assigned Areas', 'Status', 'Report']}
+            headers={['Role', 'Name', 'Username', 'Phone', 'Pay Code', 'Assigned Areas', 'Status', 'Report']}
             rows={users.map((u) => {
               const areasForUser = areaMap[u.id] || []
               return [
@@ -589,6 +595,7 @@ export default function SupervisorsTab() {
                 toDisplayName(u),
                 <code key={`user-${u.id}`} style={{ fontSize: 12 }}>{u.username}</code>,
                 u.phone || '-',
+                u.pay_code || '-',
                 areasForUser.length ? areasForUser.join(', ') : '-',
                 <span
                   key={`status-${u.id}`}

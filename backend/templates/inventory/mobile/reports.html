@@ -32,7 +32,7 @@
     <div class="stat-value">{{ inventory_data.total_items }}</div>
   </div>
   <div class="stat-card" style="background:var(--brand-teal)">
-    <div class="stat-label">Total Value</div>
+    <div class="stat-label">Total Stock Amount</div>
     <div class="stat-value" style="font-size:20px">&#8377;{{ inventory_data.total_value|floatformat:0 }}</div>
   </div>
   <div class="stat-card" style="background:var(--brand-orange)">
@@ -87,7 +87,8 @@
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
     <div style="min-width:0;flex:1">
       <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.name }}</div>
-      <div style="color:var(--text-secondary);font-size:12px;margin-top:2px">{{ item.category }} &bull; {{ item.type|title }}</div>
+      <div style="color:var(--text-secondary);font-size:12px;margin-top:2px">{{ item.item_code|default:'No code' }} &bull; {{ item.category }} &bull; {{ item.type|title }}</div>
+      <div style="color:var(--text-muted);font-size:11px;margin-top:2px">&#8377;{{ item.unit_price|floatformat:2 }} each</div>
     </div>
     <span style="padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;flex-shrink:0;margin-left:8px;
       {% if item.status == 'in_stock' %}background:#dcfce7;color:#166534;
@@ -103,12 +104,12 @@
       <div style="font-size:10px;color:var(--text-muted)">{{ item.unit }}</div>
     </div>
     <div style="text-align:center;background:var(--bg);padding:8px;border-radius:var(--radius-sm)">
-      <div style="font-size:10px;color:var(--text-muted)">Unit Cost</div>
-      <div style="font-weight:700;color:var(--text-primary);font-size:13px">&#8377;{{ item.unit_cost|floatformat:0 }}</div>
+      <div style="font-size:10px;color:var(--text-muted)">Unit Price</div>
+      <div style="font-weight:700;color:var(--text-primary);font-size:13px">&#8377;{{ item.unit_price|floatformat:2 }}</div>
     </div>
     <div style="text-align:center;background:var(--bg);padding:8px;border-radius:var(--radius-sm)">
-      <div style="font-size:10px;color:var(--text-muted)">Total Value</div>
-      <div style="font-weight:700;color:var(--brand-teal);font-size:13px">&#8377;{{ item.total_value|floatformat:0 }}</div>
+      <div style="font-size:10px;color:var(--text-muted)">Total Price</div>
+      <div style="font-weight:700;color:var(--brand-teal);font-size:13px">&#8377;{{ item.stock_total_amount|floatformat:0 }}</div>
     </div>
   </div>
 </div>
@@ -204,6 +205,9 @@
     <div>
       <div style="font-weight:600;font-size:14px">{{ req.requester }}</div>
       <div style="font-size:12px;color:var(--text-secondary)">{{ req.item }}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+        Code: {{ req.item_code|default:'-' }} · Unit: &#8377;{{ req.unit_price|default:0|floatformat:2 }} · Total: &#8377;{{ req.line_total|default:0|floatformat:2 }}
+      </div>
     </div>
     <span style="padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;flex-shrink:0;
       {% if req.status == 'pending' %}background:#fef9c3;color:#854d0e;

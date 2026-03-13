@@ -1,7 +1,9 @@
-from django.core.exceptions import ValidationError
-from django.db import models
-from django.core.validators import MinValueValidator
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
+from django.db import models
 
 
 class Category(models.Model):
@@ -21,19 +23,11 @@ class Item(models.Model):
         ASSET = 'asset', 'Asset'
         CONSUMABLE = 'consumable', 'Consumable'
 
-    class Unit(models.TextChoices):
-        PIECES = 'pieces', 'Pieces'
-        LITRES = 'litres', 'Litres'
-        KG = 'kg', 'Kilograms'
-        METRES = 'metres', 'Metres'
-        PACKETS = 'packets', 'Packets'
-        BOTTLES = 'bottles', 'Bottles'
-        BOXES = 'boxes', 'Boxes'
-
+    item_code = models.CharField(max_length=20, blank=True, db_index=True)
     name = models.CharField(max_length=200)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='items')
     item_type = models.CharField(max_length=20, choices=ItemType.choices)
-    unit = models.CharField(max_length=20, choices=Unit.choices, default=Unit.PIECES)
+    unit = models.CharField(max_length=20, default='Each')
     total_quantity = models.PositiveIntegerField(default=0)
     available_quantity = models.PositiveIntegerField(default=0)
     reserved_quantity = models.PositiveIntegerField(default=0)
@@ -89,6 +83,18 @@ class Item(models.Model):
             return 'low_stock'
         return 'in_stock'
 
+    @property
+    def unit_price(self):
+        return self.unit_cost or Decimal('0')
+
+    @property
+    def stock_total_amount(self):
+        return (self.unit_price or Decimal('0')) * Decimal(self.total_quantity or 0)
+
+    @property
+    def available_stock_amount(self):
+        return (self.unit_price or Decimal('0')) * Decimal(self.available_quantity or 0)
+
 
 class StockEntry(models.Model):
     """
@@ -110,6 +116,10 @@ class StockEntry(models.Model):
 
     class Meta:
         ordering = ['-added_at']
+
+    @property
+    def added_stock_amount(self):
+        return (self.item.unit_price or Decimal('0')) * Decimal(self.quantity_added or 0)
 
     def __str__(self):
         return f"+{self.quantity_added} {self.item.unit} → {self.item.name} ({self.added_at.date()})"
@@ -199,6 +209,10 @@ class ItemRequest(models.Model):
     @property
     def updated_at(self):
         return self.reviewed_at or self.requested_at
+
+    @property
+    def request_total_amount(self):
+        return (self.item.unit_price or Decimal('0')) * Decimal(self.quantity_requested or 0)
 
 
 class PurchaseRequest(models.Model):
@@ -299,6 +313,12 @@ class ItemIssue(models.Model):
 
     class Meta:
         ordering = ['-issued_at']
+
+    @property
+    def issue_total_amount(self):
+        item = getattr(self.request, 'item', None)
+        unit_price = getattr(item, 'unit_price', Decimal('0')) if item else Decimal('0')
+        return (unit_price or Decimal('0')) * Decimal(self.issued_quantity or 0)
 
     def __str__(self):
         return f"Issue #{self.id} — {self.request.item.name} x{self.issued_quantity}"

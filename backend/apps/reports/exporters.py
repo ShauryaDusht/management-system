@@ -46,7 +46,7 @@ WORKER_COMBINED_COLUMNS = [
     'Supervisor',
     'Worker Type',
     'Shift',
-    'Punching No',
+    'Pay Code',
     'Phone',
     'Reliever',
     'Attendance %',
@@ -85,6 +85,7 @@ def export_worker_report_csv(snapshot: dict) -> bytes:
     writer.writerow(['Worker Attendance and Task Completion Report'])
     writer.writerow(['Worker Name', worker.get('name', '')])
     writer.writerow(['Area', worker.get('area_name', '')])
+    writer.writerow(['Pay Code', worker.get('pay_code', '')])
     writer.writerow(['Month', snapshot.get('month_label', '')])
     writer.writerow(['Attendance %', f"{snapshot.get('attendance_pct', 0):.2f}"])
     writer.writerow(['Task Completion %', f"{tasks.get('completion_pct', 0):.2f}"])
@@ -240,6 +241,7 @@ def export_consumption_item_csv(snapshot: dict) -> bytes:
 
     writer.writerow(
         [
+            'Item Code',
             'Item Name',
             'Category',
             'Type',
@@ -260,6 +262,7 @@ def export_consumption_item_csv(snapshot: dict) -> bytes:
     for row in item_rows:
         writer.writerow(
             [
+                row.get('item_code', ''),
                 row.get('item_name', ''),
                 row.get('category_name', ''),
                 row.get('item_type', ''),
@@ -320,11 +323,14 @@ def export_consumption_requester_csv(snapshot: dict) -> bytes:
     writer.writerow(
         [
             'Requester',
+            'Item Code',
             'Item',
             'Category',
             'Unit',
+            'Unit Price (INR)',
             'Qty Issued',
             'Actual Used',
+            'Line Total (INR)',
             'Finalized',
         ]
     )
@@ -334,11 +340,14 @@ def export_consumption_requester_csv(snapshot: dict) -> bytes:
             writer.writerow(
                 [
                     requester_name,
+                    item.get('item_code', ''),
                     item.get('item_name', ''),
                     item.get('category', ''),
                     item.get('unit', ''),
+                    item.get('unit_price', 0),
                     item.get('quantity_issued', 0),
                     item.get('actual_used', 0),
+                    item.get('line_total', 0),
                     'Yes' if item.get('usage_finalized') else 'No',
                 ]
             )
@@ -364,7 +373,7 @@ def export_workers_combined_csv(rows: list, month: int, year: int, title: str) -
             row.get('supervisor_name', ''),
             row.get('worker_type', ''),
             row.get('shift', ''),
-            row.get('punching_no', ''),
+            row.get('pay_code', ''),
             row.get('phone', ''),
             'Yes' if row.get('is_reliever') else 'No',
             f"{row.get('attendance_pct', 0):.2f}",

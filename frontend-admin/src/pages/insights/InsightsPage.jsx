@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { reportsAPI } from '../../api/inventory'
 import { Btn, Card, Spinner } from '../../components/ui'
-import { BarGroupChart } from '../../components/ui/Charts'
+import { BarGroupChart, DonutChart } from '../../components/ui/Charts'
 import AdminLayout from '../../layout/AdminLayout'
 import { exportCsv, todayISO } from '../../shared/utils'
 
@@ -21,8 +21,107 @@ const AREA_CLASS_OPTIONS = [
   { key: 'others', label: 'Others' },
 ]
 
+const PIE_COLORS = ['#2d4a3e', '#c2622a', '#3b82f6', '#f59e0b', '#dc2626', '#0d9488']
+
 function formatNum(value) {
   return Number(value || 0).toLocaleString('en-IN')
+}
+
+function sumRows(rows, key) {
+  return rows.reduce((total, row) => total + Number(row?.[key] || 0), 0)
+}
+
+function buildTaskMix(rows) {
+  const slices = [
+    { name: 'Completed', value: sumRows(rows, 'done') },
+    { name: 'Pending', value: sumRows(rows, 'pending') },
+    { name: 'In Progress', value: sumRows(rows, 'in_progress') },
+    { name: 'Skipped', value: sumRows(rows, 'skipped') },
+  ].filter((item) => item.value > 0)
+
+  return {
+    total: slices.reduce((total, item) => total + item.value, 0),
+    data: slices,
+  }
+}
+
+function buildTopItemsShare(rows) {
+  const ranked = rows
+    .map((row) => ({
+      name: row.item_name,
+      value: Number(row.quantity || 0),
+    }))
+    .filter((row) => row.value > 0)
+
+  const topRows = ranked.slice(0, 5)
+  const total = ranked.reduce((sum, row) => sum + row.value, 0)
+  const topTotal = topRows.reduce((sum, row) => sum + row.value, 0)
+  const otherValue = Math.max(total - topTotal, 0)
+  const data = otherValue > 0 ? [...topRows, { name: 'Others', value: otherValue }] : topRows
+
+  return { total, data }
+}
+
+function InsightPiePanel({ title, subtitle, data, total, label, note }) {
+  if (!data.length) return null
+
+  return (
+    <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 18, alignItems: 'center' }}>
+        <div>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>{title}</div>
+          {subtitle ? (
+            <div style={{ color: 'var(--text-3)', fontSize: 12, marginBottom: 10 }}>{subtitle}</div>
+          ) : null}
+          <DonutChart data={data} total={total} label={label} size={220} />
+        </div>
+
+        <div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {data.map((item, index) => {
+              const percent = total > 0 ? (Number(item.value || 0) * 100) / total : 0
+              return (
+                <div
+                  key={`${item.name}-${index}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '10px 12px',
+                    borderRadius: 12,
+                    background: '#f8fafc',
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <span
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        background: PIE_COLORS[index % PIE_COLORS.length],
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div style={{ fontSize: 13, fontWeight: 600, minWidth: 0 }}>{item.name}</div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{formatNum(item.value)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{percent.toFixed(1)}%</div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {note ? (
+            <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text-3)' }}>{note}</div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function InsightsPage() {
@@ -136,6 +235,21 @@ export default function InsightsPage() {
       })),
     [topItemRows],
   )
+
+  const caretakerTaskMix = useMemo(() => buildTaskMix(caretakerRows), [caretakerRows])
+  const areaTaskMix = useMemo(() => buildTaskMix(areaRows), [areaRows])
+  const workerTaskMix = useMemo(() => buildTaskMix(workerRows), [workerRows])
+  const inventoryTypeMix = useMemo(
+    () => ({
+      total: Number(consumptionTotals.total_qty || 0),
+      data: [
+        { name: 'Consumables', value: Number(consumptionTotals.consumable_qty || 0) },
+        { name: 'Assets', value: Number(consumptionTotals.asset_qty || 0) },
+      ].filter((item) => item.value > 0),
+    }),
+    [consumptionTotals],
+  )
+  const topItemsShare = useMemo(() => buildTopItemsShare(topItemRows), [topItemRows])
 
   const exportCurrentCsv = () => {
     const day = todayISO()
@@ -359,6 +473,14 @@ export default function InsightsPage() {
                 <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-3)' }}>
                   Comparison is fairness-based: completion, attendance, task-volume confidence and workload per worker.
                 </div>
+                <InsightPiePanel
+                  title="Task Distribution"
+                  subtitle="Combined status mix for the selected caretaker and supervisor group"
+                  data={caretakerTaskMix.data}
+                  total={caretakerTaskMix.total}
+                  label="Total Tasks"
+                  note="This pie view helps admin quickly see whether the selected staff pool is closing tasks or carrying too much pending load."
+                />
               </>
             ) : (
               <div style={{ color: 'var(--text-3)', fontSize: 12 }}>No caretaker/supervisor data for selected filters.</div>
@@ -387,6 +509,14 @@ export default function InsightsPage() {
                 <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-3)' }}>
                   Fair score balances completion quality with worker strength and load, so low-volume areas are not over-favored.
                 </div>
+                <InsightPiePanel
+                  title="Area Task Distribution"
+                  subtitle="Overall task outcome split across the selected housekeeping areas"
+                  data={areaTaskMix.data}
+                  total={areaTaskMix.total}
+                  label="Total Tasks"
+                  note="Use this second visual to judge whether the selected zone mix is mostly completed work or still carrying pending and in-progress tasks."
+                />
               </>
             ) : (
               <div style={{ color: 'var(--text-3)', fontSize: 12 }}>No area-wise HK data for selected filters.</div>
@@ -415,6 +545,14 @@ export default function InsightsPage() {
                 <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-3)' }}>
                   Ranking uses fair score so very small task samples do not dominate.
                 </div>
+                <InsightPiePanel
+                  title="Worker Task Distribution"
+                  subtitle="Combined task status split across the selected worker set"
+                  data={workerTaskMix.data}
+                  total={workerTaskMix.total}
+                  label="Total Tasks"
+                  note="This lower pie chart gives admin a quick workload health view for workers beyond the fair-score ranking above."
+                />
               </>
             ) : (
               <div style={{ color: 'var(--text-3)', fontSize: 12 }}>No worker-level data for selected filters.</div>
@@ -440,6 +578,14 @@ export default function InsightsPage() {
                   <div>Consumables: <strong>{formatNum(consumptionTotals.consumable_qty)}</strong></div>
                   <div>Assets: <strong>{formatNum(consumptionTotals.asset_qty)}</strong></div>
                 </div>
+                <InsightPiePanel
+                  title="Consumption Type Split"
+                  subtitle="Overall material mix for the selected inventory area filter"
+                  data={inventoryTypeMix.data}
+                  total={inventoryTypeMix.total}
+                  label="Total Qty"
+                  note="Admin can use this pie to see whether the current consumption load is dominated by consumables or by asset movement."
+                />
               </>
             ) : (
               <div style={{ color: 'var(--text-3)', fontSize: 12 }}>No area-wise inventory consumption data.</div>
@@ -461,6 +607,14 @@ export default function InsightsPage() {
                 <div style={{ marginTop: 10, fontSize: 12 }}>
                   Most consumed: <strong>{topItemRows[0]?.item_name || '-'}</strong> ({formatNum(topItemRows[0]?.quantity)} units)
                 </div>
+                <InsightPiePanel
+                  title="Top Item Share"
+                  subtitle="Top five items by quantity with the remaining items grouped together"
+                  data={topItemsShare.data}
+                  total={topItemsShare.total}
+                  label="Consumed Qty"
+                  note="This second view helps admin judge whether inventory usage is concentrated in a few items or spread widely across stock."
+                />
               </>
             ) : (
               <div style={{ color: 'var(--text-3)', fontSize: 12 }}>No item consumption data for selected filters.</div>

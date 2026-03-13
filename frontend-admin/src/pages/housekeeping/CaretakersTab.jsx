@@ -75,7 +75,7 @@ export default function CaretakersTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Role', 'Name', 'Username', 'Phone', 'Assigned Areas', 'Status']}
+            headers={['Role', 'Name', 'Username', 'Phone', 'Pay Code', 'Assigned Areas', 'Status']}
             rows={users.map((u) => {
               const fullName = u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username
               const areasForUser = areaMap[u.id] || []
@@ -84,6 +84,7 @@ export default function CaretakersTab() {
                 fullName,
                 <code key={`u-${u.id}`} style={{ fontSize: 12 }}>{u.username}</code>,
                 u.phone || '-',
+                u.pay_code || '-',
                 areasForUser.length ? areasForUser.join(', ') : '-',
                 <span
                   key={`s-${u.id}`}

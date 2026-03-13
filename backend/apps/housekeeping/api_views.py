@@ -1018,7 +1018,7 @@ class HKStockRequestListView(ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = HKStockRequest.objects.select_related('requested_by', 'area').order_by('-created_at')
+        qs = HKStockRequest.objects.select_related('requested_by', 'area', 'item').order_by('-created_at')
         if user.role not in ['admin', 'housekeeping_manager']:
             qs = qs.filter(requested_by=user)
         return qs[:50]

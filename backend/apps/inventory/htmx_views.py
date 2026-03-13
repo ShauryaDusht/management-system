@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
@@ -80,6 +80,7 @@ def mobile_dashboard(request):
 
     context = {
         'total_items': items.count(),
+        'total_stock_amount': round(sum(float(item.stock_total_amount or 0) for item in items), 2),
         'low_stock_items': low_stock[:3],
         'low_stock_count': low_stock.count(),
         'out_of_stock_count': items.filter(available_quantity=0).count(),
@@ -110,7 +111,7 @@ def mobile_inventory_list(request):
         items_qs = items_qs.filter(category_id=category_id)
 
     if search_query:
-        items_qs = items_qs.filter(name__icontains=search_query)
+        items_qs = items_qs.filter(Q(name__icontains=search_query) | Q(item_code__icontains=search_query))
 
     if item_type_filter in {'asset', 'consumable'}:
         items_qs = items_qs.filter(item_type=item_type_filter)
@@ -146,7 +147,7 @@ def mobile_inventory_list(request):
 def mobile_request_form(request):
     if request.method == 'POST':
         item_id = request.POST.get('item')
-        items = Item.objects.all().order_by('name')
+        items = Item.objects.all().order_by('item_code', 'name')
 
         try:
             quantity = int(request.POST.get('quantity_requested', 1))
@@ -183,7 +184,7 @@ def mobile_request_form(request):
         )
         return redirect('mobile_my_requests')
 
-    items = Item.objects.select_related('category').all().order_by('name')
+    items = Item.objects.select_related('category').all().order_by('item_code', 'name')
     return render(request, 'inventory/mobile/request_form.html', {
         'items': items,
         'preselected_item': request.GET.get('item', ''),
@@ -456,13 +457,14 @@ def mobile_export_inventory_report_csv(request):
 
     writer = csv.writer(response)
     writer.writerow([
-        'ID', 'Name', 'Category', 'Type', 'Unit',
+        'ID', 'Item Code', 'Name', 'Category', 'Type', 'Unit',
         'Total Quantity', 'Available Quantity', 'Threshold Quantity',
-        'Unit Cost', 'Total Value', 'Status',
+        'Unit Price', 'Total Price', 'Status',
     ])
     for row in report.get('items', []):
         writer.writerow([
             row.get('id'),
+            row.get('item_code'),
             row.get('name'),
             row.get('category'),
             row.get('type'),
@@ -470,8 +472,8 @@ def mobile_export_inventory_report_csv(request):
             row.get('total_quantity'),
             row.get('available_quantity'),
             row.get('threshold_quantity'),
-            row.get('unit_cost'),
-            row.get('total_value'),
+            row.get('unit_price', row.get('unit_cost')),
+            row.get('stock_total_amount', row.get('total_value')),
             row.get('status'),
         ])
 
@@ -503,14 +505,18 @@ def mobile_export_requests_report_csv(request):
 
     writer = csv.writer(response)
     writer.writerow([
-        'ID', 'Requester', 'Item', 'Quantity', 'Status', 'Urgent',
-        'Reason', 'Created At', 'Reviewed By', 'Reviewed At',
+        'ID', 'Requester', 'Item Code', 'Item', 'Unit', 'Unit Price', 'Total Price',
+        'Quantity', 'Status', 'Urgent', 'Reason', 'Created At', 'Reviewed By', 'Reviewed At',
     ])
     for row in report.get('requests', []):
         writer.writerow([
             row.get('id'),
             row.get('requester'),
+            row.get('item_code'),
             row.get('item'),
+            row.get('unit'),
+            row.get('unit_price'),
+            row.get('line_total'),
             row.get('quantity'),
             row.get('status'),
             'Yes' if row.get('is_urgent') else 'No',

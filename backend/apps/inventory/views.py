@@ -1,6 +1,6 @@
-from django.utils import timezone
 from django.db import transaction
-from django.db.models import Sum, F, Count
+from django.db.models import Count, F, Q
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -62,7 +62,7 @@ class ItemListCreateView(generics.ListCreateAPIView):
             )
         search = self.request.query_params.get('search')
         if search:
-            qs = qs.filter(name__icontains=search)
+            qs = qs.filter(Q(name__icontains=search) | Q(item_code__icontains=search))
         return qs
 
     def get_permissions(self):
@@ -601,13 +601,17 @@ class DashboardSummaryView(APIView):
     permission_classes = [IsAdminOrInventoryManager]
 
     def get(self, request):
-        total_items = Item.objects.count()
-        low_stock_count = Item.objects.filter(
+        items = Item.objects.all()
+        total_items = items.count()
+        low_stock_count = items.filter(
             available_quantity__gt=0,
             available_quantity__lte=F('threshold_quantity'),
         ).count()
-        out_of_stock = Item.objects.filter(available_quantity=0).count()
+        out_of_stock = items.filter(available_quantity=0).count()
+        in_stock_count = max(total_items - low_stock_count - out_of_stock, 0)
         pending_requests = ItemRequest.objects.filter(status='pending').count()
+        total_stock_amount = sum(float(item.stock_total_amount or 0) for item in items)
+        available_stock_amount = sum(float(item.available_stock_amount or 0) for item in items)
 
         unreturned_assets = ItemIssue.objects.filter(
             request__item__item_type='asset',
@@ -627,9 +631,12 @@ class DashboardSummaryView(APIView):
 
         return Response({
             'total_items': total_items,
+            'in_stock_count': in_stock_count,
             'low_stock_count': low_stock_count,
             'out_of_stock_count': out_of_stock,
             'pending_requests': pending_requests,
+            'total_stock_amount': round(total_stock_amount, 2),
+            'available_stock_amount': round(available_stock_amount, 2),
             'unreturned_assets': unreturned_assets,
             'unfinalized_consumables': unfinalized_consumables,
             'overdue_returns': overdue_returns,

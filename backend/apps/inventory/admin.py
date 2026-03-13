@@ -10,10 +10,10 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ['name', 'category', 'item_type', 'unit', 'total_quantity',
-                    'available_quantity', 'threshold_quantity', 'status']
+    list_display = ['item_code', 'name', 'category', 'item_type', 'unit', 'unit_cost',
+                    'total_quantity', 'available_quantity', 'threshold_quantity', 'status']
     list_filter = ['item_type', 'category']
-    search_fields = ['name', 'description']
+    search_fields = ['item_code', 'name', 'description']
     readonly_fields = ['created_at', 'updated_at']
 
     def status(self, obj):

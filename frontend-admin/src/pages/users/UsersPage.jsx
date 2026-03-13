@@ -41,6 +41,7 @@ const EMPTY = {
   last_name: '',
   email: '',
   phone: '',
+  pay_code: '',
   role: 'supervisor',
   area_ids: [],
   password: '',
@@ -83,6 +84,7 @@ export default function UsersPage() {
       last_name: u.last_name || '',
       email: u.email || '',
       phone: u.phone || '',
+      pay_code: u.pay_code || '',
       role: u.role || 'supervisor',
       area_ids: Array.isArray(u.assigned_area_ids) ? u.assigned_area_ids : [],
       password: '',
@@ -107,11 +109,12 @@ export default function UsersPage() {
           username: form.username,
           first_name: form.first_name,
           last_name: form.last_name,
-          email: form.email,
-          phone: form.phone,
-          role: form.role,
-          area_ids: HK_ROLES.includes(form.role) ? form.area_ids : [],
-        }
+        email: form.email,
+        phone: form.phone,
+        pay_code: form.pay_code,
+        role: form.role,
+        area_ids: HK_ROLES.includes(form.role) ? form.area_ids : [],
+      }
 
         if (form.password) payload.password = form.password
 
@@ -153,7 +156,7 @@ export default function UsersPage() {
     const areaText = Array.isArray(u.areas_incharge) ? u.areas_incharge.join(' ') : ''
     const matchSearch =
       !search ||
-      [u.username, u.first_name, u.last_name, u.email, areaText].some((v) =>
+      [u.username, u.first_name, u.last_name, u.email, u.pay_code, areaText].some((v) =>
         String(v || '').toLowerCase().includes(search.toLowerCase())
       )
     return matchRole && matchSearch
@@ -280,7 +283,7 @@ export default function UsersPage() {
           </div>
         ) : (
           <DataTable
-            headers={['Name', 'Username', 'Email', 'Phone', 'Role', 'Area Incharge', 'Status', 'Actions']}
+            headers={['Name', 'Username', 'Email', 'Phone', 'Pay Code', 'Role', 'Area Incharge', 'Status', 'Actions']}
             rows={filtered.map((u) => [
               <div key={`name-${u.id}`}>
                 <div style={{ fontWeight: 600 }}>
@@ -292,6 +295,7 @@ export default function UsersPage() {
               </code>,
               u.email || '-',
               u.phone || '-',
+              u.pay_code || '-',
               <Badge key={`role-${u.id}`} value={u.role} />,
               <div key={`areas-${u.id}`} style={{ fontSize: 12, color: 'var(--text-2)', maxWidth: 280 }}>
                 {Array.isArray(u.areas_incharge) && u.areas_incharge.length > 0
@@ -355,6 +359,9 @@ export default function UsersPage() {
         </Field>
         <Field label="Phone">
           <Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
+        </Field>
+        <Field label="Pay Code">
+          <Input value={form.pay_code} onChange={(e) => setForm((p) => ({ ...p, pay_code: e.target.value }))} />
         </Field>
         <Field label="Role" required>
           <SelectField

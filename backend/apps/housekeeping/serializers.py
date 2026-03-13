@@ -33,10 +33,14 @@ class HKAreaSerializer(serializers.ModelSerializer):
 
     def get_caretakers(self, obj):
         # reads from prefetch cache; no per-area query.
-        return [
-            link.user.get_full_name() or link.user.username
-            for link in obj.assigned_users.all()
-        ]
+        labels = []
+        for link in obj.assigned_users.all():
+            user = link.user
+            if not user:
+                continue
+            name = user.get_full_name() or user.username
+            labels.append(f'{name} ({user.pay_code})' if user.pay_code else name)
+        return labels
 
     def get_caretaker_ids(self, obj):
         return [link.user_id for link in obj.assigned_users.all()]
@@ -45,6 +49,7 @@ class HKAreaSerializer(serializers.ModelSerializer):
 class HKWorkerSerializer(serializers.ModelSerializer):
     area_name = serializers.CharField(source='area.name', read_only=True, default='')
     supervisor_name = serializers.SerializerMethodField()
+    pay_code = serializers.CharField(source='punching_no', required=False, allow_blank=True)
 
     class Meta:
         model = HKWorker
@@ -52,7 +57,7 @@ class HKWorkerSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'phone',
-            'punching_no',
+            'pay_code',
             'worker_type',
             'shift',
             'area',
@@ -65,7 +70,8 @@ class HKWorkerSerializer(serializers.ModelSerializer):
 
     def get_supervisor_name(self, obj):
         if obj.supervisor:
-            return obj.supervisor.get_full_name() or obj.supervisor.username
+            name = obj.supervisor.get_full_name() or obj.supervisor.username
+            return f'{name} ({obj.supervisor.pay_code})' if obj.supervisor.pay_code else name
         return ''
 
     def validate_supervisor(self, value):
@@ -141,7 +147,8 @@ class HKStaffAttendanceRecordSerializer(serializers.ModelSerializer):
 
     def get_staff_name(self, obj):
         if obj.staff:
-            return obj.staff.get_full_name() or obj.staff.username
+            name = obj.staff.get_full_name() or obj.staff.username
+            return f'{name} ({obj.staff.pay_code})' if obj.staff.pay_code else name
         return ''
 
     def get_staff_role(self, obj):
@@ -191,6 +198,9 @@ class HKScheduleTemplateSerializer(serializers.ModelSerializer):
 class HKStockRequestSerializer(serializers.ModelSerializer):
     requested_by_name = serializers.SerializerMethodField()
     area_name = serializers.CharField(source='area.name', read_only=True, default='')
+    item_code = serializers.CharField(source='item.item_code', read_only=True, default='')
+    item_unit_price = serializers.SerializerMethodField()
+    request_total_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = HKStockRequest
@@ -200,9 +210,12 @@ class HKStockRequestSerializer(serializers.ModelSerializer):
             'requested_by_name',
             'area',
             'area_name',
+            'item_code',
             'item_name',
             'quantity',
             'unit',
+            'item_unit_price',
+            'request_total_amount',
             'reason',
             'is_urgent',
             'status',
@@ -211,6 +224,14 @@ class HKStockRequestSerializer(serializers.ModelSerializer):
 
     def get_requested_by_name(self, obj):
         return obj.requested_by.get_full_name() or obj.requested_by.username
+
+    def get_item_unit_price(self, obj):
+        item = getattr(obj, 'item', None)
+        return float(getattr(item, 'unit_price', 0) or 0)
+
+    def get_request_total_amount(self, obj):
+        item = getattr(obj, 'item', None)
+        return float((getattr(item, 'unit_price', 0) or 0) * (obj.quantity or 0))
 
 
 class HKStockRequestStatusSerializer(serializers.ModelSerializer):

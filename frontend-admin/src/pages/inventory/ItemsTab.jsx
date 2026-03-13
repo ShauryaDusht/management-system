@@ -27,11 +27,16 @@ function itemStatus(item) {
   return 'in_stock'
 }
 
+function formatCurrency(value) {
+  return `INR ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
 const EMPTY_ITEM = {
+  item_code: '',
   name: '',
   category: '',
   item_type: 'consumable',
-  unit: 'pieces',
+  unit: 'Each',
   total_quantity: 0,
   available_quantity: 0,
   threshold_quantity: 1,
@@ -90,10 +95,11 @@ export default function ItemsTab({ userRole }) {
     setFormErrors({})
     setEditItem(item)
     setNewItem({
+      item_code: item.item_code || '',
       name: item.name || '',
       category: resolveCategoryId(item),
       item_type: item.item_type || 'consumable',
-      unit: item.unit || 'pieces',
+      unit: item.unit || 'Each',
       total_quantity: item.total_quantity ?? 0,
       available_quantity: item.available_quantity ?? 0,
       threshold_quantity: item.threshold_quantity ?? 1,
@@ -109,7 +115,7 @@ export default function ItemsTab({ userRole }) {
       const q = search.toLowerCase()
       const hit =
         !q ||
-        [it.name, it.category_name, it.item_type, it.location].some((v) =>
+        [it.item_code, it.name, it.category_name, it.item_type, it.location].some((v) =>
           String(v || '').toLowerCase().includes(q)
         )
       const hitType = typeFilter === 'all' || it.item_type === typeFilter
@@ -177,6 +183,8 @@ export default function ItemsTab({ userRole }) {
         available_quantity: Number(newItem.available_quantity || 0),
         threshold_quantity: Number(newItem.threshold_quantity || 0),
         unit_cost: Number(newItem.unit_cost || 0),
+        item_code: String(newItem.item_code || '').trim(),
+        unit: String(newItem.unit || '').trim() || 'Each',
       }
       if (editItem) {
         await inventoryAPI.updateItem(editItem.id, payload)
@@ -222,6 +230,7 @@ export default function ItemsTab({ userRole }) {
           <StatCard label="Low Stock" value={summary?.low_stock_count ?? stockCounts.lowStock} icon="⚠️" color="var(--orange-600)" />
           <StatCard label="Out of Stock" value={summary?.out_of_stock_count ?? stockCounts.outOfStock} icon="🟥" color="#dc2626" />
           <StatCard label="Pending Requests" value={summary?.pending_requests ?? 0} icon="📋" color="#3b82f6" />
+          <StatCard label="Stock Amount" value={formatCurrency(summary?.total_stock_amount ?? filtered.reduce((sum, item) => sum + Number(item.stock_total_amount || 0), 0))} icon="₹" color="#16a34a" />
         </div>
 
         <Card style={{ marginBottom: 14 }}>
@@ -249,7 +258,7 @@ export default function ItemsTab({ userRole }) {
             }}
           >
             <Input
-              placeholder="Search item, category, location..."
+              placeholder="Search code, item, category, location..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{ maxWidth: 280 }}
@@ -292,9 +301,10 @@ export default function ItemsTab({ userRole }) {
           </div>
 
           <DataTable
-            headers={['Name', 'Category', 'Type', 'Available', 'Threshold', 'Status', 'Actions']}
+            headers={['Code', 'Name', 'Category', 'Type', 'Available', 'Unit Price', 'Total Price', 'Threshold', 'Status', 'Actions']}
             loading={loading}
             rows={filtered.map((it) => [
+              it.item_code || '—',
               <div key={`name-${it.id}`}>
                 <div style={{ fontWeight: 600 }}>{it.name}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{it.location || '—'}</div>
@@ -302,6 +312,8 @@ export default function ItemsTab({ userRole }) {
               it.category_name || '—',
               (it.item_type || '').toUpperCase(),
               `${it.available_quantity} ${it.unit}`,
+              formatCurrency(it.unit_price ?? it.unit_cost),
+              formatCurrency(it.stock_total_amount),
               `${it.threshold_quantity} ${it.unit}`,
               <Badge key={`st-${it.id}`} value={itemStatus(it)} />,
               <div key={`act-${it.id}`} style={{ display: 'flex', gap: 6 }}>
@@ -345,9 +357,13 @@ export default function ItemsTab({ userRole }) {
                   marginBottom: 8,
                 }}
               >
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 2 }}>{it.item_code || 'No code'}</div>
                 <div style={{ fontWeight: 600, fontSize: 13 }}>{it.name}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
                   {it.available_quantity} {it.unit} left / threshold {it.threshold_quantity}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>
+                  {formatCurrency(it.unit_price ?? it.unit_cost)} each · {formatCurrency(it.stock_total_amount)} total
                 </div>
                 <div style={{ marginTop: 6 }}>
                   <Badge value={itemStatus(it)} />
@@ -418,6 +434,13 @@ export default function ItemsTab({ userRole }) {
         }
       >
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <Field label="Item Code">
+            <Input
+              value={newItem.item_code}
+              onChange={(e) => setNewItem((p) => ({ ...p, item_code: e.target.value }))}
+              placeholder="3.11"
+            />
+          </Field>
           <Field label="Name" required>
             <Input
               value={newItem.name}
@@ -465,18 +488,11 @@ export default function ItemsTab({ userRole }) {
             </SelectField>
           </Field>
           <Field label="Unit">
-            <SelectField
+            <Input
               value={newItem.unit}
               onChange={(e) => setNewItem((p) => ({ ...p, unit: e.target.value }))}
-            >
-              <option value="pieces">Pieces</option>
-              <option value="litres">Litres</option>
-              <option value="kg">Kilograms</option>
-              <option value="metres">Metres</option>
-              <option value="packets">Packets</option>
-              <option value="bottles">Bottles</option>
-              <option value="boxes">Boxes</option>
-            </SelectField>
+              placeholder="Each / Ltr / Kg"
+            />
           </Field>
           <Field label="Total Quantity">
             <Input
@@ -499,9 +515,11 @@ export default function ItemsTab({ userRole }) {
               onChange={(e) => setNewItem((p) => ({ ...p, threshold_quantity: e.target.value }))}
             />
           </Field>
-          <Field label="Unit Cost">
+          <Field label="Unit Price">
             <Input
               type="number"
+              min="0"
+              step="0.01"
               value={newItem.unit_cost}
               onChange={(e) => setNewItem((p) => ({ ...p, unit_cost: e.target.value }))}
             />

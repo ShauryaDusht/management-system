@@ -28,6 +28,10 @@ const MONTHS = [
   'December',
 ]
 
+function formatCurrency(value) {
+  return `INR ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
 function getAreaClass(areaType, areaName) {
   const name = String(areaName || '').trim()
   const type = String(areaType || '')
@@ -367,15 +371,21 @@ export default function IssuesTab({ userRole }) {
                 gap: 10,
               }}
             >
-              <div>
-                <div style={{ fontWeight: 600 }}>
-                  {issue.item_name} <Badge value={issue.item_type} />
+                <div>
+                  <div style={{ fontWeight: 600 }}>
+                    {issue.item_name} <Badge value={issue.item_type} />
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                    {issue.item_code || 'No code'}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                    {issue.issued_quantity} {issue.item_unit} | {issue.requested_by_name || 'User'}
+                    {issue.area_name ? ` | ${issue.area_name}` : ''}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
+                    Unit Price: {formatCurrency(issue.item_unit_price)} | Total: {formatCurrency(issue.issue_total_amount)}
+                  </div>
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-                  {issue.issued_quantity} {issue.item_unit} | {issue.requested_by_name || 'User'}
-                  {issue.area_name ? ` | ${issue.area_name}` : ''}
-                </div>
-              </div>
               {issue.item_type === 'asset' && canManager ? (
                 <Btn
                   size="sm"
@@ -408,6 +418,8 @@ export default function IssuesTab({ userRole }) {
           headers={[
             'Area',
             'Item',
+            'Unit Price',
+            'Total Price',
             'Type',
             'Requested By',
             'Issued Qty',
@@ -424,7 +436,12 @@ export default function IssuesTab({ userRole }) {
               >
                 {issue.area_name || '-'}
               </span>,
-              issue.item_name || '-',
+              <div key={`item-${issue.id}`}>
+                <div>{issue.item_name || '-'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{issue.item_code || 'No code'}</div>
+              </div>,
+              formatCurrency(issue.item_unit_price),
+              formatCurrency(issue.issue_total_amount),
               issue.item_type || '-',
               issue.requested_by_name || '-',
               `${issue.issued_quantity} ${issue.item_unit || ''}`,

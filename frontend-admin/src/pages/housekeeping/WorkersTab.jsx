@@ -22,7 +22,7 @@ const EMPTY_FORM = {
   first_name: '',
   last_name: '',
   phone: '',
-  punching_no: '',
+  pay_code: '',
   area: '',
   supervisor: '',
   worker_type: 'general',
@@ -169,7 +169,7 @@ export default function WorkersTab() {
       first_name: split.first_name,
       last_name: split.last_name,
       phone: worker.phone || '',
-      punching_no: worker.punching_no || '',
+      pay_code: worker.pay_code || '',
       area: worker.area ? String(worker.area) : '',
       supervisor: worker.supervisor ? String(worker.supervisor) : '',
       worker_type: worker.worker_type || 'general',
@@ -193,7 +193,7 @@ export default function WorkersTab() {
       payload: {
         name,
         phone: String(form.phone || '').trim(),
-        punching_no: String(form.punching_no || '').trim(),
+        pay_code: String(form.pay_code || '').trim(),
         area: Number(form.area),
         supervisor: form.supervisor ? Number(form.supervisor) : null,
         worker_type: isReliever ? 'reliever' : form.worker_type,
@@ -281,7 +281,7 @@ export default function WorkersTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Area', 'Worker Name', 'Type', 'Shift', 'Supervisor', 'Phone', 'Punching No.', 'Reliever', 'Edit', 'Report']}
+            headers={['Area', 'Worker Name', 'Type', 'Shift', 'Supervisor', 'Phone', 'Pay Code', 'Reliever', 'Edit', 'Report']}
             rows={visibleWorkers.map((w) => [
               w.area_name || '-',
               w.name,
@@ -289,7 +289,7 @@ export default function WorkersTab() {
               <span key={`sh-${w.id}`} style={{ textTransform: 'capitalize' }}>{w.shift || '-'}</span>,
               w.supervisor_name || '-',
               w.phone || '-',
-              w.punching_no || '-',
+              w.pay_code || '-',
               w.is_reliever ? <span key={`r-${w.id}`} style={{ display: 'inline-block', background: '#fff7ed', color: '#c2410c', padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700 }}>Reliever</span> : '-',
               <Btn key={`a-${w.id}`} size="sm" variant="ghost" onClick={() => openEdit(w)}>Edit</Btn>,
               <Btn key={`report-${w.id}`} size="sm" variant="secondary" onClick={() => setReportWorker(w)}>Report</Btn>,
@@ -321,7 +321,7 @@ export default function WorkersTab() {
           <Field label="First Name" required><Input value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} /></Field>
           <Field label="Last Name"><Input value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} /></Field>
           <Field label="Phone"><Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} /></Field>
-          <Field label="Punching No."><Input value={form.punching_no} onChange={(e) => setForm((p) => ({ ...p, punching_no: e.target.value }))} /></Field>
+          <Field label="Pay Code"><Input value={form.pay_code} onChange={(e) => setForm((p) => ({ ...p, pay_code: e.target.value }))} /></Field>
           <Field label="Area / Section" required>
             <SelectField value={form.area} onChange={(e) => setForm((p) => ({ ...p, area: e.target.value }))}>
               <option value="">Select area</option>
@@ -334,7 +334,7 @@ export default function WorkersTab() {
             <SelectField value={form.supervisor} onChange={(e) => setForm((p) => ({ ...p, supervisor: e.target.value }))}>
               <option value="">Not assigned</option>
               {supervisors.map((u) => (
-                <option key={u.id} value={u.id}>{fullName(u)} ({u.username})</option>
+                <option key={u.id} value={u.id}>{`${fullName(u)} (${u.username})${u.pay_code ? ` - ${u.pay_code}` : ''}`}</option>
               ))}
             </SelectField>
           </Field>

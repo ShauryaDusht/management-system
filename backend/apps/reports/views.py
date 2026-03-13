@@ -1274,15 +1274,15 @@ class AreaIssuesReportView(APIView):
             output = io.StringIO()
             writer = csv.writer(output)
             writer.writerow([
-                'Area', 'Area Type', 'Item', 'Item Type', 'Unit',
-                'Requested By', 'Qty Requested', 'Qty Issued',
+                'Area', 'Area Type', 'Item Code', 'Item', 'Item Type', 'Unit',
+                'Unit Price', 'Requested By', 'Qty Requested', 'Qty Issued', 'Total Price',
                 'Issued At', 'Issued By', 'Status', 'Returned/Finalized'
             ])
             for row in data['rows']:
                 writer.writerow([
-                    row['area_name'], row['area_type'], row['item_name'],
-                    row['item_type'], row['item_unit'], row['requested_by'],
-                    row['quantity_requested'], row['quantity_issued'],
+                    row['area_name'], row['area_type'], row.get('item_code', ''), row['item_name'],
+                    row['item_type'], row['item_unit'], row.get('item_unit_price', 0), row['requested_by'],
+                    row['quantity_requested'], row['quantity_issued'], row.get('line_total', 0),
                     row['issued_at'], row['issued_by'], row['status'],
                     'Yes' if (row['returned'] or row['usage_finalized']) else 'No'
                 ])

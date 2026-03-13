@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Category, Item, ItemRequest, ItemIssue, PurchaseRequest, StockEntry
+
+from .models import Category, Item, ItemIssue, ItemRequest, PurchaseRequest, StockEntry
 
 
 # Plan to remove this shim in a future cleanup once all callers are updated.
@@ -7,7 +8,7 @@ from .pagination import StandardPagination
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    # Uses annotated item_count from the view queryset — no per-category query.
+    # Uses annotated item_count from the view queryset; no per-category query.
     item_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
@@ -15,18 +16,26 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'item_count']
 
 
+def money_number(value):
+    return float(value or 0)
+
+
 class ItemSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     status = serializers.ReadOnlyField()
     is_below_threshold = serializers.ReadOnlyField()
     unit_cost_missing = serializers.SerializerMethodField()
+    unit_price = serializers.SerializerMethodField()
+    stock_total_amount = serializers.SerializerMethodField()
+    available_stock_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = Item
         fields = [
-            'id', 'name', 'category', 'category_name', 'item_type', 'unit',
+            'id', 'item_code', 'name', 'category', 'category_name', 'item_type', 'unit',
             'total_quantity', 'available_quantity', 'threshold_quantity',
-            'unit_cost', 'unit_cost_missing', 'description', 'location', 'status',
+            'unit_cost', 'unit_price', 'stock_total_amount', 'available_stock_amount',
+            'unit_cost_missing', 'description', 'location', 'status',
             'is_below_threshold', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -34,20 +43,39 @@ class ItemSerializer(serializers.ModelSerializer):
     def get_unit_cost_missing(self, obj):
         return obj.unit_cost is None
 
+    def get_unit_price(self, obj):
+        return money_number(obj.unit_price)
+
+    def get_stock_total_amount(self, obj):
+        return money_number(obj.stock_total_amount)
+
+    def get_available_stock_amount(self, obj):
+        return money_number(obj.available_stock_amount)
+
 
 class StockEntrySerializer(serializers.ModelSerializer):
     added_by_name = serializers.CharField(source='added_by.get_full_name', read_only=True)
+    item_code = serializers.CharField(source='item.item_code', read_only=True)
     item_name = serializers.CharField(source='item.name', read_only=True)
     item_unit = serializers.CharField(source='item.unit', read_only=True)
+    item_unit_price = serializers.SerializerMethodField()
+    added_stock_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = StockEntry
         fields = [
-            'id', 'item', 'item_name', 'item_unit',
+            'id', 'item', 'item_code', 'item_name', 'item_unit',
+            'item_unit_price', 'added_stock_amount',
             'quantity_added', 'added_by', 'added_by_name',
             'added_at', 'notes',
         ]
         read_only_fields = ['id', 'added_by', 'added_at']
+
+    def get_item_unit_price(self, obj):
+        return money_number(getattr(obj.item, 'unit_price', 0))
+
+    def get_added_stock_amount(self, obj):
+        return money_number((getattr(obj.item, 'unit_price', 0) or 0) * (obj.quantity_added or 0))
 
 
 class ItemRequestSerializer(serializers.ModelSerializer):
@@ -55,13 +83,16 @@ class ItemRequestSerializer(serializers.ModelSerializer):
     requester_name = serializers.SerializerMethodField()
     requester_phone = serializers.SerializerMethodField()
     requester_role = serializers.CharField(source='requested_by.role', read_only=True)
+    item_code = serializers.CharField(source='item.item_code', read_only=True)
     item_name = serializers.CharField(source='item.name', read_only=True)
     item_available = serializers.IntegerField(source='item.available_quantity', read_only=True)
     item_threshold = serializers.IntegerField(source='item.threshold_quantity', read_only=True)
     item_unit = serializers.CharField(source='item.unit', read_only=True)
     item_type = serializers.CharField(source='item.item_type', read_only=True)
     item_description = serializers.CharField(source='item.description', read_only=True)
-
+    item_unit_price = serializers.SerializerMethodField()
+    item_stock_total_amount = serializers.SerializerMethodField()
+    request_total_amount = serializers.SerializerMethodField()
     is_low_stock = serializers.BooleanField(source='item.is_below_threshold', read_only=True)
 
     reviewed_by = serializers.PrimaryKeyRelatedField(source='approved_by', read_only=True)
@@ -97,6 +128,15 @@ class ItemRequestSerializer(serializers.ModelSerializer):
         if obj.approved_by:
             return obj.approved_by.get_full_name() or obj.approved_by.username
         return None
+
+    def get_item_unit_price(self, obj):
+        return money_number(getattr(obj.item, 'unit_price', 0))
+
+    def get_item_stock_total_amount(self, obj):
+        return money_number(getattr(obj.item, 'stock_total_amount', 0))
+
+    def get_request_total_amount(self, obj):
+        return money_number((getattr(obj.item, 'unit_price', 0) or 0) * (obj.quantity_requested or 0))
 
     def get_requested_by_name(self, obj):
         return self.get_requester_name(obj)
@@ -185,9 +225,12 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
 
 class ItemIssueSerializer(serializers.ModelSerializer):
     issued_by_name = serializers.CharField(source='issued_by.get_full_name', read_only=True)
+    item_code = serializers.CharField(source='request.item.item_code', read_only=True)
     item_name = serializers.CharField(source='request.item.name', read_only=True)
     item_type = serializers.CharField(source='request.item.item_type', read_only=True)
     item_unit = serializers.CharField(source='request.item.unit', read_only=True)
+    item_unit_price = serializers.SerializerMethodField()
+    issue_total_amount = serializers.SerializerMethodField()
     requested_by_name = serializers.CharField(source='request.requested_by.get_full_name', read_only=True)
     return_recorded_by_name = serializers.CharField(source='return_recorded_by.get_full_name', read_only=True)
     area_name = serializers.SerializerMethodField()
@@ -203,7 +246,6 @@ class ItemIssueSerializer(serializers.ModelSerializer):
                 return hk_req.area.name
         except Exception:
             pass
-        # fallback: extract from purpose like "[HK - Hostel A] reason"
         purpose = getattr(obj.request, 'purpose', '') or ''
         if purpose.startswith('[HK - '):
             end = purpose.find(']')
@@ -223,10 +265,19 @@ class ItemIssueSerializer(serializers.ModelSerializer):
             pass
         return None
 
+    def get_item_unit_price(self, obj):
+        item = getattr(getattr(obj, 'request', None), 'item', None)
+        return money_number(getattr(item, 'unit_price', 0))
+
+    def get_issue_total_amount(self, obj):
+        item = getattr(getattr(obj, 'request', None), 'item', None)
+        return money_number((getattr(item, 'unit_price', 0) or 0) * (obj.issued_quantity or 0))
+
     class Meta:
         model = ItemIssue
         fields = [
-            'id', 'request', 'item_name', 'item_type', 'item_unit',
+            'id', 'request', 'item_code', 'item_name', 'item_type', 'item_unit',
+            'item_unit_price', 'issue_total_amount',
             'requested_by_name', 'area_name', 'area_type', 'issued_by', 'issued_by_name',
             'issued_quantity', 'issued_at',
             'expected_return_date', 'returned_quantity', 'returned_at',
@@ -280,12 +331,21 @@ class ItemHistorySerializer(serializers.Serializer):
 
 
 class UserActivitySerializer(serializers.ModelSerializer):
+    item_code = serializers.CharField(source='item.item_code', read_only=True)
     item_name = serializers.CharField(source='item.name', read_only=True)
     item_unit = serializers.CharField(source='item.unit', read_only=True)
+    item_unit_price = serializers.SerializerMethodField()
+    request_total_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = ItemRequest
         fields = [
-            'id', 'item_name', 'item_unit', 'quantity_requested',
-            'purpose', 'status', 'requested_at', 'reviewed_at',
+            'id', 'item_code', 'item_name', 'item_unit', 'item_unit_price', 'request_total_amount',
+            'quantity_requested', 'purpose', 'status', 'requested_at', 'reviewed_at',
         ]
+
+    def get_item_unit_price(self, obj):
+        return money_number(getattr(obj.item, 'unit_price', 0))
+
+    def get_request_total_amount(self, obj):
+        return money_number((getattr(obj.item, 'unit_price', 0) or 0) * (obj.quantity_requested or 0))

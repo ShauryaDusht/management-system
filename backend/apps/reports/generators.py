@@ -53,24 +53,30 @@ def generate_inventory_report(status_filter=None, item_type_filter=None):
 
     data = []
     for item in qs:
-        unit_cost = float(item.unit_cost or 0)
+        unit_price = float(item.unit_price or 0)
+        total_quantity = item.total_quantity or 0
         available_quantity = item.available_quantity or 0
-        total_value = unit_cost * available_quantity
+        total_value = unit_price * total_quantity
+        available_value = unit_price * available_quantity
 
         data.append({
             'id': item.id,
+            'item_code': item.item_code,
             'name': item.name,
             'category': item.category.name,
             'type': item.item_type,
             'unit': item.unit,
-            'total_quantity': item.total_quantity,
-            'available_quantity': item.available_quantity,
+            'total_quantity': total_quantity,
+            'available_quantity': available_quantity,
             'threshold_quantity': item.threshold_quantity,
-            'unit_cost': unit_cost,
+            'unit_cost': unit_price,
+            'unit_price': unit_price,
             'total_value': total_value,
+            'stock_total_amount': total_value,
+            'available_value': available_value,
             'status': (
-                'out_of_stock' if item.available_quantity == 0
-                else 'low_stock' if 0 < item.available_quantity <= item.threshold_quantity
+                'out_of_stock' if available_quantity == 0
+                else 'low_stock' if 0 < available_quantity <= item.threshold_quantity
                 else 'in_stock'
             ),
         })
@@ -101,7 +107,11 @@ def generate_requests_report(date_from=None, date_to=None):
         data.append({
             'id': req.id,
             'requester': req.requested_by.get_full_name() or req.requested_by.username,
+            'item_code': req.item.item_code,
             'item': req.item.name,
+            'unit': req.item.unit,
+            'unit_price': float(req.item.unit_price or 0),
+            'line_total': float((req.item.unit_price or 0) * req.quantity_requested),
             'quantity': req.quantity_requested,
             'status': req.status,
             'is_urgent': req.is_urgent,
@@ -188,6 +198,7 @@ def generate_monthly_report(month: int, year: int) -> dict:
 
         rows.append({
             'item_id': item.id,
+            'item_code': item.item_code,
             'item_name': item.name,
             'category': item.category.name,
             'item_type': item.item_type,
@@ -197,6 +208,7 @@ def generate_monthly_report(month: int, year: int) -> dict:
             'threshold': item.threshold_quantity,
             'recommended_order': recommended,
             'unit_cost': unit_cost,
+            'unit_price': unit_cost,
             'estimated_cost': round(estimated_cost, 2),
             'status': item.status,
         })
@@ -321,11 +333,13 @@ def generate_consumption_report(month: int, year: int) -> dict:
         item_rows.append(
             {
                 'item_id': item.id,
+                'item_code': item.item_code,
                 'item_name': item.name,
                 'category_name': item.category.name if item.category else '',
                 'item_type': item.item_type,
                 'unit': item.unit,
                 'unit_cost': unit_cost,
+                'unit_price': unit_cost,
                 'stock_added': metrics['stock_added'],
                 'total_issued': total_issued,
                 'actual_consumed': actual_consumed,
@@ -401,11 +415,14 @@ def generate_consumption_report(month: int, year: int) -> dict:
             total_estimated_cost += line_cost
             items_received.append(
                 {
+                    'item_code': item.item_code,
                     'item_name': item.name,
                     'category': item.category.name if item.category else '',
                     'unit': item.unit,
+                    'unit_price': unit_cost,
                     'quantity_issued': issue.issued_quantity,
                     'actual_used': actual_used,
+                    'line_total': round(line_cost, 2),
                     'usage_finalized': issue.usage_finalized,
                 }
             )
@@ -588,7 +605,7 @@ def generate_worker_report(worker_id: int, month: int, year: int) -> dict:
             'area_name': worker.area.name if worker.area else '',
             'worker_type': worker.worker_type,
             'shift': worker.shift,
-            'punching_no': worker.punching_no,
+            'pay_code': worker.punching_no,
         },
         'month': month,
         'year': year,
@@ -925,12 +942,15 @@ def generate_area_issues_report(month=None, year=None, area_class='all', area_na
             'issue_id': issue.id,
             'area_name': issue_area_name or 'Direct Request',
             'area_type': issue_area_type or 'other',
+            'item_code': issue.request.item.item_code,
             'item_name': issue.request.item.name,
             'item_type': issue.request.item.item_type,
             'item_unit': issue.request.item.unit,
+            'item_unit_price': float(issue.request.item.unit_price or 0),
             'requested_by': issue.request.requested_by.get_full_name() or issue.request.requested_by.username,
             'quantity_requested': issue.request.quantity_requested,
             'quantity_issued': issue.issued_quantity,
+            'line_total': float((issue.request.item.unit_price or 0) * issue.issued_quantity),
             'issued_at': str(issue.issued_at.date()),
             'issued_by': issue.issued_by.get_full_name() or issue.issued_by.username,
             'status': issue.request.status,

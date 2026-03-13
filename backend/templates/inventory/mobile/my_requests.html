@@ -23,6 +23,9 @@
         <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">
           {{ req.quantity_requested }} {{ req.item.unit }}
         </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+          Code: {{ req.item.item_code|default:'-' }} · Unit: &#8377;{{ req.item.unit_price|floatformat:2 }} · Total: &#8377;{{ req.request_total_amount|floatformat:2 }}
+        </div>
       </div>
     </div>
     <div style="flex-shrink:0;margin-left:8px">

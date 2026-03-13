@@ -5,7 +5,9 @@ import { inventoryAPI } from '../../api/inventory'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField } from '../../components/ui'
 
-
+function formatCurrency(value) {
+  return `INR ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
 
 export default function StockLogTab({ userRole }) {
   const [entries, setEntries] = useState([])
@@ -58,11 +60,14 @@ export default function StockLogTab({ userRole }) {
         </div>
         <DataTable
           loading={loading}
-          headers={['Item', 'Quantity Added', 'Unit', 'Added By', 'Date', 'Notes']}
+          headers={['Code', 'Item', 'Quantity Added', 'Unit', 'Unit Price', 'Added Value', 'Added By', 'Date', 'Notes']}
           rows={entries.map((e) => [
+            e.item_code || '—',
             e.item_name || e.item || '—',
             e.quantity_added,
             e.item_unit || '—',
+            formatCurrency(e.item_unit_price),
+            formatCurrency(e.added_stock_amount),
             e.added_by_name || '—',
             new Date(e.added_at).toLocaleString('en-IN'),
             e.notes || '—',
@@ -90,7 +95,7 @@ export default function StockLogTab({ userRole }) {
             <option value="">Select item</option>
             {items.map((i) => (
               <option key={i.id} value={i.id}>
-                {i.name}
+                {(i.item_code ? `${i.item_code} - ` : '') + i.name} ({formatCurrency(i.unit_price ?? i.unit_cost)})
               </option>
             ))}
           </SelectField>

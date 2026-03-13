@@ -27,6 +27,10 @@
     <div class="stat-label">Total Items</div>
     <div class="stat-value">{{ total_items }}</div>
   </div>
+  <div class="stat-card" style="background:#0f766e">
+    <div class="stat-label">Stock Amount</div>
+    <div class="stat-value" style="font-size:20px">&#8377;{{ total_stock_amount|floatformat:0 }}</div>
+  </div>
   <div class="stat-card" style="background:var(--brand-teal)">
     <div class="stat-label">Low Stock</div>
     <div class="stat-value">{{ low_stock_count }}</div>
@@ -97,8 +101,9 @@
         </div>
         <div>
           <div style="font-weight:600;font-size:14px">{{ req.item.name }}</div>
+          <div style="color:var(--text-muted);font-size:11px;margin-top:1px">{{ req.item.item_code|default:'No code' }}</div>
           <div style="color:var(--text-secondary);font-size:12px;margin-top:1px">
-            by {{ req.requested_by.get_full_name|default:req.requested_by.username }}
+            by {{ req.requested_by.get_full_name|default:req.requested_by.username }} · &#8377;{{ req.item.unit_price|floatformat:2 }} each
           </div>
         </div>
       </div>
