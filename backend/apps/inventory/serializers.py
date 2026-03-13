@@ -1,6 +1,7 @@
+from django.db.models import Sum, Value, DecimalField
+from django.db.models.functions import Coalesce
 from rest_framework import serializers
-
-from .models import Category, Item, ItemIssue, ItemRequest, PurchaseRequest, StockEntry
+from .models import Category, Item, ItemIssue, ItemRequest, ItemUsageLog, PurchaseRequest, StockEntry
 
 
 # Plan to remove this shim in a future cleanup once all callers are updated.
@@ -235,6 +236,7 @@ class ItemIssueSerializer(serializers.ModelSerializer):
     return_recorded_by_name = serializers.CharField(source='return_recorded_by.get_full_name', read_only=True)
     area_name = serializers.SerializerMethodField()
     area_type = serializers.SerializerMethodField()
+    total_consumed = serializers.SerializerMethodField()
 
     def get_area_name(self, obj):
         try:
@@ -273,6 +275,17 @@ class ItemIssueSerializer(serializers.ModelSerializer):
         item = getattr(getattr(obj, 'request', None), 'item', None)
         return money_number((getattr(item, 'unit_price', 0) or 0) * (obj.issued_quantity or 0))
 
+    def get_total_consumed(self, obj):
+        if hasattr(obj, 'total_consumed') and obj.total_consumed is not None:
+            return obj.total_consumed
+        return obj.usage_logs.aggregate(
+            total=Coalesce(
+                Sum('quantity_used'),
+                Value(0),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            )
+        )['total']
+
     class Meta:
         model = ItemIssue
         fields = [
@@ -283,7 +296,7 @@ class ItemIssueSerializer(serializers.ModelSerializer):
             'expected_return_date', 'returned_quantity', 'returned_at',
             'condition_on_return', 'return_recorded_by', 'return_recorded_by_name',
             'actual_quantity_used', 'usage_finalized', 'usage_finalized_at',
-            'notes',
+            'notes', 'total_consumed',
         ]
         read_only_fields = [
             'id', 'issued_by', 'issued_at',
@@ -320,6 +333,25 @@ class FinalizeConsumableSerializer(serializers.Serializer):
                 f"Used quantity cannot exceed issued quantity ({issue.issued_quantity})."
             )
         return value
+
+
+class ItemUsageLogSerializer(serializers.ModelSerializer):
+    logged_by_name = serializers.CharField(source='logged_by.get_full_name', read_only=True)
+    item_name = serializers.CharField(source='issue.request.item.name', read_only=True)
+    item_unit = serializers.CharField(source='issue.request.item.unit', read_only=True)
+    requested_by_name = serializers.CharField(source='issue.request.requested_by.get_full_name', read_only=True)
+
+    class Meta:
+        model = ItemUsageLog
+        fields = [
+            'id', 'issue', 'quantity_used', 'purpose', 'notes',
+            'logged_at', 'logged_by', 'logged_by_name',
+            'item_name', 'item_unit', 'requested_by_name',
+        ]
+        read_only_fields = [
+            'id', 'logged_at', 'logged_by', 'logged_by_name',
+            'item_name', 'item_unit', 'requested_by_name',
+        ]
 
 
 class ItemHistorySerializer(serializers.Serializer):

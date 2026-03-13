@@ -69,6 +69,123 @@
     {{ issue.notes }}
   </div>
   {% endif %}
+
+  {% if not is_manager %}
+    <hr class="divider" style="margin:10px 0">
+
+    <div style="font-size:12px;color:var(--text-secondary);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div>
+        Used: <strong style="color:var(--text-primary)">{{ issue.total_consumed|default:0|floatformat:2 }} {{ issue.request.item.unit }}</strong>
+      </div>
+      <div>
+        Remaining: <strong style="color:var(--text-primary)">{{ issue.remaining_quantity|default_if_none:issue.issued_quantity|floatformat:2 }} {{ issue.request.item.unit }}</strong>
+      </div>
+    </div>
+
+    <div style="margin-top:6px">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">
+        {{ issue.total_consumed|default:0|floatformat:2 }} used of {{ issue.issued_quantity }} total
+      </div>
+      <div style="height:6px;background:var(--bg);border-radius:999px;overflow:hidden">
+        <div style="height:100%;width:{{ issue.consumption_percent|default:0 }}%;background:#22c55e"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:8px">
+      <button
+        type="button"
+        class="btn btn-secondary usage-toggle"
+        data-target="usage-dropdown-{{ issue.id }}"
+        style="padding:6px 10px;font-size:12px;display:inline-flex;align-items:center;gap:6px"
+      >
+        Report Usage
+        <span class="material-icons-round" style="font-size:16px" data-icon>
+          {% if open_form_issue_id == issue.id %}expand_less{% else %}expand_more{% endif %}
+        </span>
+      </button>
+    </div>
+
+    <div
+      id="usage-dropdown-{{ issue.id }}"
+      class="usage-dropdown"
+      style="display:{% if open_form_issue_id == issue.id %}block{% else %}none{% endif %};margin-top:10px"
+    >
+      {% if form_error and error_issue_id == issue.id %}
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:10px;font-size:12px;color:#dc2626">
+        {{ form_error }}
+      </div>
+      {% endif %}
+
+      {% if issue.remaining_quantity|default_if_none:issue.issued_quantity > 0 %}
+      <form method="POST" action="{% url 'mobile_log_usage' issue.id %}">
+        {% csrf_token %}
+
+        <div style="margin-bottom:10px">
+          <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;font-weight:600">
+            How much did you use?
+            <span style="font-weight:400;color:var(--text-muted)">(max: {{ issue.remaining_quantity|default_if_none:issue.issued_quantity|floatformat:2 }} {{ issue.request.item.unit }})</span>
+          </label>
+          <input
+            type="number"
+            name="quantity_used"
+            min="{% if issue.request.item.item_type == 'asset' %}1{% else %}0.01{% endif %}"
+            max="{{ issue.remaining_quantity|default_if_none:issue.issued_quantity|floatformat:2 }}"
+            step="{% if issue.request.item.item_type == 'asset' %}1{% else %}0.01{% endif %}"
+            placeholder="Enter quantity"
+            style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:15px;background:var(--bg-card);color:var(--text-primary);box-sizing:border-box"
+            required
+          >
+        </div>
+
+        <div style="margin-bottom:12px">
+          <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;font-weight:600">
+            What was it used for? <span style="color:#ef4444">*</span>
+          </label>
+          <textarea
+            name="purpose"
+            rows="2"
+            placeholder="e.g. Cleaned lobby and corridor on 2nd floor"
+            style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--bg-card);color:var(--text-primary);resize:none;box-sizing:border-box"
+            required
+          ></textarea>
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn-primary"
+          style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px"
+        >
+          <span class="material-icons-round" style="font-size:16px">check_circle</span>
+          Submit Usage
+        </button>
+      </form>
+      {% else %}
+      <div style="background:#f0fdf4;border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:#16a34a;font-weight:600">
+        All issued quantity has been logged.
+      </div>
+      {% endif %}
+
+      <div style="margin-top:12px">
+        <div style="font-size:12px;color:var(--text-muted);font-weight:600;margin-bottom:6px">Usage History</div>
+        {% if issue.usage_logs.all %}
+          <div style="display:flex;flex-direction:column;gap:6px">
+            {% for log in issue.usage_logs.all %}
+            <div style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg)">
+              <div style="font-size:12px;color:var(--text-secondary)">
+                {{ log.logged_at|date:"d M Y" }} • <strong style="color:var(--text-primary)">{{ log.quantity_used|floatformat:2 }} {{ issue.request.item.unit }}</strong>
+              </div>
+              <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;font-style:italic">
+                "{{ log.purpose }}"
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div style="font-size:12px;color:var(--text-muted)">No usage logged yet.</div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
 </div>
 {% empty %}
 <div class="empty-state">
@@ -98,4 +215,23 @@
   {% endif %}
 </div>
 {% endif %}
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var toggles = document.querySelectorAll('.usage-toggle');
+    toggles.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var targetId = btn.getAttribute('data-target');
+        var panel = document.getElementById(targetId);
+        if (!panel) return;
+        var isOpen = panel.style.display === 'block';
+        panel.style.display = isOpen ? 'none' : 'block';
+        var icon = btn.querySelector('[data-icon]');
+        if (icon) {
+          icon.textContent = isOpen ? 'expand_more' : 'expand_less';
+        }
+      });
+    });
+  });
+</script>
 {% endblock %}

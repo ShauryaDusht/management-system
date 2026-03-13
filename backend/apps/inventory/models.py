@@ -1,5 +1,4 @@
 from decimal import Decimal
-
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
@@ -322,3 +321,26 @@ class ItemIssue(models.Model):
 
     def __str__(self):
         return f"Issue #{self.id} — {self.request.item.name} x{self.issued_quantity}"
+
+
+class ItemUsageLog(models.Model):
+    issue = models.ForeignKey(ItemIssue, on_delete=models.CASCADE, related_name='usage_logs')
+    quantity_used = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
+    purpose = models.TextField()
+    notes = models.TextField(blank=True, default='')
+    logged_at = models.DateTimeField(auto_now_add=True)
+    logged_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='item_usage_logs',
+    )
+
+    class Meta:
+        ordering = ['-logged_at']
+
+    def __str__(self):
+        return f"Usage #{self.id} — {self.quantity_used} for Issue #{self.issue_id}"
