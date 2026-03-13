@@ -7,6 +7,7 @@ from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth import get_user_model
 from rest_framework.exceptions import PermissionDenied
 
 from .models import Category, Item, ItemRequest, ItemIssue, ItemUsageLog, PurchaseRequest, StockEntry
@@ -668,6 +669,88 @@ class IssueUsageLogView(APIView):
         )
 
         return Response(ItemUsageLogSerializer(log).data, status=201)
+
+
+class UserUsageLogsView(APIView):
+    permission_classes = [IsAdminOrInventoryManager]
+
+    def get(self, request, user_id):
+        month_raw = request.query_params.get('month')
+        year_raw = request.query_params.get('year')
+        try:
+            month = int(month_raw)
+            year = int(year_raw)
+        except (TypeError, ValueError):
+            return Response({'detail': 'month and year are required.'}, status=400)
+
+        if month < 1 or month > 12 or year < 2000:
+            return Response({'detail': 'Invalid month or year.'}, status=400)
+
+        UserModel = get_user_model()
+        try:
+            user = UserModel.objects.get(pk=user_id)
+        except UserModel.DoesNotExist:
+            return Response({'detail': 'User not found.'}, status=404)
+
+        logs_prefetch = Prefetch(
+            'usage_logs',
+            queryset=ItemUsageLog.objects.order_by('logged_at'),
+        )
+        issues_qs = (
+            ItemIssue.objects
+            .filter(
+                request__requested_by_id=user_id,
+                issued_at__year=year,
+                issued_at__month=month,
+            )
+            .select_related('request__item')
+            .prefetch_related(logs_prefetch)
+            .annotate(
+                total_used=Coalesce(
+                    Sum('usage_logs__quantity_used'),
+                    Value(0),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                )
+            )
+            .order_by('issued_at')
+        )
+
+        results = []
+        for issue in issues_qs:
+            item = issue.request.item
+            issued_qty = Decimal(issue.issued_quantity).quantize(Decimal('0.01'))
+            total_used = (issue.total_used or Decimal('0')).quantize(Decimal('0.01'))
+            remaining = issued_qty - total_used
+            if remaining < 0:
+                remaining = Decimal('0.00')
+
+            logs = []
+            for log in issue.usage_logs.all():
+                logs.append({
+                    'date': log.logged_at,
+                    'quantity_used': log.quantity_used.quantize(Decimal('0.01')),
+                    'purpose': log.purpose,
+                })
+
+            results.append({
+                'issue_id': issue.id,
+                'item_name': item.name,
+                'unit': item.unit,
+                'issued_quantity': issued_qty,
+                'total_used': total_used,
+                'remaining': remaining.quantize(Decimal('0.01')),
+                'logs': logs,
+            })
+
+        return Response({
+            'user': {
+                'id': user.id,
+                'name': user.get_full_name() or user.username,
+            },
+            'month': month,
+            'year': year,
+            'items': results,
+        })
 
 
 # ─────────────────────────────────────────────────

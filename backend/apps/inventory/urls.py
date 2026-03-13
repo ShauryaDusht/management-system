@@ -15,6 +15,7 @@ from .views import (
     ItemIssueListView,
     ReturnAssetView, FinalizeConsumableView, IssueUsageLogView,
     UserActivityView,
+    UserUsageLogsView,
     DashboardSummaryView,
 )
 
@@ -70,6 +71,7 @@ urlpatterns = [
 
     # ── User activity (admin) ────────────────────────────────────────────────
     path('activity/users/<int:user_id>/', UserActivityView.as_view(), name='user-activity'),
+    path('users/<int:user_id>/usage-logs/', UserUsageLogsView.as_view(), name='user-usage-logs'),
 
     # ── Dashboard ────────────────────────────────────────────────────────────
     path('dashboard/', DashboardSummaryView.as_view(), name='dashboard-summary'),

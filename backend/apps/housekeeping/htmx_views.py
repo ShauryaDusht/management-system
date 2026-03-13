@@ -1565,12 +1565,10 @@ def hk_stock(request):
     user_areas = get_user_areas(user)
     sel_area = selected_area(request, user_areas)
     area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
-    my_requests = HKStockRequest.objects.filter(requested_by=user).order_by("-created_at")[:10]
     issued_items = _build_usage_issues(user, limit=10)
     return render(request, "housekeeping/mobile/stock.html", {
         "area_stocks": area_stocks,
         "low_stocks": [s for s in area_stocks if s.is_low],
-        "my_requests": my_requests,
         "issued_items": issued_items,
         "user_areas": user_areas,
         "selected_area": sel_area,

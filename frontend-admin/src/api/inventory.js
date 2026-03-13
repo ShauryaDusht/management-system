@@ -63,6 +63,8 @@ export const inventoryAPI = {
     api.get(`/inventory/issues/${issueId}/log-usage/`, { params }),
   getUserIssueLogs: (issueId, params = {}) =>
     api.get(`/inventory/issues/${issueId}/log-usage/`, { params }),
+  getUserUsageLogs: (userId, month, year) =>
+    api.get(`/inventory/users/${userId}/usage-logs/`, { params: { month, year } }),
 
   // ── User activity (admin) ──────────────────────────────────────────────────
   // UNUSED â€” no UI implemented yet

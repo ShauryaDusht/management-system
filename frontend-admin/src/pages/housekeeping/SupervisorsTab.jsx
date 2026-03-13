@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import {
-  generateConsumptionReport,
-  getConsumptionReportDetail,
-  getConsumptionReports,
-} from '../../api/inventory'
+import { inventoryAPI } from '../../api/inventory'
 import { usersAPI } from '../../api/users'
 import { Alert, Badge, Btn, Card, DataTable, Modal, Spinner } from '../../components/ui'
 import { triggerDownload } from '../../shared/utils'
@@ -301,8 +297,9 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
   const { month, year, setMonth, setYear } = useMonthYear()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [reportMeta, setReportMeta] = useState(null)
-  const [requesterRow, setRequesterRow] = useState(null)
+  const [usageItems, setUsageItems] = useState([])
+  const [hasLoaded, setHasLoaded] = useState(false)
+  const [expanded, setExpanded] = useState({})
 
   useEffect(() => {
     if (!open || !supervisor?.id) return
@@ -310,8 +307,9 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
     setYear(currentYear)
     setLoading(false)
     setError('')
-    setReportMeta(null)
-    setRequesterRow(null)
+    setUsageItems([])
+    setHasLoaded(false)
+    setExpanded({})
   }, [open, supervisor?.id, currentMonth, currentYear])
 
   const loadInventoryUsage = async () => {
@@ -320,39 +318,13 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
     setError('')
 
     try {
-      const { data: listData } = await getConsumptionReports()
-      const history = Array.isArray(listData) ? listData : listData?.results || []
-      let target = history.find((row) => Number(row.month) === month && Number(row.year) === year)
-      let targetId = target?.id
-
-      if (!targetId) {
-        try {
-          const { data: generated } = await generateConsumptionReport(month, year, false)
-          targetId = generated.id
-        } catch (e) {
-          if (e.response?.status === 409 && e.response?.data?.existing_id) {
-            targetId = e.response.data.existing_id
-          } else {
-            throw e
-          }
-        }
-      }
-
-      const { data: detailData } = await getConsumptionReportDetail(targetId)
-      const requesterRows = detailData?.snapshot?.requester_rows || []
-      const row = requesterRows.find((r) => Number(r.requester_id) === Number(supervisor.id)) || null
-
-      setReportMeta({
-        id: detailData.id,
-        month: detailData.month,
-        year: detailData.year,
-        period_label: detailData.period_label,
-        generated_at: detailData.generated_at,
-      })
-      setRequesterRow(row)
+      const { data } = await inventoryAPI.getUserUsageLogs(supervisor.id, month, year)
+      setUsageItems(Array.isArray(data?.items) ? data.items : [])
+      setHasLoaded(true)
+      setExpanded({})
     } catch (e) {
-      setReportMeta(null)
-      setRequesterRow(null)
+      setUsageItems([])
+      setHasLoaded(true)
       setError(e.response?.data?.detail || 'Failed to load supervisor inventory usage report.')
     } finally {
       setLoading(false)
@@ -360,32 +332,32 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
   }
 
   const downloadCsv = () => {
-    if (!reportMeta || !requesterRow) return
+    if (!usageItems.length) return
     const rows = []
-    rows.push(['Report Title', 'Supervisor Inventory Item Usage Report'])
-    rows.push(['Supervisor', requesterRow.requester_name || requesterRow.username || ''])
-    rows.push(['Role', requesterRow.role || ''])
-    rows.push(['Period', reportMeta.period_label || `${reportMeta.month}/${reportMeta.year}`])
-    rows.push(['Generated At', reportMeta.generated_at || ''])
+    rows.push(['Report Title', 'Supervisor Inventory Usage Report'])
+    rows.push(['Supervisor', toDisplayName(supervisor)])
+    rows.push(['Period', `${String(month).padStart(2, '0')}/${year}`])
     rows.push([])
-    rows.push(['Total Requests', requesterRow.total_requests || 0])
-    rows.push(['Issued Requests', requesterRow.issued_requests || 0])
-    rows.push(['Rejected Requests', requesterRow.rejected_requests || 0])
-    rows.push(['Urgent Requests', requesterRow.urgent_requests || 0])
-    rows.push(['Estimated Cost (INR)', requesterRow.total_estimated_cost || 0])
-    rows.push([])
-    rows.push(['Item', 'Category', 'Unit', 'Qty Issued', 'Actual Used', 'Finalized'])
-
-    const items = requesterRow.items_received || []
-    items.forEach((item) => {
+    rows.push(['Item', 'Issued', 'Used', 'Remaining'])
+    usageItems.forEach((item) => {
       rows.push([
         item.item_name || '',
-        item.category || '',
-        item.unit || '',
-        item.quantity_issued || 0,
-        item.actual_used || 0,
-        item.usage_finalized ? 'Yes' : 'No',
+        `${item.issued_quantity || 0} ${item.unit || ''}`,
+        `${item.total_used || 0} ${item.unit || ''} used`,
+        `${item.remaining || 0} ${item.unit || ''}`,
       ])
+      if (item.logs?.length) {
+        rows.push(['  Date', 'Qty Used', 'Purpose', ''])
+        item.logs.forEach((log) => {
+          rows.push([
+            formatDate(log.date),
+            `${log.quantity_used || 0} ${item.unit || ''}`,
+            log.purpose || '',
+            '',
+          ])
+        })
+      }
+      rows.push([])
     })
 
     const csvBody = rows.map((row) => row.map((cell) => toCsvValue(cell)).join(',')).join('\n')
@@ -393,6 +365,53 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
     const safeUsername = toCsvSafe(supervisor?.username, String(supervisor?.id || 'supervisor'))
     triggerDownload(blob, `supervisor_inventory_usage_${safeUsername}_${String(month).padStart(2, '0')}_${year}.csv`)
   }
+
+  const toggleExpanded = (issueId) => {
+    setExpanded((prev) => ({
+      ...prev,
+      [issueId]: !prev[issueId],
+    }))
+  }
+
+  const rows = []
+  usageItems.forEach((item) => {
+    const isOpen = !!expanded[item.issue_id]
+    rows.push([
+      <div key={`item-${item.issue_id}`} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Btn
+          size="sm"
+          variant="ghost"
+          onClick={() => toggleExpanded(item.issue_id)}
+          style={{ padding: '4px 8px' }}
+        >
+          {isOpen ? 'Hide' : 'View'}
+        </Btn>
+        <span>{item.item_name || '-'}</span>
+      </div>,
+      `${item.issued_quantity || 0} ${item.unit || ''}`,
+      `${item.total_used || 0} ${item.unit || ''} used`,
+      `${item.remaining || 0} ${item.unit || ''}`,
+    ])
+    if (isOpen) {
+      rows.push([
+        <div key={`logs-${item.issue_id}`} style={{ padding: '6px 0' }}>
+          {item.logs && item.logs.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {item.logs.map((log, idx) => (
+                <div key={`${item.issue_id}-${idx}`} style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                  {formatDate(log.date)} • <strong>{log.quantity_used}</strong> • {log.purpose || '-'}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>No usage logs.</div>
+          )}
+        </div>,
+        '',
+        '',
+      ])
+    }
+  })
 
   return (
     <Modal
@@ -425,7 +444,7 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
             {loading ? 'Loading...' : 'Load Usage'}
           </Btn>
         </div>
-        <Btn variant="secondary" onClick={downloadCsv} disabled={loading || !requesterRow}>
+        <Btn variant="secondary" onClick={downloadCsv} disabled={loading || !usageItems.length}>
           Download CSV
         </Btn>
       </div>
@@ -434,76 +453,20 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
         <div style={{ display: 'flex', justifyContent: 'center', padding: 28 }}>
           <Spinner />
         </div>
-      ) : !reportMeta ? (
+      ) : !hasLoaded ? (
         <div style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: 13, padding: 24 }}>
           Select month and year, then click Load Usage.
         </div>
-      ) : !requesterRow ? (
+      ) : usageItems.length === 0 ? (
         <div style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: 13, padding: 24 }}>
           No inventory usage found for this supervisor in the selected month.
         </div>
       ) : (
         <>
-          <div
-            style={{
-              marginBottom: 12,
-              padding: '8px 10px',
-              borderRadius: 8,
-              fontSize: 12,
-              border: '1px solid var(--border)',
-              background: 'var(--surface-2)',
-              color: 'var(--text-2)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              gap: 8,
-              flexWrap: 'wrap',
-            }}
-          >
-            <span>{reportMeta.period_label}</span>
-            <span>Generated: {formatDateTime(reportMeta.generated_at)}</span>
-          </div>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
-              gap: 10,
-              marginBottom: 14,
-            }}
-          >
-            <Card>
-              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Total Requests</div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{requesterRow.total_requests || 0}</div>
-            </Card>
-            <Card>
-              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Issued</div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{requesterRow.issued_requests || 0}</div>
-            </Card>
-            <Card>
-              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Rejected</div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{requesterRow.rejected_requests || 0}</div>
-            </Card>
-            <Card>
-              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Urgent</div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{requesterRow.urgent_requests || 0}</div>
-            </Card>
-            <Card>
-              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Estimated Cost</div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>INR {Number(requesterRow.total_estimated_cost || 0).toFixed(2)}</div>
-            </Card>
-          </div>
-
           <Card noPad>
             <DataTable
-              headers={['Item', 'Category', 'Unit', 'Qty Issued', 'Actual Used', 'Finalized']}
-              rows={(requesterRow.items_received || []).map((item) => ([
-                item.item_name || '-',
-                item.category || '-',
-                item.unit || '-',
-                item.quantity_issued || 0,
-                item.actual_used || 0,
-                item.usage_finalized ? 'Yes' : 'No',
-              ]))}
+              headers={['Item', 'Issued', 'Used', 'Remaining']}
+              rows={rows}
               emptyMsg="No issued inventory items."
             />
           </Card>

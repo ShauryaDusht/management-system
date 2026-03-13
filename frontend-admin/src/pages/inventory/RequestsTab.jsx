@@ -114,11 +114,11 @@ export default function RequestsTab({ userRole }) {
         } else if (action === 'reject') {
           await inventoryAPI.rejectRequest(id, reason)
         }
-        await reload()
-        refreshBadges()
-        setRejectTarget(null)
-        setRejectReason('')
       }, 'Review failed.')
+      await reload()
+      refreshBadges()
+      setRejectTarget(null)
+      setRejectReason('')
     } finally {
       setActingId(null)
     }
