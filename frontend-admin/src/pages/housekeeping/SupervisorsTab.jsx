@@ -336,6 +336,7 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
     const rows = []
     rows.push(['Report Title', 'Supervisor Inventory Usage Report'])
     rows.push(['Supervisor', toDisplayName(supervisor)])
+    rows.push(['Pay Code', supervisor.pay_code || '-'])
     rows.push(['Period', `${String(month).padStart(2, '0')}/${year}`])
     rows.push([])
     rows.push(['Item', 'Issued', 'Used', 'Remaining'])
@@ -544,12 +545,15 @@ export default function SupervisorsTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Role', 'Name', 'Username', 'Phone', 'Assigned Areas', 'Status', 'Report']}
+            headers={['Role', 'Name', 'Pay Code', 'Username', 'Phone', 'Assigned Areas', 'Status', 'Report']}
             rows={users.map((u) => {
               const areasForUser = areaMap[u.id] || []
               return [
                 <Badge key={`role-${u.id}`} value={u.role} />,
                 toDisplayName(u),
+                <span key={`pc-${u.id}`} style={{ fontSize: 13, fontWeight: 700, color: u.pay_code ? 'var(--green-800)' : 'var(--text-3)' }}>
+                  {u.pay_code || '-'}
+                </span>,
                 <code key={`user-${u.id}`} style={{ fontSize: 12 }}>{u.username}</code>,
                 u.phone || '-',
                 areasForUser.length ? areasForUser.join(', ') : '-',

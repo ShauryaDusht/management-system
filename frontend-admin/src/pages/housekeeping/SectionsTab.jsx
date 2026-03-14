@@ -87,6 +87,7 @@ export default function SectionsTab() {
           role: u.role,
           username: u.username,
           phone: u.phone || '-',
+          pay_code: u.pay_code || '-',
           isActive: !!u.is_active,
         })
       })
@@ -222,6 +223,7 @@ export default function SectionsTab() {
         const headers = [
           'Area Name',
           'Caretaker / Supervisor',
+          'Pay Code',
           'Username',
           'Phone No',
           'Worker Count',
@@ -231,6 +233,7 @@ export default function SectionsTab() {
         const rows = filteredRows.map((row) => [
           row.areaName,
           row.role === '-' ? '-' : `${row.assignedTo} (${row.role})`,
+          row.pay_code || '-',
           row.username,
           row.phone,
           row.workerCount,
@@ -317,6 +320,7 @@ export default function SectionsTab() {
             headers={[
               'Area Name',
               'Caretaker / Supervisor',
+              'Pay Code',
               'Username',
               'Phone No',
               'Worker Count',
@@ -331,6 +335,9 @@ export default function SectionsTab() {
                   <span style={{ color: '#6b7280' }}>{` (${row.role})`}</span>
                 </span>
               ),
+              <span key={`pc-${row.areaName}-${row.username}`} style={{ fontSize: 13, fontWeight: 700, color: row.pay_code !== '-' ? 'var(--green-800)' : 'var(--text-3)' }}>
+                {row.pay_code || '-'}
+              </span>,
               row.username === '-' ? '-' : (
                 <code key={`u-${row.areaName}-${row.username}`} style={{ fontSize: 12 }}>
                   {row.username}

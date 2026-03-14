@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { Alert, Card, DataTable, Input, Spinner } from '../../components/ui'
-import { todayISO } from '../../shared/utils'
+import { Alert, Btn, Card, DataTable, Input, Spinner } from '../../components/ui'
+import { todayISO, triggerDownload } from '../../shared/utils'
 
 const STATUS_META = {
   present: { label: 'Present', color: '#166534', bg: '#dcfce7' },
@@ -69,12 +69,39 @@ export default function StaffAttendanceTab() {
   const tableRows = useMemo(
     () => rows.map((r) => [
       r.staff_name || '-',
+      <span
+        key={`pc-${r.id}`}
+        style={{ fontSize: 13, fontWeight: 700, color: r.staff_pay_code ? 'var(--green-800)' : 'var(--text-3)' }}
+      >
+        {r.staff_pay_code || '-'}
+      </span>,
       Array.isArray(r.staff_areas) && r.staff_areas.length ? r.staff_areas.join(', ') : '-',
       r.staff_role || '-',
       <StatusPill status={r.status} />,
     ]),
     [rows],
   )
+
+  const downloadCsv = () => {
+    if (!rows.length) return
+    const headers = ['Staff Name', 'Pay Code', 'Area', 'Role', 'Date', 'Status']
+    const csvRows = rows.map((r) => [
+      r.staff_name || '-',
+      r.staff_pay_code || '-',
+      Array.isArray(r.staff_areas) && r.staff_areas.length ? r.staff_areas.join('; ') : '-',
+      r.staff_role || '-',
+      r.date || date,
+      r.status || '-',
+    ])
+    const csvBody = [headers, ...csvRows]
+      .map((row) => row.map((cell) => {
+        const s = String(cell ?? '')
+        return /["\,\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+      }).join(','))
+      .join('\n')
+    const blob = new Blob([`\uFEFF${csvBody}`], { type: 'text/csv' })
+    triggerDownload(blob, `staff_attendance_${date}.csv`)
+  }
 
   return (
     <div>
@@ -99,6 +126,9 @@ export default function StaffAttendanceTab() {
         </Card>
         <Card style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Date</div>
+          <Btn size="sm" variant="secondary" onClick={downloadCsv} disabled={!rows.length}>
+              Export CSV
+            </Btn>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Card>
       </div>
@@ -110,7 +140,7 @@ export default function StaffAttendanceTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Staff Name', 'Area', 'Role', 'Status']}
+            headers={['Staff Name', 'Pay Code', 'Area', 'Role', 'Status']}
             rows={tableRows}
             emptyMsg="No staff attendance records found for this date."
           />

@@ -13,6 +13,7 @@ class User(AbstractUser):
 
     role = models.CharField(max_length=25, choices=Role.choices, default=Role.SUPERVISOR)
     phone = models.CharField(max_length=15, blank=True)
+    pay_code = models.CharField(max_length=20, blank=True)
     profile_photo = models.ImageField(upload_to='users/photos/', null=True, blank=True)
     is_active = models.BooleanField(default=True)
 

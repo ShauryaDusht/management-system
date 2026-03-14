@@ -227,7 +227,7 @@ export default function WorkerReportModal({ open, worker, onClose }) {
               Day-by-Day Breakdown
             </div>
             <DataTable
-              headers={['Date', 'First Half', 'Second Half', 'Tasks Assigned', 'Tasks Completed', 'Extra Work']}
+              headers={['Date', 'First Half', 'Second Half', 'Tasks Assigned', 'Tasks Completed', 'Extra Work', 'Supervisor']}
               rows={(snap.daily_breakdown || []).map((row) => ([
                 formatDate(row.date),
                 toLabel(row.attendance_first_half),
@@ -235,6 +235,7 @@ export default function WorkerReportModal({ open, worker, onClose }) {
                 row.tasks_assigned || 0,
                 row.tasks_completed || 0,
                 row.extra_work || 0,
+                row.supervisor_name || '-',
               ]))}
               emptyMsg="No daily data for this month."
             />

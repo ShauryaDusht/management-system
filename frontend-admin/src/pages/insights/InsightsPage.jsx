@@ -146,6 +146,7 @@ export default function InsightsPage() {
         baseName,
         [
           'Staff',
+          'Pay Code',
           'Role',
           'Areas',
           'Worker Count',
@@ -161,6 +162,7 @@ export default function InsightsPage() {
         ],
         caretakerRows.map((r) => [
           r.staff_name,
+          r.pay_code || '-',
           r.role,
           (r.areas || []).join(' | '),
           r.worker_count || 0,
@@ -218,6 +220,7 @@ export default function InsightsPage() {
         baseName,
         [
           'Worker',
+          'Pay Code',
           'Areas',
           'Total Tasks',
           'Completed',
@@ -230,6 +233,7 @@ export default function InsightsPage() {
         ],
         workerRows.map((r) => [
           r.worker_name,
+          r.pay_code || '-',
           (r.areas || []).join(' | '),
           r.total || 0,
           r.done || 0,

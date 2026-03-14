@@ -481,13 +481,13 @@ All accounts use password: {DEFAULT_PASSWORD}
         ).update(area=self.area('Hostels Reliever'))
 
         created_count = 0
-        for name, punching_no, phone, area_name, wtype, is_reliever in workers:
+        for name, pay_code, phone, area_name, wtype, is_reliever in workers:
             area = self.area(area_name) if area_name else None
             worker, created = HKWorker.objects.get_or_create(
                 name=name,
                 area=area,
                 defaults={
-                    'punching_no': punching_no,
+                    'pay_code': pay_code,
                     'phone': phone,
                     'worker_type': wtype,
                     'shift': 'day',
@@ -499,14 +499,14 @@ All accounts use password: {DEFAULT_PASSWORD}
                 created_count += 1
             else:
                 # Update phone/punching if changed
-                worker.punching_no = punching_no
+                worker.pay_code = pay_code
                 worker.phone = phone
                 worker.worker_type = wtype
                 worker.is_reliever = is_reliever
                 worker.shift = worker.shift or 'day'
                 worker.is_active = True
                 worker.save(update_fields=[
-                    'punching_no', 'phone', 'worker_type',
+                    'pay_code', 'phone', 'worker_type',
                     'is_reliever', 'shift', 'is_active',
                 ])
 

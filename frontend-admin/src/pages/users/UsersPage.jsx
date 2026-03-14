@@ -41,6 +41,7 @@ const EMPTY = {
   last_name: '',
   email: '',
   phone: '',
+  pay_code: '',
   role: 'supervisor',
   area_ids: [],
   password: '',
@@ -83,6 +84,7 @@ export default function UsersPage() {
       last_name: u.last_name || '',
       email: u.email || '',
       phone: u.phone || '',
+      pay_code: u.pay_code || '',
       role: u.role || 'supervisor',
       area_ids: Array.isArray(u.assigned_area_ids) ? u.assigned_area_ids : [],
       password: '',
@@ -109,6 +111,7 @@ export default function UsersPage() {
           last_name: form.last_name,
           email: form.email,
           phone: form.phone,
+          pay_code: form.pay_code || '',
           role: form.role,
           area_ids: HK_ROLES.includes(form.role) ? form.area_ids : [],
         }
@@ -280,7 +283,7 @@ export default function UsersPage() {
           </div>
         ) : (
           <DataTable
-            headers={['Name', 'Username', 'Email', 'Phone', 'Role', 'Area Incharge', 'Status', 'Actions']}
+            headers={['Name', 'Username', 'Pay Code', 'Email', 'Phone', 'Role', 'Area Incharge', 'Status', 'Actions']}
             rows={filtered.map((u) => [
               <div key={`name-${u.id}`}>
                 <div style={{ fontWeight: 600 }}>
@@ -290,6 +293,9 @@ export default function UsersPage() {
               <code key={`username-${u.id}`} style={{ fontSize: 12, background: 'var(--surface-2)', padding: '2px 6px', borderRadius: 5 }}>
                 {u.username}
               </code>,
+              <span key={`pc-${u.id}`} style={{ fontSize: 13, fontWeight: 600, color: u.pay_code ? 'var(--green-800)' : 'var(--text-3)' }}>
+                {u.pay_code || '-'}
+              </span>,
               u.email || '-',
               u.phone || '-',
               <Badge key={`role-${u.id}`} value={u.role} />,
@@ -355,6 +361,9 @@ export default function UsersPage() {
         </Field>
         <Field label="Phone">
           <Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
+        </Field>
+        <Field label="Pay Code">
+          <Input value={form.pay_code} onChange={(e) => setForm((p) => ({ ...p, pay_code: e.target.value }))} placeholder="e.g. 237" />
         </Field>
         <Field label="Role" required>
           <SelectField

@@ -75,13 +75,16 @@ export default function CaretakersTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Role', 'Name', 'Username', 'Phone', 'Assigned Areas', 'Status']}
+            headers={['Role', 'Name', 'Pay Code', 'Username', 'Phone', 'Assigned Areas', 'Status']}
             rows={users.map((u) => {
               const fullName = u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username
               const areasForUser = areaMap[u.id] || []
               return [
                 <Badge key={`r-${u.id}`} value={u.role} />,
                 fullName,
+                <span key={`pc-${u.id}`} style={{ fontSize: 13, fontWeight: 700, color: u.pay_code ? 'var(--green-800)' : 'var(--text-3)' }}>
+                  {u.pay_code || '-'}
+                </span>,
                 <code key={`u-${u.id}`} style={{ fontSize: 12 }}>{u.username}</code>,
                 u.phone || '-',
                 areasForUser.length ? areasForUser.join(', ') : '-',

@@ -38,6 +38,7 @@ WORKER_DAILY_COLUMNS = [
     'Tasks Assigned',
     'Tasks Completed',
     'Extra Work',
+    'Supervisor / Caretaker',
 ]
 
 WORKER_COMBINED_COLUMNS = [
@@ -46,7 +47,7 @@ WORKER_COMBINED_COLUMNS = [
     'Supervisor',
     'Worker Type',
     'Shift',
-    'Punching No',
+    'Pay Code',
     'Phone',
     'Reliever',
     'Attendance %',
@@ -84,7 +85,10 @@ def export_worker_report_csv(snapshot: dict) -> bytes:
 
     writer.writerow(['Worker Attendance and Task Completion Report'])
     writer.writerow(['Worker Name', worker.get('name', '')])
+    writer.writerow(['Pay Code', worker.get('pay_code', '')])
     writer.writerow(['Area', worker.get('area_name', '')])
+    writer.writerow(['Worker Type', worker.get('worker_type', '')])
+    writer.writerow(['Shift', worker.get('shift', '')])
     writer.writerow(['Month', snapshot.get('month_label', '')])
     writer.writerow(['Attendance %', f"{snapshot.get('attendance_pct', 0):.2f}"])
     writer.writerow(['Task Completion %', f"{tasks.get('completion_pct', 0):.2f}"])
@@ -108,6 +112,7 @@ def export_worker_report_csv(snapshot: dict) -> bytes:
             row.get('tasks_assigned', 0),
             row.get('tasks_completed', 0),
             row.get('extra_work', 0),
+            row.get('supervisor_name', ''),
         ])
 
     return buffer.getvalue().encode('utf-8-sig')
@@ -130,6 +135,7 @@ def export_supervisor_report_csv(snapshot: dict) -> bytes:
 
     # Section 1 - Header block
     writer.writerow(['Supervisor Name', supervisor_info.get('full_name', '')])
+    writer.writerow(['Pay Code', supervisor_info.get('pay_code', '')])
     writer.writerow(['Username', supervisor_info.get('username', '')])
     writer.writerow(['Role', supervisor_info.get('role', '')])
     writer.writerow(['Areas Assigned', ', '.join(supervisor_info.get('areas', []) or [])])
@@ -295,6 +301,7 @@ def export_consumption_requester_csv(snapshot: dict) -> bytes:
     writer.writerow(
         [
             'Requester',
+            'Pay Code',
             'Role',
             'Total Requests',
             'Issued',
@@ -307,6 +314,7 @@ def export_consumption_requester_csv(snapshot: dict) -> bytes:
         writer.writerow(
             [
                 row.get('requester_name', ''),
+                row.get('pay_code', ''),
                 row.get('role', ''),
                 row.get('total_requests', 0),
                 row.get('issued_requests', 0),
@@ -320,6 +328,7 @@ def export_consumption_requester_csv(snapshot: dict) -> bytes:
     writer.writerow(
         [
             'Requester',
+            'Pay Code',
             'Item',
             'Category',
             'Unit',
@@ -334,6 +343,7 @@ def export_consumption_requester_csv(snapshot: dict) -> bytes:
             writer.writerow(
                 [
                     requester_name,
+                    row.get('pay_code', ''),
                     item.get('item_name', ''),
                     item.get('category', ''),
                     item.get('unit', ''),
@@ -364,7 +374,7 @@ def export_workers_combined_csv(rows: list, month: int, year: int, title: str) -
             row.get('supervisor_name', ''),
             row.get('worker_type', ''),
             row.get('shift', ''),
-            row.get('punching_no', ''),
+            row.get('pay_code', ''),
             row.get('phone', ''),
             'Yes' if row.get('is_reliever') else 'No',
             f"{row.get('attendance_pct', 0):.2f}",

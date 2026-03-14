@@ -52,7 +52,7 @@ class HKWorkerSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'phone',
-            'punching_no',
+            'pay_code',
             'worker_type',
             'shift',
             'area',
@@ -122,6 +122,7 @@ class HKStaffAttendanceRecordSerializer(serializers.ModelSerializer):
     staff_name = serializers.SerializerMethodField()
     staff_role = serializers.SerializerMethodField()
     staff_areas = serializers.SerializerMethodField()
+    staff_pay_code = serializers.SerializerMethodField()
 
     class Meta:
         model = HKStaffAttendanceRecord
@@ -131,6 +132,7 @@ class HKStaffAttendanceRecordSerializer(serializers.ModelSerializer):
             'staff_name',
             'staff_role',
             'staff_areas',
+            'staff_pay_code',
             'date',
             'status',
             'source',
@@ -147,6 +149,11 @@ class HKStaffAttendanceRecordSerializer(serializers.ModelSerializer):
     def get_staff_role(self, obj):
         if obj.staff:
             return getattr(obj.staff, 'role', '') or ''
+        return ''
+
+    def get_staff_pay_code(self, obj):
+        if obj.staff:
+            return getattr(obj.staff, 'pay_code', '') or ''
         return ''
 
     def get_staff_areas(self, obj):

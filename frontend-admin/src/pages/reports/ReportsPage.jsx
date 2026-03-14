@@ -744,9 +744,10 @@ function ConsumptionTab() {
                   </Btn>
                 </div>
                 <DataTable
-                  headers={['Requester', 'Role', 'Requests', 'Issued', 'Rejected', 'Urgent', 'Est. Cost (₹)', 'Details']}
+                  headers={['Requester', 'Pay Code', 'Role', 'Requests', 'Issued', 'Rejected', 'Urgent', 'Est. Cost (₹)', 'Details']}
                   rows={requesterRows.map((row) => [
                     row.requester_name || row.username || '-',
+                    row.pay_code || '-',
                     <Badge key={`role-${row.requester_id}`} value={row.role || ''} />,
                     row.total_requests || 0,
                     row.issued_requests || 0,
@@ -772,9 +773,10 @@ function ConsumptionTab() {
                 </div>
                 {selectedRequester ? (
                   <DataTable
-                    headers={['Requester', 'Item', 'Category', 'Unit', 'Qty Issued', 'Actual Used', 'Finalized']}
+                    headers={['Requester', 'Pay Code', 'Item', 'Category', 'Unit', 'Qty Issued', 'Actual Used', 'Finalized']}
                     rows={(selectedRequester.items_received || []).map((item) => [
                       selectedRequester.requester_name || '-',
+                      selectedRequester.pay_code || '-',
                       item.item_name || '-',
                       item.category || '-',
                       item.unit || '-',

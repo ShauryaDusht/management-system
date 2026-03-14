@@ -416,6 +416,7 @@ def generate_consumption_report(month: int, year: int) -> dict:
                 'requester_name': requester_obj.get_full_name() or requester_obj.username,
                 'role': requester_obj.role,
                 'username': requester_obj.username,
+                'pay_code': requester_obj.pay_code,
                 'total_requests': request_counts.get('total_requests', 0),
                 'issued_requests': request_counts.get('issued_requests', 0),
                 'rejected_requests': request_counts.get('rejected_requests', 0),
@@ -470,10 +471,11 @@ def generate_worker_report(worker_id: int, month: int, year: int) -> dict:
     attendance_rows = list(
         HKAttendanceRecord.objects
         .filter(worker=worker, date__gte=period_start, date__lte=period_end)
-        .values('date', 'half', 'status')
+        .values('date', 'half', 'status', 'marked_by__first_name', 'marked_by__last_name', 'marked_by__username')
     )
 
     attendance_by_date = {}
+    supervisor_by_date = {}  # date → supervisor name from first-half marker
     attendance_status_dates = {
         'present': set(),
         'absent': set(),
@@ -491,6 +493,15 @@ def generate_worker_report(worker_id: int, month: int, year: int) -> dict:
 
         if status in attendance_status_dates:
             attendance_status_dates[status].add(att_date)
+
+        # capture supervisor name from whoever marked first-half (or any half)
+        if half == 'first' or att_date not in supervisor_by_date:
+            fn = row.get('marked_by__first_name') or ''
+            ln = row.get('marked_by__last_name') or ''
+            un = row.get('marked_by__username') or ''
+            full = f"{fn} {ln}".strip() or un
+            if full:
+                supervisor_by_date[att_date] = full
 
     days_present = len(attendance_status_dates['present'])
     days_absent = len(attendance_status_dates['absent'])
@@ -578,6 +589,7 @@ def generate_worker_report(worker_id: int, month: int, year: int) -> dict:
             'tasks_assigned': task_data.get('assigned', 0),
             'tasks_completed': task_data.get('completed', 0),
             'extra_work': extra_work_by_date.get(day, 0),
+            'supervisor_name': supervisor_by_date.get(day, ''),
         })
 
     return {
@@ -588,7 +600,7 @@ def generate_worker_report(worker_id: int, month: int, year: int) -> dict:
             'area_name': worker.area.name if worker.area else '',
             'worker_type': worker.worker_type,
             'shift': worker.shift,
-            'punching_no': worker.punching_no,
+            'pay_code': worker.pay_code,
         },
         'month': month,
         'year': year,
@@ -813,6 +825,7 @@ def generate_supervisor_report(supervisor_id: int, month: int, year: int) -> dic
             'username': supervisor.username,
             'role': supervisor.role,
             'phone': supervisor.phone,
+            'pay_code': supervisor.pay_code,
             'areas': areas,
             'workers_under': workers_under,
         },

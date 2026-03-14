@@ -1637,6 +1637,7 @@ class HKAdminGalleryExportCSVView(APIView):
                 'area',
                 'task',
                 'staff',
+                'pay_code',
                 'captured_at',
                 'capture_method',
                 'photo_url',
@@ -1652,15 +1653,19 @@ class HKAdminGalleryExportCSVView(APIView):
             photo_url = _file_field_url(request, rec.photo_after)
             thumbnail_url = _file_field_url(request, rec.photo_after_thumbnail)
             staff_name = ''
+            pay_code = ''
             if rec.completed_by:
                 staff_name = rec.completed_by.get_full_name() or rec.completed_by.username
+                pay_code = rec.completed_by.pay_code
             elif rec.assigned_worker:
                 staff_name = rec.assigned_worker.name
+                pay_code = rec.assigned_worker.pay_code
             writer.writerow(
                 [
                     rec.area.name if rec.area else '',
                     rec.schedule.task_name if rec.schedule else '',
                     staff_name,
+                    pay_code,
                     (rec.photo_after_captured_at or rec.completed_at or '').isoformat() if (rec.photo_after_captured_at or rec.completed_at) else '',
                     rec.photo_after_capture_method or 'file_upload',
                     photo_url,
