@@ -1,7 +1,7 @@
 from django.urls import path
 from .htmx_views import (
     hk_login, hk_logout, hk_dashboard, hk_mark_task, hk_log_extra_work,
-    hk_schedule, hk_attendance, hk_sunday_incharge,
+    hk_schedule, hk_attendance,
     hk_stock, hk_stock_request, hk_profile, hk_alerts_manage,
     hk_log_usage,
     hk_assign_reliever, hk_worker_selection_request, hk_worker_selection_submit,
@@ -16,7 +16,6 @@ urlpatterns = [
     path('extra-work/', hk_log_extra_work,  name='hk_extra_work'),
     path('schedule/', hk_schedule,          name='hk_schedule'),
     path('attendance/', hk_attendance,      name='hk_attendance'),
-    path('attendance/sunday-incharge/', hk_sunday_incharge, name='hk_sunday_incharge'),
     path('attendance/assign-reliever/', hk_assign_reliever, name='hk_assign_reliever'),
     path('worker-selection/request/', hk_worker_selection_request, name='hk_worker_selection_request'),
     path('worker-selection/submit/', hk_worker_selection_submit, name='hk_worker_selection_submit'),

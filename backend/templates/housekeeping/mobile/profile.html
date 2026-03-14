@@ -41,7 +41,7 @@
   {% endfor %}
 </div>
 
-{% if not is_saturday %}
+
 <div class="card" id="leave-ui-block">
   <div style="font-weight:700;color:#2d4a3e;margin-bottom:10px">Leave Request</div>
   <form method="post">
@@ -67,7 +67,6 @@
     <button type="submit" class="btn-g">Submit Leave & Select Temporary Incharge</button>
   </form>
 </div>
-{% endif %}
 
 {% if show_incharge_selector and selector_leave_request %}
 <div class="card" style="border:1.5px solid #fde68a;background:#fffbeb">
@@ -139,13 +138,5 @@
   <button type="submit" class="btn-p">Logout</button>
 </form>
 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  var isSaturday = new Date().getDay() === 6;
-  var leaveBlock = document.getElementById('leave-ui-block');
-  if (isSaturday && leaveBlock) {
-    leaveBlock.remove();
-  }
-});
-</script>
+
 {% endblock %}

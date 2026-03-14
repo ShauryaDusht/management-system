@@ -35,7 +35,6 @@ from .models import (
     HKScheduleTemplate,
     HKLeaveRequest,
     HKStockRequest,
-    HKSundayIncharge,
     HKTaskWorkerAssignment,
     HKUserArea,
     HKWorker,
@@ -589,14 +588,7 @@ def hk_dashboard(request):
     pct = int((done / total) * 100) if total else 0
 
     today_dow = today.weekday()
-    sunday_incharge = None
-    upcoming_sunday = None
     area_workers = list(HKWorker.objects.filter(area=sel_area, is_active=True).order_by("name")) if sel_area else []
-    if today_dow == 5 and sel_area:
-        upcoming_sunday = today + datetime.timedelta(days=1)
-        sunday_incharge = HKSundayIncharge.objects.filter(
-            area=sel_area, for_sunday=upcoming_sunday
-        ).first()
 
     extra_works = HKExtraWork.objects.filter(area=sel_area, date=today).order_by("-logged_at") if sel_area else []
 
@@ -805,8 +797,6 @@ def hk_dashboard(request):
         "done_tasks": done,
         "percent_done": pct,
         "alerts": get_active_alerts(user, user_areas),
-        "sunday_incharge": sunday_incharge,
-        "upcoming_sunday": upcoming_sunday,
         "area_workers": area_workers,
         "extra_works": extra_works,
         "tab_label_floor": tab_label_floor,
@@ -1529,35 +1519,6 @@ def hk_assign_reliever(request):
     return redirect(f"/housekeeping/attendance/{area_param}")
 
 
-@hk_required
-def hk_sunday_incharge(request):
-    if request.method != "POST":
-        return redirect("/housekeeping/dashboard/")
-    user = request.user
-    user_areas = get_user_areas(user)
-    today = timezone.localdate()
-
-    area_id = request.POST.get("area_id")
-    area = user_areas.filter(pk=area_id).first()
-    if not area:
-        return redirect("/housekeeping/dashboard/?error=area_required")
-
-    days_until_sunday = (6 - today.weekday()) % 7
-    if days_until_sunday == 0:
-        return redirect(f"/housekeeping/dashboard/?error=already_sunday&area={area.id}")
-    upcoming = today + datetime.timedelta(days=days_until_sunday)
-
-    worker = get_object_or_404(
-        HKWorker,
-        pk=request.POST.get("worker_id"),
-        is_active=True,
-        area=area,
-    )
-    HKSundayIncharge.objects.update_or_create(
-        area=area, for_sunday=upcoming,
-        defaults={"worker": worker, "set_by": user, "notes": request.POST.get("notes", "")}
-    )
-    return redirect(f"/housekeeping/dashboard/?area={area_id}")
 
 @hk_required
 def hk_stock(request):
@@ -1844,7 +1805,7 @@ def hk_profile(request):
                     return redirect(f"/housekeeping/dashboard/?area={leave_req.area_id}&ic_ok=sent")
 
     recent_leaves = list(
-        HKLeaveRequest.objects.filter(staff=user, leave_date__gte=today - datetime.timedelta(days=7))
+        HKLeaveRequest.objects.filter(staff=user, leave_date__gte=today - datetime.timedelta(days=30))
         .select_related("area")
         .order_by("-leave_date", "-created_at")[:20]
     )
@@ -1853,7 +1814,6 @@ def hk_profile(request):
         "user_areas": user_areas,
         "success": success,
         "error": error,
-        "is_saturday": timezone.localdate().weekday() == 5,
         "today": today,
         "recent_leaves": recent_leaves,
         "show_incharge_selector": show_incharge_selector,
