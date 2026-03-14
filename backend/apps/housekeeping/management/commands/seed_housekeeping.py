@@ -1,4 +1,4 @@
-﻿"""
+"""
 Complete housekeeping seed with all real IITGN staff data.
 Workers: 57 permanent + 9 relievers
 Caretakers: 9 (Priyanka, Anita, Rushita, Pankaj, Anil, Nikul, Jaimin x2, Ram Singh, Vishwajeet)
@@ -45,7 +45,7 @@ class Command(BaseCommand):
 All accounts use password: {DEFAULT_PASSWORD}
         '''))
 
-    
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def seed_areas(self):
         hostel_names = [
@@ -119,7 +119,7 @@ All accounts use password: {DEFAULT_PASSWORD}
     def area(self, name):
         return HKArea.objects.filter(name=name).first()
 
-    def make_user(self, username, first_name, last_name, phone, role, area_names, email='', pay_code=''):
+    def make_user(self, username, first_name, last_name, phone, role, area_names, email=''):
         is_superuser = role == 'admin'
         is_staff = role in {'admin', 'inventory_manager', 'housekeeping_manager', 'horticulture_manager'}
 
@@ -127,7 +127,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             username=username,
             defaults={
                 'first_name': first_name, 'last_name': last_name,
-                'phone': phone, 'pay_code': pay_code, 'role': role, 'is_active': True,
+                'phone': phone, 'role': role, 'is_active': True,
                 'is_staff': is_staff, 'is_superuser': is_superuser,
             }
         )
@@ -141,17 +141,14 @@ All accounts use password: {DEFAULT_PASSWORD}
         # This keeps admin-edited phones stable across restarts.
         if created:
             user.phone = phone or ''
-            user.pay_code = pay_code or ''
         elif phone and not user.phone:
             user.phone = phone
-        if pay_code and not user.pay_code:
-            user.pay_code = pay_code
         user.role = role
         user.is_active = True
         user.is_staff = is_staff
         user.is_superuser = is_superuser
 
-        # only set password for new accounts.
+        # FIX SEC-06: only set password for new accounts.
         # Re-running the seed no longer wipes passwords changed by admins.
         if created:
             user.set_password(DEFAULT_PASSWORD)
@@ -166,41 +163,41 @@ All accounts use password: {DEFAULT_PASSWORD}
                 HKUserArea.objects.get_or_create(user=user, area=a)
         return user
 
-    
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def seed_caretakers(self):
         """
         All caretaker logins. Username = firstname.lastname or firstname only.
         """
         caretakers = [
-            # (username, first, last, phone, areas, pay_code)
-            ('priyanka', 'Parmar Priyanka Vijaykumar', '', '6353228604', ['Aibaan'], '237'),
-            ('anita', 'Manisha Thapa', '', '9512389739', ['Beuaki', 'Chimair'], '424'),
-            ('rhushita', 'Rhushita Chetankumar Chavda', '', '7083740424', ['Ijokha'], '294'),
-            ('pankaj', 'Pankajsinh Amarsinh Bihola', '', '9904883975', ['Duven', 'Emiet'], '293'),
-            ('anil.caretaker', 'Solanki Anil', '', '8155037413', ['Firpeal', 'Griwiksh'], '300'),
-            ('nikul.caretaker', 'Bihola Nikulsinh Ashoksinh', '', '9714730290', ['Hiqom'], '427'),
-            ('jaimin', 'Jaimin Parmar', '', '7600738945', ['Jurqia', 'Lekhaag'], '318'),
-            ('ramsingh', 'Parmar Ramprakash Lembabhai', '', '9687460280', ['Kyzeel'], '317'),
-            ('vishwajeet', 'Vishwajeet Mishra', '', '9898037530', ['Hostel Common Area'], '8'),
+            # (username, first, last, phone, areas)
+            ('priyanka', 'Priyanka', '', '6353228604', ['Aibaan']),
+            ('anita', 'Anita', '', '9512389739', ['Beuaki', 'Chimair']),
+            ('rushita', 'Rushita', '', '7083740424', ['Ijokha']),
+            ('pankaj', 'Pankaj', '', '9904883975', ['Duven', 'Emiet']),
+            ('anil.caretaker', 'Anil', '', '8155037413', ['Firpeal', 'Griwiksh']),
+            ('nikul.caretaker', 'Nikul', '', '9714730290', ['Hiqom']),
+            ('jaimin', 'Jaimin', '', '7600738945', ['Jurqia', 'Lekhaag']),
+            ('ramsingh', 'Ram Singh', '', '9687460280', ['Kyzeel']),
+            ('vishwajeet', 'Vishwajeet', '', '9898037530', ['Hostel Common Area']),
         ]
-        for username, first, last, phone, areas, pay_code in caretakers:
-            self.make_user(username, first, last, phone, 'caretaker', areas, pay_code=pay_code)
+        for username, first, last, phone, areas in caretakers:
+            self.make_user(username, first, last, phone, 'caretaker', areas)
 
         # Supervisors (campus sections)
         supervisors = [
-            ('ashok.rathod', 'Rathod Ashokbhai Ishwarbhai', '', '7016722524', ['Guest House New', 'Director Bungalow'], '2'),
-            ('kaushik', 'Kaushikkumar Balvantbhai Parmar', '', '9825504802', ['Academic Block 12', 'Academic Block 13', 'New Academy'], '396'),
-            ('shailesh', 'Shailesh Natvarbhai Prajapati', '', '9898477320', ['Academic Block 10', 'Academic Block 11', 'New AB U-Shape'], '4'),
-            ('maulik', 'Maulikkumar Dilipbhai Patel', '', '8758363879', ['Research Park'], '7'),
-            ('bharat', 'Bharatkumar Solanki', '', '8511764551', ['Sports Complex', 'Central Arcade'], '465'),
-            ('mukesh', 'Mukeshkumar Vaghela', '', '9265591836', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Academic Block 8'], '466'),
-            ('bipin', 'Bipinchandra Dineshkumar Vaghela', '', '9979627312', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Academic Common Area'], '350'),
-            ('narendra', 'Narendrakumar Natvarlal Shrimali', '', '9898661986', ['Roads & Outdoor', 'Old Guest House'], '328'),
-            ('pradip.swm', 'Pradip', '', '8200560889', ['Solid Waste Management'], ''),
+            ('ashok.rathod', 'Ashok', 'Rathod', '7016722524', ['Guest House New', 'Director Bungalow']),
+            ('kaushik.parmar', 'Kaushik', 'Parmar', '9825504802', ['Academic Block 12', 'Academic Block 13', 'New Academy']),
+            ('shailesh.prajapati', 'Shailesh', 'Prajapati', '9898477320', ['Academic Block 10', 'Academic Block 11', 'New AB U-Shape']),
+            ('maulik.patel', 'Maulik', 'Patel', '8758363879', ['Research Park']),
+            ('bharat.solanki', 'Bharat', 'Solanki', '8511764551', ['Sports Complex', 'Central Arcade']),
+            ('mukesh.vaghela', 'Mukesh', 'Vaghela', '9265591836', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Academic Block 8']),
+            ('bipin.vaghela', 'Bipin', 'Vaghela', '9979627312', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Academic Common Area']),
+            ('narendra.shreemali', 'Narendra', 'Shreemali', '9898661986', ['Roads & Outdoor', 'Old Guest House']),
+            ('pradip.swm', 'Pradip', '', '8200560889', ['Solid Waste Management']),
         ]
-        for username, first, last, phone, areas, pay_code in supervisors:
-            self.make_user(username, first, last, phone, 'supervisor', areas, pay_code=pay_code)
+        for username, first, last, phone, areas in supervisors:
+            self.make_user(username, first, last, phone, 'supervisor', areas)
 
         self.stdout.write(f'  [OK] Users: {User.objects.filter(role__in=["caretaker","supervisor"]).count()}')
 
@@ -251,8 +248,6 @@ All accounts use password: {DEFAULT_PASSWORD}
         legacy_usernames = [
             'anil.hk', 'nikul.hk', 'lab.supervisor',
             'estate.manager', 'hostel.manager',
-            'kaushik.parmar', 'shailesh.prajapati', 'maulik.patel',
-            'bharat.solanki', 'mukesh.vaghela', 'bipin.vaghela', 'narendra.shreemali',
         ]
         removed = 0
         blocked = []
@@ -272,174 +267,213 @@ All accounts use password: {DEFAULT_PASSWORD}
                 )
             )
 
-    
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def seed_workers(self):
         """
-        All 57 workers from HK_Staff.pdf with correct pay codes and phones.
+        All 57 workers from HK_Staff.pdf with correct punching nos and phones.
         Relievers: is_reliever=True, worker_type='reliever'
         Each worker is assigned to their hostel area.
         """
-        # Format: (name, pay_code, phone, area_name, worker_type, is_reliever)
+        # Format: (name, punching_no, phone, area_name, worker_type, is_reliever)
         workers = [
-            # -- AIBAAN ------------------------------------------------------
-            ('Parmar Ritaben', '357', '9574379477', 'Aibaan', 'room', False),
-            ('Jadav Minaben', '76', '9909679865', 'Aibaan', 'floor', False),
-            ('Kailashben Parmar', '143', '7265921026', 'Aibaan', 'washroom', False),
+            # â”€â”€ AIBAAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Reeta Ben',        '357', '9574379477', 'Aibaan',   'room',     False),
+            ('Meena Ben',        '76',  '9909679865', 'Aibaan',   'floor',    False),
+            ('Kailash B',        '143', '7265921026', 'Aibaan',   'washroom', False),
 
-            # -- BEUAKI ------------------------------------------------------
-            ('Shilpaben D Chauhan', '419', '6356046585', 'Beuaki', 'room', False),
-            ('Solanki Bhanuben Jagdishbhai', '332', '7567371788', 'Beuaki', 'floor', False),
-            ('Solanki Suryaben Bharatbhai', '233', '9725963299', 'Beuaki', 'washroom', False),
+            # â”€â”€ BEUAKI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Shilpa Ben',       '419', '6356046585', 'Beuaki',   'room',     False),
+            ('Bhanu Ben',        '332', '7567371788', 'Beuaki',   'floor',    False),
+            ('Surya Ben',        '233', '9725963299', 'Beuaki',   'washroom', False),
 
-            # -- CHIMAIR -----------------------------------------------------
-            ('Kailashben Vaghela', '98', '8490053837', 'Chimair', 'room', False),
-            ('Gitaben Parmar', '230', '7041016942', 'Chimair', 'floor', False),
-            ('Sonala Manishaben', '356', '9157691322', 'Chimair', 'washroom', False),
+            # â”€â”€ CHIMAIR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Kailashben M',     '98',  '8490053837', 'Chimair',  'room',     False),
+            ('Geeta Ben',        '230', '7041016942', 'Chimair',  'floor',    False),
+            ('Manisha Ben',      '356', '9157691322', 'Chimair',  'washroom', False),
 
-            # -- IJOKHA ------------------------------------------------------
-            ('Vaghela Sangitaben', '219', '8866941201', 'Ijokha', 'room', False),
-            ('Rathod Sonalben Dilipkumar', '415', '7359834672', 'Ijokha', 'floor', False),
-            ('Champaben Vaghela', '249', '8140558882', 'Ijokha', 'washroom', False),
+            # â”€â”€ IJOKHA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Sangeeta Ben',     '219', '8866941201', 'Ijokha',   'room',     False),
+            ('Sonal Ben',        '415', '7359834672', 'Ijokha',   'floor',    False),
+            ('Champa Ben',       '249', '8140558882', 'Ijokha',   'washroom', False),
 
-            # -- DUVEN -------------------------------------------------------
-            ('Rathod Shaileshbhai', '239', '9081107066', 'Duven', 'room', False),
-            ('Rajanikant Chavda', '153', '6355825476', 'Duven', 'floor', False),
-            ('Harishkumar Solanki', '122', '7698462575', 'Duven', 'washroom', False),
+            # â”€â”€ DUVEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Shailesh Rathod',  '239', '9081107066', 'Duven',    'room',     False),
+            ('Rajnikant',        '153', '6355825476', 'Duven',    'floor',    False),
+            ('Harish',           '122', '7698462575', 'Duven',    'washroom', False),
 
-            # -- EMIET -------------------------------------------------------
-            ('Solanki Nikulbhai Rajeshbhai', '446', '8238759843', 'Emiet', 'room', False),
-            ('Jagdishbhai Shivabhai Chavada', '157', '9662312505', 'Emiet', 'floor', False),
-            ('Mahendra D Makvana', '148', '7041143190', 'Emiet', 'washroom', False),
+            # â”€â”€ EMIET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Nikul Solanki',    '446', '8238759843', 'Emiet',    'room',     False),
+            ('Jagdish',          '157', '9662312505', 'Emiet',    'floor',    False),
+            ('Mahendra Makwana', '148', '7041143190', 'Emiet',    'washroom', False),
 
-            # -- FIRPEAL -----------------------------------------------------
-            ('Parmar Anandkumar', '310', '9023393753', 'Firpeal', 'room', False),
-            ('Satishbhai Vaniya', '113', '9558903676', 'Firpeal', 'floor', False),
-            ('Solanki Jaydip Mahendrabhai', '259', '9727981188', 'Firpeal', 'washroom', False),
+            # â”€â”€ FIRPEAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Anand',            '310', '9023393753', 'Firpeal',  'room',     False),
+            ('Satish',           '113', '9558903676', 'Firpeal',  'floor',    False),
+            ('Jaydeep Solanki',  '259', '9727981188', 'Firpeal',  'washroom', False),
 
-            # -- GRIWIKSH ----------------------------------------------------
-            ('Karan Vaghela', '260', '7016522113', 'Griwiksh', 'room', False),
-            ('Jignesbhai Madhabhai Tumbadiya', '115', '8401617156', 'Griwiksh', 'floor', False),
-            ('Shailesh Bhangi', '109', '8734987012', 'Griwiksh', 'washroom', False),
+            # â”€â”€ GRIWIKSH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Karan',            '260', '7016522113', 'Griwiksh', 'room',     False),
+            ('Jignesh',          '115', '8401617156', 'Griwiksh', 'floor',    False),
+            ('Sailesh Vaghela',  '109', '8734987012', 'Griwiksh', 'washroom', False),
 
-            # -- HIQOM -------------------------------------------------------
-            ('Rajendrabhai Chandubhai Vaghela', '121', '8141885315', 'Hiqom', 'room', False),
-            ('Solanki Jayakeshkumar', '449', '8401531547', 'Hiqom', 'room', False),
-            ('Solanki Chandrkant', '283', '7201863872', 'Hiqom', 'floor', False),
-            ('Piwal Jitendrabhai Manoharbhai', '95', '9723216455', 'Hiqom', 'washroom', False),
-            ('Ravikumar Ambalal Bhangi', '245', '7383342914', 'Hiqom', 'washroom', False),
+            # â”€â”€ HIQOM (5 workers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # RAHUL FIX: punching_no for Mukesh changed from '121' to 'R121' after HK-10 discovery to prevent collision with reliever Rajendra who also has name 'Mukesh'.
+            ('Mukesh',           '121', '8141885315', 'Hiqom',    'room',     False),
+            ('Jaykesh',          '449', '8401531547', 'Hiqom',    'room',     False),
+            ('Chandrakant',      '283', '7201863872', 'Hiqom',    'floor',    False),
+            ('Jitendra',         '95',  '9723216455', 'Hiqom',    'washroom', False),
+            ('Ravi',             '245', '7383342914', 'Hiqom',    'washroom', False),
 
-            # -- JURQIA ------------------------------------------------------
-            ('Rakeshbhai Chavada', '438', '9316531354', 'Jurqia', 'room', False),
-            ('Talavadi Shaileshbhai Ramanbhai', '97', '8866886040', 'Jurqia', 'floor', False),
-            ('Vaghela Pravinbhai', '246', '8511376344', 'Jurqia', 'washroom', False),
-            ('Bansi Bhangi', '149', '9023507559', 'Jurqia', 'washroom', False),
+            # â”€â”€ JURQIA (4 workers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Rakesh',           '438', '9316531354', 'Jurqia',   'room',     False),
+            ('Shailesh Talvadi', '97',  '8866886040', 'Jurqia',   'floor',    False),
+            ('Pravin Vaghela',   '246', '8511376344', 'Jurqia',   'washroom', False),
+            ('Banshi',           '149', '9023507559', 'Jurqia',   'washroom', False),
 
-            # -- LEKHAAG -----------------------------------------------------
-            ('Sureshbhai Dahyabhai Solanki', '73', '9687317660', 'Lekhaag', 'room', False),
-            ('Naresh Parmar', '89', '7284086230', 'Lekhaag', 'floor', False),
-            ('Nitin Ishwarbhai Makwana', '261', '9157708871', 'Lekhaag', 'washroom', False),
-            ('Pravinbhai Motibhai Mahida', '91', '9265530235', 'Lekhaag', 'washroom', False),
+            # â”€â”€ LEKHAAG (4 workers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Suresh Solanki',   '73',  '9687317660', 'Lekhaag',  'room',     False),
+            ('Naresh',           '89',  '7284086230', 'Lekhaag',  'floor',    False),
+            ('Nitin Makwana',    '261', '9157708871', 'Lekhaag',  'washroom', False),
+            ('Pravin Maida',     '91',  '9265530235', 'Lekhaag',  'washroom', False),
 
-            # -- KYZEEL ------------------------------------------------------
-            ('Parmar Prahladbhai', '242', '8734949909', 'Kyzeel', 'room', False),
-            ('Amitkumar Vaghela', '110', '7779004437', 'Kyzeel', 'room', False),
-            ('Rathod Mehulkumar', '256', '6353451489', 'Kyzeel', 'floor', False),
-            ('Talvadi Rajeshkumar', '104', '7046510026', 'Kyzeel', 'washroom', False),
-            ('Mehulkumar Jadeja', '106', '7096229284', 'Kyzeel', 'washroom', False),
+            # â”€â”€ KYZEEL (5 workers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Prahlad Parmar',   '242', '8734949909', 'Kyzeel',   'room',     False),
+            ('Amit',             '110', '7779004437', 'Kyzeel',   'room',     False),
+            ('Mehul Rathod',     '256', '6353451489', 'Kyzeel',   'floor',    False),
+            ('Rajesh',           '104', '7046510026', 'Kyzeel',   'washroom', False),
+            ('Mehul Jadeja',     '106', '7096229284', 'Kyzeel',   'washroom', False),
 
-            # -- HOSTEL COMMON AREA -----------------------------------------
-            ('Yogeshbhai Kantibhai Vaghela', '80', '9998100804', 'Hostel Common Area', 'room', False),
-            ('Solanki Vinayak', '240', '9023271834', 'Hostel Common Area', 'washroom', False),
-            ('Thakor Anilkumar Naginji', '542', '9265665289', 'Hostel Common Area', 'floor', False),
-            ('Suresh', '', '', 'Hostel Common Area', 'floor', False),
-            ('Krunal', '', '', 'Hostel Common Area', 'floor', False),
-            ('Gurjar Ketan Amrutbhai', '100', '8347139138', 'Hostel Common Area', 'reliever', True),
+            # â”€â”€ COMMON AREA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Yogesh Vaghela',   '80',  '9998100804', 'Hostel Common Area', 'room',    False),
+            ('Vinayak Solanki',  '240', '9023271834', 'Hostel Common Area', 'washroom', False),
+            ('Anil Thakur',      '542', '9265665289', 'Hostel Common Area', 'floor',   False),
+            ('Suresh',           '',    '',            'Hostel Common Area', 'floor',   False),
+            ('Krunal',           '',    '',            'Hostel Common Area', 'floor',   False),
+            ('Ketan Gujjar',     '100', '8347139138', 'Hostel Common Area', 'reliever', True),
 
-            # -- RESEARCH PARK -----------------------------------------------
-            ('Mahesh Solanki', '267', '7046959603', 'Research Park', 'floor', False),
-            ('Ajay Thakor', '', '8780940745', 'Research Park', 'floor', False),
-            ('Shailesh Vaghela', '', '7284950619', 'Research Park', 'room', False),
-            ('Vaghela Dharmishtha Ben', '264', '9328002335', 'Research Park', 'washroom', False),
+            # â”€â”€ RESEARCH PARK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Mahesh Solanki',     '', '7046959603', 'Research Park', 'floor',    False),
+            ('Ajay Thakor',        '', '8780940745', 'Research Park', 'floor',    False),
+            ('Shailesh Vaghela',   '', '7284950619', 'Research Park', 'room',     False),
+            ('Dharmishtaben',      '', '9328002335', 'Research Park', 'washroom', False),
 
-            # -- CENTRAL ARCADE ----------------------------------------------
-            ('Vijay Parmar', '', '9824347940', 'Central Arcade', 'floor', False),
-            ('Bhavnaben', '', '7041174657', 'Central Arcade', 'room', False),
-            ('Ramesh Parmar', '', '7203906051', 'Central Arcade', 'washroom', False),
-            ('Hasmukh Solanki', '', '9727858924', 'Central Arcade', 'general', False),
+            # â”€â”€ CENTRAL ARCADE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Vijay Parmar',       '', '9824347940', 'Central Arcade', 'floor',    False),
+            ('Bhavnaben',          '', '7041174657', 'Central Arcade', 'room',     False),
+            ('Ramesh Parmar',      '', '7203906051', 'Central Arcade', 'washroom', False),
+            ('Hasmukh Solanki',    '', '9727858924', 'Central Arcade', 'general',  False),
 
-            # -- SPORTS COMPLEX ----------------------------------------------
-            ('Solanki Anitaben Rameshbhai', '385', '8401679845', 'Sports Complex', 'floor', False),
-            ('Retuben Solanki', '', '6356838847', 'Sports Complex', 'room', False),
-            ('Vaghela Uttambhai', '428', '6353089004', 'Sports Complex', 'room', False),
-            ('Sohilkumar Vaghela', '257', '9904962725', 'Sports Complex', 'washroom', False),
-            ('Vaghela Rahulkumar Jasubhai', '337', '8734964743', 'Sports Complex', 'washroom', False),
-            ('Rajendra Amathabhai Chavda', '354', '9016476894', 'Sports Complex', 'floor', False),
-            ('Axaykumar Rameshbhai Parmar', '414', '9265622322', 'Sports Complex', 'floor', False),
-            ('Jaydip Dineshbhai Vaghela', '447', '7487803489', 'Sports Complex', 'reliever', True),
-            ('Vaghela Chirag Mohanbhai', '303', '7698612980', 'Sports Complex', 'general', False),
-            ('Harsh', '', '7486922273', 'Sports Complex', 'general', False),
-            ('Makwana Nikhil', '364', '7572829754', 'Sports Complex', 'general', False),
-            ('Ramesh Sports', '', '9904319434', 'Sports Complex', 'general', False),
+            # â”€â”€ SPORTS COMPLEX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            ('Anita Solanki',      '', '8401679845', 'Sports Complex', 'floor',    False),
+            ('Retuben Solanki',    '', '6356838847', 'Sports Complex', 'room',     False),
+            ('Uttam Vaghela',      '', '6353089004', 'Sports Complex', 'room',     False),
+            ('Sohil Vaghela',      '', '9904962725', 'Sports Complex', 'washroom', False),
+            ('Rahul Vaghela',      '', '8734964743', 'Sports Complex', 'washroom', False),
+            ('Rajendra Chavda',    '', '9016476894', 'Sports Complex', 'floor',    False),
+            ('Akshay Parmar',      '', '9265622322', 'Sports Complex', 'floor',    False),
+            ('Jaydeep Vaghela',    '', '7487803489', 'Sports Complex', 'reliever', True),
+            ('Chirag Vaghela',     '', '7698612980', 'Sports Complex', 'general',  False),
+            ('Harsh',              '', '7486922273', 'Sports Complex', 'general',  False),
+            ('Nikhil',             '', '7572829754', 'Sports Complex', 'general',  False),
+            ('Ramesh Sports',      '', '9904319434', 'Sports Complex', 'general',  False),
 
-            # -- GUEST HOUSE NEW ---------------------------------------------
-            ('Pankajkumar Kantibhai Chamar', '393', '', 'Guest House New', 'floor', False),
-            ('Hitesh Kumar Vaghela', '123', '', 'Guest House New', 'washroom', False),
-            ('Jadeja Dhavalkumar Kantibhai', '248', '', 'Guest House New', 'room', False),
-            ('Purbiya Ajay Harshadbhai', '284', '', 'Guest House New', 'room', False),
-            ('Sumit Solanki', '451', '', 'Guest House New', 'room', False),
-            ('Raval Shaileshbhai Ishvarbhai', '306', '', 'Guest House New', 'washroom', False),
-            ('Vaghela Sanjaykumar Babubhai', '304', '', 'Guest House New', 'washroom', False),
-            ('Anilkumar Bhupatji Thakor', '269', '', 'Guest House New', 'general', False),
-            ('Paramar Gautamkumar', '403', '', 'Guest House New', 'floor', False),
-            ('Lalitbhai Parmar', '319', '', 'Guest House New', 'reliever', True),
-            ('Makvana Rajubhai Manabhai', '263', '', 'Guest House New', 'reliever', True),
+            # Guest House New
+            ('Pankaj Parmar',      '', '', 'Guest House New', 'floor',    False),
+            ('Hitesh Vaghela',     '', '', 'Guest House New', 'washroom', False),
+            ('Dhaval Jadeja',      '', '', 'Guest House New', 'room',     False),
+            ('Ajay Purabiya',      '', '', 'Guest House New', 'room',     False),
+            ('Sumit Solanki',      '', '', 'Guest House New', 'room',     False),
+            ('Shailesh Ravel',     '', '', 'Guest House New', 'washroom', False),
+            ('Sanjay Vaghela',     '', '', 'Guest House New', 'washroom', False),
+            ('Anil Thakor',        '', '', 'Guest House New', 'general',  False),
+            ('Gautam Parmar',      '', '', 'Guest House New', 'floor',    False),
+            ('Raju Chamar',        '', '', 'Guest House New', 'reliever', True),
+            ('Lalit Parmar',       '', '', 'Guest House New', 'reliever', True),
 
-            # -- OLD GUEST HOUSE ---------------------------------------------
-            ('Mukesh Kumar Parmar', '392', '7096432339', 'Old Guest House', 'floor', False),
-            ('Chauhan Rajeshkumar Ranchhodji', '338', '9674629886', 'Old Guest House', 'room', False),
+            # Old Guest House
+            ('Mukesh Parmar',      '', '7096432339', 'Old Guest House', 'floor', False),
+            ('Rajesh Chauhan',     '', '9674629886', 'Old Guest House', 'room',  False),
 
-            # -- DIRECTOR BUNGALOW -------------------------------------------
-            ('Parmar Rakeshkumar Ishvarbhai', '305', '', 'Director Bungalow', 'general', False),
-            ('Vaghela Shaileshkumar', '266', '', 'Director Bungalow', 'general', False),
+            # Director Bungalow
+            ('Shailesh Vaghela',   '', '', 'Director Bungalow', 'general', False),
+            ('Rakesh Parmar',      '', '', 'Director Bungalow', 'general', False),
 
-            # -- ROADS & OUTDOOR ---------------------------------------------
-            ('Thakor Prakashkumar', '534', '6355540093', 'Roads & Outdoor', 'road', False),
-            ('Kanji Thakor', '', '8347418371', 'Roads & Outdoor', 'road', False),
-            ('Ashokbhai Thakor', '', '9054841766', 'Roads & Outdoor', 'road', False),
-            ('Rohit Thakor', '', '8320831295', 'Roads & Outdoor', 'road', False),
-            ('Mahesh Raval', '', '7698588092', 'Roads & Outdoor', 'road', False),
-            ('Thakor Chirag', '464', '7041456600', 'Roads & Outdoor', 'road', False),
-            ('Satish Vaghela', '', '8160402819', 'Roads & Outdoor', 'road', False),
+            # Roads & Outdoor
+            ('Prakash Thakor',     '', '6355540093', 'Roads & Outdoor', 'road', False),
+            ('Kanji Thakor',       '', '8347418371', 'Roads & Outdoor', 'road', False),
+            ('Ashokbhai Thakor',   '', '9054841766', 'Roads & Outdoor', 'road', False),
+            ('Rohit Thakor',       '', '8320831295', 'Roads & Outdoor', 'road', False),
+            ('Mahesh Raval',       '', '7698588092', 'Roads & Outdoor', 'road', False),
+            ('Chirag Thakor',      '', '7041456600', 'Roads & Outdoor', 'road', False),
+            ('Satish Vaghela',     '', '8160402819', 'Roads & Outdoor', 'road', False),
 
-            # -- SOLID WASTE MANAGEMENT --------------------------------------
-            ('Salesh Bhai Thakur', '', '9723045094', 'Solid Waste Management', 'swm', False),
-            ('Satish Bhai Raval', '', '9157865695', 'Solid Waste Management', 'swm', False),
-            ('Jitendra Bhai Thakur', '', '8780211472', 'Solid Waste Management', 'swm', False),
-            ('Naveenbhai Chauhan', '', '9737949563', 'Solid Waste Management', 'swm', False),
-            ('Rajnibhai Parmar', '', '8758216753', 'Solid Waste Management', 'swm', False),
-            ('Dineshbhai Purohit', '', '6351446589', 'Solid Waste Management', 'swm', False),
-            ('Baldevbhai Vaghela', '', '9558464772', 'Solid Waste Management', 'swm', False),
-            ('Saleshbhai Vaghela', '', '6351150573', 'Solid Waste Management', 'swm', False),
-            ('Kanti Bhai Thakur', '', '9924375528', 'Solid Waste Management', 'swm', False),
+            # SWM (Solid Waste Management) - Biogas workers intentionally excluded
+            ('Salesh bhai Thakur',    '', '9723045094', 'Solid Waste Management', 'swm', False),
+            ('Satish bhai Raval',     '', '9157865695', 'Solid Waste Management', 'swm', False),
+            ('Jitendra bhai Thakur',  '', '8780211472', 'Solid Waste Management', 'swm', False),
+            ('Naveenbhai Chauhan',    '', '9737949563', 'Solid Waste Management', 'swm', False),
+            ('Rajnibhai Parmar',      '', '8758216753', 'Solid Waste Management', 'swm', False),
+            ('Dineshbhai Purohit',    '', '6351446589', 'Solid Waste Management', 'swm', False),
+            ('Baldevbhai Vaghela',    '', '9558464772', 'Solid Waste Management', 'swm', False),
+            ('Saleshbhai Vaghela',    '', '6351150573', 'Solid Waste Management', 'swm', False),
+            ('Kanti bhai Thakur',     '', '9924375528', 'Solid Waste Management', 'swm', False),
 
-            # -- HOSTELS RELIEVER --------------------------------------------
-            ('Dipikaben Hasamukhbhai Parmar', '418', '7383512108', 'Hostels Reliever', 'reliever', True),
-            ('Mittalben Vaghela', '386', '7383619204', 'Hostels Reliever', 'reliever', True),
-            ('Parmar Vinay Valjibhai', '136', '8758388061', 'Hostels Reliever', 'reliever', True),
-            ('Lalabhai Khodabhai Mesariya', '154', '9726303104', 'Hostels Reliever', 'reliever', True),
-            ('Gurjar Hashamukhbhai M', '75', '9714466201', 'Hostels Reliever', 'reliever', True),
-            ('Babariya Umesh', '435', '9313230372', 'Hostels Reliever', 'reliever', True),
-            ('Rajendrabhai Chandubhai Vaghela', '121', '9924301124', 'Hostels Reliever', 'reliever', True),
-            ('Dhiraj Solanki', '131', '9979030157', 'Hostels Reliever', 'reliever', True),
-            ('Solanki Mayur Jashubhai', '258', '9099743600', 'Hostels Reliever', 'reliever', True),
+            # Academic Blocks 01-13 + Academic Common Area + New AB U-Shape + New Academy
+            ('Minaben',             '', '', 'Academic Block 1', 'floor',    False),
+            ('Rajnibhai',           '', '', 'Academic Block 2', 'floor',    False),
+            ('Krunal',              '', '', 'Academic Block 3', 'floor',    False),
+            ('Rakeshbhai',          '', '', 'Academic Block 3', 'room',     False),
+            ('Varshaben',           '', '', 'Academic Block 4', 'washroom', False),
+            ('Harshad',             '', '', 'Academic Block 4', 'room',     False),
+            ('Dinesh',              '', '', 'Academic Block 5', 'floor',    False),
+            ('Anjanaben',           '', '', 'Academic Block 5', 'washroom', False),
+            ('Shaileshbhai',        '', '', 'Academic Block 5', 'room',     False),
+            ('Nilamben',            '', '', 'Academic Block 6', 'washroom', False),
+            ('Ashok',               '', '', 'Academic Block 6', 'floor',    False),
+            ('Hiten',               '', '', 'Academic Block 6', 'room',     False),
+            ('Chandrikaben',        '', '', 'Academic Block 7', 'washroom', False),
+            ('Nikhil',              '', '', 'Academic Block 7', 'floor',    False),
+            ('Academic Reliever',   '', '', 'Academic Block 8', 'general',  False),
+            ('Jay',                 '', '', 'Academic Block 9', 'room',     False),
+            ('Padmaben Vaghela',    '', '', 'Academic Block 10', 'washroom', False),
+            ('Hitesh Solanki',      '', '', 'Academic Block 10', 'room',     False),
+            ('Parth Solanki',       '', '', 'Academic Block 10', 'floor',    False),
+            ('Sunil Makwana',       '', '', 'Academic Block 11', 'floor',    False),
+            ('Elesh',               '', '', 'Academic Block 11', 'room',     False),
+            ('Sangeetaben Patel',   '', '', 'Academic Block 11', 'washroom', False),
+            ('Bharat Solanki',      '', '', 'Academic Block 11', 'room',     False),
+            ('Kailashbhai Parmar',  '', '', 'Academic Block 12', 'washroom', False),
+            ('Gautam Vaghela',      '', '', 'Academic Block 12', 'floor',    False),
+            ('Devendra',            '', '', 'Academic Block 12', 'room',     False),
+            ('Jignesh Solanki',     '', '', 'Academic Block 13', 'washroom', False),
+            ('Kunal Parmar',        '', '', 'Academic Block 13', 'room',     False),
+            ('Mahesh Vaghela',      '', '', 'Academic Block 13', 'floor',    False),
+            ('Ajay Rathod',         '', '', 'Academic Block 13', 'room',     False),
+            ('Bharat Solanki',      '', '', 'Academic Block 13', 'room',     False),
+            ('Bhavesh',             '', '', 'Academic Common Area', 'floor', False),
+            ('Nikhil',              '', '', 'Academic Common Area', 'floor', False),
+            ('Akshay Vaghela',      '', '', 'New AB U-Shape', 'floor', False),
+            ('Jitendra Vasudev',    '', '', 'New Academy', 'floor', False),
+
+            # Relievers substitute for permanent workers when they take leave.
+            # They are managed in a dedicated hostel reliever pool area.
+            ('Deepika Ben',      '418', '7383512108', 'Hostels Reliever', 'reliever', True),
+            ('Mital Ben',        '386', '7383619204', 'Hostels Reliever', 'reliever', True),
+            ('Vinay',            '136', '8758388061', 'Hostels Reliever', 'reliever', True),
+            ('Lala',             '154', '9726303104', 'Hostels Reliever', 'reliever', True),
+            ('Hasmukhbhai',      '75',  '9714466201', 'Hostels Reliever', 'reliever', True),
+            ('Umesh Babariya',   '435', '9313230372', 'Hostels Reliever', 'reliever', True),
+            # RAHUL FIX
+            ('Rajendra',         '121', '9924301124', 'Hostels Reliever', 'reliever', True),
+            ('Dhiraj',           '131', '9979030157', 'Hostels Reliever', 'reliever', True),
+            ('Mayur',            '258', '9099743600', 'Hostels Reliever', 'reliever', True),
         ]
 
         # Backward-compatibility: move relievers to dedicated hostel reliever area.
         reliever_names = [
-            'Dipikaben Hasamukhbhai Parmar', 'Mittalben Vaghela', 'Parmar Vinay Valjibhai',
-            'Lalabhai Khodabhai Mesariya', 'Gurjar Hashamukhbhai M',
-            'Babariya Umesh', 'Rajendrabhai Chandubhai Vaghela', 'Dhiraj Solanki', 'Solanki Mayur Jashubhai',
+            'Deepika Ben', 'Mital Ben', 'Vinay', 'Lala', 'Hasmukhbhai',
+            'Umesh Babariya', 'Rajendra', 'Dhiraj', 'Mayur',
         ]
         HKWorker.objects.filter(
             name__in=reliever_names,
@@ -447,13 +481,13 @@ All accounts use password: {DEFAULT_PASSWORD}
         ).update(area=self.area('Hostels Reliever'))
 
         created_count = 0
-        for name, pay_code, phone, area_name, wtype, is_reliever in workers:
+        for name, punching_no, phone, area_name, wtype, is_reliever in workers:
             area = self.area(area_name) if area_name else None
             worker, created = HKWorker.objects.get_or_create(
                 name=name,
                 area=area,
                 defaults={
-                    'pay_code': pay_code,
+                    'punching_no': punching_no,
                     'phone': phone,
                     'worker_type': wtype,
                     'shift': 'day',
@@ -464,27 +498,27 @@ All accounts use password: {DEFAULT_PASSWORD}
             if created:
                 created_count += 1
             else:
-                # Update phone/pay code if changed
-                worker.pay_code = pay_code
+                # Update phone/punching if changed
+                worker.punching_no = punching_no
                 worker.phone = phone
                 worker.worker_type = wtype
                 worker.is_reliever = is_reliever
                 worker.shift = worker.shift or 'day'
                 worker.is_active = True
                 worker.save(update_fields=[
-                    'pay_code', 'phone', 'worker_type',
+                    'punching_no', 'phone', 'worker_type',
                     'is_reliever', 'shift', 'is_active',
                 ])
 
         # Common Area staffing details
         common_supervisor = User.objects.filter(username='vishwajeet').first()
         common_shift_map = {
-            'Solanki Vinayak': 'night',
-            'Thakor Anilkumar Naginji': 'day',
+            'Vinayak Solanki': 'night',
+            'Anil Thakur': 'day',
             'Suresh': 'day',
             'Krunal': 'day',
-            'Yogeshbhai Kantibhai Vaghela': 'day',
-            'Gurjar Ketan Amrutbhai': 'day',
+            'Yogesh Vaghela': 'day',
+            'Ketan Gujjar': 'day',
         }
         for worker_name, shift in common_shift_map.items():
             worker = HKWorker.objects.filter(name=worker_name, area=self.area('Hostel Common Area')).first()
@@ -494,12 +528,12 @@ All accounts use password: {DEFAULT_PASSWORD}
                 worker.save(update_fields=['shift', 'supervisor'])
 
         # Research Park staffing details
-        research_supervisor = User.objects.filter(username='maulik').first()
+        research_supervisor = User.objects.filter(username='maulik.patel').first()
         research_shift_map = {
             'Mahesh Solanki': 'day',
             'Ajay Thakor': 'day',
             'Shailesh Vaghela': 'day',
-            'Vaghela Dharmishtha Ben': 'day',
+            'Dharmishtaben': 'day',
         }
         for worker_name, shift in research_shift_map.items():
             worker = HKWorker.objects.filter(name=worker_name, area=self.area('Research Park')).first()
@@ -509,7 +543,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                 worker.save(update_fields=['shift', 'supervisor'])
 
         # Central Arcade staffing details
-        bharat_supervisor = User.objects.filter(username='bharat').first()
+        bharat_supervisor = User.objects.filter(username='bharat.solanki').first()
         central_shift_map = {
             'Vijay Parmar': 'day',
             'Bhavnaben': 'day',
@@ -525,17 +559,17 @@ All accounts use password: {DEFAULT_PASSWORD}
 
         # Sports Complex staffing details
         sports_shift_map = {
-            'Solanki Anitaben Rameshbhai': 'day',
+            'Anita Solanki': 'day',
             'Retuben Solanki': 'day',
-            'Vaghela Uttambhai': 'day',
-            'Sohilkumar Vaghela': 'evening',
-            'Vaghela Rahulkumar Jasubhai': 'evening',
-            'Rajendra Amathabhai Chavda': 'evening',
-            'Axaykumar Rameshbhai Parmar': 'evening',
-            'Jaydip Dineshbhai Vaghela': 'day',
-            'Vaghela Chirag Mohanbhai': 'day',
+            'Uttam Vaghela': 'day',
+            'Sohil Vaghela': 'evening',
+            'Rahul Vaghela': 'evening',
+            'Rajendra Chavda': 'evening',
+            'Akshay Parmar': 'evening',
+            'Jaydeep Vaghela': 'day',
+            'Chirag Vaghela': 'day',
             'Harsh': 'day',
-            'Makwana Nikhil': 'day',
+            'Nikhil': 'day',
             'Ramesh Sports': 'day',
         }
         for worker_name, shift in sports_shift_map.items():
@@ -547,19 +581,19 @@ All accounts use password: {DEFAULT_PASSWORD}
 
         # Guest House New + Old Guest House + Director Bungalow staffing details
         ashok_supervisor = User.objects.filter(username='ashok.rathod').first()
-        narendra_supervisor = User.objects.filter(username='narendra').first()
+        narendra_supervisor = User.objects.filter(username='narendra.shreemali').first()
         guest_house_shift_map = {
-            'Pankajkumar Kantibhai Chamar': 'day',
-            'Hitesh Kumar Vaghela': 'day',
-            'Jadeja Dhavalkumar Kantibhai': 'day',
-            'Purbiya Ajay Harshadbhai': 'day',
+            'Pankaj Parmar': 'day',
+            'Hitesh Vaghela': 'day',
+            'Dhaval Jadeja': 'day',
+            'Ajay Purabiya': 'day',
             'Sumit Solanki': 'day',
-            'Raval Shaileshbhai Ishvarbhai': 'evening',
-            'Vaghela Sanjaykumar Babubhai': 'evening',
-            'Anilkumar Bhupatji Thakor': 'night',
-            'Paramar Gautamkumar': 'day',
-            'Makvana Rajubhai Manabhai': 'day',
-            'Lalitbhai Parmar': 'day',
+            'Shailesh Ravel': 'evening',
+            'Sanjay Vaghela': 'evening',
+            'Anil Thakor': 'night',
+            'Gautam Parmar': 'day',
+            'Raju Chamar': 'day',
+            'Lalit Parmar': 'day',
         }
         for worker_name, shift in guest_house_shift_map.items():
             worker = HKWorker.objects.filter(name=worker_name, area=self.area('Guest House New')).first()
@@ -569,8 +603,8 @@ All accounts use password: {DEFAULT_PASSWORD}
                 worker.save(update_fields=['shift', 'supervisor'])
 
         old_guest_shift_map = {
-            'Mukesh Kumar Parmar': 'day',
-            'Chauhan Rajeshkumar Ranchhodji': 'day',
+            'Mukesh Parmar': 'day',
+            'Rajesh Chauhan': 'day',
         }
         for worker_name, shift in old_guest_shift_map.items():
             worker = HKWorker.objects.filter(name=worker_name, area=self.area('Old Guest House')).first()
@@ -580,8 +614,8 @@ All accounts use password: {DEFAULT_PASSWORD}
                 worker.save(update_fields=['shift', 'supervisor'])
 
         director_shift_map = {
-            'Vaghela Shaileshkumar': 'day',
-            'Parmar Rakeshkumar Ishvarbhai': 'day',
+            'Shailesh Vaghela': 'day',
+            'Rakesh Parmar': 'day',
         }
         for worker_name, shift in director_shift_map.items():
             worker = HKWorker.objects.filter(name=worker_name, area=self.area('Director Bungalow')).first()
@@ -591,14 +625,14 @@ All accounts use password: {DEFAULT_PASSWORD}
                 worker.save(update_fields=['shift', 'supervisor'])
 
         # Roads & Outdoor staffing details
-        roads_supervisor = User.objects.filter(username='narendra').first()
+        roads_supervisor = User.objects.filter(username='narendra.shreemali').first()
         roads_shift_map = {
-            'Thakor Prakashkumar': 'day',
+            'Prakash Thakor': 'day',
             'Kanji Thakor': 'day',
             'Ashokbhai Thakor': 'day',
             'Rohit Thakor': 'day',
             'Mahesh Raval': 'day',
-            'Thakor Chirag': 'day',
+            'Chirag Thakor': 'day',
             'Satish Vaghela': 'day',
         }
         for worker_name, shift in roads_shift_map.items():
@@ -611,15 +645,15 @@ All accounts use password: {DEFAULT_PASSWORD}
         # SWM staffing details
         swm_supervisor = User.objects.filter(username='pradip.swm').first()
         swm_shift_map = {
-            'Salesh Bhai Thakur': 'day',
-            'Satish Bhai Raval': 'day',
-            'Jitendra Bhai Thakur': 'day',
+            'Salesh bhai Thakur': 'day',
+            'Satish bhai Raval': 'day',
+            'Jitendra bhai Thakur': 'day',
             'Naveenbhai Chauhan': 'day',
             'Rajnibhai Parmar': 'day',
             'Dineshbhai Purohit': 'day',
             'Baldevbhai Vaghela': 'day',
             'Saleshbhai Vaghela': 'day',
-            'Kanti Bhai Thakur': 'day',
+            'Kanti bhai Thakur': 'day',
         }
         for worker_name, shift in swm_shift_map.items():
             worker = HKWorker.objects.filter(name=worker_name, area=self.area('Solid Waste Management')).first()
@@ -630,22 +664,22 @@ All accounts use password: {DEFAULT_PASSWORD}
 
         # Academic blocks staffing details
         academic_supervisor_by_area = {
-            'Academic Block 1': 'mukesh',
-            'Academic Block 2': 'mukesh',
-            'Academic Block 3': 'bipin',
-            'Academic Block 4': 'bipin',
-            'Academic Block 5': 'mukesh',
-            'Academic Block 6': 'mukesh',
-            'Academic Block 7': 'bipin',
-            'Academic Block 8': 'mukesh',
-            'Academic Block 9': 'bipin',
-            'Academic Block 10': 'shailesh',
-            'Academic Block 11': 'shailesh',
-            'Academic Block 12': 'kaushik',
-            'Academic Block 13': 'kaushik',
-            'Academic Common Area': 'bipin',
-            'New AB U-Shape': 'shailesh',
-            'New Academy': 'kaushik',
+            'Academic Block 1': 'mukesh.vaghela',
+            'Academic Block 2': 'mukesh.vaghela',
+            'Academic Block 3': 'bipin.vaghela',
+            'Academic Block 4': 'bipin.vaghela',
+            'Academic Block 5': 'mukesh.vaghela',
+            'Academic Block 6': 'mukesh.vaghela',
+            'Academic Block 7': 'bipin.vaghela',
+            'Academic Block 8': 'mukesh.vaghela',
+            'Academic Block 9': 'bipin.vaghela',
+            'Academic Block 10': 'shailesh.prajapati',
+            'Academic Block 11': 'shailesh.prajapati',
+            'Academic Block 12': 'kaushik.parmar',
+            'Academic Block 13': 'kaushik.parmar',
+            'Academic Common Area': 'bipin.vaghela',
+            'New AB U-Shape': 'shailesh.prajapati',
+            'New Academy': 'kaushik.parmar',
         }
         for area_name, supervisor_username in academic_supervisor_by_area.items():
             supervisor = User.objects.filter(username=supervisor_username).first()
@@ -658,7 +692,7 @@ All accounts use password: {DEFAULT_PASSWORD}
 
         self.stdout.write(f'  [OK] Workers: {HKWorker.objects.count()} ({created_count} new)')
 
-    
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def seed_schedules(self):
         """
@@ -680,21 +714,23 @@ All accounts use password: {DEFAULT_PASSWORD}
         # Delete existing templates for these areas
         HKScheduleTemplate.objects.filter(area__in=hostel_areas).delete()
 
+        # â”€â”€ ROOM STAFF SCHEDULE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         room_tasks = [
             # (order, start, end, task_name, requires_photo, description)
             (1,  '08:10', '08:45', '2nd Floor Washroom Touch Up',         False, ''),
             (2,  '08:45', '09:00', 'Staircase Cleaning',                   False, ''),
-            (3,  '09:00', '09:30', 'Room Cleaning Ã¢â‚¬â€ 5 rooms',              True,  'First round of room cleaning'),
+            (3,  '09:00', '09:30', 'Room Cleaning â€” 5 rooms',              True,  'First round of room cleaning'),
             (4,  '09:30', '09:45', 'Tea Break',                            False, ''),
             (5,  '09:45', '10:00', 'Outside Round',                        False, ''),
-            (6,  '10:00', '12:00', 'Room Round Ã¢â‚¬â€ 15 rooms',                True,  'Main room cleaning round'),
-            (7,  '12:00', '13:00', 'Pantry Cleaning Ã¢â‚¬â€ 4 pantries',         True,  ''),
+            (6,  '10:00', '12:00', 'Room Round â€” 15 rooms',                True,  'Main room cleaning round'),
+            (7,  '12:00', '13:00', 'Pantry Cleaning â€” 4 pantries',         True,  ''),
             (8,  '13:00', '13:45', 'Lunch Break',                          False, ''),
             (9,  '13:45', '14:00', 'Paper Cutting / Admin Work',           False, ''),
-            (10, '14:00', '16:00', 'Room & Extra Work Ã¢â‚¬â€ 10 rooms',         True,  'Afternoon room round'),
+            (10, '14:00', '16:00', 'Room & Extra Work â€” 10 rooms',         True,  'Afternoon room round'),
             (11, '16:00', '16:50', 'Common Cleaning & Pantry Round',       False, ''),
         ]
 
+        # â”€â”€ FLOOR STAFF SCHEDULE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         floor_tasks = [
             (1,  '08:10', '08:45', '3rd Floor Washroom Touch Up',          False, ''),
             (2,  '08:45', '09:30', 'Ground Floor Dry Mop',                 False, ''),
@@ -709,13 +745,14 @@ All accounts use password: {DEFAULT_PASSWORD}
             (11, '16:20', '16:50', 'Ground Floor Cleaning',                False, ''),
         ]
 
+        # â”€â”€ WASHROOM STAFF SCHEDULE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         washroom_tasks = [
             (1,  '08:10', '08:45', '1st Floor Washroom Touch Up',          False, ''),
             (2,  '08:45', '09:30', 'Ground Floor Washroom Touch Up',       False, ''),
             (3,  '09:30', '09:45', 'Tea Break',                            False, ''),
             (4,  '09:45', '10:00', 'Staircase Cleaning',                   False, ''),
-            (5,  '10:00', '12:00', '3rd Floor Ã¢â‚¬â€ 2 Washroom Deep Cleaning', True,  ''),
-            (6,  '12:00', '13:00', '2nd Floor Ã¢â‚¬â€ 2 Washroom Cleaning',      True,  ''),
+            (5,  '10:00', '12:00', '3rd Floor â€” 2 Washroom Deep Cleaning', True,  ''),
+            (6,  '12:00', '13:00', '2nd Floor â€” 2 Washroom Cleaning',      True,  ''),
             (7,  '13:00', '13:45', 'Lunch Break',                          False, ''),
             (8,  '13:45', '14:00', 'Paper Cutting',                        False, ''),
             (9,  '14:00', '15:00', '6 Washroom Rounds Touch Up',           False, ''),
@@ -723,9 +760,9 @@ All accounts use password: {DEFAULT_PASSWORD}
             (11, '16:00', '16:50', 'All Washroom Touch Up & Final Round',  True,  ''),
         ]
 
-        # SUNDAY EXTRAS (same for all hostels)
+        # â”€â”€ SUNDAY EXTRAS (same for all hostels) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         sunday_tasks = [
-            (1, '08:10', '09:00', 'Dustbin Cleaning Ã¢â‚¬â€ All Floors',         True,  'Every Sunday'),
+            (1, '08:10', '09:00', 'Dustbin Cleaning â€” All Floors',         True,  'Every Sunday'),
             (2, '09:00', '10:30', 'Terrace Cleaning',                      True,  'Every Sunday'),
             (3, '10:30', '12:00', 'Fridge Cleaning (Every 15 Days)',        True,  'Check with caretaker if due today'),
             (4, '13:00', '14:00', 'Lunch Break',                           False, ''),
@@ -1775,5 +1812,4 @@ All accounts use password: {DEFAULT_PASSWORD}
             f'  [OK] Schedule templates: {total} '
             '(hostels + common area + research park + central arcade + sports complex + guest house + director bungalow + roads + swm + academic blocks)'
         )
-
 

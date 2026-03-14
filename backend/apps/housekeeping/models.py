@@ -57,7 +57,7 @@ class HKWorker(models.Model):
     ]
     name = models.CharField(max_length=100)
     phone = models.CharField(max_length=20, blank=True)
-    pay_code = models.CharField(max_length=20, blank=True)
+    punching_no = models.CharField(max_length=20, blank=True)
     worker_type = models.CharField(max_length=20, choices=WORKER_TYPE_CHOICES, default='general')
     shift = models.CharField(max_length=10, choices=SHIFT_CHOICES, default='day')
     area = models.ForeignKey(HKArea, on_delete=models.SET_NULL, null=True, blank=True, related_name='workers')

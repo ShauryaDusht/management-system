@@ -16,7 +16,7 @@
       <div style="font-weight:700;font-size:14px">{{ row.worker.name }}</div>
       <div style="font-size:11px;color:#6b7280">
         📱 {{ row.worker.phone|default:'—' }}
-        {% if row.worker.pay_code %} · #{{ row.worker.pay_code }}{% endif %}
+        {% if row.worker.punching_no %} · #{{ row.worker.punching_no }}{% endif %}
       </div>
       {% if row.substitution %}
       <div style="font-size:11px;background:#fef3c7;color:#92400e;border-radius:5px;
@@ -60,7 +60,7 @@
           <option value="">— Choose reliever —</option>
           {% for rel in all_relievers %}
           <option value="{{ rel.id }}">
-            {{ rel.name }}{% if rel.phone %} · {{ rel.phone }}{% endif %}{% if rel.pay_code %} #{{ rel.pay_code }}{% endif %}
+            {{ rel.name }}{% if rel.phone %} · {{ rel.phone }}{% endif %}{% if rel.punching_no %} #{{ rel.punching_no }}{% endif %}
           </option>
           {% endfor %}
         </select>
@@ -97,7 +97,7 @@
     <div style="font-size:14px;font-weight:700;margin-top:3px">{{ row.substitution.reliever.name }}</div>
     <div style="font-size:11px;color:#6b7280">
       📱 {{ row.substitution.reliever.phone|default:'—' }}
-      {% if row.substitution.reliever.pay_code %} · #{{ row.substitution.reliever.pay_code }}{% endif %}
+      {% if row.substitution.reliever.punching_no %} · #{{ row.substitution.reliever.punching_no }}{% endif %}
     </div>
     {% if row.substitution.note %}
     <div style="font-size:11px;color:#374151;margin-top:3px">📝 {{ row.substitution.note }}</div>

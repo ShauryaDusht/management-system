@@ -68,7 +68,6 @@ export default function SectionsTab() {
           assignedTo: '-',
           role: '-',
           username: '-',
-          payCode: '-',
           phone: '-',
           isActive: false,
         })
@@ -87,7 +86,6 @@ export default function SectionsTab() {
           assignedTo: displayName,
           role: u.role,
           username: u.username,
-          payCode: u.pay_code || '-',
           phone: u.phone || '-',
           isActive: !!u.is_active,
         })
@@ -225,7 +223,6 @@ export default function SectionsTab() {
           'Area Name',
           'Caretaker / Supervisor',
           'Username',
-          'Pay Code',
           'Phone No',
           'Worker Count',
           'Status',
@@ -235,7 +232,6 @@ export default function SectionsTab() {
           row.areaName,
           row.role === '-' ? '-' : `${row.assignedTo} (${row.role})`,
           row.username,
-          row.payCode,
           row.phone,
           row.workerCount,
           row.role === '-' ? 'Unassigned' : row.isActive ? 'Active' : 'Inactive',
@@ -322,7 +318,6 @@ export default function SectionsTab() {
               'Area Name',
               'Caretaker / Supervisor',
               'Username',
-              'Pay Code',
               'Phone No',
               'Worker Count',
               'Status',
@@ -341,7 +336,6 @@ export default function SectionsTab() {
                   {row.username}
                 </code>
               ),
-              row.payCode,
               row.phone,
               row.workerCount,
               row.role === '-' ? (

@@ -52,7 +52,7 @@ class HKWorkerSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'phone',
-            'pay_code',
+            'punching_no',
             'worker_type',
             'shift',
             'area',
