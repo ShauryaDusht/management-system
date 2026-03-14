@@ -28,6 +28,7 @@ function itemStatus(item) {
 }
 
 const EMPTY_ITEM = {
+  item_code: '',
   name: '',
   category: '',
   item_type: 'consumable',
@@ -90,6 +91,7 @@ export default function ItemsTab({ userRole }) {
     setFormErrors({})
     setEditItem(item)
     setNewItem({
+      item_code: item.item_code || '',
       name: item.name || '',
       category: resolveCategoryId(item),
       item_type: item.item_type || 'consumable',
@@ -172,6 +174,7 @@ export default function ItemsTab({ userRole }) {
     await runAction(async () => {
       const payload = {
         ...newItem,
+        item_code: newItem.item_code || null,
         name: trimmedName,
         total_quantity: Number(newItem.total_quantity || 0),
         available_quantity: Number(newItem.available_quantity || 0),
@@ -292,9 +295,10 @@ export default function ItemsTab({ userRole }) {
           </div>
 
           <DataTable
-            headers={['Name', 'Category', 'Type', 'Available', 'Threshold', 'Status', 'Actions']}
+            headers={['Item Code', 'Name', 'Category', 'Type', 'Available', 'Threshold', 'Unit Price', 'Total Value (₹)', 'Status', 'Actions']}
             loading={loading}
             rows={filtered.map((it) => [
+              it.item_code || '—',
               <div key={`name-${it.id}`}>
                 <div style={{ fontWeight: 600 }}>{it.name}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{it.location || '—'}</div>
@@ -303,6 +307,8 @@ export default function ItemsTab({ userRole }) {
               (it.item_type || '').toUpperCase(),
               `${it.available_quantity} ${it.unit}`,
               `${it.threshold_quantity} ${it.unit}`,
+              it.unit_cost !== null && it.unit_cost !== undefined ? `₹${parseFloat(it.unit_cost).toFixed(2)}` : '—',
+              `₹${parseFloat(it.total_value || 0).toFixed(2)}`,
               <Badge key={`st-${it.id}`} value={itemStatus(it)} />,
               <div key={`act-${it.id}`} style={{ display: 'flex', gap: 6 }}>
                 {canAdmin && (
@@ -418,6 +424,13 @@ export default function ItemsTab({ userRole }) {
         }
       >
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <Field label="Item Code">
+            <Input
+              value={newItem.item_code}
+              onChange={(e) => setNewItem((p) => ({ ...p, item_code: e.target.value }))}
+              placeholder="e.g. 3.01"
+            />
+          </Field>
           <Field label="Name" required>
             <Input
               value={newItem.name}

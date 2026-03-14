@@ -18,6 +18,7 @@ from django.core.files.base import ContentFile
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 CSV_COLUMNS = [
+    ('item_code',        'Item Code'),
     ('item_name',        'Item Name'),
     ('category',         'Category'),
     ('item_type',        'Type'),
@@ -27,6 +28,7 @@ CSV_COLUMNS = [
     ('threshold',        'Threshold'),
     ('recommended_order','Recommended Order'),
     ('unit_cost',        'Unit Cost (₹)'),
+    ('total_cost',       'Total Value (₹)'),
     ('estimated_cost',   'Estimated Cost (₹)'),
     ('status',           'Stock Status'),
 ]
@@ -204,9 +206,10 @@ def export_supervisor_report_csv(snapshot: dict) -> bytes:
 
     # Section 7 - Stock Requests
     writer.writerow(['Stock Requests'])
-    writer.writerow(['Item', 'Quantity', 'Status', 'Urgent', 'Date'])
+    writer.writerow(['Item Code', 'Item', 'Quantity', 'Status', 'Urgent', 'Date'])
     for row in stock_rows:
         writer.writerow([
+            row.get('item_code', ''),
             row.get('item_name', ''),
             row.get('quantity', 0),
             row.get('status', ''),
@@ -247,6 +250,7 @@ def export_consumption_item_csv(snapshot: dict) -> bytes:
     writer.writerow(
         [
             'Item Name',
+            'Item Code',
             'Category',
             'Type',
             'Unit',
@@ -258,15 +262,21 @@ def export_consumption_item_csv(snapshot: dict) -> bytes:
             'Unfinalized',
             'Unit Cost (₹)',
             'Estimated Cost (₹)',
+            'Total Value (₹)',
             'Current Stock',
             'Status',
         ]
     )
 
     for row in item_rows:
+        unit_cost = row.get('unit_cost', 0)
+        current_stock = row.get('current_stock', 0)
+        total_value = float(unit_cost) * float(current_stock) if unit_cost is not None and current_stock is not None else 0
+
         writer.writerow(
             [
                 row.get('item_name', ''),
+                row.get('item_code', ''),
                 row.get('category_name', ''),
                 row.get('item_type', ''),
                 row.get('unit', ''),
@@ -276,8 +286,9 @@ def export_consumption_item_csv(snapshot: dict) -> bytes:
                 row.get('assets_returned', 0),
                 row.get('pending_return', 0),
                 row.get('unfinalized_count', 0),
-                row.get('unit_cost', 0),
-                row.get('estimated_cost', 0),
+                f"{unit_cost:.2f}",
+                f"{row.get('estimated_cost', 0):.2f}",
+                f"{total_value:.2f}",
                 row.get('current_stock', 0),
                 row.get('status', ''),
             ]
@@ -426,18 +437,24 @@ def generate_csv(report) -> str:
 
     # ── data rows ─────────────────────────────────────────────────────────────
     for row in items:
+        unit_cost = row.get('unit_cost', 0)
+        current_stock = row.get('current_stock', 0)
+        total_value = float(unit_cost) * float(current_stock) if unit_cost is not None and current_stock is not None else 0
+
         writer.writerow([
+            row.get('item_code', ''),
             row.get('item_name', ''),
             row.get('category', ''),
-            row.get('item_type', '').capitalize(),
+            row.get('item_type', '').capitalize() if row.get('item_type') else '',
             row.get('unit', ''),
             row.get('consumption', 0),
             row.get('current_stock', 0),
             row.get('threshold', 0),
             row.get('recommended_order', 0),
             f"{row.get('unit_cost', 0):.2f}",
+            f"{total_value:.2f}",
             f"{row.get('estimated_cost', 0):.2f}",
-            row.get('status', '').replace('_', ' ').title(),
+            row.get('status', '').replace('_', ' ').title() if row.get('status') else '',
         ])
 
     csv_bytes = buffer.getvalue().encode('utf-8-sig')   # BOM for Excel compat

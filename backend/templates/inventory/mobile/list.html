@@ -83,7 +83,7 @@
         </span>
       </div>
       <div style="min-width:0">
-        <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.name }}</div>
+        <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }}</div>
         <div style="color:var(--text-secondary);font-size:12px;margin-top:1px">{{ item.category.name }}</div>
         <div style="margin-top:4px">
           {% if item.status == 'out_of_stock' %}

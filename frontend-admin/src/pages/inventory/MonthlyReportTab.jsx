@@ -139,8 +139,9 @@ export default function MonthlyReportTab() {
             <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}><Spinner /></div>
           ) : selected ? (
             <DataTable
-              headers={['Item', 'Category', 'Current', 'Threshold', 'Recommended', 'Est. Cost']}
+              headers={['Item Code', 'Item', 'Category', 'Current', 'Threshold', 'Recommended', 'Est. Cost']}
               rows={(selected.snapshot?.items || []).map((i) => [
+                i.item_code || '—',
                 i.item_name, i.category, i.current_stock, i.threshold,
                 i.recommended_order,
                 `INR ${Number(i.estimated_cost || 0).toFixed(2)}`,

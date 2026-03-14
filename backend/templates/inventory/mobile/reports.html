@@ -86,7 +86,7 @@
 <div class="card" style="margin-bottom:8px;padding:12px 14px">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
     <div style="min-width:0;flex:1">
-      <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.name }}</div>
+      <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }}</div>
       <div style="color:var(--text-secondary);font-size:12px;margin-top:2px">{{ item.category }} &bull; {{ item.type|title }}</div>
     </div>
     <span style="padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;flex-shrink:0;margin-left:8px;

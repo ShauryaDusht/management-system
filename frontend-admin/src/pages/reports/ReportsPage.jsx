@@ -125,8 +125,9 @@ function InventoryReportTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Item', 'Category', 'Type', 'Available', 'Threshold', 'Unit Cost', 'Status']}
+            headers={['Item Code', 'Item', 'Category', 'Type', 'Available', 'Threshold', 'Unit Price', 'Status']}
             rows={items.map((item) => [
+              item.item_code || '—',
               item.name,
               item.category,
               item.type,
@@ -707,8 +708,9 @@ function ConsumptionTab() {
                   </Btn>
                 </div>
                 <DataTable
-                  headers={['Item Name', 'Category', 'Type', 'Stock Added', 'Issued', 'Consumed', 'Est. Cost (₹)', 'Current Stock', 'Status']}
+                  headers={['Item Code', 'Item Name', 'Category', 'Type', 'Stock Added', 'Issued', 'Consumed', 'Total Value (₹)', 'Est. Cost (₹)', 'Current Stock', 'Status']}
                   rows={itemRows.map((row) => [
+                    row.item_code || '—',
                     row.item_name || '-',
                     row.category_name || '-',
                     String(row.item_type || '').replace(/^./, (x) => x.toUpperCase()),

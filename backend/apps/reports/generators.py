@@ -59,6 +59,7 @@ def generate_inventory_report(status_filter=None, item_type_filter=None):
 
         data.append({
             'id': item.id,
+            'item_code': item.item_code,
             'name': item.name,
             'category': item.category.name,
             'type': item.item_type,
@@ -101,6 +102,7 @@ def generate_requests_report(date_from=None, date_to=None):
         data.append({
             'id': req.id,
             'requester': req.requested_by.get_full_name() or req.requested_by.username,
+            'item_code': req.item.item_code,
             'item': req.item.name,
             'quantity': req.quantity_requested,
             'status': req.status,
@@ -188,6 +190,7 @@ def generate_monthly_report(month: int, year: int) -> dict:
 
         rows.append({
             'item_id': item.id,
+            'item_code': item.item_code,
             'item_name': item.name,
             'category': item.category.name,
             'item_type': item.item_type,

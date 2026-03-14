@@ -32,6 +32,7 @@ class Item(models.Model):
         BOXES = 'boxes', 'Boxes'
 
     name = models.CharField(max_length=200)
+    item_code = models.CharField(max_length=50, blank=True, null=True, unique=True, help_text='Unique identifier like 3.01 or 4.11')
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='items')
     item_type = models.CharField(max_length=20, choices=ItemType.choices)
     unit = models.CharField(max_length=20, choices=Unit.choices, default=Unit.PIECES)
@@ -75,7 +76,6 @@ class Item(models.Model):
             })
 
     def save(self, *args, **kwargs):
-        self.full_clean()
         super().save(*args, **kwargs)
 
     @property

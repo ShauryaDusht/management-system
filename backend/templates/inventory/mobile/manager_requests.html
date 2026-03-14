@@ -68,7 +68,7 @@
       </span>
     </div>
     <div style="flex:1;min-width:0">
-      <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ req.item.name }}</div>
+      <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{% if req.item.item_code %}[{{ req.item.item_code }}] {% endif %}{{ req.item.name }}</div>
       <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">
         Requested: <strong>{{ req.quantity_requested }} {{ req.item.unit }}</strong>
         &nbsp;·&nbsp;

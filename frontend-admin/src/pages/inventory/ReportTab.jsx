@@ -50,6 +50,7 @@ export default function ReportTab() {
   const csvRows = useMemo(
     () =>
       items.map((item) => ({
+        'Item Code': item.item_code || '—',
         Item: item.name || '',
         Category: item.category || '',
         Type: item.type || '',
@@ -140,8 +141,9 @@ export default function ReportTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Name', 'Category', 'Type', 'Available', 'Threshold', 'Unit Cost', 'Status']}
+            headers={['Item Code', 'Name', 'Category', 'Type', 'Available', 'Threshold', 'Unit Cost', 'Status']}
             rows={items.map((item) => [
+              item.item_code || '—',
               item.name || '-',
               item.category || '-',
               String(item.type || '').toUpperCase(),

@@ -130,7 +130,7 @@ export default function InsightsPage() {
   const topItemChartData = useMemo(
     () =>
       topItemRows.slice(0, 15).map((row) => ({
-        name: row.item_name,
+        name: row.item_code ? `[${row.item_code}] ${row.item_name}` : row.item_name,
         quantity: Number(row.quantity || 0),
         transactions: Number(row.transactions || 0),
       })),
@@ -266,8 +266,9 @@ export default function InsightsPage() {
 
     exportCsv(
       baseName,
-      ['Item', 'Type', 'Quantity', 'Transactions', 'Area Count', 'Areas'],
+      ['Item Code', 'Item', 'Type', 'Quantity', 'Transactions', 'Area Count', 'Areas'],
       topItemRows.map((r) => [
+        r.item_code || '-',
         r.item_name,
         r.item_type,
         r.quantity || 0,

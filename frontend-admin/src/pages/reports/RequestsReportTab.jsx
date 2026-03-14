@@ -70,9 +70,10 @@ export default function RequestsReportTab() {
               <StatCard label="Rejected" value={report?.rejected || 0} icon="RJ" color="#dc2626" />
             </div>
             <DataTable
-              headers={['Requester', 'Item', 'Qty', 'Status', 'Date', 'Reviewed By']}
+              headers={['Requester', 'Item Code', 'Item', 'Qty', 'Status', 'Date', 'Reviewed By']}
               rows={(report?.requests || []).map((r) => [
                 r.requester,
+                r.item_code || '—',
                 r.item,
                 r.quantity,
                 String(r.status || '').toUpperCase(),

@@ -12,7 +12,7 @@
       <label>Select from Inventory (optional)</label>
       <select name="inventory_item_id" id="inv_sel" onchange="fillItem(this)">
         <option value="">— Choose existing item —</option>
-        {% for item in inv_items %}<option value="{{ item.id }}" data-name="{{ item.name }}" data-unit="{{ item.get_unit_display }}">{{ item.name }} ({{ item.available_quantity }} {{ item.get_unit_display }})</option>{% endfor %}
+        {% for item in inv_items %}<option value="{{ item.id }}" data-name="{{ item.name }}" data-unit="{{ item.get_unit_display }}">{% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} ({{ item.available_quantity }} {{ item.get_unit_display }})</option>{% endfor %}
       </select>
     </div>
     <div class="fg"><label>Required Item *</label><input type="text" name="item_name" id="iname" required placeholder="Item name" value="{{ pre_item }}"></div>

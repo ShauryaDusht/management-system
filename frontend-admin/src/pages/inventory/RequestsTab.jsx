@@ -400,6 +400,7 @@ export default function RequestsTab({ userRole }) {
           loading={loading}
           headers={[
             'Requester',
+            'Item Code',
             'Item',
             'Qty',
             'Available',
@@ -410,6 +411,7 @@ export default function RequestsTab({ userRole }) {
           ]}
           rows={filtered.map((r) => [
             r.requester_name || r.requested_by_name || '—',
+            r.item_code || '—',
             r.item_name || '—',
             `${r.quantity_requested} ${r.item_unit || ''}`,
             `${r.item_available ?? r.units_remaining ?? 0} ${r.item_unit || ''}`,

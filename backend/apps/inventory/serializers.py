@@ -22,30 +22,37 @@ class ItemSerializer(serializers.ModelSerializer):
     status = serializers.ReadOnlyField()
     is_below_threshold = serializers.ReadOnlyField()
     unit_cost_missing = serializers.SerializerMethodField()
+    total_value = serializers.SerializerMethodField()
 
     class Meta:
         model = Item
         fields = [
-            'id', 'name', 'category', 'category_name', 'item_type', 'unit',
+            'id', 'item_code', 'name', 'category', 'category_name', 'item_type', 'unit',
             'total_quantity', 'available_quantity', 'threshold_quantity',
-            'unit_cost', 'unit_cost_missing', 'description', 'location', 'status',
+            'unit_cost', 'total_value', 'unit_cost_missing', 'description', 'location', 'status',
             'is_below_threshold', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'total_value', 'created_at', 'updated_at']
 
     def get_unit_cost_missing(self, obj):
         return obj.unit_cost is None
+
+    def get_total_value(self, obj):
+        if obj.unit_cost is None or obj.total_quantity is None:
+            return 0
+        return float(obj.unit_cost * obj.total_quantity)
 
 
 class StockEntrySerializer(serializers.ModelSerializer):
     added_by_name = serializers.CharField(source='added_by.get_full_name', read_only=True)
     item_name = serializers.CharField(source='item.name', read_only=True)
+    item_code = serializers.CharField(source='item.item_code', read_only=True)
     item_unit = serializers.CharField(source='item.unit', read_only=True)
 
     class Meta:
         model = StockEntry
         fields = [
-            'id', 'item', 'item_name', 'item_unit',
+            'id', 'item', 'item_name', 'item_code', 'item_unit',
             'quantity_added', 'added_by', 'added_by_name',
             'added_at', 'notes',
         ]
@@ -58,6 +65,7 @@ class ItemRequestSerializer(serializers.ModelSerializer):
     requester_phone = serializers.SerializerMethodField()
     requester_role = serializers.CharField(source='requested_by.role', read_only=True)
     item_name = serializers.CharField(source='item.name', read_only=True)
+    item_code = serializers.CharField(source='item.item_code', read_only=True)
     item_available = serializers.IntegerField(source='item.available_quantity', read_only=True)
     item_threshold = serializers.IntegerField(source='item.threshold_quantity', read_only=True)
     item_unit = serializers.CharField(source='item.unit', read_only=True)
@@ -314,11 +322,12 @@ class ItemHistorySerializer(serializers.Serializer):
 
 class UserActivitySerializer(serializers.ModelSerializer):
     item_name = serializers.CharField(source='item.name', read_only=True)
+    item_code = serializers.CharField(source='item.item_code', read_only=True)
     item_unit = serializers.CharField(source='item.unit', read_only=True)
 
     class Meta:
         model = ItemRequest
         fields = [
-            'id', 'item_name', 'item_unit', 'quantity_requested',
+            'id', 'item_name', 'item_code', 'item_unit', 'quantity_requested',
             'purpose', 'status', 'requested_at', 'reviewed_at',
         ]

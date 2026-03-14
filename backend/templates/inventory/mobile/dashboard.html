@@ -96,7 +96,7 @@
           <span class="material-icons-round" style="font-size:20px;color:var(--brand-green)">inventory_2</span>
         </div>
         <div>
-          <div style="font-weight:600;font-size:14px">{{ req.item.name }}</div>
+          <div style="font-weight:600;font-size:14px">{% if req.item.item_code %}[{{ req.item.item_code }}] {% endif %}{{ req.item.name }}</div>
           <div style="color:var(--text-secondary);font-size:12px;margin-top:1px">
             by {{ req.requested_by.get_full_name|default:req.requested_by.username }}
           </div>

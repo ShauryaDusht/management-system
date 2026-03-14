@@ -525,6 +525,7 @@ export default function IssuesTab({ userRole }) {
           loading={loading}
           headers={[
             'Area',
+            'Item Code',
             'Item',
             'Type',
             'Requested By',
@@ -544,6 +545,7 @@ export default function IssuesTab({ userRole }) {
               >
                 {issue.area_name || '-'}
               </span>,
+              issue.item_code || '—',
               issue.item_name || '-',
               issue.item_type || '-',
               issue.requested_by_name || '-',
