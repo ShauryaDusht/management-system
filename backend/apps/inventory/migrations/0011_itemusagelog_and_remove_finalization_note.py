@@ -2,26 +2,26 @@
 
 from django.conf import settings
 from django.db import migrations, models
-import django.db.models.deletion
 import django.core.validators
+import django.db.models.deletion
 
 
-def create_itemusagelog_if_missing(apps, schema_editor):
-    table_name = 'inventory_itemusagelog'
-    existing = set(schema_editor.connection.introspection.table_names())
-    if table_name in existing:
-        return
-    ItemUsageLog = apps.get_model('inventory', 'ItemUsageLog')
-    schema_editor.create_model(ItemUsageLog)
+class CreateModelIfMissing(migrations.CreateModel):
+    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+        model = to_state.apps.get_model(app_label, self.name)
+        table_name = model._meta.db_table
+        existing = set(schema_editor.connection.introspection.table_names())
+        if table_name in existing:
+            return
+        super().database_forwards(app_label, schema_editor, from_state, to_state)
 
-
-def drop_itemusagelog_if_exists(apps, schema_editor):
-    table_name = 'inventory_itemusagelog'
-    existing = set(schema_editor.connection.introspection.table_names())
-    if table_name not in existing:
-        return
-    ItemUsageLog = apps.get_model('inventory', 'ItemUsageLog')
-    schema_editor.delete_model(ItemUsageLog)
+    def database_backwards(self, app_label, schema_editor, from_state, to_state):
+        model = from_state.apps.get_model(app_label, self.name)
+        table_name = model._meta.db_table
+        existing = set(schema_editor.connection.introspection.table_names())
+        if table_name not in existing:
+            return
+        super().database_backwards(app_label, schema_editor, from_state, to_state)
 
 
 def remove_finalization_note_if_exists(apps, schema_editor):
@@ -82,28 +82,18 @@ class Migration(migrations.Migration):
                 ),
             ],
         ),
-        migrations.SeparateDatabaseAndState(
-            database_operations=[
-                migrations.RunPython(
-                    create_itemusagelog_if_missing,
-                    reverse_code=drop_itemusagelog_if_exists,
-                ),
+        CreateModelIfMissing(
+            name='ItemUsageLog',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('quantity_used', models.PositiveIntegerField(validators=[django.core.validators.MinValueValidator(1)])),
+                ('purpose', models.TextField()),
+                ('logged_at', models.DateTimeField(auto_now_add=True)),
+                ('issue', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='usage_logs', to='inventory.itemissue')),
+                ('logged_by', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='item_usage_logs', to=settings.AUTH_USER_MODEL)),
             ],
-            state_operations=[
-                migrations.CreateModel(
-                    name='ItemUsageLog',
-                    fields=[
-                        ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                        ('quantity_used', models.PositiveIntegerField(validators=[django.core.validators.MinValueValidator(1)])),
-                        ('purpose', models.TextField()),
-                        ('logged_at', models.DateTimeField(auto_now_add=True)),
-                        ('issue', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='usage_logs', to='inventory.itemissue')),
-                        ('logged_by', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='item_usage_logs', to=settings.AUTH_USER_MODEL)),
-                    ],
-                    options={
-                        'ordering': ['-logged_at'],
-                    },
-                ),
-            ],
+            options={
+                'ordering': ['-logged_at'],
+            },
         ),
     ]
