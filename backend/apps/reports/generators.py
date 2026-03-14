@@ -588,7 +588,7 @@ def generate_worker_report(worker_id: int, month: int, year: int) -> dict:
             'area_name': worker.area.name if worker.area else '',
             'worker_type': worker.worker_type,
             'shift': worker.shift,
-            'punching_no': worker.punching_no,
+            'pay_code': worker.pay_code,
         },
         'month': month,
         'year': year,

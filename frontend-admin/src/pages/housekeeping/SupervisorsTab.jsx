@@ -544,13 +544,14 @@ export default function SupervisorsTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Role', 'Name', 'Username', 'Phone', 'Assigned Areas', 'Status', 'Report']}
+            headers={['Role', 'Name', 'Username', 'Pay Code', 'Phone', 'Assigned Areas', 'Status', 'Report']}
             rows={users.map((u) => {
               const areasForUser = areaMap[u.id] || []
               return [
                 <Badge key={`role-${u.id}`} value={u.role} />,
                 toDisplayName(u),
                 <code key={`user-${u.id}`} style={{ fontSize: 12 }}>{u.username}</code>,
+                u.pay_code || '-',
                 u.phone || '-',
                 areasForUser.length ? areasForUser.join(', ') : '-',
                 <span
