@@ -1,7 +1,7 @@
 from django.utils import timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from django.db import transaction
-from django.db.models import Sum, F, Count, Value, DecimalField
+from django.db.models import Sum, F, Count, Value, DecimalField, Prefetch
 from django.db.models.functions import Coalesce
 from rest_framework import generics, status
 from rest_framework.views import APIView
