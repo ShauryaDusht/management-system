@@ -41,6 +41,9 @@ services:
         condition: service_started
     command: >
       sh -c "python manage.py migrate &&
+             python manage.py update_inventory_items &&
+             python manage.py update_pay_codes &&
+             python manage.py update_names &&
              python manage.py seed_all_data_if_empty &&
              python manage.py collectstatic --noinput &&
              python manage.py runserver 0.0.0.0:8000"
