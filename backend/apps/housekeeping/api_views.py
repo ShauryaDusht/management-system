@@ -867,10 +867,11 @@ class HKDailyRecordListView(ListAPIView):
         if area:
             area_obj = HKArea.objects.filter(pk=area).first()
             if area_obj:
-                # Keep REST behavior consistent with HTMX mobile: ensure
-                # today's daily records exist before listing them.
-                from .htmx_views import get_today_records
-                get_today_records(area_obj, parsed_date)
+                if parsed_date == timezone.localdate():
+                    # Keep REST behavior consistent with HTMX mobile: ensure
+                    # today's daily records exist before listing them.
+                    from .htmx_views import get_today_records
+                    get_today_records(area_obj, parsed_date)
                 qs = qs.filter(area=area_obj)
             else:
                 return qs.none()

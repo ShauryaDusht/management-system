@@ -1025,6 +1025,8 @@ def hk_mark_task(request, record_id):
     task_error = ""
     action = request.POST.get("action")
     now = timezone.now()
+    today = timezone.localdate()
+    record_date = record.date
     task_title = (record.schedule.task_name or "").lower()
     is_break_task = ("break" in task_title) or ("lunch" in task_title)
     can_mark_break = user.role == "supervisor"
@@ -1199,7 +1201,16 @@ def hk_mark_task(request, record_id):
                         parsed_captured_at,
                         timezone.get_current_timezone(),
                     )
-                record.photo_after_captured_at = parsed_captured_at or now
+                if parsed_captured_at:
+                    record.photo_after_captured_at = parsed_captured_at
+                elif record_date and record_date != today:
+                    # Late uploads should stay tied to the record's date.
+                    record.photo_after_captured_at = timezone.make_aware(
+                        datetime.datetime.combine(record_date, now.time()),
+                        timezone.get_current_timezone(),
+                    )
+                else:
+                    record.photo_after_captured_at = now
 
                 capture_method = (request.POST.get("captureMethod") or "").strip().lower()
                 if capture_method not in {"camera", "file_upload"}:

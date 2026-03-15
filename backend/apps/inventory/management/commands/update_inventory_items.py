@@ -170,8 +170,8 @@ class Command(BaseCommand):
                 updated_count += 1
                 self.stdout.write(self.style.SUCCESS(f"Mapped {sl_no} -> {match.name}"))
             else:
-                not_found.append(f"{sl_no} - {desc}")
-                self.stdout.write(self.style.WARNING(f"Could NOT find match for: {desc}"))
+                not_found.append(f"{sl_no} - {item_name_to_search}")
+                self.stdout.write(self.style.WARNING(f"Could NOT find match for: {item_name_to_search}"))
 
         self.stdout.write(self.style.SUCCESS(f"\nSuccessfully updated {updated_count} items."))
         if not_found:

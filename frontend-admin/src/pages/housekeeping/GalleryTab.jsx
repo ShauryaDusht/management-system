@@ -36,8 +36,8 @@ function normalizeMediaUrl(raw) {
     const parsed = new URL(raw, window.location.origin)
     const internal = ['backend', 'web', 'app', 'django', 'server']
     if (internal.includes(parsed.hostname)) {
-      parsed.hostname = window.location.hostname === '127.0.0.1' ? '127.0.0.1' : 'localhost'
-      if (!parsed.port) parsed.port = '8000'
+      parsed.hostname = window.location.hostname
+      parsed.port = '8000'
     }
     return parsed.toString()
   } catch {
