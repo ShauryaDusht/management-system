@@ -23,12 +23,12 @@ export default function LoginPage() {
     setError('')
     try {
       const user = await login(form.username.trim(), form.password)
-      if (user.role !== 'admin') {
-        window.location.href = '/portal/'
-        return
-      }
       navigate('/dashboard', { replace: true })
     } catch (err) {
+      if (err?.code === 'NON_ADMIN') {
+        navigate('/unauthorized', { replace: true })
+        return
+      }
       setError(err.response?.data?.detail || 'Invalid username or password.')
     } finally {
       setLoading(false)

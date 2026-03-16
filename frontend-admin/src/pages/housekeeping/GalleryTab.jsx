@@ -5,6 +5,8 @@ import { Alert, Btn, Card, DataTable, Input, SelectField, Spinner } from '../../
 import { triggerDownload } from '../../shared/utils'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 
+const todayStr = () => new Date().toISOString().split('T')[0]
+
 function list(data) {
   if (Array.isArray(data)) return data
   if (Array.isArray(data?.results)) return data.results
@@ -96,7 +98,14 @@ function BeforeAfterBlock({ beforeUrl, afterUrl, height, layout = 'split', onBef
 export default function GalleryTab() {
   const [view, setView] = useState('area')
   const [sort, setSort] = useState('newest')
-  const [filters, setFilters] = useState({ area: '', taskId: '', staffId: '', dateFrom: '', dateTo: '', search: '' })
+  const [filters, setFilters] = useState({
+    area: '',
+    taskId: '',
+    staffId: '',
+    dateFrom: todayStr(),
+    dateTo: todayStr(),
+    search: '',
+  })
   const [stats, setStats] = useState({
     totalPhotos: 0,
     thisWeekPhotos: 0,
@@ -377,8 +386,33 @@ export default function GalleryTab() {
             <option value="area_az">Area A-Z</option>
             <option value="most_photos">Most Photos</option>
           </SelectField>
-          <Input type="date" value={filters.dateFrom} onChange={(e) => setFilters((p) => ({ ...p, dateFrom: e.target.value }))} />
-          <Input type="date" value={filters.dateTo} onChange={(e) => setFilters((p) => ({ ...p, dateTo: e.target.value }))} />
+          <Input
+            type="date"
+            value={filters.dateFrom}
+            max={filters.dateTo || todayStr()}
+            onChange={(e) => {
+              const val = e.target.value
+              setFilters((p) => (
+                p.dateTo && val > p.dateTo
+                  ? { ...p, dateFrom: val, dateTo: val }
+                  : { ...p, dateFrom: val }
+              ))
+            }}
+          />
+          <Input
+            type="date"
+            value={filters.dateTo}
+            min={filters.dateFrom}
+            max={todayStr()}
+            onChange={(e) => {
+              const val = e.target.value
+              setFilters((p) => (
+                p.dateFrom && val < p.dateFrom
+                  ? { ...p, dateFrom: val, dateTo: val }
+                  : { ...p, dateTo: val }
+              ))
+            }}
+          />
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
           <Btn size="sm" variant={view === 'area' ? 'primary' : 'secondary'} onClick={() => setView('area')}>Area View</Btn>

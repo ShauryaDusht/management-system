@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext'
  * <ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>
  */
 export default function ProtectedRoute({ children, allowedRoles }) {
-  const { user, loading } = useAuth()
+  const { user, loading, unauthorized } = useAuth()
 
   if (loading) {
     return (
@@ -18,12 +18,16 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     )
   }
 
+  if (unauthorized) {
+    return <Navigate to="/unauthorized" replace />
+  }
+
   if (!user) {
     return <Navigate to="/login" replace />
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/unauthorized" replace />
   }
 
   return children

@@ -9,28 +9,28 @@ from .models import (
 )
 
 
-@admin_site.register(HKArea)
+@admin.register(HKArea, site=admin_site)
 class HKAreaAdmin(admin.ModelAdmin):
     list_display = ('name', 'area_type', 'is_active')
     list_filter = ('area_type', 'is_active')
     search_fields = ('name',)
 
 
-@admin_site.register(HKUserArea)
+@admin.register(HKUserArea, site=admin_site)
 class HKUserAreaAdmin(admin.ModelAdmin):
     list_display = ('user', 'area')
     list_filter = ('area',)
     search_fields = ('user__username', 'user__first_name', 'area__name')
 
 
-@admin_site.register(HKWorker)
+@admin.register(HKWorker, site=admin_site)
 class HKWorkerAdmin(admin.ModelAdmin):
     list_display = ('name', 'phone', 'pay_code', 'worker_type', 'shift', 'area', 'supervisor', 'is_active', 'is_reliever')
     list_filter = ('worker_type', 'shift', 'area', 'supervisor', 'is_active', 'is_reliever')
     search_fields = ('name', 'phone', 'pay_code', 'supervisor__username', 'supervisor__first_name')
 
 
-@admin_site.register(HKScheduleTemplate)
+@admin.register(HKScheduleTemplate, site=admin_site)
 class HKScheduleTemplateAdmin(admin.ModelAdmin):
     list_display = ('task_name', 'area', 'worker_tag', 'order', 'start_time', 'end_time', 'frequency', 'requires_photo', 'is_active')
     list_filter = ('area', 'worker_tag', 'frequency', 'requires_photo', 'is_active')
@@ -39,7 +39,7 @@ class HKScheduleTemplateAdmin(admin.ModelAdmin):
     ordering = ('area', 'worker_tag', 'order', 'start_time')
 
 
-@admin_site.register(HKDailyRecord)
+@admin.register(HKDailyRecord, site=admin_site)
 class HKDailyRecordAdmin(admin.ModelAdmin):
     list_display = (
         'schedule', 'area', 'date', 'status',
@@ -57,7 +57,7 @@ class HKDailyRecordAdmin(admin.ModelAdmin):
     )
 
 
-@admin_site.register(HKExtraWork)
+@admin.register(HKExtraWork, site=admin_site)
 class HKExtraWorkAdmin(admin.ModelAdmin):
     list_display = ('task_name', 'area', 'date', 'worker_name', 'logged_by', 'is_verified')
     list_filter = ('area', 'date', 'is_verified')
@@ -65,7 +65,7 @@ class HKExtraWorkAdmin(admin.ModelAdmin):
     date_hierarchy = 'date'
 
 
-@admin_site.register(HKAttendanceRecord)
+@admin.register(HKAttendanceRecord, site=admin_site)
 class HKAttendanceRecordAdmin(admin.ModelAdmin):
     list_display = ('worker', 'date', 'half', 'status', 'is_submitted', 'marked_by')
     list_filter = ('status', 'half', 'is_submitted', 'date', 'worker__area')
@@ -73,7 +73,7 @@ class HKAttendanceRecordAdmin(admin.ModelAdmin):
     date_hierarchy = 'date'
 
 
-@admin_site.register(HKStaffAttendanceRecord)
+@admin.register(HKStaffAttendanceRecord, site=admin_site)
 class HKStaffAttendanceRecordAdmin(admin.ModelAdmin):
     list_display = ('staff', 'date', 'status', 'source', 'marked_at', 'leave_request')
     list_filter = ('status', 'source', 'date')
@@ -81,13 +81,13 @@ class HKStaffAttendanceRecordAdmin(admin.ModelAdmin):
     date_hierarchy = 'date'
 
 
-@admin_site.register(HKSundayIncharge)
+@admin.register(HKSundayIncharge, site=admin_site)
 class HKSundayInchargeAdmin(admin.ModelAdmin):
     list_display = ('area', 'worker', 'for_sunday', 'set_by')
     list_filter = ('area',)
 
 
-@admin_site.register(HKAreaStock)
+@admin.register(HKAreaStock, site=admin_site)
 class HKAreaStockAdmin(admin.ModelAdmin):
     list_display = ('area', 'item_name', 'quantity', 'unit', 'low_stock_threshold')
     list_filter = ('area',)
@@ -95,21 +95,21 @@ class HKAreaStockAdmin(admin.ModelAdmin):
     search_fields = ('item_name', 'area__name')
 
 
-@admin_site.register(HKStockRequest)
+@admin.register(HKStockRequest, site=admin_site)
 class HKStockRequestAdmin(admin.ModelAdmin):
     list_display = ('item_name', 'quantity', 'requested_by', 'area', 'is_urgent', 'status', 'created_at')
     list_filter = ('status', 'is_urgent', 'area')
     search_fields = ('item_name',)
 
 
-@admin_site.register(HKAlert)
+@admin.register(HKAlert, site=admin_site)
 class HKAlertAdmin(admin.ModelAdmin):
     list_display = ('title', 'priority', 'is_active', 'created_by', 'created_at')
     list_filter = ('priority', 'is_active')
     filter_horizontal = ('target_areas',)
 
 
-@admin_site.register(HKRelieverSubstitution)
+@admin.register(HKRelieverSubstitution, site=admin_site)
 class HKRelieverSubstitutionAdmin(admin.ModelAdmin):
     list_display = ('date', 'original_worker', 'reliever', 'area', 'assigned_by', 'created_at')
     list_filter = ('date', 'area')
@@ -117,7 +117,7 @@ class HKRelieverSubstitutionAdmin(admin.ModelAdmin):
     date_hierarchy = 'date'
 
 
-@admin_site.register(HKTaskWorkerAssignment)
+@admin.register(HKTaskWorkerAssignment, site=admin_site)
 class HKTaskWorkerAssignmentAdmin(admin.ModelAdmin):
     list_display = ('daily_record', 'worker', 'assigned_by', 'assigned_at')
     list_filter = ('daily_record__area', 'daily_record__date')
@@ -125,7 +125,7 @@ class HKTaskWorkerAssignmentAdmin(admin.ModelAdmin):
     date_hierarchy = 'assigned_at'
 
 
-@admin_site.register(HKWorkerSelectionRequest)
+@admin.register(HKWorkerSelectionRequest, site=admin_site)
 class HKWorkerSelectionRequestAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'selection_type', 'section_filter', 'source_area', 'target_area',
@@ -140,7 +140,7 @@ class HKWorkerSelectionRequestAdmin(admin.ModelAdmin):
     date_hierarchy = 'created_at'
 
 
-@admin_site.register(HKLeaveRequest)
+@admin.register(HKLeaveRequest, site=admin_site)
 class HKLeaveRequestAdmin(admin.ModelAdmin):
     list_display = ('leave_date', 'staff', 'area', 'status', 'created_at')
     list_filter = ('status', 'area', 'leave_date')
@@ -148,7 +148,7 @@ class HKLeaveRequestAdmin(admin.ModelAdmin):
     date_hierarchy = 'leave_date'
 
 
-@admin_site.register(HKInchargeAssignment)
+@admin.register(HKInchargeAssignment, site=admin_site)
 class HKInchargeAssignmentAdmin(admin.ModelAdmin):
     list_display = (
         'leave_date',
@@ -171,7 +171,7 @@ class HKInchargeAssignmentAdmin(admin.ModelAdmin):
     date_hierarchy = 'leave_date'
 
 
-@admin_site.register(HKInchargeNotification)
+@admin.register(HKInchargeNotification, site=admin_site)
 class HKInchargeNotificationAdmin(admin.ModelAdmin):
     list_display = ('created_at', 'user', 'assignment', 'level', 'is_seen')
     list_filter = ('level', 'is_seen')

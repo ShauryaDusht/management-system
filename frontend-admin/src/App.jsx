@@ -10,17 +10,18 @@ import InsightsPage from './pages/insights/InsightsPage'
 import InventoryPage from './pages/inventory/InventoryPage'
 import LoginPage from './pages/LoginPage'
 import ProfilePage from './pages/profile/ProfilePage'
+import UnauthorizedPage from './pages/UnauthorizedPage'
 import UsersPage from './pages/users/UsersPage'
 
 const ADMIN_ONLY = ['admin']
 
 function RoleRedirect() {
-  const { user, loading } = useAuth()
+  const { user, loading, unauthorized } = useAuth()
   if (loading) return null
+  if (unauthorized) return <Navigate to="/unauthorized" replace />
   if (!user) return <Navigate to="/login" replace />
   if (user.role === 'admin') return <Navigate to="/dashboard" replace />
-  window.location.href = '/portal/'
-  return null
+  return <Navigate to="/unauthorized" replace />
 }
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
         <NotificationProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           <Route
             path="/dashboard"

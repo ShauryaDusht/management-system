@@ -3,13 +3,13 @@ from config.admin import admin_site
 from .models import Category, Item, ItemRequest, ItemIssue, PurchaseRequest, StockEntry
 
 
-@admin_site.register(Category)
+@admin.register(Category, site=admin_site)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ['name', 'description']
     search_fields = ['name']
 
 
-@admin_site.register(Item)
+@admin.register(Item, site=admin_site)
 class ItemAdmin(admin.ModelAdmin):
     list_display = ['name', 'category', 'item_type', 'unit', 'total_quantity',
                     'available_quantity', 'threshold_quantity', 'status']
@@ -21,7 +21,7 @@ class ItemAdmin(admin.ModelAdmin):
         return obj.status
 
 
-@admin_site.register(StockEntry)
+@admin.register(StockEntry, site=admin_site)
 class StockEntryAdmin(admin.ModelAdmin):
     list_display = ['item', 'quantity_added', 'added_by', 'added_at', 'notes']
     list_filter = ['item__category']
@@ -29,7 +29,7 @@ class StockEntryAdmin(admin.ModelAdmin):
     readonly_fields = ['added_at']
 
 
-@admin_site.register(ItemRequest)
+@admin.register(ItemRequest, site=admin_site)
 class ItemRequestAdmin(admin.ModelAdmin):
     list_display = ['id', 'item', 'requested_by', 'quantity_requested', 'status', 'requested_at']
     list_filter = ['status']
@@ -37,7 +37,7 @@ class ItemRequestAdmin(admin.ModelAdmin):
     readonly_fields = ['requested_at', 'reviewed_at']
 
 
-@admin_site.register(ItemIssue)
+@admin.register(ItemIssue, site=admin_site)
 class ItemIssueAdmin(admin.ModelAdmin):
     list_display = [
         'id', 'request', 'issued_by', 'issued_quantity', 'issued_at',
@@ -48,7 +48,7 @@ class ItemIssueAdmin(admin.ModelAdmin):
     readonly_fields = ['issued_at', 'usage_finalized_at']
 
 
-@admin_site.register(PurchaseRequest)
+@admin.register(PurchaseRequest, site=admin_site)
 class PurchaseRequestAdmin(admin.ModelAdmin):
     list_display = [
         'id', 'item_name', 'item_type', 'requested_by', 'quantity_requested',

@@ -27,6 +27,8 @@ const MONTHS = [
   'December',
 ]
 
+const todayStr = () => new Date().toISOString().split('T')[0]
+
 function getAreaClass(areaType, areaName) {
   const name = String(areaName || '').trim()
   const type = String(areaType || '')
@@ -73,8 +75,8 @@ export default function IssuesTab({ userRole }) {
   const [selectedArea, setSelectedArea] = useState('all')
   const [personFilter, setPersonFilter] = useState('all')
   const [itemFilter, setItemFilter] = useState('all')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [dateFrom, setDateFrom] = useState(todayStr())
+  const [dateTo, setDateTo] = useState(todayStr())
 
   const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1)
   const [reportYear, setReportYear] = useState(new Date().getFullYear())
@@ -496,14 +498,25 @@ export default function IssuesTab({ userRole }) {
             <Input
               type="date"
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              max={dateTo || todayStr()}
+              onChange={(e) => {
+                const val = e.target.value
+                setDateFrom(val)
+                if (dateTo && val > dateTo) setDateTo(val)
+              }}
             />
           </div>
           <div style={{ flex: '0 0 160px' }}>
             <Input
               type="date"
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              min={dateFrom}
+              max={todayStr()}
+              onChange={(e) => {
+                const val = e.target.value
+                setDateTo(val)
+                if (dateFrom && val < dateFrom) setDateFrom(val)
+              }}
             />
           </div>
           <Btn

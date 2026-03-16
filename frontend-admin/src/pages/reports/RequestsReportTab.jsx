@@ -4,12 +4,14 @@ import { getRequestsReport } from '../../api/inventory'
 import { Alert, Btn, Card, DataTable, Field, Input, Spinner, StatCard } from '../../components/ui'
 import { exportCsv } from '../../shared/utils'
 
+const todayStr = () => new Date().toISOString().split('T')[0]
+
 export default function RequestsReportTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [report, setReport] = useState(null)
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [dateFrom, setDateFrom] = useState(todayStr())
+  const [dateTo, setDateTo] = useState(todayStr())
 
   const load = async () => {
     setLoading(true)
@@ -38,10 +40,29 @@ export default function RequestsReportTab() {
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'end' }}>
             <Field label="Date From">
-              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <Input
+                type="date"
+                value={dateFrom}
+                max={dateTo || todayStr()}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setDateFrom(val)
+                  if (dateTo && val > dateTo) setDateTo(val)
+                }}
+              />
             </Field>
             <Field label="Date To">
-              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              <Input
+                type="date"
+                value={dateTo}
+                min={dateFrom}
+                max={todayStr()}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setDateTo(val)
+                  if (dateFrom && val < dateFrom) setDateFrom(val)
+                }}
+              />
             </Field>
             <Btn onClick={load} style={{ marginBottom: 14 }}>
               Apply

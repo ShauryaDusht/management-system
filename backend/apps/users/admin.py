@@ -4,7 +4,7 @@ from config.admin import admin_site
 from .models import User
 
 
-@admin_site.register(User)
+@admin.register(User, site=admin_site)
 class UserAdmin(BaseUserAdmin):
     list_display = ['username', 'email', 'get_full_name', 'role', 'phone', 'is_active']
     list_filter = ['role', 'is_active']
