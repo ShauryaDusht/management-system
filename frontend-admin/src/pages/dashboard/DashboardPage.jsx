@@ -118,35 +118,50 @@ function ActivityPieChart({ data, lines }) {
   if (!totals.length) return <EmptyTrend />
   const grand = totals.reduce((s, d) => s + d.value, 0)
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-      <ResponsiveContainer width={220} height={220}>
-        <PieChart>
-          <Pie data={totals} cx="50%" cy="50%" outerRadius={88} innerRadius={42}
-            dataKey="value" paddingAngle={2}
-            label={({ percent }) => `${(percent * 100).toFixed(0)}%`}>
-            {totals.map((d, i) => <Cell key={i} fill={d.color} />)}
-          </Pie>
-          <Tooltip contentStyle={TooltipStyle} formatter={v => [Number(v).toLocaleString()]} />
-        </PieChart>
-      </ResponsiveContainer>
-      <div style={{ flex: 1, minWidth: 180 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 32, flexWrap: 'wrap', padding: '10px 0' }}>
+      <div style={{ position: 'relative', width: 280, height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie 
+              data={totals} 
+              cx="50%" cy="50%" 
+              outerRadius={80} 
+              innerRadius={45}
+              dataKey="value" 
+              paddingAngle={2}
+              labelLine={true}
+              label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+            >
+              {totals.map((d, i) => <Cell key={i} fill={d.color} />)}
+            </Pie>
+            <Tooltip contentStyle={TooltipStyle} formatter={v => [Number(v).toLocaleString()]} />
+          </PieChart>
+        </ResponsiveContainer>
+        <div style={{ position: 'absolute', pointerEvents: 'none', textAlign: 'center' }}>
+          <div style={{ fontSize: 20, fontWeight: 800 }}>{grand.toLocaleString('en-IN')}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-3)' }}>Total</div>
+        </div>
+      </div>
+      <div style={{ flex: 1, minWidth: 220, borderLeft: '1px solid var(--border)', paddingLeft: 24 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 16, color: 'var(--text-2)' }}>Segment Breakdown</div>
         {totals.map((d, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: d.color, display: 'inline-block', flexShrink: 0 }} />
-              <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{d.name}</span>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ width: 12, height: 12, borderRadius: 3, background: d.color, display: 'inline-block', flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>{d.name}</span>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <span style={{ fontWeight: 700, fontSize: 13 }}>{d.value.toLocaleString('en-IN')}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-3)', marginLeft: 6 }}>{grand > 0 ? ((d.value / grand) * 100).toFixed(1) : 0}%</span>
-              <div style={{ height: 4, borderRadius: 99, background: 'var(--border)', marginTop: 4, width: 80, marginLeft: 'auto' }}>
-                <div style={{ height: 4, borderRadius: 99, background: d.color, width: `${grand > 0 ? (d.value / grand) * 100 : 0}%`, transition: 'width 0.6s' }} />
+              <span style={{ fontWeight: 700, fontSize: 14 }}>{d.value.toLocaleString('en-IN')}</span>
+              <span style={{ fontSize: 11, color: 'var(--text-3)', marginLeft: 8 }}>{grand > 0 ? ((d.value / grand) * 100).toFixed(1) : 0}%</span>
+              <div style={{ height: 5, borderRadius: 99, background: 'var(--border)', marginTop: 4, width: 100, marginLeft: 'auto', overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: d.color, width: `${grand > 0 ? (d.value / grand) * 100 : 0}%`, transition: 'width 0.8s ease-out' }} />
               </div>
             </div>
           </div>
         ))}
-        <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-3)' }}>
-          Total: <strong style={{ color: 'var(--text)' }}>{grand.toLocaleString('en-IN')}</strong>
+        <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--text-3)', display: 'flex', justifyContent: 'space-between' }}>
+          <span>Total Activity Scope:</span>
+          <strong style={{ color: 'var(--text)', fontSize: 13 }}>{grand.toLocaleString('en-IN')} Units</strong>
         </div>
       </div>
     </div>

@@ -6,7 +6,7 @@ export const inventoryAPI = {
 
   // ── Categories ─────────────────────────────────────────────────────────────
   getCategories: () => api.get('/inventory/categories/'),
-  // UNUSED â€” no UI implemented yet
+  // UNUSED - no UI implemented yet
   createCategory: (data) => api.post('/inventory/categories/', data),
 
   // ── Items ──────────────────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ export const inventoryAPI = {
 
   // ── Item history and stock entries ─────────────────────────────────────────
   getItemHistory: (id) => api.get(`/inventory/items/${id}/history/`),
-  // UNUSED â€” no UI implemented yet
+  // UNUSED - no UI implemented yet
   getItemStockEntries: (id) => api.get(`/inventory/items/${id}/stock-entries/`),
 
   // ── Stock entries (replenishment) ──────────────────────────────────────────
@@ -67,7 +67,7 @@ export const inventoryAPI = {
     api.get(`/inventory/users/${userId}/usage-logs/`, { params: { month, year } }),
 
   // ── User activity (admin) ──────────────────────────────────────────────────
-  // UNUSED â€” no UI implemented yet
+  // UNUSED - no UI implemented yet
   getUserActivity: (userId) => api.get(`/inventory/activity/users/${userId}/`),
 }
 

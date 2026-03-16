@@ -4,12 +4,15 @@ targets = [
     'fixtures/housekeeping_templates_updated.json',
     'fixtures/housekeeping.json',
     'apps/housekeeping/management/commands/seed_housekeeping.py',
+    'apps/inventory/fixtures/inventory.json',
+    'apps/inventory/management/commands/update_inventory_items.py',
 ]
 
 replacements = {
     'â€”': '-',
     'â”€': '-',
     'â€': '-',
+    '—': '-',
 }
 
 def guess_encoding_and_read(file_path):

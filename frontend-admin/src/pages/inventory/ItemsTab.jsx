@@ -366,7 +366,7 @@ export default function ItemsTab({ userRole }) {
       <Modal
         open={!!adjustModal}
         onClose={() => setAdjustModal(null)}
-        title={`Adjust Stock — ${adjustModal?.name || ''}`}
+        title={`Adjust Stock - ${adjustModal?.name || ''}`}
         footer={
           <>
             <Btn variant="ghost" onClick={() => setAdjustModal(null)}>
@@ -402,7 +402,7 @@ export default function ItemsTab({ userRole }) {
           setFormErrors({})
           setEditItem(null)
         }}
-        title={editItem ? `Edit Item â€” ${editItem.name || ''}` : 'Add Inventory Item'}
+        title={editItem ? `Edit Item - ${editItem.name || ''}` : 'Add Inventory Item'}
         width={620}
         footer={
           <>
