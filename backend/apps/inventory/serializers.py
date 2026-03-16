@@ -29,7 +29,7 @@ class ItemSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'item_code', 'name', 'category', 'category_name', 'item_type', 'unit',
             'total_quantity', 'available_quantity', 'threshold_quantity',
-            'unit_cost', 'total_value', 'unit_cost_missing', 'description', 'location', 'status',
+            'unit_cost', 'total_value', 'unit_cost_missing', 'description', 'status',
             'is_below_threshold', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'total_value', 'created_at', 'updated_at']

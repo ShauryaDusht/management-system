@@ -38,7 +38,6 @@ class Migration(migrations.Migration):
                 ('threshold_quantity', models.PositiveIntegerField(default=10, help_text='Alert admin when available quantity falls below this number.')),
                 ('unit_cost', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
                 ('description', models.TextField(blank=True)),
-                ('location', models.CharField(blank=True, help_text='Physical location of asset', max_length=200)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('category', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='items', to='inventory.category')),

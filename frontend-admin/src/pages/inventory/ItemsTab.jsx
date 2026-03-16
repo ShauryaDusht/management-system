@@ -38,7 +38,6 @@ const EMPTY_ITEM = {
   threshold_quantity: 1,
   unit_cost: 0,
   description: '',
-  location: '',
 }
 
 export default function ItemsTab({ userRole }) {
@@ -99,7 +98,6 @@ export default function ItemsTab({ userRole }) {
       threshold_quantity: item.threshold_quantity ?? 1,
       unit_cost: item.unit_cost ?? 0,
       description: item.description || '',
-      location: item.location || '',
     })
     setAddModal(true)
   }
@@ -109,7 +107,7 @@ export default function ItemsTab({ userRole }) {
       const q = search.toLowerCase()
       const hit =
         !q ||
-        [it.name, it.category_name, it.item_type, it.location].some((v) =>
+        [it.name, it.category_name, it.item_type].some((v) =>
           String(v || '').toLowerCase().includes(q)
         )
       const hitType = typeFilter === 'all' || it.item_type === typeFilter
@@ -292,7 +290,7 @@ export default function ItemsTab({ userRole }) {
           }}
         >
           <Input
-            placeholder="Search item, category, location..."
+            placeholder="Search item, category..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ maxWidth: 280 }}
@@ -504,9 +502,6 @@ export default function ItemsTab({ userRole }) {
             />
           </Field>
         </div>
-        <Field label="Location">
-          <Input value={newItem.location} onChange={(e) => setNewItem((p) => ({ ...p, location: e.target.value }))} />
-        </Field>
         <Field label="Description">
           <Input value={newItem.description} onChange={(e) => setNewItem((p) => ({ ...p, description: e.target.value }))} />
         </Field>

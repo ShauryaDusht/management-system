@@ -122,11 +122,6 @@
     {% if item.description %}
     <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;line-height:1.5">{{ item.description }}</div>
     {% endif %}
-    {% if item.location %}
-    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)">
-      <span class="material-icons-round" style="font-size:14px">location_on</span> {{ item.location }}
-    </div>
-    {% endif %}
     {% if request.user.role != 'admin' and request.user.role != 'inventory_manager' %}
     <a href="{% url 'mobile_request_form' %}?item={{ item.id }}" style="display:block;margin-top:12px">
       <button class="btn btn-primary btn-full">

@@ -33,11 +33,6 @@ class Migration(migrations.Migration):
             name='usage_finalized_at',
             field=models.DateTimeField(blank=True, null=True),
         ),
-        migrations.AlterField(
-            model_name='item',
-            name='location',
-            field=models.CharField(blank=True, max_length=200),
-        ),
         migrations.CreateModel(
             name='StockEntry',
             fields=[
