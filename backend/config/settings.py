@@ -116,6 +116,7 @@ CORS_ALLOWED_ORIGINS = os.getenv(
 ).split(',')
 
 LOGIN_URL = '/housekeeping/login/'
+ADMIN_URL = 'manage/iitgn-staff/'
 
 LOGGING = {
     'version': 1,

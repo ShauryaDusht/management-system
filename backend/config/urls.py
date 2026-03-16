@@ -1,8 +1,8 @@
-from django.contrib import admin
 from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
+from config.admin import admin_site
 from apps.core.portal_views import portal_root, portal_login, portal_logout
 from apps.horticulture.views import horticulture_dashboard as horticulture_dashboard_view
 from apps.housekeeping import api_views as hk_api_views
@@ -14,7 +14,7 @@ def backend_root(_request):
             'service': 'inventory-management-backend',
             'status': 'ok',
             'api_base': '/api/',
-            'admin': '/admin/',
+            'admin': f"/{settings.ADMIN_URL}",
         }
     )
 
@@ -34,7 +34,7 @@ def api_root(_request):
 urlpatterns = [
     path('', backend_root),
     path('api/', api_root),
-    path('admin/', admin.site.urls),
+    path(settings.ADMIN_URL, admin_site.urls),
     path('api/auth/', include('apps.users.urls')),
     path('api/inventory/', include('apps.inventory.urls')),
     path('api/reports/', include('apps.reports.urls')),

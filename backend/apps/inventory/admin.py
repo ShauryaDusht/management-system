@@ -1,14 +1,15 @@
 from django.contrib import admin
+from config.admin import admin_site
 from .models import Category, Item, ItemRequest, ItemIssue, PurchaseRequest, StockEntry
 
 
-@admin.register(Category)
+@admin_site.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ['name', 'description']
     search_fields = ['name']
 
 
-@admin.register(Item)
+@admin_site.register(Item)
 class ItemAdmin(admin.ModelAdmin):
     list_display = ['name', 'category', 'item_type', 'unit', 'total_quantity',
                     'available_quantity', 'threshold_quantity', 'status']
@@ -20,7 +21,7 @@ class ItemAdmin(admin.ModelAdmin):
         return obj.status
 
 
-@admin.register(StockEntry)
+@admin_site.register(StockEntry)
 class StockEntryAdmin(admin.ModelAdmin):
     list_display = ['item', 'quantity_added', 'added_by', 'added_at', 'notes']
     list_filter = ['item__category']
@@ -28,7 +29,7 @@ class StockEntryAdmin(admin.ModelAdmin):
     readonly_fields = ['added_at']
 
 
-@admin.register(ItemRequest)
+@admin_site.register(ItemRequest)
 class ItemRequestAdmin(admin.ModelAdmin):
     list_display = ['id', 'item', 'requested_by', 'quantity_requested', 'status', 'requested_at']
     list_filter = ['status']
@@ -36,7 +37,7 @@ class ItemRequestAdmin(admin.ModelAdmin):
     readonly_fields = ['requested_at', 'reviewed_at']
 
 
-@admin.register(ItemIssue)
+@admin_site.register(ItemIssue)
 class ItemIssueAdmin(admin.ModelAdmin):
     list_display = [
         'id', 'request', 'issued_by', 'issued_quantity', 'issued_at',
@@ -47,7 +48,7 @@ class ItemIssueAdmin(admin.ModelAdmin):
     readonly_fields = ['issued_at', 'usage_finalized_at']
 
 
-@admin.register(PurchaseRequest)
+@admin_site.register(PurchaseRequest)
 class PurchaseRequestAdmin(admin.ModelAdmin):
     list_display = [
         'id', 'item_name', 'item_type', 'requested_by', 'quantity_requested',
