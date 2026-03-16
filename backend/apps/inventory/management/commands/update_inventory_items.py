@@ -95,6 +95,7 @@ class Command(BaseCommand):
 
         # Mapping of CSV raw names to exact DB names because of slight differences in formatting
         NAME_OVERRIDES = {
+            # --- Already present (kept as-is) ---
             'Bamboo stick 5 ft long': 'Bamboo Stick (5 ft long)',
             'Broom Hard': 'Broom (Hard)',
             'Broom Soft': 'Broom (Soft)',
@@ -132,7 +133,36 @@ class Command(BaseCommand):
             'Trolly mounted Brush cutter': 'Trolley-Mounted Brush Cutter',
             'Tissue paper soft': 'Tissue Paper (Soft)',
             'Plunger Choking Pump': 'Plunger (Chowking Pump)',
-            'Aluminium Tilting Tower Ladder 24 ft': 'Aluminium Tilting Tower Ladder'
+            'Aluminium Tilting Tower Ladder 24 ft': 'Aluminium Tilting Tower Ladder',
+
+            # --- Newly added: CSV name differs from fixture name in casing or wording ---
+            # Simple casing/spacing mismatches
+            'Air freshener (R5)':           'Air Freshener (R5)',
+            'Floor cleaner (R2)':           'Floor Cleaner (R2)',
+            'Hand wash liquid':             'Hand Wash Liquid',
+            'Surface cleaner (R1)':         'Surface Cleaner (R1)',
+            'Baygon spray':                 'Baygon Spray',
+            'Road Brush with stick':        'Road Brush with Stick',
+            'Wooden polish':                'Wooden Polish',
+            'Toilet cleaning brush':        'Toilet Cleaning Brush',
+            'Toilet paper Roll':            'Toilet Paper Roll',
+            'Wet mop refill':               'Wet Mop Refill',
+            'Naphthalene balls':            'Naphthalene Balls',
+            'Bleaching Liquid':             'Bleaching Liquid',
+            'Scrubbing pad':                'Scrubbing Pad',
+            'Garden pipe 30mtr roll':       'Garden Pipe 30mtr Roll',
+            'Soap Dispenser':               'Soap Dispenser',
+            'Vacuum cleaner':               'Vacuum Cleaner',
+            'Single disc machine':          'Single Disc Machine',
+            'Telescopic rod':               'Telescopic Rod',
+            '40 feet extension ladder':     '40 Feet Extension Ladder',
+            'Blower':                       'Blower',
+
+            # Name differences
+            'Glass Cleaner Colin':          'Glass Cleaner',
+            'Ladders':                      'Ladder',
+            'Hydraulic ladder':             'Aluminium Tilting Tower Ladder',
+            'Brush cutter':                 'Brush Cutter (Petrol)',
         }
 
         for row in reader:
