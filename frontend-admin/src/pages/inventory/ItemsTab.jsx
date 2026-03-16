@@ -209,159 +209,175 @@ export default function ItemsTab({ userRole }) {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16 }}>
-      <div style={{ minWidth: 0 }}>
-        <Alert message={error} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Alert message={error} />
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-            gap: 10,
-            marginBottom: 14,
-          }}
-        >
-          <StatCard label="Total Items" value={summary?.total_items ?? items.length} icon="📦" />
-          <StatCard label="Low Stock" value={summary?.low_stock_count ?? stockCounts.lowStock} icon="⚠️" color="var(--orange-600)" />
-          <StatCard label="Out of Stock" value={summary?.out_of_stock_count ?? stockCounts.outOfStock} icon="🟥" color="#dc2626" />
-          <StatCard label="Pending Requests" value={summary?.pending_requests ?? 0} icon="📋" color="#3b82f6" />
-        </div>
-
-        <Card style={{ marginBottom: 14 }}>
-          <div style={{ fontWeight: 700, marginBottom: 10 }}>Stock Overview by Type</div>
-          <BarGroupChart
-            data={byTypeChart}
-            bars={[
-              { key: 'in_stock', label: 'In Stock' },
-              { key: 'low_stock', label: 'Low Stock' },
-              { key: 'out_of_stock', label: 'Out of Stock' },
-            ]}
-            height={180}
-          />
-        </Card>
-
-        <Card noPad>
+      {/* Top section: stat cards + chart + stock alerts side by side */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'start' }}>
+        {/* Left: stat cards + chart */}
+        <div style={{ minWidth: 0 }}>
           <div
             style={{
-              padding: '12px 16px',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex',
-              gap: 8,
-              flexWrap: 'wrap',
-              alignItems: 'center',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+              gap: 10,
+              marginBottom: 14,
             }}
           >
-            <Input
-              placeholder="Search item, category, location..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ maxWidth: 280 }}
-            />
-            <Btn
-              size="sm"
-              variant={typeFilter === 'all' ? 'primary' : 'secondary'}
-              onClick={() => setTypeFilter('all')}
-            >
-              All
-            </Btn>
-            <Btn
-              size="sm"
-              variant={typeFilter === 'consumable' ? 'primary' : 'secondary'}
-              onClick={() => setTypeFilter('consumable')}
-            >
-              Consumables
-            </Btn>
-            <Btn
-              size="sm"
-              variant={typeFilter === 'asset' ? 'primary' : 'secondary'}
-              onClick={() => setTypeFilter('asset')}
-            >
-              Assets
-            </Btn>
-            {canAdmin && (
-              <Btn
-                style={{ marginLeft: 'auto' }}
-                onClick={() => {
-                  clearError()
-                  setFormErrors({})
-                  setNewItem(EMPTY_ITEM)
-                  setEditItem(null)
-                  setAddModal(true)
-                }}
-              >
-                + Add Item
-              </Btn>
-            )}
+            <StatCard label="Total Items" value={summary?.total_items ?? items.length} icon="📦" />
+            <StatCard label="Low Stock" value={summary?.low_stock_count ?? stockCounts.lowStock} icon="⚠️" color="var(--orange-600)" />
+            <StatCard label="Out of Stock" value={summary?.out_of_stock_count ?? stockCounts.outOfStock} icon="🟥" color="#dc2626" />
+            <StatCard label="Pending Requests" value={summary?.pending_requests ?? 0} icon="📋" color="#3b82f6" />
           </div>
 
-          <DataTable
-            headers={['Item Code', 'Name', 'Category', 'Type', 'Available', 'Threshold', 'Unit Price', 'Total Value (₹)', 'Status', 'Actions']}
-            loading={loading}
-            rows={filtered.map((it) => [
-              it.item_code || '—',
-              <div key={`name-${it.id}`}>
-                <div style={{ fontWeight: 600 }}>{it.name}</div>
-              </div>,
-              it.category_name || '—',
-              (it.item_type || '').toUpperCase(),
-              `${it.available_quantity} ${it.unit}`,
-              `${it.threshold_quantity} ${it.unit}`,
-              it.unit_cost !== null && it.unit_cost !== undefined ? `₹${parseFloat(it.unit_cost).toFixed(2)}` : '—',
-              `₹${parseFloat(it.total_value || 0).toFixed(2)}`,
-              <Badge key={`st-${it.id}`} value={itemStatus(it)} />,
-              <div key={`act-${it.id}`} style={{ display: 'flex', gap: 6 }}>
-                {canAdmin && (
-                  <Btn size="sm" variant="ghost" onClick={() => setAdjustModal(it)}>
-                    Adjust
-                  </Btn>
-                )}
-                {canAdmin && (
-                  <Btn size="sm" variant="secondary" onClick={() => openEdit(it)}>
-                    Edit
-                  </Btn>
-                )}
-                {canAdmin && (
-                  <Btn size="sm" variant="danger" onClick={() => setDeleteTarget(it)}>
-                    Delete
-                  </Btn>
-                )}
-                <Btn size="sm" variant="ghost" onClick={() => openHistory(it)}>
-                  History
-                </Btn>
-              </div>,
-            ])}
-          />
-        </Card>
+          <Card>
+            <div style={{ fontWeight: 700, marginBottom: 10 }}>Stock Overview by Type</div>
+            <BarGroupChart
+              data={byTypeChart}
+              bars={[
+                { key: 'in_stock', label: 'In Stock' },
+                { key: 'low_stock', label: 'Low Stock' },
+                { key: 'out_of_stock', label: 'Out of Stock' },
+              ]}
+              height={180}
+            />
+          </Card>
+        </div>
+
+        {/* Right: stock alerts — fixed to chart area height, scrollable */}
+        <div>
+          <Card style={{ padding: 0 }}>
+            <div style={{ fontWeight: 700, padding: '12px 14px 8px', borderBottom: '1px solid var(--border)' }}>
+              Stock Alerts
+              {lowStockItems.length > 0 && (
+                <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: 'var(--text-3)' }}>
+                  ({lowStockItems.length})
+                </span>
+              )}
+            </div>
+            <div
+              style={{
+                overflowY: 'auto',
+                maxHeight: 258,
+                padding: '10px 14px 10px',
+              }}
+            >
+              {lowStockItems.length === 0 ? (
+                <div style={{ color: 'var(--text-3)', fontSize: 12 }}>No stock alerts.</div>
+              ) : (
+                lowStockItems.map((it) => (
+                  <div
+                    key={it.id}
+                    style={{
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      padding: 10,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{it.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                      {it.available_quantity} {it.unit} left / threshold {it.threshold_quantity}
+                    </div>
+                    <div style={{ marginTop: 6 }}>
+                      <Badge value={itemStatus(it)} />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
+        </div>
       </div>
 
-      <div>
-        <Card>
-          <div style={{ fontWeight: 700, marginBottom: 10 }}>Stock Alerts</div>
-          {lowStockItems.length === 0 ? (
-            <div style={{ color: 'var(--text-3)', fontSize: 12 }}>No stock alerts.</div>
-          ) : (
-            lowStockItems.slice(0, 12).map((it) => (
-              <div
-                key={it.id}
-                style={{
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  padding: 10,
-                  marginBottom: 8,
-                }}
-              >
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{it.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                  {it.available_quantity} {it.unit} left / threshold {it.threshold_quantity}
-                </div>
-                <div style={{ marginTop: 6 }}>
-                  <Badge value={itemStatus(it)} />
-                </div>
-              </div>
-            ))
+      {/* Bottom section: full-width item table */}
+      <Card noPad>
+        <div
+          style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}
+        >
+          <Input
+            placeholder="Search item, category, location..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ maxWidth: 280 }}
+          />
+          <Btn
+            size="sm"
+            variant={typeFilter === 'all' ? 'primary' : 'secondary'}
+            onClick={() => setTypeFilter('all')}
+          >
+            All
+          </Btn>
+          <Btn
+            size="sm"
+            variant={typeFilter === 'consumable' ? 'primary' : 'secondary'}
+            onClick={() => setTypeFilter('consumable')}
+          >
+            Consumables
+          </Btn>
+          <Btn
+            size="sm"
+            variant={typeFilter === 'asset' ? 'primary' : 'secondary'}
+            onClick={() => setTypeFilter('asset')}
+          >
+            Assets
+          </Btn>
+          {canAdmin && (
+            <Btn
+              style={{ marginLeft: 'auto' }}
+              onClick={() => {
+                clearError()
+                setFormErrors({})
+                setNewItem(EMPTY_ITEM)
+                setEditItem(null)
+                setAddModal(true)
+              }}
+            >
+              + Add Item
+            </Btn>
           )}
-        </Card>
-      </div>
+        </div>
+
+        <DataTable
+          headers={['Item Code', 'Name', 'Category', 'Type', 'Available', 'Threshold', 'Unit Price', 'Total Value (₹)', 'Status', 'Actions']}
+          loading={loading}
+          rows={filtered.map((it) => [
+            it.item_code || '—',
+            <div key={`name-${it.id}`}>
+              <div style={{ fontWeight: 600 }}>{it.name}</div>
+            </div>,
+            it.category_name || '—',
+            (it.item_type || '').toUpperCase(),
+            `${it.available_quantity} ${it.unit}`,
+            `${it.threshold_quantity} ${it.unit}`,
+            it.unit_cost !== null && it.unit_cost !== undefined ? `₹${parseFloat(it.unit_cost).toFixed(2)}` : '—',
+            `₹${parseFloat(it.total_value || 0).toFixed(2)}`,
+            <Badge key={`st-${it.id}`} value={itemStatus(it)} />,
+            <div key={`act-${it.id}`} style={{ display: 'flex', gap: 6 }}>
+              {canAdmin && (
+                <Btn size="sm" variant="secondary" onClick={() => openEdit(it)}>
+                  Edit
+                </Btn>
+              )}
+              {canAdmin && (
+                <Btn size="sm" variant="danger" onClick={() => setDeleteTarget(it)}>
+                  Delete
+                </Btn>
+              )}
+              <Btn size="sm" variant="ghost" onClick={() => openHistory(it)}>
+                History
+              </Btn>
+            </div>,
+          ])}
+        />
+      </Card>
 
       <Modal
         open={!!adjustModal}
@@ -568,4 +584,3 @@ export default function ItemsTab({ userRole }) {
     </div>
   )
 }
-
