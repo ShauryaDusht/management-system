@@ -48,14 +48,12 @@ export default function ItemsTab({ userRole }) {
   const [summary, setSummary] = useState(null)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
-  const [adjustModal, setAdjustModal] = useState(null)
   const [addModal, setAddModal] = useState(false)
   const [editItem, setEditItem] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [historyModal, setHistoryModal] = useState(null)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyEvents, setHistoryEvents] = useState([])
-  const [adjustData, setAdjustData] = useState({ action: 'increase', quantity: 1 })
   const [newItem, setNewItem] = useState(EMPTY_ITEM)
   const [formErrors, setFormErrors] = useState({})
   const [deleting, setDeleting] = useState(false)
@@ -139,15 +137,6 @@ export default function ItemsTab({ userRole }) {
       }
     })
   }, [filtered])
-
-  const doAdjust = async () => {
-    if (!adjustModal) return
-    await runAction(async () => {
-      await inventoryAPI.adjustStock(adjustModal.id, adjustData.action, Number(adjustData.quantity || 0))
-      setAdjustModal(null)
-      await reload()
-    }, 'Stock adjustment failed.')
-  }
 
   const openHistory = async (item) => {
     setHistoryModal(item)
@@ -366,11 +355,6 @@ export default function ItemsTab({ userRole }) {
                   Edit
                 </Btn>
               )}
-              {canAdmin && (
-                <Btn size="sm" variant="danger" onClick={() => setDeleteTarget(it)}>
-                  Delete
-                </Btn>
-              )}
               <Btn size="sm" variant="ghost" onClick={() => openHistory(it)}>
                 History
               </Btn>
@@ -378,38 +362,6 @@ export default function ItemsTab({ userRole }) {
           ])}
         />
       </Card>
-
-      <Modal
-        open={!!adjustModal}
-        onClose={() => setAdjustModal(null)}
-        title={`Adjust Stock - ${adjustModal?.name || ''}`}
-        footer={
-          <>
-            <Btn variant="ghost" onClick={() => setAdjustModal(null)}>
-              Cancel
-            </Btn>
-            <Btn onClick={doAdjust}>Apply</Btn>
-          </>
-        }
-      >
-        <Field label="Action">
-          <SelectField
-            value={adjustData.action}
-            onChange={(e) => setAdjustData((p) => ({ ...p, action: e.target.value }))}
-          >
-            <option value="increase">Increase</option>
-            <option value="decrease">Decrease</option>
-          </SelectField>
-        </Field>
-        <Field label="Quantity">
-          <Input
-            type="number"
-            min="1"
-            value={adjustData.quantity}
-            onChange={(e) => setAdjustData((p) => ({ ...p, quantity: e.target.value }))}
-          />
-        </Field>
-      </Modal>
 
       <Modal
         open={addModal}
@@ -421,21 +373,38 @@ export default function ItemsTab({ userRole }) {
         title={editItem ? `Edit Item - ${editItem.name || ''}` : 'Add Inventory Item'}
         width={620}
         footer={
-          <>
-            <Btn
-              variant="ghost"
-              onClick={() => {
-                setAddModal(false)
-                setFormErrors({})
-                setEditItem(null)
-              }}
-            >
-              Cancel
-            </Btn>
-            <Btn onClick={doCreateItem} disabled={saving}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <div>
+              {editItem ? (
+                <Btn
+                  variant="danger"
+                  onClick={() => {
+                    setAddModal(false)
+                    setFormErrors({})
+                    setDeleteTarget(editItem)
+                    setEditItem(null)
+                  }}
+                >
+                  Delete Item
+                </Btn>
+              ) : null}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn
+                variant="ghost"
+                onClick={() => {
+                  setAddModal(false)
+                  setFormErrors({})
+                  setEditItem(null)
+                }}
+              >
+                Cancel
+              </Btn>
+              <Btn onClick={doCreateItem} disabled={saving}>
               {saving ? 'Saving…' : editItem ? 'Save Changes' : 'Create'}
-            </Btn>
-          </>
+              </Btn>
+            </div>
+          </div>
         }
       >
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>

@@ -5,13 +5,12 @@ import { Tabs } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../context/NotificationContext'
 import AdminLayout from '../../layout/AdminLayout'
+import RequestsReportTab from '../reports/RequestsReportTab'
 import IssuesTab from './IssuesTab'
 import ItemsTab from './ItemsTab'
-import ReportTab from './ReportTab'
-import RequestsReportTab from '../reports/RequestsReportTab'
+import MonthlyReportTab from './MonthlyReportTab'
 import RequestsTab from './RequestsTab'
 import StockLogTab from './StockLogTab'
-import MonthlyReportTab from './MonthlyReportTab'
 
 const BASE_TAB_CONFIG = [
   { key: 'items', label: 'Items', icon: '📦' },
@@ -20,7 +19,7 @@ const BASE_TAB_CONFIG = [
   { key: 'stocklog', label: 'Stock Log', icon: '🧾' },
   { key: 'monthly', label: 'Monthly Procurement', icon: '📅' },
 ]
-const REPORT_TAB = { key: 'report', label: 'Report', icon: '📊' }
+
 const REQUEST_REPORT_TAB = { key: 'request-report', label: 'Request Report', icon: 'RR' }
 
 export default function InventoryPage() {
@@ -47,10 +46,11 @@ export default function InventoryPage() {
       }
       return tab
     })
-    return canViewReports ? [...base, REPORT_TAB, REQUEST_REPORT_TAB] : base
-  }, [badges.inventory, badges.lowStock, canViewReports])
-  const validTabs = useMemo(() => tabConfig.map((tab) => tab.key), [tabConfig])
 
+    return canViewReports ? [...base, REQUEST_REPORT_TAB] : base
+  }, [badges.inventory, badges.lowStock, canViewReports])
+
+  const validTabs = useMemo(() => tabConfig.map((tab) => tab.key), [tabConfig])
   const initialTab = searchParams.get('tab')
   const [active, setActive] = useState(
     initialTab && validTabs.includes(initialTab) ? initialTab : 'items'
@@ -96,7 +96,6 @@ export default function InventoryPage() {
       {active === 'requests' && <RequestsTab userRole={user?.role} />}
       {active === 'issues' && <IssuesTab userRole={user?.role} />}
       {active === 'stocklog' && <StockLogTab userRole={user?.role} />}
-      {active === 'report' && canViewReports && <ReportTab />}
       {active === 'monthly' && canViewReports && <MonthlyReportTab />}
       {active === 'request-report' && canViewReports && <RequestsReportTab />}
     </AdminLayout>
