@@ -1242,6 +1242,145 @@ class ConsumptionReportRequesterCSVView(APIView):
         )
 
 
+class AnnualBudgetView(APIView):
+    """
+    GET /api/reports/annual-budget/?year=2026
+    Returns:
+      - monthly_spending: list of {month, month_label, spent} for each month of the year
+      - category_breakdown: list of {category, spent, item_count}
+      - top_consumed_items: top 10 most consumed items this year
+      - total_spent_year: sum of all stock entries cost this year
+      - total_procurement_value: sum of all stock entries cost (all time)
+      - reorder_priority: items needing reorder sorted by urgency
+    """
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        import calendar as cal_module
+        from django.db.models import Sum, F, FloatField, ExpressionWrapper
+        from django.db.models.functions import TruncMonth
+        from apps.inventory.models import Item, StockEntry, ItemIssue
+
+        try:
+            year = int(request.query_params.get('year', timezone.localdate().year))
+        except (ValueError, TypeError):
+            year = timezone.localdate().year
+
+        # ── Monthly spending via StockEntry × unit_cost ──────────────────────
+        # StockEntry.quantity_added * item.unit_cost gives "value added to stock"
+        monthly_spending = []
+        for m in range(1, 13):
+            entries = StockEntry.objects.filter(
+                added_at__year=year, added_at__month=m
+            ).select_related('item')
+            spent = sum(
+                float(e.quantity_added or 0) * float(e.item.unit_cost or 0)
+                for e in entries
+            )
+            monthly_spending.append({
+                'month': m,
+                'month_label': cal_module.month_abbr[m],
+                'spent': round(spent, 2),
+            })
+
+        total_spent_year = sum(r['spent'] for r in monthly_spending)
+
+        # ── Category breakdown for the year ──────────────────────────────────
+        cat_map = {}
+        all_entries_year = StockEntry.objects.filter(
+            added_at__year=year
+        ).select_related('item__category')
+        for e in all_entries_year:
+            cat = e.item.category.name if e.item.category else 'Uncategorized'
+            cost = float(e.quantity_added or 0) * float(e.item.unit_cost or 0)
+            if cat not in cat_map:
+                cat_map[cat] = {'category': cat, 'spent': 0.0, 'item_ids': set()}
+            cat_map[cat]['spent'] += cost
+            cat_map[cat]['item_ids'].add(e.item_id)
+
+        category_breakdown = sorted(
+            [{'category': v['category'], 'spent': round(v['spent'], 2), 'item_count': len(v['item_ids'])}
+             for v in cat_map.values()],
+            key=lambda x: -x['spent']
+        )
+
+        # ── Top consumed items (by issues this year) ─────────────────────────
+        issues_year = ItemIssue.objects.filter(
+            issued_at__year=year
+        ).select_related('request__item__category')
+
+        item_consumption = {}
+        for issue in issues_year:
+            item = issue.request.item
+            if item.id not in item_consumption:
+                item_consumption[item.id] = {
+                    'item_id': item.id,
+                    'item_code': item.item_code,
+                    'item_name': item.name,
+                    'category': item.category.name if item.category else '',
+                    'unit': item.unit,
+                    'unit_cost': float(item.unit_cost or 0),
+                    'total_consumed': 0,
+                    'total_value': 0.0,
+                }
+            qty = 0
+            if item.item_type == 'consumable':
+                if issue.usage_finalized and issue.actual_quantity_used is not None:
+                    qty = issue.actual_quantity_used
+            else:
+                qty = issue.issued_quantity
+            cost = qty * float(item.unit_cost or 0)
+            item_consumption[item.id]['total_consumed'] += qty
+            item_consumption[item.id]['total_value'] += cost
+
+        top_consumed = sorted(
+            item_consumption.values(),
+            key=lambda x: -x['total_value']
+        )[:10]
+        for t in top_consumed:
+            t['total_value'] = round(t['total_value'], 2)
+
+        # ── Reorder priority list (items low/out of stock) ────────────────────
+        low_items = Item.objects.filter(
+            available_quantity__lte=F('threshold_quantity')
+        ).select_related('category').order_by('available_quantity')[:20]
+
+        reorder_priority = []
+        for item in low_items:
+            uc = float(item.unit_cost or 0)
+            gap = max(0, item.threshold_quantity - item.available_quantity)
+            recommended = gap + int(gap * 0.10) + 1  # 10% buffer
+            reorder_priority.append({
+                'item_id': item.id,
+                'item_code': item.item_code,
+                'item_name': item.name,
+                'category': item.category.name if item.category else '',
+                'current_stock': item.available_quantity,
+                'threshold': item.threshold_quantity,
+                'unit_cost': uc,
+                'recommended_qty': recommended,
+                'estimated_cost': round(recommended * uc, 2),
+                'status': 'out_of_stock' if item.available_quantity == 0 else 'low_stock',
+            })
+
+        # ── All-time total procurement ────────────────────────────────────────
+        all_entries = StockEntry.objects.all().select_related('item')
+        total_procurement_value = round(sum(
+            float(e.quantity_added or 0) * float(e.item.unit_cost or 0)
+            for e in all_entries
+        ), 2)
+
+        return Response({
+            'year': year,
+            'monthly_spending': monthly_spending,
+            'total_spent_year': round(total_spent_year, 2),
+            'total_procurement_value': total_procurement_value,
+            'category_breakdown': category_breakdown,
+            'top_consumed_items': top_consumed,
+            'reorder_priority': reorder_priority,
+        })
+
+
 class AreaIssuesReportView(APIView):
     """
     GET /api/reports/area-issues/

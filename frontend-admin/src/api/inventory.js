@@ -93,6 +93,8 @@ export const downloadConsumptionItemCSV = (id) =>
 export const downloadConsumptionRequesterCSV = (id) =>
   api.get(`/reports/consumption/${id}/csv/requesters/`, { responseType: 'blob' })
 
+export const getAnnualBudget = (year) => api.get('/reports/annual-budget/', { params: { year } })
+
 export const reportsAPI = {
   getInventoryReport,
   getRequestsReport,
@@ -120,4 +122,3 @@ export const reportsAPI = {
   downloadConsumptionItemCSV,
   downloadConsumptionRequesterCSV,
 }
-

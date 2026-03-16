@@ -15,7 +15,6 @@ class MonthlyReportListSerializer(serializers.ModelSerializer):
             'id', 'month', 'year', 'period_label',
             'generated_at', 'generated_by', 'generated_by_name',
             'csv_url', 'pdf_url',
-            'total_items', 'items_needing_reorder', 'total_estimated_cost',
         ]
 
     def get_generated_by_name(self, obj):
