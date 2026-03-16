@@ -545,7 +545,7 @@ export default function SupervisorsTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Role', 'Name', 'Pay Code', 'Username', 'Phone', 'Assigned Areas', 'Status', 'Report']}
+            headers={['Role', 'Name', 'Pay Code', 'Email', 'Username', 'Phone', 'Assigned Areas', 'Status', 'Report']}
             rows={users.map((u) => {
               const areasForUser = areaMap[u.id] || []
               return [
@@ -554,6 +554,7 @@ export default function SupervisorsTab() {
                 <span key={`pc-${u.id}`} style={{ fontSize: 13, fontWeight: 700, color: u.pay_code ? 'var(--green-800)' : 'var(--text-3)' }}>
                   {u.pay_code || '-'}
                 </span>,
+                u.email || '-',
                 <code key={`user-${u.id}`} style={{ fontSize: 12 }}>{u.username}</code>,
                 u.phone || '-',
                 areasForUser.length ? areasForUser.join(', ') : '-',

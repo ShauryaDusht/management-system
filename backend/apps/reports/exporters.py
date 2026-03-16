@@ -138,6 +138,7 @@ def export_supervisor_report_csv(snapshot: dict) -> bytes:
     # Section 1 - Header block
     writer.writerow(['Supervisor Name', supervisor_info.get('full_name', '')])
     writer.writerow(['Pay Code', supervisor_info.get('pay_code', '')])
+    writer.writerow(['Email', supervisor_info.get('email', '')])
     writer.writerow(['Username', supervisor_info.get('username', '')])
     writer.writerow(['Role', supervisor_info.get('role', '')])
     writer.writerow(['Areas Assigned', ', '.join(supervisor_info.get('areas', []) or [])])
@@ -313,6 +314,7 @@ def export_consumption_requester_csv(snapshot: dict) -> bytes:
         [
             'Requester',
             'Pay Code',
+            'Email',
             'Role',
             'Total Requests',
             'Issued',
@@ -326,6 +328,7 @@ def export_consumption_requester_csv(snapshot: dict) -> bytes:
             [
                 row.get('requester_name', ''),
                 row.get('pay_code', ''),
+                row.get('email', ''),
                 row.get('role', ''),
                 row.get('total_requests', 0),
                 row.get('issued_requests', 0),
