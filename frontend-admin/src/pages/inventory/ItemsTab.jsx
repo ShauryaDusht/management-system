@@ -301,7 +301,6 @@ export default function ItemsTab({ userRole }) {
               it.item_code || '—',
               <div key={`name-${it.id}`}>
                 <div style={{ fontWeight: 600 }}>{it.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{it.location || '—'}</div>
               </div>,
               it.category_name || '—',
               (it.item_type || '').toUpperCase(),
