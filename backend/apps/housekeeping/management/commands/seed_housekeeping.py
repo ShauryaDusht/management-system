@@ -45,7 +45,7 @@ class Command(BaseCommand):
 All accounts use password: {DEFAULT_PASSWORD}
         '''))
 
-    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ─────────────────────────────────────────────────────────────────
 
     def seed_areas(self):
         hostel_names = [
@@ -163,7 +163,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                 HKUserArea.objects.get_or_create(user=user, area=a)
         return user
 
-    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ─────────────────────────────────────────────────────────────────
 
     def seed_caretakers(self):
         """
@@ -267,7 +267,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                 )
             )
 
-    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ─────────────────────────────────────────────────────────────────
 
     def seed_workers(self):
         """
@@ -277,47 +277,47 @@ All accounts use password: {DEFAULT_PASSWORD}
         """
         # Format: (name, punching_no, phone, area_name, worker_type, is_reliever)
         workers = [
-            # â”€â”€ AIBAAN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- AIBAAN ------------------------------------------------------
             ('Reeta Ben',        '357', '9574379477', 'Aibaan',   'room',     False),
             ('Meena Ben',        '76',  '9909679865', 'Aibaan',   'floor',    False),
             ('Kailash B',        '143', '7265921026', 'Aibaan',   'washroom', False),
 
-            # â”€â”€ BEUAKI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- BEUAKI ------------------------------------------------------
             ('Shilpa Ben',       '419', '6356046585', 'Beuaki',   'room',     False),
             ('Bhanu Ben',        '332', '7567371788', 'Beuaki',   'floor',    False),
             ('Surya Ben',        '233', '9725963299', 'Beuaki',   'washroom', False),
 
-            # â”€â”€ CHIMAIR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- CHIMAIR -----------------------------------------------------
             ('Kailashben M',     '98',  '8490053837', 'Chimair',  'room',     False),
             ('Geeta Ben',        '230', '7041016942', 'Chimair',  'floor',    False),
             ('Manisha Ben',      '356', '9157691322', 'Chimair',  'washroom', False),
 
-            # â”€â”€ IJOKHA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- IJOKHA ------------------------------------------------------
             ('Sangeeta Ben',     '219', '8866941201', 'Ijokha',   'room',     False),
             ('Sonal Ben',        '415', '7359834672', 'Ijokha',   'floor',    False),
             ('Champa Ben',       '249', '8140558882', 'Ijokha',   'washroom', False),
 
-            # â”€â”€ DUVEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- DUVEN -------------------------------------------------------
             ('Shailesh Rathod',  '239', '9081107066', 'Duven',    'room',     False),
             ('Rajnikant',        '153', '6355825476', 'Duven',    'floor',    False),
             ('Harish',           '122', '7698462575', 'Duven',    'washroom', False),
 
-            # â”€â”€ EMIET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- EMIET -------------------------------------------------------
             ('Nikul Solanki',    '446', '8238759843', 'Emiet',    'room',     False),
             ('Jagdish',          '157', '9662312505', 'Emiet',    'floor',    False),
             ('Mahendra Makwana', '148', '7041143190', 'Emiet',    'washroom', False),
 
-            # â”€â”€ FIRPEAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- FIRPEAL -----------------------------------------------------
             ('Anand',            '310', '9023393753', 'Firpeal',  'room',     False),
             ('Satish',           '113', '9558903676', 'Firpeal',  'floor',    False),
             ('Jaydeep Solanki',  '259', '9727981188', 'Firpeal',  'washroom', False),
 
-            # â”€â”€ GRIWIKSH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- GRIWIKSH ----------------------------------------------------
             ('Karan',            '260', '7016522113', 'Griwiksh', 'room',     False),
             ('Jignesh',          '115', '8401617156', 'Griwiksh', 'floor',    False),
             ('Sailesh Vaghela',  '109', '8734987012', 'Griwiksh', 'washroom', False),
 
-            # â”€â”€ HIQOM (5 workers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- HIQOM (5 workers) --------------------------------------------
             # RAHUL FIX: punching_no for Mukesh changed from '121' to 'R121' after HK-10 discovery to prevent collision with reliever Rajendra who also has name 'Mukesh'.
             ('Mukesh',           '121', '8141885315', 'Hiqom',    'room',     False),
             ('Jaykesh',          '449', '8401531547', 'Hiqom',    'room',     False),
@@ -325,26 +325,26 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Jitendra',         '95',  '9723216455', 'Hiqom',    'washroom', False),
             ('Ravi',             '245', '7383342914', 'Hiqom',    'washroom', False),
 
-            # â”€â”€ JURQIA (4 workers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- JURQIA (4 workers) -------------------------------------------
             ('Rakesh',           '438', '9316531354', 'Jurqia',   'room',     False),
             ('Shailesh Talvadi', '97',  '8866886040', 'Jurqia',   'floor',    False),
             ('Pravin Vaghela',   '246', '8511376344', 'Jurqia',   'washroom', False),
             ('Banshi',           '149', '9023507559', 'Jurqia',   'washroom', False),
 
-            # â”€â”€ LEKHAAG (4 workers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- LEKHAAG (4 workers) ------------------------------------------
             ('Suresh Solanki',   '73',  '9687317660', 'Lekhaag',  'room',     False),
             ('Naresh',           '89',  '7284086230', 'Lekhaag',  'floor',    False),
             ('Nitin Makwana',    '261', '9157708871', 'Lekhaag',  'washroom', False),
             ('Pravin Maida',     '91',  '9265530235', 'Lekhaag',  'washroom', False),
 
-            # â”€â”€ KYZEEL (5 workers) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- KYZEEL (5 workers) -------------------------------------------
             ('Prahlad Parmar',   '242', '8734949909', 'Kyzeel',   'room',     False),
             ('Amit',             '110', '7779004437', 'Kyzeel',   'room',     False),
             ('Mehul Rathod',     '256', '6353451489', 'Kyzeel',   'floor',    False),
             ('Rajesh',           '104', '7046510026', 'Kyzeel',   'washroom', False),
             ('Mehul Jadeja',     '106', '7096229284', 'Kyzeel',   'washroom', False),
 
-            # â”€â”€ COMMON AREA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- COMMON AREA -------------------------------------------------
             ('Yogesh Vaghela',   '80',  '9998100804', 'Hostel Common Area', 'room',    False),
             ('Vinayak Solanki',  '240', '9023271834', 'Hostel Common Area', 'washroom', False),
             ('Anil Thakur',      '542', '9265665289', 'Hostel Common Area', 'floor',   False),
@@ -352,19 +352,19 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Krunal',           '',    '',            'Hostel Common Area', 'floor',   False),
             ('Ketan Gujjar',     '100', '8347139138', 'Hostel Common Area', 'reliever', True),
 
-            # â”€â”€ RESEARCH PARK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- RESEARCH PARK -----------------------------------------------
             ('Mahesh Solanki',     '', '7046959603', 'Research Park', 'floor',    False),
             ('Ajay Thakor',        '', '8780940745', 'Research Park', 'floor',    False),
             ('Shailesh Vaghela',   '', '7284950619', 'Research Park', 'room',     False),
             ('Dharmishtaben',      '', '9328002335', 'Research Park', 'washroom', False),
 
-            # â”€â”€ CENTRAL ARCADE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- CENTRAL ARCADE ----------------------------------------------
             ('Vijay Parmar',       '', '9824347940', 'Central Arcade', 'floor',    False),
             ('Bhavnaben',          '', '7041174657', 'Central Arcade', 'room',     False),
             ('Ramesh Parmar',      '', '7203906051', 'Central Arcade', 'washroom', False),
             ('Hasmukh Solanki',    '', '9727858924', 'Central Arcade', 'general',  False),
 
-            # â”€â”€ SPORTS COMPLEX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- SPORTS COMPLEX ----------------------------------------------
             ('Anita Solanki',      '', '8401679845', 'Sports Complex', 'floor',    False),
             ('Retuben Solanki',    '', '6356838847', 'Sports Complex', 'room',     False),
             ('Uttam Vaghela',      '', '6353089004', 'Sports Complex', 'room',     False),
@@ -692,7 +692,7 @@ All accounts use password: {DEFAULT_PASSWORD}
 
         self.stdout.write(f'  [OK] Workers: {HKWorker.objects.count()} ({created_count} new)')
 
-    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ─────────────────────────────────────────────────────────────────
 
     def seed_schedules(self):
         """
@@ -714,23 +714,23 @@ All accounts use password: {DEFAULT_PASSWORD}
         # Delete existing templates for these areas
         HKScheduleTemplate.objects.filter(area__in=hostel_areas).delete()
 
-        # â”€â”€ ROOM STAFF SCHEDULE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ─── ROOM STAFF SCHEDULE ─────────────────────────────────────────
         room_tasks = [
             # (order, start, end, task_name, requires_photo, description)
             (1,  '08:10', '08:45', '2nd Floor Washroom Touch Up',         False, ''),
             (2,  '08:45', '09:00', 'Staircase Cleaning',                   False, ''),
-            (3,  '09:00', '09:30', 'Room Cleaning â€” 5 rooms',              True,  'First round of room cleaning'),
+            (3,  '09:00', '09:30', 'Room Cleaning - 5 rooms',              True,  'First round of room cleaning'),
             (4,  '09:30', '09:45', 'Tea Break',                            False, ''),
             (5,  '09:45', '10:00', 'Outside Round',                        False, ''),
-            (6,  '10:00', '12:00', 'Room Round â€” 15 rooms',                True,  'Main room cleaning round'),
-            (7,  '12:00', '13:00', 'Pantry Cleaning â€” 4 pantries',         True,  ''),
+            (6,  '10:00', '12:00', 'Room Round - 15 rooms',                True,  'Main room cleaning round'),
+            (7,  '12:00', '13:00', 'Pantry Cleaning - 4 pantries',         True,  ''),
             (8,  '13:00', '13:45', 'Lunch Break',                          False, ''),
             (9,  '13:45', '14:00', 'Paper Cutting / Admin Work',           False, ''),
-            (10, '14:00', '16:00', 'Room & Extra Work â€” 10 rooms',         True,  'Afternoon room round'),
+            (10, '14:00', '16:00', 'Room & Extra Work - 10 rooms',         True,  'Afternoon room round'),
             (11, '16:00', '16:50', 'Common Cleaning & Pantry Round',       False, ''),
         ]
 
-        # â”€â”€ FLOOR STAFF SCHEDULE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ─── FLOOR STAFF SCHEDULE ────────────────────────────────────────
         floor_tasks = [
             (1,  '08:10', '08:45', '3rd Floor Washroom Touch Up',          False, ''),
             (2,  '08:45', '09:30', 'Ground Floor Dry Mop',                 False, ''),
@@ -745,14 +745,14 @@ All accounts use password: {DEFAULT_PASSWORD}
             (11, '16:20', '16:50', 'Ground Floor Cleaning',                False, ''),
         ]
 
-        # â”€â”€ WASHROOM STAFF SCHEDULE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ─── WASHROOM STAFF SCHEDULE ─────────────────────────────────────
         washroom_tasks = [
             (1,  '08:10', '08:45', '1st Floor Washroom Touch Up',          False, ''),
             (2,  '08:45', '09:30', 'Ground Floor Washroom Touch Up',       False, ''),
             (3,  '09:30', '09:45', 'Tea Break',                            False, ''),
             (4,  '09:45', '10:00', 'Staircase Cleaning',                   False, ''),
-            (5,  '10:00', '12:00', '3rd Floor â€” 2 Washroom Deep Cleaning', True,  ''),
-            (6,  '12:00', '13:00', '2nd Floor â€” 2 Washroom Cleaning',      True,  ''),
+            (5,  '10:00', '12:00', '3rd Floor - 2 Washroom Deep Cleaning', True,  ''),
+            (6,  '12:00', '13:00', '2nd Floor - 2 Washroom Cleaning',      True,  ''),
             (7,  '13:00', '13:45', 'Lunch Break',                          False, ''),
             (8,  '13:45', '14:00', 'Paper Cutting',                        False, ''),
             (9,  '14:00', '15:00', '6 Washroom Rounds Touch Up',           False, ''),
@@ -760,9 +760,9 @@ All accounts use password: {DEFAULT_PASSWORD}
             (11, '16:00', '16:50', 'All Washroom Touch Up & Final Round',  True,  ''),
         ]
 
-        # â”€â”€ SUNDAY EXTRAS (same for all hostels) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ─── SUNDAY EXTRAS (same for all hostels) ────────────────────────
         sunday_tasks = [
-            (1, '08:10', '09:00', 'Dustbin Cleaning â€” All Floors',         True,  'Every Sunday'),
+            (1, '08:10', '09:00', 'Dustbin Cleaning - All Floors',         True,  'Every Sunday'),
             (2, '09:00', '10:30', 'Terrace Cleaning',                      True,  'Every Sunday'),
             (3, '10:30', '12:00', 'Fridge Cleaning (Every 15 Days)',        True,  'Check with caretaker if due today'),
             (4, '13:00', '14:00', 'Lunch Break',                           False, ''),
