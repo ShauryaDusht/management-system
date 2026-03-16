@@ -38,17 +38,16 @@ export default function OverviewTab() {
       setError('')
     }
     try {
-      const { data: areaData } = await hkAPI.getAreas()
+      const todayStr = todayISO()
+      const [{ data: areaData }, recordsResult] = await Promise.all([
+        hkAPI.getAreas(),
+        hkAPI.getDailyRecords({ date: todayStr }).catch(() => ({ data: [] })),
+      ])
       const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
         .filter((a) => a.name?.toLowerCase() !== 'hostels reliever')
-      const todayStr = todayISO()
-      let records = []
-      try {
-        const { data } = await hkAPI.getDailyRecords({ date: todayStr })
-        records = Array.isArray(data) ? data : data?.results || []
-      } catch {
-        records = []
-      }
+      const records = Array.isArray(recordsResult.data)
+        ? recordsResult.data
+        : recordsResult.data?.results || []
 
       const byArea = {}
       records.forEach(r => {
@@ -136,12 +135,42 @@ export default function OverviewTab() {
     [rows, areaClassFilter],
   )
 
+  const skeletonRows = useMemo(
+    () => Array(6).fill(null).map((_, i) =>
+      Array(7).fill(null).map((_, j) => (
+        <div
+          key={`skeleton-${i}-${j}`}
+          style={{ height: 14, background: 'var(--border)', borderRadius: 4, width: '70%' }}
+        />
+      ))),
+    [],
+  )
+
+  const tableRows = useMemo(
+    () => (
+      loading
+        ? skeletonRows
+        : visibleRows.map((r) => [
+          r.area,
+          <span key={`sup-${r.area_id}`} style={{ fontSize: 12 }}>
+            {r.supervisor_caretaker}
+          </span>,
+          <strong key={`t-${r.area_id}`}>{r.total}</strong>,
+          <strong key={`p-${r.area_id}`}>{r.pending}</strong>,
+          <strong key={`s-${r.area_id}`}>{r.skipped}</strong>,
+          <strong key={`c-${r.area_id}`}>{r.completed}</strong>,
+          <Btn key={`a-${r.area_id}`} size="sm" variant="orange" onClick={() => openAssignModal(r)}>
+            + Assign
+          </Btn>,
+        ])
+    ),
+    [loading, skeletonRows, visibleRows],
+  )
+
   useEffect(() => {
-    load()
-    loadTrend()
+    Promise.all([load(), loadTrend()])
     const timer = setInterval(() => {
-      load({ silent: true })
-      loadTrend()
+      Promise.all([load({ silent: true }), loadTrend()])
     }, 30000)
     return () => clearInterval(timer)
   }, [load, loadTrend])
@@ -254,144 +283,131 @@ export default function OverviewTab() {
         </Card>
       ) : null}
 
-      {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
-          <Spinner />
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 14 }}>
-          <Card noPad>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 14 }}>
+        <Card noPad>
+          <div
+            style={{
+              padding: '12px 16px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ fontWeight: 700 }}>Today's Running Tasks</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <Btn
+                size="sm"
+                variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'}
+                onClick={() => setAreaClassFilter('hostels')}
+              >
+                Hostels
+              </Btn>
+              <Btn
+                size="sm"
+                variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'}
+                onClick={() => setAreaClassFilter('academic')}
+              >
+                Academic Blocks
+              </Btn>
+              <Btn
+                size="sm"
+                variant={areaClassFilter === 'others' ? 'primary' : 'secondary'}
+                onClick={() => setAreaClassFilter('others')}
+              >
+                Others
+              </Btn>
+              <Btn
+                size="sm"
+                variant={areaClassFilter === 'all' ? 'primary' : 'secondary'}
+                onClick={() => setAreaClassFilter('all')}
+              >
+                All
+              </Btn>
+            </div>
+          </div>
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+              <Spinner />
+            </div>
+          ) : null}
+          <DataTable
+            headers={[
+              'Area',
+              'Assigned To',
+              'Total Work',
+              'Pending',
+              'Skipped',
+              'Completed',
+              'Assign Task',
+            ]}
+            rows={tableRows}
+          />
+        </Card>
+
+        <Card>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ fontWeight: 700 }}>Activity Trend</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <Btn
+                size="sm"
+                variant={trendRange === 'today' ? 'primary' : 'secondary'}
+                onClick={() => setTrendRange('today')}
+              >
+                Today
+              </Btn>
+              <Btn
+                size="sm"
+                variant={trendRange === 'weekly' ? 'primary' : 'secondary'}
+                onClick={() => setTrendRange('weekly')}
+              >
+                Weekly
+              </Btn>
+              <Btn
+                size="sm"
+                variant={trendRange === 'monthly' ? 'primary' : 'secondary'}
+                onClick={() => setTrendRange('monthly')}
+              >
+                Monthly
+              </Btn>
+            </div>
+          </div>
+          {trendLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+              <Spinner />
+            </div>
+          ) : trendData.length > 0 ? (
+            <TrendArea
+              data={trendData}
+              lines={[
+                { key: 'done', label: 'Completed' },
+                { key: 'pending', label: 'Pending + Ongoing' },
+                { key: 'skipped', label: 'Skipped' },
+              ]}
+              height={220}
+            />
+          ) : (
             <div
               style={{
-                padding: '12px 16px',
-                borderBottom: '1px solid var(--border)',
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 10,
-                flexWrap: 'wrap',
+                justifyContent: 'center',
+                height: 220,
+                color: 'var(--text-3)',
+                fontSize: 12,
+                gap: 8,
+                border: '1px dashed var(--border)',
+                borderRadius: 8,
               }}
             >
-              <div style={{ fontWeight: 700 }}>Today's Running Tasks</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <Btn
-                  size="sm"
-                  variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'}
-                  onClick={() => setAreaClassFilter('hostels')}
-                >
-                  Hostels
-                </Btn>
-                <Btn
-                  size="sm"
-                  variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'}
-                  onClick={() => setAreaClassFilter('academic')}
-                >
-                  Academic Blocks
-                </Btn>
-                <Btn
-                  size="sm"
-                  variant={areaClassFilter === 'others' ? 'primary' : 'secondary'}
-                  onClick={() => setAreaClassFilter('others')}
-                >
-                  Others
-                </Btn>
-                <Btn
-                  size="sm"
-                  variant={areaClassFilter === 'all' ? 'primary' : 'secondary'}
-                  onClick={() => setAreaClassFilter('all')}
-                >
-                  All
-                </Btn>
-              </div>
+              <div style={{ textAlign: 'center' }}>No activity trend available for this range.</div>
             </div>
-            <DataTable
-              headers={[
-                'Area',
-                'Assigned To',
-                'Total Work',
-                'Pending',
-                'Skipped',
-                'Completed',
-                'Assign Task',
-              ]}
-              rows={visibleRows.map((r) => [
-                r.area,
-                <span key={`sup-${r.area_id}`} style={{ fontSize: 12 }}>
-                  {r.supervisor_caretaker}
-                </span>,
-                <strong key={`t-${r.area_id}`}>{r.total}</strong>,
-                <strong key={`p-${r.area_id}`}>{r.pending}</strong>,
-                <strong key={`s-${r.area_id}`}>{r.skipped}</strong>,
-                <strong key={`c-${r.area_id}`}>{r.completed}</strong>,
-                <Btn key={`a-${r.area_id}`} size="sm" variant="orange" onClick={() => openAssignModal(r)}>
-                  + Assign
-                </Btn>,
-              ])}
-            />
-          </Card>
-
-          <Card>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
-              <div style={{ fontWeight: 700 }}>Activity Trend</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <Btn
-                  size="sm"
-                  variant={trendRange === 'today' ? 'primary' : 'secondary'}
-                  onClick={() => setTrendRange('today')}
-                >
-                  Today
-                </Btn>
-                <Btn
-                  size="sm"
-                  variant={trendRange === 'weekly' ? 'primary' : 'secondary'}
-                  onClick={() => setTrendRange('weekly')}
-                >
-                  Weekly
-                </Btn>
-                <Btn
-                  size="sm"
-                  variant={trendRange === 'monthly' ? 'primary' : 'secondary'}
-                  onClick={() => setTrendRange('monthly')}
-                >
-                  Monthly
-                </Btn>
-              </div>
-            </div>
-            {trendLoading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-                <Spinner />
-              </div>
-            ) : trendData.length > 0 ? (
-              <TrendArea
-                data={trendData}
-                lines={[
-                  { key: 'done', label: 'Completed' },
-                  { key: 'pending', label: 'Pending + Ongoing' },
-                  { key: 'skipped', label: 'Skipped' },
-                ]}
-                height={220}
-              />
-            ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: 220,
-                  color: 'var(--text-3)',
-                  fontSize: 12,
-                  gap: 8,
-                  border: '1px dashed var(--border)',
-                  borderRadius: 8,
-                }}
-              >
-                <div style={{ textAlign: 'center' }}>No activity trend available for this range.</div>
-              </div>
-            )}
-          </Card>
-        </div>
-      )}
+          )}
+        </Card>
+      </div>
 
       <Card style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'space-between' }}>
