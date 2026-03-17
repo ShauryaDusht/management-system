@@ -8,7 +8,7 @@ import django.utils.timezone
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("housekeeping", "0009_hkinchargeassignment_hkleaverequest_and_more"),
+        ("housekeeping", "0001_squashed_0018_fix_encoding_artifacts"),
         ("reports", "0002_fix_generated_at"),
     ]
 

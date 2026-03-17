@@ -234,7 +234,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                 ])
 
         accounts = [
-            ('admin', 'Admin', '', '9727757096', 'admin', [], 'admin@iitgn.ac.in'),
+            ('admin', 'Admin', '', '9727757096', 'admin', [], 'admin@iitgn.ac.in', ''),
             ('horticulture.manager', 'Horticulture', 'Manager', '9723889424', 'horticulture_manager', [], 'managerhort.iwd@iitgn.ac.in', '474'),
             ('housekeeping.manager', 'Housekeeping', 'Manager', '8758120645', 'housekeeping_manager', [], 'manager.hk@iitgn.ac.in', '469'),
             ('inv.manager', 'Inventory', 'Manager', '8758120645', 'inventory_manager', [], 'manager.hk@iitgn.ac.in', '469'),
