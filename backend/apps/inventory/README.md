@@ -2,12 +2,6 @@
 
 Inventory includes REST APIs (`/api/inventory/`), reporting APIs (`/api/reports/`), and mobile HTMX pages (`/inventory/mobile/`).
 
-## Progress Snapshot
-- Phase 1 (Core workflow): ██████████ 100%
-- Phase 2 (Returns/tracking): ██████████ 100%
-- Phase 3 (Manual reporting): ██████████ 100%
-- Phase 4 (Analytics UX): ████████░░ 80%
-
 ## Quick Start (Docker)
 ```bash
 # from repo root
