@@ -30,7 +30,7 @@
   {% elif is_roads_outdoor %}
     Route-wise road and footpath cleaning plan (daily + Sunday deep clean)
   {% elif is_swm %}
-    SWM workflow (Mon-Sat operations + Sunday deep clean)
+    SWM workflow (daily operations + Sunday deep clean support)
   {% elif is_academic %}
     Academic block plan (AB1-AB13 + common zones)
   {% else %}
@@ -48,7 +48,7 @@
       {{ day_data.day }}
       {% if day_data.day_idx == today_dow %}<span style="font-size:10px;opacity:.7">(Today)</span>{% endif %}
       {% if day_data.day_idx == 5 %}<span style="font-size:11px;opacity:.7">+ Saturday Special</span>{% endif %}
-      {% if day_data.day_idx == 6 %}<span style="font-size:11px;opacity:.7">+ Sunday Extras</span>{% endif %}
+      {% if day_data.day_idx == 6 %}<span style="font-size:11px;opacity:.7">+ Sunday Work</span>{% endif %}
     </span>
     <span>{{ day_data.tasks|length }} tasks {% if day_data.day_idx == today_dow %}-{% else %}+{% endif %}</span>
   </summary>

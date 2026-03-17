@@ -1265,10 +1265,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                 (3, '22:00', '07:00', 'Anil: Night Shift All Work Coverage', True, 'Dining hall, common hall, meeting hall, conference hall, washrooms and rooms'),
             ]
 
-            gh_special_tasks = [
-                (1, '16:00', '16:20', 'Supervisor: Weekly Off and Reliever Roster Check', False,
-                 'Weekly off coverage to be managed among the Guest House New staff team.'),
-            ]
+            gh_special_tasks = []  # Weekly-off handling now lives in the profile/leave flow.
 
             for order, start, end, name, req_photo, desc in gh_floor_tasks:
                 HKScheduleTemplate.objects.create(
@@ -1363,9 +1360,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                 (3, '16:30', '16:45', 'Common Washroom Cleaning - Round 3', True, ''),
             ]
 
-            db_special_tasks = [
-                (1, '08:00', '08:15', 'Supervisor: Weekly Off Coverage Check', False, 'Shailesh weekly off Wednesday, Rakesh weekly off Monday'),
-            ]
+            db_special_tasks = []  # Weekly-off handling now lives in the profile/leave flow.
 
             db_saturday_special = [
                 (1, '16:45', '17:00', 'Terrace Cleaning Weekly', True, 'Sweeping and mopping'),

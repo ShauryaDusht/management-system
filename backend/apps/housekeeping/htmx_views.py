@@ -84,6 +84,156 @@ def area_bucket(area):
     return "others"
 
 
+def _academic_block_number(area):
+    if not area:
+        return None
+    name = (area.name or "").strip()
+    prefix = "Academic Block "
+    if not name.startswith(prefix):
+        return None
+    try:
+        return int(name.replace(prefix, "", 1).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _uses_academic_reliever_pool(area):
+    block_no = _academic_block_number(area)
+    return bool(block_no and 1 <= block_no <= 9)
+
+
+def _attendance_relievers_for_area(area):
+    qs = HKWorker.objects.filter(is_reliever=True, is_active=True)
+    if not area:
+        return qs.none()
+
+    if area_bucket(area) == "hostels":
+        return qs.filter(area__name="Hostels Reliever").order_by("name")
+
+    if _uses_academic_reliever_pool(area):
+        return qs.filter(area__name="Academic Block 8").order_by("name")
+
+    return qs.none()
+
+
+def _uses_sunday_special_only(area):
+    return bool(area and area.area_type == "research_park")
+
+
+def _schedule_templates_for_day(area, day_idx):
+    base_qs = HKScheduleTemplate.objects.filter(area=area, is_active=True)
+    if day_idx == 6 and _uses_sunday_special_only(area):
+        return base_qs.filter(frequency="sunday_extra")
+
+    templates = base_qs.filter(frequency="daily")
+    if day_idx == 5:
+        templates = (templates | base_qs.filter(frequency="saturday_special")).distinct()
+    if day_idx == 6:
+        templates = (templates | base_qs.filter(frequency="sunday_extra")).distinct()
+    return templates
+
+
+def _dashboard_section_labels(area):
+    labels = {
+        "tab_label_floor": "Floor Work",
+        "tab_label_room": "Room Work",
+        "tab_label_washroom": "Washroom",
+        "tab_label_special": "Special Work",
+        "tab_label_extra": "Extra Work",
+        "heading_floor": "Floor Tasks",
+        "heading_room": "Room Tasks",
+        "heading_washroom": "Washroom Tasks",
+        "heading_special": "Special Work",
+    }
+    area_name = (area.name or "") if area else ""
+
+    if area_name == "Hostel Common Area":
+        labels.update({
+            "tab_label_floor": "Day Route",
+            "tab_label_room": "Core Zone",
+            "tab_label_washroom": "Night Washroom",
+            "heading_floor": "Day Route Operations",
+            "heading_room": "Core Common Zones",
+            "heading_washroom": "Night Washroom Route",
+        })
+    elif area_name == "Research Park":
+        labels.update({
+            "tab_label_floor": "Ground Work",
+            "tab_label_room": "Office Work",
+            "tab_label_washroom": "Washroom",
+            "heading_floor": "Ground and External Operations",
+            "heading_room": "Office and Meeting Zones",
+            "heading_washroom": "Washroom and Utility Rounds",
+            "tab_label_special": "Sunday Work",
+            "heading_special": "Sunday Deep-Clean Work",
+        })
+    elif area_name == "Central Arcade":
+        labels.update({
+            "tab_label_floor": "Ground Work",
+            "tab_label_room": "Hall Work",
+            "tab_label_washroom": "Washroom",
+            "heading_floor": "Ground and Entry Operations",
+            "heading_room": "First Floor and Hall Operations",
+            "heading_washroom": "Second Floor and Washroom Operations",
+        })
+    elif area_name == "Sports Complex":
+        labels.update({
+            "tab_label_floor": "Indoor Work",
+            "tab_label_room": "Hall Work",
+            "tab_label_washroom": "Pool & Washroom",
+            "heading_floor": "Indoor and Evening Operations",
+            "heading_room": "Hall and Office Operations",
+            "heading_washroom": "Washroom and Pool Utility Operations",
+        })
+    elif area_name == "Guest House New":
+        labels.update({
+            "tab_label_floor": "Ground Floor",
+            "tab_label_room": "Room Work",
+            "tab_label_washroom": "Upper & Washroom",
+            "heading_floor": "Ground Floor and Canteen Operations",
+            "heading_room": "Room and Shift Operations",
+            "heading_washroom": "Upper Floor and Washroom Operations",
+        })
+    elif area_name == "Director Bungalow":
+        labels.update({
+            "tab_label_floor": "Outdoor Work",
+            "tab_label_room": "Inside Work",
+            "tab_label_washroom": "Washroom",
+            "heading_floor": "Bungalow Surrounding and Garden Operations",
+            "heading_room": "Inside Bungalow and Camp Office Operations",
+            "heading_washroom": "Common Washroom and Kitchen Checks",
+        })
+    elif area_name == "Roads & Outdoor":
+        labels.update({
+            "tab_label_floor": "Parking Route",
+            "tab_label_room": "Residence Route",
+            "tab_label_washroom": "Academic Route",
+            "heading_floor": "Parking and Circle Route Operations",
+            "heading_room": "Residence and RB Connector Routes",
+            "heading_washroom": "Academic, Hostel and Gate-5 Route Operations",
+        })
+    elif area_name == "Solid Waste Management":
+        labels.update({
+            "tab_label_floor": "Collection",
+            "tab_label_room": "Transport",
+            "tab_label_washroom": "Segregation",
+            "heading_floor": "Primary and Secondary Collection Routes",
+            "heading_room": "Tempo and Vehicle Collection Operations",
+            "heading_washroom": "Segregation and Supervisor Operations",
+        })
+    elif area and area.area_type == "academic":
+        labels.update({
+            "tab_label_floor": "Block Work",
+            "tab_label_room": "Lab & Office",
+            "tab_label_washroom": "Washroom",
+            "heading_floor": "Block and Corridor Operations",
+            "heading_room": "Classroom, Lab and Office Operations",
+            "heading_washroom": "Washroom and Common Area Operations",
+        })
+
+    return labels
+
+
 def _build_usage_issues(user, limit=None):
     usage_logs_qs = ItemUsageLog.objects.select_related('logged_by').order_by('-logged_at')
     issues_qs = ItemIssue.objects.select_related(
@@ -283,11 +433,19 @@ def get_user_areas(user):
     if not all_ids:
         return HKArea.objects.none()
 
-    # Hostel staff should be able to mark the dedicated reliever pool too.
-    if HKArea.objects.filter(id__in=all_ids, area_type='hostel', is_active=True).exclude(name='Hostels Reliever').exists():
+    assigned_areas = list(HKArea.objects.filter(is_active=True, id__in=all_ids))
+
+    # Hostel staff should be able to mark the dedicated hostel reliever pool too.
+    if any(area_bucket(area) == "hostels" and area.name != "Hostels Reliever" for area in assigned_areas):
         reliever_area_id = HKArea.objects.filter(name='Hostels Reliever', is_active=True).values_list('id', flat=True).first()
         if reliever_area_id:
             all_ids.add(reliever_area_id)
+
+    # Academic supervisors for Blocks 1-9 should also see the shared academic reliever pool.
+    if any(_uses_academic_reliever_pool(area) for area in assigned_areas):
+        academic_reliever_area_id = HKArea.objects.filter(name='Academic Block 8', is_active=True).values_list('id', flat=True).first()
+        if academic_reliever_area_id:
+            all_ids.add(academic_reliever_area_id)
 
     return HKArea.objects.filter(is_active=True, id__in=all_ids)
 
@@ -321,31 +479,12 @@ def get_today_records(area, date):
     daily templates run every day.
     saturday_special templates run only on Saturday.
     sunday_extra templates run only on Sunday.
+    Research Park uses Sunday special work only; other areas keep daily + Sunday work.
     """
     from django.db import IntegrityError, transaction
 
     dow = date.weekday()  # 0=Mon, 6=Sun
-    is_swm_area = area.area_type == "swm"
-
-    # SWM business rule:
-    # - Monday-Saturday: normal daily flow
-    # - Sunday: only rotational deep-clean tasks
-    if is_swm_area and dow == 6:
-        templates = HKScheduleTemplate.objects.filter(
-            area=area, is_active=True, frequency="sunday_extra"
-        )
-    else:
-        templates = HKScheduleTemplate.objects.filter(area=area, is_active=True, frequency="daily")
-        if dow == 5:
-            saturday_qs = HKScheduleTemplate.objects.filter(
-                area=area, is_active=True, frequency="saturday_special"
-            )
-            templates = (templates | saturday_qs).distinct()
-        if dow == 6:
-            sunday_qs = HKScheduleTemplate.objects.filter(
-                area=area, is_active=True, frequency="sunday_extra"
-            )
-            templates = (templates | sunday_qs).distinct()
+    templates = _schedule_templates_for_day(area, dow)
 
     template_list = list(templates.order_by("worker_tag", "order", "start_time"))
 
@@ -509,6 +648,16 @@ def hk_dashboard(request):
     grouped.setdefault("room", [])
     grouped.setdefault("washroom", [])
     grouped.setdefault("all", [])
+    if grouped["all"]:
+        grouped["floor"].extend(grouped["all"])
+        grouped["floor"].sort(
+            key=lambda rec: (
+                rec.schedule.start_time,
+                rec.schedule.order,
+                rec.id,
+            )
+        )
+        grouped["all"] = []
 
     is_common_area = area_name == "Hostel Common Area"
     is_research_park = area_name == "Research Park"
@@ -519,76 +668,16 @@ def hk_dashboard(request):
     is_roads_outdoor = area_name == "Roads & Outdoor"
     is_swm = area_name == "Solid Waste Management"
     is_academic = bool(sel_area and sel_area.area_type == "academic")
-    if is_common_area:
-        tab_label_floor = "Route A"
-        tab_label_room = "Core Area"
-        tab_label_washroom = "Night Route"
-        heading_floor = "Day Route Operations"
-        heading_room = "Core Common Zones"
-        heading_washroom = "Night Touch-up Route"
-    elif is_research_park:
-        tab_label_floor = "Ground Ops"
-        tab_label_room = "Office Zone"
-        tab_label_washroom = "WR Zone"
-        heading_floor = "Ground and External Operations"
-        heading_room = "Office and Meeting Zones"
-        heading_washroom = "Washroom and Utility Rounds"
-    elif is_central_arcade:
-        tab_label_floor = "Vijay Zone"
-        tab_label_room = "Bhavna Zone"
-        tab_label_washroom = "Ramesh Zone"
-        heading_floor = "Ground and Entry Operations"
-        heading_room = "First Floor and Hall Operations"
-        heading_washroom = "Second Floor and Washroom Operations"
-    elif is_sports_complex:
-        tab_label_floor = "Indoor Ops"
-        tab_label_room = "Hall Zone"
-        tab_label_washroom = "Pool/WR"
-        heading_floor = "Indoor and Evening Operations"
-        heading_room = "Hall and Office Operations"
-        heading_washroom = "Washroom and Pool Utility Operations"
-    elif is_guest_house_new:
-        tab_label_floor = "Ground/Canteen"
-        tab_label_room = "Room Ops"
-        tab_label_washroom = "Upper Floors"
-        heading_floor = "Ground Floor and Canteen Operations"
-        heading_room = "Room and Shift Operations"
-        heading_washroom = "Upper Floor and Washroom Operations"
-    elif is_director_bungalow:
-        tab_label_floor = "Outer Area"
-        tab_label_room = "Inside Ops"
-        tab_label_washroom = "WR Checks"
-        heading_floor = "Bungalow Surrounding and Garden Operations"
-        heading_room = "Inside Bungalow and Camp Office Operations"
-        heading_washroom = "Common Washroom and Kitchen Checks"
-    elif is_roads_outdoor:
-        tab_label_floor = "Route C/K"
-        tab_label_room = "Route E/F"
-        tab_label_washroom = "Route B/A"
-        heading_floor = "Parking and Circle Route Operations"
-        heading_room = "Residence and RB Connector Routes"
-        heading_washroom = "Academic/Hostel/Gate-5 Route Operations"
-    elif is_swm:
-        tab_label_floor = "Collection"
-        tab_label_room = "Transport"
-        tab_label_washroom = "Segregation"
-        heading_floor = "Primary and Secondary Collection Routes"
-        heading_room = "Tempo and Vehicle Collection Operations"
-        heading_washroom = "Segregation and Supervisor Operations"
-    elif is_academic:
-        tab_label_floor = "Block Ops"
-        tab_label_room = "Labs/Office"
-        tab_label_washroom = "WR/Common"
-        heading_floor = "Block and Corridor Operations"
-        heading_room = "Classroom, Lab and Office Operations"
-        heading_washroom = "Washroom and Common Area Operations"
-    else:
-        tab_label_floor = "Floor"
-        tab_label_room = "Room"
-        tab_label_washroom = "WR"
-        heading_floor = "Floor Staff"
-        heading_room = "Room Staff"
-        heading_washroom = "Washroom Staff"
+    section_labels = _dashboard_section_labels(sel_area)
+    tab_label_floor = section_labels["tab_label_floor"]
+    tab_label_room = section_labels["tab_label_room"]
+    tab_label_washroom = section_labels["tab_label_washroom"]
+    tab_label_special = section_labels["tab_label_special"]
+    tab_label_extra = section_labels["tab_label_extra"]
+    heading_floor = section_labels["heading_floor"]
+    heading_room = section_labels["heading_room"]
+    heading_washroom = section_labels["heading_washroom"]
+    heading_special = section_labels["heading_special"]
 
     total = len(records)
     done = sum(1 for rec in records if rec.status == "done")
@@ -809,12 +898,13 @@ def hk_dashboard(request):
         "tab_label_floor": tab_label_floor,
         "tab_label_room": tab_label_room,
         "tab_label_washroom": tab_label_washroom,
+        "tab_label_special": tab_label_special,
+        "tab_label_extra": tab_label_extra,
         "heading_floor": heading_floor,
         "heading_room": heading_room,
         "heading_washroom": heading_washroom,
-        # Product requirement: Special tab should be visible in all HK dashboards.
-        # It can be empty by default and then receive admin-assigned area tasks.
-        "has_special_tasks": bool(sel_area),
+        "heading_special": heading_special,
+        "has_special_tasks": bool(grouped["all"]),
         "can_assign_tasks": user.role in ["admin", "housekeeping_manager", "supervisor", "caretaker"],
         "worker_selection_cards": worker_selection_cards,
         "show_ws_overlay": bool(worker_selection_cards) and user.role in ["supervisor", "caretaker"],
@@ -1295,24 +1385,10 @@ def hk_schedule(request):
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     weekly = []
     if sel_area:
-        daily = list(HKScheduleTemplate.objects.filter(
-            area=sel_area, is_active=True, frequency="daily"
-        ).order_by("worker_tag", "order", "start_time"))
-        saturday_special = list(HKScheduleTemplate.objects.filter(
-            area=sel_area, is_active=True, frequency="saturday_special"
-        ).order_by("worker_tag", "order", "start_time"))
-        sunday_extra = list(HKScheduleTemplate.objects.filter(
-            area=sel_area, is_active=True, frequency="sunday_extra"
-        ).order_by("order", "start_time"))
         for i, day in enumerate(days):
-            if is_swm and i == 6:
-                tasks = list(sunday_extra)
-            else:
-                tasks = list(daily)
-                if i == 5:
-                    tasks += saturday_special
-                if i == 6:
-                    tasks += sunday_extra
+            tasks = list(
+                _schedule_templates_for_day(sel_area, i).order_by("worker_tag", "order", "start_time")
+            )
             weekly.append({"day": day, "day_idx": i, "tasks": tasks})
 
     return render(request, "housekeeping/mobile/schedule.html", {
@@ -1387,7 +1463,7 @@ def hk_attendance(request):
                 sub = HKRelieverSubstitution.objects.filter(
                     original_worker=worker, date=sel_date
                 ).select_related("reliever").first()
-                all_rel = HKWorker.objects.filter(is_reliever=True, is_active=True).order_by("name")
+                all_rel = list(_attendance_relievers_for_area(sel_area))
                 return render(request, "housekeeping/mobile/partials/attendance_worker_card.html", {
                     "row": {
                         "worker": worker,
@@ -1425,7 +1501,7 @@ def hk_attendance(request):
     for row in worker_rows:
         row["substitution"] = subs_today.get(row["worker"].id)
 
-    all_relievers = HKWorker.objects.filter(is_reliever=True, is_active=True).order_by("name")
+    all_relievers = list(_attendance_relievers_for_area(sel_area))
 
     # Group by worker type
     type_groups = {}
@@ -1472,10 +1548,13 @@ def hk_assign_reliever(request):
     today = timezone.localdate()
 
     original = get_object_or_404(HKWorker, pk=request.POST.get("original_worker_id"))
-    reliever = HKWorker.objects.filter(
-        pk=request.POST.get("reliever_id"),
-        is_reliever=True,
-    ).first()
+    if area and original.area_id != area.id:
+        return HttpResponseBadRequest("Worker does not belong to the selected area.")
+    if original.is_reliever:
+        return HttpResponseBadRequest("Reliever workers cannot receive another reliever.")
+
+    allowed_relievers = _attendance_relievers_for_area(area or original.area)
+    reliever = allowed_relievers.filter(pk=request.POST.get("reliever_id")).first()
     if not reliever:
         return HttpResponseBadRequest("Selected worker is not a valid reliever.")
 
@@ -1517,7 +1596,7 @@ def hk_assign_reliever(request):
         sub = HKRelieverSubstitution.objects.filter(original_worker=original, date=today).select_related("reliever").first()
         first_att = HKAttendanceRecord.objects.filter(worker=original, date=today, half="first").first()
         second_att = HKAttendanceRecord.objects.filter(worker=original, date=today, half="second").first()
-        all_relievers = HKWorker.objects.filter(is_reliever=True, is_active=True).order_by("name")
+        all_relievers = list(_attendance_relievers_for_area(area or original.area))
         return render(request, "housekeeping/mobile/partials/attendance_worker_card.html", {
             "row": {
                 "worker": original,

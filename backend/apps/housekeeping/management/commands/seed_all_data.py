@@ -30,6 +30,9 @@ class Command(BaseCommand):
         call_command('seed_housekeeping', verbosity=0)
         self.stdout.write(self.style.SUCCESS('  [OK] Housekeeping/users seeded'))
 
+        call_command('sync_guesthouse_director_staff', quiet=True)
+        self.stdout.write(self.style.SUCCESS('  [OK] Housekeeping live roster/schedule sync applied'))
+
         call_command('update_inventory_items', verbosity=0)
         self.stdout.write(self.style.SUCCESS('  [OK] Inventory item codes/costs updated'))
 

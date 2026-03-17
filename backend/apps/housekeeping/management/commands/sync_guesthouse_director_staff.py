@@ -1,3 +1,5 @@
+import datetime
+
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
@@ -6,6 +8,17 @@ from apps.housekeeping.models import HKArea, HKScheduleTemplate, HKWorker
 
 def _normalize(value):
     return "".join((value or "").lower().split())
+
+
+WORKDAY_START_MINUTES = 8 * 60
+WORKDAY_TOTAL_MINUTES = 9 * 60
+WORKDAY_END_MINUTES = WORKDAY_START_MINUTES + WORKDAY_TOTAL_MINUTES
+
+
+def _minutes_to_time(total_minutes):
+    total_minutes = max(0, min((24 * 60) - 1, int(total_minutes)))
+    hours, minutes = divmod(total_minutes, 60)
+    return datetime.time(hour=hours, minute=minutes)
 
 
 class Command(BaseCommand):
@@ -226,7 +239,11 @@ class Command(BaseCommand):
         ("Guest House New", "floor", 7, "Raju: Gym Area and Equipment Dusting", ""),
         ("Guest House New", "floor", 8, "Raju: All Floor Coolers and Washroom Cleaning", ""),
         ("Guest House New", "room", 1, "Dhaval + Ajay + Sumit + Vishal: Checkout/Occupied/Vacant Rooms", "Morning room operations"),
-        ("Guest House New", "all", 1, "Supervisor: Weekly Off and Reliever Roster Check", "Weekly off coverage to be managed among the Guest House New staff team."),
+    ]
+
+    REMOVED_SPECIAL_TASKS = [
+        ("Guest House New", "Supervisor: Weekly Off and Reliever Roster Check"),
+        ("Director Bungalow", "Supervisor: Weekly Off Coverage Check"),
     ]
 
     HOSTEL_SUPERVISOR_BY_AREA = {
@@ -473,14 +490,202 @@ class Command(BaseCommand):
                 order=order,
             ).update(task_name=task_name, task_description=task_description)
 
+        removed_special_tasks = 0
+        for area_name, task_name in self.REMOVED_SPECIAL_TASKS:
+            removed_special_tasks += HKScheduleTemplate.objects.filter(
+                area__name=area_name,
+                worker_tag="all",
+                task_name=task_name,
+            ).delete()[0]
+
+        balanced_templates = self._rebalance_daily_worker_schedules()
+
         self.stdout.write(
             self.style.SUCCESS(
                 f"Synced housekeeping roster: {touched} workers, "
                 f"deactivated {old_area_count} outdated area rows, "
                 f"deactivated {duplicate_count} duplicate pay-code rows, "
-                f"updated {schedule_updates} schedule rows."
+                f"updated {schedule_updates} schedule rows, "
+                f"removed {removed_special_tasks} legacy special tasks, "
+                f"rebalanced {balanced_templates} worker schedule slots."
             )
         )
+
+    def _rebalance_daily_worker_schedules(self):
+        updated_templates = []
+        areas = list(HKArea.objects.filter(is_active=True).order_by("name"))
+        for area in areas:
+            area_workers = list(HKWorker.objects.filter(area=area, is_active=True).order_by("name"))
+            for worker_tag in ("floor", "room", "washroom", "general"):
+                templates = list(
+                    HKScheduleTemplate.objects.filter(
+                        area=area,
+                        is_active=True,
+                        frequency="daily",
+                        worker_tag=worker_tag,
+                    ).order_by("order", "start_time", "id")
+                )
+                if not templates:
+                    continue
+                lanes = self._build_lanes(area_workers, worker_tag, templates)
+                for lane in lanes:
+                    updated_templates.extend(self._rebalance_lane(lane))
+
+        if updated_templates:
+            HKScheduleTemplate.objects.bulk_update(updated_templates, ["start_time", "end_time"])
+        return len(updated_templates)
+
+    def _build_lanes(self, area_workers, worker_tag, templates):
+        worker_pool = [
+            worker for worker in area_workers
+            if worker.worker_type == worker_tag and not worker.is_reliever
+        ]
+        if not worker_pool:
+            worker_pool = [worker for worker in area_workers if worker.worker_type == worker_tag]
+        worker_count = max(1, len(worker_pool))
+        worker_tokens = self._worker_tokens(worker_pool or area_workers)
+
+        named_lanes = {}
+        unnamed_templates = []
+        for template in templates:
+            lane_key = self._extract_lane_key(template.task_name, worker_tokens)
+            if lane_key:
+                named_lanes.setdefault(lane_key, []).append(template)
+            else:
+                unnamed_templates.append(template)
+
+        lanes = [sorted(lane, key=self._template_sort_key) for lane in named_lanes.values()]
+        if unnamed_templates:
+            if lanes:
+                lane_totals = [sum(item.duration_minutes for item in lane) for lane in lanes]
+                for template in unnamed_templates:
+                    smallest_idx = min(range(len(lanes)), key=lambda idx: lane_totals[idx])
+                    lanes[smallest_idx].append(template)
+                    lane_totals[smallest_idx] += template.duration_minutes
+            elif worker_count > 1:
+                distributed = [[] for _ in range(worker_count)]
+                for index, template in enumerate(unnamed_templates):
+                    distributed[index % worker_count].append(template)
+                lanes.extend(lane for lane in distributed if lane)
+            else:
+                lanes.append(list(unnamed_templates))
+
+        return [sorted(lane, key=self._template_sort_key) for lane in lanes if lane]
+
+    def _rebalance_lane(self, templates):
+        lane = sorted(templates, key=self._template_sort_key)
+        if not lane:
+            return []
+
+        if len(lane) == 1:
+            template = lane[0]
+            start_minutes = (template.start_time.hour * 60) + template.start_time.minute
+            end_minutes = (template.end_time.hour * 60) + template.end_time.minute
+            if end_minutes <= start_minutes:
+                end_minutes += 24 * 60
+            if WORKDAY_START_MINUTES <= start_minutes and end_minutes <= WORKDAY_END_MINUTES:
+                return []
+            template.start_time = _minutes_to_time(WORKDAY_START_MINUTES)
+            template.end_time = _minutes_to_time(WORKDAY_END_MINUTES)
+            return [template]
+
+        raw_durations = [max(5, template.duration_minutes) for template in lane]
+        scaled_durations = self._scaled_durations(raw_durations, WORKDAY_TOTAL_MINUTES)
+        cursor = WORKDAY_START_MINUTES
+        changed = []
+        for template, duration in zip(lane, scaled_durations):
+            next_cursor = min(WORKDAY_END_MINUTES, cursor + duration)
+            start_time = _minutes_to_time(cursor)
+            end_time = _minutes_to_time(next_cursor)
+            if template.start_time != start_time or template.end_time != end_time:
+                template.start_time = start_time
+                template.end_time = end_time
+                changed.append(template)
+            cursor = next_cursor
+
+        final_end_time = _minutes_to_time(WORKDAY_END_MINUTES)
+        if lane[-1].end_time != final_end_time:
+            lane[-1].end_time = final_end_time
+            if lane[-1] not in changed:
+                changed.append(lane[-1])
+        return changed
+
+    def _scaled_durations(self, raw_durations, target_total):
+        total = sum(raw_durations) or len(raw_durations) or 1
+        exact = [(duration * target_total) / total for duration in raw_durations]
+        scaled = [max(5, int(value)) for value in exact]
+        remainder = target_total - sum(scaled)
+
+        if remainder > 0:
+            ranked = sorted(
+                range(len(exact)),
+                key=lambda idx: (exact[idx] - int(exact[idx]), raw_durations[idx]),
+                reverse=True,
+            )
+            for idx in ranked:
+                if remainder <= 0:
+                    break
+                scaled[idx] += 1
+                remainder -= 1
+        elif remainder < 0:
+            ranked = sorted(
+                range(len(exact)),
+                key=lambda idx: (scaled[idx], raw_durations[idx]),
+                reverse=True,
+            )
+            for idx in ranked:
+                while remainder < 0 and scaled[idx] > 5:
+                    scaled[idx] -= 1
+                    remainder += 1
+                if remainder == 0:
+                    break
+
+        if remainder != 0 and scaled:
+            scaled[-1] = max(5, scaled[-1] + remainder)
+        return scaled
+
+    def _worker_tokens(self, workers):
+        tokens = set()
+        for worker in workers:
+            name = (worker.name or "").strip()
+            if not name:
+                continue
+            parts = [part for part in name.replace(".", " ").split() if part]
+            tokens.add(_normalize(name))
+            for part in parts:
+                tokens.add(_normalize(part))
+            if len(parts) >= 2:
+                tokens.add(_normalize(" ".join(parts[:2])))
+        return tokens
+
+    def _extract_lane_key(self, task_name, worker_tokens):
+        if not task_name or ":" not in task_name or not worker_tokens:
+            return ""
+        prefix = task_name.split(":", 1)[0].strip()
+        if not prefix:
+            return ""
+        normalized_parts = []
+        split_text = prefix.replace("&", "+").replace("/", "+")
+        for part in split_text.split("+"):
+            cleaned = _normalize(part)
+            if cleaned:
+                normalized_parts.append(cleaned)
+        if normalized_parts and all(self._matches_worker_token(part, worker_tokens) for part in normalized_parts):
+            return prefix
+        return ""
+
+    def _matches_worker_token(self, part, worker_tokens):
+        if part in worker_tokens:
+            return True
+        if len(part) < 4:
+            return False
+        for token in worker_tokens:
+            if token.startswith(part) or part.startswith(token):
+                return True
+        return False
+
+    def _template_sort_key(self, template):
+        return (template.order, template.start_time, template.id)
 
     def _find_worker(self, spec, area, all_workers, keep_ids):
         legacy = {_normalize(spec["name"])}

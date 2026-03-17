@@ -239,7 +239,7 @@
 {% endif %}
 
 {% if records %}
-<div style="display:grid;grid-template-columns:repeat({% if has_special_tasks %}5{% else %}4{% endif %},1fr);gap:6px;margin-bottom:12px" id="tab-buttons">
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px" id="tab-buttons">
   <button onclick="showTab('floor')" id="btn-floor" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#2d4a3e;color:#fff;transition:opacity .2s">
     {{ tab_label_floor }}<br><span style="font-size:10px;font-weight:400;opacity:.85">{{ grouped.floor|length|default:0 }} tasks</span>
   </button>
@@ -249,13 +249,8 @@
   <button onclick="showTab('washroom')" id="btn-washroom" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#1d4ed8;color:#fff;transition:opacity .2s">
     {{ tab_label_washroom }}<br><span style="font-size:10px;font-weight:400;opacity:.85">{{ grouped.washroom|length|default:0 }} tasks</span>
   </button>
-  {% if has_special_tasks %}
-  <button onclick="showTab('all')" id="btn-all" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#0f766e;color:#fff;transition:opacity .2s">
-    Special<br><span style="font-size:10px;font-weight:400;opacity:.85">{{ grouped.all|length|default:0 }} tasks</span>
-  </button>
-  {% endif %}
   <button onclick="showTab('extra')" id="btn-extra" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#374151;color:#fff;transition:opacity .2s">
-    Extra<br><span style="font-size:10px;font-weight:400;opacity:.85">Work</span>
+    {{ tab_label_extra }}<br><span style="font-size:10px;font-weight:400;opacity:.85">Log and notes</span>
   </button>
 </div>
 
@@ -285,17 +280,6 @@
     <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No washroom tasks today.</div>
   {% endfor %}
 </div>
-
-{% if has_special_tasks %}
-<div id="tab-all" style="display:none">
-  <div class="wtag">Special Tasks</div>
-  {% for record in grouped.all %}
-    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
-  {% empty %}
-    <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No special tasks today.</div>
-  {% endfor %}
-</div>
-{% endif %}
 
 <div id="tab-extra" style="display:none">
   <div class="card">
@@ -334,7 +318,7 @@
 {% endif %}
 
 <script>
-const TABS = ['floor', 'room', 'washroom'{% if has_special_tasks %}, 'all'{% endif %}, 'extra'];
+const TABS = ['floor', 'room', 'washroom', 'extra'];
 let hkBusy = false;
 let hkCamera = null;
 let hkLightbox = null;
