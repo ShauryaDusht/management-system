@@ -1338,6 +1338,83 @@ def _build_tracked_stock_register(year: int):
     }
 
 
+def _build_annual_procurement_analytics(year: int):
+    import calendar as cal_module
+
+    from apps.inventory.models import StockEntry
+
+    monthly_spending = []
+    category_map = {}
+    plans_by_month = {
+        plan.month: serialize_purchase_plan(plan)
+        for plan in MonthlyPurchasePlan.objects.filter(year=year).order_by('month')
+    }
+
+    for month in range(1, 13):
+        plan_payload = plans_by_month.get(month)
+        if plan_payload:
+            month_spent = float(plan_payload.get('summary', {}).get('total_estimated_cost', 0) or 0)
+            monthly_spending.append({
+                'month': month,
+                'month_label': cal_module.month_abbr[month],
+                'spent': round(month_spent, 2),
+                'source': 'purchase_plan',
+            })
+
+            for row in plan_payload.get('rows', []):
+                if int(row.get('purchase_quantity', 0) or 0) <= 0:
+                    continue
+                category = row.get('category') or 'Uncategorized'
+                entry = category_map.setdefault(category, {
+                    'category': category,
+                    'spent': 0.0,
+                    'item_ids': set(),
+                })
+                entry['spent'] += float(row.get('estimated_cost', 0) or 0)
+                if row.get('item_id'):
+                    entry['item_ids'].add(row['item_id'])
+            continue
+
+        month_entries = StockEntry.objects.filter(
+            added_at__year=year,
+            added_at__month=month,
+        ).select_related('item__category')
+
+        month_spent = 0.0
+        for stock_entry in month_entries:
+            cost = float(stock_entry.quantity_added or 0) * float(stock_entry.item.unit_cost or 0)
+            month_spent += cost
+            category = stock_entry.item.category.name if stock_entry.item.category else 'Uncategorized'
+            entry = category_map.setdefault(category, {
+                'category': category,
+                'spent': 0.0,
+                'item_ids': set(),
+            })
+            entry['spent'] += cost
+            entry['item_ids'].add(stock_entry.item_id)
+
+        monthly_spending.append({
+            'month': month,
+            'month_label': cal_module.month_abbr[month],
+            'spent': round(month_spent, 2),
+            'source': 'stock_entries',
+        })
+
+    category_breakdown = sorted(
+        [
+            {
+                'category': value['category'],
+                'spent': round(value['spent'], 2),
+                'item_count': len(value['item_ids']),
+            }
+            for value in category_map.values()
+        ],
+        key=lambda row: -row['spent']
+    )
+    total_spent_year = round(sum(row['spent'] for row in monthly_spending), 2)
+    return monthly_spending, total_spent_year, category_breakdown
+
+
 class AnnualBudgetView(APIView):
     """
     GET /api/reports/annual-budget/?year=2026
@@ -1352,7 +1429,6 @@ class AnnualBudgetView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
-        import calendar as cal_module
         from django.db.models import F
         from apps.inventory.models import Item, StockEntry, ItemIssue
 
@@ -1362,43 +1438,7 @@ class AnnualBudgetView(APIView):
             year = timezone.localdate().year
         download = (request.query_params.get('download') or '').strip().lower()
 
-        # ── Monthly spending via StockEntry × unit_cost ──────────────────────
-        # StockEntry.quantity_added * item.unit_cost gives "value added to stock"
-        monthly_spending = []
-        for m in range(1, 13):
-            entries = StockEntry.objects.filter(
-                added_at__year=year, added_at__month=m
-            ).select_related('item')
-            spent = sum(
-                float(e.quantity_added or 0) * float(e.item.unit_cost or 0)
-                for e in entries
-            )
-            monthly_spending.append({
-                'month': m,
-                'month_label': cal_module.month_abbr[m],
-                'spent': round(spent, 2),
-            })
-
-        total_spent_year = sum(r['spent'] for r in monthly_spending)
-
-        # ── Category breakdown for the year ──────────────────────────────────
-        cat_map = {}
-        all_entries_year = StockEntry.objects.filter(
-            added_at__year=year
-        ).select_related('item__category')
-        for e in all_entries_year:
-            cat = e.item.category.name if e.item.category else 'Uncategorized'
-            cost = float(e.quantity_added or 0) * float(e.item.unit_cost or 0)
-            if cat not in cat_map:
-                cat_map[cat] = {'category': cat, 'spent': 0.0, 'item_ids': set()}
-            cat_map[cat]['spent'] += cost
-            cat_map[cat]['item_ids'].add(e.item_id)
-
-        category_breakdown = sorted(
-            [{'category': v['category'], 'spent': round(v['spent'], 2), 'item_count': len(v['item_ids'])}
-             for v in cat_map.values()],
-            key=lambda x: -x['spent']
-        )
+        monthly_spending, total_spent_year, category_breakdown = _build_annual_procurement_analytics(year)
 
         # ── Top consumed items (by issues this year) ─────────────────────────
         issues_year = ItemIssue.objects.filter(
