@@ -8,11 +8,18 @@ from django.core.management.base import BaseCommand
 
 from apps.housekeeping.models import HKWorker
 
+PORTAL_USERS = {
+    'admin': ('Admin', '', 'pragnesh@iitgn.ac.in'),
+    'horticulture.manager': ('Horticulture', 'Manager', 'managerhort.iwd@iitgn.ac.in'),
+    'housekeeping.manager': ('Housekeeping', 'Manager', 'manager.hk@iitgn.ac.in'),
+    'inv.manager': ('Inventory', 'Manager', 'manager.hk@iitgn.ac.in'),
+}
+
 # ── Supervisors: username → (first_name, last_name, email) ───────────────────
 # Canonical name: "RATHOD ASHOKBHAI ISHWARBHAI" → title-cased
 SUPERVISOR_NAMES = {
     'ashok.rathod':        ('Ashokbhai Ishwarbhai', 'Rathod', 'ashok2969798@gmail.com'),
-    'pradip.swm':          ('Dinesh', 'Chauhan', 'pradipchauhan783@gmail.com'),
+    'pradip.swm':          ('Pradip', 'Chauhan', 'pradipchauhan783@gmail.com'),
     'shailesh.prajapati':  ('Shailesh Natvarbhai', 'Prajapati', ''),
     'maulik.patel':        ('Maulikkumar Dilipbhai', 'Patel', 'moulikpatel81290@gmail.com'),
     'narendra.shreemali':  ('Narendrakumar Natvarlal', 'Shrimali', 'narendrashrimali36262@gmail.com'),
@@ -342,6 +349,39 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
         quiet = options['quiet']
         User = get_user_model()
+        pu = 0
+        self.stdout.write(self.style.HTTP_INFO('=== PORTAL USERS ==='))
+        for username, (first, last, email) in PORTAL_USERS.items():
+            u = User.objects.filter(username=username).first()
+            if not u:
+                self.stdout.write(f'  [NOT FOUND] {username}')
+                continue
+
+            changed = False
+            if u.first_name != first or u.last_name != last:
+                changed = True
+            if email and u.email != email:
+                changed = True
+
+            if changed:
+                old_name = u.get_full_name()
+                old_email = u.email
+                if not dry_run:
+                    u.first_name = first
+                    u.last_name = last
+                    if email:
+                        u.email = email
+                    u.save(update_fields=['first_name', 'last_name', 'email'])
+
+                msg = f'  [{"DRY" if dry_run else "UPDATED"}] {old_name!r}'
+                if email and old_email != email:
+                    msg += f' ({old_email} â†’ {email})'
+                msg += f' â†’ {first} {last!r}'
+                self.stdout.write(msg)
+                pu += 1
+            elif not quiet:
+                self.stdout.write(f'  [OK] {u.get_full_name()} already correct')
+        self.stdout.write(f'  >> portal users updated={pu}\n')
 
         if dry_run:
             self.stdout.write(self.style.WARNING('DRY RUN — no changes saved.\n'))
@@ -607,6 +647,7 @@ class Command(BaseCommand):
         self.stdout.write(f'  >> workers updated={wu}\n')
 
         self.stdout.write(self.style.HTTP_INFO('=== SUMMARY ==='))
+        self.stdout.write(f'  portal users updated: {pu}')
         self.stdout.write(f'  supervisors updated: {su}')
         self.stdout.write(f'  caretakers updated: {cu}')
         self.stdout.write(f'  workers updated: {wu}')

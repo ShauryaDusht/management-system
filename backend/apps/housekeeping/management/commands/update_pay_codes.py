@@ -73,7 +73,7 @@ WORKER_PAY_CODES = [
     # Aibaan
     ('Reeta Ben',        '357'),   # PARMAR RITABEN
     ('Meena Ben',        '76'),    # JADAV MINABEN
-    ('Kailash B',        '102'),   # KAILASHBEN PARMAR (143 in list – 102 is Kailash B)
+    ('Kailash B',        '143'),   # KAILASHBEN PARMAR
 
     # Beuaki
     ('Shilpa Ben',       '419'),   # SHILPABEN D CHAUHAN
@@ -92,7 +92,7 @@ WORKER_PAY_CODES = [
 
     # Duven
     ('Shailesh Rathod',  '239'),   # RATHOD SHAILESHBHAI
-    ('Rajanikant',       '103'),   # RAJANIKANT BABUBHAI VAGHELA
+    ('Rajanikant',       '153'),   # RAJANIKANT CHAVDA
     ('Harish',           '122'),   # HARISHKUMAR SOLANKI
 
     # Emiet
@@ -107,11 +107,11 @@ WORKER_PAY_CODES = [
 
     # Griwiksh
     ('Karan',            '260'),   # KARAN VAGHELA
-    ('Jignesh',          '363'),   # JIGNESHKUMAR BABUBHAI SOLANKI
+    ('Jignesh',          '115'),   # JIGNESBHAI MADHABHAI TUMBADIYA
     ('Sailesh Vaghela',  '109'),   # SHAILESH BHANGI (Sailesh is closest match)
 
     # Hiqom
-    ('Mukesh',           '88'),    # MUKESHBHAI RAVJIBHAI VAGHELA
+    ('Mukesh',           '121'),   # RAJENDRABHAI CHANDUBHAI VAGHELA
     ('Jaykesh',          '449'),   # SOLANKI JAYAKESHKUMAR
     ('Chandrakant',      '283'),   # SOLANKI CHANDRKANT
     ('Jitendra',         '95'),    # PIWAL JITENDRABHAI MANOHARBHAI
@@ -133,13 +133,13 @@ WORKER_PAY_CODES = [
     ('Prahlad Parmar',   '242'),   # PARMAR PRAHLADBHAI
     ('Amit',             '110'),   # AMITKUMAR VAGHELA
     ('Mehul Rathod',     '256'),   # RATHOD MEHULKUMAR
-    ('Rajesh',           '416'),   # PARMAR RAJESHBHAI
+    ('Rajesh',           '104'),   # TALAVADI RAJESHKUMAR
     ('Mehul Jadeja',     '106'),   # MEHULKUMAR JADEJA
 
     # Hostel Common Area
     ('Yogesh Vaghela',   '80'),    # YOGESHBHAI KANTIBHAI VAGHELA
     ('Vinayak Solanki',  '240'),   # SOLANKI VINAYAK
-    ('Anil Thakur',      '269'),   # ANILKUMAR BHUPATJI THAKOR
+    ('Anil Thakur',      '542'),   # THAKOR ANILKUMAR NAGINJI
     ('Ketan Gujjar',     '100'),   # GURJAR KETAN AMRUTBHAI
 
     # Research Park
@@ -208,18 +208,21 @@ WORKER_PAY_CODES = [
     ('Kanti bhai Thakur',    '461'),  # SOLANKI LALIT
 
     # Academic Blocks
-    ('Minaben',              '76'),   # JADAV MINABEN
-    ('Rajnibhai',            '416'),  # PARMAR RAJESHBHAI
+    ('Minaben',              '142'),  # MINABEN VAGHELA
+    ('Rajnibhai',            '103'),  # RAJANIKANT BABUBHAI VAGHELA
+    ('Vasantiben',           '101'),  # VASANTIBEN JITENDRABHAI VORA
     ('Krunal',               '235'),  # SOLANKI KRUNAL AMRUTBHAI
     ('Rakeshbhai',           '108'),  # VAGHELA RAKESHBHAI AMBALAL
+    ('Varshaben',            '156'),  # RATHOD VARSHABEN
     ('Anjanaben',            '130'),  # PARMAR ANJANABEN KALPESHKUMAR
     ('Harshad',              '280'),  # SOLANKI HARSHADBHAI DINESHBHAI
-    ('Dinesh',               '267'),  # MAHESH SOLANKI
-    ('Shaileshbhai',         '97'),   # TALAVADI SHAILESHBHAI RAMANBHAI
+    ('Dinesh',               '83'),   # SOLANKI DINESHKUMAR VINUBHAI
+    ('Shaileshbhai',         '82'),   # VAGHELA SHAILESHBHAI
     ('Nilamben',             '410'),  # CHAUHAN NILAMBEN
-    ('Ashok',                '281'),  # AJAYKUMAR SOLANKI
+    ('Ashok',                '114'),  # ASHOKKUMAR MAHERIYA
     ('Hiten',                '307'),  # HITENKUMAR PARMAR
     ('Chandrikaben',         '74'),   # GURJAR CHANDRIKABEN
+    ('Nikul',                '309'),  # PARMAR NIKULKUMAR PUNJABHAI
     ('Jay',                  '105'),  # JAY KUMAR SOLANKI
     ('Padmaben Vaghela',     '347'),  # VAGHELA PADMA
     ('Hitesh Solanki',       '434'),  # HITESHBHAI SOLANKI
@@ -248,8 +251,24 @@ WORKER_PAY_CODES = [
     ('Umesh Babariya',   '435'),   # BABARIYA UMESH
     ('Rajendra',         '121'),   # RAJENDRABHAI CHANDUBHAI VAGHELA
     ('Dhiraj',           '131'),   # DHIRAJ SOLANKI
-    ('Mayur',            '258'),   # SOLANKI MAYUR JASHUBHAI
+('Mayur',            '258'),   # SOLANKI MAYUR JASHUBHAI
 ]
+
+WORKER_LOOKUP_HINTS = {
+    'Kailash B': {'area': 'Aibaan', 'phone': '7265921026'},
+    'Rajanikant': {'area': 'Duven', 'phone': '6355825476'},
+    'Jignesh': {'area': 'Griwiksh', 'phone': '8401617156'},
+    'Mukesh': {'area': 'Hiqom', 'phone': '8141885315'},
+    'Rajesh': {'area': 'Kyzeel', 'phone': '7046510026'},
+    'Anil Thakur': {'area': 'Hostel Common Area', 'phone': '9265665289'},
+    'Minaben': {'area': 'Academic Block 1'},
+    'Rajnibhai': {'area': 'Academic Block 2'},
+    'Krunal': {'area': 'Academic Block 3'},
+    'Dinesh': {'area': 'Academic Block 5'},
+    'Shaileshbhai': {'area': 'Academic Block 5'},
+    'Ashok': {'area': 'Academic Block 6'},
+    'Nikul': {'area': 'Academic Block 7'},
+}
 
 
 class Command(BaseCommand):
@@ -322,7 +341,17 @@ class Command(BaseCommand):
         wu = 0
         wnf = 0
         for db_name, pc in WORKER_PAY_CODES:
-            worker = name_map.get(db_name.strip().upper())
+            worker = None
+            hint = WORKER_LOOKUP_HINTS.get(db_name)
+            if hint:
+                hinted_workers = HKWorker.objects.filter(area__name=hint['area'])
+                if hint.get('phone'):
+                    hinted_workers = hinted_workers.filter(phone=hint['phone'])
+                else:
+                    hinted_workers = hinted_workers.filter(name__icontains=db_name.strip())
+                worker = hinted_workers.filter(is_active=True).first() or hinted_workers.first()
+            if not worker:
+                worker = name_map.get(db_name.strip().upper())
             if not worker:
                 self.stdout.write(f'  [NOT FOUND] name={db_name!r}')
                 wnf += 1

@@ -199,7 +199,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('mukesh.vaghela', 'Mukeshkumar', 'Vaghela', '466', '9265591836', 'm.vaghela23@gmail.com', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Academic Block 8']),
             ('bipin.vaghela', 'Bipinchandra Dineshkumar', 'Vaghela', '350', '9979627312', 'bipin.vaghela4u@gmail.com', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Academic Common Area']),
             ('narendra.shreemali', 'Narendrakumar Natvarlal', 'Shrimali', '328', '9898661986', 'narendrashrimali36262@gmail.com', ['Roads & Outdoor', 'Old Guest House']),
-            ('pradip.swm', 'Dinesh', 'Chauhan', '3', '8200560889', 'pradipchauhan783@gmail.com', ['Solid Waste Management']),
+            ('pradip.swm', 'Pradip', 'Chauhan', '3', '8200560889', 'pradipchauhan783@gmail.com', ['Solid Waste Management']),
         ]
         for username, first, last, pc, phone, email, areas in supervisors:
             self.make_user(username, first, last, phone, 'supervisor', areas, email=email, pay_code=pc)
@@ -234,7 +234,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                 ])
 
         accounts = [
-            ('admin', 'Admin', '', '9727757096', 'admin', [], 'admin@iitgn.ac.in', ''),
+            ('admin', 'Admin', '', '9727757096', 'admin', [], 'pragnesh@iitgn.ac.in', ''),
             ('horticulture.manager', 'Horticulture', 'Manager', '9723889424', 'horticulture_manager', [], 'managerhort.iwd@iitgn.ac.in', '474'),
             ('housekeeping.manager', 'Housekeeping', 'Manager', '8758120645', 'housekeeping_manager', [], 'manager.hk@iitgn.ac.in', '469'),
             ('inv.manager', 'Inventory', 'Manager', '8758120645', 'inventory_manager', [], 'manager.hk@iitgn.ac.in', '469'),
@@ -355,7 +355,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Anil Thakur',      '542', '9265665289', 'Hostel Common Area', 'floor',   False),
             ('Suresh',           '',    '',            'Hostel Common Area', 'floor',   False),
             ('Krunal',           '',    '',            'Hostel Common Area', 'floor',   False),
-            ('Ketan Gujjar',     '100', '8347139138', 'Hostel Common Area', 'reliever', True),
+            ('Ketan Gujjar',     '100', '8347139138', 'Hostel Common Area', 'floor',    False),
 
             # -- RESEARCH PARK -----------------------------------------------
             ('Mahesh Solanki',     '', '7046959603', 'Research Park', 'floor',    False),
@@ -425,23 +425,28 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Saleshbhai Vaghela',    '', '6351150573', 'Solid Waste Management', 'swm', False),
             ('Kanti bhai Thakur',     '', '9924375528', 'Solid Waste Management', 'swm', False),
 
-            # Academic Blocks 01-13 + Academic Common Area + New AB U-Shape + New Academy
-            ('Minaben',             '', '', 'Academic Block 1', 'floor',    False),
-            ('Rajnibhai',           '', '', 'Academic Block 2', 'floor',    False),
-            ('Krunal',              '', '', 'Academic Block 3', 'floor',    False),
-            ('Rakeshbhai',          '', '', 'Academic Block 3', 'room',     False),
-            ('Varshaben',           '', '', 'Academic Block 4', 'washroom', False),
-            ('Harshad',             '', '', 'Academic Block 4', 'room',     False),
-            ('Dinesh',              '', '', 'Academic Block 5', 'floor',    False),
-            ('Anjanaben',           '', '', 'Academic Block 5', 'washroom', False),
-            ('Shaileshbhai',        '', '', 'Academic Block 5', 'room',     False),
-            ('Nilamben',            '', '', 'Academic Block 6', 'washroom', False),
-            ('Ashok',               '', '', 'Academic Block 6', 'floor',    False),
-            ('Hiten',               '', '', 'Academic Block 6', 'room',     False),
-            ('Chandrikaben',        '', '', 'Academic Block 7', 'washroom', False),
-            ('Nikhil',              '', '', 'Academic Block 7', 'floor',    False),
-            ('Academic Reliever',   '', '', 'Academic Block 8', 'general',  False),
-            ('Jay',                 '', '', 'Academic Block 9', 'room',     False),
+            # Academic Blocks 01-09 + Academic Common Area
+            ('Minaben Vaghela',                    '142', '9081897577', 'Academic Block 1', 'floor',    False),
+            ('Rajanikant Babubhai Vaghela',        '103', '8490949636', 'Academic Block 2', 'floor',    False),
+            ('Solanki Krunal Amrutbhai',           '235', '9327124093', 'Academic Block 3', 'floor',    False),
+            ('Vaghela Rakeshbhai Ambalal',         '108', '9313622323', 'Academic Block 3', 'room',     False),
+            ('Vasantiben Jitendrabhai Vora',       '101', '9824018730', 'Academic Block 3', 'washroom', False),
+            ('Rathod Varshaben',                   '156', '8490949636', 'Academic Block 4', 'washroom', False),
+            ('Rathod Hiteshkumar',                 '138', '9723883180', 'Academic Block 4', 'floor',    False),
+            ('Solanki Harshadbhai Dineshbhai',     '280', '9998362377', 'Academic Block 4', 'room',     False),
+            ('Solanki Dineshkumar Vinubhai',       '83',  '9714159412', 'Academic Block 5', 'floor',    False),
+            ('Parmar Anjanaben Kalpeshkumar',      '130', '6351220899', 'Academic Block 5', 'washroom', False),
+            ('Vaghela Shaileshbhai',               '82',  '8155861394', 'Academic Block 5', 'room',     False),
+            ('Chauhan Nilamben',                   '410', '7041529877', 'Academic Block 6', 'washroom', False),
+            ('Ashokkumar Maheriya',                '114', '7383949367', 'Academic Block 6', 'floor',    False),
+            ('Hitenkumar Parmar',                  '307', '8866745431', 'Academic Block 6', 'room',     False),
+            ('Gurjar Chandrikaben',                '74',  '9737520471', 'Academic Block 7', 'washroom', False),
+            ('Parmar Nikulkumar Punjabhai',        '309', '8155861394', 'Academic Block 7', 'floor',    False),
+            ('Ajaykumar Solanki',                  '281', '8401109316', 'Academic Block 8', 'reliever', True),
+            ('Solanki Akashkumar Hasmukhbhai',     '253', '8160847423', 'Academic Block 8', 'reliever', True),
+            ('Pravinbhai Vaghela',                 '400', '9624126018', 'Academic Block 8', 'reliever', True),
+            ('Jyotsanaben Vaghela',                '231', '9574720027', 'Academic Block 8', 'reliever', True),
+            ('Jay Kumar Solanki',                  '105', '8511476360', 'Academic Block 9', 'room',     False),
             ('Padmaben Vaghela',    '', '', 'Academic Block 10', 'washroom', False),
             ('Hitesh Solanki',      '', '', 'Academic Block 10', 'room',     False),
             ('Parth Solanki',       '', '', 'Academic Block 10', 'floor',    False),
@@ -457,8 +462,8 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Mahesh Vaghela',      '', '', 'Academic Block 13', 'floor',    False),
             ('Ajay Rathod',         '', '', 'Academic Block 13', 'room',     False),
             ('Bharat Solanki',      '', '', 'Academic Block 13', 'room',     False),
-            ('Bhavesh',             '', '', 'Academic Common Area', 'floor', False),
-            ('Nikhil',              '', '', 'Academic Common Area', 'floor', False),
+            ('Vaghela Bhaveshbhai Narnabhai',      '315', '9974738575', 'Academic Common Area', 'floor', False),
+            ('Vaniya Nikhilkumar Bhaveshbhai',     '314', '8849436518', 'Academic Common Area', 'floor', False),
             ('Akshay Vaghela',      '', '', 'New AB U-Shape', 'floor', False),
             ('Jitendra Vasudev',    '', '', 'New Academy', 'floor', False),
 
@@ -1629,7 +1634,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                     (9, '16:00', '17:00', 'AB-1: Final Washroom and Passage Touch Up', 'washroom', True, ''),
                 ],
                 'Academic Block 2': [
-                    (1, '08:00', '09:00', 'AB-2: Main Fountain Area Cleaning', 'floor', True, 'Rajnibhai'),
+                    (1, '08:00', '09:00', 'AB-2: Main Fountain Area Cleaning', 'floor', True, 'Rajanikant'),
                     (2, '09:00', '10:00', 'AB-2: 600 Auditorium Hall Cleaning', 'room', True, ''),
                     (3, '10:00', '11:00', 'AB-2: First Floor Offices Cleaning', 'room', True, '2 big offices'),
                     (4, '11:00', '12:00', 'AB-2: First Floor Common Area and Washroom', 'washroom', True, ''),
@@ -1640,7 +1645,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                     (9, '16:00', '17:00', 'AB-2: Final Washroom Touch Up', 'washroom', True, ''),
                 ],
                 'Academic Block 3': [
-                    (1, '08:00', '08:30', 'AB-3: All Floors Washroom Touch Up', 'washroom', True, 'Krunal + Rakeshbhai'),
+                    (1, '08:00', '08:30', 'AB-3: All Floors Washroom Touch Up', 'washroom', True, 'Krunal + Rakesh + Vasantiben'),
                     (2, '08:30', '09:30', 'AB-3: Floor Cleaning', 'floor', True, ''),
                     (3, '10:00', '10:15', 'Tea Break', 'floor', False, ''),
                     (4, '10:20', '12:00', 'AB-3: Office and Meeting Room Cleaning', 'room', True, ''),
@@ -1651,7 +1656,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                     (9, '16:00', '17:00', 'AB-3: Staircase, Dusting and Water Cooler Area', 'floor', True, ''),
                 ],
                 'Academic Block 4': [
-                    (1, '08:00', '08:30', 'AB-4: Washroom Touch Up', 'washroom', True, 'Varshaben + Harshad'),
+                    (1, '08:00', '08:30', 'AB-4: Washroom Touch Up', 'washroom', True, 'Varshaben + Hitesh + Harshad'),
                     (2, '08:30', '09:30', 'AB-4: Passage Area Cleaning', 'floor', True, ''),
                     (3, '09:30', '11:00', 'AB-4: Office Cleaning', 'room', True, ''),
                     (4, '11:00', '13:00', 'AB-4: Lab and Hall Area Cleaning', 'room', True, ''),
@@ -1683,7 +1688,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                     (9, '16:00', '17:00', 'AB-6: Staircase and Water Cooler Cleaning', 'floor', True, ''),
                 ],
                 'Academic Block 7': [
-                    (1, '08:00', '08:15', 'AB-7: Washroom Touch Up', 'washroom', True, 'Chandrikaben + Nikhil'),
+                    (1, '08:00', '08:15', 'AB-7: Washroom Touch Up', 'washroom', True, 'Chandrikaben + Nikul'),
                     (2, '08:30', '09:30', 'AB-7: Closed Classroom Cleaning', 'room', True, ''),
                     (3, '09:30', '11:30', 'AB-7: Passage Area Cleaning', 'floor', True, ''),
                     (4, '11:30', '12:00', 'AB-7: Block Marble Cleaning', 'floor', True, ''),
@@ -1694,7 +1699,7 @@ All accounts use password: {DEFAULT_PASSWORD}
                     (9, '16:00', '17:00', 'AB-7: Staircase and Railing Dusting', 'floor', True, ''),
                 ],
                 'Academic Block 8': [
-                    (1, '08:00', '12:00', 'AB-8: Lal Minar Tower Cleaning Support', 'floor', True, 'Reliever/coverage support'),
+                    (1, '08:00', '12:00', 'AB-8: Lal Minar Tower Cleaning Support', 'floor', True, 'Ajay + Akash + Pravin + Jyotsanaben'),
                     (2, '12:00', '13:00', 'AB-8: First Floor Passage and Ramp Cleaning', 'floor', True, ''),
                     (3, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
                     (4, '14:00', '16:00', 'AB-8: Indoor Sweeping and Mopping', 'floor', True, 'Every 15 days'),
