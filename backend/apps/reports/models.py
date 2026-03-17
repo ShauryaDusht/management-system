@@ -107,3 +107,30 @@ class ItemConsumptionReport(models.Model):
     def period_label(self):
         import calendar
         return f"{calendar.month_name[self.month]} {self.year}"
+
+
+class MonthlyPurchasePlan(models.Model):
+    month = models.PositiveSmallIntegerField()
+    year = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='monthly_purchase_plans_updated',
+    )
+    data = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ['-year', '-month']
+        unique_together = [('month', 'year')]
+
+    def __str__(self):
+        return f"Purchase Plan {self.month:02d}/{self.year}"
+
+    @property
+    def period_label(self):
+        import calendar
+        return f"{calendar.month_name[self.month]} {self.year}"

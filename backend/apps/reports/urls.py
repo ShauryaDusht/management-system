@@ -16,6 +16,8 @@ from .views import (
     MonthlyReportDetailView,
     MonthlyReportCSVView,
     MonthlyReportPDFView,
+    MonthlyPurchasePlanView,
+    MonthlyPurchasePlanCSVView,
 )
 
 urlpatterns = [
@@ -37,6 +39,8 @@ urlpatterns = [
 
     # Annual budget analytics
     path('annual-budget/', AnnualBudgetView.as_view(), name='annual-budget'),
+    path('purchase-plan/', MonthlyPurchasePlanView.as_view(), name='purchase-plan'),
+    path('purchase-plan/csv/', MonthlyPurchasePlanCSVView.as_view(), name='purchase-plan-csv'),
 
     # Item consumption reports
     path('consumption/', ConsumptionReportListView.as_view(), name='consumption-report-list'),

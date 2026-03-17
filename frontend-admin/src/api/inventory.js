@@ -99,6 +99,15 @@ export const downloadAnnualStockRegisterCSV = (year) =>
     params: { year, download: 'stock_register_csv' },
     responseType: 'blob',
   })
+export const getPurchasePlan = (month, year) =>
+  api.get('/reports/purchase-plan/', { params: { month, year } })
+export const savePurchasePlan = (month, year, rows) =>
+  api.post('/reports/purchase-plan/', { month, year, rows })
+export const downloadPurchasePlanCSV = (month, year) =>
+  api.get('/reports/purchase-plan/csv/', {
+    params: { month, year },
+    responseType: 'blob',
+  })
 
 export const reportsAPI = {
   getInventoryReport,
@@ -113,6 +122,9 @@ export const reportsAPI = {
   deleteMonthly,
   csvUrl,
   pdfUrl,
+  getPurchasePlan,
+  savePurchasePlan,
+  downloadPurchasePlanCSV,
   getAreaIssuesReport: (params = {}) => api.get('/reports/area-issues/', { params }),
   downloadAreaIssuesCSV: (params = {}) =>
     api.get('/reports/area-issues/', {

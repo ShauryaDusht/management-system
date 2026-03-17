@@ -44,6 +44,7 @@ services:
              python manage.py seed_all_data_if_empty &&
              python manage.py update_inventory_items &&
              python manage.py sync_real_inventory_stock --quiet &&
+             python manage.py sync_monthly_purchase_plans --quiet &&
              python manage.py update_pay_codes --quiet &&
              python manage.py update_names --quiet &&
              python manage.py sync_guesthouse_director_staff --quiet &&

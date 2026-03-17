@@ -28,7 +28,12 @@ from .generators import (
     generate_monthly_report,
     generate_requests_report,
 )
-from .models import ItemConsumptionReport, MonthlyReport
+from .models import ItemConsumptionReport, MonthlyPurchasePlan, MonthlyReport
+from .purchase_plan_utils import (
+    build_default_purchase_plan_data,
+    normalize_purchase_plan_rows,
+    serialize_purchase_plan,
+)
 from .serializers import MonthlyReportListSerializer, MonthlyReportDetailSerializer
 
 
@@ -1520,6 +1525,134 @@ class AnnualBudgetView(APIView):
             'current_stock_register': stock_register['rows'],
             'current_stock_register_summary': stock_register['summary'],
         })
+
+
+class MonthlyPurchasePlanView(APIView):
+    permission_classes = [IsAdminUser]
+
+    @staticmethod
+    def _parse_period(request):
+        try:
+            month = int(request.query_params.get('month', request.data.get('month')))
+            year = int(request.query_params.get('year', request.data.get('year')))
+        except (TypeError, ValueError, AttributeError):
+            return None, None
+        if not (1 <= month <= 12):
+            return None, None
+        if year < 2000 or year > 2100:
+            return None, None
+        return month, year
+
+    def _get_or_create_plan(self, month, year, user=None):
+        plan, created = MonthlyPurchasePlan.objects.get_or_create(
+            month=month,
+            year=year,
+            defaults={
+                'data': build_default_purchase_plan_data(month, year),
+                'updated_by': user,
+            },
+        )
+        if created:
+            return plan
+
+        normalized = normalize_purchase_plan_rows(
+            [{'item_id': item_id, **payload} for item_id, payload in (plan.data or {}).items()],
+            month,
+            year,
+        )
+        if normalized != (plan.data or {}):
+            plan.data = normalized
+            if user and plan.updated_by_id is None:
+                plan.updated_by = user
+                plan.save(update_fields=['data', 'updated_by', 'updated_at'])
+            else:
+                plan.save(update_fields=['data', 'updated_at'])
+        return plan
+
+    def get(self, request):
+        month, year = self._parse_period(request)
+        if month is None or year is None:
+            return Response({'detail': 'Valid month and year are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        plan = self._get_or_create_plan(month, year, user=request.user)
+        return Response(serialize_purchase_plan(plan))
+
+    def post(self, request):
+        month, year = self._parse_period(request)
+        if month is None or year is None:
+            return Response({'detail': 'Valid month and year are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        rows = request.data.get('rows')
+        if not isinstance(rows, list):
+            return Response({'rows': 'This field must be a list.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        plan = self._get_or_create_plan(month, year, user=request.user)
+        plan.data = normalize_purchase_plan_rows(rows, month, year)
+        plan.updated_by = request.user
+        plan.save(update_fields=['data', 'updated_by', 'updated_at'])
+        return Response(serialize_purchase_plan(plan))
+
+
+class MonthlyPurchasePlanCSVView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        try:
+            month = int(request.query_params.get('month'))
+            year = int(request.query_params.get('year'))
+        except (TypeError, ValueError):
+            return Response({'detail': 'Valid month and year are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not (1 <= month <= 12) or year < 2000 or year > 2100:
+            return Response({'detail': 'Valid month and year are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        plan, _ = MonthlyPurchasePlan.objects.get_or_create(
+            month=month,
+            year=year,
+            defaults={
+                'data': build_default_purchase_plan_data(month, year),
+                'updated_by': request.user,
+            },
+        )
+        payload = serialize_purchase_plan(plan)
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            'Item Code',
+            'Item',
+            'Category',
+            'Type',
+            'Unit',
+            'Available Quantity',
+            'Current Unit Cost',
+            'Purchase Unit Cost',
+            'Want To Purchase',
+            'Estimated Cost',
+            'Status',
+        ])
+        for row in payload['rows']:
+            writer.writerow([
+                row['item_code'] or '',
+                row['item_name'],
+                row['category'],
+                row['item_type'],
+                row['unit'],
+                row['available_quantity'],
+                row['current_unit_cost'],
+                row['planned_unit_cost'],
+                row['purchase_quantity'],
+                row['estimated_cost'],
+                row['status'],
+            ])
+        writer.writerow([])
+        writer.writerow(['', '', '', '', '', '', '', '', 'Total Estimated Cost', payload['summary']['total_estimated_cost']])
+
+        response = HttpResponse(output.getvalue(), content_type='text/csv')
+        response['Content-Disposition'] = (
+            f'attachment; filename="purchase_plan_{year}_{month:02d}.csv"'
+        )
+        return response
 
 
 class AreaIssuesReportView(APIView):

@@ -28,6 +28,7 @@ import { triggerDownload } from '../../shared/utils'
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
 import { useMonthYear } from '../../shared/hooks/useMonthYear'
 import ConfirmModal from '../../shared/components/ConfirmModal'
+import PurchasePlannerPanel from './PurchasePlannerPanel'
 
 // ── Budget constants (IIT facility management contract) ───────────────────────
 const HK_BUDGET    = 14_00_00_000   // ₹14 Crore housekeeping
@@ -316,6 +317,7 @@ export default function MonthlyReportTab() {
   const VIEWS = [
     { key:'budget',   label:'💰 Budget Overview' },
     { key:'charts',   label:'📊 Analytics' },
+    { key:'purchase', label:'🧾 Purchase Planner' },
     { key:'stock',    label:'📦 Stock Register' },
     { key:'reorder',  label:`🔴 Reorder Alerts${reorderItems.length>0?` (${reorderItems.length})`:''}` },
     { key:'consumed', label:'📈 Top Consumed' },
@@ -528,6 +530,8 @@ export default function MonthlyReportTab() {
       {/* ══════════════════════════════════════════════════════════════════════
           REORDER ALERTS
       ══════════════════════════════════════════════════════════════════════ */}
+      {view==='purchase' && <PurchasePlannerPanel />}
+
       {view==='stock' && (
         <div>
           <YearSelector value={budgetYear} onChange={setBudgetYear} />
