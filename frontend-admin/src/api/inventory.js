@@ -94,6 +94,11 @@ export const downloadConsumptionRequesterCSV = (id) =>
   api.get(`/reports/consumption/${id}/csv/requesters/`, { responseType: 'blob' })
 
 export const getAnnualBudget = (year) => api.get('/reports/annual-budget/', { params: { year } })
+export const downloadAnnualStockRegisterCSV = (year) =>
+  api.get('/reports/annual-budget/', {
+    params: { year, download: 'stock_register_csv' },
+    responseType: 'blob',
+  })
 
 export const reportsAPI = {
   getInventoryReport,

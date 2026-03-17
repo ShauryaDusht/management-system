@@ -30,6 +30,12 @@ class Command(BaseCommand):
         call_command('seed_housekeeping', verbosity=0)
         self.stdout.write(self.style.SUCCESS('  [OK] Housekeeping/users seeded'))
 
+        call_command('update_inventory_items', verbosity=0)
+        self.stdout.write(self.style.SUCCESS('  [OK] Inventory item codes/costs updated'))
+
+        call_command('sync_real_inventory_stock', quiet=True)
+        self.stdout.write(self.style.SUCCESS('  [OK] Real inventory stock baseline synced'))
+
         if options.get('dump_fixtures'):
             self._dump_fixtures()
             self.stdout.write(self.style.SUCCESS('  [OK] UTF-8 fixtures refreshed'))

@@ -1,8 +1,10 @@
 from collections import defaultdict
 from datetime import timedelta
+import csv
+import io
 from statistics import median
 
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponse
 from django.core.files.base import ContentFile
 from django.db.models import Count, Q
 from django.db.models.functions import TruncDate
@@ -1242,6 +1244,95 @@ class ConsumptionReportRequesterCSVView(APIView):
         )
 
 
+def _build_tracked_stock_register(year: int):
+    from apps.inventory.models import Item, StockEntry
+    from apps.inventory.stock_baseline import BASELINE_RECEIVED_DATE, TRACKED_STOCK_ITEMS
+
+    tracked_names = [row['db_name'] for row in TRACKED_STOCK_ITEMS]
+    items = Item.objects.filter(name__in=tracked_names).select_related('category')
+    item_map = {item.name: item for item in items}
+
+    received_qty_by_item = defaultdict(int)
+    last_received_by_item = {}
+    for entry in (
+        StockEntry.objects.filter(item__name__in=tracked_names, added_at__year=year)
+        .select_related('item')
+        .order_by('added_at')
+    ):
+        received_qty_by_item[entry.item_id] += int(entry.quantity_added or 0)
+        last_received_by_item[entry.item_id] = timezone.localtime(entry.added_at).date()
+
+    rows = []
+    tracked_current_stock_value = 0.0
+    tracked_receipt_value_year = 0.0
+    tracked_current_quantity = 0
+    tracked_received_quantity_year = 0
+    out_of_stock_count = 0
+    low_stock_count = 0
+
+    for row in TRACKED_STOCK_ITEMS:
+        item = item_map.get(row['db_name'])
+        if not item:
+            continue
+
+        current_quantity = int(item.available_quantity or 0)
+        received_quantity_year = int(received_qty_by_item.get(item.id, 0) or 0)
+        unit_cost = float(item.unit_cost or 0)
+        current_value = round(current_quantity * unit_cost, 2)
+        received_value_year = round(received_quantity_year * unit_cost, 2)
+        balance_pct = round((current_quantity / received_quantity_year) * 100, 1) if received_quantity_year else None
+
+        tracked_current_stock_value += current_value
+        tracked_receipt_value_year += received_value_year
+        tracked_current_quantity += current_quantity
+        tracked_received_quantity_year += received_quantity_year
+
+        if current_quantity == 0:
+            out_of_stock_count += 1
+        elif current_quantity <= int(item.threshold_quantity or 0):
+            low_stock_count += 1
+
+        rows.append(
+            {
+                'item_id': item.id,
+                'item_code': item.item_code,
+                'item_name': row['label'],
+                'db_name': item.name,
+                'category': item.category.name if item.category else '',
+                'unit': row['unit'],
+                'current_quantity': current_quantity,
+                'current_value': current_value,
+                'received_quantity_year': received_quantity_year,
+                'received_value_year': received_value_year,
+                'unit_cost': unit_cost,
+                'threshold': int(item.threshold_quantity or 0),
+                'status': item.status,
+                'balance_pct_of_year_receipts': balance_pct,
+                'last_received_on': (
+                    last_received_by_item[item.id].isoformat()
+                    if item.id in last_received_by_item else None
+                ),
+            }
+        )
+
+    latest_receipt_date = max(last_received_by_item.values()) if last_received_by_item else BASELINE_RECEIVED_DATE
+
+    return {
+        'rows': rows,
+        'summary': {
+            'tracked_items_count': len(rows),
+            'tracked_current_stock_value': round(tracked_current_stock_value, 2),
+            'tracked_receipt_value_year': round(tracked_receipt_value_year, 2),
+            'tracked_current_quantity': tracked_current_quantity,
+            'tracked_received_quantity_year': tracked_received_quantity_year,
+            'out_of_stock_count': out_of_stock_count,
+            'low_stock_count': low_stock_count,
+            'latest_receipt_date': latest_receipt_date.isoformat() if latest_receipt_date else None,
+            'baseline_received_date': BASELINE_RECEIVED_DATE.isoformat(),
+        },
+    }
+
+
 class AnnualBudgetView(APIView):
     """
     GET /api/reports/annual-budget/?year=2026
@@ -1257,14 +1348,14 @@ class AnnualBudgetView(APIView):
 
     def get(self, request):
         import calendar as cal_module
-        from django.db.models import Sum, F, FloatField, ExpressionWrapper
-        from django.db.models.functions import TruncMonth
+        from django.db.models import F
         from apps.inventory.models import Item, StockEntry, ItemIssue
 
         try:
             year = int(request.query_params.get('year', timezone.localdate().year))
         except (ValueError, TypeError):
             year = timezone.localdate().year
+        download = (request.query_params.get('download') or '').strip().lower()
 
         # ── Monthly spending via StockEntry × unit_cost ──────────────────────
         # StockEntry.quantity_added * item.unit_cost gives "value added to stock"
@@ -1370,14 +1461,64 @@ class AnnualBudgetView(APIView):
             for e in all_entries
         ), 2)
 
+        current_stock_value = round(sum(
+            float(item.available_quantity or 0) * float(item.unit_cost or 0)
+            for item in Item.objects.all().only('available_quantity', 'unit_cost')
+        ), 2)
+        stock_register = _build_tracked_stock_register(year)
+
+        if download == 'stock_register_csv':
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow([
+                'Item Code',
+                'Material',
+                'Category',
+                'Unit',
+                'Current Quantity',
+                'Current Value',
+                f'Received Quantity ({year})',
+                f'Received Value ({year})',
+                'Unit Cost',
+                'Threshold',
+                'Status',
+                'Balance % of Year Receipts',
+                'Last Received On',
+            ])
+            for row in stock_register['rows']:
+                writer.writerow([
+                    row['item_code'] or '',
+                    row['item_name'],
+                    row['category'],
+                    row['unit'],
+                    row['current_quantity'],
+                    row['current_value'],
+                    row['received_quantity_year'],
+                    row['received_value_year'],
+                    row['unit_cost'],
+                    row['threshold'],
+                    row['status'],
+                    row['balance_pct_of_year_receipts'] if row['balance_pct_of_year_receipts'] is not None else '',
+                    row['last_received_on'] or '',
+                ])
+
+            response = HttpResponse(output.getvalue(), content_type='text/csv')
+            response['Content-Disposition'] = (
+                f'attachment; filename=\"inventory_stock_register_{year}.csv\"'
+            )
+            return response
+
         return Response({
             'year': year,
             'monthly_spending': monthly_spending,
             'total_spent_year': round(total_spent_year, 2),
             'total_procurement_value': total_procurement_value,
+            'current_stock_value': current_stock_value,
             'category_breakdown': category_breakdown,
             'top_consumed_items': top_consumed,
             'reorder_priority': reorder_priority,
+            'current_stock_register': stock_register['rows'],
+            'current_stock_register_summary': stock_register['summary'],
         })
 
 

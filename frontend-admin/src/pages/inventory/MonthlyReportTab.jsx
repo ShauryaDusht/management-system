@@ -17,6 +17,7 @@ import { Alert, Badge, Btn, Card, Spinner } from '../../components/ui'
 import {
   csvUrl,
   deleteMonthly,
+  downloadAnnualStockRegisterCSV,
   generateMonthly,
   getAnnualBudget,
   getMonthly,
@@ -50,6 +51,13 @@ async function downloadWithToken(url, filename) {
     const resp = await api.get(url, { responseType:'blob' })
     triggerDownload(resp.data, filename)
   } catch { window.alert('Download failed.') }
+}
+
+async function downloadStockRegister(year) {
+  try {
+    const resp = await downloadAnnualStockRegisterCSV(year)
+    triggerDownload(resp.data, `inventory_stock_register_${year}.csv`)
+  } catch { window.alert('Stock register download failed.') }
 }
 
 // ── Tiny sub-components ───────────────────────────────────────────────────────
@@ -196,6 +204,7 @@ export default function MonthlyReportTab() {
   const [fStatus, setFStatus] = useState('')
   const [fType,   setFType]   = useState('')
   const [fSearch, setFSearch] = useState('')
+  const [stockSearch, setStockSearch] = useState('')
 
   // active section
   const [view, setView] = useState('budget')
@@ -256,6 +265,15 @@ export default function MonthlyReportTab() {
   const remaining   = TOTAL_BUDGET - spent
   const spentPct    = Math.min(100, (spent/TOTAL_BUDGET)*100)
   const remColor    = remaining > TOTAL_BUDGET*0.5 ? '#16a34a' : remaining > TOTAL_BUDGET*0.25 ? '#f59e0b' : '#dc2626'
+  const stockSummary = budgetData?.current_stock_register_summary || {}
+  const stockRows = budgetData?.current_stock_register || []
+  const trackedCurrentStockValue = stockSummary?.tracked_current_stock_value || 0
+  const trackedReceiptValue = stockSummary?.tracked_receipt_value_year || 0
+  const trackedCurrentQty = stockSummary?.tracked_current_quantity || 0
+  const trackedReceivedQty = stockSummary?.tracked_received_quantity_year || 0
+  const outOfStockCount = stockSummary?.out_of_stock_count || 0
+  const lowStockCount = stockSummary?.low_stock_count || 0
+  const stockRetentionPct = trackedReceiptValue > 0 ? (trackedCurrentStockValue / trackedReceiptValue) * 100 : 0
 
   const snapshotCats = useMemo(()=>{
     const s = new Set((selected?.snapshot?.items||[]).map(i=>i.category))
@@ -281,12 +299,24 @@ export default function MonthlyReportTab() {
     [...(budgetData?.reorder_priority||[])].sort((a,b)=>b.estimated_cost-a.estimated_cost)
   , [budgetData])
 
+  const filteredStockRows = useMemo(()=>{
+    const q = stockSearch.trim().toLowerCase()
+    if (!q) return stockRows
+    return stockRows.filter((row)=>
+      (row.item_name||'').toLowerCase().includes(q) ||
+      (row.category||'').toLowerCase().includes(q) ||
+      (row.item_code||'').toLowerCase().includes(q) ||
+      (row.status||'').toLowerCase().includes(q)
+    )
+  }, [stockRows, stockSearch])
+
   const totalReorderCost = reorderItems.reduce((s,i)=>s+i.estimated_cost,0)
   const totalSnapshotCost = filteredItems.reduce((s,r)=>s+(r.estimated_cost||0),0)
 
   const VIEWS = [
     { key:'budget',   label:'💰 Budget Overview' },
     { key:'charts',   label:'📊 Analytics' },
+    { key:'stock',    label:'📦 Stock Register' },
     { key:'reorder',  label:`🔴 Reorder Alerts${reorderItems.length>0?` (${reorderItems.length})`:''}` },
     { key:'consumed', label:'📈 Top Consumed' },
     { key:'report',   label:'📋 Monthly Report' },
@@ -335,6 +365,12 @@ export default function MonthlyReportTab() {
                 <KpiCard icon="✅" label="Remaining Budget" valueColor={remColor}
                   value={`₹${crores(remaining)} Cr`}
                   sub={`${(100-spentPct).toFixed(1)}% still available`} subColor={remColor} />
+                <KpiCard icon="📦" label="Tracked Stock Value" valueColor="#2563eb"
+                  value={inr(trackedCurrentStockValue)}
+                  sub={`${trackedCurrentQty} units currently in store`} subColor="#2563eb" />
+                <KpiCard icon="🚚" label={`Received in ${budgetYear}`} valueColor="#7c3aed"
+                  value={inr(trackedReceiptValue)}
+                  sub={`${trackedReceivedQty} units logged this year`} subColor="#7c3aed" />
                 <KpiCard icon="🔴" label="Reorder Alerts" valueColor="#f59e0b"
                   value={reorderItems.length}
                   sub="items below threshold" subColor="#f59e0b" />
@@ -350,6 +386,18 @@ export default function MonthlyReportTab() {
                   <div><span style={{ color:'var(--text-3)' }}>HK Budget: </span><strong>{inr(HK_BUDGET)}</strong></div>
                   <div><span style={{ color:'var(--text-3)' }}>Hort Budget: </span><strong>{inr(HORT_BUDGET)}</strong></div>
                   <div><span style={{ color:'var(--text-3)' }}>All-time Procurement: </span><strong>{inr(budgetData?.total_procurement_value)}</strong></div>
+                  <div><span style={{ color:'var(--text-3)' }}>Current Inventory Value: </span><strong>{inr(budgetData?.current_stock_value)}</strong></div>
+                  <div><span style={{ color:'var(--text-3)' }}>Tracked Receipt Retention: </span><strong>{stockRetentionPct.toFixed(1)}%</strong></div>
+                </div>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginTop:14, flexWrap:'wrap' }}>
+                  <div style={{ fontSize:12, color:'var(--text-3)' }}>
+                    Latest tracked receipt: <strong>{stockSummary?.latest_receipt_date || '—'}</strong>
+                    &nbsp;·&nbsp; Out of stock: <strong style={{ color:'#dc2626' }}>{outOfStockCount}</strong>
+                    &nbsp;·&nbsp; Low stock: <strong style={{ color:'#f59e0b' }}>{lowStockCount}</strong>
+                  </div>
+                  <Btn size="sm" variant="secondary" onClick={()=>downloadStockRegister(budgetYear)}>
+                    ⬇ Stock Register CSV
+                  </Btn>
                 </div>
               </Card>
 
@@ -388,6 +436,15 @@ export default function MonthlyReportTab() {
                       Estimated reorder cost: <strong>{inr(totalReorderCost)}</strong>.&nbsp;
                       <button onClick={()=>setView('reorder')} style={{ color:'#dc2626', fontWeight:700, background:'none', border:'none', cursor:'pointer', fontSize:13, textDecoration:'underline' }}>
                         View list →
+                      </button>
+                    </div>
+                  )}
+                  {stockRows.length>0 && (
+                    <div style={{ padding:'12px 16px', borderRadius:9, background:'#eff6ff', border:'1px solid #bfdbfe', fontSize:13, color:'#1d4ed8' }}>
+                      📦 <strong>Verified stock register active.</strong> Tracked stock value is <strong>{inr(trackedCurrentStockValue)}</strong>
+                      with <strong>{outOfStockCount}</strong> out-of-stock items and <strong>{lowStockCount}</strong> low-stock items.
+                      <button onClick={()=>setView('stock')} style={{ color:'#1d4ed8', fontWeight:700, background:'none', border:'none', cursor:'pointer', fontSize:13, textDecoration:'underline', marginLeft:6 }}>
+                        Open stock register →
                       </button>
                     </div>
                   )}
@@ -471,6 +528,99 @@ export default function MonthlyReportTab() {
       {/* ══════════════════════════════════════════════════════════════════════
           REORDER ALERTS
       ══════════════════════════════════════════════════════════════════════ */}
+      {view==='stock' && (
+        <div>
+          <YearSelector value={budgetYear} onChange={setBudgetYear} />
+          {budgetLoading
+            ? <div style={{ display:'flex', justifyContent:'center', padding:60 }}><Spinner size={32} /></div>
+            : <>
+              <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:20 }}>
+                <KpiCard icon="📦" label="Tracked Stock Value" valueColor="#2563eb"
+                  value={inr(trackedCurrentStockValue)}
+                  sub={`${trackedCurrentQty} units currently in stock`} subColor="#2563eb" />
+                <KpiCard icon="🚚" label={`Received in ${budgetYear}`} valueColor="#7c3aed"
+                  value={inr(trackedReceiptValue)}
+                  sub={`${trackedReceivedQty} units logged this year`} subColor="#7c3aed" />
+                <KpiCard icon="🔴" label="Out of Stock" valueColor="#dc2626"
+                  value={outOfStockCount}
+                  sub="items requiring attention" subColor="#dc2626" />
+                <KpiCard icon="🟠" label="Low Stock" valueColor="#f59e0b"
+                  value={lowStockCount}
+                  sub="items at threshold or below" subColor="#f59e0b" />
+              </div>
+
+              <Card noPad>
+                <div style={{ padding:'14px 18px', borderBottom:'1px solid var(--border)' }}>
+                  <SectionHeader
+                    icon="📦"
+                    title={`Current Stock Register — ${budgetYear}`}
+                    subtitle={`Verified housekeeping consumables. Baseline receipt date: ${stockSummary?.baseline_received_date || '—'} · Latest receipt: ${stockSummary?.latest_receipt_date || '—'}`}
+                    right={
+                      <Btn size="sm" variant="secondary" onClick={()=>downloadStockRegister(budgetYear)}>
+                        ⬇ CSV
+                      </Btn>
+                    }
+                  />
+                  <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
+                    <input
+                      placeholder="🔍 Search material / code / category..."
+                      value={stockSearch}
+                      onChange={e=>setStockSearch(e.target.value)}
+                      style={{ padding:'7px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, background:'var(--surface)', color:'var(--text)', outline:'none', minWidth:240 }}
+                    />
+                    {stockSearch && (
+                      <Btn size="sm" variant="ghost" onClick={()=>setStockSearch('')}>
+                        ✕ Clear
+                      </Btn>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ overflow:'auto' }}>
+                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                    <thead>
+                      <tr>
+                        <Th>Code</Th>
+                        <Th>Material</Th>
+                        <Th>Category</Th>
+                        <Th>Unit</Th>
+                        <Th>Current Qty</Th>
+                        <Th>Current Value</Th>
+                        <Th>Received Qty</Th>
+                        <Th>Received Value</Th>
+                        <Th>Balance</Th>
+                        <Th>Last Received</Th>
+                        <Th>Status</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredStockRows.length===0
+                        ? <tr><td colSpan={11} style={{ padding:30, textAlign:'center', color:'var(--text-3)' }}>No stock rows match the current search.</td></tr>
+                        : filteredStockRows.map((row,i)=>(
+                          <tr key={row.item_id || i} style={{ borderBottom:'1px solid var(--border)', background:row.status==='out_of_stock'?'#fee2e208':row.status==='low_stock'?'#fef3c708':i%2?'var(--surface-2)':'transparent' }}>
+                            <td style={{ padding:'10px 12px', color:'var(--text-3)', fontSize:11 }}>{row.item_code || '—'}</td>
+                            <td style={{ padding:'10px 12px', fontWeight:600, color:'var(--text)' }}>{row.item_name}</td>
+                            <Td>{row.category}</Td>
+                            <Td>{row.unit}</Td>
+                            <td style={{ padding:'10px 12px', fontWeight:700, color:row.current_quantity===0?'#dc2626':row.status==='low_stock'?'#f59e0b':'#16a34a' }}>{row.current_quantity}</td>
+                            <td style={{ padding:'10px 12px', fontWeight:700 }}>{inr(row.current_value)}</td>
+                            <Td>{row.received_quantity_year}</Td>
+                            <Td>{inr(row.received_value_year)}</Td>
+                            <Td>{row.balance_pct_of_year_receipts!=null ? `${row.balance_pct_of_year_receipts}%` : '—'}</Td>
+                            <Td>{row.last_received_on || '—'}</Td>
+                            <td style={{ padding:'10px 12px' }}><Badge value={row.status} /></td>
+                          </tr>
+                        ))
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </>
+          }
+        </div>
+      )}
+
       {view==='reorder' && (
         <Card noPad>
           <div style={{ padding:'14px 18px', borderBottom:'1px solid var(--border)' }}>
