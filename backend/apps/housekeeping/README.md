@@ -2,18 +2,6 @@
 
 Housekeeping includes HTMX pages (`/housekeeping/`) and JSON APIs (`/api/housekeeping/`).
 
-## Progress Snapshot
-- Core mobile + records + attendance: ██████████ 100%
-- Stock request + alerts + dashboard summary: ██████████ 100%
-- Advanced CRUD/admin analytics + reporting workflows: ████████░░ 80%
-
-## Quick Start (Docker)
-```bash
-# from repo root
-cp .env.example .env
-docker compose up --build
-```
-
 ## HTMX routes (`/housekeeping/`)
 - `login/`, `logout/`, `dashboard/`
 - `task/<record_id>/mark/`, `extra-work/`, `schedule/`
@@ -57,8 +45,3 @@ docker compose up --build
 | `/api/housekeeping/worker-selection-requests/` | GET/POST | ✅ | ✅ | ❌ | ✅ (request own scope) |
 | `/api/housekeeping/incharge-assignments/<uuid>/decision/` | POST | ✅ | ✅ | ❌ | ✅ |
 
-## Seed commands
-```bash
-python manage.py seed_housekeeping
-python manage.py seed_all_data
-```
