@@ -36,8 +36,7 @@ export default function AttendanceTab() {
         hkAPI.getAreas(),
       ])
       const attendanceRows = Array.isArray(attendanceData) ? attendanceData : attendanceData?.results || []
-      const areaRows = (Array.isArray(areaData) ? areaData : areaData?.results || [])
-        .filter((a) => a.name?.toLowerCase() !== 'hostels reliever')
+      const areaRows = Array.isArray(areaData) ? areaData : areaData?.results || []
       setRows(attendanceRows)
       setAreas(areaRows)
     } catch (e) {

@@ -920,7 +920,7 @@ class HKAttendanceSummaryView(APIView):
 
         worker_totals = dict(
             HKWorker.objects
-            .filter(area_id__in=area_ids, is_active=True, is_reliever=False)
+            .filter(area_id__in=area_ids, is_active=True)
             .values('area_id')
             .annotate(n=Count('id'))
             .values_list('area_id', 'n')
@@ -1189,7 +1189,7 @@ class HKDashboardSummaryView(APIView):
         ongoing = counts['ongoing']
         skipped = counts['skipped']
 
-        total_workers = HKWorker.objects.filter(is_active=True, is_reliever=False).count()
+        total_workers = HKWorker.objects.filter(is_active=True).count()
         first_half_workers = set(
             HKAttendanceRecord.objects.filter(
                 date=today,

@@ -282,6 +282,13 @@ def get_user_areas(user):
     all_ids = assigned_area_ids | temp_incharge_area_ids
     if not all_ids:
         return HKArea.objects.none()
+
+    # Hostel staff should be able to mark the dedicated reliever pool too.
+    if HKArea.objects.filter(id__in=all_ids, area_type='hostel', is_active=True).exclude(name='Hostels Reliever').exists():
+        reliever_area_id = HKArea.objects.filter(name='Hostels Reliever', is_active=True).values_list('id', flat=True).first()
+        if reliever_area_id:
+            all_ids.add(reliever_area_id)
+
     return HKArea.objects.filter(is_active=True, id__in=all_ids)
 
 
@@ -1335,7 +1342,7 @@ def hk_attendance(request):
     sel_date = timezone.localdate()
 
     workers = HKWorker.objects.filter(
-        area=sel_area, is_active=True, is_reliever=False
+        area=sel_area, is_active=True
     ).order_by("worker_type", "name") if sel_area else HKWorker.objects.none()
 
     cur_half = current_half()
