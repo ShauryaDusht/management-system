@@ -258,9 +258,12 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--dry-run', action='store_true',
                             help='Preview changes without saving.')
+        parser.add_argument('--quiet', action='store_true',
+                            help='Reduce log output (skip "already correct" messages).')
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
+        quiet = options['quiet']
         User = get_user_model()
 
         if dry_run:
@@ -282,7 +285,7 @@ class Command(BaseCommand):
                     u.save(update_fields=['pay_code'])
                 self.stdout.write(f'  [{"DRY" if dry_run else "UPDATED"}] {u.get_full_name() or u.username} -> {pc}')
                 su += 1
-            else:
+            elif not quiet:
                 self.stdout.write(f'  [OK] {u.get_full_name() or u.username} already {pc}')
         self.stdout.write(f'  >> updated={su}, not_found={snf}\n')
 
@@ -302,7 +305,7 @@ class Command(BaseCommand):
                     u.save(update_fields=['pay_code'])
                 self.stdout.write(f'  [{"DRY" if dry_run else "UPDATED"}] {u.get_full_name() or u.username} -> {pc}')
                 cu += 1
-            else:
+            elif not quiet:
                 self.stdout.write(f'  [OK] {u.get_full_name() or u.username} already {pc}')
         self.stdout.write(f'  >> updated={cu}, not_found={cnf}\n')
 
@@ -330,7 +333,7 @@ class Command(BaseCommand):
                     worker.save(update_fields=['pay_code'])
                 self.stdout.write(f'  [{"DRY" if dry_run else "UPDATED"}] {worker.name} -> {pc}')
                 wu += 1
-            else:
+            elif not quiet:
                 self.stdout.write(f'  [OK] {worker.name} already {pc}')
         self.stdout.write(f'  >> updated={wu}, not_found={wnf}\n')
 

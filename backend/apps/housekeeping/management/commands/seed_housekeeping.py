@@ -119,7 +119,7 @@ All accounts use password: {DEFAULT_PASSWORD}
     def area(self, name):
         return HKArea.objects.filter(name=name).first()
 
-    def make_user(self, username, first_name, last_name, phone, role, area_names, email=''):
+    def make_user(self, username, first_name, last_name, phone, role, area_names, email='', pay_code=''):
         is_superuser = role == 'admin'
         is_staff = role in {'admin', 'inventory_manager', 'housekeeping_manager', 'horticulture_manager'}
 
@@ -129,12 +129,16 @@ All accounts use password: {DEFAULT_PASSWORD}
                 'first_name': first_name, 'last_name': last_name,
                 'phone': phone, 'role': role, 'is_active': True,
                 'is_staff': is_staff, 'is_superuser': is_superuser,
+                'email': email, 'pay_code': pay_code,
             }
         )
         user.first_name = first_name
         user.last_name = last_name
         if email:
             user.email = email
+        if pay_code:
+            user.pay_code = pay_code
+            
         # Phone sync policy:
         # - New users: apply seed phone (or blank).
         # - Existing users: fill only if DB phone is blank.
@@ -170,34 +174,35 @@ All accounts use password: {DEFAULT_PASSWORD}
         All caretaker logins. Username = firstname.lastname or firstname only.
         """
         caretakers = [
-            # (username, first, last, phone, areas)
-            ('priyanka', 'Priyanka', '', '6353228604', ['Aibaan']),
-            ('anita', 'Anita', '', '9512389739', ['Beuaki', 'Chimair']),
-            ('rushita', 'Rushita', '', '7083740424', ['Ijokha']),
-            ('pankaj', 'Pankaj', '', '9904883975', ['Duven', 'Emiet']),
-            ('anil.caretaker', 'Anil', '', '8155037413', ['Firpeal', 'Griwiksh']),
-            ('nikul.caretaker', 'Nikul', '', '9714730290', ['Hiqom']),
-            ('jaimin', 'Jaimin', '', '7600738945', ['Jurqia', 'Lekhaag']),
-            ('ramsingh', 'Ram Singh', '', '9687460280', ['Kyzeel']),
-            ('vishwajeet', 'Vishwajeet', '', '9898037530', ['Hostel Common Area']),
+            # (username, first, last, pay_code, phone, email, areas)
+            ('priyanka', 'Priyanka Vijaykumar', 'Parmar', '237', '6353228604', 'priyankavijayparmar27@gmail.com', ['Aibaan']),
+            ('anita', 'Manisha', 'Thapa', '424', '9512389739', 'anitavaghela98@gmail.com', ['Beuaki', 'Chimair']),
+            ('rushita', 'Rhushita Chetankumar', 'Chavda', '294', '7083740424', '', ['Ijokha']),
+            ('pankaj', 'Pankajsinh Amarsinh', 'Bihola', '293', '9904883975', 'pankajsingh2753@gmail.com', ['Duven', 'Emiet']),
+            ('anil.caretaker', 'Anil', 'Solanki', '300', '8155037413', 'anil8155037413@gmail.com', ['Firpeal', 'Griwiksh']),
+            ('nikul.caretaker', 'Nikulsinh Ashoksinh', 'Bihola', '427', '9714730290', 'nikulsinghbhola862@gmail.com', ['Hiqom']),
+            ('jaimin', 'Jaimin', 'Parmar', '318', '7600738945', 'hostel.caretaker@iitgn.ac.in', ['Jurqia', 'Lekhaag']),
+            ('ramsingh', 'Ramprakash Lembabhai', 'Parmar', '317', '9687460280', 'ramairy1198@gmail.com', ['Kyzeel']),
+            ('vishwajeet', 'Vishvajeet', 'Kumar', '316', '9898037530', 'mishra.vishwajeet@iitgn.ac.in', ['Hostel Common Area']),
         ]
-        for username, first, last, phone, areas in caretakers:
-            self.make_user(username, first, last, phone, 'caretaker', areas)
+        for username, first, last, pc, phone, email, areas in caretakers:
+            self.make_user(username, first, last, phone, 'caretaker', areas, email=email, pay_code=pc)
 
         # Supervisors (campus sections)
         supervisors = [
-            ('ashok.rathod', 'Ashok', 'Rathod', '7016722524', ['Guest House New', 'Director Bungalow']),
-            ('kaushik.parmar', 'Kaushik', 'Parmar', '9825504802', ['Academic Block 12', 'Academic Block 13', 'New Academy']),
-            ('shailesh.prajapati', 'Shailesh', 'Prajapati', '9898477320', ['Academic Block 10', 'Academic Block 11', 'New AB U-Shape']),
-            ('maulik.patel', 'Maulik', 'Patel', '8758363879', ['Research Park']),
-            ('bharat.solanki', 'Bharat', 'Solanki', '8511764551', ['Sports Complex', 'Central Arcade']),
-            ('mukesh.vaghela', 'Mukesh', 'Vaghela', '9265591836', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Academic Block 8']),
-            ('bipin.vaghela', 'Bipin', 'Vaghela', '9979627312', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Academic Common Area']),
-            ('narendra.shreemali', 'Narendra', 'Shreemali', '9898661986', ['Roads & Outdoor', 'Old Guest House']),
-            ('pradip.swm', 'Pradip', '', '8200560889', ['Solid Waste Management']),
+            # (username, first, last, pay_code, phone, email, areas)
+            ('ashok.rathod', 'Ashokbhai Ishwarbhai', 'Rathod', '2', '7016722524', 'ashok2969798@gmail.com', ['Guest House New', 'Director Bungalow']),
+            ('kaushik.parmar', 'Kaushikkumar Balvantbhai', 'Parmar', '396', '9825504802', 'kaushikparmar7673@gmail.com', ['Academic Block 12', 'Academic Block 13', 'New Academy']),
+            ('shailesh.prajapati', 'Shailesh Natvarbhai', 'Prajapati', '4', '9898477320', '', ['Academic Block 10', 'Academic Block 11', 'New AB U-Shape']),
+            ('maulik.patel', 'Maulikkumar Dilipbhai', 'Patel', '7', '8758363879', 'moulikpatel81290@gmail.com', ['Research Park']),
+            ('bharat.solanki', 'Bharatkumar', 'Solanki', '465', '8511764551', 'bharat2545007@gmail.com', ['Sports Complex', 'Central Arcade']),
+            ('mukesh.vaghela', 'Mukeshkumar', 'Vaghela', '466', '9265591836', 'm.vaghela23@gmail.com', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Academic Block 8']),
+            ('bipin.vaghela', 'Bipinchandra Dineshkumar', 'Vaghela', '350', '9979627312', 'bipin.vaghela4u@gmail.com', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Academic Common Area']),
+            ('narendra.shreemali', 'Narendrakumar Natvarlal', 'Shrimali', '328', '9898661986', 'narendrashrimali36262@gmail.com', ['Roads & Outdoor', 'Old Guest House']),
+            ('pradip.swm', 'Dinesh', 'Chauhan', '3', '8200560889', 'pradipchauhan783@gmail.com', ['Solid Waste Management']),
         ]
-        for username, first, last, phone, areas in supervisors:
-            self.make_user(username, first, last, phone, 'supervisor', areas)
+        for username, first, last, pc, phone, email, areas in supervisors:
+            self.make_user(username, first, last, phone, 'supervisor', areas, email=email, pay_code=pc)
 
         self.stdout.write(f'  [OK] Users: {User.objects.filter(role__in=["caretaker","supervisor"]).count()}')
 
@@ -209,8 +214,8 @@ All accounts use password: {DEFAULT_PASSWORD}
         # Migrate old manager usernames to new portal nomenclature.
         # This preserves existing user relations while updating login identity.
         rename_map = [
-            ('estate.manager', 'horticulture.manager', 'Horticulture', 'Manager', 'horticulture.manager@iitgn.ac.in', 'horticulture_manager'),
-            ('hostel.manager', 'housekeeping.manager', 'Housekeeping', 'Manager', 'housekeeping.manager@iitgn.ac.in', 'housekeeping_manager'),
+            ('estate.manager', 'horticulture.manager', 'Horticulture', 'Manager', 'managerhort.iwd@iitgn.ac.in', 'horticulture_manager'),
+            ('hostel.manager', 'housekeeping.manager', 'Housekeeping', 'Manager', 'manager.hk@iitgn.ac.in', 'housekeeping_manager'),
         ]
         for old_un, new_un, first, last, email, target_role in rename_map:
             old_user = User.objects.filter(username=old_un).first()
@@ -230,12 +235,12 @@ All accounts use password: {DEFAULT_PASSWORD}
 
         accounts = [
             ('admin', 'Admin', '', '9727757096', 'admin', [], 'admin@iitgn.ac.in'),
-            ('horticulture.manager', 'Horticulture', 'Manager', '', 'horticulture_manager', [], 'horticulture.manager@iitgn.ac.in'),
-            ('housekeeping.manager', 'Housekeeping', 'Manager', '', 'housekeeping_manager', [], 'housekeeping.manager@iitgn.ac.in'),
-            ('inv.manager', 'Inventory', 'Manager', '8758120645', 'inventory_manager', [], 'inv.manager@iitgn.ac.in'),
+            ('horticulture.manager', 'Horticulture', 'Manager', '9723889424', 'horticulture_manager', [], 'managerhort.iwd@iitgn.ac.in', '474'),
+            ('housekeeping.manager', 'Housekeeping', 'Manager', '8758120645', 'housekeeping_manager', [], 'manager.hk@iitgn.ac.in', '469'),
+            ('inv.manager', 'Inventory', 'Manager', '8758120645', 'inventory_manager', [], 'manager.hk@iitgn.ac.in', '469'),
         ]
-        for username, first, last, phone, role, areas, email in accounts:
-            self.make_user(username, first, last, phone, role, areas, email=email)
+        for username, first, last, phone, role, areas, email, pay_code in accounts:
+            self.make_user(username, first, last, phone, role, areas, email=email, pay_code=pay_code)
 
         self.stdout.write(
             f'  [OK] Portal users: {User.objects.filter(role__in=["admin","inventory_manager","housekeeping_manager","horticulture_manager"]).count()}'
@@ -379,25 +384,26 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Ramesh Sports',      '', '9904319434', 'Sports Complex', 'general',  False),
 
             # Guest House New
-            ('Pankaj Parmar',      '', '', 'Guest House New', 'floor',    False),
-            ('Hitesh Vaghela',     '', '', 'Guest House New', 'washroom', False),
-            ('Dhaval Jadeja',      '', '', 'Guest House New', 'room',     False),
-            ('Ajay Purabiya',      '', '', 'Guest House New', 'room',     False),
-            ('Sumit Solanki',      '', '', 'Guest House New', 'room',     False),
-            ('Shailesh Ravel',     '', '', 'Guest House New', 'washroom', False),
-            ('Sanjay Vaghela',     '', '', 'Guest House New', 'washroom', False),
-            ('Anil Thakor',        '', '', 'Guest House New', 'general',  False),
-            ('Gautam Parmar',      '', '', 'Guest House New', 'floor',    False),
-            ('Raju Chamar',        '', '', 'Guest House New', 'reliever', True),
-            ('Lalit Parmar',       '', '', 'Guest House New', 'reliever', True),
+            ('Raju Manabhai Makwana',        '263', '9601550905', 'Guest House New', 'floor',    False),
+            ('Hiteshkumar Gafulbhai Vaghela','291', '9265621047', 'Guest House New', 'washroom', False),
+            ('Dhaval Kantibhai Jadeja',      '248', '9099716206', 'Guest House New', 'room',     False),
+            ('Ajay Harshadbhai Purabiya',    '284', '9099483423', 'Guest House New', 'room',     False),
+            ('Sumit Rameshbhai Solanki',     '451', '8866060385', 'Guest House New', 'room',     False),
+            ('Shailesh Ishvarbhai Raval',    '306', '9157891835', 'Guest House New', 'washroom', False),
+            ('Sanjay Babubhai Vaghela',      '304', '8490012338', 'Guest House New', 'washroom', False),
+            ('Anil Bhupatsinh Thakor',       '269', '7359449665', 'Guest House New', 'general',  False),
+            ('Gautam Parmar',                '403', '8511406220', 'Guest House New', 'floor',    False),
+            ('Pankaj Kantibhai Chamar',      '393', '7990281462', 'Guest House New', 'general',  False),
+            ('Lalit Babubhai Parmar',        '319', '8866011232', 'Guest House New', 'general',  False),
+            ('Vishal Vaghela Karshanbhai',   '320', '8154945437', 'Guest House New', 'room',     False),
 
             # Old Guest House
             ('Mukesh Parmar',      '', '7096432339', 'Old Guest House', 'floor', False),
             ('Rajesh Chauhan',     '', '9674629886', 'Old Guest House', 'room',  False),
 
             # Director Bungalow
-            ('Shailesh Vaghela',   '', '', 'Director Bungalow', 'general', False),
-            ('Rakesh Parmar',      '', '', 'Director Bungalow', 'general', False),
+            ('Shailesh Ugarabhai Vaghela', '311', '8128880335', 'Director Bungalow', 'general', False),
+            ('Rakesh Ishvarbhai Parmar',   '305', '8238931261', 'Director Bungalow', 'general', False),
 
             # Roads & Outdoor
             ('Prakash Thakor',     '', '6355540093', 'Roads & Outdoor', 'road', False),
@@ -583,17 +589,18 @@ All accounts use password: {DEFAULT_PASSWORD}
         ashok_supervisor = User.objects.filter(username='ashok.rathod').first()
         narendra_supervisor = User.objects.filter(username='narendra.shreemali').first()
         guest_house_shift_map = {
-            'Pankaj Parmar': 'day',
-            'Hitesh Vaghela': 'day',
-            'Dhaval Jadeja': 'day',
-            'Ajay Purabiya': 'day',
-            'Sumit Solanki': 'day',
-            'Shailesh Ravel': 'evening',
-            'Sanjay Vaghela': 'evening',
-            'Anil Thakor': 'night',
+            'Raju Manabhai Makwana': 'day',
+            'Hiteshkumar Gafulbhai Vaghela': 'day',
+            'Dhaval Kantibhai Jadeja': 'day',
+            'Ajay Harshadbhai Purabiya': 'day',
+            'Sumit Rameshbhai Solanki': 'day',
+            'Shailesh Ishvarbhai Raval': 'evening',
+            'Sanjay Babubhai Vaghela': 'evening',
+            'Anil Bhupatsinh Thakor': 'night',
             'Gautam Parmar': 'day',
-            'Raju Chamar': 'day',
-            'Lalit Parmar': 'day',
+            'Pankaj Kantibhai Chamar': 'day',
+            'Lalit Babubhai Parmar': 'day',
+            'Vishal Vaghela Karshanbhai': 'day',
         }
         for worker_name, shift in guest_house_shift_map.items():
             worker = HKWorker.objects.filter(name=worker_name, area=self.area('Guest House New')).first()
@@ -614,8 +621,8 @@ All accounts use password: {DEFAULT_PASSWORD}
                 worker.save(update_fields=['shift', 'supervisor'])
 
         director_shift_map = {
-            'Shailesh Vaghela': 'day',
-            'Rakesh Parmar': 'day',
+            'Shailesh Ugarabhai Vaghela': 'day',
+            'Rakesh Ishvarbhai Parmar': 'day',
         }
         for worker_name, shift in director_shift_map.items():
             worker = HKWorker.objects.filter(name=worker_name, area=self.area('Director Bungalow')).first()
@@ -1222,14 +1229,14 @@ All accounts use password: {DEFAULT_PASSWORD}
             HKScheduleTemplate.objects.filter(area=guest_house).delete()
 
             gh_floor_tasks = [
-                (1, '07:00', '09:00', 'Pankaj: Ground Floor Office, Reception and Front Corridor', True, 'Dusting, sweeping and mopping'),
-                (2, '09:00', '11:00', 'Pankaj: Parking, Washroom and Lobby Touch Up', True, 'Ladies/Gents/Handicapped washroom, lobby and dining passage'),
-                (3, '11:00', '13:00', 'Pankaj: Front Glass, Lift and Ground Floor Final Round', True, ''),
-                (4, '13:00', '14:00', 'Pankaj: Lunch Break', False, ''),
-                (5, '14:00', '14:15', 'Pankaj: Washroom Touch Up', True, ''),
-                (6, '14:15', '14:45', 'Pankaj: Rooms Back Side Area Sweeping', True, ''),
-                (7, '14:45', '15:30', 'Pankaj: Gym Area and Equipment Dusting', True, ''),
-                (8, '15:30', '16:00', 'Pankaj: All Floor Coolers and Washroom Cleaning', True, ''),
+                (1, '07:00', '09:00', 'Raju: Ground Floor Office, Reception and Front Corridor', True, 'Dusting, sweeping and mopping'),
+                (2, '09:00', '11:00', 'Raju: Parking, Washroom and Lobby Touch Up', True, 'Ladies/Gents/Handicapped washroom, lobby and dining passage'),
+                (3, '11:00', '13:00', 'Raju: Front Glass, Lift and Ground Floor Final Round', True, ''),
+                (4, '13:00', '14:00', 'Raju: Lunch Break', False, ''),
+                (5, '14:00', '14:15', 'Raju: Washroom Touch Up', True, ''),
+                (6, '14:15', '14:45', 'Raju: Rooms Back Side Area Sweeping', True, ''),
+                (7, '14:45', '15:30', 'Raju: Gym Area and Equipment Dusting', True, ''),
+                (8, '15:30', '16:00', 'Raju: All Floor Coolers and Washroom Cleaning', True, ''),
                 (9, '07:00', '09:00', 'Gautam: Dining Hall, Front Area, Washroom and Kitchen', True, 'Canteen and Gate duty'),
                 (10, '09:00', '10:30', 'Gautam: Gate No. 01 Cleaning', True, ''),
                 (11, '10:30', '11:30', 'Gautam: Gate No. 02 Cleaning', True, ''),
@@ -1248,14 +1255,14 @@ All accounts use password: {DEFAULT_PASSWORD}
             ]
 
             gh_room_tasks = [
-                (1, '08:00', '17:00', 'Dhaval + Ajay + Sumit: Checkout/Occupied/Vacant Rooms', True, 'Morning room operations'),
+                (1, '08:00', '17:00', 'Dhaval + Ajay + Sumit + Vishal: Checkout/Occupied/Vacant Rooms', True, 'Morning room operations'),
                 (2, '17:00', '22:00', 'Shailesh + Sanjay: Evening Room Operations', True, 'Checkout/occupied/vacant room round'),
                 (3, '22:00', '07:00', 'Anil: Night Shift All Work Coverage', True, 'Dining hall, common hall, meeting hall, conference hall, washrooms and rooms'),
             ]
 
             gh_special_tasks = [
                 (1, '16:00', '16:20', 'Supervisor: Weekly Off and Reliever Roster Check', False,
-                 'Mon Pankaj->Lalit, Tue Hitesh->Lalit, Wed Dhaval->Lalit, Thu Ajay->Raju, Fri Sanjay->Lalit, Sat Shailesh->Lalit + Anil->Raju, Sun Sumit/Gautam->Lalit'),
+                 'Weekly off coverage to be managed among the Guest House New staff team.'),
             ]
 
             for order, start, end, name, req_photo, desc in gh_floor_tasks:

@@ -8,31 +8,31 @@ from django.core.management.base import BaseCommand
 
 from apps.housekeeping.models import HKWorker
 
-# ── Supervisors: username → (first_name, last_name) ─────────────────────────
+# ── Supervisors: username → (first_name, last_name, email) ───────────────────
 # Canonical name: "RATHOD ASHOKBHAI ISHWARBHAI" → title-cased
 SUPERVISOR_NAMES = {
-    'ashok.rathod':        ('Ashokbhai Ishwarbhai', 'Rathod'),
-    'pradip.swm':          ('Dinesh', 'Chauhan'),
-    'shailesh.prajapati':  ('Shailesh Natvarbhai', 'Prajapati'),
-    'maulik.patel':        ('Maulikkumar Dilipbhai', 'Patel'),
-    'narendra.shreemali':  ('Narendrakumar Natvarlal', 'Shrimali'),
-    'bipin.vaghela':       ('Bipinchandra Dineshkumar', 'Vaghela'),
-    'kaushik.parmar':      ('Kaushikkumar Balvantbhai', 'Parmar'),
-    'bharat.solanki':      ('Bharatkumar', 'Solanki'),
-    'mukesh.vaghela':      ('Mukeshkumar', 'Vaghela'),
+    'ashok.rathod':        ('Ashokbhai Ishwarbhai', 'Rathod', 'ashok2969798@gmail.com'),
+    'pradip.swm':          ('Dinesh', 'Chauhan', 'pradipchauhan783@gmail.com'),
+    'shailesh.prajapati':  ('Shailesh Natvarbhai', 'Prajapati', ''),
+    'maulik.patel':        ('Maulikkumar Dilipbhai', 'Patel', 'moulikpatel81290@gmail.com'),
+    'narendra.shreemali':  ('Narendrakumar Natvarlal', 'Shrimali', 'narendrashrimali36262@gmail.com'),
+    'bipin.vaghela':       ('Bipinchandra Dineshkumar', 'Vaghela', 'bipin.vaghela4u@gmail.com'),
+    'kaushik.parmar':      ('Kaushikkumar Balvantbhai', 'Parmar', 'kaushikparmar7673@gmail.com'),
+    'bharat.solanki':      ('Bharatkumar', 'Solanki', 'bharat2545007@gmail.com'),
+    'mukesh.vaghela':      ('Mukeshkumar', 'Vaghela', 'm.vaghela23@gmail.com'),
 }
 
-# ── Caretakers: username → (first_name, last_name) ──────────────────────────
+# ── Caretakers: username → (first_name, last_name, email) ────────────────────
 CARETAKER_NAMES = {
-    'priyanka':         ('Priyanka Vijaykumar', 'Parmar'),
-    'pankaj':           ('Pankajsinh Amarsinh', 'Bihola'),
-    'rushita':          ('Rhushita Chetankumar', 'Chavda'),
-    'anil.caretaker':   ('Anil', 'Solanki'),
-    'vishwajeet':       ('Vishvajeet', 'Kumar'),
-    'ramsingh':         ('Ramprakash Lembabhai', 'Parmar'),
-    'jaimin':           ('Jaimin', 'Parmar'),
-    'anita':            ('Manisha', 'Thapa'),
-    'nikul.caretaker':  ('Nikulsinh Ashoksinh', 'Bihola'),
+    'priyanka':         ('Priyanka Vijaykumar', 'Parmar', 'priyankavijayparmar27@gmail.com'),
+    'pankaj':           ('Pankajsinh Amarsinh', 'Bihola', 'pankajsingh2753@gmail.com'),
+    'rushita':          ('Rhushita Chetankumar', 'Chavda', ''),
+    'anil.caretaker':   ('Anil', 'Solanki', 'anil8155037413@gmail.com'),
+    'vishwajeet':       ('Vishvajeet', 'Kumar', 'mishra.vishwajeet@iitgn.ac.in'),
+    'ramsingh':         ('Ramprakash Lembabhai', 'Parmar', 'ramairi1198@gmail.com'),
+    'jaimin':           ('Jaimin', 'Parmar', 'hostel.caretaker@iitgn.ac.in'),
+    'anita':            ('Manisha', 'Thapa', 'anitavaghela98@gmail.com'),
+    'nikul.caretaker':  ('Nikulsinh Ashoksinh', 'Bihola', 'nikulsinghbhola862@gmail.com'),
 }
 
 # ── Workers: current DB name → new full name ─────────────────────────────────
@@ -335,9 +335,12 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--dry-run', action='store_true',
                             help='Preview changes without saving.')
+        parser.add_argument('--quiet', action='store_true',
+                            help='Reduce log output (skip "already correct" messages).')
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
+        quiet = options['quiet']
         User = get_user_model()
 
         if dry_run:
@@ -346,40 +349,70 @@ class Command(BaseCommand):
         # ── Supervisors ──────────────────────────────────────────────────────
         self.stdout.write(self.style.HTTP_INFO('=== SUPERVISORS ==='))
         su = 0
-        for username, (first, last) in SUPERVISOR_NAMES.items():
+        for username, (first, last, email) in SUPERVISOR_NAMES.items():
             u = User.objects.filter(username=username).first()
             if not u:
                 self.stdout.write(f'  [NOT FOUND] {username}')
                 continue
+            
+            changed = False
             if u.first_name != first or u.last_name != last:
-                old = u.get_full_name()
+                changed = True
+            if email and u.email != email:
+                changed = True
+                
+            if changed:
+                old_name = u.get_full_name()
+                old_email = u.email
                 if not dry_run:
                     u.first_name = first
                     u.last_name = last
-                    u.save(update_fields=['first_name', 'last_name'])
-                self.stdout.write(f'  [{"DRY" if dry_run else "UPDATED"}] {old!r} → {first} {last!r}')
+                    if email:
+                        u.email = email
+                    u.save(update_fields=['first_name', 'last_name', 'email'])
+                
+                msg = f'  [{"DRY" if dry_run else "UPDATED"}] {old_name!r}'
+                if email and old_email != email:
+                    msg += f' ({old_email} → {email})'
+                msg += f' → {first} {last!r}'
+                self.stdout.write(msg)
                 su += 1
-            else:
+            elif not quiet:
                 self.stdout.write(f'  [OK] {u.get_full_name()} already correct')
         self.stdout.write(f'  >> supervisors updated={su}\n')
 
         # ── Caretakers ───────────────────────────────────────────────────────
         self.stdout.write(self.style.HTTP_INFO('=== CARETAKERS ==='))
         cu = 0
-        for username, (first, last) in CARETAKER_NAMES.items():
+        for username, (first, last, email) in CARETAKER_NAMES.items():
             u = User.objects.filter(username=username).first()
             if not u:
                 self.stdout.write(f'  [NOT FOUND] {username}')
                 continue
+
+            changed = False
             if u.first_name != first or u.last_name != last:
-                old = u.get_full_name()
+                changed = True
+            if email and u.email != email:
+                changed = True
+
+            if changed:
+                old_name = u.get_full_name()
+                old_email = u.email
                 if not dry_run:
                     u.first_name = first
                     u.last_name = last
-                    u.save(update_fields=['first_name', 'last_name'])
-                self.stdout.write(f'  [{"DRY" if dry_run else "UPDATED"}] {old!r} → {first} {last!r}')
+                    if email:
+                        u.email = email
+                    u.save(update_fields=['first_name', 'last_name', 'email'])
+                
+                msg = f'  [{"DRY" if dry_run else "UPDATED"}] {old_name!r}'
+                if email and old_email != email:
+                    msg += f' ({old_email} → {email})'
+                msg += f' → {first} {last!r}'
+                self.stdout.write(msg)
                 cu += 1
-            else:
+            elif not quiet:
                 self.stdout.write(f'  [OK] {u.get_full_name()} already correct')
         self.stdout.write(f'  >> caretakers updated={cu}\n')
 
@@ -569,7 +602,7 @@ class Command(BaseCommand):
                     w.save(update_fields=['name'])
                 self.stdout.write(f'  [{"DRY" if dry_run else "UPDATED"}] {old!r} → {canonical!r}')
                 wu += 1
-            else:
+            elif not quiet:
                 pass  # already correct — skip printing to keep output short
         self.stdout.write(f'  >> workers updated={wu}\n')
 

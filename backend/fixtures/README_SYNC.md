@@ -10,8 +10,8 @@ Default password for seeded accounts:
 
 Core portal accounts:
 - `admin` (admin)
-- `estate.manager` (manager)
-- `hostel.manager` (manager)
+- `horticulture.manager` (horticulture_manager)
+- `housekeeping.manager` (housekeeping_manager)
 - `inv.manager` (inventory_manager)
 
 ## Option A (Recommended): Auto bootstrap via Docker
