@@ -5,7 +5,7 @@ Housekeeping includes HTMX pages (`/housekeeping/`) and JSON APIs (`/api/houseke
 ## Progress Snapshot
 - Core mobile + records + attendance: ██████████ 100%
 - Stock request + alerts + dashboard summary: ██████████ 100%
-- Advanced CRUD/admin analytics + reporting workflows: ████████░░ 80%
+- Advanced CRUD/admin analytics + reporting workflows: ██████████ 100%
 
 ## Quick Start (Docker)
 ```bash
