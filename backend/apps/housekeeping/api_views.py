@@ -677,6 +677,7 @@ class HKWorkerSelectionRequestDecisionView(APIView):
         with transaction.atomic():
             if decision == 'approved':
                 workers_qs = req_obj.workers.filter(is_active=True)
+                selected_worker_ids = list(workers_qs.values_list('id', flat=True))
                 # Ensure area + supervisor mapping both update after approval.
                 # If explicit target supervisor is not set, map to area assignee.
                 target_supervisor = req_obj.target_supervisor
@@ -691,6 +692,21 @@ class HKWorkerSelectionRequestDecisionView(APIView):
                     if area_links:
                         area_links.sort(key=lambda link: 0 if link.user.role == 'caretaker' else 1)
                         target_supervisor = area_links[0].user
+
+                # Replace the target roster instead of cumulatively appending to it.
+                # Historical HKDailyRecord rows keep their own area/worker links, so
+                # only current HKWorker assignment is updated here for future work.
+                old_workers_qs = HKWorker.objects.filter(
+                    area=req_obj.target_area,
+                    is_active=True,
+                )
+                if target_supervisor:
+                    old_workers_qs = old_workers_qs.filter(supervisor=target_supervisor)
+
+                old_workers_qs.exclude(id__in=selected_worker_ids).update(
+                    area=req_obj.source_area,
+                    supervisor=None,
+                )
 
                 workers_qs.update(area=req_obj.target_area, supervisor=target_supervisor)
 

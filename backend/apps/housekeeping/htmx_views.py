@@ -695,18 +695,17 @@ def hk_dashboard(request):
         if user_area_ids:
             area_by_id = {a.id: a for a in user_area_list}
             worker_selection_requests = list(
-                HKWorkerSelectionRequest.objects.filter(
+                HKWorkerSelectionRequest.objects.annotate(
+                    worker_count=dm.Count("workers", distinct=True),
+                ).filter(
                     status="pending",
+                    worker_count=0,
                 ).select_related(
                     "source_area", "target_area", "requested_by",
-                ).prefetch_related("workers").order_by("-created_at")[:40]
+                ).order_by("-created_at")[:40]
             )
 
             for req in worker_selection_requests:
-                # Mobile should show only fresh admin requests where staff must select workers.
-                if req.workers.exists():
-                    continue
-
                 candidate_areas = []
                 if req.target_area_id and req.target_area_id in user_area_ids:
                     candidate_areas.append(area_by_id[req.target_area_id])
