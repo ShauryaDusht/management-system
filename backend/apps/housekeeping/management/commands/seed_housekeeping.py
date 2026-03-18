@@ -79,6 +79,27 @@ All accounts use password: {DEFAULT_PASSWORD}
             legacy_old_guest.is_active = True
             legacy_old_guest.save(update_fields=['name', 'area_type', 'is_active'])
 
+        legacy_old_academic_common = HKArea.objects.filter(name='Academic Common Area').first()
+        if legacy_old_academic_common and not HKArea.objects.filter(name='Old Academic Common Area').exists():
+            legacy_old_academic_common.name = 'Old Academic Common Area'
+            legacy_old_academic_common.area_type = 'academic'
+            legacy_old_academic_common.is_active = True
+            legacy_old_academic_common.save(update_fields=['name', 'area_type', 'is_active'])
+
+        legacy_new_academic_common = HKArea.objects.filter(name='New Academy').first()
+        if legacy_new_academic_common and not HKArea.objects.filter(name='New Academic Common Area').exists():
+            legacy_new_academic_common.name = 'New Academic Common Area'
+            legacy_new_academic_common.area_type = 'academic'
+            legacy_new_academic_common.is_active = True
+            legacy_new_academic_common.save(update_fields=['name', 'area_type', 'is_active'])
+
+        legacy_old_academic_reliever = HKArea.objects.filter(name='Academic Block 8').first()
+        if legacy_old_academic_reliever and not HKArea.objects.filter(name='Old Academic Reliever').exists():
+            legacy_old_academic_reliever.name = 'Old Academic Reliever'
+            legacy_old_academic_reliever.area_type = 'academic'
+            legacy_old_academic_reliever.is_active = True
+            legacy_old_academic_reliever.save(update_fields=['name', 'area_type', 'is_active'])
+
         other_areas = [
             ('Research Park', 'research_park'),
             ('Central Arcade', 'central_arcade'),
@@ -95,15 +116,15 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Academic Block 5', 'academic'),
             ('Academic Block 6', 'academic'),
             ('Academic Block 7', 'academic'),
-            ('Academic Block 8', 'academic'),
             ('Academic Block 9', 'academic'),
             ('Academic Block 10', 'academic'),
             ('Academic Block 11', 'academic'),
             ('Academic Block 12', 'academic'),
             ('Academic Block 13', 'academic'),
-            ('Academic Common Area', 'academic'),
+            ('Old Academic Common Area', 'academic'),
             ('New AB U-Shape', 'academic'),
-            ('New Academy', 'academic'),
+            ('New Academic Common Area', 'academic'),
+            ('Old Academic Reliever', 'academic'),
             ('New Academic Reliever', 'academic'),
             ('Hostel Common Area', 'hostel'),
             ('Hostels Reliever', 'hostel'),
@@ -198,12 +219,12 @@ All accounts use password: {DEFAULT_PASSWORD}
         supervisors = [
             # (username, first, last, pay_code, phone, email, areas)
             ('ashok.rathod', 'Ashokbhai Ishwarbhai', 'Rathod', '2', '7016722524', 'ashok2969798@gmail.com', ['Guest House New', 'Director Bungalow']),
-            ('kaushik.parmar', 'Kaushikkumar Balvantbhai', 'Parmar', '396', '9825504802', 'kaushikparmar7673@gmail.com', ['Academic Block 12', 'Academic Block 13', 'New Academy', 'New Academic Reliever']),
+            ('kaushik.parmar', 'Kaushikkumar Balvantbhai', 'Parmar', '396', '9825504802', 'kaushikparmar7673@gmail.com', ['Academic Block 12', 'Academic Block 13', 'New Academic Common Area', 'New Academic Reliever']),
             ('shailesh.prajapati', 'Shailesh Natvarbhai', 'Prajapati', '4', '9898477320', '', ['Academic Block 10', 'Academic Block 11', 'New AB U-Shape', 'New Academic Reliever']),
             ('maulik.patel', 'Maulikkumar Dilipbhai', 'Patel', '7', '8758363879', 'moulikpatel81290@gmail.com', ['Research Park']),
             ('bharat.solanki', 'Bharat Kumar M.', 'Solanki', '465', '8511764551', 'bharat2545007@gmail.com', ['Sports Complex', 'Central Arcade']),
-            ('mukesh.vaghela', 'Mukeshkumar', 'Vaghela', '466', '9265591836', 'm.vaghela23@gmail.com', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Academic Block 8']),
-            ('bipin.vaghela', 'Bipinchandra Dineshkumar', 'Vaghela', '350', '9979627312', 'bipin.vaghela4u@gmail.com', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Academic Common Area']),
+            ('mukesh.vaghela', 'Mukeshkumar', 'Vaghela', '466', '9265591836', 'm.vaghela23@gmail.com', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Old Academic Reliever']),
+            ('bipin.vaghela', 'Bipinchandra Dineshkumar', 'Vaghela', '350', '9979627312', 'bipin.vaghela4u@gmail.com', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Old Academic Common Area']),
             ('narendra.shreemali', 'Narendrakumar Natvarlal', 'Shrimali', '328', '9898661986', 'narendrashrimali36262@gmail.com', ['Roads & Outdoor', 'Old Guest House']),
             ('pradip.swm', 'Pradip', 'Chauhan', '3', '8200560889', 'pradipchauhan783@gmail.com', ['Solid Waste Management']),
         ]
@@ -543,7 +564,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Dineshbhai Babubhai Chauhan',       '146', '', 'Solid Waste Management', 'swm', False),
             ('Sunilbhai Prabhatji Thakor',        '407', '', 'Solid Waste Management', 'swm', False),
 
-            # Academic Blocks 01-09 + Academic Common Area
+            # Academic Blocks 01-09 + Old Academic Common Area
             ('Minaben Vaghela',                    '142', '9081897577', 'Academic Block 1', 'floor',    False),
             ('Rajanikant Babubhai Vaghela',        '103', '8490949636', 'Academic Block 2', 'floor',    False),
             ('Solanki Krunal Amrutbhai',           '235', '9327124093', 'Academic Block 3', 'floor',    False),
@@ -560,10 +581,10 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Hitenkumar Parmar',                  '307', '8866745431', 'Academic Block 6', 'room',     False),
             ('Gurjar Chandrikaben',                '74',  '9737520471', 'Academic Block 7', 'washroom', False),
             ('Parmar Nikulkumar Punjabhai',        '309', '8155861394', 'Academic Block 7', 'floor',    False),
-            ('Ajaykumar Solanki',                  '281', '8401109316', 'Academic Block 8', 'reliever', True),
-            ('Solanki Akashkumar Hasmukhbhai',     '253', '8160847423', 'Academic Block 8', 'reliever', True),
-            ('Pravinbhai Vaghela',                 '400', '9624126018', 'Academic Block 8', 'reliever', True),
-            ('Jyotsanaben Vaghela',                '231', '9574720027', 'Academic Block 8', 'reliever', True),
+            ('Ajaykumar Solanki',                  '281', '8401109316', 'Old Academic Reliever', 'reliever', True),
+            ('Solanki Akashkumar Hasmukhbhai',     '253', '8160847423', 'Old Academic Reliever', 'reliever', True),
+            ('Pravinbhai Vaghela',                 '400', '9624126018', 'Old Academic Reliever', 'reliever', True),
+            ('Jyotsanaben Vaghela',                '231', '9574720027', 'Old Academic Reliever', 'reliever', True),
             ('Jay Kumar Solanki',                  '105', '8511476360', 'Academic Block 9', 'room',     False),
             ('Patel Sangitaben Maheshbhai',        '412', '', 'Academic Block 10', 'washroom', False),
             ('Hiteshbhai Solanki',                 '434', '', 'Academic Block 10', 'room',     False),
@@ -579,10 +600,10 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Jigneshkumar Babubhai Solanki',      '363', '', 'Academic Block 13', 'washroom', False),
             ('Parmar Krunalbhai',                  '390', '', 'Academic Block 13', 'room',     False),
             ('Vaghela Padma',                      '347', '', 'Academic Block 13', 'floor',    False),
-            ('Vaghela Bhaveshbhai Narnabhai',      '315', '9974738575', 'Academic Common Area', 'floor', False),
-            ('Vaniya Nikhilkumar Bhaveshbhai',     '314', '8849436518', 'Academic Common Area', 'floor', False),
+            ('Vaghela Bhaveshbhai Narnabhai',      '315', '9974738575', 'Old Academic Common Area', 'floor', False),
+            ('Vaniya Nikhilkumar Bhaveshbhai',     '314', '8849436518', 'Old Academic Common Area', 'floor', False),
             ('Akshybhai Vaghela',                  '308', '', 'New AB U-Shape', 'floor', False),
-            ('Vasudev Jitendrakumar Baldevbhai',   '377', '', 'New Academy', 'floor', False),
+            ('Vasudev Jitendrakumar Baldevbhai',   '377', '', 'New Academic Common Area', 'floor', False),
             ('Gurjar Niruben',                     '111', '', 'New Academic Reliever', 'reliever', True),
             ('Sonara Hitendrakumar Punjabhai',     '448', '', 'New Academic Reliever', 'reliever', True),
 
@@ -798,15 +819,15 @@ All accounts use password: {DEFAULT_PASSWORD}
             'Academic Block 5': 'mukesh.vaghela',
             'Academic Block 6': 'mukesh.vaghela',
             'Academic Block 7': 'bipin.vaghela',
-            'Academic Block 8': 'mukesh.vaghela',
             'Academic Block 9': 'bipin.vaghela',
             'Academic Block 10': 'shailesh.prajapati',
             'Academic Block 11': 'shailesh.prajapati',
             'Academic Block 12': 'kaushik.parmar',
             'Academic Block 13': 'kaushik.parmar',
-            'Academic Common Area': 'bipin.vaghela',
+            'Old Academic Common Area': 'bipin.vaghela',
             'New AB U-Shape': 'shailesh.prajapati',
-            'New Academy': 'kaushik.parmar',
+            'New Academic Common Area': 'kaushik.parmar',
+            'Old Academic Reliever': 'mukesh.vaghela',
             'New Academic Reliever': 'kaushik.parmar',
         }
         for area_name, supervisor_username in academic_supervisor_by_area.items():
@@ -1721,12 +1742,12 @@ All accounts use password: {DEFAULT_PASSWORD}
                 )
                 total += 1
 
-        # Academic Blocks 01-13 + Academic Common Area + New AB U-Shape + New Academy
+        # Academic Blocks 01-13 + renamed academic common areas + reliever pools
         academic_area_names = [
             'Academic Block 1', 'Academic Block 2', 'Academic Block 3', 'Academic Block 4',
-            'Academic Block 5', 'Academic Block 6', 'Academic Block 7', 'Academic Block 8',
+            'Academic Block 5', 'Academic Block 6', 'Academic Block 7', 'Old Academic Reliever',
             'Academic Block 9', 'Academic Block 10', 'Academic Block 11', 'Academic Block 12',
-            'Academic Block 13', 'Academic Common Area', 'New AB U-Shape', 'New Academy',
+            'Academic Block 13', 'Old Academic Common Area', 'New AB U-Shape', 'New Academic Common Area',
         ]
         academic_areas = [self.area(name) for name in academic_area_names if self.area(name)]
         if academic_areas:
@@ -1809,12 +1830,12 @@ All accounts use password: {DEFAULT_PASSWORD}
                     (8, '15:00', '16:00', 'AB-7: Pending Classroom Cleaning', 'room', True, ''),
                     (9, '16:00', '17:00', 'AB-7: Staircase and Railing Dusting', 'floor', True, ''),
                 ],
-                'Academic Block 8': [
-                    (1, '08:00', '12:00', 'AB-8: Lal Minar Tower Cleaning Support', 'floor', True, 'Ajay + Akash + Pravin + Jyotsanaben'),
-                    (2, '12:00', '13:00', 'AB-8: First Floor Passage and Ramp Cleaning', 'floor', True, ''),
+                'Old Academic Reliever': [
+                    (1, '08:00', '12:00', 'Old Academic Reliever: Lal Minar Tower Cleaning Support', 'floor', True, 'Ajay + Akash + Pravin + Jyotsanaben'),
+                    (2, '12:00', '13:00', 'Old Academic Reliever: First Floor Passage and Ramp Cleaning', 'floor', True, ''),
                     (3, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
-                    (4, '14:00', '16:00', 'AB-8: Indoor Sweeping and Mopping', 'floor', True, 'Every 15 days'),
-                    (5, '16:00', '17:00', 'AB-8: Month-end Additional Cleaning Check', 'floor', True, 'Month ending 2 times'),
+                    (4, '14:00', '16:00', 'Old Academic Reliever: Indoor Sweeping and Mopping', 'floor', True, 'Every 15 days'),
+                    (5, '16:00', '17:00', 'Old Academic Reliever: Month-end Additional Cleaning Check', 'floor', True, 'Month ending 2 times'),
                 ],
                 'Academic Block 9': [
                     (1, '08:00', '09:00', 'AB-9: All Office Cleaning', 'room', True, 'Jay'),
@@ -1868,10 +1889,10 @@ All accounts use password: {DEFAULT_PASSWORD}
                     (10, '08:00', '11:00', 'AB-13 Library: Washroom and Office Floor Cleaning', 'room', True, 'Ajay Rathod + Bharat Solanki'),
                     (11, '11:00', '13:00', 'AB-13 Library: First Floor Lab Floor Cleaning', 'room', True, ''),
                 ],
-                'Academic Common Area': [
-                    (1, '07:00', '13:00', 'Academic Common: All Blocks Common Area + Marble Cleaning', 'floor', True, 'Bhavesh + Nikhil'),
+                'Old Academic Common Area': [
+                    (1, '07:00', '13:00', 'Old Academic Common Area: All Blocks Common Area + Marble Cleaning', 'floor', True, 'Bhavesh + Nikhil'),
                     (2, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
-                    (3, '15:00', '16:00', 'Academic Common: Block-07 Terrace Side Railing Dusting', 'floor', True, ''),
+                    (3, '15:00', '16:00', 'Old Academic Common Area: Block-07 Terrace Side Railing Dusting', 'floor', True, ''),
                 ],
                 'New AB U-Shape': [
                     (1, '08:00', '10:00', 'New AB U-Shape: Sweeping and Mopping', 'floor', True, 'Akshay Vaghela'),
@@ -1879,17 +1900,17 @@ All accounts use password: {DEFAULT_PASSWORD}
                     (3, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
                     (4, '14:00', '17:00', 'New AB U-Shape: Blocks 10-13 Common Area Cleaning - Round 2', 'floor', True, ''),
                 ],
-                'New Academy': [
-                    (1, '08:00', '10:00', 'New Academy: Sweeping and Mopping', 'floor', True, 'Jitendra Vasudev'),
-                    (2, '10:00', '13:00', 'New Academy: Blocks 10-13 Common Area Cleaning - Round 1', 'floor', True, ''),
+                'New Academic Common Area': [
+                    (1, '08:00', '10:00', 'New Academic Common Area: Sweeping and Mopping', 'floor', True, 'Jitendra Vasudev'),
+                    (2, '10:00', '13:00', 'New Academic Common Area: Blocks 10-13 Common Area Cleaning - Round 1', 'floor', True, ''),
                     (3, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
-                    (4, '14:00', '17:00', 'New Academy: Blocks 10-13 Common Area Cleaning - Round 2', 'floor', True, ''),
+                    (4, '14:00', '17:00', 'New Academic Common Area: Blocks 10-13 Common Area Cleaning - Round 2', 'floor', True, ''),
                 ],
             }
 
             academic_sunday_extra = {
-                'Academic Common Area': [
-                    (1, '08:00', '11:00', 'Sunday Deep Clean: Samved Area Scrubbing and Washing', 'all', True, 'Weekly Sunday task'),
+                'Old Academic Common Area': [
+                    (1, '08:00', '11:00', 'Sunday Deep Clean: Old Academic Common Area Samved Area Scrubbing and Washing', 'all', True, 'Weekly Sunday task'),
                 ],
             }
 

@@ -387,15 +387,15 @@ class Command(BaseCommand):
         "Academic Block 5": "mukesh.vaghela",
         "Academic Block 6": "mukesh.vaghela",
         "Academic Block 7": "bipin.vaghela",
-        "Academic Block 8": "mukesh.vaghela",
         "Academic Block 9": "bipin.vaghela",
         "Academic Block 10": "shailesh.prajapati",
         "Academic Block 11": "shailesh.prajapati",
         "Academic Block 12": "kaushik.parmar",
         "Academic Block 13": "kaushik.parmar",
-        "Academic Common Area": "bipin.vaghela",
+        "Old Academic Common Area": "bipin.vaghela",
         "New AB U-Shape": "shailesh.prajapati",
-        "New Academy": "kaushik.parmar",
+        "New Academic Common Area": "kaushik.parmar",
+        "Old Academic Reliever": "mukesh.vaghela",
         "New Academic Reliever": "kaushik.parmar",
     }
 
@@ -416,10 +416,10 @@ class Command(BaseCommand):
         {"area": "Academic Block 6", "name": "Hitenkumar Parmar", "phone": "8866745431", "pay_code": "307", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Hiten", "Hiten R Parmar"]},
         {"area": "Academic Block 7", "name": "Gurjar Chandrikaben", "phone": "9737520471", "pay_code": "74", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Chandrikaben"]},
         {"area": "Academic Block 7", "name": "Parmar Nikulkumar Punjabhai", "phone": "8155861394", "pay_code": "309", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Nikhil", "Nikul", "Elesh"]},
-        {"area": "Academic Block 8", "name": "Ajaykumar Solanki", "phone": "8401109316", "pay_code": "281", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Ajay", "Satish bhai Raval"]},
-        {"area": "Academic Block 8", "name": "Solanki Akashkumar Hasmukhbhai", "phone": "8160847423", "pay_code": "253", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Akash"]},
-        {"area": "Academic Block 8", "name": "Pravinbhai Vaghela", "phone": "9624126018", "pay_code": "400", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Pravinbhai M Vaghela"]},
-        {"area": "Academic Block 8", "name": "Jyotsanaben Vaghela", "phone": "9574720027", "pay_code": "231", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Jyostnaben A Vaghela", "Jyostnaben"]},
+        {"area": "Old Academic Reliever", "name": "Ajaykumar Solanki", "phone": "8401109316", "pay_code": "281", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Ajay", "Satish bhai Raval"]},
+        {"area": "Old Academic Reliever", "name": "Solanki Akashkumar Hasmukhbhai", "phone": "8160847423", "pay_code": "253", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Akash"]},
+        {"area": "Old Academic Reliever", "name": "Pravinbhai Vaghela", "phone": "9624126018", "pay_code": "400", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Pravinbhai M Vaghela"]},
+        {"area": "Old Academic Reliever", "name": "Jyotsanaben Vaghela", "phone": "9574720027", "pay_code": "231", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Jyostnaben A Vaghela", "Jyostnaben"]},
         {"area": "Academic Block 9", "name": "Jay Kumar Solanki", "phone": "8511476360", "pay_code": "105", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Jay", "Jay Solanki"]},
         {"area": "Academic Block 10", "name": "Solanki Parthkumar Jagdishbhai", "phone": "", "pay_code": "384", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Parth Solanki"]},
         {"area": "Academic Block 10", "name": "Hiteshbhai Solanki", "phone": "", "pay_code": "434", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Hitesh Solanki"]},
@@ -435,10 +435,10 @@ class Command(BaseCommand):
         {"area": "Academic Block 13", "name": "Rathod Ajaykumar", "phone": "", "pay_code": "93", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Ajay Rathod"]},
         {"area": "Academic Block 13", "name": "Parmar Krunalbhai", "phone": "", "pay_code": "390", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Krunal Parmar", "Kunal Parmar"]},
         {"area": "Academic Block 13", "name": "Jigneshkumar Babubhai Solanki", "phone": "", "pay_code": "363", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Jignesh Solanki", "Gignesh"]},
-        {"area": "Academic Common Area", "name": "Vaghela Bhaveshbhai Narnabhai", "phone": "9974738575", "pay_code": "315", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Bhavesh"]},
-        {"area": "Academic Common Area", "name": "Vaniya Nikhilkumar Bhaveshbhai", "phone": "8849436518", "pay_code": "314", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Nikhil"]},
+        {"area": "Old Academic Common Area", "name": "Vaghela Bhaveshbhai Narnabhai", "phone": "9974738575", "pay_code": "315", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Bhavesh"]},
+        {"area": "Old Academic Common Area", "name": "Vaniya Nikhilkumar Bhaveshbhai", "phone": "8849436518", "pay_code": "314", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Nikhil"]},
         {"area": "New AB U-Shape", "name": "Akshybhai Vaghela", "phone": "", "pay_code": "308", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Akshay Parmar", "Akshay Vaghela", "Satish Vaghela", "Hiteshkumar Gafulbhai Vaghela"]},
-        {"area": "New Academy", "name": "Vasudev Jitendrakumar Baldevbhai", "phone": "", "pay_code": "377", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Jitendra Vasudev"]},
+        {"area": "New Academic Common Area", "name": "Vasudev Jitendrakumar Baldevbhai", "phone": "", "pay_code": "377", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Jitendra Vasudev"]},
         {"area": "New Academic Reliever", "name": "Gurjar Niruben", "phone": "", "pay_code": "111", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Neru ben", "Niruben"]},
         {"area": "New Academic Reliever", "name": "Sonara Hitendrakumar Punjabhai", "phone": "", "pay_code": "448", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Hitendra sonara", "Hitendra Sonara", "Hiten"]},
     ]
@@ -448,15 +448,40 @@ class Command(BaseCommand):
         ("Academic Block 3", "washroom", 1, "AB-3: All Floors Washroom Touch Up", "Krunal + Rakesh + Vasantiben"),
         ("Academic Block 4", "washroom", 1, "AB-4: Washroom Touch Up", "Varshaben + Hitesh + Harshad"),
         ("Academic Block 7", "washroom", 1, "AB-7: Washroom Touch Up", "Chandrikaben + Nikul"),
-        ("Academic Block 8", "floor", 1, "AB-8: Lal Minar Tower Cleaning Support", "Ajay + Akash + Pravin + Jyotsanaben"),
+        ("Old Academic Reliever", "floor", 1, "Old Academic Reliever: Lal Minar Tower Cleaning Support", "Ajay + Akash + Pravin + Jyotsanaben"),
+        ("Old Academic Reliever", "floor", 2, "Old Academic Reliever: First Floor Passage and Ramp Cleaning", ""),
+        ("Old Academic Reliever", "floor", 4, "Old Academic Reliever: Indoor Sweeping and Mopping", "Every 15 days"),
+        ("Old Academic Reliever", "floor", 5, "Old Academic Reliever: Month-end Additional Cleaning Check", "Month ending 2 times"),
+        ("Old Academic Common Area", "floor", 1, "Old Academic Common Area: All Blocks Common Area + Marble Cleaning", "Bhavesh + Nikhil"),
+        ("Old Academic Common Area", "floor", 3, "Old Academic Common Area: Block-07 Terrace Side Railing Dusting", ""),
+        ("Old Academic Common Area", "all", 1, "Sunday Deep Clean: Old Academic Common Area Samved Area Scrubbing and Washing", "Weekly Sunday task"),
+        ("New Academic Common Area", "floor", 1, "New Academic Common Area: Sweeping and Mopping", "Jitendra Vasudev"),
+        ("New Academic Common Area", "floor", 2, "New Academic Common Area: Blocks 10-13 Common Area Cleaning - Round 1", ""),
+        ("New Academic Common Area", "floor", 4, "New Academic Common Area: Blocks 10-13 Common Area Cleaning - Round 2", ""),
     ]
 
     def add_arguments(self, parser):
         parser.add_argument("--quiet", action="store_true", help="Reduce log output.")
 
+    def _ensure_academic_area_name(self, old_name, new_name):
+        old_area = HKArea.objects.filter(name=old_name).first()
+        new_area = HKArea.objects.filter(name=new_name).first()
+        if old_area and not new_area:
+            old_area.name = new_name
+            old_area.area_type = "academic"
+            old_area.is_active = True
+            old_area.save(update_fields=["name", "area_type", "is_active"])
+            return
+
+        HKArea.objects.get_or_create(name=new_name, defaults={"area_type": "academic"})
+        HKArea.objects.filter(name=new_name).update(area_type="academic", is_active=True)
+
     def handle(self, *args, **options):
         quiet = options["quiet"]
         User = get_user_model()
+        self._ensure_academic_area_name("Academic Common Area", "Old Academic Common Area")
+        self._ensure_academic_area_name("New Academy", "New Academic Common Area")
+        self._ensure_academic_area_name("Academic Block 8", "Old Academic Reliever")
         HKArea.objects.get_or_create(name="New Academic Reliever", defaults={"area_type": "academic"})
         HKArea.objects.filter(name="New Academic Reliever").update(area_type="academic", is_active=True)
         full_roster = (

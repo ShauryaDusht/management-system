@@ -247,7 +247,7 @@ class DashboardInsightsView(APIView):
         type_value = (area_type or '').strip().lower()
         if type_value == 'hostel':
             return 'hostels'
-        if name.startswith('Academic Block') or name in {'Academic Common Area', 'New AB U-Shape', 'New Academy'}:
+        if name.startswith('Academic Block') or name in {'Old Academic Common Area', 'New AB U-Shape', 'New Academic Common Area', 'Old Academic Reliever', 'New Academic Reliever'}:
             return 'academic'
         if name.lower() in {'hostel common area', 'common area', 'hostels reliever'}:
             return 'hostels'

@@ -75,12 +75,14 @@ def area_bucket(area):
     n = (area.name or "").strip()
     if n.lower() in {"hostel common area", "common area", "hostels reliever"}:
         return "hostels"
-    if n in {"Academic Common Area", "New AB U-Shape", "New Academy"}:
+    if n in {"Old Academic Common Area", "New AB U-Shape", "New Academic Common Area", "Old Academic Reliever", "New Academic Reliever"}:
         return "academic"
     if n.startswith("Academic Block "):
         return "academic"
     if area.area_type == "hostel":
         return "hostels"
+    if area.area_type == "academic":
+        return "academic"
     return "others"
 
 
@@ -110,7 +112,7 @@ def _uses_new_academic_reliever_pool(area):
         "Academic Block 11",
         "Academic Block 12",
         "Academic Block 13",
-        "New Academy",
+        "New Academic Common Area",
         "New AB U-Shape",
     }
 
@@ -124,7 +126,7 @@ def _attendance_relievers_for_area(area):
         return qs.filter(area__name="Hostels Reliever").order_by("name")
 
     if _uses_academic_reliever_pool(area):
-        return qs.filter(area__name="Academic Block 8").order_by("name")
+        return qs.filter(area__name="Old Academic Reliever").order_by("name")
 
     if _uses_new_academic_reliever_pool(area):
         return qs.filter(area__name="New Academic Reliever").order_by("name")
@@ -459,7 +461,7 @@ def get_user_areas(user):
 
     # Academic supervisors for Blocks 1-9 should also see the shared academic reliever pool.
     if any(_uses_academic_reliever_pool(area) for area in assigned_areas):
-        academic_reliever_area_id = HKArea.objects.filter(name='Academic Block 8', is_active=True).values_list('id', flat=True).first()
+        academic_reliever_area_id = HKArea.objects.filter(name='Old Academic Reliever', is_active=True).values_list('id', flat=True).first()
         if academic_reliever_area_id:
             all_ids.add(academic_reliever_area_id)
 

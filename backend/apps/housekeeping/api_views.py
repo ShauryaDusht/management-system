@@ -70,12 +70,14 @@ def _area_group(area):
     name = (area.name or '').strip()
     if re.match(r'^Academic Block\s+([1-9]|1[0-3])$', name, re.IGNORECASE):
         return 'academic'
-    if name in {'Academic Common Area', 'New AB U-Shape', 'New Academy'}:
+    if name in {'Old Academic Common Area', 'New AB U-Shape', 'New Academic Common Area', 'Old Academic Reliever', 'New Academic Reliever'}:
         return 'academic'
     if name.lower() in {'hostel common area', 'common area', 'hostels reliever'}:
         return 'hostels'
     if area.area_type == 'hostel':
         return 'hostels'
+    if area.area_type == 'academic':
+        return 'academic'
     return 'others'
 
 
