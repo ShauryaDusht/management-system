@@ -581,20 +581,21 @@ class Command(BaseCommand):
 
         balanced_templates = self._rebalance_daily_worker_schedules()
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Synced housekeeping roster: {touched} workers, "
-                f"deactivated {old_area_count} outdated area rows, "
-                f"deactivated {duplicate_count} duplicate pay-code rows outside target areas, "
-                f"deleted {duplicate_deleted} duplicate active rows, "
-                f"kept {duplicate_history_rows} history-backed duplicate rows inactive, "
-                f"deleted {deleted_unused} unused inactive rows, "
-                f"kept {kept_with_history} history-backed inactive rows, "
-                f"updated {schedule_updates} schedule rows, "
-                f"removed {removed_special_tasks} legacy special tasks, "
-                f"rebalanced {balanced_templates} worker schedule slots."
+        if not quiet:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Synced housekeeping roster: {touched} workers, "
+                    f"deactivated {old_area_count} outdated area rows, "
+                    f"deactivated {duplicate_count} duplicate pay-code rows outside target areas, "
+                    f"deleted {duplicate_deleted} duplicate active rows, "
+                    f"kept {duplicate_history_rows} history-backed duplicate rows inactive, "
+                    f"deleted {deleted_unused} unused inactive rows, "
+                    f"kept {kept_with_history} history-backed inactive rows, "
+                    f"updated {schedule_updates} schedule rows, "
+                    f"removed {removed_special_tasks} legacy special tasks, "
+                    f"rebalanced {balanced_templates} worker schedule slots."
+                )
             )
-        )
 
     def _rebalance_daily_worker_schedules(self):
         updated_templates = []

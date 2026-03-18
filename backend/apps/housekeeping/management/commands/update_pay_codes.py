@@ -286,6 +286,8 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
         quiet = options['quiet']
         User = get_user_model()
+        if quiet and not dry_run:
+            self.stdout.write = lambda *args, **kwargs: None
 
         if dry_run:
             self.stdout.write(self.style.WARNING('DRY RUN — no changes saved.\n'))

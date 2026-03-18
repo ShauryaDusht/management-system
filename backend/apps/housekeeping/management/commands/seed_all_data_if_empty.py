@@ -15,13 +15,21 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        verbosity = options.get('verbosity', 1)
+
         if Item.objects.exists():
-            self.stdout.write(self.style.WARNING(
-                'Seed skipped: inventory data already exists.'
-            ))
+            if verbosity > 0:
+                self.stdout.write(self.style.WARNING(
+                    'Seed skipped: inventory data already exists.'
+                ))
             return
 
-        self.stdout.write(self.style.SUCCESS(
-            'Inventory is empty. Running seed_all_data...'
-        ))
-        call_command('seed_all_data', dump_fixtures=options.get('dump_fixtures', False))
+        if verbosity > 0:
+            self.stdout.write(self.style.SUCCESS(
+                'Inventory is empty. Running seed_all_data...'
+            ))
+        call_command(
+            'seed_all_data',
+            dump_fixtures=options.get('dump_fixtures', False),
+            verbosity=verbosity,
+        )

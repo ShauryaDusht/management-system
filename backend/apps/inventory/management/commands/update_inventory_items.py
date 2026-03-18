@@ -7,6 +7,13 @@ class Command(BaseCommand):
     help = "Updates the item_code and unit_cost for existing Inventory Items based on raw CSV data."
 
     def handle(self, *args, **options):
+        verbosity = options.get('verbosity', 1)
+
+        def log(message, style=None):
+            if verbosity <= 0:
+                return
+            self.stdout.write(style(message) if style else message)
+
         # The user's provided copy-pasted raw CSV data
         raw_csv_data = """sl_no,item_description,quantity,unit,rate,total_amount
 3.01,Cleaning Acid,30,Ltr,17,510
@@ -172,7 +179,10 @@ class Command(BaseCommand):
 
             # Skip if essential data is missing
             if not sl_no or not item_name_csv:
-                self.stdout.write(self.style.WARNING(f"Skipping row due to missing sl_no or item_description: {row}"))
+                log(
+                    f"Skipping row due to missing sl_no or item_description: {row}",
+                    self.style.WARNING,
+                )
                 continue
             
             item_name_to_search = NAME_OVERRIDES.get(item_name_csv, item_name_csv)
@@ -198,11 +208,11 @@ class Command(BaseCommand):
                     match.unit_cost = rate
                 match.save(update_fields=['item_code', 'unit_cost', 'updated_at'])
                 updated_count += 1
-                self.stdout.write(self.style.SUCCESS(f"Mapped {sl_no} -> {match.name}"))
+                log(f"Mapped {sl_no} -> {match.name}", self.style.SUCCESS)
             else:
                 not_found.append(f"{sl_no} - {item_name_to_search}")
-                self.stdout.write(self.style.WARNING(f"Could NOT find match for: {item_name_to_search}"))
+                log(f"Could NOT find match for: {item_name_to_search}", self.style.WARNING)
 
-        self.stdout.write(self.style.SUCCESS(f"\nSuccessfully updated {updated_count} items."))
+        log(f"\nSuccessfully updated {updated_count} items.", self.style.SUCCESS)
         if not_found:
-             self.stdout.write(self.style.WARNING(f"{len(not_found)} items were completely unmapped."))
+            log(f"{len(not_found)} items were completely unmapped.", self.style.WARNING)

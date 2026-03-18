@@ -1,9 +1,7 @@
-# Data Sync Guide (Teammates)
+# Data Sync Guide
 
-This project includes shared data for:
-- Inventory items/categories
-- Housekeeping areas, user-area mappings, workers, schedules
-- Users (admin/manager/inventory_manager/supervisor/caretaker)
+The live bootstrap path is command-based now. We keep fixtures only as optional
+reference exports for maintainers, not as the main setup path.
 
 Default password for seeded accounts:
 - `IITGN@2025`
@@ -14,37 +12,36 @@ Core portal accounts:
 - `housekeeping.manager` (housekeeping_manager)
 - `inv.manager` (inventory_manager)
 
-## Option A (Recommended): Auto bootstrap via Docker
+## Recommended: Docker bootstrap
 
 ```bash
 docker compose down -v
 docker compose up --build -d
 ```
 
-`backend` startup runs:
-- `python manage.py migrate`
-- `python manage.py seed_all_data`
+The backend startup script will:
+- apply migrations
+- seed data only when the inventory is empty
+- sync inventory baseline data
+- sync pay codes, names, and housekeeping area staff
+- collect static files
 
-So your teammate gets the same baseline dataset automatically.
-
-## Option B (Manual load on existing environment)
+## Manual sync on an existing environment
 
 ```bash
 docker compose exec backend python manage.py migrate
 docker compose exec backend python manage.py seed_all_data
-docker compose exec backend python manage.py loaddata fixtures/users_hk.json
-docker compose exec backend python manage.py loaddata fixtures/hk_user_areas.json
+docker compose exec backend python manage.py update_pay_codes --quiet
+docker compose exec backend python manage.py update_names --quiet
+docker compose exec backend python manage.py sync_guesthouse_director_staff --quiet
 ```
 
-## Refresh shared fixtures before push (maintainer)
+## Refresh reference fixtures before push
 
 ```bash
 docker compose exec backend python manage.py seed_all_data --dump-fixtures
 ```
 
-This updates:
+This refreshes:
 - `backend/fixtures/users_hk.json`
 - `backend/fixtures/housekeeping.json`
-- `backend/fixtures/hk_user_areas.json`
-
-Both files are stored as UTF-8 for reliable `loaddata`.
