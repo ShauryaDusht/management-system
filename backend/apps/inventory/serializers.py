@@ -60,6 +60,7 @@ class StockEntrySerializer(serializers.ModelSerializer):
 
 
 class ItemRequestSerializer(serializers.ModelSerializer):
+    quantity_requested = serializers.IntegerField(min_value=1)
     requester = serializers.PrimaryKeyRelatedField(source='requested_by', read_only=True)
     requester_name = serializers.SerializerMethodField()
     requester_phone = serializers.SerializerMethodField()

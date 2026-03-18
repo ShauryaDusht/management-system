@@ -157,7 +157,7 @@ def mobile_request_form(request):
                 'error': 'Quantity must be a whole number.',
             })
 
-        if quantity < 1:
+        if quantity <= 0:
             return render(request, 'inventory/mobile/request_form.html', {
                 'items': items,
                 'error': 'Quantity must be at least 1.',

@@ -108,13 +108,17 @@ export default function RequestsTab({ userRole }) {
     clearError()
     setSuccess('')
     try {
-      await runAction(async () => {
+      const result = await runAction(async () => {
         if (action === 'approve') {
           await inventoryAPI.approveRequest(id)
         } else if (action === 'reject') {
           await inventoryAPI.rejectRequest(id, reason)
         }
-      }, 'Review failed.')
+        return true
+      }, action === 'approve'
+        ? 'Cannot approve: Requested quantity is not available in stock.'
+        : 'Review failed.')
+      if (!result) return
       await reload()
       refreshBadges()
       setRejectTarget(null)

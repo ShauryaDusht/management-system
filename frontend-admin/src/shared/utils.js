@@ -25,7 +25,8 @@ export function asList(data) {
 
 // Error message extractor — replaces all local getErrorMessage copies
 export function getErrorMessage(error, fallback = 'Something went wrong.') {
-  return error?.response?.data?.detail
+  return error?.response?.data?.error
+    || error?.response?.data?.detail
     || error?.response?.data?.message
     || error?.message
     || fallback
