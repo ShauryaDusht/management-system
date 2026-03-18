@@ -22,6 +22,11 @@ def t(s):
     return datetime.datetime.strptime(s, '%H:%M').time()
 
 
+def worker_key(value):
+    """Normalize worker labels so legacy spellings can be matched safely."""
+    return ''.join(ch.lower() for ch in (value or '') if ch.isalnum())
+
+
 class Command(BaseCommand):
     help = 'Seed complete IITGN housekeeping master data (all real data)'
 
@@ -195,7 +200,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('kaushik.parmar', 'Kaushikkumar Balvantbhai', 'Parmar', '396', '9825504802', 'kaushikparmar7673@gmail.com', ['Academic Block 12', 'Academic Block 13', 'New Academy']),
             ('shailesh.prajapati', 'Shailesh Natvarbhai', 'Prajapati', '4', '9898477320', '', ['Academic Block 10', 'Academic Block 11', 'New AB U-Shape']),
             ('maulik.patel', 'Maulikkumar Dilipbhai', 'Patel', '7', '8758363879', 'moulikpatel81290@gmail.com', ['Research Park']),
-            ('bharat.solanki', 'Bharatkumar', 'Solanki', '465', '8511764551', 'bharat2545007@gmail.com', ['Sports Complex', 'Central Arcade']),
+            ('bharat.solanki', 'Bharat Kumar M.', 'Solanki', '465', '8511764551', 'bharat2545007@gmail.com', ['Sports Complex', 'Central Arcade']),
             ('mukesh.vaghela', 'Mukeshkumar', 'Vaghela', '466', '9265591836', 'm.vaghela23@gmail.com', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Academic Block 8']),
             ('bipin.vaghela', 'Bipinchandra Dineshkumar', 'Vaghela', '350', '9979627312', 'bipin.vaghela4u@gmail.com', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Academic Common Area']),
             ('narendra.shreemali', 'Narendrakumar Natvarlal', 'Shrimali', '328', '9898661986', 'narendrashrimali36262@gmail.com', ['Roads & Outdoor', 'Old Guest House']),
@@ -273,6 +278,90 @@ All accounts use password: {DEFAULT_PASSWORD}
             )
 
     # ─────────────────────────────────────────────────────────────────
+
+    def _find_roster_worker(self, spec, area, managed_area_ids, all_workers, keep_ids):
+        exact_key = worker_key(spec['name'])
+        legacy_keys = {exact_key}
+        legacy_keys.update(worker_key(name) for name in spec.get('legacy_names', []) if name)
+        pay_code = (spec.get('pay_code') or '').strip()
+
+        for worker in all_workers:
+            if worker.id in keep_ids:
+                continue
+            if worker.area_id == area.id and worker_key(worker.name) == exact_key:
+                return worker
+
+        for worker in all_workers:
+            if worker.id in keep_ids:
+                continue
+            if worker.area_id == area.id and worker_key(worker.name) in legacy_keys:
+                return worker
+
+        if pay_code:
+            for worker in all_workers:
+                if worker.id in keep_ids:
+                    continue
+                if worker.area_id in managed_area_ids and (worker.pay_code or '').strip() == pay_code:
+                    return worker
+
+        for worker in all_workers:
+            if worker.id in keep_ids:
+                continue
+            if worker.area_id in managed_area_ids and worker_key(worker.name) in legacy_keys:
+                return worker
+
+        return None
+
+    def _sync_area_roster(self, roster_specs, supervisor_username):
+        supervisor = User.objects.filter(username=supervisor_username).first()
+        managed_areas = {}
+        managed_area_ids = set()
+        for spec in roster_specs:
+            area = self.area(spec['area'])
+            if area:
+                managed_areas[spec['area']] = area
+                managed_area_ids.add(area.id)
+
+        all_workers = list(HKWorker.objects.select_related('area').all())
+        keep_ids = set()
+        synced_count = 0
+
+        for spec in roster_specs:
+            area = managed_areas.get(spec['area'])
+            if area is None:
+                continue
+
+            worker = self._find_roster_worker(spec, area, managed_area_ids, all_workers, keep_ids)
+            created = False
+            if worker is None:
+                worker = HKWorker(area=area)
+                created = True
+
+            worker.name = spec['name']
+            worker.pay_code = spec.get('pay_code', '')
+            if spec.get('phone'):
+                worker.phone = spec['phone']
+            elif created and not worker.phone:
+                worker.phone = ''
+            worker.worker_type = spec.get('worker_type', 'general')
+            worker.shift = spec.get('shift', 'day')
+            worker.area = area
+            worker.supervisor = supervisor
+            worker.is_reliever = spec.get('is_reliever', False)
+            worker.is_active = True
+            worker.save()
+
+            if created:
+                all_workers.append(worker)
+            keep_ids.add(worker.id)
+            synced_count += 1
+
+        deactivated_count = HKWorker.objects.filter(
+            area__name__in=sorted(managed_areas),
+            is_active=True,
+        ).exclude(id__in=keep_ids).update(is_active=False)
+
+        return synced_count, deactivated_count
 
     def seed_workers(self):
         """
@@ -364,24 +453,24 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Dharmishtaben',      '', '9328002335', 'Research Park', 'washroom', False),
 
             # -- CENTRAL ARCADE ----------------------------------------------
-            ('Vijay Parmar',       '', '9824347940', 'Central Arcade', 'floor',    False),
-            ('Bhavnaben',          '', '7041174657', 'Central Arcade', 'room',     False),
-            ('Ramesh Parmar',      '', '7203906051', 'Central Arcade', 'washroom', False),
-            ('Hasmukh Solanki',    '', '9727858924', 'Central Arcade', 'general',  False),
+            ('Chirag Vaghela',     '303', '', 'Central Arcade', 'floor',    False),
+            ('Sunil Vaghela',      '455', '', 'Central Arcade', 'floor',    False),
+            ('Vijay Parmar',       '329', '', 'Central Arcade', 'floor',    False),
+            ('Ramesh Parmar',      '429', '', 'Central Arcade', 'washroom', False),
+            ('Nikhil Makvana',     '364', '', 'Central Arcade', 'room',     False),
+            ('Bhavna Ben Chavda',  '218', '', 'Central Arcade', 'room',     False),
+            ('Sikandar Bhangi',    '389', '', 'Central Arcade', 'general',  False),
 
             # -- SPORTS COMPLEX ----------------------------------------------
-            ('Anita Solanki',      '', '8401679845', 'Sports Complex', 'floor',    False),
-            ('Retuben Solanki',    '', '6356838847', 'Sports Complex', 'room',     False),
-            ('Uttam Vaghela',      '', '6353089004', 'Sports Complex', 'room',     False),
-            ('Sohil Vaghela',      '', '9904962725', 'Sports Complex', 'washroom', False),
-            ('Rahul Vaghela',      '', '8734964743', 'Sports Complex', 'washroom', False),
-            ('Rajendra Chavda',    '', '9016476894', 'Sports Complex', 'floor',    False),
-            ('Akshay Parmar',      '', '9265622322', 'Sports Complex', 'floor',    False),
-            ('Jaydeep Vaghela',    '', '7487803489', 'Sports Complex', 'reliever', True),
-            ('Chirag Vaghela',     '', '7698612980', 'Sports Complex', 'general',  False),
-            ('Harsh',              '', '7486922273', 'Sports Complex', 'general',  False),
-            ('Nikhil',             '', '7572829754', 'Sports Complex', 'general',  False),
-            ('Ramesh Sports',      '', '9904319434', 'Sports Complex', 'general',  False),
+            ('Shohil J Vaghela',      '257', '', 'Sports Complex', 'washroom', False),
+            ('Ramesh N Parmar',       '411', '', 'Sports Complex', 'floor',    False),
+            ('Jaydeep D Vaghela',     '447', '', 'Sports Complex', 'general',  False),
+            ('Rahul J Vaghela',       '337', '', 'Sports Complex', 'washroom', False),
+            ('Akshay R Parmar',       '414', '', 'Sports Complex', 'floor',    False),
+            ('Rudhreshben S Solanki', '282', '', 'Sports Complex', 'room',     False),
+            ('Anitaben',              '385', '', 'Sports Complex', 'floor',    False),
+            ('Uttam Vaghela',         '428', '', 'Sports Complex', 'room',     False),
+            ('Rajendra Bhai Chavda',  '354', '', 'Sports Complex', 'floor',    False),
 
             # Guest House New
             ('Raju Manabhai Makwana',        '263', '9601550905', 'Guest House New', 'floor',    False),
@@ -511,15 +600,18 @@ All accounts use password: {DEFAULT_PASSWORD}
             else:
                 # Update phone/punching if changed
                 worker.pay_code = pay_code
-                worker.phone = phone
+                update_fields = [
+                    'pay_code', 'worker_type',
+                    'is_reliever', 'shift', 'is_active',
+                ]
+                if phone or not worker.phone:
+                    worker.phone = phone
+                    update_fields.append('phone')
                 worker.worker_type = wtype
                 worker.is_reliever = is_reliever
                 worker.shift = worker.shift or 'day'
                 worker.is_active = True
-                worker.save(update_fields=[
-                    'pay_code', 'phone', 'worker_type',
-                    'is_reliever', 'shift', 'is_active',
-                ])
+                worker.save(update_fields=update_fields)
 
         # Common Area staffing details
         common_supervisor = User.objects.filter(username='vishwajeet').first()
@@ -553,42 +645,28 @@ All accounts use password: {DEFAULT_PASSWORD}
                 worker.supervisor = research_supervisor
                 worker.save(update_fields=['shift', 'supervisor'])
 
-        # Central Arcade staffing details
-        bharat_supervisor = User.objects.filter(username='bharat.solanki').first()
-        central_shift_map = {
-            'Vijay Parmar': 'day',
-            'Bhavnaben': 'day',
-            'Ramesh Parmar': 'day',
-            'Hasmukh Solanki': 'day',
-        }
-        for worker_name, shift in central_shift_map.items():
-            worker = HKWorker.objects.filter(name=worker_name, area=self.area('Central Arcade')).first()
-            if worker:
-                worker.shift = shift
-                worker.supervisor = bharat_supervisor
-                worker.save(update_fields=['shift', 'supervisor'])
-
-        # Sports Complex staffing details
-        sports_shift_map = {
-            'Anita Solanki': 'day',
-            'Retuben Solanki': 'day',
-            'Uttam Vaghela': 'day',
-            'Sohil Vaghela': 'evening',
-            'Rahul Vaghela': 'evening',
-            'Rajendra Chavda': 'evening',
-            'Akshay Parmar': 'evening',
-            'Jaydeep Vaghela': 'day',
-            'Chirag Vaghela': 'day',
-            'Harsh': 'day',
-            'Nikhil': 'day',
-            'Ramesh Sports': 'day',
-        }
-        for worker_name, shift in sports_shift_map.items():
-            worker = HKWorker.objects.filter(name=worker_name, area=self.area('Sports Complex')).first()
-            if worker:
-                worker.shift = shift
-                worker.supervisor = bharat_supervisor
-                worker.save(update_fields=['shift', 'supervisor'])
+        bharat_roster = [
+            {'area': 'Central Arcade', 'name': 'Chirag Vaghela', 'pay_code': '303', 'phone': '', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Chirag Vaghela']},
+            {'area': 'Central Arcade', 'name': 'Sunil Vaghela', 'pay_code': '455', 'phone': '', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Sunil Vaghela']},
+            {'area': 'Central Arcade', 'name': 'Vijay Parmar', 'pay_code': '329', 'phone': '', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Vijay Parmar']},
+            {'area': 'Central Arcade', 'name': 'Ramesh Parmar', 'pay_code': '429', 'phone': '', 'worker_type': 'washroom', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Ramesh Parmar']},
+            {'area': 'Central Arcade', 'name': 'Nikhil Makvana', 'pay_code': '364', 'phone': '', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Nikhil', 'Nikhil Makvana', 'Nikhil makvana']},
+            {'area': 'Central Arcade', 'name': 'Bhavna Ben Chavda', 'pay_code': '218', 'phone': '', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Bhavnaben', 'Bhavna ben chavda']},
+            {'area': 'Central Arcade', 'name': 'Sikandar Bhangi', 'pay_code': '389', 'phone': '', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Sikandar bhangi']},
+            {'area': 'Sports Complex', 'name': 'Shohil J Vaghela', 'pay_code': '257', 'phone': '', 'worker_type': 'washroom', 'shift': 'evening', 'is_reliever': False, 'legacy_names': ['Sohil Vaghela', 'Shohil Vaghela', 'Shohil.J.vaghela']},
+            {'area': 'Sports Complex', 'name': 'Ramesh N Parmar', 'pay_code': '411', 'phone': '', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Ramesh Sports', 'Ramesh.N.parmar']},
+            {'area': 'Sports Complex', 'name': 'Jaydeep D Vaghela', 'pay_code': '447', 'phone': '', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Jaydeep Vaghela', 'Jaydeep.D.vaghela']},
+            {'area': 'Sports Complex', 'name': 'Rahul J Vaghela', 'pay_code': '337', 'phone': '', 'worker_type': 'washroom', 'shift': 'evening', 'is_reliever': False, 'legacy_names': ['Rahul Vaghela', 'Rahul.J.vgahela', 'Rahul.J.vaghela']},
+            {'area': 'Sports Complex', 'name': 'Akshay R Parmar', 'pay_code': '414', 'phone': '', 'worker_type': 'floor', 'shift': 'evening', 'is_reliever': False, 'legacy_names': ['Akshay Parmar', 'Akshay.R.parmar']},
+            {'area': 'Sports Complex', 'name': 'Rudhreshben S Solanki', 'pay_code': '282', 'phone': '', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Retuben Solanki', 'Rudhreshben.S. solanki', 'Rudhreshben S Solanki']},
+            {'area': 'Sports Complex', 'name': 'Anitaben', 'pay_code': '385', 'phone': '', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Anita Solanki', 'Anitaben']},
+            {'area': 'Sports Complex', 'name': 'Uttam Vaghela', 'pay_code': '428', 'phone': '', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Uttam Vaghela']},
+            {'area': 'Sports Complex', 'name': 'Rajendra Bhai Chavda', 'pay_code': '354', 'phone': '', 'worker_type': 'floor', 'shift': 'evening', 'is_reliever': False, 'legacy_names': ['Rajendra Chavda', 'Rajendra Bhai chavda']},
+        ]
+        bharat_synced, bharat_deactivated = self._sync_area_roster(bharat_roster, 'bharat.solanki')
+        self.stdout.write(
+            f'  [OK] Central Arcade + Sports Complex roster synced: {bharat_synced} workers, {bharat_deactivated} extra deactivated'
+        )
 
         # Guest House New + Old Guest House + Director Bungalow staffing details
         ashok_supervisor = User.objects.filter(username='ashok.rathod').first()
