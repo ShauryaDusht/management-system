@@ -503,16 +503,20 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Chirag Thakor',      '', '7041456600', 'Roads & Outdoor', 'road', False),
             ('Satish Vaghela',     '', '8160402819', 'Roads & Outdoor', 'road', False),
 
-            # SWM (Solid Waste Management) - Biogas workers intentionally excluded
-            ('Salesh bhai Thakur',    '', '9723045094', 'Solid Waste Management', 'swm', False),
-            ('Satish bhai Raval',     '', '9157865695', 'Solid Waste Management', 'swm', False),
-            ('Jitendra bhai Thakur',  '', '8780211472', 'Solid Waste Management', 'swm', False),
-            ('Naveenbhai Chauhan',    '', '9737949563', 'Solid Waste Management', 'swm', False),
-            ('Rajnibhai Parmar',      '', '8758216753', 'Solid Waste Management', 'swm', False),
-            ('Dineshbhai Purohit',    '', '6351446589', 'Solid Waste Management', 'swm', False),
-            ('Baldevbhai Vaghela',    '', '9558464772', 'Solid Waste Management', 'swm', False),
-            ('Saleshbhai Vaghela',    '', '6351150573', 'Solid Waste Management', 'swm', False),
-            ('Kanti bhai Thakur',     '', '9924375528', 'Solid Waste Management', 'swm', False),
+            # SWM (Solid Waste Management) - real active roster
+            ('Jitendrakumar Kantiji Thakor',      '238', '', 'Solid Waste Management', 'swm', False),
+            ('Kantiji Varvaji Thakor',            '140', '', 'Solid Waste Management', 'swm', False),
+            ('Baldevbhai Mohanbhai Vaghela',      '124', '', 'Solid Waste Management', 'swm', False),
+            ('Kishankumar Yogeshji Thakor',       '479', '', 'Solid Waste Management', 'swm', False),
+            ('Shaileshbhai Mahendrabhai Vaghela', '453', '', 'Solid Waste Management', 'swm', False),
+            ('Shaileshbhai Kaluji Thakor',        '66',  '', 'Solid Waste Management', 'swm', False),
+            ('Shaileshkumar Ramanbhai Solanki',   '443', '', 'Solid Waste Management', 'swm', False),
+            ('Rajnikant Narsinhbhai Parmar',      '444', '', 'Solid Waste Management', 'swm', False),
+            ('Sedhaji Amratbhai Raval',           '409', '', 'Solid Waste Management', 'swm', False),
+            ('Haribhai Amratbhai Parmar',         '480', '', 'Solid Waste Management', 'swm', False),
+            ('Naginbhai Babubhai Chauhan',        '063', '', 'Solid Waste Management', 'swm', False),
+            ('Dineshbhai Babubhai Chauhan',       '146', '', 'Solid Waste Management', 'swm', False),
+            ('Sunilbhai Prabhatji Thakor',        '407', '', 'Solid Waste Management', 'swm', False),
 
             # Academic Blocks 01-09 + Academic Common Area
             ('Minaben Vaghela',                    '142', '9081897577', 'Academic Block 1', 'floor',    False),
@@ -732,25 +736,25 @@ All accounts use password: {DEFAULT_PASSWORD}
                 worker.supervisor = roads_supervisor
                 worker.save(update_fields=['shift', 'supervisor'])
 
-        # SWM staffing details
-        swm_supervisor = User.objects.filter(username='pradip.swm').first()
-        swm_shift_map = {
-            'Salesh bhai Thakur': 'day',
-            'Satish bhai Raval': 'day',
-            'Jitendra bhai Thakur': 'day',
-            'Naveenbhai Chauhan': 'day',
-            'Rajnibhai Parmar': 'day',
-            'Dineshbhai Purohit': 'day',
-            'Baldevbhai Vaghela': 'day',
-            'Saleshbhai Vaghela': 'day',
-            'Kanti bhai Thakur': 'day',
-        }
-        for worker_name, shift in swm_shift_map.items():
-            worker = HKWorker.objects.filter(name=worker_name, area=self.area('Solid Waste Management')).first()
-            if worker:
-                worker.shift = shift
-                worker.supervisor = swm_supervisor
-                worker.save(update_fields=['shift', 'supervisor'])
+        swm_roster = [
+            {'area': 'Solid Waste Management', 'name': 'Jitendrakumar Kantiji Thakor', 'pay_code': '238', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Jitendra bhai Thakur']},
+            {'area': 'Solid Waste Management', 'name': 'Kantiji Varvaji Thakor', 'pay_code': '140', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Kanti bhai Thakur', 'Kanti bhai Thakor']},
+            {'area': 'Solid Waste Management', 'name': 'Baldevbhai Mohanbhai Vaghela', 'pay_code': '124', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Baldevbhai Vaghela']},
+            {'area': 'Solid Waste Management', 'name': 'Kishankumar Yogeshji Thakor', 'pay_code': '479', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': []},
+            {'area': 'Solid Waste Management', 'name': 'Shaileshbhai Mahendrabhai Vaghela', 'pay_code': '453', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Saleshbhai Vaghela', 'Shaileshbhai Vaghela']},
+            {'area': 'Solid Waste Management', 'name': 'Shaileshbhai Kaluji Thakor', 'pay_code': '66', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Salesh bhai Thakur', 'Shailesh bhai Thakur']},
+            {'area': 'Solid Waste Management', 'name': 'Shaileshkumar Ramanbhai Solanki', 'pay_code': '443', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': []},
+            {'area': 'Solid Waste Management', 'name': 'Rajnikant Narsinhbhai Parmar', 'pay_code': '444', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Rajnibhai Parmar', 'Rajnikant Parmar']},
+            {'area': 'Solid Waste Management', 'name': 'Sedhaji Amratbhai Raval', 'pay_code': '409', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Satish bhai Raval']},
+            {'area': 'Solid Waste Management', 'name': 'Haribhai Amratbhai Parmar', 'pay_code': '480', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': []},
+            {'area': 'Solid Waste Management', 'name': 'Naginbhai Babubhai Chauhan', 'pay_code': '063', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Naveenbhai Chauhan']},
+            {'area': 'Solid Waste Management', 'name': 'Dineshbhai Babubhai Chauhan', 'pay_code': '146', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': []},
+            {'area': 'Solid Waste Management', 'name': 'Sunilbhai Prabhatji Thakor', 'pay_code': '407', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': []},
+        ]
+        swm_synced, swm_deactivated = self._sync_area_roster(swm_roster, 'pradip.swm')
+        self.stdout.write(
+            f'  [OK] Solid Waste Management roster synced: {swm_synced} workers, {swm_deactivated} extra deactivated'
+        )
 
         # Academic blocks staffing details
         academic_supervisor_by_area = {

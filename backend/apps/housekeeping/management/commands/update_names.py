@@ -25,7 +25,7 @@ SUPERVISOR_NAMES = {
     'narendra.shreemali':  ('Narendrakumar Natvarlal', 'Shrimali', 'narendrashrimali36262@gmail.com'),
     'bipin.vaghela':       ('Bipinchandra Dineshkumar', 'Vaghela', 'bipin.vaghela4u@gmail.com'),
     'kaushik.parmar':      ('Kaushikkumar Balvantbhai', 'Parmar', 'kaushikparmar7673@gmail.com'),
-    'bharat.solanki':      ('Bharatkumar', 'Solanki', 'bharat2545007@gmail.com'),
+    'bharat.solanki':      ('Bharat Kumar M.', 'Solanki', 'bharat2545007@gmail.com'),
     'mukesh.vaghela':      ('Mukeshkumar', 'Vaghela', 'm.vaghela23@gmail.com'),
 }
 
