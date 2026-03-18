@@ -363,6 +363,30 @@ All accounts use password: {DEFAULT_PASSWORD}
 
         return synced_count, deactivated_count
 
+    def _cleanup_unused_inactive_workers(self, area_names):
+        deleted_ids = []
+        kept_with_history = 0
+        for worker in HKWorker.objects.filter(area__name__in=area_names, is_active=False):
+            has_history = (
+                worker.attendance_records.exists()
+                or worker.task_assignments.exists()
+                or worker.sunday_incharges.exists()
+                or worker.substituted_by.exists()
+                or worker.substitution_slots.exists()
+                or worker.selection_requests.exists()
+                or worker.assigned_daily_records.exists()
+                or worker.monthly_reports.exists()
+            )
+            if has_history:
+                kept_with_history += 1
+                continue
+            deleted_ids.append(worker.id)
+
+        if deleted_ids:
+            HKWorker.objects.filter(id__in=deleted_ids).delete()
+
+        return len(deleted_ids), kept_with_history
+
     def seed_workers(self):
         """
         All 57 workers from HK_Staff.pdf with correct punching nos and phones.
@@ -447,10 +471,10 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Ketan Gujjar',     '100', '8347139138', 'Hostel Common Area', 'floor',    False),
 
             # -- RESEARCH PARK -----------------------------------------------
-            ('Mahesh Solanki',     '', '7046959603', 'Research Park', 'floor',    False),
-            ('Ajay Thakor',        '', '8780940745', 'Research Park', 'floor',    False),
-            ('Shailesh Vaghela',   '', '7284950619', 'Research Park', 'room',     False),
-            ('Dharmishtaben',      '', '9328002335', 'Research Park', 'washroom', False),
+            ('Mahesh Solanki',              '267', '7046959603', 'Research Park', 'floor',    False),
+            ('Thakor Ajaykumar Prahladji',  '349', '8780940745', 'Research Park', 'floor',    False),
+            ('Sailesh A Vaghela',           '266', '7284950619', 'Research Park', 'room',     False),
+            ('Vaghela Dharmishtha Ben',     '264', '9328002335', 'Research Park', 'washroom', False),
 
             # -- CENTRAL ARCADE ----------------------------------------------
             ('Chirag Vaghela',     '303', '', 'Central Arcade', 'floor',    False),
@@ -587,18 +611,20 @@ All accounts use password: {DEFAULT_PASSWORD}
         created_count = 0
         for name, pay_code, phone, area_name, wtype, is_reliever in workers:
             area = self.area(area_name) if area_name else None
-            worker, created = HKWorker.objects.get_or_create(
-                name=name,
-                area=area,
-                defaults={
-                    'pay_code': pay_code,
-                    'phone': phone,
-                    'worker_type': wtype,
-                    'shift': 'day',
-                    'is_active': True,
-                    'is_reliever': is_reliever,
-                }
-            )
+            worker = HKWorker.objects.filter(name=name, area=area).order_by('-is_active', '-id').first()
+            created = worker is None
+            if created:
+                worker = HKWorker(
+                    name=name,
+                    area=area,
+                    pay_code=pay_code,
+                    phone=phone,
+                    worker_type=wtype,
+                    shift='day',
+                    is_active=True,
+                    is_reliever=is_reliever,
+                )
+                worker.save()
             if created:
                 created_count += 1
             else:
@@ -634,20 +660,19 @@ All accounts use password: {DEFAULT_PASSWORD}
                 worker.supervisor = common_supervisor
                 worker.save(update_fields=['shift', 'supervisor'])
 
-        # Research Park staffing details
-        research_supervisor = User.objects.filter(username='maulik.patel').first()
-        research_shift_map = {
-            'Mahesh Solanki': 'day',
-            'Ajay Thakor': 'day',
-            'Shailesh Vaghela': 'day',
-            'Dharmishtaben': 'day',
-        }
-        for worker_name, shift in research_shift_map.items():
-            worker = HKWorker.objects.filter(name=worker_name, area=self.area('Research Park')).first()
-            if worker:
-                worker.shift = shift
-                worker.supervisor = research_supervisor
-                worker.save(update_fields=['shift', 'supervisor'])
+        research_roster = [
+            {'area': 'Research Park', 'name': 'Mahesh Solanki', 'pay_code': '267', 'phone': '7046959603', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Mahesh Solanki']},
+            {'area': 'Research Park', 'name': 'Thakor Ajaykumar Prahladji', 'pay_code': '349', 'phone': '8780940745', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Ajay Thakor', 'Thakor Ajaykumar Prahladji']},
+            {'area': 'Research Park', 'name': 'Sailesh A Vaghela', 'pay_code': '266', 'phone': '7284950619', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Shailesh Vaghela', 'Sailesh Vaghela', 'Vaghela Shaileshbhai', 'Vaghela Shaileshkumar']},
+            {'area': 'Research Park', 'name': 'Vaghela Dharmishtha Ben', 'pay_code': '264', 'phone': '9328002335', 'worker_type': 'washroom', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Dharmishtaben', 'Vaghela Dharmishtha Ben']},
+        ]
+        research_synced, research_deactivated = self._sync_area_roster(research_roster, 'maulik.patel')
+        research_deleted, research_kept = self._cleanup_unused_inactive_workers(['Research Park'])
+        self.stdout.write(
+            '  [OK] Research Park roster synced: '
+            f'{research_synced} workers, {research_deactivated} extra deactivated, '
+            f'{research_deleted} unused removed, {research_kept} history rows kept inactive'
+        )
 
         bharat_roster = [
             {'area': 'Central Arcade', 'name': 'Chirag Vaghela', 'pay_code': '303', 'phone': '', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Chirag Vaghela']},
@@ -668,8 +693,11 @@ All accounts use password: {DEFAULT_PASSWORD}
             {'area': 'Sports Complex', 'name': 'Rajendra Bhai Chavda', 'pay_code': '354', 'phone': '', 'worker_type': 'floor', 'shift': 'evening', 'is_reliever': False, 'legacy_names': ['Rajendra Chavda', 'Rajendra Bhai chavda']},
         ]
         bharat_synced, bharat_deactivated = self._sync_area_roster(bharat_roster, 'bharat.solanki')
+        bharat_deleted, bharat_kept = self._cleanup_unused_inactive_workers(['Central Arcade', 'Sports Complex'])
         self.stdout.write(
-            f'  [OK] Central Arcade + Sports Complex roster synced: {bharat_synced} workers, {bharat_deactivated} extra deactivated'
+            '  [OK] Central Arcade + Sports Complex roster synced: '
+            f'{bharat_synced} workers, {bharat_deactivated} extra deactivated, '
+            f'{bharat_deleted} unused removed, {bharat_kept} history rows kept inactive'
         )
 
         # Guest House New + Old Guest House + Director Bungalow staffing details
@@ -752,8 +780,11 @@ All accounts use password: {DEFAULT_PASSWORD}
             {'area': 'Solid Waste Management', 'name': 'Sunilbhai Prabhatji Thakor', 'pay_code': '407', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': []},
         ]
         swm_synced, swm_deactivated = self._sync_area_roster(swm_roster, 'pradip.swm')
+        swm_deleted, swm_kept = self._cleanup_unused_inactive_workers(['Solid Waste Management'])
         self.stdout.write(
-            f'  [OK] Solid Waste Management roster synced: {swm_synced} workers, {swm_deactivated} extra deactivated'
+            '  [OK] Solid Waste Management roster synced: '
+            f'{swm_synced} workers, {swm_deactivated} extra deactivated, '
+            f'{swm_deleted} unused removed, {swm_kept} history rows kept inactive'
         )
 
         # Academic blocks staffing details

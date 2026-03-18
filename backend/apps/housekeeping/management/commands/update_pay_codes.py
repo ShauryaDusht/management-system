@@ -145,7 +145,8 @@ WORKER_PAY_CODES = [
     # Research Park
     ('Mahesh Solanki',   '267'),   # MAHESH SOLANKI
     ('Ajay Thakor',      '349'),   # THAKOR AJAYKUMAR PRAHLADJI
-    ('Shailesh Vaghela', '82'),    # VAGHELA SHAILESHBHAI (Research Park)
+    ('Shailesh Vaghela', '266'),   # SAILESH A VAGHELA (Research Park)
+    ('Sailesh A Vaghela','266'),   # SAILESH A VAGHELA (Research Park)
     ('Dharmishtaben',    '264'),   # VAGHELA DHARMISHTHA BEN
 
     # Central Arcade
@@ -236,7 +237,6 @@ WORKER_PAY_CODES = [
     ('Devendra',             '437'),  # PARMAR DEVENDRA DALPATBHAI
     ('Jignesh Solanki',      '363'),  # JIGNESHKUMAR BABUBHAI SOLANKI
     ('Kunal Parmar',         '346'),  # PARMAR CHANDRIKABEN
-    ('Mahesh Vaghela',       '266'),  # VAGHELA SHAILESHKUMAR (311)
     ('Ajay Rathod',          '93'),   # RATHOD AJAYKUMAR
     ('Bhavesh',              '315'),  # VAGHELA BHAVESHBHAI NARNABHAI
     ('Akshay Vaghela',       '291'),  # HITESHKUMAR GAFULBHAI VAGHELA
@@ -261,6 +261,8 @@ WORKER_LOOKUP_HINTS = {
     'Mukesh': {'area': 'Hiqom', 'phone': '8141885315'},
     'Rajesh': {'area': 'Kyzeel', 'phone': '7046510026'},
     'Anil Thakur': {'area': 'Hostel Common Area', 'phone': '9265665289'},
+    'Shailesh Vaghela': {'area': 'Research Park'},
+    'Sailesh A Vaghela': {'area': 'Research Park'},
     'Minaben': {'area': 'Academic Block 1'},
     'Rajnibhai': {'area': 'Academic Block 2'},
     'Krunal': {'area': 'Academic Block 3'},

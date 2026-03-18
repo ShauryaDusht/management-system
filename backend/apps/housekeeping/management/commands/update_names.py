@@ -58,8 +58,8 @@ WORKER_NAMES = {
     'Hasmukh Solanki':   'Solanki Hashmukh',
     # YOGESHBHAI KANTIBHAI VAGHELA
     'Yogesh Vaghela':    'Yogeshbhai Kantibhai Vaghela',
-    # VAGHELA SHAILESHBHAI (Research Park)
-    'Shailesh Vaghela':  'Vaghela Shaileshbhai',
+    # SAILESH A VAGHELA (Research Park)
+    'Shailesh Vaghela':  'Sailesh A Vaghela',
     # SOLANKI DINESHKUMAR VINUBHAI
     'Dharmishtaben':     'Solanki Dineshkumar Vinubhai',
     'Dineshbhai Purohit':'Solanki Dineshkumar Vinubhai',
@@ -329,7 +329,6 @@ WORKER_NAMES = {
     'Rajesh':            'Mesariya Rajesh',
     # Others
     'Kailashbhai Parmar':'Makvana Rajubhai Manabhai',
-    'Mahesh Vaghela':    'Vaghela Shaileshkumar',
     'Jitendra bhai Thakur': 'Vasudev Jitendrakumar Baldevbhai',
     'Salesh bhai Thakur':   'Sikandarbhai Dungarbhai Bhangi',
     'Naveenbhai Chauhan':   'Rudreshaben Sandipkumar Solanki',
@@ -534,7 +533,7 @@ class Command(BaseCommand):
             '261': 'Nitin Ishwarbhai Makwana',
             '263': 'Makvana Rajubhai Manabhai',
             '264': 'Vaghela Dharmishtha Ben',
-            '266': 'Vaghela Shaileshkumar',
+            '266': 'Sailesh A Vaghela',
             '267': 'Mahesh Solanki',
             '269': 'Anilkumar Bhupatji Thakor',
             '280': 'Solanki Harshadbhai Dineshbhai',

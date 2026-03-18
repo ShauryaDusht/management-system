@@ -2,6 +2,7 @@ import datetime
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
+from django.db.models import Count
 
 from apps.housekeeping.models import HKArea, HKScheduleTemplate, HKWorker
 
@@ -24,7 +25,7 @@ def _minutes_to_time(total_minutes):
 class Command(BaseCommand):
     help = (
         "Sync the real worker roster for Guest House New, Director Bungalow, "
-        "Central Arcade, Sports Complex, Solid Waste Management, hostel areas, "
+        "Central Arcade, Sports Complex, Research Park, Solid Waste Management, hostel areas, "
         "hostel common area, the hostel reliever pool, and "
         "academic blocks/common-area staffing, "
         "including phones, pay codes, reliever flags, and schedule labels."
@@ -254,6 +255,17 @@ class Command(BaseCommand):
         {"area": "Sports Complex", "name": "Rajendra Bhai Chavda", "phone": "", "pay_code": "354", "worker_type": "floor", "shift": "evening", "is_reliever": False, "legacy_names": ["Rajendra Chavda", "Rajendra Bhai chavda", "Rajendra Amathabhai Chavda"]},
     ]
 
+    RESEARCH_SUPERVISOR_BY_AREA = {
+        "Research Park": "maulik.patel",
+    }
+
+    RESEARCH_TARGET_ROSTER = [
+        {"area": "Research Park", "name": "Mahesh Solanki", "phone": "7046959603", "pay_code": "267", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Mahesh Solanki"]},
+        {"area": "Research Park", "name": "Thakor Ajaykumar Prahladji", "phone": "8780940745", "pay_code": "349", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Ajay Thakor", "Thakor Ajaykumar Prahladji"]},
+        {"area": "Research Park", "name": "Sailesh A Vaghela", "phone": "7284950619", "pay_code": "266", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Shailesh Vaghela", "Sailesh Vaghela", "Vaghela Shaileshbhai", "Vaghela Shaileshkumar"]},
+        {"area": "Research Park", "name": "Vaghela Dharmishtha Ben", "phone": "9328002335", "pay_code": "264", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Dharmishtaben", "Vaghela Dharmishtha Ben"]},
+    ]
+
     SWM_SUPERVISOR_BY_AREA = {
         "Solid Waste Management": "pradip.swm",
     }
@@ -423,18 +435,21 @@ class Command(BaseCommand):
         full_roster = (
             self.TARGET_ROSTER
             + self.BHARAT_TARGET_ROSTER
+            + self.RESEARCH_TARGET_ROSTER
             + self.SWM_TARGET_ROSTER
             + self.HOSTEL_TARGET_ROSTER
             + self.ACADEMIC_TARGET_ROSTER
         )
         supervisor_by_area = {}
         supervisor_by_area.update(self.BHARAT_SUPERVISOR_BY_AREA)
+        supervisor_by_area.update(self.RESEARCH_SUPERVISOR_BY_AREA)
         supervisor_by_area.update(self.SWM_SUPERVISOR_BY_AREA)
         supervisor_by_area.update(self.HOSTEL_SUPERVISOR_BY_AREA)
         supervisor_by_area.update(self.ACADEMIC_SUPERVISOR_BY_AREA)
 
         supervisor_usernames = {"ashok.rathod"}
         supervisor_usernames.update(self.BHARAT_SUPERVISOR_BY_AREA.values())
+        supervisor_usernames.update(self.RESEARCH_SUPERVISOR_BY_AREA.values())
         supervisor_usernames.update(self.SWM_SUPERVISOR_BY_AREA.values())
         supervisor_usernames.update(self.HOSTEL_SUPERVISOR_BY_AREA.values())
         supervisor_usernames.update(self.ACADEMIC_SUPERVISOR_BY_AREA.values())
@@ -517,44 +532,9 @@ class Command(BaseCommand):
         old_area_count = old_area_workers.count()
         old_area_workers.update(is_active=False)
 
-        duplicate_count = 0
-
-        # Deactivate duplicate guesthouse/director pay-code rows outside those two areas.
-        target_pay_codes = [spec["pay_code"] for spec in self.TARGET_ROSTER if spec["pay_code"]]
-        duplicate_qs = HKWorker.objects.filter(
-            pay_code__in=target_pay_codes,
-            is_active=True,
-        ).exclude(id__in=keep_ids).exclude(area__name__in=["Guest House New", "Director Bungalow"])
-        duplicate_count += duplicate_qs.count()
-        duplicate_qs.update(is_active=False)
-
-        # Academic Blocks 1-9 + Common Area should not keep stale copies in older areas.
-        academic_managed_areas = sorted({spec["area"] for spec in self.ACADEMIC_TARGET_ROSTER})
-        academic_pay_codes = [spec["pay_code"] for spec in self.ACADEMIC_TARGET_ROSTER if spec["pay_code"]]
-        academic_duplicate_qs = HKWorker.objects.filter(
-            pay_code__in=academic_pay_codes,
-            is_active=True,
-        ).exclude(id__in=keep_ids).exclude(area__name__in=academic_managed_areas)
-        duplicate_count += academic_duplicate_qs.count()
-        academic_duplicate_qs.update(is_active=False)
-
-        bharat_managed_areas = sorted({spec["area"] for spec in self.BHARAT_TARGET_ROSTER})
-        bharat_pay_codes = [spec["pay_code"] for spec in self.BHARAT_TARGET_ROSTER if spec["pay_code"]]
-        bharat_duplicate_qs = HKWorker.objects.filter(
-            pay_code__in=bharat_pay_codes,
-            is_active=True,
-        ).exclude(id__in=keep_ids).exclude(area__name__in=bharat_managed_areas)
-        duplicate_count += bharat_duplicate_qs.count()
-        bharat_duplicate_qs.update(is_active=False)
-
-        swm_managed_areas = sorted({spec["area"] for spec in self.SWM_TARGET_ROSTER})
-        swm_pay_codes = [spec["pay_code"] for spec in self.SWM_TARGET_ROSTER if spec["pay_code"]]
-        swm_duplicate_qs = HKWorker.objects.filter(
-            pay_code__in=swm_pay_codes,
-            is_active=True,
-        ).exclude(id__in=keep_ids).exclude(area__name__in=swm_managed_areas)
-        duplicate_count += swm_duplicate_qs.count()
-        swm_duplicate_qs.update(is_active=False)
+        duplicate_count = self._deactivate_cross_area_pay_code_duplicates(full_roster, keep_ids)
+        duplicate_deleted, duplicate_history_rows = self._cleanup_duplicate_active_pay_codes(keep_ids)
+        deleted_unused, kept_with_history = self._cleanup_unused_inactive_workers()
 
         schedule_updates = 0
         for area_name, worker_tag, order, task_name, task_description in self.SCHEDULE_UPDATES + self.ACADEMIC_SCHEDULE_UPDATES:
@@ -578,7 +558,11 @@ class Command(BaseCommand):
             self.style.SUCCESS(
                 f"Synced housekeeping roster: {touched} workers, "
                 f"deactivated {old_area_count} outdated area rows, "
-                f"deactivated {duplicate_count} duplicate pay-code rows, "
+                f"deactivated {duplicate_count} duplicate pay-code rows outside target areas, "
+                f"deleted {duplicate_deleted} duplicate active rows, "
+                f"kept {duplicate_history_rows} history-backed duplicate rows inactive, "
+                f"deleted {deleted_unused} unused inactive rows, "
+                f"kept {kept_with_history} history-backed inactive rows, "
                 f"updated {schedule_updates} schedule rows, "
                 f"removed {removed_special_tasks} legacy special tasks, "
                 f"rebalanced {balanced_templates} worker schedule slots."
@@ -760,6 +744,107 @@ class Command(BaseCommand):
 
     def _template_sort_key(self, template):
         return (template.order, template.start_time, template.id)
+
+    def _cleanup_unused_inactive_workers(self, area_names=None):
+        workers = HKWorker.objects.filter(is_active=False)
+        if area_names:
+            workers = workers.filter(area__name__in=area_names)
+        deleted_ids = []
+        kept_with_history = 0
+        for worker in workers:
+            has_history = self._worker_has_history(worker)
+            if has_history:
+                kept_with_history += 1
+                continue
+            deleted_ids.append(worker.id)
+
+        if deleted_ids:
+            HKWorker.objects.filter(id__in=deleted_ids).delete()
+
+        return len(deleted_ids), kept_with_history
+
+    def _worker_has_history(self, worker):
+        return (
+            worker.attendance_records.exists()
+            or worker.task_assignments.exists()
+            or worker.sunday_incharges.exists()
+            or worker.substituted_by.exists()
+            or worker.substitution_slots.exists()
+            or worker.selection_requests.exists()
+            or worker.assigned_daily_records.exists()
+            or worker.monthly_reports.exists()
+        )
+
+    def _deactivate_cross_area_pay_code_duplicates(self, roster_specs, keep_ids):
+        duplicate_count = 0
+        allowed_areas_by_pay_code = {}
+        for spec in roster_specs:
+            pay_code = (spec.get("pay_code") or "").strip()
+            if not pay_code:
+                continue
+            allowed_areas_by_pay_code.setdefault(pay_code, set()).add(spec["area"])
+
+        for pay_code, allowed_areas in allowed_areas_by_pay_code.items():
+            duplicate_qs = HKWorker.objects.filter(pay_code=pay_code, is_active=True).exclude(id__in=keep_ids)
+            if allowed_areas:
+                duplicate_qs = duplicate_qs.exclude(area__name__in=sorted(allowed_areas))
+            duplicate_count += duplicate_qs.count()
+            duplicate_qs.update(is_active=False)
+
+        return duplicate_count
+
+    def _cleanup_duplicate_active_pay_codes(self, keep_ids):
+        deleted_ids = []
+        kept_with_history = 0
+        duplicate_groups = (
+            HKWorker.objects.filter(is_active=True)
+            .exclude(pay_code="")
+            .values("area_id", "pay_code")
+            .annotate(total=Count("id"))
+            .filter(total__gt=1)
+            .order_by("area_id", "pay_code")
+        )
+
+        for group in duplicate_groups:
+            workers = list(
+                HKWorker.objects.filter(
+                    area_id=group["area_id"],
+                    pay_code=group["pay_code"],
+                    is_active=True,
+                ).select_related("area")
+            )
+            if len(workers) <= 1:
+                continue
+
+            history_by_id = {
+                worker.id: self._worker_has_history(worker)
+                for worker in workers
+            }
+            keeper = min(
+                workers,
+                key=lambda worker: (
+                    0 if worker.id in keep_ids else 1,
+                    0 if history_by_id[worker.id] else 1,
+                    0 if (worker.phone or "").strip() else 1,
+                    -len((worker.name or "").strip()),
+                    worker.id,
+                ),
+            )
+
+            for worker in workers:
+                if worker.id == keeper.id:
+                    continue
+                if history_by_id[worker.id]:
+                    worker.is_active = False
+                    worker.save(update_fields=["is_active"])
+                    kept_with_history += 1
+                    continue
+                deleted_ids.append(worker.id)
+
+        if deleted_ids:
+            HKWorker.objects.filter(id__in=deleted_ids).delete()
+
+        return len(deleted_ids), kept_with_history
 
     def _find_worker(self, spec, area, all_workers, keep_ids):
         legacy = {_normalize(spec["name"])}
