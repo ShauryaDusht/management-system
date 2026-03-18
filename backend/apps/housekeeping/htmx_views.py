@@ -102,6 +102,19 @@ def _uses_academic_reliever_pool(area):
     return bool(block_no and 1 <= block_no <= 9)
 
 
+def _uses_new_academic_reliever_pool(area):
+    if not area:
+        return False
+    return area.name in {
+        "Academic Block 10",
+        "Academic Block 11",
+        "Academic Block 12",
+        "Academic Block 13",
+        "New Academy",
+        "New AB U-Shape",
+    }
+
+
 def _attendance_relievers_for_area(area):
     qs = HKWorker.objects.filter(is_reliever=True, is_active=True)
     if not area:
@@ -112,6 +125,9 @@ def _attendance_relievers_for_area(area):
 
     if _uses_academic_reliever_pool(area):
         return qs.filter(area__name="Academic Block 8").order_by("name")
+
+    if _uses_new_academic_reliever_pool(area):
+        return qs.filter(area__name="New Academic Reliever").order_by("name")
 
     return qs.none()
 
@@ -446,6 +462,12 @@ def get_user_areas(user):
         academic_reliever_area_id = HKArea.objects.filter(name='Academic Block 8', is_active=True).values_list('id', flat=True).first()
         if academic_reliever_area_id:
             all_ids.add(academic_reliever_area_id)
+
+    # Academic supervisors for Blocks 10-13 + the new academic areas should see their reliever pool only.
+    if any(_uses_new_academic_reliever_pool(area) for area in assigned_areas):
+        new_academic_reliever_area_id = HKArea.objects.filter(name='New Academic Reliever', is_active=True).values_list('id', flat=True).first()
+        if new_academic_reliever_area_id:
+            all_ids.add(new_academic_reliever_area_id)
 
     return HKArea.objects.filter(is_active=True, id__in=all_ids)
 

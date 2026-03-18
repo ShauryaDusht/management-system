@@ -389,7 +389,14 @@ class Command(BaseCommand):
         "Academic Block 7": "bipin.vaghela",
         "Academic Block 8": "mukesh.vaghela",
         "Academic Block 9": "bipin.vaghela",
+        "Academic Block 10": "shailesh.prajapati",
+        "Academic Block 11": "shailesh.prajapati",
+        "Academic Block 12": "kaushik.parmar",
+        "Academic Block 13": "kaushik.parmar",
         "Academic Common Area": "bipin.vaghela",
+        "New AB U-Shape": "shailesh.prajapati",
+        "New Academy": "kaushik.parmar",
+        "New Academic Reliever": "kaushik.parmar",
     }
 
     ACADEMIC_TARGET_ROSTER = [
@@ -414,8 +421,26 @@ class Command(BaseCommand):
         {"area": "Academic Block 8", "name": "Pravinbhai Vaghela", "phone": "9624126018", "pay_code": "400", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Pravinbhai M Vaghela"]},
         {"area": "Academic Block 8", "name": "Jyotsanaben Vaghela", "phone": "9574720027", "pay_code": "231", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Jyostnaben A Vaghela", "Jyostnaben"]},
         {"area": "Academic Block 9", "name": "Jay Kumar Solanki", "phone": "8511476360", "pay_code": "105", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Jay", "Jay Solanki"]},
+        {"area": "Academic Block 10", "name": "Solanki Parthkumar Jagdishbhai", "phone": "", "pay_code": "384", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Parth Solanki"]},
+        {"area": "Academic Block 10", "name": "Hiteshbhai Solanki", "phone": "", "pay_code": "434", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Hitesh Solanki"]},
+        {"area": "Academic Block 10", "name": "Patel Sangitaben Maheshbhai", "phone": "", "pay_code": "412", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Sangitaben", "Sangeetaben Patel", "Retuben Solanki"]},
+        {"area": "Academic Block 11", "name": "Makwana Sunilbhai Amrutbhai", "phone": "", "pay_code": "348", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Sunil Makwana"]},
+        {"area": "Academic Block 11", "name": "Bhangi Ileshbhai Ishvarbhai", "phone": "", "pay_code": "361", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Elesh", "Elesh Bhangi", "Elesh bhange", "Parmar Nikulkumar Punjabhai"]},
+        {"area": "Academic Block 11", "name": "Kailashben Parmar", "phone": "", "pay_code": "102", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Kailashben", "Kailash ben", "Kailish ben"]},
+        {"area": "Academic Block 12", "name": "Gautambhai Vaghela", "phone": "", "pay_code": "333", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Gautam Vaghela"]},
+        {"area": "Academic Block 12", "name": "Parmar Devendra Dalpatbhai", "phone": "", "pay_code": "437", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Devendra"]},
+        {"area": "Academic Block 12", "name": "Sonala Manishaben", "phone": "", "pay_code": "356", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Chandrika ben", "Chandrikaben", "Manisha Ben"]},
+        {"area": "Academic Block 13", "name": "Vaghela Maheshbhai Dineshbhai", "phone": "", "pay_code": "402", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Mahesh Solanki", "Mahesh Vaghela", "Mahesh Raval"]},
+        {"area": "Academic Block 13", "name": "Vaghela Padma", "phone": "", "pay_code": "347", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Padmaben Vaghela", "Padma"]},
+        {"area": "Academic Block 13", "name": "Rathod Ajaykumar", "phone": "", "pay_code": "93", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Ajay Rathod"]},
+        {"area": "Academic Block 13", "name": "Parmar Krunalbhai", "phone": "", "pay_code": "390", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Krunal Parmar", "Kunal Parmar"]},
+        {"area": "Academic Block 13", "name": "Jigneshkumar Babubhai Solanki", "phone": "", "pay_code": "363", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Jignesh Solanki", "Gignesh"]},
         {"area": "Academic Common Area", "name": "Vaghela Bhaveshbhai Narnabhai", "phone": "9974738575", "pay_code": "315", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Bhavesh"]},
         {"area": "Academic Common Area", "name": "Vaniya Nikhilkumar Bhaveshbhai", "phone": "8849436518", "pay_code": "314", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Nikhil"]},
+        {"area": "New AB U-Shape", "name": "Akshybhai Vaghela", "phone": "", "pay_code": "308", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Akshay Parmar", "Akshay Vaghela", "Satish Vaghela", "Hiteshkumar Gafulbhai Vaghela"]},
+        {"area": "New Academy", "name": "Vasudev Jitendrakumar Baldevbhai", "phone": "", "pay_code": "377", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Jitendra Vasudev"]},
+        {"area": "New Academic Reliever", "name": "Gurjar Niruben", "phone": "", "pay_code": "111", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Neru ben", "Niruben"]},
+        {"area": "New Academic Reliever", "name": "Sonara Hitendrakumar Punjabhai", "phone": "", "pay_code": "448", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Hitendra sonara", "Hitendra Sonara", "Hiten"]},
     ]
 
     ACADEMIC_SCHEDULE_UPDATES = [
@@ -432,6 +457,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         quiet = options["quiet"]
         User = get_user_model()
+        HKArea.objects.get_or_create(name="New Academic Reliever", defaults={"area_type": "academic"})
+        HKArea.objects.filter(name="New Academic Reliever").update(area_type="academic", is_active=True)
         full_roster = (
             self.TARGET_ROSTER
             + self.BHARAT_TARGET_ROSTER
