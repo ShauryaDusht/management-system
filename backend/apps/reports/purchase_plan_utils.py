@@ -7,6 +7,58 @@ _TWOPLACES = Decimal("0.01")
 
 
 MONTHLY_PURCHASE_DEFAULTS = {
+    (2026, 1): {
+        "Cleaning Acid": 0,
+        "Aluminium Stick": 10,
+        "Air Freshener (R5)": 140,
+        "Floor Cleaner (R2)": 150,
+        "Hand Wash Liquid": 140,
+        "Surface Cleaner (R1)": 180,
+        "Bamboo Stick (5 ft long)": 10,
+        "Baygon Spray": 70,
+        "Broom (Hard)": 400,
+        "Broom (Soft)": 100,
+        "Plastic Bucket (10 Ltr)": 0,
+        "Carpet Shampoo 101": 0,
+        "Carpet Brush": 0,
+        "Ceramic Cleaner (R6)": 300,
+        "Check Duster (250mm x 250mm)": 160,
+        "Dry Mop Refill (24 inch)": 5,
+        "Dry Mop Set (24 inch)": 10,
+        "Dustpan (Plastic 200x200mm)": 20,
+        "Feather Brush (250mm)": 0,
+        "Floor Detergent (Powder)": 10,
+        "Floor Duster (Cotton)": 80,
+        "Glass Cleaner": 40,
+        "Glass Duster (18x18 White)": 120,
+        "Glass Squeeze/Wiper (2-in-1)": 0,
+        "Rubber Gloves": 70,
+        "Gun Spray": 0,
+        "Kitchen Wiper (250mm)": 15,
+        "Liquid Repellent (All Out Refill)": 0,
+        "Odonil": 500,
+        "Paper Napkin": 0,
+        "Phenyl": 180,
+        "Road Brush with Stick": 0,
+        "Room Freshener": 75,
+        "Scotch-Brite Pad (152x96mm)": 300,
+        "Soap": 10,
+        "Iron Scrapper (Patra)": 30,
+        "Steel Polish": 0,
+        "Wooden Polish": 0,
+        "Tissue Paper (Soft)": 0,
+        "Toilet Cleaning Brush": 20,
+        "Toilet Paper Roll": 1250,
+        "Wet Mop Refill Clip (6 inch)": 30,
+        "Wet Mop Refill": 180,
+        "Wiper (Big with Steel Rod)": 15,
+        "Wiper (Small)": 10,
+        "Naphthalene Balls": 10,
+        "Plunger (Chowking Pump)": 0,
+        "Bleaching Liquid": 150,
+        "Scrubbing Pad": 0,
+        "Garden Pipe 30mtr Roll": 0,
+    },
     (2026, 2): {
         "Aluminium Stick": 10,
         "Air Freshener (R5)": 140,
@@ -105,6 +157,10 @@ def _default_quantity_map(month: int, year: int):
     return MONTHLY_PURCHASE_DEFAULTS.get((year, month), {})
 
 
+def list_default_purchase_plan_periods():
+    return [(month, year) for year, month in sorted(MONTHLY_PURCHASE_DEFAULTS)]
+
+
 def build_default_purchase_plan_data(month: int, year: int):
     default_quantities = _default_quantity_map(month, year)
     data = {}
@@ -181,6 +237,42 @@ def serialize_purchase_plan(plan):
             "total_estimated_cost": float(total_estimated_cost.quantize(_TWOPLACES, rounding=ROUND_HALF_UP)),
         },
         "rows": rows,
+    }
+
+
+def serialize_purchase_plan_summary(plan):
+    merged_data = merge_purchase_plan_data(plan.data, plan.month, plan.year)
+    total_estimated_cost = Decimal("0.00")
+    total_purchase_quantity = 0
+    purchase_items_count = 0
+
+    for item in Item.objects.all().only("id", "unit_cost"):
+        entry = merged_data.get(str(item.id), {})
+        purchase_quantity = int(entry.get("purchase_quantity", 0) or 0)
+        if purchase_quantity <= 0:
+            continue
+
+        planned_unit_cost = _as_decimal(entry.get("planned_unit_cost"), item.unit_cost or 0)
+        estimated_cost = (planned_unit_cost * purchase_quantity).quantize(_TWOPLACES, rounding=ROUND_HALF_UP)
+        purchase_items_count += 1
+        total_purchase_quantity += purchase_quantity
+        total_estimated_cost += estimated_cost
+
+    return {
+        "id": plan.id,
+        "month": plan.month,
+        "year": plan.year,
+        "period_label": plan.period_label,
+        "updated_at": plan.updated_at,
+        "updated_by_name": (
+            plan.updated_by.get_full_name() or plan.updated_by.username
+            if plan.updated_by else None
+        ),
+        "summary": {
+            "purchase_items_count": purchase_items_count,
+            "total_purchase_quantity": total_purchase_quantity,
+            "total_estimated_cost": float(total_estimated_cost.quantize(_TWOPLACES, rounding=ROUND_HALF_UP)),
+        },
     }
 
 

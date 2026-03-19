@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db.models import Count
 
-from apps.housekeeping.models import HKArea, HKScheduleTemplate, HKWorker
+from apps.housekeeping.models import HKArea, HKScheduleTemplate, HKUserArea, HKWorker
 
 
 def _normalize(value):
@@ -387,6 +387,7 @@ class Command(BaseCommand):
         "Academic Block 5": "mukesh.vaghela",
         "Academic Block 6": "mukesh.vaghela",
         "Academic Block 7": "bipin.vaghela",
+        "Academic Block 8": "mukesh.vaghela",
         "Academic Block 9": "bipin.vaghela",
         "Academic Block 10": "shailesh.prajapati",
         "Academic Block 11": "shailesh.prajapati",
@@ -448,10 +449,10 @@ class Command(BaseCommand):
         ("Academic Block 3", "washroom", 1, "AB-3: All Floors Washroom Touch Up", "Krunal + Rakesh + Vasantiben"),
         ("Academic Block 4", "washroom", 1, "AB-4: Washroom Touch Up", "Varshaben + Hitesh + Harshad"),
         ("Academic Block 7", "washroom", 1, "AB-7: Washroom Touch Up", "Chandrikaben + Nikul"),
-        ("Old Academic Reliever", "floor", 1, "Old Academic Reliever: Lal Minar Tower Cleaning Support", "Ajay + Akash + Pravin + Jyotsanaben"),
-        ("Old Academic Reliever", "floor", 2, "Old Academic Reliever: First Floor Passage and Ramp Cleaning", ""),
-        ("Old Academic Reliever", "floor", 4, "Old Academic Reliever: Indoor Sweeping and Mopping", "Every 15 days"),
-        ("Old Academic Reliever", "floor", 5, "Old Academic Reliever: Month-end Additional Cleaning Check", "Month ending 2 times"),
+        ("Academic Block 8", "floor", 1, "AB-8: Lal Minar Tower Cleaning Support", "Ajay + Akash + Pravin + Jyotsanaben"),
+        ("Academic Block 8", "floor", 2, "AB-8: First Floor Passage and Ramp Cleaning", ""),
+        ("Academic Block 8", "floor", 4, "AB-8: Indoor Sweeping and Mopping", "Every 15 days"),
+        ("Academic Block 8", "floor", 5, "AB-8: Month-end Additional Cleaning Check", "Month ending 2 times"),
         ("Old Academic Common Area", "floor", 1, "Old Academic Common Area: All Blocks Common Area + Marble Cleaning", "Bhavesh + Nikhil"),
         ("Old Academic Common Area", "floor", 3, "Old Academic Common Area: Block-07 Terrace Side Railing Dusting", ""),
         ("Old Academic Common Area", "all", 1, "Sunday Deep Clean: Old Academic Common Area Samved Area Scrubbing and Washing", "Weekly Sunday task"),
@@ -476,12 +477,83 @@ class Command(BaseCommand):
         HKArea.objects.get_or_create(name=new_name, defaults={"area_type": "academic"})
         HKArea.objects.filter(name=new_name).update(area_type="academic", is_active=True)
 
+    def _ensure_active_area(self, name, area_type="academic"):
+        area, _ = HKArea.objects.get_or_create(name=name, defaults={"area_type": area_type})
+        HKArea.objects.filter(pk=area.pk).update(area_type=area_type, is_active=True)
+        return HKArea.objects.get(pk=area.pk)
+
+    def _ensure_user_area_assignment(self, users_by_username, supervisor_by_area):
+        for area_name, username in supervisor_by_area.items():
+            user = users_by_username.get(username)
+            area = HKArea.objects.filter(name=area_name, is_active=True).first()
+            if user and area:
+                HKUserArea.objects.get_or_create(user=user, area=area)
+
+    def _restore_academic_block_8_templates(self):
+        academic_block_8 = self._ensure_active_area("Academic Block 8")
+        old_academic_reliever = HKArea.objects.filter(name="Old Academic Reliever", is_active=True).first()
+
+        if old_academic_reliever:
+            HKScheduleTemplate.objects.filter(area=old_academic_reliever).update(area=academic_block_8)
+
+        task_defaults = [
+            (1, datetime.time(8, 0), datetime.time(12, 0), "AB-8: Lal Minar Tower Cleaning Support", "Ajay + Akash + Pravin + Jyotsanaben"),
+            (2, datetime.time(12, 0), datetime.time(13, 0), "AB-8: First Floor Passage and Ramp Cleaning", ""),
+            (3, datetime.time(13, 0), datetime.time(14, 0), "Lunch Break", ""),
+            (4, datetime.time(14, 0), datetime.time(16, 0), "AB-8: Indoor Sweeping and Mopping", "Every 15 days"),
+            (5, datetime.time(16, 0), datetime.time(17, 0), "AB-8: Month-end Additional Cleaning Check", "Month ending 2 times"),
+        ]
+        for order, start_time, end_time, task_name, task_description in task_defaults:
+            template, _ = HKScheduleTemplate.objects.get_or_create(
+                area=academic_block_8,
+                worker_tag="floor",
+                frequency="daily",
+                order=order,
+                defaults={
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "task_name": task_name,
+                    "task_description": task_description,
+                    "requires_photo": order != 3,
+                    "is_active": True,
+                },
+            )
+            changed = False
+            if template.start_time != start_time:
+                template.start_time = start_time
+                changed = True
+            if template.end_time != end_time:
+                template.end_time = end_time
+                changed = True
+            if template.task_name != task_name:
+                template.task_name = task_name
+                changed = True
+            if template.task_description != task_description:
+                template.task_description = task_description
+                changed = True
+            if template.requires_photo != (order != 3):
+                template.requires_photo = (order != 3)
+                changed = True
+            if not template.is_active:
+                template.is_active = True
+                changed = True
+            if changed:
+                template.save(update_fields=[
+                    "start_time",
+                    "end_time",
+                    "task_name",
+                    "task_description",
+                    "requires_photo",
+                    "is_active",
+                ])
+
     def handle(self, *args, **options):
         quiet = options["quiet"]
         User = get_user_model()
         self._ensure_academic_area_name("Academic Common Area", "Old Academic Common Area")
         self._ensure_academic_area_name("New Academy", "New Academic Common Area")
         self._ensure_academic_area_name("Academic Block 8", "Old Academic Reliever")
+        self._ensure_active_area("Academic Block 8")
         HKArea.objects.get_or_create(name="New Academic Reliever", defaults={"area_type": "academic"})
         HKArea.objects.filter(name="New Academic Reliever").update(area_type="academic", is_active=True)
         full_roster = (
@@ -509,6 +581,7 @@ class Command(BaseCommand):
             user.username: user
             for user in User.objects.filter(username__in=sorted(supervisor_usernames))
         }
+        self._ensure_user_area_assignment(supervisors_by_username, supervisor_by_area)
 
         if "ashok.rathod" not in supervisors_by_username:
             self.stderr.write("Supervisor ashok.rathod not found; sync skipped.")
@@ -587,6 +660,7 @@ class Command(BaseCommand):
         duplicate_count = self._deactivate_cross_area_pay_code_duplicates(full_roster, keep_ids)
         duplicate_deleted, duplicate_history_rows = self._cleanup_duplicate_active_pay_codes(keep_ids)
         deleted_unused, kept_with_history = self._cleanup_unused_inactive_workers()
+        self._restore_academic_block_8_templates()
 
         schedule_updates = 0
         for area_name, worker_tag, order, task_name, task_description in self.SCHEDULE_UPDATES + self.ACADEMIC_SCHEDULE_UPDATES:

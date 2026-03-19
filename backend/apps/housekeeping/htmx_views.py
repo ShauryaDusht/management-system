@@ -100,6 +100,8 @@ def _academic_block_number(area):
 
 
 def _uses_academic_reliever_pool(area):
+    if area and area.name == "Old Academic Common Area":
+        return True
     block_no = _academic_block_number(area)
     return bool(block_no and 1 <= block_no <= 9)
 

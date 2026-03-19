@@ -116,6 +116,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Academic Block 5', 'academic'),
             ('Academic Block 6', 'academic'),
             ('Academic Block 7', 'academic'),
+            ('Academic Block 8', 'academic'),
             ('Academic Block 9', 'academic'),
             ('Academic Block 10', 'academic'),
             ('Academic Block 11', 'academic'),
@@ -223,7 +224,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('shailesh.prajapati', 'Shailesh Natvarbhai', 'Prajapati', '4', '9898477320', '', ['Academic Block 10', 'Academic Block 11', 'New AB U-Shape', 'New Academic Reliever']),
             ('maulik.patel', 'Maulikkumar Dilipbhai', 'Patel', '7', '8758363879', 'moulikpatel81290@gmail.com', ['Research Park']),
             ('bharat.solanki', 'Bharat Kumar M.', 'Solanki', '465', '8511764551', 'bharat2545007@gmail.com', ['Sports Complex', 'Central Arcade']),
-            ('mukesh.vaghela', 'Mukeshkumar', 'Vaghela', '466', '9265591836', 'm.vaghela23@gmail.com', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Old Academic Reliever']),
+            ('mukesh.vaghela', 'Mukeshkumar', 'Vaghela', '466', '9265591836', 'm.vaghela23@gmail.com', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Academic Block 8', 'Old Academic Reliever']),
             ('bipin.vaghela', 'Bipinchandra Dineshkumar', 'Vaghela', '350', '9979627312', 'bipin.vaghela4u@gmail.com', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Old Academic Common Area']),
             ('narendra.shreemali', 'Narendrakumar Natvarlal', 'Shrimali', '328', '9898661986', 'narendrashrimali36262@gmail.com', ['Roads & Outdoor', 'Old Guest House']),
             ('pradip.swm', 'Pradip', 'Chauhan', '3', '8200560889', 'pradipchauhan783@gmail.com', ['Solid Waste Management']),
@@ -819,6 +820,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             'Academic Block 5': 'mukesh.vaghela',
             'Academic Block 6': 'mukesh.vaghela',
             'Academic Block 7': 'bipin.vaghela',
+            'Academic Block 8': 'mukesh.vaghela',
             'Academic Block 9': 'bipin.vaghela',
             'Academic Block 10': 'shailesh.prajapati',
             'Academic Block 11': 'shailesh.prajapati',
@@ -1745,7 +1747,8 @@ All accounts use password: {DEFAULT_PASSWORD}
         # Academic Blocks 01-13 + renamed academic common areas + reliever pools
         academic_area_names = [
             'Academic Block 1', 'Academic Block 2', 'Academic Block 3', 'Academic Block 4',
-            'Academic Block 5', 'Academic Block 6', 'Academic Block 7', 'Old Academic Reliever',
+            'Academic Block 5', 'Academic Block 6', 'Academic Block 7', 'Academic Block 8',
+            'Old Academic Reliever',
             'Academic Block 9', 'Academic Block 10', 'Academic Block 11', 'Academic Block 12',
             'Academic Block 13', 'Old Academic Common Area', 'New AB U-Shape', 'New Academic Common Area',
         ]
@@ -1830,12 +1833,12 @@ All accounts use password: {DEFAULT_PASSWORD}
                     (8, '15:00', '16:00', 'AB-7: Pending Classroom Cleaning', 'room', True, ''),
                     (9, '16:00', '17:00', 'AB-7: Staircase and Railing Dusting', 'floor', True, ''),
                 ],
-                'Old Academic Reliever': [
-                    (1, '08:00', '12:00', 'Old Academic Reliever: Lal Minar Tower Cleaning Support', 'floor', True, 'Ajay + Akash + Pravin + Jyotsanaben'),
-                    (2, '12:00', '13:00', 'Old Academic Reliever: First Floor Passage and Ramp Cleaning', 'floor', True, ''),
+                'Academic Block 8': [
+                    (1, '08:00', '12:00', 'AB-8: Lal Minar Tower Cleaning Support', 'floor', True, 'Ajay + Akash + Pravin + Jyotsanaben'),
+                    (2, '12:00', '13:00', 'AB-8: First Floor Passage and Ramp Cleaning', 'floor', True, ''),
                     (3, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
-                    (4, '14:00', '16:00', 'Old Academic Reliever: Indoor Sweeping and Mopping', 'floor', True, 'Every 15 days'),
-                    (5, '16:00', '17:00', 'Old Academic Reliever: Month-end Additional Cleaning Check', 'floor', True, 'Month ending 2 times'),
+                    (4, '14:00', '16:00', 'AB-8: Indoor Sweeping and Mopping', 'floor', True, 'Every 15 days'),
+                    (5, '16:00', '17:00', 'AB-8: Month-end Additional Cleaning Check', 'floor', True, 'Month ending 2 times'),
                 ],
                 'Academic Block 9': [
                     (1, '08:00', '09:00', 'AB-9: All Office Cleaning', 'room', True, 'Jay'),
