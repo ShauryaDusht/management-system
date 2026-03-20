@@ -358,7 +358,7 @@ function InventoryAreaPanel({ rows, totals }) {
       </FadeSection>
       <FadeSection delay={260}>
         <Divider label="🥧 Pie Charts" />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
           <Card>
             <SectionTitle icon="🥧" title="Total Qty Share by Area" />
             <FairPieChart data={chartData} dataKey="total" />

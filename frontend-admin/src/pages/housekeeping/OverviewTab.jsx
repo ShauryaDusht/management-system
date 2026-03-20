@@ -283,7 +283,7 @@ export default function OverviewTab() {
         </Card>
       ) : null}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 14 }}>
+      <div className="ui-two-pane-grid">
         <Card noPad>
           <div
             style={{

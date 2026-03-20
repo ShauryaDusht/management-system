@@ -23,8 +23,9 @@ const COLORS = {
   teal: '#0d9488',
 }
 
-export function DonutChart({ data, total, label, size = 200 }) {
-  const palette = Object.values(COLORS)
+export const DONUT_PALETTE = Object.values(COLORS)
+
+export function DonutChart({ data, total, label, size = 200, palette = DONUT_PALETTE }) {
   return (
     <div style={{ position: 'relative', width: size, height: size, margin: '0 auto' }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -66,7 +67,7 @@ export function DonutChart({ data, total, label, size = 200 }) {
 }
 
 export function TrendArea({ data, lines, height = 180 }) {
-  const palette = Object.values(COLORS)
+  const palette = DONUT_PALETTE
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
@@ -102,7 +103,7 @@ export function TrendArea({ data, lines, height = 180 }) {
 }
 
 export function BarGroupChart({ data, bars, height = 180 }) {
-  const palette = Object.values(COLORS)
+  const palette = DONUT_PALETTE
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>

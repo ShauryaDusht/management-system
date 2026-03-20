@@ -209,12 +209,23 @@ export function Modal({ open, onClose, title, children, footer, width = 480 }) {
         >
           <h2 style={{ fontWeight: 700, fontSize: 16 }}>{title}</h2>
           <button
+            type="button"
             onClick={onClose}
+            className="ui-modal-close-btn"
+            aria-label="Close"
             style={{
-              background: 'none',
+              width: 32,
+              height: 32,
+              display: 'grid',
+              placeItems: 'center',
+              background: 'var(--modal-close-bg, transparent)',
+              border: '1px solid transparent',
+              borderRadius: 8,
               fontSize: 18,
-              color: 'var(--text-3)',
+              color: 'var(--modal-close-color, var(--text-3))',
               cursor: 'pointer',
+              lineHeight: 1,
+              transition: 'background 0.15s, color 0.15s, border-color 0.15s',
             }}
           >
             ✕
@@ -285,13 +296,21 @@ export function DataTable({ headers, rows, loading, emptyMsg = 'No data found.' 
             rows.map((row, i) => (
               <tr
                 key={i}
+                className="ui-data-row"
                 style={{
                   borderBottom: '1px solid var(--border)',
                   background: i % 2 ? 'var(--surface-2)' : 'transparent',
                 }}
               >
                 {row.map((cell, j) => (
-                  <td key={j} style={{ padding: '11px 14px', color: 'var(--text-2)' }}>
+                  <td
+                    key={j}
+                    style={{
+                      padding: '11px 14px',
+                      color: 'var(--text-2)',
+                      transition: 'background 0.15s ease',
+                    }}
+                  >
                     {cell}
                   </td>
                 ))}
@@ -415,6 +434,7 @@ export function Tabs({ tabs, active, onChange }) {
 
   return (
     <div
+      className="ui-tabs"
       style={{
         display: 'flex',
         gap: 4,
@@ -423,6 +443,12 @@ export function Tabs({ tabs, active, onChange }) {
         borderRadius: 11,
         border: '1px solid var(--border)',
         width: 'fit-content',
+        maxWidth: '100%',
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        scrollbarWidth: 'thin',
+        scrollbarColor: 'var(--border-2) transparent',
+        WebkitOverflowScrolling: 'touch',
       }}
     >
       {tabs.map((tab) => {
@@ -445,6 +471,8 @@ export function Tabs({ tabs, active, onChange }) {
             display: 'flex',
             alignItems: 'center',
             gap: 6,
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
           }}
         >
           {tab.label}
@@ -468,9 +496,65 @@ export function Tabs({ tabs, active, onChange }) {
   )
 }
 
-if (!document.getElementById('ui-spin-keyframes')) {
+if (typeof document !== 'undefined' && !document.getElementById('ui-shared-styles')) {
   const style = document.createElement('style')
-  style.id = 'ui-spin-keyframes'
-  style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }'
+  style.id = 'ui-shared-styles'
+  style.textContent = `
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .ui-modal-close-btn:hover,
+    .ui-modal-close-btn:focus-visible {
+      --modal-close-bg: var(--surface-2);
+      --modal-close-color: var(--text);
+      border-color: var(--border);
+    }
+
+    .ui-modal-close-btn:focus-visible,
+    .ui-interactive-card-link:focus-visible {
+      outline: 2px solid rgba(45, 74, 62, 0.18);
+      outline-offset: 3px;
+    }
+
+    .ui-tabs::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .ui-tabs::-webkit-scrollbar-thumb {
+      background: var(--border-2);
+      border-radius: 999px;
+    }
+
+    .ui-tabs::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .ui-data-row:hover td {
+      background: rgba(45, 74, 62, 0.06);
+    }
+
+    .ui-two-pane-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+      gap: 14px;
+    }
+
+    .ui-interactive-card-link {
+      display: block;
+      border-radius: 14px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .ui-interactive-card-link:hover,
+    .ui-interactive-card-link:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px rgba(26, 60, 52, 0.1);
+    }
+
+    @media (max-width: 1100px) {
+      .ui-two-pane-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+  `
   document.head.appendChild(style)
 }

@@ -8,10 +8,10 @@ import { horticultureAPI } from '../../api/horticulture'
 import { inventoryAPI, reportsAPI } from '../../api/inventory'
 import { hkAPI } from '../../api/housekeeping'
 import { Btn, Card, Spinner, StatCard } from '../../components/ui'
-import { DonutChart } from '../../components/ui/Charts'
+import { DonutChart, DONUT_PALETTE } from '../../components/ui/Charts'
 import AdminLayout from '../../layout/AdminLayout'
 
-const PALETTE = ['#2d4a3e', '#c2622a', '#3b82f6', '#f59e0b', '#8b5cf6', '#0d9488', '#ec4899', '#64748b']
+const PALETTE = DONUT_PALETTE
 const TooltipStyle = { borderRadius: 10, border: '1px solid var(--border)', fontSize: 12, background: 'var(--surface)' }
 
 const CHART_TYPES = [
@@ -119,7 +119,19 @@ function ActivityPieChart({ data, lines }) {
   const grand = totals.reduce((s, d) => s + d.value, 0)
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 32, flexWrap: 'wrap', padding: '10px 0' }}>
-      <div style={{ position: 'relative', width: 280, height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          maxWidth: 280,
+          minWidth: 200,
+          height: 'clamp(200px, 50vw, 280px)',
+          flex: '0 1 280px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie 
@@ -138,8 +150,10 @@ function ActivityPieChart({ data, lines }) {
           </PieChart>
         </ResponsiveContainer>
         <div style={{ position: 'absolute', pointerEvents: 'none', textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 800 }}>{grand.toLocaleString('en-IN')}</div>
-          <div style={{ fontSize: 10, color: 'var(--text-3)' }}>Total</div>
+          <div style={{ fontSize: 'clamp(14px, 4vw, 20px)', fontWeight: 800, lineHeight: 1.1, maxWidth: '70%', margin: '0 auto', wordBreak: 'break-word' }}>
+            {grand.toLocaleString('en-IN')}
+          </div>
+          <div style={{ fontSize: 'clamp(10px, 2.2vw, 11px)', color: 'var(--text-3)' }}>Total</div>
         </div>
       </div>
       <div style={{ flex: 1, minWidth: 220, borderLeft: '1px solid var(--border)', paddingLeft: 24 }}>
@@ -268,26 +282,26 @@ export default function DashboardPage() {
 
   const summaryBoxes = trendModule === 'inventory'
     ? [
-        { label: 'Total Inventory', value: trendTotals?.inventory ?? 0,                   color: '#2d4a3e', icon: '📦' },
-        { label: 'Requests',        value: trendTotals?.inventory_requests ?? 0,          color: '#3b82f6', icon: '📋' },
-        { label: 'Issues',          value: trendTotals?.inventory_issues ?? 0,            color: '#c2622a', icon: '🔁' },
-        { label: 'Stock Additions', value: trendTotals?.inventory_stock_additions ?? 0,   color: '#0d9488', icon: '➕' },
-        { label: 'Purchase Req.',   value: trendTotals?.inventory_purchase_requests ?? 0, color: '#8b5cf6', icon: '🛒' },
+        { label: 'Total Inventory', value: trendTotals?.inventory ?? 0,                   color: 'var(--green-800)', icon: '📦' },
+        { label: 'Requests',        value: trendTotals?.inventory_requests ?? 0,          color: 'var(--ongoing)', icon: '📋' },
+        { label: 'Issues',          value: trendTotals?.inventory_issues ?? 0,            color: 'var(--orange-600)', icon: '🔁' },
+        { label: 'Stock Additions', value: trendTotals?.inventory_stock_additions ?? 0,   color: 'var(--completed)', icon: '➕' },
+        { label: 'Purchase Req.',   value: trendTotals?.inventory_purchase_requests ?? 0, color: 'var(--pending)', icon: '🛒' },
       ]
     : trendModule === 'housekeeping'
     ? [
-        { label: 'Total HK',    value: trendTotals?.housekeeping ?? 0,  color: '#2d4a3e', icon: '🧹' },
-        { label: 'Completed',   value: trendTotals?.hk_done ?? 0,       color: '#16a34a', icon: '✅' },
-        { label: 'Pending',     value: trendTotals?.hk_pending ?? 0,    color: '#c2622a', icon: '⏳' },
-        { label: 'In Progress', value: trendTotals?.hk_in_progress ?? 0,color: '#3b82f6', icon: '🔄' },
-        { label: 'Skipped',     value: trendTotals?.hk_skipped ?? 0,    color: '#6b7280', icon: '⏭️' },
+        { label: 'Total HK',    value: trendTotals?.housekeeping ?? 0,  color: 'var(--green-800)', icon: '🧹' },
+        { label: 'Completed',   value: trendTotals?.hk_done ?? 0,       color: 'var(--completed)', icon: '✅' },
+        { label: 'Pending',     value: trendTotals?.hk_pending ?? 0,    color: 'var(--pending)', icon: '⏳' },
+        { label: 'In Progress', value: trendTotals?.hk_in_progress ?? 0,color: 'var(--ongoing)', icon: '🔄' },
+        { label: 'Skipped',     value: trendTotals?.hk_skipped ?? 0,    color: 'var(--text-3)', icon: '⏭️' },
       ]
     : trendModule === 'horticulture'
-    ? [{ label: 'Horticulture', value: trendTotals?.horticulture ?? 0, color: '#0d9488', icon: '🌿' }]
+    ? [{ label: 'Horticulture', value: trendTotals?.horticulture ?? 0, color: 'var(--green-700)', icon: '🌿' }]
     : [
-        { label: 'Inventory',    value: trendTotals?.inventory ?? 0,    color: '#2d4a3e', icon: '📦' },
-        { label: 'Housekeeping', value: trendTotals?.housekeeping ?? 0, color: '#c2622a', icon: '🧹' },
-        { label: 'Horticulture', value: trendTotals?.horticulture ?? 0, color: '#0d9488', icon: '🌿' },
+        { label: 'Inventory',    value: trendTotals?.inventory ?? 0,    color: 'var(--green-800)', icon: '📦' },
+        { label: 'Housekeeping', value: trendTotals?.housekeeping ?? 0, color: 'var(--orange-600)', icon: '🧹' },
+        { label: 'Horticulture', value: trendTotals?.horticulture ?? 0, color: 'var(--green-700)', icon: '🌿' },
       ]
 
   const statCards = [
@@ -308,18 +322,18 @@ export default function DashboardPage() {
           {/* ── Stat Cards ── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
             {statCards.map(card => (
-              <a key={card.label} href={card.to} style={{ height: '100%', display: 'block', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
+              <a key={card.label} href={card.to} className="ui-interactive-card-link" style={{ height: '100%', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
                 <StatCard label={card.label} value={card.value} icon={card.icon} color={card.color} sub={card.sub} style={{ height: '100%', cursor: 'pointer', userSelect: 'none' }} />
               </a>
             ))}
           </div>
 
           {/* ── Donut cards ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 24 }}>
             {[
-              { title: 'Inventory', subtitle: 'Stock overview', data: invDonut, total: invSummary?.total_items, label: 'Items', colors: ['#2d4a3e','#c2622a','#dc2626'], to: '/inventory' },
-              { title: 'Housekeeping', subtitle: 'Today tasks', data: hkDonutData, total: hkSummary?.total_tasks, label: hkHasAct ? 'Tasks' : 'No Activity', colors: ['#2d4a3e','#c2622a'], to: '/housekeeping' },
-              { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTasks.length, label: hortiHasAct ? 'Tasks' : 'No Activity', colors: ['#2d4a3e','#c2622a','#dc2626'], to: '/horticulture' },
+              { title: 'Inventory', subtitle: 'Stock overview', data: invDonut, total: invSummary?.total_items, label: 'Items', palette: DONUT_PALETTE, to: '/inventory' },
+              { title: 'Housekeeping', subtitle: 'Today tasks', data: hkDonutData, total: hkSummary?.total_tasks, label: hkHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/housekeeping' },
+              { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTasks.length, label: hortiHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' },
             ].map(card => (
               <Card key={card.title}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -329,11 +343,11 @@ export default function DashboardPage() {
                   </div>
                   <Link to={card.to}><Btn size="sm" variant="ghost">View →</Btn></Link>
                 </div>
-                <DonutChart data={card.data} total={card.total} label={card.label} size={160} />
+                <DonutChart data={card.data} total={card.total} label={card.label} size={160} palette={card.palette} />
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
                   {card.data.filter(d => d.name !== 'No Activity').map((d, i) => (
                     <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: card.colors[i] || PALETTE[i], display: 'inline-block' }} />
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: card.palette[i % card.palette.length], display: 'inline-block' }} />
                       {d.name}: <strong>{d.value}</strong>
                     </div>
                   ))}

@@ -3,6 +3,19 @@ import { useAuth } from '../context/AuthContext'
 import { useNotifications } from '../context/NotificationContext'
 import { APP_NAME } from '../shared/constants'
 
+if (typeof document !== 'undefined' && !document.getElementById('sidebar-hover-styles')) {
+  const style = document.createElement('style')
+  style.id = 'sidebar-hover-styles'
+  style.textContent = `
+    .sidebar-nav-link:not(.is-active):hover,
+    .sidebar-nav-link:not(.is-active):focus-visible {
+      --sidebar-link-bg: rgba(255, 255, 255, 0.08);
+      --sidebar-link-color: #fff;
+    }
+  `
+  document.head.appendChild(style)
+}
+
 function Badge({ count, yellow }) {
   if (!count || count === 0) return null
   return (
@@ -116,6 +129,7 @@ export default function Sidebar() {
           <NavLink
             key={to}
             to={to}
+            className={({ isActive }) => `sidebar-nav-link${isActive ? ' is-active' : ''}`}
             style={({ isActive }) => ({
               display: 'flex',
               alignItems: 'center',
@@ -123,8 +137,8 @@ export default function Sidebar() {
               padding: '10px 12px',
               borderRadius: 9,
               marginBottom: 3,
-              color: isActive ? '#fff' : 'rgba(255,255,255,0.65)',
-              background: isActive ? 'rgba(255,255,255,0.14)' : 'transparent',
+              color: isActive ? '#fff' : 'var(--sidebar-link-color, rgba(255,255,255,0.65))',
+              background: isActive ? 'rgba(255,255,255,0.14)' : 'var(--sidebar-link-bg, transparent)',
               fontWeight: isActive ? 700 : 500,
               fontSize: 13,
               transition: 'all 0.15s',
