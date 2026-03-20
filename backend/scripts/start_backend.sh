@@ -1,5 +1,6 @@
-#!/bin/sh
-set -eu
+#!/bin/bash
+set -e
+set -u
 
 printf '%s\n' "Applying database migrations..."
 python manage.py migrate --noinput -v 0

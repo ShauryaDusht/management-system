@@ -39,7 +39,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-    command: sh /app/scripts/start_backend.sh
+    command: bash /app/scripts/start_backend.sh
 
   frontend-admin:
     build: ./frontend-admin
