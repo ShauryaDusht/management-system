@@ -2,13 +2,11 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
 from apps.reports.models import MonthlyPurchasePlan
-from apps.reports.purchase_plan_utils import build_default_purchase_plan_data, merge_purchase_plan_data
-
-
-DEFAULT_PERIODS = [
-    (2, 2026),
-    (3, 2026),
-]
+from apps.reports.purchase_plan_utils import (
+    build_default_purchase_plan_data,
+    list_default_purchase_plan_periods,
+    merge_purchase_plan_data,
+)
 
 
 class Command(BaseCommand):
@@ -25,7 +23,7 @@ class Command(BaseCommand):
             or User.objects.filter(role="admin").order_by("id").first()
         )
 
-        for month, year in DEFAULT_PERIODS:
+        for month, year in list_default_purchase_plan_periods():
             plan, created = MonthlyPurchasePlan.objects.get_or_create(
                 month=month,
                 year=year,

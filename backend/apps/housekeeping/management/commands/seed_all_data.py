@@ -22,41 +22,45 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        self.stdout.write(self.style.SUCCESS('Starting full data bootstrap...'))
+        verbosity = options.get('verbosity', 1)
+
+        def log(message):
+            if verbosity > 0:
+                self.stdout.write(self.style.SUCCESS(message))
+
+        log('Starting full data bootstrap...')
 
         call_command('loaddata', 'apps/inventory/fixtures/inventory.json', verbosity=0)
-        self.stdout.write(self.style.SUCCESS('  [OK] Inventory fixture loaded'))
+        log('  [OK] Inventory fixture loaded')
 
         call_command('seed_housekeeping', verbosity=0)
-        self.stdout.write(self.style.SUCCESS('  [OK] Housekeeping/users seeded'))
+        log('  [OK] Housekeeping/users seeded')
 
         call_command('sync_guesthouse_director_staff', quiet=True)
-        self.stdout.write(self.style.SUCCESS('  [OK] Housekeeping live roster/schedule sync applied'))
+        log('  [OK] Housekeeping live roster/schedule sync applied')
 
         call_command('update_inventory_items', verbosity=0)
-        self.stdout.write(self.style.SUCCESS('  [OK] Inventory item codes/costs updated'))
+        log('  [OK] Inventory item codes/costs updated')
 
         call_command('sync_real_inventory_stock', quiet=True)
-        self.stdout.write(self.style.SUCCESS('  [OK] Real inventory stock baseline synced'))
+        log('  [OK] Real inventory stock baseline synced')
 
         call_command('sync_monthly_purchase_plans', quiet=True)
-        self.stdout.write(self.style.SUCCESS('  [OK] Monthly purchase plans synced'))
+        log('  [OK] Monthly purchase plans synced')
 
         if options.get('dump_fixtures'):
             self._dump_fixtures()
-            self.stdout.write(self.style.SUCCESS('  [OK] UTF-8 fixtures refreshed'))
+            log('  [OK] UTF-8 fixtures refreshed')
 
         User = get_user_model()
-        self.stdout.write(self.style.SUCCESS(
-            '\n'.join([
-                'BOOTSTRAP COMPLETE',
-                f'  Users:           {User.objects.count()}',
-                f'  HK Areas:        {HKArea.objects.count()}',
-                f'  HK User-Areas:   {HKUserArea.objects.count()}',
-                f'  HK Workers:      {HKWorker.objects.count()}',
-                f'  HK Templates:    {HKScheduleTemplate.objects.count()}',
-            ])
-        ))
+        log('\n'.join([
+            'BOOTSTRAP COMPLETE',
+            f'  Users:           {User.objects.count()}',
+            f'  HK Areas:        {HKArea.objects.count()}',
+            f'  HK User-Areas:   {HKUserArea.objects.count()}',
+            f'  HK Workers:      {HKWorker.objects.count()}',
+            f'  HK Templates:    {HKScheduleTemplate.objects.count()}',
+        ]))
 
     def _dump_fixtures(self):
         fixtures_dir = settings.BASE_DIR / 'fixtures'

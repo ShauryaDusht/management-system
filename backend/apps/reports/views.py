@@ -31,8 +31,10 @@ from .generators import (
 from .models import ItemConsumptionReport, MonthlyPurchasePlan, MonthlyReport
 from .purchase_plan_utils import (
     build_default_purchase_plan_data,
+    list_default_purchase_plan_periods,
     normalize_purchase_plan_rows,
     serialize_purchase_plan,
+    serialize_purchase_plan_summary,
 )
 from .serializers import MonthlyReportListSerializer, MonthlyReportDetailSerializer
 
@@ -247,7 +249,7 @@ class DashboardInsightsView(APIView):
         type_value = (area_type or '').strip().lower()
         if type_value == 'hostel':
             return 'hostels'
-        if name.startswith('Academic Block') or name in {'Academic Common Area', 'New AB U-Shape', 'New Academy'}:
+        if name.startswith('Academic Block') or name in {'Old Academic Common Area', 'New AB U-Shape', 'New Academic Common Area', 'Old Academic Reliever', 'New Academic Reliever'}:
             return 'academic'
         if name.lower() in {'hostel common area', 'common area', 'hostels reliever'}:
             return 'hostels'
@@ -1567,6 +1569,33 @@ class AnnualBudgetView(APIView):
         })
 
 
+def get_or_create_purchase_plan(month, year, user=None):
+    plan, created = MonthlyPurchasePlan.objects.get_or_create(
+        month=month,
+        year=year,
+        defaults={
+            'data': build_default_purchase_plan_data(month, year),
+            'updated_by': user,
+        },
+    )
+    if created:
+        return plan
+
+    normalized = normalize_purchase_plan_rows(
+        [{'item_id': item_id, **payload} for item_id, payload in (plan.data or {}).items()],
+        month,
+        year,
+    )
+    if normalized != (plan.data or {}):
+        plan.data = normalized
+        if user and plan.updated_by_id is None:
+            plan.updated_by = user
+            plan.save(update_fields=['data', 'updated_by', 'updated_at'])
+        else:
+            plan.save(update_fields=['data', 'updated_at'])
+    return plan
+
+
 class MonthlyPurchasePlanView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -1584,30 +1613,7 @@ class MonthlyPurchasePlanView(APIView):
         return month, year
 
     def _get_or_create_plan(self, month, year, user=None):
-        plan, created = MonthlyPurchasePlan.objects.get_or_create(
-            month=month,
-            year=year,
-            defaults={
-                'data': build_default_purchase_plan_data(month, year),
-                'updated_by': user,
-            },
-        )
-        if created:
-            return plan
-
-        normalized = normalize_purchase_plan_rows(
-            [{'item_id': item_id, **payload} for item_id, payload in (plan.data or {}).items()],
-            month,
-            year,
-        )
-        if normalized != (plan.data or {}):
-            plan.data = normalized
-            if user and plan.updated_by_id is None:
-                plan.updated_by = user
-                plan.save(update_fields=['data', 'updated_by', 'updated_at'])
-            else:
-                plan.save(update_fields=['data', 'updated_at'])
-        return plan
+        return get_or_create_purchase_plan(month, year, user=user)
 
     def get(self, request):
         month, year = self._parse_period(request)
@@ -1633,6 +1639,20 @@ class MonthlyPurchasePlanView(APIView):
         return Response(serialize_purchase_plan(plan))
 
 
+class MonthlyPurchasePlanPeriodsView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        for month, year in list_default_purchase_plan_periods():
+            get_or_create_purchase_plan(month, year, user=request.user)
+
+        periods = [
+            serialize_purchase_plan_summary(plan)
+            for plan in MonthlyPurchasePlan.objects.select_related('updated_by').all().order_by('year', 'month')
+        ]
+        return Response({'periods': periods})
+
+
 class MonthlyPurchasePlanCSVView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -1646,14 +1666,7 @@ class MonthlyPurchasePlanCSVView(APIView):
         if not (1 <= month <= 12) or year < 2000 or year > 2100:
             return Response({'detail': 'Valid month and year are required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        plan, _ = MonthlyPurchasePlan.objects.get_or_create(
-            month=month,
-            year=year,
-            defaults={
-                'data': build_default_purchase_plan_data(month, year),
-                'updated_by': request.user,
-            },
-        )
+        plan = get_or_create_purchase_plan(month, year, user=request.user)
         payload = serialize_purchase_plan(plan)
 
         output = io.StringIO()

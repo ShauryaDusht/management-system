@@ -2,8 +2,9 @@ import datetime
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
+from django.db.models import Count
 
-from apps.housekeeping.models import HKArea, HKScheduleTemplate, HKWorker
+from apps.housekeeping.models import HKArea, HKScheduleTemplate, HKUserArea, HKWorker
 
 
 def _normalize(value):
@@ -24,7 +25,8 @@ def _minutes_to_time(total_minutes):
 class Command(BaseCommand):
     help = (
         "Sync the real worker roster for Guest House New, Director Bungalow, "
-        "hostel areas, hostel common area, the hostel reliever pool, and "
+        "Central Arcade, Sports Complex, Research Park, Solid Waste Management, hostel areas, "
+        "hostel common area, the hostel reliever pool, and "
         "academic blocks/common-area staffing, "
         "including phones, pay codes, reliever flags, and schedule labels."
     )
@@ -229,6 +231,61 @@ class Command(BaseCommand):
         },
     ]
 
+    BHARAT_SUPERVISOR_BY_AREA = {
+        "Central Arcade": "bharat.solanki",
+        "Sports Complex": "bharat.solanki",
+    }
+
+    BHARAT_TARGET_ROSTER = [
+        {"area": "Central Arcade", "name": "Chirag Vaghela", "phone": "", "pay_code": "303", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Chirag Vaghela"]},
+        {"area": "Central Arcade", "name": "Sunil Vaghela", "phone": "", "pay_code": "455", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Sunil Vaghela"]},
+        {"area": "Central Arcade", "name": "Vijay Parmar", "phone": "", "pay_code": "329", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Vijay Parmar", "Parmar Vijaykumar"]},
+        {"area": "Central Arcade", "name": "Ramesh Parmar", "phone": "", "pay_code": "429", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Ramesh Parmar", "Rameshbhai Ambalal Parmar"]},
+        {"area": "Central Arcade", "name": "Nikhil Makvana", "phone": "", "pay_code": "364", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Nikhil", "Nikhil Makvana", "Nikhil makvana"]},
+        {"area": "Central Arcade", "name": "Bhavna Ben Chavda", "phone": "", "pay_code": "218", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Bhavnaben", "Bhavna ben chavda", "Chavada Bhavanaben Kishorbhai"]},
+        {"area": "Central Arcade", "name": "Sikandar Bhangi", "phone": "", "pay_code": "389", "worker_type": "general", "shift": "day", "is_reliever": False, "legacy_names": ["Sikandar bhangi", "Sikandarbhai Dungarbhai Bhangi"]},
+        {"area": "Sports Complex", "name": "Shohil J Vaghela", "phone": "", "pay_code": "257", "worker_type": "washroom", "shift": "evening", "is_reliever": False, "legacy_names": ["Sohil Vaghela", "Shohil Vaghela", "Shohil.J.vaghela", "Sohilkumar Vaghela"]},
+        {"area": "Sports Complex", "name": "Ramesh N Parmar", "phone": "", "pay_code": "411", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Ramesh Sports", "Ramesh.N.parmar", "Rameshbhai Narsinhbhai Parmar"]},
+        {"area": "Sports Complex", "name": "Jaydeep D Vaghela", "phone": "", "pay_code": "447", "worker_type": "general", "shift": "day", "is_reliever": False, "legacy_names": ["Jaydeep Vaghela", "Jaydeep.D.vaghela", "Jaydip Dineshbhai Vaghela"]},
+        {"area": "Sports Complex", "name": "Rahul J Vaghela", "phone": "", "pay_code": "337", "worker_type": "washroom", "shift": "evening", "is_reliever": False, "legacy_names": ["Rahul Vaghela", "Rahul.J.vgahela", "Rahul.J.vaghela", "Vaghela Rahulkumar Jasubhai"]},
+        {"area": "Sports Complex", "name": "Akshay R Parmar", "phone": "", "pay_code": "414", "worker_type": "floor", "shift": "evening", "is_reliever": False, "legacy_names": ["Akshay Parmar", "Akshay.R.parmar", "Axaykumar Rameshbhai Parmar"]},
+        {"area": "Sports Complex", "name": "Rudhreshben S Solanki", "phone": "", "pay_code": "282", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Retuben Solanki", "Rudhreshben.S. solanki", "Rudhreshben S Solanki", "Rudreshaben Sandipkumar Solanki"]},
+        {"area": "Sports Complex", "name": "Anitaben", "phone": "", "pay_code": "385", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Anita Solanki", "Anitaben", "Solanki Anitaben Rameshbhai"]},
+        {"area": "Sports Complex", "name": "Uttam Vaghela", "phone": "", "pay_code": "428", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Uttam Vaghela", "Vaghela Uttambhai"]},
+        {"area": "Sports Complex", "name": "Rajendra Bhai Chavda", "phone": "", "pay_code": "354", "worker_type": "floor", "shift": "evening", "is_reliever": False, "legacy_names": ["Rajendra Chavda", "Rajendra Bhai chavda", "Rajendra Amathabhai Chavda"]},
+    ]
+
+    RESEARCH_SUPERVISOR_BY_AREA = {
+        "Research Park": "maulik.patel",
+    }
+
+    RESEARCH_TARGET_ROSTER = [
+        {"area": "Research Park", "name": "Mahesh Solanki", "phone": "7046959603", "pay_code": "267", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Mahesh Solanki"]},
+        {"area": "Research Park", "name": "Thakor Ajaykumar Prahladji", "phone": "8780940745", "pay_code": "349", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Ajay Thakor", "Thakor Ajaykumar Prahladji"]},
+        {"area": "Research Park", "name": "Sailesh A Vaghela", "phone": "7284950619", "pay_code": "266", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Shailesh Vaghela", "Sailesh Vaghela", "Vaghela Shaileshbhai", "Vaghela Shaileshkumar"]},
+        {"area": "Research Park", "name": "Vaghela Dharmishtha Ben", "phone": "9328002335", "pay_code": "264", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Dharmishtaben", "Vaghela Dharmishtha Ben"]},
+    ]
+
+    SWM_SUPERVISOR_BY_AREA = {
+        "Solid Waste Management": "pradip.swm",
+    }
+
+    SWM_TARGET_ROSTER = [
+        {"area": "Solid Waste Management", "name": "Jitendrakumar Kantiji Thakor", "phone": "", "pay_code": "238", "worker_type": "swm", "shift": "day", "is_reliever": False, "legacy_names": ["Jitendra bhai Thakur"]},
+        {"area": "Solid Waste Management", "name": "Kantiji Varvaji Thakor", "phone": "", "pay_code": "140", "worker_type": "swm", "shift": "day", "is_reliever": False, "legacy_names": ["Kanti bhai Thakur", "Kanti bhai Thakor"]},
+        {"area": "Solid Waste Management", "name": "Baldevbhai Mohanbhai Vaghela", "phone": "", "pay_code": "124", "worker_type": "swm", "shift": "day", "is_reliever": False, "legacy_names": ["Baldevbhai Vaghela"]},
+        {"area": "Solid Waste Management", "name": "Kishankumar Yogeshji Thakor", "phone": "", "pay_code": "479", "worker_type": "swm", "shift": "day", "is_reliever": False, "legacy_names": []},
+        {"area": "Solid Waste Management", "name": "Shaileshbhai Mahendrabhai Vaghela", "phone": "", "pay_code": "453", "worker_type": "swm", "shift": "day", "is_reliever": False, "legacy_names": ["Saleshbhai Vaghela", "Shaileshbhai Vaghela"]},
+        {"area": "Solid Waste Management", "name": "Shaileshbhai Kaluji Thakor", "phone": "", "pay_code": "66", "worker_type": "swm", "shift": "day", "is_reliever": False, "legacy_names": ["Salesh bhai Thakur", "Shailesh bhai Thakur"]},
+        {"area": "Solid Waste Management", "name": "Shaileshkumar Ramanbhai Solanki", "phone": "", "pay_code": "443", "worker_type": "swm", "shift": "day", "is_reliever": False, "legacy_names": []},
+        {"area": "Solid Waste Management", "name": "Rajnikant Narsinhbhai Parmar", "phone": "", "pay_code": "444", "worker_type": "swm", "shift": "day", "is_reliever": False, "legacy_names": ["Rajnibhai Parmar", "Rajnikant Parmar"]},
+        {"area": "Solid Waste Management", "name": "Sedhaji Amratbhai Raval", "phone": "", "pay_code": "409", "worker_type": "swm", "shift": "day", "is_reliever": False, "legacy_names": ["Satish bhai Raval"]},
+        {"area": "Solid Waste Management", "name": "Haribhai Amratbhai Parmar", "phone": "", "pay_code": "480", "worker_type": "swm", "shift": "day", "is_reliever": False, "legacy_names": []},
+        {"area": "Solid Waste Management", "name": "Naginbhai Babubhai Chauhan", "phone": "", "pay_code": "063", "worker_type": "swm", "shift": "day", "is_reliever": False, "legacy_names": ["Naveenbhai Chauhan"]},
+        {"area": "Solid Waste Management", "name": "Dineshbhai Babubhai Chauhan", "phone": "", "pay_code": "146", "worker_type": "swm", "shift": "day", "is_reliever": False, "legacy_names": []},
+        {"area": "Solid Waste Management", "name": "Sunilbhai Prabhatji Thakor", "phone": "", "pay_code": "407", "worker_type": "swm", "shift": "day", "is_reliever": False, "legacy_names": []},
+    ]
+
     SCHEDULE_UPDATES = [
         ("Guest House New", "floor", 1, "Raju: Ground Floor Office, Reception and Front Corridor", "Dusting, sweeping and mopping"),
         ("Guest House New", "floor", 2, "Raju: Parking, Washroom and Lobby Touch Up", "Ladies/Gents/Handicapped washroom, lobby and dining passage"),
@@ -332,7 +389,15 @@ class Command(BaseCommand):
         "Academic Block 7": "bipin.vaghela",
         "Academic Block 8": "mukesh.vaghela",
         "Academic Block 9": "bipin.vaghela",
-        "Academic Common Area": "bipin.vaghela",
+        "Academic Block 10": "shailesh.prajapati",
+        "Academic Block 11": "shailesh.prajapati",
+        "Academic Block 12": "kaushik.parmar",
+        "Academic Block 13": "kaushik.parmar",
+        "Old Academic Common Area": "bipin.vaghela",
+        "New AB U-Shape": "shailesh.prajapati",
+        "New Academic Common Area": "kaushik.parmar",
+        "Old Academic Reliever": "mukesh.vaghela",
+        "New Academic Reliever": "kaushik.parmar",
     }
 
     ACADEMIC_TARGET_ROSTER = [
@@ -352,13 +417,31 @@ class Command(BaseCommand):
         {"area": "Academic Block 6", "name": "Hitenkumar Parmar", "phone": "8866745431", "pay_code": "307", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Hiten", "Hiten R Parmar"]},
         {"area": "Academic Block 7", "name": "Gurjar Chandrikaben", "phone": "9737520471", "pay_code": "74", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Chandrikaben"]},
         {"area": "Academic Block 7", "name": "Parmar Nikulkumar Punjabhai", "phone": "8155861394", "pay_code": "309", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Nikhil", "Nikul", "Elesh"]},
-        {"area": "Academic Block 8", "name": "Ajaykumar Solanki", "phone": "8401109316", "pay_code": "281", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Ajay", "Satish bhai Raval"]},
-        {"area": "Academic Block 8", "name": "Solanki Akashkumar Hasmukhbhai", "phone": "8160847423", "pay_code": "253", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Akash"]},
-        {"area": "Academic Block 8", "name": "Pravinbhai Vaghela", "phone": "9624126018", "pay_code": "400", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Pravinbhai M Vaghela"]},
-        {"area": "Academic Block 8", "name": "Jyotsanaben Vaghela", "phone": "9574720027", "pay_code": "231", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Jyostnaben A Vaghela", "Jyostnaben"]},
+        {"area": "Old Academic Reliever", "name": "Ajaykumar Solanki", "phone": "8401109316", "pay_code": "281", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Ajay", "Satish bhai Raval"]},
+        {"area": "Old Academic Reliever", "name": "Solanki Akashkumar Hasmukhbhai", "phone": "8160847423", "pay_code": "253", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Akash"]},
+        {"area": "Old Academic Reliever", "name": "Pravinbhai Vaghela", "phone": "9624126018", "pay_code": "400", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Pravinbhai M Vaghela"]},
+        {"area": "Old Academic Reliever", "name": "Jyotsanaben Vaghela", "phone": "9574720027", "pay_code": "231", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Jyostnaben A Vaghela", "Jyostnaben"]},
         {"area": "Academic Block 9", "name": "Jay Kumar Solanki", "phone": "8511476360", "pay_code": "105", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Jay", "Jay Solanki"]},
-        {"area": "Academic Common Area", "name": "Vaghela Bhaveshbhai Narnabhai", "phone": "9974738575", "pay_code": "315", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Bhavesh"]},
-        {"area": "Academic Common Area", "name": "Vaniya Nikhilkumar Bhaveshbhai", "phone": "8849436518", "pay_code": "314", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Nikhil"]},
+        {"area": "Academic Block 10", "name": "Solanki Parthkumar Jagdishbhai", "phone": "", "pay_code": "384", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Parth Solanki"]},
+        {"area": "Academic Block 10", "name": "Hiteshbhai Solanki", "phone": "", "pay_code": "434", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Hitesh Solanki"]},
+        {"area": "Academic Block 10", "name": "Patel Sangitaben Maheshbhai", "phone": "", "pay_code": "412", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Sangitaben", "Sangeetaben Patel", "Retuben Solanki"]},
+        {"area": "Academic Block 11", "name": "Makwana Sunilbhai Amrutbhai", "phone": "", "pay_code": "348", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Sunil Makwana"]},
+        {"area": "Academic Block 11", "name": "Bhangi Ileshbhai Ishvarbhai", "phone": "", "pay_code": "361", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Elesh", "Elesh Bhangi", "Elesh bhange", "Parmar Nikulkumar Punjabhai"]},
+        {"area": "Academic Block 11", "name": "Kailashben Parmar", "phone": "", "pay_code": "102", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Kailashben", "Kailash ben", "Kailish ben"]},
+        {"area": "Academic Block 12", "name": "Gautambhai Vaghela", "phone": "", "pay_code": "333", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Gautam Vaghela"]},
+        {"area": "Academic Block 12", "name": "Parmar Devendra Dalpatbhai", "phone": "", "pay_code": "437", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Devendra"]},
+        {"area": "Academic Block 12", "name": "Sonala Manishaben", "phone": "", "pay_code": "356", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Chandrika ben", "Chandrikaben", "Manisha Ben"]},
+        {"area": "Academic Block 13", "name": "Vaghela Maheshbhai Dineshbhai", "phone": "", "pay_code": "402", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Mahesh Solanki", "Mahesh Vaghela", "Mahesh Raval"]},
+        {"area": "Academic Block 13", "name": "Vaghela Padma", "phone": "", "pay_code": "347", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Padmaben Vaghela", "Padma"]},
+        {"area": "Academic Block 13", "name": "Rathod Ajaykumar", "phone": "", "pay_code": "93", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Ajay Rathod"]},
+        {"area": "Academic Block 13", "name": "Parmar Krunalbhai", "phone": "", "pay_code": "390", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Krunal Parmar", "Kunal Parmar"]},
+        {"area": "Academic Block 13", "name": "Jigneshkumar Babubhai Solanki", "phone": "", "pay_code": "363", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Jignesh Solanki", "Gignesh"]},
+        {"area": "Old Academic Common Area", "name": "Vaghela Bhaveshbhai Narnabhai", "phone": "9974738575", "pay_code": "315", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Bhavesh"]},
+        {"area": "Old Academic Common Area", "name": "Vaniya Nikhilkumar Bhaveshbhai", "phone": "8849436518", "pay_code": "314", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Nikhil"]},
+        {"area": "New AB U-Shape", "name": "Akshybhai Vaghela", "phone": "", "pay_code": "308", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Akshay Parmar", "Akshay Vaghela", "Satish Vaghela", "Hiteshkumar Gafulbhai Vaghela"]},
+        {"area": "New Academic Common Area", "name": "Vasudev Jitendrakumar Baldevbhai", "phone": "", "pay_code": "377", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Jitendra Vasudev"]},
+        {"area": "New Academic Reliever", "name": "Gurjar Niruben", "phone": "", "pay_code": "111", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Neru ben", "Niruben"]},
+        {"area": "New Academic Reliever", "name": "Sonara Hitendrakumar Punjabhai", "phone": "", "pay_code": "448", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Hitendra sonara", "Hitendra Sonara", "Hiten"]},
     ]
 
     ACADEMIC_SCHEDULE_UPDATES = [
@@ -367,26 +450,138 @@ class Command(BaseCommand):
         ("Academic Block 4", "washroom", 1, "AB-4: Washroom Touch Up", "Varshaben + Hitesh + Harshad"),
         ("Academic Block 7", "washroom", 1, "AB-7: Washroom Touch Up", "Chandrikaben + Nikul"),
         ("Academic Block 8", "floor", 1, "AB-8: Lal Minar Tower Cleaning Support", "Ajay + Akash + Pravin + Jyotsanaben"),
+        ("Academic Block 8", "floor", 2, "AB-8: First Floor Passage and Ramp Cleaning", ""),
+        ("Academic Block 8", "floor", 4, "AB-8: Indoor Sweeping and Mopping", "Every 15 days"),
+        ("Academic Block 8", "floor", 5, "AB-8: Month-end Additional Cleaning Check", "Month ending 2 times"),
+        ("Old Academic Common Area", "floor", 1, "Old Academic Common Area: All Blocks Common Area + Marble Cleaning", "Bhavesh + Nikhil"),
+        ("Old Academic Common Area", "floor", 3, "Old Academic Common Area: Block-07 Terrace Side Railing Dusting", ""),
+        ("Old Academic Common Area", "all", 1, "Sunday Deep Clean: Old Academic Common Area Samved Area Scrubbing and Washing", "Weekly Sunday task"),
+        ("New Academic Common Area", "floor", 1, "New Academic Common Area: Sweeping and Mopping", "Jitendra Vasudev"),
+        ("New Academic Common Area", "floor", 2, "New Academic Common Area: Blocks 10-13 Common Area Cleaning - Round 1", ""),
+        ("New Academic Common Area", "floor", 4, "New Academic Common Area: Blocks 10-13 Common Area Cleaning - Round 2", ""),
     ]
 
     def add_arguments(self, parser):
         parser.add_argument("--quiet", action="store_true", help="Reduce log output.")
 
+    def _ensure_academic_area_name(self, old_name, new_name):
+        old_area = HKArea.objects.filter(name=old_name).first()
+        new_area = HKArea.objects.filter(name=new_name).first()
+        if old_area and not new_area:
+            old_area.name = new_name
+            old_area.area_type = "academic"
+            old_area.is_active = True
+            old_area.save(update_fields=["name", "area_type", "is_active"])
+            return
+
+        HKArea.objects.get_or_create(name=new_name, defaults={"area_type": "academic"})
+        HKArea.objects.filter(name=new_name).update(area_type="academic", is_active=True)
+
+    def _ensure_active_area(self, name, area_type="academic"):
+        area, _ = HKArea.objects.get_or_create(name=name, defaults={"area_type": area_type})
+        HKArea.objects.filter(pk=area.pk).update(area_type=area_type, is_active=True)
+        return HKArea.objects.get(pk=area.pk)
+
+    def _ensure_user_area_assignment(self, users_by_username, supervisor_by_area):
+        for area_name, username in supervisor_by_area.items():
+            user = users_by_username.get(username)
+            area = HKArea.objects.filter(name=area_name, is_active=True).first()
+            if user and area:
+                HKUserArea.objects.get_or_create(user=user, area=area)
+
+    def _restore_academic_block_8_templates(self):
+        academic_block_8 = self._ensure_active_area("Academic Block 8")
+        old_academic_reliever = HKArea.objects.filter(name="Old Academic Reliever", is_active=True).first()
+
+        if old_academic_reliever:
+            HKScheduleTemplate.objects.filter(area=old_academic_reliever).update(area=academic_block_8)
+
+        task_defaults = [
+            (1, datetime.time(8, 0), datetime.time(12, 0), "AB-8: Lal Minar Tower Cleaning Support", "Ajay + Akash + Pravin + Jyotsanaben"),
+            (2, datetime.time(12, 0), datetime.time(13, 0), "AB-8: First Floor Passage and Ramp Cleaning", ""),
+            (3, datetime.time(13, 0), datetime.time(14, 0), "Lunch Break", ""),
+            (4, datetime.time(14, 0), datetime.time(16, 0), "AB-8: Indoor Sweeping and Mopping", "Every 15 days"),
+            (5, datetime.time(16, 0), datetime.time(17, 0), "AB-8: Month-end Additional Cleaning Check", "Month ending 2 times"),
+        ]
+        for order, start_time, end_time, task_name, task_description in task_defaults:
+            template, _ = HKScheduleTemplate.objects.get_or_create(
+                area=academic_block_8,
+                worker_tag="floor",
+                frequency="daily",
+                order=order,
+                defaults={
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "task_name": task_name,
+                    "task_description": task_description,
+                    "requires_photo": order != 3,
+                    "is_active": True,
+                },
+            )
+            changed = False
+            if template.start_time != start_time:
+                template.start_time = start_time
+                changed = True
+            if template.end_time != end_time:
+                template.end_time = end_time
+                changed = True
+            if template.task_name != task_name:
+                template.task_name = task_name
+                changed = True
+            if template.task_description != task_description:
+                template.task_description = task_description
+                changed = True
+            if template.requires_photo != (order != 3):
+                template.requires_photo = (order != 3)
+                changed = True
+            if not template.is_active:
+                template.is_active = True
+                changed = True
+            if changed:
+                template.save(update_fields=[
+                    "start_time",
+                    "end_time",
+                    "task_name",
+                    "task_description",
+                    "requires_photo",
+                    "is_active",
+                ])
+
     def handle(self, *args, **options):
         quiet = options["quiet"]
         User = get_user_model()
-        full_roster = self.TARGET_ROSTER + self.HOSTEL_TARGET_ROSTER + self.ACADEMIC_TARGET_ROSTER
+        self._ensure_academic_area_name("Academic Common Area", "Old Academic Common Area")
+        self._ensure_academic_area_name("New Academy", "New Academic Common Area")
+        self._ensure_academic_area_name("Academic Block 8", "Old Academic Reliever")
+        self._ensure_active_area("Academic Block 8")
+        HKArea.objects.get_or_create(name="New Academic Reliever", defaults={"area_type": "academic"})
+        HKArea.objects.filter(name="New Academic Reliever").update(area_type="academic", is_active=True)
+        full_roster = (
+            self.TARGET_ROSTER
+            + self.BHARAT_TARGET_ROSTER
+            + self.RESEARCH_TARGET_ROSTER
+            + self.SWM_TARGET_ROSTER
+            + self.HOSTEL_TARGET_ROSTER
+            + self.ACADEMIC_TARGET_ROSTER
+        )
         supervisor_by_area = {}
+        supervisor_by_area.update(self.BHARAT_SUPERVISOR_BY_AREA)
+        supervisor_by_area.update(self.RESEARCH_SUPERVISOR_BY_AREA)
+        supervisor_by_area.update(self.SWM_SUPERVISOR_BY_AREA)
         supervisor_by_area.update(self.HOSTEL_SUPERVISOR_BY_AREA)
         supervisor_by_area.update(self.ACADEMIC_SUPERVISOR_BY_AREA)
 
         supervisor_usernames = {"ashok.rathod"}
+        supervisor_usernames.update(self.BHARAT_SUPERVISOR_BY_AREA.values())
+        supervisor_usernames.update(self.RESEARCH_SUPERVISOR_BY_AREA.values())
+        supervisor_usernames.update(self.SWM_SUPERVISOR_BY_AREA.values())
         supervisor_usernames.update(self.HOSTEL_SUPERVISOR_BY_AREA.values())
         supervisor_usernames.update(self.ACADEMIC_SUPERVISOR_BY_AREA.values())
         supervisors_by_username = {
             user.username: user
             for user in User.objects.filter(username__in=sorted(supervisor_usernames))
         }
+        self._ensure_user_area_assignment(supervisors_by_username, supervisor_by_area)
 
         if "ashok.rathod" not in supervisors_by_username:
             self.stderr.write("Supervisor ashok.rathod not found; sync skipped.")
@@ -434,7 +629,8 @@ class Command(BaseCommand):
             )
 
             worker.name = spec["name"]
-            worker.phone = spec["phone"]
+            if spec["phone"] or not worker.phone:
+                worker.phone = spec["phone"]
             worker.pay_code = spec["pay_code"]
             worker.worker_type = spec["worker_type"]
             worker.shift = spec["shift"]
@@ -461,26 +657,10 @@ class Command(BaseCommand):
         old_area_count = old_area_workers.count()
         old_area_workers.update(is_active=False)
 
-        duplicate_count = 0
-
-        # Deactivate duplicate guesthouse/director pay-code rows outside those two areas.
-        target_pay_codes = [spec["pay_code"] for spec in self.TARGET_ROSTER if spec["pay_code"]]
-        duplicate_qs = HKWorker.objects.filter(
-            pay_code__in=target_pay_codes,
-            is_active=True,
-        ).exclude(id__in=keep_ids).exclude(area__name__in=["Guest House New", "Director Bungalow"])
-        duplicate_count += duplicate_qs.count()
-        duplicate_qs.update(is_active=False)
-
-        # Academic Blocks 1-9 + Common Area should not keep stale copies in older areas.
-        academic_managed_areas = sorted({spec["area"] for spec in self.ACADEMIC_TARGET_ROSTER})
-        academic_pay_codes = [spec["pay_code"] for spec in self.ACADEMIC_TARGET_ROSTER if spec["pay_code"]]
-        academic_duplicate_qs = HKWorker.objects.filter(
-            pay_code__in=academic_pay_codes,
-            is_active=True,
-        ).exclude(id__in=keep_ids).exclude(area__name__in=academic_managed_areas)
-        duplicate_count += academic_duplicate_qs.count()
-        academic_duplicate_qs.update(is_active=False)
+        duplicate_count = self._deactivate_cross_area_pay_code_duplicates(full_roster, keep_ids)
+        duplicate_deleted, duplicate_history_rows = self._cleanup_duplicate_active_pay_codes(keep_ids)
+        deleted_unused, kept_with_history = self._cleanup_unused_inactive_workers()
+        self._restore_academic_block_8_templates()
 
         schedule_updates = 0
         for area_name, worker_tag, order, task_name, task_description in self.SCHEDULE_UPDATES + self.ACADEMIC_SCHEDULE_UPDATES:
@@ -500,16 +680,21 @@ class Command(BaseCommand):
 
         balanced_templates = self._rebalance_daily_worker_schedules()
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Synced housekeeping roster: {touched} workers, "
-                f"deactivated {old_area_count} outdated area rows, "
-                f"deactivated {duplicate_count} duplicate pay-code rows, "
-                f"updated {schedule_updates} schedule rows, "
-                f"removed {removed_special_tasks} legacy special tasks, "
-                f"rebalanced {balanced_templates} worker schedule slots."
+        if not quiet:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Synced housekeeping roster: {touched} workers, "
+                    f"deactivated {old_area_count} outdated area rows, "
+                    f"deactivated {duplicate_count} duplicate pay-code rows outside target areas, "
+                    f"deleted {duplicate_deleted} duplicate active rows, "
+                    f"kept {duplicate_history_rows} history-backed duplicate rows inactive, "
+                    f"deleted {deleted_unused} unused inactive rows, "
+                    f"kept {kept_with_history} history-backed inactive rows, "
+                    f"updated {schedule_updates} schedule rows, "
+                    f"removed {removed_special_tasks} legacy special tasks, "
+                    f"rebalanced {balanced_templates} worker schedule slots."
+                )
             )
-        )
 
     def _rebalance_daily_worker_schedules(self):
         updated_templates = []
@@ -686,6 +871,107 @@ class Command(BaseCommand):
 
     def _template_sort_key(self, template):
         return (template.order, template.start_time, template.id)
+
+    def _cleanup_unused_inactive_workers(self, area_names=None):
+        workers = HKWorker.objects.filter(is_active=False)
+        if area_names:
+            workers = workers.filter(area__name__in=area_names)
+        deleted_ids = []
+        kept_with_history = 0
+        for worker in workers:
+            has_history = self._worker_has_history(worker)
+            if has_history:
+                kept_with_history += 1
+                continue
+            deleted_ids.append(worker.id)
+
+        if deleted_ids:
+            HKWorker.objects.filter(id__in=deleted_ids).delete()
+
+        return len(deleted_ids), kept_with_history
+
+    def _worker_has_history(self, worker):
+        return (
+            worker.attendance_records.exists()
+            or worker.task_assignments.exists()
+            or worker.sunday_incharges.exists()
+            or worker.substituted_by.exists()
+            or worker.substitution_slots.exists()
+            or worker.selection_requests.exists()
+            or worker.assigned_daily_records.exists()
+            or worker.monthly_reports.exists()
+        )
+
+    def _deactivate_cross_area_pay_code_duplicates(self, roster_specs, keep_ids):
+        duplicate_count = 0
+        allowed_areas_by_pay_code = {}
+        for spec in roster_specs:
+            pay_code = (spec.get("pay_code") or "").strip()
+            if not pay_code:
+                continue
+            allowed_areas_by_pay_code.setdefault(pay_code, set()).add(spec["area"])
+
+        for pay_code, allowed_areas in allowed_areas_by_pay_code.items():
+            duplicate_qs = HKWorker.objects.filter(pay_code=pay_code, is_active=True).exclude(id__in=keep_ids)
+            if allowed_areas:
+                duplicate_qs = duplicate_qs.exclude(area__name__in=sorted(allowed_areas))
+            duplicate_count += duplicate_qs.count()
+            duplicate_qs.update(is_active=False)
+
+        return duplicate_count
+
+    def _cleanup_duplicate_active_pay_codes(self, keep_ids):
+        deleted_ids = []
+        kept_with_history = 0
+        duplicate_groups = (
+            HKWorker.objects.filter(is_active=True)
+            .exclude(pay_code="")
+            .values("area_id", "pay_code")
+            .annotate(total=Count("id"))
+            .filter(total__gt=1)
+            .order_by("area_id", "pay_code")
+        )
+
+        for group in duplicate_groups:
+            workers = list(
+                HKWorker.objects.filter(
+                    area_id=group["area_id"],
+                    pay_code=group["pay_code"],
+                    is_active=True,
+                ).select_related("area")
+            )
+            if len(workers) <= 1:
+                continue
+
+            history_by_id = {
+                worker.id: self._worker_has_history(worker)
+                for worker in workers
+            }
+            keeper = min(
+                workers,
+                key=lambda worker: (
+                    0 if worker.id in keep_ids else 1,
+                    0 if history_by_id[worker.id] else 1,
+                    0 if (worker.phone or "").strip() else 1,
+                    -len((worker.name or "").strip()),
+                    worker.id,
+                ),
+            )
+
+            for worker in workers:
+                if worker.id == keeper.id:
+                    continue
+                if history_by_id[worker.id]:
+                    worker.is_active = False
+                    worker.save(update_fields=["is_active"])
+                    kept_with_history += 1
+                    continue
+                deleted_ids.append(worker.id)
+
+        if deleted_ids:
+            HKWorker.objects.filter(id__in=deleted_ids).delete()
+
+        return len(deleted_ids), kept_with_history
 
     def _find_worker(self, spec, area, all_workers, keep_ids):
         legacy = {_normalize(spec["name"])}
