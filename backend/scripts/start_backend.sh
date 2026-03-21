@@ -17,4 +17,4 @@ python manage.py sync_guesthouse_director_staff --quiet
 printf '%s\n' "Collecting static files..."
 python manage.py collectstatic --noinput -v 0
 
-exec python manage.py runserver 0.0.0.0:8000
+exec python manage.py runserver 0.0.0.0:8000 --noreload
