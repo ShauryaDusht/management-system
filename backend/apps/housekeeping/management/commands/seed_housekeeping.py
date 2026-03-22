@@ -47,7 +47,8 @@ class Command(BaseCommand):
   Workers:   {HKWorker.objects.count()}
   Templates: {HKScheduleTemplate.objects.count()}
 
-All accounts use password: {DEFAULT_PASSWORD}
+Default password for newly created accounts: {DEFAULT_PASSWORD}
+Existing account passwords are preserved.
         '''))
 
     # ─────────────────────────────────────────────────────────────────

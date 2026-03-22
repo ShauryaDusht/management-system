@@ -54,10 +54,10 @@ Dockerized management system with Django backend + React admin frontend.
    ```bash
    docker compose up -d --build
    ```
-5. **Create first admin user (only first time)**
-   ```bash
-   docker compose exec backend python manage.py createsuperuser
-   ```
+5. **Use seeded real accounts**
+   - on a fresh DB, the project creates the real campus users automatically
+   - default password for newly created seeded accounts is `IITGN@2025`
+   - on later restarts or deploys, existing passwords are preserved
 
 ## Module Documentation
 - Beta server deployment: [`BETA_SERVER_DEPLOYMENT.md`](BETA_SERVER_DEPLOYMENT.md)
