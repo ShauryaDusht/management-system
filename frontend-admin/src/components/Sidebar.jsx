@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useNotifications } from '../context/NotificationContext'
-import { APP_NAME } from '../shared/constants'
+import { APP_LOGO_PATH, APP_NAME, APP_TAGLINE } from '../shared/constants'
 
 if (typeof document !== 'undefined' && !document.getElementById('sidebar-hover-styles')) {
   const style = document.createElement('style')
@@ -88,25 +88,19 @@ export default function Sidebar() {
       {/* Logo */}
       <div style={{ padding: '20px 18px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div
+          <img
+            src={APP_LOGO_PATH}
+            alt={APP_NAME}
             style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: 'linear-gradient(135deg, var(--green-700), var(--orange-600))',
-              display: 'grid', placeItems: 'center',
-              color: '#fff', flexShrink: 0,
+              width: 42,
+              height: 42,
+              borderRadius: 14,
+              flexShrink: 0,
+              background: 'rgba(255,255,255,0.95)',
+              padding: 2,
+              boxShadow: '0 6px 16px rgba(0,0,0,0.22)',
             }}
-            aria-hidden="true"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M4 20h16M6 19V9M10 19V9M14 19V9M18 19V9M4 9l8-4 8 4"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
+          />
           <div>
             <div
               style={{
@@ -118,6 +112,9 @@ export default function Sidebar() {
               }}
             >
               {APP_NAME}
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.62)', fontSize: 11, marginTop: 2 }}>
+              {APP_TAGLINE}
             </div>
           </div>
         </div>

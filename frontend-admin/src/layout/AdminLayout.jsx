@@ -1,3 +1,4 @@
+import { APP_LOGO_PATH, APP_NAME } from '../shared/constants'
 import Sidebar from '../components/Sidebar'
 
 export default function AdminLayout({ children, title, subtitle, actions }) {
@@ -33,7 +34,34 @@ export default function AdminLayout({ children, title, subtitle, actions }) {
                 <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 2 }}>{subtitle}</p>
               )}
             </div>
-            {actions && <div style={{ display: 'flex', gap: 8 }}>{actions}</div>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '8px 12px',
+                  border: '1px solid var(--border)',
+                  borderRadius: 999,
+                  background: '#f8faf9',
+                }}
+              >
+                <img
+                  src={APP_LOGO_PATH}
+                  alt={APP_NAME}
+                  style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0 }}
+                />
+                <div style={{ lineHeight: 1.15 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-3)', textTransform: 'uppercase' }}>
+                    App
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--green-900)' }}>
+                    {APP_NAME}
+                  </div>
+                </div>
+              </div>
+              {actions && <div style={{ display: 'flex', gap: 8 }}>{actions}</div>}
+            </div>
           </div>
         )}
         <div style={{ flex: 1, padding: '20px 28px 40px', overflow: 'auto' }}>{children}</div>

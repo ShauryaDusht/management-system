@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">Campus Sanchalika logo</title>
+<desc id="desc">Three-part campus operations emblem for housekeeping, inventory, and horticulture.</desc>
+<defs>
+<linearGradient id="orangeFill" x1="72" y1="70" x2="240" y2="248" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#F19A42"/>
+<stop offset="1" stop-color="#B85C22"/>
+</linearGradient>
+<linearGradient id="goldFill" x1="272" y1="62" x2="446" y2="240" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#E7C854"/>
+<stop offset="1" stop-color="#B88C15"/>
+</linearGradient>
+<linearGradient id="greenFill" x1="120" y1="252" x2="392" y2="442" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#255A42"/>
+<stop offset="1" stop-color="#0F2E24"/>
+</linearGradient>
+<pattern id="gridPattern" width="18" height="18" patternUnits="userSpaceOnUse">
+<path d="M0 0H18M0 0V18" fill="none" stroke="#F3DD81" stroke-width="1"/>
+</pattern>
+</defs>
+<rect width="512" height="512" rx="86" fill="#F7F2EA"/>
+<g stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round">
+<path d="M258 256L78 154A214 214 0 0 1 252 42L306 118A126 126 0 0 0 258 256Z" fill="url(#orangeFill)" stroke-width="16"/>
+<path d="M254 256L308 118A214 214 0 0 1 434 154L434 272A126 126 0 0 0 254 256Z" fill="url(#goldFill)" stroke-width="16"/>
+<path d="M254 256A126 126 0 0 0 92 372L116 438H396L420 372A126 126 0 0 0 254 256Z" fill="url(#greenFill)" stroke-width="16"/>
+</g>
+<path d="M308 118A214 214 0 0 1 434 154L434 272A126 126 0 0 0 308 118Z" fill="url(#gridPattern)" opacity="0.45"/>
+<path d="M120 438H392" stroke="#0C241B" stroke-width="10" stroke-linecap="round"/>
+<path d="M74 152A214 214 0 0 1 252 42" fill="none" stroke="#C66A2E" stroke-width="12" stroke-linecap="round"/>
+<path d="M306 118A214 214 0 0 1 434 154" fill="none" stroke="#C79C26" stroke-width="12" stroke-linecap="round"/>
+<g fill="none" stroke="#5A2412" stroke-linecap="round" stroke-linejoin="round" stroke-width="10">
+<path d="M123 250c28-10 49-28 68-52"/>
+<path d="M188 116l-26 120"/>
+<path d="M119 253l61 21-9 20-70-23z" fill="#D3853E" stroke="#5A2412"/>
+<path d="M100 188c11-6 24-4 29 8"/>
+<path d="M138 136c7-5 17-4 21 4"/>
+<path d="M163 215c4 7 13 11 21 10"/>
+</g>
+<g fill="none" stroke="#5B4A11" stroke-linecap="round" stroke-linejoin="round" stroke-width="9">
+<path d="M308 130h72l28 26v70h-100z"/>
+<path d="M380 130v26h28"/>
+<path d="M360 210h54v58h-54z"/>
+<path d="M377 210v58M395 210v58M360 229h54M360 248h54"/>
+</g>
+<g fill="none" stroke="#B5C85F" stroke-linecap="round" stroke-linejoin="round" stroke-width="10">
+<path d="M255 396V314"/>
+<path d="M255 342c-23-4-42-24-44-49 26 2 45 16 44 49z"/>
+<path d="M255 356c26-5 45-23 48-50-28 3-47 18-48 50z"/>
+<path d="M235 398c-21-10-34-27-38-49 26 4 40 18 38 49z"/>
+<path d="M276 398c21-10 34-27 38-49-26 4-40 18-38 49z"/>
+</g>
+<path d="M136 410c24-24 63-39 120-39 56 0 96 15 120 39" fill="none" stroke="#214436" stroke-width="8" opacity="0.35"/>
+<path d="M111 386c28-31 78-52 145-52 66 0 117 21 145 52" fill="none" stroke="#274C3C" stroke-width="6" opacity="0.2"/>
+</svg>

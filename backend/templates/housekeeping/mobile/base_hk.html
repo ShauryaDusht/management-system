@@ -1,15 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+{% load static %}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>{% block title %}IITGN Housekeeping{% endblock %}</title>
+<link rel="icon" type="image/png" href="{% static 'branding/campus-sanchalika-logo.png' %}">
+<title>{% block title %}Housekeeping{% endblock %} | Campus Sanchalika</title>
 <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#edeae4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
 .hdr{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#2d4a3e,#1e3a30);color:#fff;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 3px 12px rgba(0,0,0,.3)}
 .hdr-l{display:flex;align-items:center;gap:10px}
+.brand-logo{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.95);padding:2px;box-shadow:0 6px 16px rgba(0,0,0,.18);flex-shrink:0}
+.hdr-copy{display:flex;flex-direction:column;gap:2px;line-height:1.05}
+.hdr-app{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.72)}
 .hdr-ttl{font-weight:700;font-size:14px;letter-spacing:.5px}
 .ava{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;text-decoration:none;overflow:hidden;flex-shrink:0}
 .ava img{width:100%;height:100%;object-fit:cover}
@@ -48,7 +53,11 @@ label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4
 <div class="hdr">
   <div class="hdr-l">
     {% block back_btn %}{% endblock %}
-    <span class="hdr-ttl">{% block hdr_title %}IITGN HOUSEKEEPING{% endblock %}</span>
+    <img class="brand-logo" src="{% static 'branding/campus-sanchalika-logo.png' %}" alt="Campus Sanchalika">
+    <span class="hdr-copy">
+      <span class="hdr-app">Campus Sanchalika</span>
+      <span class="hdr-ttl">{% block hdr_title %}HOUSEKEEPING{% endblock %}</span>
+    </span>
   </div>
   {% if request.user.is_authenticated %}
   <a href="/housekeeping/profile/" class="ava">

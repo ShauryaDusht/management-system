@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>{% block title %}Campus Inventory{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{% static 'branding/campus-sanchalika-logo.png' %}">
+    <title>{% block title %}Inventory{% endblock %} | Campus Sanchalika</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
@@ -48,7 +50,10 @@
         .stat-card .stat-value { font-size: 30px; font-weight: 800; line-height: 1; }
         .app-header { background: var(--brand-green); color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
         .app-header .left { display: flex; align-items: center; gap: 10px; }
-        .app-header .title { font-size: 15px; font-weight: 700; letter-spacing: 0.8px; }
+        .app-header .brand-logo { width: 36px; height: 36px; border-radius: 12px; background: rgba(255,255,255,0.96); padding: 2px; flex-shrink: 0; box-shadow: 0 6px 14px rgba(0,0,0,0.18); }
+        .app-header .brand-stack { display: flex; flex-direction: column; gap: 2px; line-height: 1.05; }
+        .app-header .brand-app { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; color: rgba(255,255,255,0.74); text-transform: uppercase; }
+        .app-header .title { font-size: 14px; font-weight: 700; letter-spacing: 0.7px; }
         .back-btn { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.12); color: #fff; }
         .back-btn:active { background: rgba(255,255,255,0.25); }
         .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--brand-green-dk); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; border: 2px solid rgba(255,255,255,0.25); }
@@ -89,7 +94,11 @@
     <header class="app-header">
         <div class="left">
             {% block back_button %}{% endblock %}
-            <span class="title">{% block header_title %}INVENTORY{% endblock %}</span>
+            <img class="brand-logo" src="{% static 'branding/campus-sanchalika-logo.png' %}" alt="Campus Sanchalika">
+            <span class="brand-stack">
+                <span class="brand-app">Campus Sanchalika</span>
+                <span class="title">{% block header_title %}INVENTORY{% endblock %}</span>
+            </span>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
             {% block header_right %}

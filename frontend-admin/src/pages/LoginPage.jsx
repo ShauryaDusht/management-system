@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../context/AuthContext'
+import { APP_LOGO_PATH, APP_NAME, APP_TAGLINE } from '../shared/constants'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -22,7 +23,7 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const user = await login(form.username.trim(), form.password)
+      await login(form.username.trim(), form.password)
       navigate('/dashboard', { replace: true })
     } catch (err) {
       if (err?.code === 'NON_ADMIN') {
@@ -45,10 +46,16 @@ export default function LoginPage() {
 
       <div className="auth-layout">
         <section className="auth-left">
-          <div className="badge">IITGN</div>
-          <h1>Campus Operations Portal</h1>
+          <div className="badge">IIT Gandhinagar</div>
+          <div className="brand-lockup">
+            <img src={APP_LOGO_PATH} alt={APP_NAME} className="brand-logo" />
+            <div>
+              <div className="brand-kicker">{APP_TAGLINE}</div>
+              <h1>{APP_NAME}</h1>
+            </div>
+          </div>
           <p>
-            Manage Inventory, Housekeeping, Horticulture, Reports, and Users in one secure place.
+            Unified operations workspace for inventory, housekeeping, horticulture, reporting, and user administration.
           </p>
 
           <div className="feature-grid">
@@ -76,7 +83,7 @@ export default function LoginPage() {
         <section className="auth-right">
           <header>
             <h2>Welcome Back</h2>
-            <p>Login with your campus management account.</p>
+            <p>Login with your {APP_NAME.toLowerCase()} account.</p>
           </header>
 
           <form onSubmit={handleSubmit} className="auth-form">
@@ -217,6 +224,31 @@ export default function LoginPage() {
           font-size: clamp(28px, 3vw, 40px);
           line-height: 1.08;
           letter-spacing: -0.02em;
+        }
+
+        .brand-lockup {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .brand-logo {
+          width: 82px;
+          height: 82px;
+          border-radius: 24px;
+          background: rgba(255, 255, 255, 0.98);
+          padding: 4px;
+          box-shadow: 0 14px 28px rgba(8, 22, 18, 0.24);
+          flex-shrink: 0;
+        }
+
+        .brand-kicker {
+          margin-bottom: 8px;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          color: rgba(255, 255, 255, 0.72);
+          text-transform: uppercase;
         }
 
         .auth-left p {
@@ -377,6 +409,16 @@ export default function LoginPage() {
 
           .auth-left {
             padding: 28px 24px;
+          }
+
+          .brand-lockup {
+            align-items: flex-start;
+          }
+
+          .brand-logo {
+            width: 68px;
+            height: 68px;
+            border-radius: 20px;
           }
 
           .feature-grid {
