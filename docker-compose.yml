@@ -24,7 +24,7 @@ services:
 
   backend:
     build: ./backend
-    restart: no
+    restart: unless-stopped
     volumes:
       - ./backend:/app
       - media_files:/app/media
@@ -39,17 +39,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py loaddata apps/inventory/fixtures/inventory.json &&
-             python manage.py seed_housekeeping &&
-             python manage.py collectstatic --noinput &&
-             python manage.py runserver 0.0.0.0:8000"
+    command: bash /app/scripts/start_backend.sh
 
 
   frontend-admin:
     build: ./frontend-admin
-    restart: always
+    restart: unless-stopped
+    env_file:
+      - .env
     volumes:
       - ./frontend-admin/src:/app/src
     ports:

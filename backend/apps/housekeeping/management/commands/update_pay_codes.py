@@ -182,20 +182,29 @@ WORKER_PAY_CODES = [
     ('Raju Chamar',      '393'),   # PANKAJKUMAR KANTIBHAI CHAMAR
 
     # Old Guest House
-    ('Mukesh Parmar',    '392'),   # MUKESH KUMAR PARMAR
-    ('Rajesh Chauhan',   '338'),   # CHAUHAN RAJESHKUMAR RANCHHODJI
+    ('Mukesh Parmar',              '392'),   # MUKESH SHAKRABHAI PARMAR
+    ('Mukesh Shakrabhai Parmar',   '392'),
+    ('Rajesh Chauhan',             '338'),   # RAJESH RANCHHODJI CHAUHAN
+    ('Rajesh Ranchhodji Chauhan',  '338'),
 
     # Director Bungalow
     ('Rakesh Parmar',    '431'),   # PARMAR BHADRESHKUMAR NATVARLAL
 
     # Roads & Outdoor
-    ('Prakash Thakor',   '534'),   # THAKOR PRAKASHKUMAR
-    ('Kanji Thakor',     '373'),   # THAKOR MAHESHJI
-    ('Ashokbhai Thakor', '114'),   # ASHOKKUMAR MAHERIYA
-    ('Rohit Thakor',     '417'),   # RAHULKUMAR RATHOD
-    ('Mahesh Raval',     '402'),   # VAGHELA MAHESHBHAI DINESHBHAI
-    ('Chirag Thakor',    '464'),   # THAKOR CHIRAG
-    ('Satish Vaghela',   '308'),   # AKSHYBHAI VAGHELA
+    ('Prakash Thakor',            '534'),   # PRAKASH SHAKARAJI THAKOR
+    ('Prakash Shakaraji Thakor',  '534'),
+    ('Kanji Thakor',              '70'),    # KAMAJI CHANDAJI THAKOR
+    ('Kamaji Chandaji Thakor',    '70'),
+    ('Ashokbhai Thakor',          '67'),    # ASHOKJI MANYAJI THAKOR
+    ('Ashokji Manyaji Thakor',    '67'),
+    ('Rohit Thakor',              '68'),    # ROHITJI RUMALJI THAKOR
+    ('Rohitji Rumalji Thakor',    '68'),
+    ('Mahesh Raval',              '64'),    # MAHESH RANJITBHAI RAVAL
+    ('Mahesh Ranjitbhai Raval',   '64'),
+    ('Chirag Thakor',             '464'),   # CHIRAG GAMPATJI THAKOR
+    ('Chirag Gampatji Thakor',    '464'),
+    ('Satish Vaghela',            '463'),   # SATISH VIKRAMBHAI VAYHELA
+    ('Satish Vikrambhai Vayhela', '463'),
 
     # Solid Waste Management
     ('Salesh bhai Thakur',   '389'),  # SIKANDARBHAI DUNGARBHAI BHANGI

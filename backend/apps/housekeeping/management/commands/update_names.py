@@ -22,7 +22,7 @@ SUPERVISOR_NAMES = {
     'pradip.swm':          ('Pradip', 'Chauhan', 'pradipchauhan783@gmail.com'),
     'shailesh.prajapati':  ('Shailesh Natvarbhai', 'Prajapati', ''),
     'maulik.patel':        ('Maulikkumar Dilipbhai', 'Patel', 'moulikpatel81290@gmail.com'),
-    'narendra.shreemali':  ('Narendrakumar Natvarlal', 'Shrimali', 'narendrashrimali36262@gmail.com'),
+    'narendra.shreemali':  ('Narendrakumar Natvarbhai', 'Shrimali', 'narendrashrimali36262@gmail.com'),
     'bipin.vaghela':       ('Bipinchandra Dineshkumar', 'Vaghela', 'bipin.vaghela4u@gmail.com'),
     'kaushik.parmar':      ('Kaushikkumar Balvantbhai', 'Parmar', 'kaushikparmar7673@gmail.com'),
     'bharat.solanki':      ('Bharat Kumar M.', 'Solanki', 'bharat2545007@gmail.com'),
@@ -186,7 +186,7 @@ WORKER_NAMES = {
     # HITENKUMAR PARMAR
     'Hiten':             'Hitenkumar Parmar',
     # AKSHYBHAI VAGHELA
-    'Satish Vaghela':    'Akshybhai Vaghela',
+    'Satish Vaghela':    'Satish Vikrambhai Vayhela',
     # PARMAR NIKULKUMAR PUNJABHAI
     'Elesh':             'Parmar Nikulkumar Punjabhai',
     # PARMAR ANANDKUMAR
@@ -206,7 +206,8 @@ WORKER_NAMES = {
     # VAGHELA RAHULKUMAR JASUBHAI
     'Rahul Vaghela':     'Vaghela Rahulkumar Jasubhai',
     # CHAUHAN RAJESHKUMAR RANCHHODJI
-    'Rajesh Chauhan':    'Chauhan Rajeshkumar Ranchhodji',
+    'Rajesh Chauhan':    'Rajesh Ranchhodji Chauhan',
+    'Chauhan Rajeshkumar Ranchhodji': 'Rajesh Ranchhodji Chauhan',
     # PARMAR CHANDRIKABEN
     'Kunal Parmar':      'Parmar Chandrikaben',
     # VAGHELA PADMA
@@ -231,7 +232,7 @@ WORKER_NAMES = {
     # MAKWANA NIKHIL
     'Nikul Solanki':     'Makwana Nikhil',
     # THAKOR MAHESHJI
-    'Kanji Thakor':      'Thakor Maheshji',
+    'Kanji Thakor':      'Kamaji Chandaji Thakor',
     # HARSHADKUMAR VAGHELA
     'Harshadkumar':      'Harshadkumar Vaghela',
     # VASUDEV JITENDRAKUMAR BALDEVBHAI
@@ -247,14 +248,15 @@ WORKER_NAMES = {
     # PARMAR KRUNALBHAI
     'Rajnibhai Parmar':  'Parmar Krunalbhai',
     # MUKESH KUMAR PARMAR
-    'Mukesh Parmar':     'Mukesh Kumar Parmar',
+    'Mukesh Parmar':     'Mukesh Shakrabhai Parmar',
+    'Mukesh Kumar Parmar': 'Mukesh Shakrabhai Parmar',
     # PANKAJKUMAR KANTIBHAI CHAMAR
     'Raju Chamar':       'Pankajkumar Kantibhai Chamar',
     # PRAVINBHAI VAGHELA
     'Ravi':              'Pravinbhai Vaghela',
     # VAGHELA MAHESHBHAI DINESHBHAI
     'Mahesh Vaghela':    'Vaghela Maheshbhai Dineshbhai',
-    'Mahesh Raval':      'Vaghela Maheshbhai Dineshbhai',
+    'Mahesh Raval':      'Mahesh Ranjitbhai Raval',
     # PARAMAR GAUTAMKUMAR
     'Gautam Parmar':     'Paramar Gautamkumar',
     # CHAUHAN NILAMBEN
@@ -272,7 +274,7 @@ WORKER_NAMES = {
     'Rajesh':            'Parmar Rajeshbhai',
     'Rajnibhai':         'Parmar Rajeshbhai',
     # RAHULKUMAR RATHOD
-    'Rohit Thakor':      'Rahulkumar Rathod',
+    'Rohit Thakor':      'Rohitji Rumalji Thakor',
     # DIPIKABEN HASAMUKHBHAI PARMAR
     'Deepika Ben':       'Dipikaben Hasamukhbhai Parmar',
     # SHILPABEN D CHAUHAN
@@ -316,10 +318,14 @@ WORKER_NAMES = {
     'Saleshbhai Vaghela':'Urvashiben Nayanbhai Vaghela',
     # SOLANKI LALIT
     'Kanti bhai Thakur': 'Solanki Lalit',
+    # ASHOKJI MANYAJI THAKOR
+    'Ashokbhai Thakor':  'Ashokji Manyaji Thakor',
     # THAKOR CHIRAG
-    'Chirag Thakor':     'Thakor Chirag',
+    'Chirag Thakor':     'Chirag Gampatji Thakor',
+    'Thakor Chirag':     'Chirag Gampatji Thakor',
     # THAKOR PRAKASHKUMAR
-    'Prakash Thakor':    'Thakor Prakashkumar',
+    'Prakash Thakor':    'Prakash Shakaraji Thakor',
+    'Thakor Prakashkumar': 'Prakash Shakaraji Thakor',
     # THAKOR ANILKUMAR NAGINJI
     'Anil Thakor':       'Thakor Anilkumar Naginji',
     # MUKESHJI THAKOR
@@ -463,6 +469,10 @@ class Command(BaseCommand):
 
         # Pay code → canonical name (from user-provided list)
         PAY_CODE_TO_NAME = {
+            '64':  'Mahesh Ranjitbhai Raval',
+            '67':  'Ashokji Manyaji Thakor',
+            '68':  'Rohitji Rumalji Thakor',
+            '70':  'Kamaji Chandaji Thakor',
             '73':  'Sureshbhai Dahyabhai Solanki',
             '74':  'Gurjar Chandrikaben',
             '75':  'Gurjar Hashamukhbhai M',
@@ -567,7 +577,7 @@ class Command(BaseCommand):
             '332': 'Solanki Bhanuben Jagdishbhai',
             '333': 'Gautambhai Vaghela',
             '337': 'Vaghela Rahulkumar Jasubhai',
-            '338': 'Chauhan Rajeshkumar Ranchhodji',
+            '338': 'Rajesh Ranchhodji Chauhan',
             '346': 'Parmar Chandrikaben',
             '347': 'Vaghela Padma',
             '348': 'Makwana Sunilbhai Amrutbhai',
@@ -587,7 +597,7 @@ class Command(BaseCommand):
             '386': 'Mittalben Vaghela',
             '389': 'Sikandarbhai Dungarbhai Bhangi',
             '390': 'Parmar Krunalbhai',
-            '392': 'Mukesh Kumar Parmar',
+            '392': 'Mukesh Shakrabhai Parmar',
             '393': 'Pankajkumar Kantibhai Chamar',
             '400': 'Pravinbhai Vaghela',
             '402': 'Vaghela Maheshbhai Dineshbhai',
@@ -624,8 +634,9 @@ class Command(BaseCommand):
             '458': 'Maheriya Hetalben Ashokbhai',
             '459': 'Urvashiben Nayanbhai Vaghela',
             '461': 'Solanki Lalit',
-            '464': 'Thakor Chirag',
-            '534': 'Thakor Prakashkumar',
+            '463': 'Satish Vikrambhai Vayhela',
+            '464': 'Chirag Gampatji Thakor',
+            '534': 'Prakash Shakaraji Thakor',
             '542': 'Thakor Anilkumar Naginji',
             '801': 'Mukeshji Thakor',
         }

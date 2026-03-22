@@ -36,18 +36,19 @@ Dockerized management system with Django backend + React admin frontend.
    ```
 3. **Update environment values (`.env`)**
    ```env
-   SECRET_KEY=any-random-string-here
-   DEBUG=True   # of course, change to False in production
-   ALLOWED_HOSTS=localhost,127.0.0.1
+   SECRET_KEY=replace-with-a-long-random-string
+   DEBUG=True
+   ALLOWED_HOSTS=localhost,127.0.0.1,backend
 
-   DB_NAME=fill_these_with_real_name
-   DB_USER=fill_these_with_real_name
-   DB_PASSWORD=fill_these_with_real_name
+   DB_NAME=inventory_db
+   DB_USER=postgres
+   DB_PASSWORD=postgres
    DB_PORT=5432
-   DB_HOST=localhost
-   DB_ENGINE=django.db.backends.postgresql
+   DB_HOST=db
 
-   CORS_ALLOWED_ORIGINS=http://localhost:5173 #frontend-admin
+   REDIS_URL=redis://redis:6379/0
+   CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+   VITE_API_URL=http://localhost:8000/api
    ```
 4. **Build and run services**
    ```bash
@@ -59,5 +60,6 @@ Dockerized management system with Django backend + React admin frontend.
    ```
 
 ## Module Documentation
+- Beta server deployment: [`BETA_SERVER_DEPLOYMENT.md`](BETA_SERVER_DEPLOYMENT.md)
 - Inventory: [`backend/apps/inventory/README.md`](backend/apps/inventory/README.md)
 - Housekeeping: [`backend/apps/housekeeping/README.md`](backend/apps/housekeeping/README.md)

@@ -226,7 +226,7 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('bharat.solanki', 'Bharat Kumar M.', 'Solanki', '465', '8511764551', 'bharat2545007@gmail.com', ['Sports Complex', 'Central Arcade']),
             ('mukesh.vaghela', 'Mukeshkumar', 'Vaghela', '466', '9265591836', 'm.vaghela23@gmail.com', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Academic Block 8', 'Old Academic Reliever']),
             ('bipin.vaghela', 'Bipinchandra Dineshkumar', 'Vaghela', '350', '9979627312', 'bipin.vaghela4u@gmail.com', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Old Academic Common Area']),
-            ('narendra.shreemali', 'Narendrakumar Natvarlal', 'Shrimali', '328', '9898661986', 'narendrashrimali36262@gmail.com', ['Roads & Outdoor', 'Old Guest House']),
+            ('narendra.shreemali', 'Narendrakumar Natvarbhai', 'Shrimali', '328', '9898661986', 'narendrashrimali36262@gmail.com', ['Roads & Outdoor', 'Old Guest House']),
             ('pradip.swm', 'Pradip', 'Chauhan', '3', '8200560889', 'pradipchauhan783@gmail.com', ['Solid Waste Management']),
         ]
         for username, first, last, pc, phone, email, areas in supervisors:
@@ -534,21 +534,21 @@ All accounts use password: {DEFAULT_PASSWORD}
             ('Vishal Vaghela Karshanbhai',   '320', '8154945437', 'Guest House New', 'room',     False),
 
             # Old Guest House
-            ('Mukesh Parmar',      '', '7096432339', 'Old Guest House', 'floor', False),
-            ('Rajesh Chauhan',     '', '9674629886', 'Old Guest House', 'room',  False),
+            ('Mukesh Shakrabhai Parmar',   '392', '7096432339', 'Old Guest House', 'floor', False),
+            ('Rajesh Ranchhodji Chauhan',  '338', '9674629886', 'Old Guest House', 'room',  False),
 
             # Director Bungalow
             ('Shailesh Ugarabhai Vaghela', '311', '8128880335', 'Director Bungalow', 'general', False),
             ('Rakesh Ishvarbhai Parmar',   '305', '8238931261', 'Director Bungalow', 'general', False),
 
             # Roads & Outdoor
-            ('Prakash Thakor',     '', '6355540093', 'Roads & Outdoor', 'road', False),
-            ('Kanji Thakor',       '', '8347418371', 'Roads & Outdoor', 'road', False),
-            ('Ashokbhai Thakor',   '', '9054841766', 'Roads & Outdoor', 'road', False),
-            ('Rohit Thakor',       '', '8320831295', 'Roads & Outdoor', 'road', False),
-            ('Mahesh Raval',       '', '7698588092', 'Roads & Outdoor', 'road', False),
-            ('Chirag Thakor',      '', '7041456600', 'Roads & Outdoor', 'road', False),
-            ('Satish Vaghela',     '', '8160402819', 'Roads & Outdoor', 'road', False),
+            ('Prakash Shakaraji Thakor',   '534', '6355540093', 'Roads & Outdoor', 'road', False),
+            ('Kamaji Chandaji Thakor',     '70',  '8347418371', 'Roads & Outdoor', 'road', False),
+            ('Ashokji Manyaji Thakor',     '67',  '9054841766', 'Roads & Outdoor', 'road', False),
+            ('Rohitji Rumalji Thakor',     '68',  '8320831295', 'Roads & Outdoor', 'road', False),
+            ('Mahesh Ranjitbhai Raval',    '64',  '7698588092', 'Roads & Outdoor', 'road', False),
+            ('Chirag Gampatji Thakor',     '464', '7041456600', 'Roads & Outdoor', 'road', False),
+            ('Satish Vikrambhai Vayhela',  '463', '8160402819', 'Roads & Outdoor', 'road', False),
 
             # SWM (Solid Waste Management) - real active roster
             ('Jitendrakumar Kantiji Thakor',      '238', '', 'Solid Waste Management', 'swm', False),
@@ -749,8 +749,8 @@ All accounts use password: {DEFAULT_PASSWORD}
                 worker.save(update_fields=['shift', 'supervisor'])
 
         old_guest_shift_map = {
-            'Mukesh Parmar': 'day',
-            'Rajesh Chauhan': 'day',
+            'Mukesh Shakrabhai Parmar': 'day',
+            'Rajesh Ranchhodji Chauhan': 'day',
         }
         for worker_name, shift in old_guest_shift_map.items():
             worker = HKWorker.objects.filter(name=worker_name, area=self.area('Old Guest House')).first()
@@ -773,13 +773,13 @@ All accounts use password: {DEFAULT_PASSWORD}
         # Roads & Outdoor staffing details
         roads_supervisor = User.objects.filter(username='narendra.shreemali').first()
         roads_shift_map = {
-            'Prakash Thakor': 'day',
-            'Kanji Thakor': 'day',
-            'Ashokbhai Thakor': 'day',
-            'Rohit Thakor': 'day',
-            'Mahesh Raval': 'day',
-            'Chirag Thakor': 'day',
-            'Satish Vaghela': 'day',
+            'Prakash Shakaraji Thakor': 'day',
+            'Kamaji Chandaji Thakor': 'day',
+            'Ashokji Manyaji Thakor': 'day',
+            'Rohitji Rumalji Thakor': 'day',
+            'Mahesh Ranjitbhai Raval': 'day',
+            'Chirag Gampatji Thakor': 'day',
+            'Satish Vikrambhai Vayhela': 'day',
         }
         for worker_name, shift in roads_shift_map.items():
             worker = HKWorker.objects.filter(name=worker_name, area=self.area('Roads & Outdoor')).first()
@@ -1453,16 +1453,16 @@ All accounts use password: {DEFAULT_PASSWORD}
 
             old_guest_tasks = [
                 # order, start, end, task_name, requires_photo, description, worker_tag
-                (1,  '08:00', '08:20', 'Block-1 Office Cleaning',            True,  'Assigned: Mukesh Parmar', 'floor'),
-                (2,  '08:25', '09:00', 'Block-1 and Block-2 Staircase',      True,  'Assigned: Mukesh Parmar', 'floor'),
-                (3,  '09:15', '10:00', 'Room 16/203 Cleaning',                True,  'Assigned: Rajesh Chauhan', 'room'),
-                (4,  '10:15', '11:00', 'Room 1/102 Cleaning',                 True,  'Assigned: Rajesh Chauhan', 'room'),
-                (5,  '11:15', '12:00', 'Room 2/101 Cleaning',                 True,  'Assigned: Rajesh Chauhan', 'room'),
-                (6,  '12:15', '13:00', 'Room 2/202 Cleaning',                 True,  'Assigned: Rajesh Chauhan', 'room'),
+                (1,  '08:00', '08:20', 'Block-1 Office Cleaning',            True,  'Assigned: Mukesh Shakrabhai Parmar', 'floor'),
+                (2,  '08:25', '09:00', 'Block-1 and Block-2 Staircase',      True,  'Assigned: Mukesh Shakrabhai Parmar', 'floor'),
+                (3,  '09:15', '10:00', 'Room 16/203 Cleaning',                True,  'Assigned: Rajesh Ranchhodji Chauhan', 'room'),
+                (4,  '10:15', '11:00', 'Room 1/102 Cleaning',                 True,  'Assigned: Rajesh Ranchhodji Chauhan', 'room'),
+                (5,  '11:15', '12:00', 'Room 2/101 Cleaning',                 True,  'Assigned: Rajesh Ranchhodji Chauhan', 'room'),
+                (6,  '12:15', '13:00', 'Room 2/202 Cleaning',                 True,  'Assigned: Rajesh Ranchhodji Chauhan', 'room'),
                 (7,  '13:00', '14:00', 'Lunch Break',                         False, 'All workers', 'floor'),
-                (8,  '14:00', '14:45', 'Room 16/302 Cleaning',                True,  'Assigned: Rajesh Chauhan', 'room'),
-                (9,  '15:00', '15:45', 'Gate-3 Cleaning',                     True,  'Assigned: Mukesh Parmar', 'floor'),
-                (10, '16:00', '16:45', 'Room 16/301 Cleaning',                True,  'Assigned: Rajesh Chauhan', 'room'),
+                (8,  '14:00', '14:45', 'Room 16/302 Cleaning',                True,  'Assigned: Rajesh Ranchhodji Chauhan', 'room'),
+                (9,  '15:00', '15:45', 'Gate-3 Cleaning',                     True,  'Assigned: Mukesh Shakrabhai Parmar', 'floor'),
+                (10, '16:00', '16:45', 'Room 16/301 Cleaning',                True,  'Assigned: Rajesh Ranchhodji Chauhan', 'room'),
             ]
 
             for order, start, end, name, req_photo, desc, tag in old_guest_tasks:
