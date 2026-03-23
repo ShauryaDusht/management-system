@@ -2,6 +2,7 @@ from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
+from django.shortcuts import redirect
 from config.admin import admin_site
 from apps.core.portal_views import portal_root, portal_login, portal_logout
 from apps.horticulture.views import horticulture_dashboard as horticulture_dashboard_view
@@ -31,8 +32,13 @@ def api_root(_request):
         }
     )
 
+
+def legacy_admin_redirect(_request):
+    return redirect(f'/{settings.ADMIN_URL}')
+
 urlpatterns = [
     path('', backend_root),
+    path('admin/', legacy_admin_redirect),
     path('api/', api_root),
     path(settings.ADMIN_URL, admin_site.urls),
     path('api/auth/', include('apps.users.urls')),

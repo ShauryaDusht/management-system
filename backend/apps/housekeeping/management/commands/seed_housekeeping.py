@@ -31,6 +31,9 @@ class Command(BaseCommand):
     help = 'Seed complete IITGN housekeeping master data (all real data)'
 
     def handle(self, *args, **options):
+        if options.get('verbosity', 1) == 0:
+            self.stdout.write = lambda *args, **kwargs: None
+
         self.stdout.write(self.style.SUCCESS('Starting complete housekeeping seed...'))
 
         self.seed_areas()
