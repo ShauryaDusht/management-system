@@ -1,4 +1,5 @@
 #!/bin/bash
+# Docker bootstrap for local and beta server startup.
 set -e
 set -u
 
