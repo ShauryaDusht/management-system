@@ -51,7 +51,8 @@ services:
     image: nginx:1.25-alpine
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "5173:5173"                         # React admin dashboard
+      - "8000:8000"                         # Django portal, API, housekeeping
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - static_files:/app/staticfiles:ro   # serve Django static files directly
@@ -63,4 +64,4 @@ services:
 volumes:
   postgres_data:
   media_files:
-  static_files:
+  static_files:                            # new shared volume for static files

@@ -112,7 +112,10 @@ SIMPLE_JWT = {
 
 CORS_ALLOWED_ORIGINS = os.getenv(
     'CORS_ALLOWED_ORIGINS',
-    'http://localhost:5173,http://127.0.0.1:5173'
+).split(',')
+
+CSRF_TRUSTED_ORIGINS = os.getenv(
+    'CSRF_TRUSTED_ORIGINS',
 ).split(',')
 
 LOGIN_URL = '/housekeeping/login/'
