@@ -1,5 +1,5 @@
 #!/bin/bash
-# Docker bootstrap for local and beta server startup.
+# Docker bootstrap — runs migrations, seeds data, then starts Gunicorn.
 set -e
 set -u
 
@@ -19,4 +19,10 @@ python manage.py sync_guesthouse_director_staff --quiet
 printf '%s\n' "Collecting static files..."
 python manage.py collectstatic --noinput -v 0
 
-exec python manage.py runserver 0.0.0.0:8000 --noreload
+printf '%s\n' "Starting Gunicorn..."
+exec gunicorn config.wsgi:application \
+    --bind 0.0.0.0:8000 \
+    --workers 3 \
+    --timeout 120 \
+    --access-logfile - \
+    --error-logfile -
