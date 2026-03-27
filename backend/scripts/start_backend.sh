@@ -21,9 +21,11 @@ python manage.py collectstatic --noinput -v 0
 
 printf '%s\n' "Setting up cron job for photo cleanup..."
 chmod +x /app/scripts/cron_cleanup.sh
-# Run cleanup_old_photos every day at 2:00 AM
-echo "0 2 * * * /app/scripts/cron_cleanup.sh >> /var/log/photo_cleanup.log 2>&1" | crontab -
+# Write crontab directly to file — avoids crontab command issues
+echo "0 2 * * * /app/scripts/cron_cleanup.sh >> /var/log/photo_cleanup.log 2>&1" > /etc/cron.d/photo-cleanup
+chmod 0644 /etc/cron.d/photo-cleanup
 cron
+printf '%s\n' "Cron started."
 
 printf '%s\n' "Starting Gunicorn..."
 exec gunicorn config.wsgi:application \
