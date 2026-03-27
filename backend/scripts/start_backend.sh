@@ -1,5 +1,5 @@
 #!/bin/bash
-# Docker bootstrap — runs migrations, seeds data, then starts Gunicorn.
+# Docker bootstrap — runs migrations, seeds data, sets up cron, then starts Gunicorn.
 set -e
 set -u
 
@@ -18,6 +18,12 @@ python manage.py sync_guesthouse_director_staff --quiet
 
 printf '%s\n' "Collecting static files..."
 python manage.py collectstatic --noinput -v 0
+
+printf '%s\n' "Setting up cron job for photo cleanup..."
+chmod +x /app/scripts/cron_cleanup.sh
+# Run cleanup_old_photos every day at 2:00 AM
+echo "0 2 * * * /app/scripts/cron_cleanup.sh >> /var/log/photo_cleanup.log 2>&1" | crontab -
+cron
 
 printf '%s\n' "Starting Gunicorn..."
 exec gunicorn config.wsgi:application \
