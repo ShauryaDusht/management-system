@@ -1322,6 +1322,15 @@ def _public_gallery_host(request):
     hostname = host.split(":")[0].lower()
     if hostname in {"backend", "web", "app", "django", "server"}:
         return "localhost:8000"
+    if hostname in {"localhost", "127.0.0.1"} and ":" not in host:
+        origin = request.META.get("HTTP_ORIGIN") or request.META.get("HTTP_REFERER") or ""
+        try:
+            origin_host = urlparse(origin).netloc
+            if origin_host:
+                return origin_host
+        except Exception:
+            pass
+        return "localhost:8000"
     return host
 
 
@@ -1336,7 +1345,9 @@ def _public_media_url(request, raw_url):
     try:
         parsed = urlparse(absolute)
         hostname = (parsed.hostname or "").lower()
-        if hostname in {"backend", "web", "app", "django", "server"}:
+        if hostname in {"backend", "web", "app", "django", "server"} or (
+            hostname in {"localhost", "127.0.0.1"} and not parsed.port
+        ):
             parsed = parsed._replace(netloc=_public_gallery_host(request))
             return urlunparse(parsed)
     except Exception:

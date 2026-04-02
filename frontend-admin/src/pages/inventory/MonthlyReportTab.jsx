@@ -30,10 +30,11 @@ import { useMonthYear } from '../../shared/hooks/useMonthYear'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 import PurchasePlannerPanel from './PurchasePlannerPanel'
 
-// ── Budget constants (IIT facility management contract) ───────────────────────
-const HK_BUDGET    = 14_00_00_000   // ₹14 Crore housekeeping
-const HORT_BUDGET  =  2_00_00_000   // ₹2 Crore horticulture
-const TOTAL_BUDGET = HK_BUDGET + HORT_BUDGET  // ₹16 Crore total annual
+// ── Budget constants (housekeeping material consumption) ──────────────────────
+const YEARLY_HK_MATERIAL_BUDGET = 68_00_000   // ₹68 lakh yearly housekeeping material consumption
+const YEARLY_HK_MATERIAL_RANGE_TEXT = 'Approx. ₹65-68 lakh yearly'
+const MONTHLY_HK_MATERIAL_RANGE_TEXT = 'Usual monthly use: ₹4-5 lakh + event requirements'
+const TOTAL_BUDGET = YEARLY_HK_MATERIAL_BUDGET
 
 const MONTHS = [
   'January','February','March','April','May','June',
@@ -44,8 +45,8 @@ const CHART_COLORS = ['#3b82f6','#f59e0b','#10b981','#8b5cf6','#ef4444','#0d9488
 // ── Formatters ────────────────────────────────────────────────────────────────
 const inr = (n) =>
   new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR', maximumFractionDigits:0 }).format(Number(n)||0)
-const crores = (n) => (Number(n)/1_00_00_000).toFixed(2)
 const lakhs  = (n) => (Number(n)/1_00_000).toFixed(2)
+const lakhLabel = (n) => `${Number(n) < 0 ? '-' : ''}₹${lakhs(Math.abs(Number(n) || 0))} Lakh`
 
 async function downloadWithToken(url, filename) {
   try {
@@ -334,11 +335,10 @@ export default function MonthlyReportTab() {
           📦 Procurement Intelligence & Budget Tracker
         </h2>
         <p style={{ fontSize:13, color:'var(--text-3)' }}>
-          Annual budget:&nbsp;
-          <strong>{inr(HK_BUDGET)}</strong> Housekeeping +&nbsp;
-          <strong>{inr(HORT_BUDGET)}</strong> Horticulture =&nbsp;
-          <strong>{inr(TOTAL_BUDGET)}</strong> total
-          &nbsp;·&nbsp; IIT Facility Management
+          Yearly HK material consumption:&nbsp;
+          <strong>{inr(TOTAL_BUDGET)}</strong>
+          &nbsp;·&nbsp; {YEARLY_HK_MATERIAL_RANGE_TEXT}
+          &nbsp;·&nbsp; {MONTHLY_HK_MATERIAL_RANGE_TEXT}
         </p>
       </div>
 
@@ -358,14 +358,14 @@ export default function MonthlyReportTab() {
             : <>
               {/* KPI row */}
               <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:20 }}>
-                <KpiCard icon="🏦" label="Total Annual Budget" valueColor="#2d4a3e"
-                  value={`₹${crores(TOTAL_BUDGET)} Cr`}
-                  sub={`HK: ₹${crores(HK_BUDGET)} Cr  |  Hort: ₹${crores(HORT_BUDGET)} Cr`} />
+                <KpiCard icon="🏦" label="Yearly HK Material Budget" valueColor="#2d4a3e"
+                  value={lakhLabel(TOTAL_BUDGET)}
+                  sub={`${YEARLY_HK_MATERIAL_RANGE_TEXT} | ${MONTHLY_HK_MATERIAL_RANGE_TEXT}`} />
                 <KpiCard icon="💸" label={`Spent in ${budgetYear}`} valueColor="#dc2626"
-                  value={`₹${crores(spent)} Cr`}
+                  value={lakhLabel(spent)}
                   sub={inr(spent)} subColor="#dc2626" />
                 <KpiCard icon="✅" label="Remaining Budget" valueColor={remColor}
-                  value={`₹${crores(remaining)} Cr`}
+                  value={lakhLabel(remaining)}
                   sub={`${(100-spentPct).toFixed(1)}% still available`} subColor={remColor} />
                 <KpiCard icon="📦" label="Tracked Stock Value" valueColor="#2563eb"
                   value={inr(trackedCurrentStockValue)}
@@ -381,12 +381,12 @@ export default function MonthlyReportTab() {
               {/* Progress bar */}
               <Card style={{ marginBottom:20 }}>
                 <div style={{ fontWeight:700, marginBottom:12, fontSize:14 }}>
-                  Annual Budget Utilization — {budgetYear}
+                  Annual HK Material Budget Utilization — {budgetYear}
                 </div>
                 <ProgressBar spent={spent} total={TOTAL_BUDGET} />
                 <div style={{ display:'flex', gap:24, marginTop:14, flexWrap:'wrap', fontSize:12 }}>
-                  <div><span style={{ color:'var(--text-3)' }}>HK Budget: </span><strong>{inr(HK_BUDGET)}</strong></div>
-                  <div><span style={{ color:'var(--text-3)' }}>Hort Budget: </span><strong>{inr(HORT_BUDGET)}</strong></div>
+                  <div><span style={{ color:'var(--text-3)' }}>Yearly HK Material Budget: </span><strong>{inr(TOTAL_BUDGET)}</strong></div>
+                  <div><span style={{ color:'var(--text-3)' }}>Planned Monthly Use: </span><strong>{MONTHLY_HK_MATERIAL_RANGE_TEXT}</strong></div>
                   <div><span style={{ color:'var(--text-3)' }}>All-time Procurement: </span><strong>{inr(budgetData?.total_procurement_value)}</strong></div>
                   <div><span style={{ color:'var(--text-3)' }}>Current Inventory Value: </span><strong>{inr(budgetData?.current_stock_value)}</strong></div>
                   <div><span style={{ color:'var(--text-3)' }}>Tracked Receipt Retention: </span><strong>{stockRetentionPct.toFixed(1)}%</strong></div>
@@ -478,7 +478,7 @@ export default function MonthlyReportTab() {
                 <MonthlySpendChart data={budgetData?.monthly_spending||[]} />
                 <div style={{ marginTop:8, fontSize:12, color:'var(--text-3)', textAlign:'center' }}>
                   Year Total: <strong>{inr(budgetData?.total_spent_year)}</strong>
-                  &nbsp;(₹{crores(budgetData?.total_spent_year)} Cr)
+                  &nbsp;({lakhLabel(budgetData?.total_spent_year)})
                 </div>
               </Card>
 

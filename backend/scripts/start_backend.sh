@@ -8,7 +8,6 @@ python manage.py migrate --noinput -v 0
 
 printf '%s\n' "Syncing baseline data..."
 python manage.py seed_all_data_if_empty -v 0
-python manage.py seed_housekeeping -v 0
 python manage.py update_inventory_items -v 0
 python manage.py sync_real_inventory_stock --quiet
 python manage.py sync_monthly_purchase_plans --quiet

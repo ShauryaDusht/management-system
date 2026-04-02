@@ -5,7 +5,21 @@ import { Alert, Btn, Card, DataTable, Input, SelectField, Spinner } from '../../
 import { triggerDownload } from '../../shared/utils'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 
-const todayStr = () => new Date().toISOString().split('T')[0]
+const todayStr = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+const API_ORIGIN = (() => {
+  try {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+    return new URL(apiUrl, window.location.origin).origin
+  } catch {
+    return 'http://localhost:8000'
+  }
+})()
 
 function list(data) {
   if (Array.isArray(data)) return data
@@ -35,11 +49,18 @@ function fmtBytes(bytes) {
 function normalizeMediaUrl(raw) {
   if (!raw) return ''
   try {
-    const parsed = new URL(raw, window.location.origin)
+    const baseOrigin = raw.startsWith('/media/') || raw.startsWith('/static/')
+      ? API_ORIGIN
+      : window.location.origin
+    const parsed = new URL(raw, baseOrigin)
     const internal = ['backend', 'web', 'app', 'django', 'server']
-    if (internal.includes(parsed.hostname)) {
-      parsed.hostname = window.location.hostname
-      parsed.port = '8000'
+    const mediaPath = parsed.pathname.startsWith('/media/') || parsed.pathname.startsWith('/static/')
+    const missingPublicPort = ['localhost', '127.0.0.1'].includes(parsed.hostname) && !parsed.port
+    if ((internal.includes(parsed.hostname) || (mediaPath && missingPublicPort)) && mediaPath) {
+      const publicApp = new URL(window.location.origin)
+      parsed.protocol = publicApp.protocol
+      parsed.hostname = publicApp.hostname
+      parsed.port = publicApp.port
     }
     return parsed.toString()
   } catch {
@@ -102,8 +123,8 @@ export default function GalleryTab() {
     area: '',
     taskId: '',
     staffId: '',
-    dateFrom: todayStr(),
-    dateTo: todayStr(),
+    dateFrom: '',
+    dateTo: '',
     search: '',
   })
   const [stats, setStats] = useState({
