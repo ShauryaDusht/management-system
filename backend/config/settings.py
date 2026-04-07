@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     'apps.core',
     'apps.reports',
     'apps.housekeeping',
+    'apps.horticulture',
 ]
 
 MIDDLEWARE = [
