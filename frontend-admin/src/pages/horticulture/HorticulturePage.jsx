@@ -41,7 +41,7 @@ export default function HorticulturePage() {
     if (tab && validTabs.includes(tab) && tab !== active) {
       setActive(tab)
     }
-  }, [active, searchParams, validTabs])
+  }, [searchParams])
 
   const onTabChange = (nextTab) => {
     setActive(nextTab)

@@ -516,9 +516,13 @@ class ManagerSeasonAPIView(APIView):
         serializer = ManagerSeasonUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        season_setting = get_current_season_setting()
-        if season_setting is None:
-            season_setting = SeasonSetting(updated_by=request.user)
+        season_setting, _created = SeasonSetting.objects.get_or_create(
+            pk=1,
+            defaults={
+                'season': serializer.validated_data['season'],
+                'updated_by': request.user,
+            },
+        )
 
         season_setting.season = serializer.validated_data['season']
         season_setting.updated_by = request.user

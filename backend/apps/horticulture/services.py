@@ -67,7 +67,7 @@ def get_supervisor_worker_queryset(supervisor):
         When(username=username, then=index)
         for index, username in enumerate(usernames)
     ]
-    return (
+    queryset = (
         User.objects.filter(
             role=User.Role.CARETAKER,
             is_active=True,
@@ -82,21 +82,43 @@ def get_supervisor_worker_queryset(supervisor):
         )
         .order_by('_team_order', 'first_name', 'last_name', 'username')
     )
+    if not queryset.exists():
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"get_supervisor_worker_queryset: empty result for supervisor {supervisor.username!r}. Check WORKER_TEAMS mapping in seed data.")
+    return queryset
+
+
+def _get_default_season_updated_by():
+    return (
+        User.objects.filter(
+            is_active=True,
+            role__in=[User.Role.ADMIN, User.Role.HORTICULTURE_MANAGER],
+        )
+        .order_by('id')
+        .first()
+        or User.objects.filter(is_active=True).order_by('id').first()
+        or User.objects.order_by('id').first()
+    )
 
 
 def get_current_season():
-    return (
-        SeasonSetting.objects.filter(pk=1).values_list('season', flat=True).first()
-        or SeasonSetting.Season.SUMMER
-    )
+    season_setting = get_current_season_setting()
+    return season_setting.season if season_setting is not None else SeasonSetting.Season.SUMMER
 
 
 def get_current_season_setting():
-    return (
-        SeasonSetting.objects.select_related('updated_by')
-        .filter(pk=1)
-        .first()
+    default_user = _get_default_season_updated_by()
+    if default_user is None:
+        return None
+    season_setting, _created = SeasonSetting.objects.select_related('updated_by').get_or_create(
+        pk=1,
+        defaults={
+            'season': SeasonSetting.Season.SUMMER,
+            'updated_by': default_user,
+        },
     )
+    return season_setting
 
 
 def get_task_threshold(task_type, season=None):

@@ -16,14 +16,36 @@ import UsersPage from './pages/users/UsersPage'
 const ADMIN_ONLY = ['admin']
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
 
+function getLandingRoute(user) {
+  if (user?.role === 'admin') return '/dashboard'
+  if (user?.role === 'horticulture_manager') return '/horticulture'
+  return '/unauthorized'
+}
+
+function AdminOnlyRedirectRoute({ children }) {
+  const { user, loading, unauthorized } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+      </div>
+    )
+  }
+  if (unauthorized) return <Navigate to="/unauthorized" replace />
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role !== 'admin') {
+    return <Navigate to={getLandingRoute(user)} replace />
+  }
+  return children
+}
+
 function RoleRedirect() {
   const { user, loading, unauthorized } = useAuth()
   if (loading) return null
   if (unauthorized) return <Navigate to="/unauthorized" replace />
   if (!user) return <Navigate to="/login" replace />
-  if (user.role === 'admin') return <Navigate to="/dashboard" replace />
-  if (user.role === 'horticulture_manager') return <Navigate to="/horticulture" replace />
-  return <Navigate to="/unauthorized" replace />
+  return <Navigate to={getLandingRoute(user)} replace />
 }
 
 export default function App() {
@@ -70,17 +92,17 @@ export default function App() {
           <Route
             path="/insights"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+              <AdminOnlyRedirectRoute>
                 <InsightsPage />
-              </ProtectedRoute>
+              </AdminOnlyRedirectRoute>
             }
           />
           <Route
             path="/users"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+              <AdminOnlyRedirectRoute>
                 <UsersPage />
-              </ProtectedRoute>
+              </AdminOnlyRedirectRoute>
             }
           />
           <Route
