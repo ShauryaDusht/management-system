@@ -45,25 +45,30 @@ export default function Sidebar() {
   const { badges } = useNotifications()
   const navigate = useNavigate()
 
-  const navItems = [
-    { to: '/dashboard', icon: 'DB', label: 'Dashboard' },
-    {
-      to: '/inventory', icon: 'IN', label: 'Inventory',
-      badge: badges.inventory,
-      badgeYellow: false,
-      extraBadge: badges.lowStock,
-      extraYellow: true,
-      extraTitle: 'low stock items',
-    },
-    {
-      to: '/housekeeping', icon: 'HK', label: 'Housekeeping',
-      badge: badges.housekeeping,
-    },
-    { to: '/horticulture', icon: 'HT', label: 'Horticulture' },
-    { to: '/insights', icon: 'AN', label: 'Insights' },
-    { to: '/users', icon: 'US', label: 'Manage Users' },
-    { to: '/profile', icon: 'PR', label: 'Profile' },
-  ]
+  const navItems = user?.role === 'horticulture_manager'
+    ? [
+      { to: '/horticulture', icon: 'HT', label: 'Horticulture' },
+      { to: '/profile', icon: 'PR', label: 'Profile' },
+    ]
+    : [
+      { to: '/dashboard', icon: 'DB', label: 'Dashboard' },
+      {
+        to: '/inventory', icon: 'IN', label: 'Inventory',
+        badge: badges.inventory,
+        badgeYellow: false,
+        extraBadge: badges.lowStock,
+        extraYellow: true,
+        extraTitle: 'low stock items',
+      },
+      {
+        to: '/housekeeping', icon: 'HK', label: 'Housekeeping',
+        badge: badges.housekeeping,
+      },
+      { to: '/horticulture', icon: 'HT', label: 'Horticulture' },
+      { to: '/insights', icon: 'AN', label: 'Insights' },
+      { to: '/users', icon: 'US', label: 'Manage Users' },
+      { to: '/profile', icon: 'PR', label: 'Profile' },
+    ]
 
   const handleLogout = async () => {
     await logout()

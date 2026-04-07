@@ -14,6 +14,7 @@ import UnauthorizedPage from './pages/UnauthorizedPage'
 import UsersPage from './pages/users/UsersPage'
 
 const ADMIN_ONLY = ['admin']
+const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
 
 function RoleRedirect() {
   const { user, loading, unauthorized } = useAuth()
@@ -21,6 +22,7 @@ function RoleRedirect() {
   if (unauthorized) return <Navigate to="/unauthorized" replace />
   if (!user) return <Navigate to="/login" replace />
   if (user.role === 'admin') return <Navigate to="/dashboard" replace />
+  if (user.role === 'horticulture_manager') return <Navigate to="/horticulture" replace />
   return <Navigate to="/unauthorized" replace />
 }
 
@@ -60,7 +62,7 @@ export default function App() {
           <Route
             path="/horticulture/*"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+              <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
                 <HorticulturePage />
               </ProtectedRoute>
             }
@@ -84,7 +86,7 @@ export default function App() {
           <Route
             path="/profile"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+              <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
                 <ProfilePage />
               </ProtectedRoute>
             }

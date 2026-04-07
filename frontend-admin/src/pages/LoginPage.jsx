@@ -4,6 +4,11 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { APP_LOGO_PATH, APP_NAME, APP_TAGLINE } from '../shared/constants'
 
+function getLandingRoute(user) {
+  if (user?.role === 'horticulture_manager') return '/horticulture'
+  return '/dashboard'
+}
+
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -23,8 +28,8 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      await login(form.username.trim(), form.password)
-      navigate('/dashboard', { replace: true })
+      const user = await login(form.username.trim(), form.password)
+      navigate(getLandingRoute(user), { replace: true })
     } catch (err) {
       if (err?.code === 'NON_ADMIN') {
         navigate('/unauthorized', { replace: true })

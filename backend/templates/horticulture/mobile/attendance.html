@@ -1,0 +1,92 @@
+{% extends 'horticulture/mobile/base_horti.html' %}
+{% block title %}Attendance{% endblock %}
+{% block hdr_title %}ATTENDANCE{% endblock %}
+{% block back_btn %}<a href="/horticulture/dashboard/{% if selected_zone %}?zone={{ selected_zone.id }}{% endif %}" class="bk">&lt;</a>{% endblock %}
+{% block n3 %}on{% endblock %}
+
+{% block content %}
+{% if messages %}
+  {% for message in messages %}
+  <div class="flash {% if 'error' in message.tags %}err{% else %}ok{% endif %}">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+{% if error_message %}
+<div class="flash err">{{ error_message }}</div>
+{% endif %}
+
+{% if zone_count > 1 %}
+<div class="tabs">
+  {% for zone in zones %}
+  <a href="/horticulture/attendance/?zone={{ zone.id }}" class="atab {% if selected_zone and selected_zone.id == zone.id %}on{% endif %}">
+    {{ zone.name }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card {% if today_attendance %}hero{% endif %}">
+  <div style="font-size:16px;font-weight:800">{{ today|date:"D, d M Y" }}</div>
+  <div style="font-size:12px;margin-top:4px;{% if not today_attendance %}color:#6b7280{% endif %}">
+    {{ worker_rows|length }} workers in your team
+  </div>
+  {% if today_attendance %}
+  <div style="margin-top:10px;background:rgba(255,255,255,.16);border-radius:10px;padding:10px 11px;font-size:12px;font-weight:700">
+    Attendance already submitted today.
+  </div>
+  {% else %}
+  <div style="margin-top:10px;font-size:12px;color:#6b7280">
+    Everyone defaults to Present. Tap only the workers who are Absent or Half Day, then submit once.
+  </div>
+  {% endif %}
+</div>
+
+{% if worker_rows %}
+  {% if today_attendance %}
+    {% for row in worker_rows %}
+    <div class="card">
+      <div class="area-head">
+        <div>
+          <div style="font-size:15px;font-weight:800">{{ row.worker.get_full_name|default:row.worker.username }}</div>
+          <div class="muted">Pay code: {{ row.worker.pay_code|default:"-" }}</div>
+        </div>
+        <span class="bdg {% if row.submitted_entry and row.submitted_entry.status == 'present' %}g{% elif row.submitted_entry and row.submitted_entry.status == 'half_day' %}y{% else %}r{% endif %}">
+          {% if row.submitted_entry %}{{ row.submitted_entry.get_status_display }}{% else %}Present{% endif %}
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+  <form method="post" action="/horticulture/attendance/{% if selected_zone %}?zone={{ selected_zone.id }}{% endif %}">
+    {% csrf_token %}
+    <input type="hidden" name="zone" value="{% if selected_zone %}{{ selected_zone.id }}{% endif %}">
+    {% for row in worker_rows %}
+    <div class="card">
+      <div>
+        <div style="font-size:15px;font-weight:800">{{ row.worker.get_full_name|default:row.worker.username }}</div>
+        <div class="muted">Pay code: {{ row.worker.pay_code|default:"-" }}</div>
+      </div>
+      <div class="toggle-grid">
+        <label class="toggle-option present">
+          <input type="radio" name="worker_{{ row.worker.id }}" value="present" {% if row.selected_status == 'present' %}checked{% endif %}>
+          <span class="toggle-label">Present</span>
+        </label>
+        <label class="toggle-option absent">
+          <input type="radio" name="worker_{{ row.worker.id }}" value="absent" {% if row.selected_status == 'absent' %}checked{% endif %}>
+          <span class="toggle-label">Absent</span>
+        </label>
+        <label class="toggle-option half">
+          <input type="radio" name="worker_{{ row.worker.id }}" value="half_day" {% if row.selected_status == 'half_day' %}checked{% endif %}>
+          <span class="toggle-label">Half Day</span>
+        </label>
+      </div>
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn-s">Submit Attendance</button>
+  </form>
+  {% endif %}
+{% else %}
+<div class="card" style="text-align:center;color:#9ca3af;padding:24px">
+  No horticulture workers are assigned to this supervisor.
+</div>
+{% endif %}
+{% endblock %}
