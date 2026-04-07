@@ -63,3 +63,5 @@ Dockerized management system with Django backend + React admin frontend.
 - Beta server deployment: [`BETA_SERVER_DEPLOYMENT.md`](BETA_SERVER_DEPLOYMENT.md)
 - Inventory: [`backend/apps/inventory/README.md`](backend/apps/inventory/README.md)
 - Housekeeping: [`backend/apps/housekeeping/README.md`](backend/apps/housekeeping/README.md)
+- Horticulture: [`backend/apps/horticulture/README.md`](backend/apps/horticulture/README.md)
+- Horticulture module status: summary API and dashboard are active; detailed APIs are pending.
