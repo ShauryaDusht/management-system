@@ -1,0 +1,85 @@
+{% extends 'horticulture/mobile/base_horti.html' %}
+{% block title %}Mark Task{% endblock %}
+{% block hdr_title %}MARK TASK{% endblock %}
+{% block back_btn %}<a href="/horticulture/dashboard/{% if selected_zone %}?zone={{ selected_zone.id }}{% endif %}" class="bk">&lt;</a>{% endblock %}
+{% block n2 %}on{% endblock %}
+
+{% block content %}
+{% if messages %}
+  {% for message in messages %}
+  <div class="flash {% if 'error' in message.tags %}err{% else %}ok{% endif %}">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+{% if error_message %}
+<div class="flash err">{{ error_message }}</div>
+{% endif %}
+
+{% if zone_count > 1 %}
+<div class="tabs">
+  {% for zone in zones %}
+  <a href="/horticulture/mark-task/?zone={{ zone.id }}{% if selected_area and selected_zone and selected_zone.id == zone.id %}&area={{ selected_area.id }}{% endif %}" class="atab {% if selected_zone and selected_zone.id == zone.id %}on{% endif %}">
+    {{ zone.name }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if selected_zone and areas %}
+<div class="tabs">
+  {% for area in areas %}
+  <a href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ area.id }}" class="atab {% if selected_area and selected_area.id == area.id %}on{% endif %}">
+    Area {{ area.area_number }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if selected_area %}
+<div class="card hero">
+  <div style="font-size:16px;font-weight:800">{{ selected_area.name }}</div>
+  <div style="display:flex;align-items:center;gap:8px;margin:5px 0 10px;font-size:12px;opacity:.88">
+    <span class="zone-dot" style="background:{{ selected_zone.color_code|default:'#29543a' }}"></span>
+    <span>{{ selected_area.area_sqm }} sqm</span>
+    <span>{{ today|date:"d M Y" }}</span>
+  </div>
+  <div style="background:rgba(255,255,255,.14);border-radius:10px;padding:10px 11px">
+    <div style="font-size:13px;font-weight:700">One tap marks the task done for today.</div>
+    <div style="font-size:11px;opacity:.8;margin-top:4px">Overdue tasks are shown first in red.</div>
+  </div>
+</div>
+
+<div class="task-stack">
+  {% for task in task_rows %}
+  <form method="post" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}">
+    {% csrf_token %}
+    <input type="hidden" name="zone_id" value="{{ selected_zone.id }}">
+    <input type="hidden" name="area_id" value="{{ selected_area.id }}">
+    <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
+    <button type="submit" class="task-btn {% if task.urgency == 'overdue' %}overdue{% elif task.urgency == 'due_soon' %}due{% else %}ok{% endif %}">
+      <span class="task-title">{{ task.task_type_name }}</span>
+      <span class="task-meta">
+        {% if task.last_done_date %}
+          Last done {{ task.last_done_date|date:"d M Y" }} | {{ task.days_since_done }} days ago | Threshold {{ task.threshold }} days
+        {% else %}
+          Never logged yet | Threshold {{ task.threshold }} days
+        {% endif %}
+      </span>
+      <span class="task-hint">
+        {% if task.urgency == 'overdue' %}Tap now - overdue
+        {% elif task.urgency == 'due_soon' %}Tap now - due soon
+        {% else %}Tap to mark done today{% endif %}
+      </span>
+    </button>
+  </form>
+  {% empty %}
+  <div class="card" style="text-align:center;color:#9ca3af;padding:24px">
+    No active task types are available.
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center;color:#9ca3af;padding:24px">
+  Select an area from the dashboard to mark a task.
+</div>
+{% endif %}
+{% endblock %}

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
 import { Alert, Card, DataTable, Spinner } from '../../components/ui'
+import { asList, getErrorMessage } from '../../shared/utils'
+import { formatDateTime } from './helpers'
 
 export default function SupervisorsTab() {
   const [loading, setLoading] = useState(true)
@@ -14,24 +16,17 @@ export default function SupervisorsTab() {
       setLoading(true)
       setError('')
       try {
-        const { data } = await horticultureAPI.getSummary()
+        const { data } = await horticultureAPI.getSupervisors()
         if (!mounted) return
-        const zones = Array.isArray(data?.zones) ? data.zones : []
-        const map = {}
-        zones.forEach((z) => {
-          const name = z.supervisor || 'Unassigned'
-          if (!map[name]) map[name] = { name, zones: 0, workers: 0 }
-          map[name].zones += 1
-          map[name].workers += Number(z.worker_count || 0)
-        })
-        setRows(Object.values(map))
-      } catch (e) {
+        setRows(asList(data?.supervisors))
+      } catch (err) {
         if (!mounted) return
-        setError(e.response?.data?.detail || 'Failed to load supervisor list.')
+        setError(getErrorMessage(err, 'Failed to load horticulture supervisors.'))
       } finally {
         if (mounted) setLoading(false)
       }
     })()
+
     return () => {
       mounted = false
     }
@@ -39,21 +34,34 @@ export default function SupervisorsTab() {
 
   return (
     <div>
-      <Alert type="warn" message="Supervisor records for horticulture are not seeded yet." />
       <Alert message={error} />
+
       <Card noPad>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700 }}>
-          Supervisor List
+        <div
+          style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--border)',
+            fontWeight: 700,
+          }}
+        >
+          Supervisors
         </div>
+
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
             <Spinner />
           </div>
         ) : (
           <DataTable
-            headers={['Supervisor', 'Assigned Zones', 'Workers']}
-            rows={rows.map((r) => [r.name, r.zones, r.workers])}
-            emptyMsg="No supervisors mapped to horticulture zones yet."
+            headers={['Name', 'Zone', 'Workers Count', 'Last Login', 'Tasks Logged This Week']}
+            rows={rows.map((row) => [
+              row.supervisor_name,
+              asList(row.zone_names).join(', ') || '-',
+              row.workers_count ?? 0,
+              formatDateTime(row.last_login, 'Never'),
+              row.tasks_logged_this_week ?? 0,
+            ])}
+            emptyMsg="No horticulture supervisors found."
           />
         )}
       </Card>

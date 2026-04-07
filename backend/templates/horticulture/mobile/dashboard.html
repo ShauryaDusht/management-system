@@ -1,0 +1,96 @@
+{% extends 'horticulture/mobile/base_horti.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block hdr_title %}HORTICULTURE{% endblock %}
+{% block n1 %}on{% endblock %}
+
+{% block content %}
+{% if messages %}
+  {% for message in messages %}
+  <div class="flash {% if 'error' in message.tags %}err{% else %}ok{% endif %}">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+{% if zone_count > 1 %}
+<div class="tabs">
+  {% for zone in zones %}
+  <a href="/horticulture/dashboard/?zone={{ zone.id }}" class="atab {% if selected_zone and selected_zone.id == zone.id %}on{% endif %}">
+    {{ zone.name }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if selected_zone %}
+<div class="card hero">
+  <div style="font-size:16px;font-weight:800">{{ selected_zone.name }}</div>
+  <div style="display:flex;align-items:center;gap:8px;margin:5px 0 10px;font-size:12px;opacity:.88">
+    <span class="zone-dot" style="background:{{ selected_zone.color_code|default:'#29543a' }}"></span>
+    <span>{{ today|date:"D, d M Y" }}</span>
+    <span>Season: {{ season|title }}</span>
+  </div>
+  <div style="background:rgba(255,255,255,.14);border-radius:10px;padding:10px 11px">
+    <div style="font-size:13px;font-weight:700">Tap any area below, then tap one task to mark it done today.</div>
+    <div style="font-size:11px;opacity:.8;margin-top:4px">Red areas need attention first. Yellow areas are due soon.</div>
+  </div>
+</div>
+
+{% for area in areas %}
+<a class="area-link" href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ area.id }}">
+  <div class="card area-card">
+    <div class="area-head">
+      <div class="area-left">
+        <span class="zone-dot" style="margin-top:5px;background:{% if area.urgency == 'overdue' %}#dc2626{% elif area.urgency == 'due_soon' %}#d97706{% else %}#16a34a{% endif %}"></span>
+        <div>
+          <div style="font-size:15px;font-weight:800">{{ area.name }}</div>
+          <div class="muted">{{ area.area_sqm }} sqm</div>
+        </div>
+      </div>
+      <span class="bdg urgency-pill {% if area.urgency == 'overdue' %}r{% elif area.urgency == 'due_soon' %}y{% else %}g{% endif %}">
+        {% if area.urgency == 'overdue' %}Overdue{% elif area.urgency == 'due_soon' %}Due Soon{% else %}Fine{% endif %}
+      </span>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      {% if area.overdue_task_count %}
+      <span class="bdg r">{{ area.overdue_task_count }} overdue</span>
+      {% endif %}
+      {% if area.due_soon_task_count %}
+      <span class="bdg y">{{ area.due_soon_task_count }} due soon</span>
+      {% endif %}
+      {% if not area.overdue_task_count and not area.due_soon_task_count %}
+      <span class="bdg g">On track</span>
+      {% endif %}
+    </div>
+
+    <div style="display:grid;gap:7px;margin-top:10px">
+      {% for task in area.tasks|slice:":3" %}
+      <div class="summary">
+        <div style="font-size:12px;font-weight:700">{{ task.task_type_name }}</div>
+        <div class="muted">
+          {% if task.last_done_date %}
+            {{ task.days_since_done }} days ago
+          {% else %}
+            Never logged
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</a>
+{% empty %}
+<div class="card" style="text-align:center;color:#9ca3af;padding:24px">
+  No areas found in this zone.
+</div>
+{% endfor %}
+{% else %}
+<div class="card" style="text-align:center;color:#9ca3af;padding:26px">
+  No horticulture zone is assigned to this supervisor.
+</div>
+{% endif %}
+
+<form method="post" action="/portal/logout/" style="margin-top:4px">
+  {% csrf_token %}
+  <button type="submit" class="btn-g">Logout</button>
+</form>
+{% endblock %}

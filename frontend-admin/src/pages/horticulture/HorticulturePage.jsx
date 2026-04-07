@@ -1,45 +1,69 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
-import { Btn, Tabs } from '../../components/ui'
+import { Tabs } from '../../components/ui'
+import { useAuth } from '../../context/AuthContext'
 import AdminLayout from '../../layout/AdminLayout'
 import AttendanceTab from './AttendanceTab'
+import ManagerTab from './ManagerTab'
+import OverviewTab from './OverviewTab'
 import SupervisorsTab from './SupervisorsTab'
-import WorkersTab from './WorkersTab'
 import ZonesTab from './ZonesTab'
 
-const TAB_CONFIG = [
-  { key: 'zones', label: 'Zone List', icon: 'ZN' },
-  { key: 'supervisors', label: 'Supervisor List', icon: 'SP' },
-  { key: 'attendance', label: 'Worker Attendance', icon: 'AT' },
-  { key: 'inventory', label: 'Assigned Inventory', icon: 'IV' },
-]
-
 export default function HorticulturePage() {
-  const [active, setActive] = useState('zones')
+  const { isHorticultureManager } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const tabs = useMemo(
+    () => {
+      const base = [
+        { key: 'overview', label: 'Overview' },
+        { key: 'zones', label: 'Zone Detail' },
+        { key: 'attendance', label: 'Attendance' },
+        { key: 'supervisors', label: 'Supervisors' },
+      ]
+      if (isHorticultureManager) {
+        base.push({ key: 'manager', label: 'Manager' })
+      }
+      return base
+    },
+    [isHorticultureManager]
+  )
+
+  const validTabs = useMemo(() => tabs.map((tab) => tab.key), [tabs])
+  const initialTab = searchParams.get('tab')
+  const [active, setActive] = useState(
+    initialTab && validTabs.includes(initialTab) ? initialTab : 'overview'
+  )
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab && validTabs.includes(tab) && tab !== active) {
+      setActive(tab)
+    }
+  }, [searchParams])
+
+  const onTabChange = (nextTab) => {
+    setActive(nextTab)
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', nextTab)
+    setSearchParams(next, { replace: true })
+  }
 
   return (
     <AdminLayout
-      title="Horticulture"
-      subtitle="Zone operations dashboard (module under development)"
-      actions={
-        <>
-          <Btn variant="secondary" onClick={() => window.alert('Weekly report export is under development.')}>
-            Generate Weekly Report
-          </Btn>
-          <Btn variant="orange" onClick={() => window.alert('Monthly report export is under development.')}>
-            Generate Monthly Report
-          </Btn>
-        </>
-      }
+      title="Horticulture Administration"
+      subtitle="Zone health, task compliance, supervisor attendance, and horticulture oversight"
     >
       <div style={{ marginBottom: 14 }}>
-        <Tabs tabs={TAB_CONFIG} active={active} onChange={setActive} />
+        <Tabs tabs={tabs} active={active} onChange={onTabChange} />
       </div>
 
+      {active === 'overview' && <OverviewTab />}
       {active === 'zones' && <ZonesTab />}
-      {active === 'supervisors' && <SupervisorsTab />}
       {active === 'attendance' && <AttendanceTab />}
-      {active === 'inventory' && <WorkersTab />}
+      {active === 'supervisors' && <SupervisorsTab />}
+      {active === 'manager' && isHorticultureManager && <ManagerTab />}
     </AdminLayout>
   )
 }

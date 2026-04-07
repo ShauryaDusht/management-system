@@ -1,5 +1,8 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+from apps.core.portal_views import get_portal_redirect
+
 from .models import User
 
 
@@ -8,18 +11,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     @staticmethod
     def _get_portal_redirect(user):
-        role = user.role
-        if role == 'admin':
-            return '/admin-portal/'
-        if role == 'inventory_manager':
-            return '/inventory/mobile/'
-        if role == 'housekeeping_manager':
-            return '/housekeeping/dashboard/'
-        if role == 'horticulture_manager':
-            return '/horticulture/dashboard/'
-        if role in ('supervisor', 'caretaker'):
-            return '/housekeeping/dashboard/'
-        return '/portal/'
+        return get_portal_redirect(user)
 
     def validate(self, attrs):
         data = super().validate(attrs)

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { authAPI } from '../api/auth'
 
 const AuthContext = createContext(null)
+const ALLOWED_PORTAL_ROLES = ['admin', 'horticulture_manager']
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -13,7 +14,7 @@ export function AuthProvider({ children }) {
     if (token) {
       authAPI.me()
         .then(({ data }) => {
-          if (data?.role !== 'admin') {
+          if (!ALLOWED_PORTAL_ROLES.includes(data?.role)) {
             localStorage.removeItem('access_token')
             localStorage.removeItem('refresh_token')
             setUser(null)
@@ -37,7 +38,7 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (username, password) => {
     const { data } = await authAPI.login(username, password)
-    if (data?.user?.role !== 'admin') {
+    if (!ALLOWED_PORTAL_ROLES.includes(data?.user?.role)) {
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
       setUser(null)

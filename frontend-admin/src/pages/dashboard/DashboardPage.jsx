@@ -33,10 +33,6 @@ const RANGE_OPTIONS = [
   { key: 'monthly', label: 'Monthly' },
 ]
 
-function getHortiStatus(task) {
-  return String(task?.status || '').toLowerCase()
-}
-
 function SummaryStatBox({ label, value, color, icon }) {
   return (
     <div style={{
@@ -248,11 +244,13 @@ export default function DashboardPage() {
   const hkHasAct     = hkDonut.some(d => d.value > 0)
   const hkDonutData  = hkHasAct ? hkDonut : [{ name: 'No Activity', value: 1 }]
 
-  const hortiTasks   = Array.isArray(hortiSummary?.tasks) ? hortiSummary.tasks : []
-  const hortiDone    = hortiTasks.filter(t => ['done','completed'].includes(getHortiStatus(t))).length
-  const hortiOngoing = hortiTasks.filter(t => ['ongoing','in_progress'].includes(getHortiStatus(t))).length
-  const hortiPending = Math.max(0, hortiTasks.length - hortiDone - hortiOngoing)
-  const hortiDonut   = [{ name: 'Completed', value: hortiDone }, { name: 'Ongoing', value: hortiOngoing }, { name: 'Pending', value: hortiPending }]
+  const hortiCounts  = hortiSummary?.task_status_counts || {}
+  const hortiTotal   = Number(hortiCounts.total || 0)
+  const hortiDonut   = [
+    { name: 'On Track', value: Number(hortiCounts.on_track || 0) },
+    { name: 'Due Soon', value: Number(hortiCounts.due_soon || 0) },
+    { name: 'Overdue', value: Number(hortiCounts.overdue || 0) },
+  ]
   const hortiHasAct  = hortiDonut.some(d => d.value > 0)
   const hortiDonutData = hortiHasAct ? hortiDonut : [{ name: 'No Activity', value: 1 }]
 
@@ -333,7 +331,7 @@ export default function DashboardPage() {
             {[
               { title: 'Inventory', subtitle: 'Stock overview', data: invDonut, total: invSummary?.total_items, label: 'Items', palette: DONUT_PALETTE, to: '/inventory' },
               { title: 'Housekeeping', subtitle: 'Today tasks', data: hkDonutData, total: hkSummary?.total_tasks, label: hkHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/housekeeping' },
-              { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTasks.length, label: hortiHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' },
+              { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTotal, label: hortiHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' },
             ].map(card => (
               <Card key={card.title}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>

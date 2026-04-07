@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from django.shortcuts import redirect
 from config.admin import admin_site
 from apps.core.portal_views import portal_root, portal_login, portal_logout
-from apps.horticulture.views import horticulture_dashboard as horticulture_dashboard_view
+from apps.horticulture.urls import mobile_urlpatterns as horticulture_mobile_urlpatterns
 from apps.housekeeping import api_views as hk_api_views
 
 
@@ -56,8 +56,8 @@ urlpatterns = [
     path('api/admin/gallery/task/<int:task_id>/download-zip/', hk_api_views.HKAdminGalleryTaskZipView.as_view(), name='api-admin-gallery-task-zip'),
     path('inventory/', include('apps.inventory.htmx_urls')),
     path('housekeeping/', include('apps.housekeeping.htmx_urls')),
+    path('horticulture/', include((horticulture_mobile_urlpatterns, 'horticulture_mobile'))),
     path('portal/', portal_root),
     path('portal/login/', portal_login, name='portal_login'),
     path('portal/logout/', portal_logout, name='portal_logout'),
-    path('horticulture/dashboard/', horticulture_dashboard_view),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
