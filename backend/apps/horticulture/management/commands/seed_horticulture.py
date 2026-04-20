@@ -118,10 +118,10 @@ WORKER_TEAMS = {
 }
 
 ZONE_SPECS = [
-    {'name': 'Zone Red', 'color_code': 'red', 'supervisor_username': 'Jayanti.Thakur'},
+    {'name': 'Zone Red', 'color_code': 'red', 'supervisor_username': 'Jaynti.Thakur'},
     {'name': 'Zone Blue', 'color_code': 'blue', 'supervisor_username': 'Mukesh.Solanki'},
     {'name': 'Zone Black', 'color_code': 'black', 'supervisor_username': 'Rajesh.Thakur'},
-    {'name': 'Zone Purple', 'color_code': 'purple', 'supervisor_username': 'Jayanti.Thakur'},
+    {'name': 'Zone Purple', 'color_code': 'purple', 'supervisor_username': 'Jaynti.Thakur'},
 ]
 
 AREA_ZONE_MAP = {
