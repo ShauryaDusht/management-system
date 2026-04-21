@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Spinner } from '../../components/ui'
 import { asList } from '../../shared/utils'
@@ -95,15 +95,20 @@ function TaskRow({ task, rowIndex }) {
 }
 
 export default function OverdueTasksTable({ rows, loading, emptyMsg = 'No data found.' }) {
-  const [expandedAreas, setExpandedAreas] = useState({})
+  const [activeAreaKey, setActiveAreaKey] = useState(null)
   const groupedRows = groupTasksByArea(rows)
   const headers = ['Area', 'Zone', 'Task', 'Days Overdue', 'Last Done']
 
+  useEffect(() => {
+    if (activeAreaKey == null) return
+    const hasActiveArea = groupedRows.some((area) => area.key === activeAreaKey)
+    if (!hasActiveArea) {
+      setActiveAreaKey(null)
+    }
+  }, [activeAreaKey, groupedRows])
+
   const toggleArea = (areaKey) => {
-    setExpandedAreas((current) => ({
-      ...current,
-      [areaKey]: !current[areaKey],
-    }))
+    setActiveAreaKey((current) => (current === areaKey ? null : areaKey))
   }
 
   return (
@@ -148,7 +153,7 @@ export default function OverdueTasksTable({ rows, loading, emptyMsg = 'No data f
             </tr>
           ) : (
             groupedRows.flatMap((area) => {
-              const expanded = Boolean(expandedAreas[area.key])
+              const expanded = activeAreaKey === area.key
               const childRows = expanded
                 ? area.tasks.map((task, index) => (
                     <TaskRow
