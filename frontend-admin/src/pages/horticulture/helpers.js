@@ -40,7 +40,6 @@ export function getZoneTone(colorName) {
     red: { accent: '#dc2626', soft: '#fee2e2', text: '#991b1b' },
     blue: { accent: '#2563eb', soft: '#dbeafe', text: '#1d4ed8' },
     black: { accent: '#111827', soft: '#e5e7eb', text: '#1f2937' },
-    purple: { accent: '#7c3aed', soft: '#ede9fe', text: '#5b21b6' },
   }
   return map[key] || { accent: 'var(--green-800)', soft: '#dcfce7', text: '#166534' }
 }

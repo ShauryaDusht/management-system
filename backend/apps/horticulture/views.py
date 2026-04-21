@@ -128,7 +128,6 @@ def _zone_order_key(zone_like):
         'Zone Red': 0,
         'Zone Blue': 1,
         'Zone Black': 2,
-        'Zone Purple': 3,
     }
     return (priority.get(name, 99), name)
 

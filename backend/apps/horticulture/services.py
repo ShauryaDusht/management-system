@@ -8,6 +8,11 @@ from apps.horticulture.management.commands.seed_horticulture import WORKER_TEAMS
 from .models import HorticultureZone, SeasonSetting, TaskLog, TaskType
 
 User = get_user_model()
+VISIBLE_HORTICULTURE_ZONE_NAMES = {'Zone Red', 'Zone Blue', 'Zone Black'}
+
+
+def _visible_zone_queryset():
+    return HorticultureZone.objects.filter(name__in=VISIBLE_HORTICULTURE_ZONE_NAMES)
 
 
 def build_seed_worker_username(full_name, pay_code):
@@ -21,12 +26,13 @@ def build_seed_worker_username(full_name, pay_code):
 
 
 def get_supervisor_zones(supervisor):
-    return HorticultureZone.objects.filter(supervisor=supervisor).order_by('name', 'id')
+    return _visible_zone_queryset().filter(supervisor=supervisor).order_by('name', 'id')
 
 
 def get_horticulture_zones():
     return (
-        HorticultureZone.objects.select_related('supervisor')
+        _visible_zone_queryset()
+        .select_related('supervisor')
         .prefetch_related('areas')
         .order_by('name', 'id')
     )
@@ -34,7 +40,8 @@ def get_horticulture_zones():
 
 def get_horticulture_supervisors():
     supervisor_ids = (
-        HorticultureZone.objects.exclude(supervisor__isnull=True)
+        _visible_zone_queryset()
+        .exclude(supervisor__isnull=True)
         .values_list('supervisor_id', flat=True)
         .distinct()
     )
