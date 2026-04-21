@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
-import { Alert, Btn, Card, DataTable, Spinner, StatCard } from '../../components/ui'
+import { Alert, Btn, Card, Spinner, StatCard } from '../../components/ui'
 import { asList, getErrorMessage } from '../../shared/utils'
-import { formatDate, getZoneTone, priorityZoneCards } from './helpers'
+import { getZoneTone, priorityZoneCards } from './helpers'
+import OverdueTasksTable from './OverdueTasksTable'
 
 function ZoneStatusCard({ zone }) {
   const tone = getZoneTone(zone.zone_color)
@@ -140,18 +141,9 @@ export default function OverviewTab() {
           <div style={{ fontWeight: 700 }}>Overdue Tasks</div>
           <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Sorted worst first</div>
         </div>
-        <DataTable
+        <OverdueTasksTable
           loading={loading}
-          headers={['Area', 'Zone', 'Task', 'Days Overdue', 'Last Done']}
-          rows={overdueRows.map((row) => [
-            row.area_name,
-            row.zone_name,
-            row.task_type_name,
-            <span key={`${row.area_id}-${row.task_type_id}`} style={{ fontWeight: 700, color: '#991b1b' }}>
-              {row.days_overdue}
-            </span>,
-            formatDate(row.last_done_date, 'Never'),
-          ])}
+          rows={overdueRows}
           emptyMsg="No overdue horticulture tasks."
         />
       </Card>
