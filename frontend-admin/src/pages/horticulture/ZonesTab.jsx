@@ -1,22 +1,112 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
-import { Alert, Card, DataTable, SelectField, Spinner } from '../../components/ui'
+import { Alert, Card, SelectField, Spinner } from '../../components/ui'
 import { asList, getErrorMessage } from '../../shared/utils'
-import { getZoneTone, taskChipStyle } from './helpers'
+import { formatDate, getZoneTone, taskChipStyle } from './helpers'
 
-function TaskChip({ task }) {
-  const tone = taskChipStyle(task?.urgency)
-  const label = task?.days_since_done == null ? 'Never' : `${task.days_since_done}d`
+const FREQUENCY_FILTERS = [
+  { key: 'daily', label: 'Daily', description: '1 day' },
+  { key: 'weekly', label: 'Weekly', description: '2-7 days' },
+  { key: 'biweekly', label: 'Biweekly', description: '8-15 days' },
+  { key: 'monthly', label: 'Monthly', description: '16-30 days' },
+  { key: 'more_than_month', label: 'More than month', description: '> 30 days' },
+]
+
+function matchesFrequencyFilter(threshold, filterKey) {
+  const days = Number(threshold)
+
+  if (!Number.isFinite(days)) return false
+  if (filterKey === 'daily') return days === 1
+  if (filterKey === 'weekly') return days > 1 && days <= 7
+  if (filterKey === 'biweekly') return days > 7 && days <= 15
+  if (filterKey === 'monthly') return days > 15 && days <= 30
+  if (filterKey === 'more_than_month') return days > 30
+
+  return false
+}
+
+function formatTaskAge(daysSinceDone) {
+  if (daysSinceDone == null) return 'Not logged yet'
+  if (daysSinceDone === 0) return 'Completed today'
+  if (daysSinceDone === 1) return 'Completed 1 day ago'
+  return `Completed ${daysSinceDone} days ago`
+}
+
+function getTaskPresentation(task, fallbackThreshold) {
+  const threshold = task?.threshold ?? fallbackThreshold ?? 0
+
+  if (!task || task.days_since_done == null) {
+    return {
+      label: 'Never',
+      detail: 'No completed log found',
+      footer: `Expected every ${threshold} day${threshold === 1 ? '' : 's'}`,
+      urgency: 'overdue',
+    }
+  }
+
+  if (task.urgency === 'overdue') {
+    return {
+      label: 'Overdue',
+      detail: formatTaskAge(task.days_since_done),
+      footer: `Threshold ${threshold} day${threshold === 1 ? '' : 's'}`,
+      urgency: 'overdue',
+    }
+  }
+
+  if (task.urgency === 'due_soon') {
+    return {
+      label: 'Due soon',
+      detail: formatTaskAge(task.days_since_done),
+      footer: `Due at ${threshold} day${threshold === 1 ? '' : 's'}`,
+      urgency: 'due_soon',
+    }
+  }
+
+  return {
+    label: 'Completed recently',
+    detail: formatTaskAge(task.days_since_done),
+    footer: task.last_done_date ? formatDate(task.last_done_date) : `Every ${threshold} days`,
+    urgency: 'ok',
+  }
+}
+
+function FrequencyFilterButton({ filter, active, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(filter.key)}
+      aria-pressed={active}
+      style={{
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: 2,
+        padding: '9px 12px',
+        borderRadius: 12,
+        border: active ? '1px solid var(--green-700)' : '1px solid var(--border)',
+        background: active ? 'rgba(61, 107, 85, 0.12)' : 'var(--surface)',
+        color: active ? 'var(--green-800)' : 'var(--text-2)',
+        boxShadow: active ? 'inset 0 0 0 1px rgba(61, 107, 85, 0.08)' : 'none',
+        minWidth: 108,
+        transition: 'all 0.15s ease',
+      }}
+    >
+      <span style={{ fontSize: 12, fontWeight: 800 }}>{filter.label}</span>
+      {filter.description ? <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{filter.description}</span> : null}
+    </button>
+  )
+}
+
+function LegendBadge({ label, urgency }) {
+  const tone = taskChipStyle(urgency)
 
   return (
     <span
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        minWidth: 76,
-        padding: '4px 8px',
+        padding: '4px 10px',
         borderRadius: 999,
         fontSize: 11,
         fontWeight: 700,
@@ -24,14 +114,50 @@ function TaskChip({ task }) {
         color: tone.color,
         border: `1px solid ${tone.border}`,
       }}
-      title={
-        task?.last_done_date
-          ? `Last done ${task.last_done_date} | Threshold ${task.threshold} days`
-          : `Not logged yet | Threshold ${task?.threshold ?? '-'} days`
-      }
     >
       {label}
     </span>
+  )
+}
+
+function TaskStatusCard({ task, taskType }) {
+  const presentation = getTaskPresentation(task, taskType?.threshold)
+  const tone = taskChipStyle(presentation.urgency)
+
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gap: 8,
+        alignContent: 'start',
+        minHeight: 122,
+        padding: '14px 12px',
+        borderRadius: 14,
+        border: '1px solid var(--border)',
+        background: 'rgba(255, 255, 255, 0.8)',
+      }}
+    >
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 'fit-content',
+          minWidth: 122,
+          padding: '5px 10px',
+          borderRadius: 999,
+          fontSize: 11,
+          fontWeight: 800,
+          background: tone.background,
+          color: tone.color,
+          border: `1px solid ${tone.border}`,
+        }}
+      >
+        {presentation.label}
+      </span>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{presentation.detail}</div>
+      <div style={{ fontSize: 11, color: 'var(--text-3)', lineHeight: 1.45 }}>{presentation.footer}</div>
+    </div>
   )
 }
 
@@ -42,6 +168,7 @@ export default function ZonesTab() {
   const [zones, setZones] = useState([])
   const [selectedZoneId, setSelectedZoneId] = useState('')
   const [detail, setDetail] = useState(null)
+  const [frequencyFilter, setFrequencyFilter] = useState('daily')
 
   useEffect(() => {
     let mounted = true
@@ -53,7 +180,10 @@ export default function ZonesTab() {
         if (!mounted) return
         const zoneList = asList(data?.zones)
         setZones(zoneList)
-        setSelectedZoneId((current) => current || String(zoneList[0]?.id || ''))
+        setSelectedZoneId((current) => {
+          const hasCurrent = zoneList.some((zone) => String(zone.id) === String(current))
+          return hasCurrent ? current : String(zoneList[0]?.id || '')
+        })
       } catch (err) {
         if (!mounted) return
         setError(getErrorMessage(err, 'Failed to load horticulture zones.'))
@@ -100,6 +230,18 @@ export default function ZonesTab() {
   const zoneTone = getZoneTone(selectedZone?.color || detail?.zone_color)
   const taskTypes = asList(detail?.task_types)
   const areas = asList(detail?.areas)
+  const visibleTaskTypes = useMemo(
+    () => taskTypes.filter((taskType) => matchesFrequencyFilter(taskType.threshold, frequencyFilter)),
+    [frequencyFilter, taskTypes]
+  )
+  const gridTemplateColumns = useMemo(
+    () => `minmax(230px, 280px) repeat(${visibleTaskTypes.length}, minmax(170px, 1fr))`,
+    [visibleTaskTypes.length]
+  )
+  const gridMinWidth = useMemo(
+    () => 280 + visibleTaskTypes.length * 170,
+    [visibleTaskTypes.length]
+  )
 
   return (
     <div>
@@ -118,7 +260,7 @@ export default function ZonesTab() {
           <div>
             <div style={{ fontSize: 16, fontWeight: 800 }}>Zone Detail</div>
             <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
-              Season-aware task thresholds update automatically from the backend.
+              Review area task health by maintenance frequency and recent completion status.
             </div>
           </div>
           <div style={{ minWidth: 240 }}>
@@ -170,60 +312,196 @@ export default function ZonesTab() {
               </div>
               <div
                 style={{
-                  padding: '10px 12px',
-                  borderRadius: 12,
-                  background: zoneTone.soft,
-                  color: zoneTone.text,
-                  fontWeight: 700,
-                  fontSize: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  justifyContent: 'flex-end',
                 }}
               >
-                Season: {detail?.season ? detail.season.replace(/^./, (char) => char.toUpperCase()) : '-'}
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 12,
+                    background: zoneTone.soft,
+                    color: zoneTone.text,
+                    fontWeight: 700,
+                    fontSize: 12,
+                  }}
+                >
+                  Season: {detail?.season ? detail.season.replace(/^./, (char) => char.toUpperCase()) : '-'}
+                </div>
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 12,
+                    background: 'var(--surface-2)',
+                    color: 'var(--text-2)',
+                    fontWeight: 700,
+                    fontSize: 12,
+                  }}
+                >
+                  {areas.length} areas
+                </div>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)' }}>Legend:</span>
-              <span style={{ ...taskChipStyle('ok'), borderRadius: 999, padding: '4px 8px', fontSize: 11, border: '1px solid #a7f3d0' }}>On Track</span>
-              <span style={{ ...taskChipStyle('due_soon'), borderRadius: 999, padding: '4px 8px', fontSize: 11, border: '1px solid #fde68a' }}>Due Soon</span>
-              <span style={{ ...taskChipStyle('overdue'), borderRadius: 999, padding: '4px 8px', fontSize: 11, border: '1px solid #fecaca' }}>Overdue</span>
+              <LegendBadge label="Overdue / Never" urgency="overdue" />
+              <LegendBadge label="Due Soon" urgency="due_soon" />
+              <LegendBadge label="Completed Recently" urgency="ok" />
             </div>
           </Card>
 
           <Card noPad>
             <div
               style={{
-                padding: '12px 16px',
+                padding: '16px 18px',
                 borderBottom: '1px solid var(--border)',
-                fontWeight: 700,
+                display: 'grid',
+                gap: 14,
               }}
             >
-              Area Task Status Grid
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 800 }}>Area Task Status Grid</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>
+                    Filtering by task frequency updates the visible task columns instantly.
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                  Showing {visibleTaskTypes.length} of {taskTypes.length} task types
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {FREQUENCY_FILTERS.map((filter) => (
+                  <FrequencyFilterButton
+                    key={filter.key}
+                    filter={filter}
+                    active={frequencyFilter === filter.key}
+                    onClick={setFrequencyFilter}
+                  />
+                ))}
+              </div>
             </div>
+
             {detailLoading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
                 <Spinner />
               </div>
+            ) : visibleTaskTypes.length === 0 ? (
+              <div style={{ padding: '36px 18px', color: 'var(--text-3)', textAlign: 'center' }}>
+                No task types match the selected frequency filter.
+              </div>
+            ) : areas.length === 0 ? (
+              <div style={{ padding: '36px 18px', color: 'var(--text-3)', textAlign: 'center' }}>
+                No areas found for the selected zone.
+              </div>
             ) : (
-              <DataTable
-                headers={[
-                  'Area',
-                  ...taskTypes.map((taskType) => `${taskType.name} (${taskType.threshold}d)`),
-                ]}
-                rows={areas.map((area) => {
-                  const taskMap = new Map(asList(area.tasks).map((task) => [task.task_type_id, task]))
-                  return [
-                    <div key={`area-${area.id}`}>
-                      <div style={{ fontWeight: 700 }}>{area.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{area.area_sqm} sqm</div>
-                    </div>,
-                    ...taskTypes.map((taskType) => (
-                      <TaskChip key={`${area.id}-${taskType.id}`} task={taskMap.get(taskType.id)} />
-                    )),
-                  ]
-                })}
-                emptyMsg="No areas found for the selected zone."
-              />
+              <div style={{ overflow: 'auto' }}>
+                <div style={{ minWidth: gridMinWidth }}>
+                  <div style={{ display: 'grid', gridTemplateColumns }}>
+                    <div
+                      style={{
+                        position: 'sticky',
+                        top: 0,
+                        left: 0,
+                        zIndex: 4,
+                        padding: '14px 16px',
+                        borderBottom: '1px solid var(--border)',
+                        borderRight: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                      }}
+                    >
+                      <div style={{ fontSize: 11, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-3)', fontWeight: 800 }}>
+                        Area
+                      </div>
+                    </div>
+                    {visibleTaskTypes.map((taskType) => (
+                      <div
+                        key={taskType.id}
+                        style={{
+                          position: 'sticky',
+                          top: 0,
+                          zIndex: 3,
+                          padding: '14px 14px 12px',
+                          borderBottom: '1px solid var(--border)',
+                          borderRight: '1px solid var(--border)',
+                          background: 'var(--surface)',
+                        }}
+                      >
+                        <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)' }}>{taskType.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
+                          Every {taskType.threshold} day{taskType.threshold === 1 ? '' : 's'}
+                        </div>
+                      </div>
+                    ))}
+
+                    {areas.map((area, rowIndex) => {
+                      const taskMap = new Map(asList(area.tasks).map((task) => [task.task_type_id, task]))
+                      const rowBackground = rowIndex % 2 ? '#fcfbf8' : 'var(--surface)'
+
+                      return (
+                        <Fragment key={area.id}>
+                          <div
+                            style={{
+                              position: 'sticky',
+                              left: 0,
+                              zIndex: 2,
+                              padding: '16px',
+                              borderBottom: '1px solid var(--border)',
+                              borderRight: '1px solid var(--border)',
+                              background: rowBackground,
+                            }}
+                          >
+                            <div style={{ display: 'grid', gap: 8 }}>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{area.name}</div>
+                              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                                Area {area.area_number} | {area.area_sqm} sqm
+                              </div>
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                {area.overdue_task_count > 0 ? (
+                                  <LegendBadge label={`${area.overdue_task_count} overdue`} urgency="overdue" />
+                                ) : null}
+                                {area.due_soon_task_count > 0 ? (
+                                  <LegendBadge label={`${area.due_soon_task_count} due soon`} urgency="due_soon" />
+                                ) : null}
+                                {area.overdue_task_count === 0 && area.due_soon_task_count === 0 ? (
+                                  <LegendBadge label="Fully on track" urgency="ok" />
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+
+                          {visibleTaskTypes.map((taskType) => (
+                            <div
+                              key={`${area.id}-${taskType.id}`}
+                              style={{
+                                padding: '14px',
+                                borderBottom: '1px solid var(--border)',
+                                borderRight: '1px solid var(--border)',
+                                background: rowBackground,
+                              }}
+                            >
+                              <TaskStatusCard task={taskMap.get(taskType.id)} taskType={taskType} />
+                            </div>
+                          ))}
+                        </Fragment>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
             )}
           </Card>
         </>
