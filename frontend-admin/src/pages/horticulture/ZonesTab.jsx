@@ -6,22 +6,24 @@ import { asList, getErrorMessage } from '../../shared/utils'
 import { formatDate, getZoneTone, taskChipStyle } from './helpers'
 
 const FREQUENCY_FILTERS = [
-  { key: 'all', label: 'All' },
-  { key: 'daily', label: 'Daily', description: '<= 1 day' },
-  { key: 'weekly', label: 'Weekly', description: '<= 7 days' },
-  { key: 'bi_weekly', label: 'Bi-weekly', description: '<= 15 days' },
-  { key: 'monthly', label: 'Monthly', description: '<= 30 days' },
-  { key: 'long_term', label: 'Long-term', description: '> 30 days' },
+  { key: 'daily', label: 'Daily', description: '1 day' },
+  { key: 'weekly', label: 'Weekly', description: '2-7 days' },
+  { key: 'biweekly', label: 'Biweekly', description: '8-15 days' },
+  { key: 'monthly', label: 'Monthly', description: '16-30 days' },
+  { key: 'more_than_month', label: 'More than month', description: '> 30 days' },
 ]
 
 function matchesFrequencyFilter(threshold, filterKey) {
-  if (filterKey === 'all') return true
-  if (filterKey === 'daily') return threshold <= 1
-  if (filterKey === 'weekly') return threshold <= 7
-  if (filterKey === 'bi_weekly') return threshold <= 15
-  if (filterKey === 'monthly') return threshold <= 30
-  if (filterKey === 'long_term') return threshold > 30
-  return true
+  const days = Number(threshold)
+
+  if (!Number.isFinite(days)) return false
+  if (filterKey === 'daily') return days === 1
+  if (filterKey === 'weekly') return days > 1 && days <= 7
+  if (filterKey === 'biweekly') return days > 7 && days <= 15
+  if (filterKey === 'monthly') return days > 15 && days <= 30
+  if (filterKey === 'more_than_month') return days > 30
+
+  return false
 }
 
 function formatTaskAge(daysSinceDone) {
@@ -166,7 +168,7 @@ export default function ZonesTab() {
   const [zones, setZones] = useState([])
   const [selectedZoneId, setSelectedZoneId] = useState('')
   const [detail, setDetail] = useState(null)
-  const [frequencyFilter, setFrequencyFilter] = useState('all')
+  const [frequencyFilter, setFrequencyFilter] = useState('daily')
 
   useEffect(() => {
     let mounted = true
