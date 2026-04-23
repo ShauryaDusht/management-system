@@ -17,11 +17,11 @@ User = get_user_model()
 DEFAULT_PASSWORD = 'IITGN@2025'
 
 MANAGER_SPEC = {
-    'username': 'horti.manager',
+    'username': 'horticulture.manager',
     'full_name': 'Maheshbhai Prajapati',
     'role': User.Role.HORTICULTURE_MANAGER,
-    'phone': '',
-    'pay_code': '',
+    'phone': '9723889424',
+    'pay_code': '474',
     'is_staff': True,
     'is_superuser': False,
 }
