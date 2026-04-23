@@ -251,8 +251,7 @@ export default function DashboardPage() {
     { name: 'Due Soon', value: Number(hortiCounts.due_soon || 0) },
     { name: 'Overdue', value: Number(hortiCounts.overdue || 0) },
   ]
-  const hortiHasAct  = hortiDonut.some(d => d.value > 0)
-  const hortiDonutData = hortiHasAct ? hortiDonut : [{ name: 'No Activity', value: 1 }]
+  const hortiDonutData = hortiTotal > 0 ? hortiDonut : [{ name: 'No Activity', value: 1 }]
 
   const trendLines = trendModule === 'inventory'
     ? [
@@ -331,7 +330,7 @@ export default function DashboardPage() {
             {[
               { title: 'Inventory', subtitle: 'Stock overview', data: invDonut, total: invSummary?.total_items, label: 'Items', palette: DONUT_PALETTE, to: '/inventory' },
               { title: 'Housekeeping', subtitle: 'Today tasks', data: hkDonutData, total: hkSummary?.total_tasks, label: hkHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/housekeeping' },
-              { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTotal, label: hortiHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' },
+              { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTotal, label: hortiTotal > 0 ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' },
             ].map(card => (
               <Card key={card.title}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>

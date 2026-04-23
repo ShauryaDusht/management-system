@@ -234,6 +234,10 @@ export default function ZonesTab() {
     () => taskTypes.filter((taskType) => matchesFrequencyFilter(taskType.threshold, frequencyFilter)),
     [frequencyFilter, taskTypes]
   )
+  const visibleTaskTypeIds = useMemo(
+    () => new Set(visibleTaskTypes.map((taskType) => String(taskType.id))),
+    [visibleTaskTypes]
+  )
   const gridTemplateColumns = useMemo(
     () => `minmax(230px, 280px) repeat(${visibleTaskTypes.length}, minmax(170px, 1fr))`,
     [visibleTaskTypes.length]
@@ -448,7 +452,9 @@ export default function ZonesTab() {
                     ))}
 
                     {areas.map((area, rowIndex) => {
-                      const taskMap = new Map(asList(area.tasks).map((task) => [task.task_type_id, task]))
+                      const areaTasks = asList(area.tasks)
+                      const taskMap = new Map(areaTasks.map((task) => [task.task_type_id, task]))
+                      const hasVisibleTasks = areaTasks.some((task) => visibleTaskTypeIds.has(String(task.task_type_id)))
                       const rowBackground = rowIndex % 2 ? '#fcfbf8' : 'var(--surface)'
 
                       return (
@@ -483,19 +489,35 @@ export default function ZonesTab() {
                             </div>
                           </div>
 
-                          {visibleTaskTypes.map((taskType) => (
+                          {hasVisibleTasks ? (
+                            visibleTaskTypes.map((taskType) => (
+                              <div
+                                key={`${area.id}-${taskType.id}`}
+                                style={{
+                                  padding: '14px',
+                                  borderBottom: '1px solid var(--border)',
+                                  borderRight: '1px solid var(--border)',
+                                  background: rowBackground,
+                                }}
+                              >
+                                <TaskStatusCard task={taskMap.get(taskType.id)} taskType={taskType} />
+                              </div>
+                            ))
+                          ) : (
                             <div
-                              key={`${area.id}-${taskType.id}`}
                               style={{
+                                gridColumn: `span ${visibleTaskTypes.length}`,
                                 padding: '14px',
                                 borderBottom: '1px solid var(--border)',
                                 borderRight: '1px solid var(--border)',
                                 background: rowBackground,
                               }}
                             >
-                              <TaskStatusCard task={taskMap.get(taskType.id)} taskType={taskType} />
+                              <div style={{ fontSize: 12, color: 'var(--text-3)', padding: '6px 0' }}>
+                                All tasks within this frequency are on schedule
+                              </div>
                             </div>
-                          ))}
+                          )}
                         </Fragment>
                       )
                     })}
