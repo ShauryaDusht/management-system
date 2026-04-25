@@ -15,19 +15,8 @@ body{background:#efece4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
 .hdr-copy{display:flex;flex-direction:column;gap:2px;line-height:1.05}
 .hdr-app{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.72)}
 .hdr-ttl{font-weight:700;font-size:14px;letter-spacing:.5px}
-.ava{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;overflow:hidden;flex-shrink:0}
+.ava{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;overflow:hidden;flex-shrink:0;text-decoration:none}
 .ava img{width:100%;height:100%;object-fit:cover}
-.profile-menu{position:relative;flex-shrink:0}
-.profile-trigger{list-style:none;cursor:pointer}
-.profile-trigger::-webkit-details-marker{display:none}
-.profile-trigger:focus-visible{outline:2px solid rgba(255,255,255,.85);outline-offset:3px}
-.profile-menu[open] .profile-trigger{background:rgba(255,255,255,.22)}
-.profile-dropdown{position:absolute;top:calc(100% + 10px);right:0;min-width:220px;padding:14px;border-radius:14px;background:rgba(255,255,255,.98);box-shadow:0 14px 28px rgba(0,0,0,.18);border:1px solid rgba(229,231,235,.95);color:#1f2937;display:grid;gap:12px}
-.profile-copy{display:grid;gap:3px}
-.profile-name{font-size:14px;font-weight:800;color:#111827}
-.profile-meta{font-size:12px;color:#6b7280}
-.profile-logout{margin:0}
-.profile-logout button{width:100%}
 .page{padding:10px 10px 96px;max-width:480px;margin:0 auto}
 .card{background:rgba(255,255,255,.95);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
 .btn-p{background:linear-gradient(135deg,#c2622a,#a0501e);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;width:100%;cursor:pointer;display:block;text-align:center;text-decoration:none}
@@ -93,25 +82,10 @@ body{background:#efece4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
     </span>
   </div>
   {% if request.user.is_authenticated %}
-  <details class="profile-menu" data-profile-menu>
-    <summary class="ava profile-trigger" aria-label="Open profile menu">
-      {% if request.user.profile_photo %}<img src="{{ request.user.profile_photo.url }}" alt="">
-      {% else %}{{ request.user.first_name|default:request.user.username|first|upper }}{% endif %}
-    </summary>
-    <div class="profile-dropdown">
-      <div class="profile-copy">
-        <div class="profile-name">{{ request.user.get_full_name|default:request.user.username }}</div>
-        <div class="profile-meta">{{ request.user.get_role_display }}</div>
-        {% if selected_zone %}
-        <div class="profile-meta">Zone: {{ selected_zone.name }}</div>
-        {% endif %}
-      </div>
-      <form method="post" action="/portal/logout/" class="profile-logout">
-        {% csrf_token %}
-        <button type="submit" class="btn-g">Logout</button>
-      </form>
-    </div>
-  </details>
+  <a href="/horticulture/profile/{% if selected_zone %}?zone={{ selected_zone.id }}{% endif %}" class="ava" aria-label="Open profile">
+    {% if request.user.profile_photo %}<img src="{{ request.user.profile_photo.url }}" alt="">
+    {% else %}{{ request.user.first_name|default:request.user.username|first|upper }}{% endif %}
+  </a>
   {% endif %}
 </div>
 
@@ -130,23 +104,5 @@ body{background:#efece4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
   </a>
 </div>
 {% endif %}
-<script>
-(() => {
-  const menu = document.querySelector('[data-profile-menu]');
-  if (!menu) return;
-
-  document.addEventListener('click', (event) => {
-    if (menu.open && !menu.contains(event.target)) {
-      menu.open = false;
-    }
-  });
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      menu.open = false;
-    }
-  });
-})();
-</script>
 </body>
 </html>

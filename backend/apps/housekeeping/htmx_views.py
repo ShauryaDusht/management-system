@@ -1823,6 +1823,13 @@ def hk_stock_request(request):
 def hk_profile(request):
     user = request.user
     user_areas = get_user_areas(user)
+    user_area_items = [
+        {
+            "name": area.name,
+            "meta": area.get_area_type_display(),
+        }
+        for area in user_areas
+    ]
     today = timezone.localdate()
     success = error = ""
     show_incharge_selector = False
@@ -1934,6 +1941,7 @@ def hk_profile(request):
     return render(request, "housekeeping/mobile/profile.html", {
         "user": user,
         "user_areas": user_areas,
+        "user_area_items": user_area_items,
         "success": success,
         "error": error,
         "today": today,
