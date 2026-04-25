@@ -34,63 +34,30 @@
   </div>
 </div>
 
+<div class="area-grid">
 {% for area in areas %}
 <a class="area-link" href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ area.id }}">
-  <div class="card area-card">
+  <div class="card area-card compact {% if area.urgency == 'overdue' %}is-overdue{% elif area.urgency == 'due_soon' %}is-due-soon{% endif %}">
     <div class="area-head">
-      <div class="area-left">
-        <span class="zone-dot" style="margin-top:5px;background:{% if area.urgency == 'overdue' %}#dc2626{% elif area.urgency == 'due_soon' %}#d97706{% else %}#16a34a{% endif %}"></span>
-        <div>
-          <div style="font-size:15px;font-weight:800">{{ area.name }}</div>
-          <div class="muted">{{ area.area_sqm }} sqm</div>
-        </div>
-      </div>
-      <span class="bdg urgency-pill {% if area.urgency == 'overdue' %}r{% elif area.urgency == 'due_soon' %}y{% else %}g{% endif %}">
-        {% if area.urgency == 'overdue' %}Overdue{% elif area.urgency == 'due_soon' %}Due Soon{% else %}Fine{% endif %}
-      </span>
-    </div>
-
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-      {% if area.overdue_task_count %}
-      <span class="bdg r">{{ area.overdue_task_count }} overdue</span>
-      {% endif %}
-      {% if area.due_soon_task_count %}
-      <span class="bdg y">{{ area.due_soon_task_count }} due soon</span>
-      {% endif %}
-      {% if not area.overdue_task_count and not area.due_soon_task_count %}
-      <span class="bdg g">On track</span>
+      <div class="area-title">{{ area.name }}</div>
+      {% if area.urgency == 'overdue' %}
+      <span class="bdg urgency-pill r">Overdue</span>
       {% endif %}
     </div>
-
-    <div style="display:grid;gap:7px;margin-top:10px">
-      {% for task in area.tasks|slice:":3" %}
-      <div class="summary">
-        <div style="font-size:12px;font-weight:700">{{ task.task_type_name }}</div>
-        <div class="muted">
-          {% if task.last_done_date %}
-            {{ task.days_since_done }} days ago
-          {% else %}
-            Never logged
-          {% endif %}
-        </div>
-      </div>
-      {% endfor %}
-    </div>
+    <div class="area-size">{{ area.area_sqm }} sqm</div>
   </div>
 </a>
 {% empty %}
-<div class="card" style="text-align:center;color:#9ca3af;padding:24px">
-  No areas found in this zone.
+<div style="grid-column:1 / -1">
+  <div class="card" style="text-align:center;color:#9ca3af;padding:24px">
+    No areas found in this zone.
+  </div>
 </div>
 {% endfor %}
+</div>
 {% else %}
 <div class="card" style="text-align:center;color:#9ca3af;padding:26px">
   No horticulture zone is assigned to this supervisor.
 </div>
 {% endif %}
-
-<form method="post" action="/portal/logout/" style="margin-top:4px">
-  {% csrf_token %}
-  <button type="submit" class="btn-g">Logout</button>
-</form>
 {% endblock %}
