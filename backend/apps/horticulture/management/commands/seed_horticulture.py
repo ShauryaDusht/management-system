@@ -8,6 +8,8 @@ from django.utils.text import slugify
 from apps.horticulture.models import (
     HorticultureArea,
     HorticultureRoad,
+    HorticultureWorker,
+    HorticultureWorkerArea,
     HorticultureZone,
     SeasonSetting,
     TaskType,
@@ -316,7 +318,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         verbosity = options.get('verbosity', 1)
 
-        if HorticultureZone.objects.exists():
+        if HorticultureZone.objects.exists() and HorticultureWorker.objects.exists():
             if verbosity > 0:
                 self.stdout.write('Horticulture data already seeded, skipping.')
             return
@@ -345,9 +347,9 @@ class Command(BaseCommand):
         with transaction.atomic():
             manager = self._seed_manager()
             supervisors = self._seed_supervisors()
-            self._seed_workers()
             zones = self._seed_zones(supervisors)
             self._seed_areas(zones)
+            self._seed_workers(zones)
             self._seed_roads(zones)
             self._seed_task_types()
             season = self._seed_season(admin_user)
@@ -407,23 +409,52 @@ class Command(BaseCommand):
             supervisors[spec['username']] = supervisor
         return supervisors
 
-    def _seed_workers(self):
-        # The shared user schema does not yet have a dedicated horticulture-worker role,
-        # so workers are stored as active caretaker users for attendance/task ownership.
+    def _seed_workers(self, zones):
         for supervisor_username, workers in WORKER_TEAMS.items():
+            zone_names = [
+                spec['name']
+                for spec in ZONE_SPECS
+                if spec['supervisor_username'] == supervisor_username
+            ]
+            area_ids = list(
+                HorticultureArea.objects
+                .filter(zone__name__in=zone_names)
+                .order_by('area_number')
+                .values_list('id', flat=True)
+            )
             for full_name, pay_code, phone in workers:
-                username = self._build_worker_username(full_name, pay_code, supervisor_username)
-                _, created, updated = self._get_or_sync_user(
-                    username=username,
-                    full_name=full_name,
-                    role=User.Role.CARETAKER,
-                    phone=phone,
+                worker, created = HorticultureWorker.objects.get_or_create(
                     pay_code=pay_code,
-                    is_staff=False,
-                    is_superuser=False,
+                    defaults={
+                        'name': full_name,
+                        'phone': phone,
+                        'is_active': True,
+                    },
                 )
+                changed = False
+                if worker.name != full_name:
+                    worker.name = full_name
+                    changed = True
+                if worker.phone != phone:
+                    worker.phone = phone
+                    changed = True
+                if not worker.is_active:
+                    worker.is_active = True
+                    changed = True
+                if changed:
+                    worker.save(update_fields=['name', 'phone', 'is_active', 'updated_at'])
+
+                if area_ids:
+                    index = self.stats['workers_created'] + self.stats['workers_updated']
+                    primary_area_id = area_ids[index % len(area_ids)]
+                    HorticultureWorkerArea.objects.update_or_create(
+                        worker=worker,
+                        area_id=primary_area_id,
+                        defaults={'is_active': True},
+                    )
+
                 self.stats['workers_created'] += int(created)
-                self.stats['workers_updated'] += int(updated)
+                self.stats['workers_updated'] += int(not created and changed)
 
     def _seed_zones(self, supervisors):
         zones = {}

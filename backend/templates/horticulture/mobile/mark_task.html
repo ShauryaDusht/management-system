@@ -50,12 +50,11 @@
 
 <div class="task-stack">
   {% for task in task_rows %}
-  <form method="post" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}">
-    {% csrf_token %}
-    <input type="hidden" name="zone_id" value="{{ selected_zone.id }}">
-    <input type="hidden" name="area_id" value="{{ selected_area.id }}">
-    <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
-    <button type="submit" class="task-btn {% if task.urgency == 'overdue' %}overdue{% elif task.urgency == 'due_soon' %}due{% else %}ok{% endif %}">
+  <div class="task-btn {% if task.urgency == 'overdue' %}overdue{% elif task.urgency == 'due_soon' %}due{% else %}ok{% endif %}">
+    <a
+      href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}"
+      style="text-decoration:none;color:inherit;display:block"
+    >
       <span class="task-title">{{ task.task_type_name }}</span>
       <span class="task-meta">
         {% if task.last_done_date %}
@@ -65,12 +64,50 @@
         {% endif %}
       </span>
       <span class="task-hint">
-        {% if task.urgency == 'overdue' %}Tap now - overdue
-        {% elif task.urgency == 'due_soon' %}Tap now - due soon
-        {% else %}Tap to mark done today{% endif %}
+        {% if request.GET.task == task.task_type_id|stringformat:"s" %}
+          Select worker and session, then submit with optional photo.
+        {% else %}
+          Tap to select worker and upload photo.
+        {% endif %}
       </span>
-    </button>
-  </form>
+    </a>
+
+    {% if request.GET.task == task.task_type_id|stringformat:"s" %}
+    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}">
+    {% csrf_token %}
+    <input type="hidden" name="zone_id" value="{{ selected_zone.id }}">
+    <input type="hidden" name="area_id" value="{{ selected_area.id }}">
+    <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <div>
+          <label>Worker</label>
+          <select name="worker_id" required>
+            <option value="">Select worker</option>
+            {% for worker in workers %}
+            <option value="{{ worker.id }}">{{ worker.name }}{% if worker.pay_code %} ({{ worker.pay_code }}){% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>Session</label>
+          <select name="session" required>
+            <option value="morning" {% if request.GET.session == 'morning' %}selected{% endif %}>Morning</option>
+            <option value="afternoon" {% if request.GET.session == 'afternoon' %}selected{% endif %}>Afternoon</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:8px">
+        <label>Task Photo</label>
+        <input type="file" name="photo" accept="image/*" capture="environment" required>
+      </div>
+      <div style="margin-top:8px">
+        <label>Note</label>
+        <input type="text" name="note" placeholder="Optional note">
+      </div>
+      <button type="submit" class="btn-s" style="margin-top:10px">Submit Task</button>
+    </form>
+    {% endif %}
+  </div>
   {% empty %}
   <div class="card" style="text-align:center;color:#9ca3af;padding:24px">
     No active task types are available.

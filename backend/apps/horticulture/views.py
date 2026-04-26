@@ -1,27 +1,52 @@
 import functools
-from datetime import timedelta
+import calendar
+from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from urllib.parse import urlencode
 
 from django.contrib import messages
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import get_user_model, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count
+from django.db import transaction
+from django.db.models import Count, DecimalField, Prefetch, Sum, Value
+from django.db.models.functions import Coalesce
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.users.permissions import IsSupervisor
 
-from .models import HorticultureAttendance, HorticultureZone, SeasonSetting, TaskLog, TaskType, WorkerAttendance
+from .models import (
+    HorticultureAttendance,
+    HorticultureAttendanceRecord,
+    HorticultureArea,
+    HorticultureAreaStock,
+    HorticultureAreaTaskAssignment,
+    HorticultureDailyAssignment,
+    HorticultureStockRequest,
+    HorticultureWorker,
+    HorticultureWorkerArea,
+    HorticultureZone,
+    SeasonSetting,
+    TaskLog,
+    TaskType,
+    WorkerAttendance,
+)
 from .serializers import (
     AdminAttendanceSerializer,
+    AdminAttendanceRecordSerializer,
+    AdminAreaTaskAssignmentSerializer,
+    AdminDailyAssignmentSerializer,
     AdminSummarySerializer,
     AdminSupervisorsSerializer,
+    AdminTaskTypeSerializer,
+    AdminWorkerReportSerializer,
+    AdminWorkerSerializer,
     AdminZoneDetailSerializer,
     ManagerSeasonStatusSerializer,
     ManagerSeasonUpdateSerializer,
@@ -44,6 +69,8 @@ from .services import (
     get_task_threshold,
     get_zone_choices_payload,
 )
+
+User = get_user_model()
 
 
 def _flatten_errors(detail):
@@ -76,6 +103,25 @@ def _selected_area_for_zone(zone, area_id=None):
         if area:
             return area
     return area_qs.first()
+
+
+def _workers_for_area(area):
+    if area is None:
+        return HorticultureWorker.objects.none()
+    return (
+        HorticultureWorker.objects
+        .filter(is_active=True, area_assignments__area=area, area_assignments__is_active=True)
+        .distinct()
+        .order_by('name', 'pay_code')
+    )
+
+
+def _current_half():
+    return 'first' if timezone.localtime().hour < 13 else 'second'
+
+
+def _supervisor_areas(supervisor):
+    return HorticultureArea.objects.filter(zone__supervisor=supervisor).select_related('zone').order_by('area_number')
 
 
 def _attendance_for_date(supervisor, date):
@@ -155,6 +201,24 @@ def _team_workers_by_supervisor(supervisors):
     for supervisor in supervisors:
         team_map[supervisor.id] = list(get_supervisor_worker_queryset(supervisor))
     return team_map
+
+
+def _worker_rows(supervisors=None, zones=None):
+    return (
+        HorticultureWorker.objects
+        .prefetch_related(
+            Prefetch(
+                'area_assignments',
+                queryset=(
+                    HorticultureWorkerArea.objects
+                    .filter(is_active=True)
+                    .select_related('area__zone__supervisor')
+                    .order_by('area__area_number')
+                ),
+            )
+        )
+        .order_by('name', 'id')
+    )
 
 
 def _zone_names_by_supervisor(zones):
@@ -406,6 +470,29 @@ class AdminHorticultureZoneDetailAPIView(APIView):
         return Response(serializer.data)
 
 
+class AdminHorticultureAreasAPIView(APIView):
+    permission_classes = [IsAdminOrHorticultureManager]
+
+    def get(self, request):
+        areas = (
+            HorticultureArea.objects
+            .select_related('zone__supervisor')
+            .order_by('area_number')
+        )
+        return Response([
+            {
+                'id': area.id,
+                'area_number': area.area_number,
+                'name': area.name,
+                'area_sqm': area.area_sqm,
+                'zone_id': area.zone_id,
+                'zone_name': area.zone.name if area.zone else '',
+                'supervisor_name': _display_name(area.zone.supervisor) if area.zone and area.zone.supervisor else '',
+            }
+            for area in areas
+        ])
+
+
 class AdminHorticultureAttendanceAPIView(APIView):
     permission_classes = [IsAdminOrHorticultureManager]
 
@@ -474,6 +561,11 @@ class AdminHorticultureSupervisorsAPIView(APIView):
         supervisors = list(get_horticulture_supervisors())
         team_map = _team_workers_by_supervisor(supervisors)
         zone_map = _zone_names_by_supervisor(zones)
+        area_map = {}
+        for area in HorticultureArea.objects.select_related('zone').filter(
+            zone__supervisor_id__in=[supervisor.id for supervisor in supervisors],
+        ).order_by('area_number'):
+            area_map.setdefault(area.zone.supervisor_id, []).append(area.name)
 
         weekly_task_counts = {
             row['done_by_id']: row['count']
@@ -490,9 +582,20 @@ class AdminHorticultureSupervisorsAPIView(APIView):
 
         supervisor_rows = [
             {
+                'id': supervisor.id,
                 'supervisor_id': supervisor.id,
                 'supervisor_name': _display_name(supervisor),
+                'full_name': _display_name(supervisor),
+                'first_name': supervisor.first_name,
+                'last_name': supervisor.last_name,
+                'email': supervisor.email,
+                'username': supervisor.username,
+                'phone': supervisor.phone or '',
+                'pay_code': supervisor.pay_code or '',
+                'role': supervisor.role,
+                'is_active': supervisor.is_active,
                 'zone_names': zone_map.get(supervisor.id, []),
+                'area_names': area_map.get(supervisor.id, []),
                 'workers_count': len(team_map.get(supervisor.id, [])),
                 'last_login': supervisor.last_login,
                 'tasks_logged_this_week': weekly_task_counts.get(supervisor.id, 0),
@@ -508,6 +611,250 @@ class AdminHorticultureSupervisorsAPIView(APIView):
 
         serializer = AdminSupervisorsSerializer({'supervisors': supervisor_rows})
         return Response(serializer.data)
+
+
+class AdminHorticultureWorkersAPIView(APIView):
+    permission_classes = [IsAdminOrHorticultureManager]
+
+    def get(self, request):
+        serializer = AdminWorkerSerializer(_worker_rows(), many=True, context={'request': request})
+        return Response({'workers': serializer.data})
+
+    def post(self, request):
+        data = request.data.copy()
+        if hasattr(request.data, 'getlist'):
+            data.setlist('area_ids', request.data.getlist('area_ids'))
+        serializer = AdminWorkerSerializer(data=data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        worker = serializer.save()
+        worker = _worker_rows().get(pk=worker.pk)
+        return Response(AdminWorkerSerializer(worker, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+
+class AdminHorticultureWorkerDetailAPIView(APIView):
+    permission_classes = [IsAdminOrHorticultureManager]
+
+    def get_object(self, worker_id):
+        return get_object_or_404(_worker_rows(), pk=worker_id)
+
+    def patch(self, request, worker_id):
+        worker = self.get_object(worker_id)
+        data = request.data.copy()
+        if hasattr(request.data, 'getlist'):
+            data.setlist('area_ids', request.data.getlist('area_ids'))
+        serializer = AdminWorkerSerializer(worker, data=data, partial=True, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        worker = serializer.save()
+        worker = _worker_rows().get(pk=worker.pk)
+        return Response(AdminWorkerSerializer(worker, context={'request': request}).data)
+
+    def delete(self, request, worker_id):
+        worker = self.get_object(worker_id)
+        worker.is_active = False
+        worker.save(update_fields=['is_active', 'updated_at'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AdminHorticultureWorkerReportAPIView(APIView):
+    permission_classes = [IsAdminOrHorticultureManager]
+
+    def get(self, request, worker_id):
+        month = int(request.query_params.get('month') or timezone.localdate().month)
+        year = int(request.query_params.get('year') or timezone.localdate().year)
+        if month < 1 or month > 12:
+            return Response({'detail': 'Invalid month.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        worker = get_object_or_404(_worker_rows(), pk=worker_id)
+        worker_row = AdminWorkerSerializer(worker, context={'request': request}).data
+
+        start = date(year, month, 1)
+        end = date(year, month, calendar.monthrange(year, month)[1])
+        entries = (
+            HorticultureAttendanceRecord.objects.filter(
+                worker_id=worker_id,
+                date__gte=start,
+                date__lte=end,
+            )
+            .select_related('marked_by')
+            .order_by('date', 'half')
+        )
+
+        days_present = 0
+        days_absent = 0
+        half_days = 0
+        daily_breakdown = []
+        for entry in entries:
+            if entry.status in {HorticultureAttendanceRecord.Status.PRESENT, HorticultureAttendanceRecord.Status.LATE}:
+                days_present += 1
+            elif entry.status == HorticultureAttendanceRecord.Status.ABSENT:
+                days_absent += 1
+            elif entry.status == HorticultureAttendanceRecord.Status.LEAVE:
+                half_days += 1
+            daily_breakdown.append(
+                {
+                    'date': entry.date,
+                    'status': f'{entry.half}_{entry.status}',
+                    'supervisor_name': _display_name(entry.marked_by),
+                }
+            )
+
+        marked_days = len(daily_breakdown)
+        attendance_pct = round((days_present / marked_days) * 100, 2) if marked_days else 0
+        serializer = AdminWorkerReportSerializer(
+            {
+                'worker': worker_row,
+                'month': month,
+                'year': year,
+                'days_present': days_present,
+                'days_absent': days_absent,
+                'half_days': half_days,
+                'marked_days': marked_days,
+                'attendance_pct': attendance_pct,
+                'daily_breakdown': daily_breakdown,
+            }
+        )
+        return Response(serializer.data)
+
+
+class AdminHorticultureAttendanceSummaryAPIView(APIView):
+    permission_classes = [IsAdminOrHorticultureManager]
+
+    def get(self, request):
+        requested_date = request.query_params.get('date')
+        attendance_date = parse_date(requested_date) if requested_date else timezone.localdate()
+        if requested_date and attendance_date is None:
+            return Response({'detail': 'Invalid date. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        areas = list(HorticultureArea.objects.select_related('zone').order_by('area_number'))
+        worker_links = (
+            HorticultureWorkerArea.objects
+            .filter(is_active=True, worker__is_active=True)
+            .values_list('area_id', 'worker_id')
+        )
+        workers_by_area = {}
+        for area_id, worker_id in worker_links:
+            workers_by_area.setdefault(area_id, set()).add(worker_id)
+
+        present_map = {}
+        status_counts = {}
+        for area_id, worker_id, half, record_status in (
+            HorticultureAttendanceRecord.objects
+            .filter(worker__area_assignments__is_active=True, date=attendance_date)
+            .values_list('worker__area_assignments__area_id', 'worker_id', 'half', 'status')
+        ):
+            if record_status in {HorticultureAttendanceRecord.Status.PRESENT, HorticultureAttendanceRecord.Status.LATE}:
+                present_map.setdefault(area_id, set()).add(worker_id)
+            status_counts.setdefault(area_id, {'late': 0, 'leave': 0})
+            if record_status in {'late', 'leave'}:
+                status_counts[area_id][record_status] += 1
+
+        rows = []
+        for area in areas:
+            total = len(workers_by_area.get(area.id, set()))
+            present = len(present_map.get(area.id, set()))
+            rows.append({
+                'area_id': area.id,
+                'area_name': area.name,
+                'zone_name': area.zone.name if area.zone else '',
+                'total_workers': total,
+                'present': present,
+                'absent': max(total - present, 0),
+                'late': status_counts.get(area.id, {}).get('late', 0),
+                'leave': status_counts.get(area.id, {}).get('leave', 0),
+            })
+        return Response(rows)
+
+
+class AdminHorticultureAttendanceRecordListCreateAPIView(generics.ListCreateAPIView):
+    serializer_class = AdminAttendanceRecordSerializer
+    permission_classes = [IsAdminOrHorticultureManager]
+
+    def get_queryset(self):
+        qs = HorticultureAttendanceRecord.objects.select_related('worker', 'marked_by')
+        date_str = self.request.query_params.get('date')
+        if date_str:
+            qs = qs.filter(date=parse_date(date_str) or timezone.localdate())
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(marked_by=self.request.user, submitted_at=timezone.now())
+
+
+class AdminHorticultureAttendanceRecordDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = AdminAttendanceRecordSerializer
+    permission_classes = [IsAdminOrHorticultureManager]
+    queryset = HorticultureAttendanceRecord.objects.select_related('worker', 'marked_by')
+
+
+class AdminHorticultureDailyAssignmentListCreateAPIView(generics.ListCreateAPIView):
+    serializer_class = AdminDailyAssignmentSerializer
+    permission_classes = [IsAdminOrHorticultureManager]
+
+    def get_queryset(self):
+        qs = HorticultureDailyAssignment.objects.select_related('worker', 'area', 'task_type', 'assigned_by')
+        date_str = self.request.query_params.get('date')
+        area_id = self.request.query_params.get('area')
+        worker_id = self.request.query_params.get('worker')
+        if date_str:
+            qs = qs.filter(date=parse_date(date_str) or timezone.localdate())
+        if area_id:
+            qs = qs.filter(area_id=area_id)
+        if worker_id:
+            qs = qs.filter(worker_id=worker_id)
+        return qs
+
+    def perform_create(self, serializer):
+        photo = serializer.validated_data.get('photo')
+        serializer.save(
+            assigned_by=self.request.user,
+            photo_uploaded_at=timezone.now() if photo else None,
+        )
+
+
+class AdminHorticultureDailyAssignmentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = AdminDailyAssignmentSerializer
+    permission_classes = [IsAdminOrHorticultureManager]
+    queryset = HorticultureDailyAssignment.objects.select_related('worker', 'area', 'task_type', 'assigned_by')
+
+    def perform_update(self, serializer):
+        photo = serializer.validated_data.get('photo')
+        serializer.save(photo_uploaded_at=timezone.now() if photo else serializer.instance.photo_uploaded_at)
+
+
+class AdminHorticultureAreaTaskAssignmentListCreateAPIView(generics.ListCreateAPIView):
+    serializer_class = AdminAreaTaskAssignmentSerializer
+    permission_classes = [IsAdminOrHorticultureManager]
+
+    def get_queryset(self):
+        qs = HorticultureAreaTaskAssignment.objects.select_related('area__zone', 'task_type', 'assigned_by')
+        date_str = self.request.query_params.get('date')
+        area_id = self.request.query_params.get('area')
+        if date_str:
+            qs = qs.filter(date=parse_date(date_str) or timezone.localdate())
+        if area_id:
+            qs = qs.filter(area_id=area_id)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(assigned_by=self.request.user)
+
+
+class AdminHorticultureAreaTaskAssignmentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = AdminAreaTaskAssignmentSerializer
+    permission_classes = [IsAdminOrHorticultureManager]
+    queryset = HorticultureAreaTaskAssignment.objects.select_related('area__zone', 'task_type', 'assigned_by')
+
+
+class AdminHorticultureTaskTypeListCreateAPIView(generics.ListCreateAPIView):
+    serializer_class = AdminTaskTypeSerializer
+    permission_classes = [IsAdminOrHorticultureManager]
+    queryset = TaskType.objects.order_by('name')
+
+
+class AdminHorticultureTaskTypeDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = AdminTaskTypeSerializer
+    permission_classes = [IsAdminOrHorticultureManager]
+    queryset = TaskType.objects.order_by('name')
 
 
 class ManagerSeasonAPIView(APIView):
@@ -797,16 +1144,55 @@ def horticulture_dashboard(request):
         request.GET.get('zone'),
     )
     selected_area = _selected_area_for_zone(selected_zone)
+    requested_area_id = request.GET.get('area')
+    if requested_area_id:
+        selected_area = _selected_area_for_zone(selected_zone, requested_area_id)
+
+    today = timezone.localdate()
+    selected_area_payload = None
+    for area in dashboard_payload['areas']:
+        if selected_area and area['id'] == selected_area.id:
+            selected_area_payload = area
+            break
+    task_rows = selected_area_payload['tasks'] if selected_area_payload else []
+    area_task_assignments = (
+        HorticultureAreaTaskAssignment.objects
+        .filter(area=selected_area, date=today, is_active=True)
+        .select_related('task_type', 'assigned_by')
+        .order_by('session', 'task_type__name')
+    ) if selected_area else []
+    completed_assignments = (
+        HorticultureDailyAssignment.objects
+        .filter(area=selected_area, date=today)
+        .select_related('worker', 'task_type')
+    ) if selected_area else []
+    completed_task_ids = {assignment.task_type_id for assignment in completed_assignments}
+    done_task_type_ids = {
+        task['task_type_id']
+        for task in task_rows
+        if task.get('last_done_date') == today
+    }
+    done_task_type_ids.update(completed_task_ids)
+    total_tasks = len(task_rows)
+    done_tasks = sum(1 for task in task_rows if task['task_type_id'] in done_task_type_ids)
+    percent_done = int(round((done_tasks / total_tasks) * 100)) if total_tasks else 0
 
     return render(
         request,
         'horticulture/mobile/dashboard.html',
         {
-            'today': timezone.localdate(),
+            'today': today,
             'zones': dashboard_payload['zones'],
             'selected_zone': selected_zone,
             'selected_area': selected_area,
             'areas': dashboard_payload['areas'],
+            'task_rows': task_rows,
+            'area_task_assignments': area_task_assignments,
+            'completed_assignments': completed_assignments,
+            'completed_task_ids': done_task_type_ids,
+            'total_tasks': total_tasks,
+            'done_tasks': done_tasks,
+            'percent_done': percent_done,
             'season': dashboard_payload['season'],
             'zone_count': len(zones),
         },
@@ -882,10 +1268,21 @@ def horticulture_mark_task(request):
     error_message = ''
 
     if request.method == 'POST':
+        worker = HorticultureWorker.objects.filter(
+            pk=request.POST.get('worker_id'),
+            is_active=True,
+            area_assignments__area=selected_area,
+            area_assignments__is_active=True,
+        ).first()
+        session = request.POST.get('session') or HorticultureDailyAssignment.Session.MORNING
         if selected_zone is None:
             error_message = 'No horticulture zone is assigned to this supervisor.'
         elif selected_area is None:
             error_message = 'Select a valid area before marking a task.'
+        elif worker is None:
+            error_message = 'Select a valid worker assigned to this area.'
+        elif session not in {HorticultureDailyAssignment.Session.MORNING, HorticultureDailyAssignment.Session.AFTERNOON}:
+            error_message = 'Select morning or afternoon session.'
         else:
             serializer = SupervisorTaskLogSerializer(
                 data={
@@ -899,9 +1296,24 @@ def horticulture_mark_task(request):
             )
             if serializer.is_valid():
                 task_log = serializer.save()
+                assignment, _created = HorticultureDailyAssignment.objects.update_or_create(
+                    worker=worker,
+                    date=timezone.localdate(),
+                    session=session,
+                    defaults={
+                        'area': selected_area,
+                        'task_type': task_log.task_type,
+                        'assigned_by': request.user,
+                        'note': request.POST.get('note', '').strip(),
+                    },
+                )
+                if request.FILES.get('photo'):
+                    assignment.photo = request.FILES['photo']
+                    assignment.photo_uploaded_at = timezone.now()
+                    assignment.save(update_fields=['photo', 'photo_uploaded_at'])
                 messages.success(
                     request,
-                    f'{task_log.task_type.name} marked done for {selected_area.name}.',
+                    f'{task_log.task_type.name} assigned to {worker.name} and marked done for {selected_area.name}.',
                 )
                 query = _query_string(zone=selected_zone.id, area=selected_area.id)
                 return redirect(f'/horticulture/mark-task/?{query}')
@@ -923,6 +1335,8 @@ def horticulture_mark_task(request):
             'selected_area': selected_area,
             'areas': dashboard_payload['areas'],
             'task_rows': selected_area_payload['tasks'] if selected_area_payload else [],
+            'workers': _workers_for_area(selected_area),
+            'sessions': HorticultureDailyAssignment.Session.choices,
             'season': dashboard_payload['season'],
             'error_message': error_message,
             'zone_count': len(zones),
@@ -937,69 +1351,95 @@ def horticulture_attendance(request):
         request.user,
         request.GET.get('zone') or request.POST.get('zone'),
     )
-    selected_area = _selected_area_for_zone(selected_zone)
-    workers = list(get_supervisor_worker_queryset(request.user))
-    today_attendance = _attendance_for_date(request.user, today)
+    selected_area = _selected_area_for_zone(selected_zone, request.GET.get('area') or request.POST.get('area_id'))
+    workers = list(_workers_for_area(selected_area))
     error_message = ''
+    cur_half = _current_half()
+    is_today = True
 
     if request.method == 'POST':
-        if today_attendance is not None:
-            error_message = 'Attendance for today has already been submitted.'
-        else:
-            worker_rows = [
-                {
-                    'worker_id': worker.id,
-                    'status': request.POST.get(
-                        f'worker_{worker.id}',
-                        WorkerAttendance.Status.PRESENT,
-                    ),
-                }
-                for worker in workers
-            ]
-            serializer = SupervisorAttendanceCreateSerializer(
-                data={
-                    'date': today,
-                    'workers': worker_rows,
-                },
-                context={'request': request},
-            )
-            if serializer.is_valid():
-                serializer.save()
-                messages.success(
-                    request,
-                    f"Today's attendance submitted for {len(workers)} workers.",
-                )
-                query = _query_string(zone=selected_zone.id if selected_zone else None)
+        action = request.POST.get('action') or 'bulk'
+        half = request.POST.get('half', cur_half)
+        if half not in {'first', 'second'}:
+            error_message = 'Select first or second half.'
+        elif not selected_area:
+            error_message = 'Select a valid area before marking attendance.'
+        elif action == 'submit_half':
+            HorticultureAttendanceRecord.objects.filter(
+                worker__in=workers,
+                date=today,
+                half=half,
+                is_submitted=False,
+            ).update(is_submitted=True, submitted_at=timezone.now())
+            messages.success(request, f'{half.title()} half attendance submitted.')
+            query = _query_string(zone=selected_zone.id if selected_zone else None, area=selected_area.id if selected_area else None)
+            return redirect(f'/horticulture/attendance/?{query}' if query else '/horticulture/attendance/')
+        elif action == 'mark':
+            worker = HorticultureWorker.objects.filter(
+                pk=request.POST.get('worker_id'),
+                is_active=True,
+                area_assignments__area=selected_area,
+                area_assignments__is_active=True,
+            ).first()
+            status_value = request.POST.get('status', 'present')
+            if worker is None:
+                error_message = 'Select a valid worker for this area.'
+            elif status_value not in {'present', 'absent', 'late', 'leave'}:
+                error_message = 'Select a valid attendance status.'
+            else:
+                existing = HorticultureAttendanceRecord.objects.filter(worker=worker, date=today, half=half).first()
+                if not (existing and existing.is_submitted):
+                    record, _created = HorticultureAttendanceRecord.objects.get_or_create(
+                        worker=worker,
+                        date=today,
+                        half=half,
+                        defaults={'marked_by': request.user},
+                    )
+                    record.status = status_value
+                    record.marked_by = request.user
+                    record.submitted_at = timezone.now()
+                    record.save(update_fields=['status', 'marked_by', 'submitted_at'])
+                query = _query_string(zone=selected_zone.id if selected_zone else None, area=selected_area.id if selected_area else None)
                 return redirect(f'/horticulture/attendance/?{query}' if query else '/horticulture/attendance/')
-            error_message = _flatten_errors(serializer.errors)
-
-    submitted_entries = {}
-    if today_attendance is not None:
-        submitted_entries = {
-            entry.worker_id: entry
-            for entry in today_attendance.worker_attendances.all()
-        }
-
-    selected_statuses = {}
-    for worker in workers:
-        if today_attendance is not None and worker.id in submitted_entries:
-            selected_statuses[worker.id] = submitted_entries[worker.id].status
-        elif request.method == 'POST':
-            selected_statuses[worker.id] = request.POST.get(
-                f'worker_{worker.id}',
-                WorkerAttendance.Status.PRESENT,
-            )
         else:
-            selected_statuses[worker.id] = WorkerAttendance.Status.PRESENT
+            valid_statuses = {'present', 'absent', 'late', 'leave'}
+            for worker in workers:
+                status_value = request.POST.get(f'worker_{worker.id}', 'present')
+                if status_value not in valid_statuses:
+                    status_value = 'present'
+                HorticultureAttendanceRecord.objects.update_or_create(
+                    worker=worker,
+                    date=today,
+                    half=half,
+                    defaults={
+                        'status': status_value,
+                        'marked_by': request.user,
+                        'submitted_at': timezone.now(),
+                    },
+                )
+            messages.success(request, f'{half.title()} half attendance submitted for {len(workers)} workers.')
+            query = _query_string(zone=selected_zone.id if selected_zone else None, area=selected_area.id if selected_area else None)
+            return redirect(f'/horticulture/attendance/?{query}' if query else '/horticulture/attendance/')
+
+    att_map = {
+        (record.worker_id, record.half): record
+        for record in HorticultureAttendanceRecord.objects.filter(worker__in=workers, date=today)
+    }
 
     worker_rows = [
         {
             'worker': worker,
-            'selected_status': selected_statuses[worker.id],
-            'submitted_entry': submitted_entries.get(worker.id),
+            'first_att': att_map.get((worker.id, 'first')),
+            'second_att': att_map.get((worker.id, 'second')),
         }
         for worker in workers
     ]
+
+    def all_submitted(half):
+        return bool(workers) and all(
+            att_map.get((worker.id, half)) and att_map[(worker.id, half)].is_submitted
+            for worker in workers
+        )
 
     return render(
         request,
@@ -1009,11 +1449,192 @@ def horticulture_attendance(request):
             'zones': dashboard_payload['zones'],
             'selected_zone': selected_zone,
             'selected_area': selected_area,
+            'areas': dashboard_payload['areas'],
             'workers': workers,
             'worker_rows': worker_rows,
-            'today_attendance': today_attendance,
-            'submitted_entries': submitted_entries,
+            'present_first': sum(1 for row in worker_rows if row['first_att'] and row['first_att'].status in ['present', 'late']),
+            'present_second': sum(1 for row in worker_rows if row['second_att'] and row['second_att'].status in ['present', 'late']),
+            'total_count': len(worker_rows),
+            'first_submitted': all_submitted('first'),
+            'second_submitted': all_submitted('second'),
+            'cur_half': cur_half,
+            'is_today': is_today,
+            'attn_choices': [
+                ('present', 'Present', '#d1fae5', '#065f46'),
+                ('absent', 'Absent', '#fee2e2', '#991b1b'),
+                ('late', 'Late', '#fef3c7', '#92400e'),
+                ('leave', 'Leave', '#dbeafe', '#1d4ed8'),
+            ],
             'error_message': error_message,
             'zone_count': len(zones),
         },
     )
+
+
+@horticulture_supervisor_required
+def horticulture_schedule(request):
+    selected_zone, zones, dashboard_payload = _mobile_zone_context(request.user, request.GET.get('zone'))
+    selected_area = _selected_area_for_zone(selected_zone, request.GET.get('area'))
+    task_types = list(TaskType.objects.filter(is_active=True).order_by('name'))
+    area_task_assignments = (
+        HorticultureAreaTaskAssignment.objects
+        .filter(area=selected_area, date=timezone.localdate(), is_active=True)
+        .select_related('task_type', 'assigned_by')
+        .order_by('session', 'task_type__name')
+    ) if selected_area else []
+    assignments = (
+        HorticultureDailyAssignment.objects
+        .filter(area=selected_area, date=timezone.localdate())
+        .select_related('worker', 'task_type')
+        .order_by('session', 'worker__name')
+    ) if selected_area else []
+    return render(
+        request,
+        'horticulture/mobile/schedule.html',
+        {
+            'today': timezone.localdate(),
+            'zones': dashboard_payload['zones'],
+            'selected_zone': selected_zone,
+            'selected_area': selected_area,
+            'areas': dashboard_payload['areas'],
+            'task_types': task_types,
+            'area_task_assignments': area_task_assignments,
+            'assignments': assignments,
+            'season': dashboard_payload['season'],
+            'zone_count': len(zones),
+        },
+    )
+
+
+def _horticulture_usage_issues(user, limit=10):
+    from apps.inventory.models import ItemIssue, ItemUsageLog
+
+    usage_logs_qs = ItemUsageLog.objects.select_related('logged_by').order_by('-logged_at')
+    issues = (
+        ItemIssue.objects
+        .select_related('request__item', 'request__requested_by')
+        .prefetch_related(Prefetch('usage_logs', queryset=usage_logs_qs))
+        .filter(request__requested_by=user)
+        .order_by('-issued_at')[:limit]
+    )
+    out = []
+    for issue in issues:
+        total_used = sum((log.quantity_used for log in issue.usage_logs.all()), Decimal('0'))
+        remaining = Decimal(issue.issued_quantity) - total_used
+        issue.total_consumed = total_used
+        issue.remaining_quantity = remaining
+        issue.has_remaining = remaining > 0
+        issue.consumption_percent = min(100, int((total_used / Decimal(issue.issued_quantity)) * 100)) if issue.issued_quantity else 0
+        out.append(issue)
+    return out
+
+
+@horticulture_supervisor_required
+def horticulture_stock(request):
+    selected_zone, zones, dashboard_payload = _mobile_zone_context(request.user, request.GET.get('zone'))
+    selected_area = _selected_area_for_zone(selected_zone, request.GET.get('area'))
+    area_stocks = HorticultureAreaStock.objects.filter(area=selected_area).order_by('item_name') if selected_area else []
+    return render(
+        request,
+        'horticulture/mobile/stock.html',
+        {
+            'today': timezone.localdate(),
+            'zones': dashboard_payload['zones'],
+            'selected_zone': selected_zone,
+            'selected_area': selected_area,
+            'areas': dashboard_payload['areas'],
+            'area_stocks': area_stocks,
+            'low_stocks': [stock for stock in area_stocks if stock.is_low],
+            'issued_items': _horticulture_usage_issues(request.user),
+            'requested': request.GET.get('requested'),
+            'zone_count': len(zones),
+        },
+    )
+
+
+@horticulture_supervisor_required
+def horticulture_stock_request(request):
+    from apps.inventory.models import Item, ItemRequest as InvItemRequest
+
+    selected_zone, zones, dashboard_payload = _mobile_zone_context(request.user, request.GET.get('zone') or request.POST.get('zone'))
+    selected_area = _selected_area_for_zone(selected_zone, request.GET.get('area') or request.POST.get('area_id'))
+    inv_items = (
+        Item.objects
+        .filter(category__name__in=['Garden & Horticulture Equipment', 'Tools & Equipment', 'Consumables'])
+        .select_related('category')
+        .order_by('name')
+    )
+
+    if request.method == 'POST':
+        inv_item = Item.objects.filter(pk=request.POST.get('inventory_item_id')).first() if request.POST.get('inventory_item_id') else None
+        item_name = (request.POST.get('item_name') or (inv_item.name if inv_item else '')).strip()
+        if not item_name:
+            messages.error(request, 'Item name is required.')
+        else:
+            qty = max(1, int(request.POST.get('quantity') or 1))
+            stock_req = HorticultureStockRequest.objects.create(
+                requested_by=request.user,
+                area=selected_area,
+                item_name=item_name,
+                item=inv_item,
+                quantity=qty,
+                unit=request.POST.get('unit', '').strip(),
+                reason=request.POST.get('reason', '').strip(),
+                is_urgent=request.POST.get('is_urgent') == 'on',
+            )
+            if inv_item:
+                inv_req = InvItemRequest.objects.create(
+                    item=inv_item,
+                    requested_by=request.user,
+                    quantity_requested=qty,
+                    purpose=f"[Horticulture - {selected_area.name if selected_area else 'General'}] {stock_req.reason}",
+                    notes=f"Urgent: {'Yes' if stock_req.is_urgent else 'No'}",
+                    is_urgent=stock_req.is_urgent,
+                )
+                stock_req.inventory_request = inv_req
+                stock_req.save(update_fields=['inventory_request'])
+            query = _query_string(zone=selected_zone.id if selected_zone else None, area=selected_area.id if selected_area else None, requested=1)
+            return redirect(f'/horticulture/stock/?{query}')
+
+    return render(
+        request,
+        'horticulture/mobile/stock_request.html',
+        {
+            'inv_items': inv_items,
+            'zones': dashboard_payload['zones'],
+            'selected_zone': selected_zone,
+            'selected_area': selected_area,
+            'areas': dashboard_payload['areas'],
+            'pre_item': request.GET.get('item', ''),
+            'zone_count': len(zones),
+        },
+    )
+
+
+@horticulture_supervisor_required
+def horticulture_log_usage(request, pk):
+    from apps.inventory.models import ItemIssue, ItemUsageLog
+
+    if request.method != 'POST':
+        return redirect('/horticulture/stock/')
+    issue = get_object_or_404(ItemIssue.objects.select_related('request__item'), pk=pk, request__requested_by=request.user)
+    raw_qty = (request.POST.get('quantity_used') or '').strip()
+    purpose = (request.POST.get('purpose') or '').strip()
+    try:
+        quantity_used = Decimal(raw_qty).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, ValueError):
+        quantity_used = Decimal('0')
+    if quantity_used > 0 and purpose:
+        with transaction.atomic():
+            total_used = ItemUsageLog.objects.filter(issue=issue).aggregate(
+                total=Coalesce(Sum('quantity_used'), Value(0), output_field=DecimalField(max_digits=10, decimal_places=2))
+            )['total']
+            remaining = Decimal(issue.issued_quantity) - total_used
+            if quantity_used <= remaining:
+                ItemUsageLog.objects.create(issue=issue, quantity_used=quantity_used, purpose=purpose, logged_by=request.user)
+    area_id = request.POST.get('area_id')
+    zone_id = request.POST.get('zone')
+    query = _query_string(zone=zone_id, area=area_id)
+    return redirect(f'/horticulture/stock/?{query}' if query else '/horticulture/stock/')
+
+
