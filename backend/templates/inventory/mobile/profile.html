@@ -134,12 +134,9 @@
   <hr class="divider">
 
   {# ── Logout ── #}
-  <form method="POST" action="{% url 'mobile_logout' %}">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-danger btn-full">
-      <span class="material-icons-round" style="font-size:18px">logout</span>
-      Sign Out
-    </button>
-  </form>
+  <button type="button" class="btn btn-danger btn-full" onclick="logoutUser()">
+    <span class="material-icons-round" style="font-size:18px">logout</span>
+    Sign Out
+  </button>
 </div>
 {% endblock %}
