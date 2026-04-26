@@ -1,0 +1,83 @@
+<div class="card" id="horti-att-{{ row.worker.id }}">
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+    <div style="width:42px;height:42px;border-radius:50%;background:#29543a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;flex-shrink:0;overflow:hidden">
+      {% if row.worker.photo %}
+        <img src="{{ row.worker.photo.url }}" style="width:100%;height:100%;object-fit:cover">
+      {% else %}
+        {{ row.worker.name|first|upper }}
+      {% endif %}
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:700;font-size:14px">{{ row.worker.name }}</div>
+      <div style="font-size:11px;color:#6b7280">
+        {{ row.worker.phone|default:'-' }}{% if row.worker.pay_code %} | #{{ row.worker.pay_code }}{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#fafafa;border-radius:9px;padding:9px;margin-bottom:7px;border:1px solid #efefef">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+      <span style="font-size:12px;font-weight:700;color:#374151">First Half (8AM-1PM)</span>
+      {% if row.first_att %}
+      <span class="bdg {% if row.first_att.status == 'present' %}g{% elif row.first_att.status == 'absent' %}r{% elif row.first_att.status == 'late' %}y{% else %}b{% endif %}">
+        {{ row.first_att.status|title }}{% if row.first_att.is_submitted %} ✓{% endif %}
+      </span>
+      {% else %}
+      <span class="bdg gr">Not Marked</span>
+      {% endif %}
+    </div>
+    {% if row.first_att and row.first_att.is_submitted %}
+    <div style="font-size:11px;color:#16a34a">Submitted - locked</div>
+    {% elif not is_today or cur_half == 'first' %}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+      {% for sv, sl, bg, clr in attn_choices %}
+      <form method="post" action="/horticulture/attendance/?zone={{ selected_zone.id }}&area={{ selected_area.id }}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="mark">
+        <input type="hidden" name="half" value="first">
+        <input type="hidden" name="worker_id" value="{{ row.worker.id }}">
+        <input type="hidden" name="status" value="{{ sv }}">
+        <button type="submit" style="width:100%;border:none;border-radius:6px;padding:7px 2px;font-size:10px;font-weight:700;cursor:pointer;background:{{ bg }};color:{{ clr }};{% if row.first_att and row.first_att.status == sv %}box-shadow:inset 0 0 0 2px #1f2937{% endif %}">
+          {{ sl }}
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="font-size:11px;color:#9ca3af">Period ended</div>
+    {% endif %}
+  </div>
+
+  <div style="background:#fafafa;border-radius:9px;padding:9px;border:1px solid #efefef">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+      <span style="font-size:12px;font-weight:700;color:#374151">Second Half (1PM-5PM)</span>
+      {% if row.second_att %}
+      <span class="bdg {% if row.second_att.status == 'present' %}g{% elif row.second_att.status == 'absent' %}r{% elif row.second_att.status == 'late' %}y{% else %}b{% endif %}">
+        {{ row.second_att.status|title }}{% if row.second_att.is_submitted %} ✓{% endif %}
+      </span>
+      {% else %}
+      <span class="bdg gr">Not Marked</span>
+      {% endif %}
+    </div>
+    {% if row.second_att and row.second_att.is_submitted %}
+    <div style="font-size:11px;color:#16a34a">Submitted - locked</div>
+    {% elif not is_today or cur_half == 'second' %}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+      {% for sv, sl, bg, clr in attn_choices %}
+      <form method="post" action="/horticulture/attendance/?zone={{ selected_zone.id }}&area={{ selected_area.id }}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="mark">
+        <input type="hidden" name="half" value="second">
+        <input type="hidden" name="worker_id" value="{{ row.worker.id }}">
+        <input type="hidden" name="status" value="{{ sv }}">
+        <button type="submit" style="width:100%;border:none;border-radius:6px;padding:7px 2px;font-size:10px;font-weight:700;cursor:pointer;background:{{ bg }};color:{{ clr }};{% if row.second_att and row.second_att.status == sv %}box-shadow:inset 0 0 0 2px #1f2937{% endif %}">
+          {{ sl }}
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="font-size:11px;color:#9ca3af">Available after 1PM</div>
+    {% endif %}
+  </div>
+</div>

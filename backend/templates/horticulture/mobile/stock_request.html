@@ -1,0 +1,44 @@
+{% extends 'horticulture/mobile/base_horti.html' %}
+{% block title %}Request Stock{% endblock %}
+{% block hdr_title %}REQUISITION{% endblock %}
+{% block back_btn %}<a href="/horticulture/stock/{% if selected_zone %}?zone={{ selected_zone.id }}{% if selected_area %}&area={{ selected_area.id }}{% endif %}{% endif %}" class="bk">&lt;</a>{% endblock %}
+
+{% block content %}
+{% if messages %}
+  {% for message in messages %}
+  <div class="flash {% if 'error' in message.tags %}err{% else %}ok{% endif %}">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+<div class="card">
+  <form method="post" action="/horticulture/stock/request/?zone={{ selected_zone.id }}&area={{ selected_area.id }}">
+    {% csrf_token %}
+    <input type="hidden" name="zone" value="{{ selected_zone.id }}">
+    <input type="hidden" name="area_id" value="{{ selected_area.id }}">
+    <div class="fg"><label>Requester</label><input type="text" value="{{ request.user.get_full_name|default:request.user.username }}" disabled style="background:#f3f4f6;color:#6b7280"></div>
+    <div class="fg">
+      <label>Select from Inventory</label>
+      <select name="inventory_item_id" id="inv_sel" onchange="fillItem(this)">
+        <option value="">Choose existing item</option>
+        {% for item in inv_items %}
+        <option value="{{ item.id }}" data-name="{{ item.name }}" data-unit="{{ item.get_unit_display }}">{% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} ({{ item.available_quantity }} {{ item.get_unit_display }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="fg"><label>Required Item</label><input type="text" name="item_name" id="iname" required value="{{ pre_item }}" placeholder="Item name"></div>
+    <div class="fg">
+      <label>Quantity</label>
+      <input type="number" name="quantity" id="qty" value="1" min="1">
+    </div>
+    <div class="fg"><label>Unit</label><input type="text" name="unit" id="unit" placeholder="pieces, kg, liters"></div>
+    <div class="fg"><label>For Area</label><input type="text" value="{{ selected_area.name }}" disabled style="background:#f3f4f6;color:#6b7280"></div>
+    <div class="fg"><label>Reason</label><textarea name="reason" rows="3" required placeholder="Why is this needed?"></textarea></div>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-weight:400;font-size:14px;cursor:pointer">
+      <input type="checkbox" name="is_urgent" style="width:18px;height:18px"> Mark as Urgent
+    </label>
+    <button type="submit" class="btn-s">Submit Request</button>
+  </form>
+</div>
+<script>
+function fillItem(s){const o=s.options[s.selectedIndex];if(o.value){document.getElementById('iname').value=o.dataset.name||'';document.getElementById('unit').value=o.dataset.unit||'';}}
+</script>
+{% endblock %}

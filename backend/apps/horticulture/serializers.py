@@ -5,8 +5,13 @@ from rest_framework import serializers
 
 from .models import (
     HorticultureArea,
+    HorticultureAreaTaskAssignment,
+    HorticultureAttendanceRecord,
+    HorticultureDailyAssignment,
     HorticultureAttendance,
     HorticultureRoad,
+    HorticultureWorker,
+    HorticultureWorkerArea,
     HorticultureZone,
     SeasonSetting,
     TaskLog,
@@ -145,9 +150,20 @@ class AdminAttendanceSerializer(serializers.Serializer):
 
 
 class AdminSupervisorSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
     supervisor_id = serializers.IntegerField()
     supervisor_name = serializers.CharField()
+    full_name = serializers.CharField(allow_blank=True)
+    first_name = serializers.CharField(allow_blank=True)
+    last_name = serializers.CharField(allow_blank=True)
+    email = serializers.EmailField(allow_blank=True)
+    username = serializers.CharField()
+    phone = serializers.CharField(allow_blank=True)
+    pay_code = serializers.CharField(allow_blank=True)
+    role = serializers.CharField()
+    is_active = serializers.BooleanField()
     zone_names = serializers.ListField(child=serializers.CharField(), allow_empty=True)
+    area_names = serializers.ListField(child=serializers.CharField(), allow_empty=True)
     workers_count = serializers.IntegerField()
     last_login = serializers.DateTimeField(allow_null=True)
     tasks_logged_this_week = serializers.IntegerField()
@@ -155,6 +171,281 @@ class AdminSupervisorSerializer(serializers.Serializer):
 
 class AdminSupervisorsSerializer(serializers.Serializer):
     supervisors = AdminSupervisorSerializer(many=True)
+
+
+class AdminWorkerSerializer(serializers.ModelSerializer):
+    area_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        write_only=True,
+        required=False,
+    )
+    assigned_areas = serializers.SerializerMethodField()
+    area_names = serializers.SerializerMethodField()
+    zone_names = serializers.SerializerMethodField()
+    supervisor_name = serializers.SerializerMethodField()
+    photo_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HorticultureWorker
+        fields = [
+            'id',
+            'name',
+            'phone',
+            'pay_code',
+            'photo',
+            'photo_url',
+            'is_active',
+            'area_ids',
+            'assigned_areas',
+            'area_names',
+            'zone_names',
+            'supervisor_name',
+        ]
+
+    def get_assigned_areas(self, obj):
+        return [
+            {
+                'id': link.area_id,
+                'name': link.area.name,
+                'zone_id': link.area.zone_id,
+                'zone_name': link.area.zone.name if link.area.zone else '',
+            }
+            for link in obj.area_assignments.all()
+            if link.is_active and link.area
+        ]
+
+    def get_area_names(self, obj):
+        return [area['name'] for area in self.get_assigned_areas(obj)]
+
+    def get_zone_names(self, obj):
+        names = []
+        seen = set()
+        for area in self.get_assigned_areas(obj):
+            zone_name = area['zone_name']
+            if zone_name and zone_name not in seen:
+                seen.add(zone_name)
+                names.append(zone_name)
+        return names
+
+    def get_supervisor_name(self, obj):
+        names = []
+        seen = set()
+        for link in obj.area_assignments.all():
+            supervisor = getattr(getattr(link.area, 'zone', None), 'supervisor', None)
+            if not supervisor:
+                continue
+            name = supervisor.get_full_name() or supervisor.username
+            if name not in seen:
+                seen.add(name)
+                names.append(name)
+        return ', '.join(names)
+
+    def get_photo_url(self, obj):
+        request = self.context.get('request')
+        if not obj.photo:
+            return ''
+        url = obj.photo.url
+        return request.build_absolute_uri(url) if request else url
+
+    def _apply_area_assignments(self, worker, area_ids):
+        if area_ids is None:
+            return
+        request = self.context.get('request')
+        existing_ids = set(HorticultureArea.objects.filter(id__in=area_ids).values_list('id', flat=True))
+        missing = sorted(set(area_ids) - existing_ids)
+        if missing:
+            raise serializers.ValidationError({'area_ids': [f'Invalid area ids: {missing}']})
+        HorticultureWorkerArea.objects.filter(worker=worker).exclude(area_id__in=area_ids).update(is_active=False)
+        for area_id in set(area_ids):
+            link, created = HorticultureWorkerArea.objects.get_or_create(
+                worker=worker,
+                area_id=area_id,
+                defaults={'assigned_by': getattr(request, 'user', None)},
+            )
+            if not created and not link.is_active:
+                link.is_active = True
+                link.assigned_by = getattr(request, 'user', None)
+                link.save(update_fields=['is_active', 'assigned_by', 'assigned_at'])
+
+    def create(self, validated_data):
+        area_ids = validated_data.pop('area_ids', [])
+        worker = HorticultureWorker.objects.create(**validated_data)
+        self._apply_area_assignments(worker, area_ids)
+        return worker
+
+    def update(self, instance, validated_data):
+        area_ids = validated_data.pop('area_ids', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        self._apply_area_assignments(instance, area_ids)
+        return instance
+
+
+class AdminWorkerReportDaySerializer(serializers.Serializer):
+    date = serializers.DateField()
+    status = serializers.CharField()
+    supervisor_name = serializers.CharField(allow_blank=True)
+
+
+class AdminWorkerReportSerializer(serializers.Serializer):
+    worker = serializers.DictField()
+    month = serializers.IntegerField()
+    year = serializers.IntegerField()
+    days_present = serializers.IntegerField()
+    days_absent = serializers.IntegerField()
+    half_days = serializers.IntegerField()
+    marked_days = serializers.IntegerField()
+    attendance_pct = serializers.FloatField()
+    daily_breakdown = AdminWorkerReportDaySerializer(many=True)
+
+
+class AdminTaskTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TaskType
+        fields = [
+            'id',
+            'name',
+            'threshold_days_default',
+            'threshold_days_summer',
+            'threshold_days_winter',
+            'threshold_days_rainy',
+            'is_active',
+        ]
+
+
+class AdminAttendanceRecordSerializer(serializers.ModelSerializer):
+    worker_name = serializers.CharField(source='worker.name', read_only=True)
+    marked_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HorticultureAttendanceRecord
+        fields = ['id', 'worker', 'worker_name', 'date', 'half', 'status', 'marked_by', 'marked_by_name', 'submitted_at', 'is_submitted']
+        read_only_fields = ['marked_by', 'marked_by_name', 'submitted_at']
+
+    def get_marked_by_name(self, obj):
+        if obj.marked_by:
+            return obj.marked_by.get_full_name() or obj.marked_by.username
+        return ''
+
+
+class AdminDailyAssignmentSerializer(serializers.ModelSerializer):
+    worker_name = serializers.CharField(source='worker.name', read_only=True)
+    area_name = serializers.CharField(source='area.name', read_only=True)
+    task_type_name = serializers.CharField(source='task_type.name', read_only=True)
+    assigned_by_name = serializers.SerializerMethodField()
+    photo_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HorticultureDailyAssignment
+        fields = [
+            'id',
+            'worker',
+            'worker_name',
+            'area',
+            'area_name',
+            'date',
+            'session',
+            'task_type',
+            'task_type_name',
+            'assigned_by',
+            'assigned_by_name',
+            'assigned_at',
+            'photo',
+            'photo_url',
+            'photo_uploaded_at',
+            'note',
+        ]
+        read_only_fields = ['assigned_by', 'assigned_by_name', 'assigned_at', 'photo_uploaded_at']
+
+    def get_assigned_by_name(self, obj):
+        if obj.assigned_by:
+            return obj.assigned_by.get_full_name() or obj.assigned_by.username
+        return ''
+
+    def get_photo_url(self, obj):
+        request = self.context.get('request')
+        if not obj.photo:
+            return ''
+        url = obj.photo.url
+        return request.build_absolute_uri(url) if request else url
+
+    def validate(self, attrs):
+        worker = attrs.get('worker') or getattr(self.instance, 'worker', None)
+        area = attrs.get('area') or getattr(self.instance, 'area', None)
+        task_type = attrs.get('task_type') or getattr(self.instance, 'task_type', None)
+        if worker and area and not HorticultureWorkerArea.objects.filter(
+            worker=worker,
+            area=area,
+            is_active=True,
+        ).exists():
+            raise serializers.ValidationError({'area': 'Selected worker is not assigned to this area.'})
+        if task_type and not task_type.is_active:
+            raise serializers.ValidationError({'task_type': 'Selected task is inactive.'})
+        return attrs
+
+    def create(self, validated_data):
+        lookup = {
+            'worker': validated_data.pop('worker'),
+            'date': validated_data.pop('date'),
+            'session': validated_data.pop('session'),
+        }
+        assignment, _created = HorticultureDailyAssignment.objects.update_or_create(
+            **lookup,
+            defaults=validated_data,
+        )
+        return assignment
+
+
+class AdminAreaTaskAssignmentSerializer(serializers.ModelSerializer):
+    area_name = serializers.CharField(source='area.name', read_only=True)
+    zone_name = serializers.CharField(source='area.zone.name', read_only=True)
+    task_type_name = serializers.CharField(source='task_type.name', read_only=True)
+    assigned_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HorticultureAreaTaskAssignment
+        fields = [
+            'id',
+            'area',
+            'area_name',
+            'zone_name',
+            'date',
+            'session',
+            'task_type',
+            'task_type_name',
+            'assigned_by',
+            'assigned_by_name',
+            'assigned_at',
+            'note',
+            'is_active',
+        ]
+        read_only_fields = ['assigned_by', 'assigned_by_name', 'assigned_at']
+
+    def get_assigned_by_name(self, obj):
+        if obj.assigned_by:
+            return obj.assigned_by.get_full_name() or obj.assigned_by.username
+        return ''
+
+    def validate(self, attrs):
+        task_type = attrs.get('task_type') or getattr(self.instance, 'task_type', None)
+        if task_type and not task_type.is_active:
+            raise serializers.ValidationError({'task_type': 'Selected task is inactive.'})
+        return attrs
+
+    def create(self, validated_data):
+        assignment, _created = HorticultureAreaTaskAssignment.objects.update_or_create(
+            area=validated_data['area'],
+            task_type=validated_data['task_type'],
+            date=validated_data['date'],
+            session=validated_data.get('session', HorticultureAreaTaskAssignment.Session.ANY),
+            defaults={
+                'note': validated_data.get('note', ''),
+                'is_active': validated_data.get('is_active', True),
+                'assigned_by': validated_data.get('assigned_by'),
+            },
+        )
+        return assignment
 
 
 class ManagerSeasonStatusSerializer(serializers.Serializer):

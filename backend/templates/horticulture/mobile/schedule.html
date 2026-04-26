@@ -1,0 +1,78 @@
+{% extends 'horticulture/mobile/base_horti.html' %}
+{% block title %}Schedule{% endblock %}
+{% block hdr_title %}SCHEDULE{% endblock %}
+{% block n4 %}on{% endblock %}
+
+{% block content %}
+{% if zone_count > 1 %}
+<div class="tabs">
+  {% for zone in zones %}
+  <a href="/horticulture/schedule/?zone={{ zone.id }}" class="atab {% if selected_zone and selected_zone.id == zone.id %}on{% endif %}">{{ zone.name }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if selected_zone and areas %}
+<div class="tabs">
+  {% for area in areas %}
+  <a href="/horticulture/schedule/?zone={{ selected_zone.id }}&area={{ area.id }}" class="atab {% if selected_area and selected_area.id == area.id %}on{% endif %}">Area {{ area.area_number }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card hero">
+  <div style="font-size:16px;font-weight:800">{{ selected_area.name|default:selected_zone.name }}</div>
+  <div style="font-size:12px;margin-top:4px;opacity:.88">Season: {{ season|title }} - {{ today|date:"d M Y" }}</div>
+</div>
+
+<div class="sec">Assigned Area Tasks</div>
+{% for assignment in area_task_assignments %}
+<div class="card" style="border-left:4px solid #29543a">
+  <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+    <div>
+      <div style="font-weight:900">{{ assignment.task_type.name }}</div>
+      <div class="muted">{{ assignment.get_session_display }}{% if assignment.assigned_by %} - {{ assignment.assigned_by.get_full_name|default:assignment.assigned_by.username }}{% endif %}</div>
+      {% if assignment.note %}<div class="muted" style="margin-top:4px">{{ assignment.note }}</div>{% endif %}
+    </div>
+    <a class="bdg b" href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ assignment.task_type.id }}&session={{ assignment.session }}">Do Task</a>
+  </div>
+</div>
+{% empty %}
+<div class="card" style="text-align:center;color:#9ca3af;padding:20px">No admin assigned tasks for this area today.</div>
+{% endfor %}
+
+<div class="sec">Today's Worker Assignments</div>
+{% for assignment in assignments %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;gap:10px">
+    <div>
+      <div style="font-weight:800">{{ assignment.worker.name }}</div>
+      <div class="muted">{{ assignment.get_session_display }} - {{ assignment.task_type.name }}</div>
+      {% if assignment.note %}<div class="muted">{{ assignment.note }}</div>{% endif %}
+    </div>
+    {% if assignment.photo %}
+    <a class="bdg b" href="{{ assignment.photo.url }}" target="_blank">Photo</a>
+    {% endif %}
+  </div>
+</div>
+{% empty %}
+<div class="card" style="text-align:center;color:#9ca3af;padding:20px">No worker tasks assigned today.</div>
+{% endfor %}
+
+<div class="sec">Task Frequency</div>
+{% for task in task_types %}
+<div class="card" style="padding:11px">
+  <div style="display:flex;justify-content:space-between;gap:8px">
+    <div style="font-weight:800">{{ task.name }}</div>
+    <div class="bdg g">Every {{ task.threshold_days_default }} day{{ task.threshold_days_default|pluralize }}</div>
+  </div>
+  <div class="muted" style="margin-top:4px">
+    Summer: {{ task.threshold_days_summer|default:task.threshold_days_default }} days |
+    Winter: {{ task.threshold_days_winter|default:task.threshold_days_default }} days |
+    Rainy: {{ task.threshold_days_rainy|default:task.threshold_days_default }} days
+  </div>
+</div>
+{% empty %}
+<div class="card" style="text-align:center;color:#9ca3af;padding:20px">No active task schedule.</div>
+{% endfor %}
+{% endblock %}
