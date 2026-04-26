@@ -4,6 +4,33 @@
 {% block n1 %}on{% endblock %}
 
 {% block content %}
+<style>
+.area-summary{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  width:100%;
+}
+.area-stat{
+  border-radius:12px;
+  padding:9px 6px 8px;
+  text-align:center;
+}
+.area-stat-label{
+  display:block;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.02em;
+  text-transform:uppercase;
+}
+.area-stat-value{
+  display:block;
+  margin-top:3px;
+  font-size:18px;
+  font-weight:900;
+  line-height:1;
+}
+</style>
 {% if messages %}
   {% for message in messages %}
   <div class="flash {% if 'error' in message.tags %}err{% else %}ok{% endif %}">{{ message }}</div>
@@ -40,11 +67,21 @@
   <div class="card area-card compact {% if area.urgency == 'overdue' %}is-overdue{% elif area.urgency == 'due_soon' %}is-due-soon{% endif %}">
     <div class="area-head">
       <div class="area-title">{{ area.name }}</div>
-      {% if area.urgency == 'overdue' %}
-      <span class="bdg urgency-pill r">Overdue</span>
-      {% endif %}
     </div>
-    <div class="area-size">{{ area.area_sqm }} sqm</div>
+    <div class="area-summary">
+      <span class="area-stat r">
+        <span class="area-stat-label">Overdue</span>
+        <span class="area-stat-value">{{ area.overdue_task_count }}</span>
+      </span>
+      <span class="area-stat y">
+        <span class="area-stat-label">Pending</span>
+        <span class="area-stat-value">{{ area.pending_task_count }}</span>
+      </span>
+      <span class="area-stat g">
+        <span class="area-stat-label">Done</span>
+        <span class="area-stat-value">{{ area.done_task_count }}</span>
+      </span>
+    </div>
   </div>
 </a>
 {% empty %}

@@ -241,6 +241,7 @@ def build_zone_dashboard_payload(zone, today=None):
         )
 
         area_urgency = 'overdue' if overdue_count else 'due_soon' if due_soon_count else 'ok'
+        done_count = max(0, len(tasks) - overdue_count - due_soon_count)
         areas.append(
             {
                 'id': area.id,
@@ -250,7 +251,10 @@ def build_zone_dashboard_payload(zone, today=None):
                 'urgency': area_urgency,
                 'urgency_rank': 0 if area_urgency == 'overdue' else 1 if area_urgency == 'due_soon' else 2,
                 'overdue_task_count': overdue_count,
+                'pending_task_count': due_soon_count,
                 'due_soon_task_count': due_soon_count,
+                'done_task_count': done_count,
+                'total_task_count': len(tasks),
                 'tasks': tasks,
             }
         )

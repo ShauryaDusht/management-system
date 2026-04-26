@@ -1,12 +1,9 @@
 {% extends 'horticulture/mobile/base_horti.html' %}
 {% block title %}Profile{% endblock %}
 {% block hdr_title %}PROFILE{% endblock %}
-{% block back_btn %}<a href="/horticulture/dashboard/{% if selected_zone %}?zone={{ selected_zone.id }}{% endif %}" class="bk">&lt;</a>{% endblock %}
+{% block back_btn %}<a href="/horticulture/dashboard/{% if selected_zone %}?zone={{ selected_zone.id }}{% endif %}" class="bk">&larr;</a>{% endblock %}
 
 {% block content %}
-<style>
-.page{padding:10px 10px 90px}
-</style>
 {% include 'shared/mobile/profile_feedback.html' %}
 {% include 'shared/mobile/profile_identity_card.html' with profile_user=user only %}
 {% include 'shared/mobile/profile_photo_card.html' %}
