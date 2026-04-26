@@ -15,6 +15,7 @@ from .views import (
     horticulture_attendance,
     horticulture_dashboard,
     horticulture_mark_task,
+    horticulture_profile,
     horticulture_root,
 )
 
@@ -35,6 +36,7 @@ urlpatterns = [
 mobile_urlpatterns = [
     path('', horticulture_root, name='horti-root'),
     path('dashboard/', horticulture_dashboard, name='horti-dashboard'),
+    path('profile/', horticulture_profile, name='horti-profile'),
     path('mark-task/', horticulture_mark_task, name='horti-mark-task'),
     path('attendance/', horticulture_attendance, name='horti-attendance'),
 ]

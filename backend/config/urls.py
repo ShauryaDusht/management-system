@@ -39,6 +39,8 @@ def legacy_admin_redirect(_request):
 urlpatterns = [
     path('', backend_root),
     path('admin/', legacy_admin_redirect),
+    path('login/', portal_login, name='portal_login_alias'),
+    path('logout/', portal_logout, name='portal_logout_alias'),
     path('api/', api_root),
     path(settings.ADMIN_URL, admin_site.urls),
     path('api/auth/', include('apps.users.urls')),

@@ -1,0 +1,8 @@
+<div class="card" style="text-align:center;padding:22px;background:rgba(255,255,255,.93)">
+  <div style="width:88px;height:88px;border-radius:50%;background:#2d4a3e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;border:3px solid #c2622a;overflow:hidden;margin:0 auto 12px">
+    {% if profile_user.profile_photo %}<img src="{{ profile_user.profile_photo.url }}" style="width:100%;height:100%;object-fit:cover">{% else %}{{ profile_user.first_name|default:profile_user.username|first|upper }}{% endif %}
+  </div>
+  <div style="font-size:20px;font-weight:800">{{ profile_user.get_full_name|default:profile_user.username }}</div>
+  <div style="color:#2d4a3e;font-size:13px;margin-top:3px">Phone: {{ profile_user.phone|default:'No phone registered' }}</div>
+  <span class="bdg g" style="margin-top:8px;font-size:12px">{{ profile_user.get_role_display }}</span>
+</div>

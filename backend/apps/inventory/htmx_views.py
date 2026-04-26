@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from .models import Category, Item, ItemIssue, ItemUsageLog, ItemRequest, PurchaseRequest, StockEntry
@@ -60,9 +61,9 @@ def mobile_login(request):
     })
 
 
+@require_POST
 def mobile_logout(request):
-    if request.method == 'POST':
-        auth_logout(request)
+    auth_logout(request)
     return redirect('/portal/login/')
 
 

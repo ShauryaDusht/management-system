@@ -3,6 +3,7 @@ from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
 from django.http import HttpResponseForbidden
@@ -38,6 +39,7 @@ from .services import (
     get_horticulture_supervisors,
     get_horticulture_zones,
     get_selected_supervisor_zone,
+    get_supervisor_zones,
     get_supervisor_worker_queryset,
     get_task_threshold,
     get_zone_choices_payload,
@@ -806,6 +808,62 @@ def horticulture_dashboard(request):
             'selected_area': selected_area,
             'areas': dashboard_payload['areas'],
             'season': dashboard_payload['season'],
+            'zone_count': len(zones),
+        },
+    )
+
+
+@horticulture_supervisor_required
+def horticulture_profile(request):
+    user = request.user
+    selected_zone, zones, _dashboard_payload = _mobile_zone_context(
+        user,
+        request.GET.get('zone'),
+    )
+    selected_area = _selected_area_for_zone(selected_zone)
+    success = ''
+    error = ''
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'change_password':
+            cur = request.POST.get('current_password', '')
+            new = request.POST.get('new_password', '')
+            conf = request.POST.get('confirm_password', '')
+            if not user.check_password(cur):
+                error = 'Current password is incorrect.'
+            elif new != conf:
+                error = 'Passwords do not match.'
+            elif len(new) < 8:
+                error = 'Minimum 8 characters required.'
+            else:
+                user.set_password(new)
+                user.save()
+                update_session_auth_hash(request, user)
+                success = 'Password updated successfully.'
+        elif action == 'upload_photo' and 'profile_photo' in request.FILES:
+            user.profile_photo = request.FILES['profile_photo']
+            user.save(update_fields=['profile_photo'])
+            success = 'Photo updated.'
+
+    zone_items = [
+        {
+            'name': zone.name,
+            'meta': f'{zone.area_count} areas',
+        }
+        for zone in get_supervisor_zones(user).annotate(area_count=Count('areas'))
+    ]
+
+    return render(
+        request,
+        'horticulture/mobile/profile.html',
+        {
+            'user': user,
+            'selected_zone': selected_zone,
+            'selected_area': selected_area,
+            'success': success,
+            'error': error,
+            'zone_items': zone_items,
             'zone_count': len(zones),
         },
     )

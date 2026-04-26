@@ -1,0 +1,9 @@
+<div class="card" style="background:rgba(255,255,255,.93)">
+  <div style="font-weight:700;color:#2d4a3e;margin-bottom:10px">Update Photo</div>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="upload_photo">
+    <input type="file" name="profile_photo" accept="image/*" capture="user" style="margin-bottom:10px;font-size:13px">
+    <button type="submit" class="btn-g" style="background:rgba(45,74,62,.08);color:#2d4a3e;border:1.5px solid rgba(45,74,62,.25);font-weight:600">Upload Photo</button>
+  </form>
+</div>

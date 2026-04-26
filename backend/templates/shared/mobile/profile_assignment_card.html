@@ -1,0 +1,10 @@
+<div class="card" style="background:rgba(255,255,255,.93)">
+  <div style="font-weight:700;color:#2d4a3e;margin-bottom:10px">{{ assignment_title }}</div>
+  {% for item in assignment_items %}
+  <div style="padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px">
+    {{ item.name }}{% if item.meta %} <span style="font-size:11px;color:#9ca3af">({{ item.meta }})</span>{% endif %}
+  </div>
+  {% empty %}
+  <div style="color:#9ca3af;font-size:13px">{{ assignment_empty_text }}</div>
+  {% endfor %}
+</div>
