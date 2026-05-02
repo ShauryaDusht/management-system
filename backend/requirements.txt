@@ -6,5 +6,5 @@ django-filter==23.5
 psycopg2-binary==2.9.9
 python-dotenv==1.2.2
 Pillow==10.2.0
-reportlab==4.4.10
+reportlab==4.5.0
 gunicorn==22.0.0
