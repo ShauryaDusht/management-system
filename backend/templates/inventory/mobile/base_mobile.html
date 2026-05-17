@@ -3,9 +3,16 @@
 <head>
     {% load static %}
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <link rel="icon" type="image/png" href="{% static 'branding/campus-sanchalika-logo.png' %}">
     <title>{% block title %}Inventory{% endblock %} | Campus Sanchalika</title>
+    <link rel="manifest" href="{% static 'pwa/manifest-inventory.json' %}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Inventory">
+    <meta name="theme-color" content="#2d4a3e">
+    <link rel="apple-touch-icon" href="{% static 'branding/campus-sanchalika-logo.png' %}">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="{% static 'shared/authService.js' %}" defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -58,7 +65,7 @@
         .back-btn { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.12); color: #fff; }
         .back-btn:active { background: rgba(255,255,255,0.25); }
         .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--brand-green-dk); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; border: 2px solid rgba(255,255,255,0.25); }
-        .page-content { padding: 14px 12px; max-width: 480px; margin: 0 auto; }
+        .page-content { padding: 14px 12px calc(14px + env(safe-area-inset-bottom)); max-width: 480px; margin: 0 auto; }
         .scroll-pad { height: 80px; }
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: flex; padding: 6px 0 calc(6px + env(safe-area-inset-bottom)); z-index: 200; box-shadow: 0 -2px 12px rgba(0,0,0,0.08); }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px 0; color: var(--text-muted); cursor: pointer; transition: color 0.15s; }
@@ -90,6 +97,7 @@
         @keyframes item-highlight { 0%,100%{box-shadow:var(--shadow-sm)} 50%{box-shadow:0 0 0 3px var(--brand-orange),0 2px 8px rgba(194,98,42,.3)} }
         .item-highlight { animation: item-highlight 1s ease-in-out 3; }
     </style>
+    <script src="{% static 'pwa/pwa.js' %}" defer></script>
 </head>
 <body>
     <header class="app-header">

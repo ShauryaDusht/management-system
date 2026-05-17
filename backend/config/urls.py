@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.shortcuts import redirect
 from config.admin import admin_site
 from apps.core.portal_views import portal_root, portal_login, portal_logout
+from apps.core.pwa_views import service_worker
 from apps.horticulture.urls import mobile_urlpatterns as horticulture_mobile_urlpatterns
 from apps.housekeeping import api_views as hk_api_views
 
@@ -38,6 +39,7 @@ def legacy_admin_redirect(_request):
 
 urlpatterns = [
     path('', backend_root),
+    path('sw.js', service_worker, name='service-worker'),
     path('admin/', legacy_admin_redirect),
     path('login/', portal_login, name='portal_login_alias'),
     path('logout/', portal_logout, name='portal_logout_alias'),
