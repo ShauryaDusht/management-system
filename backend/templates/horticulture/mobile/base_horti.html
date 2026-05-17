@@ -3,9 +3,16 @@
 <head>
 {% load static %}
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <link rel="icon" type="image/png" href="{% static 'branding/campus-sanchalika-logo.png' %}">
 <title>{% block title %}Horticulture{% endblock %} | Campus Sanchalika</title>
+<link rel="manifest" href="{% static 'pwa/manifest-horticulture.json' %}">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Horticulture">
+<meta name="theme-color" content="#29543a">
+<link rel="apple-touch-icon" href="{% static 'branding/campus-sanchalika-logo.png' %}">
 <script src="{% static 'shared/authService.js' %}" defer></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -18,12 +25,12 @@ body{background:#efece4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
 .hdr-ttl{font-weight:700;font-size:14px;letter-spacing:.5px}
 .ava{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;overflow:hidden;flex-shrink:0;text-decoration:none}
 .ava img{width:100%;height:100%;object-fit:cover}
-.page{padding:10px 10px 96px;max-width:480px;margin:0 auto}
+.page{padding:10px 10px calc(96px + env(safe-area-inset-bottom));max-width:480px;margin:0 auto}
 .card{background:rgba(255,255,255,.95);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
 .btn-p{background:linear-gradient(135deg,#c2622a,#a0501e);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;width:100%;cursor:pointer;display:block;text-align:center;text-decoration:none}
 .btn-s{background:#29543a;color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;width:100%;cursor:pointer;display:block;text-align:center;text-decoration:none}
 .btn-g{background:rgba(41,84,58,.08);color:#29543a;border:1.5px solid rgba(41,84,58,.25);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;width:100%;display:block;text-align:center}
-.bottom{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border-top:1px solid rgba(0,0,0,.09);padding:9px 10px;display:flex;gap:7px}
+.bottom{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border-top:1px solid rgba(0,0,0,.09);padding:9px 10px calc(9px + env(safe-area-inset-bottom)) 10px;display:flex;gap:7px}
 .bottom a{flex:1;text-decoration:none}
 .nav{width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;background:#ece7de;color:#4b5563;line-height:1.25}
 .nav.on{background:#29543a;color:#fff}
@@ -88,6 +95,7 @@ label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4
 .fg{margin-bottom:12px}
 .sec{font-size:13px;font-weight:800;color:#29543a;margin:12px 0 6px}
 </style>
+<script src="{% static 'pwa/pwa.js' %}" defer></script>
 </head>
 <body>
 <div class="hdr">

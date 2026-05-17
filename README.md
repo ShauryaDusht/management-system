@@ -65,3 +65,31 @@ Dockerized management system with Django backend + React admin frontend.
 - Housekeeping: [`backend/apps/housekeeping/README.md`](backend/apps/housekeeping/README.md)
 - Horticulture: [`backend/apps/horticulture/README.md`](backend/apps/horticulture/README.md)
 - Horticulture module status: summary API and dashboard are active; detailed APIs are pending.
+
+## Testing PWA on a phone over local HTTPS
+
+PWA features require HTTPS even on a local network. To test on your phone without a domain:
+
+Step 1 - Install mkcert: https://github.com/FiloSottile/mkcert then run: mkcert -install
+
+Step 2 - Generate a certificate for your local IP (e.g. 192.168.1.10):
+mkcert 192.168.1.10
+This creates: 192.168.1.10.pem and 192.168.1.10-key.pem
+
+Step 3 - Trust the certificate on iPhone:
+Run: mkcert -CAROOT to find rootCA.pem
+AirDrop or email rootCA.pem to iPhone
+Settings → General → VPN & Device Management → install the profile
+Settings → General → About → Certificate Trust Settings → enable full trust for mkcert
+
+Step 4 - Trust the certificate on Android:
+Email rootCA.pem to Android phone
+Settings → Security → Install a certificate → CA certificate → select the file
+
+Step 5 - Run Django with the certificate:
+pip install django-extensions Werkzeug pyOpenSSL
+python manage.py runserver_plus --cert-file 192.168.1.10.pem --key-file 192.168.1.10-key.pem 0.0.0.0:8000
+
+Step 6 - Open on your phone:
+iPhone → Safari → https://192.168.1.10:8000/housekeeping/dashboard/
+Android → Chrome → https://192.168.1.10:8000/housekeeping/dashboard/
