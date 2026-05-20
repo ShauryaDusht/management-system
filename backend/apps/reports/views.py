@@ -303,6 +303,15 @@ class DashboardInsightsView(APIView):
         from apps.inventory.models import ItemIssue, ItemRequest, PurchaseRequest, StockEntry
         from apps.housekeeping.htmx_views import get_today_records
         from apps.housekeeping.models import HKArea, HKDailyRecord, HKStockRequest, HKUserArea
+        from apps.horticulture.models import (
+            HorticultureArea,
+            HorticultureAreaTaskAssignment,
+            HorticultureAttendanceRecord,
+            HorticultureDailyAssignment,
+            HorticultureStockRequest,
+            HorticultureWorker,
+            HorticultureZone,
+        )
 
         # Ensure same-day records exist before analytics.
         if end_date == timezone.localdate():
@@ -348,6 +357,18 @@ class DashboardInsightsView(APIView):
             }
             for row in hk_rows
         }
+        horti_rows = (
+            HorticultureDailyAssignment.objects.filter(date__range=(start_date, end_date))
+            .values('date')
+            .annotate(total=Count('id'))
+        )
+        horti_pending_rows = (
+            HorticultureAreaTaskAssignment.objects.filter(date__range=(start_date, end_date), is_active=True)
+            .values('date')
+            .annotate(total=Count('id'))
+        )
+        horti_map = {row['date']: int(row['total'] or 0) for row in horti_rows}
+        horti_pending_map = {row['date']: int(row['total'] or 0) for row in horti_pending_rows}
 
         trend_series = []
         trend_totals = {
@@ -378,7 +399,9 @@ class DashboardInsightsView(APIView):
             hk_in_progress = int(hk.get('in_progress', 0) or 0)
             hk_skipped = int(hk.get('skipped', 0) or 0)
 
-            horticulture_total = 0
+            horticulture_done = int(horti_map.get(dt, 0) or 0)
+            horticulture_pending = int(horti_pending_map.get(dt, 0) or 0)
+            horticulture_total = horticulture_done + horticulture_pending
             total = inventory_total + hk_total + horticulture_total
             label = 'Today' if range_key == 'today' else dt.strftime('%d %b')
 
@@ -398,6 +421,8 @@ class DashboardInsightsView(APIView):
                     'hk_pending': hk_pending,
                     'hk_in_progress': hk_in_progress,
                     'hk_skipped': hk_skipped,
+                    'horticulture_done': horticulture_done,
+                    'horticulture_pending': horticulture_pending,
                 }
             )
 
@@ -412,6 +437,8 @@ class DashboardInsightsView(APIView):
             trend_totals['hk_pending'] += hk_pending
             trend_totals['hk_in_progress'] += hk_in_progress
             trend_totals['hk_skipped'] += hk_skipped
+            trend_totals['horticulture_done'] = trend_totals.get('horticulture_done', 0) + horticulture_done
+            trend_totals['horticulture_pending'] = trend_totals.get('horticulture_pending', 0) + horticulture_pending
 
         # 2) Housekeeping area + worker performance (fair comparison + attendance aware).
         from apps.housekeeping.models import HKAttendanceRecord, HKWorker
@@ -468,6 +495,46 @@ class DashboardInsightsView(APIView):
                     'leave_halves': int(row.get('leave_halves', 0) or 0),
                 }
 
+        horti_workers = list(
+            HorticultureWorker.objects
+            .filter(is_active=True)
+            .prefetch_related('area_assignments__area__zone__supervisor')
+            .order_by('name', 'pay_code')
+        )
+        horti_worker_ids = {worker.id for worker in horti_workers}
+        horti_attendance_by_worker_id = defaultdict(
+            lambda: {
+                'total_halves': 0,
+                'present_halves': 0,
+                'late_halves': 0,
+                'absent_halves': 0,
+                'leave_halves': 0,
+            }
+        )
+        if horti_worker_ids:
+            horti_attendance_rows = (
+                HorticultureAttendanceRecord.objects.filter(
+                    date__range=(start_date, end_date),
+                    worker_id__in=horti_worker_ids,
+                )
+                .values('worker_id')
+                .annotate(
+                    total_halves=Count('id'),
+                    present_halves=Count('id', filter=Q(status__in=['present', 'late'])),
+                    late_halves=Count('id', filter=Q(status='late')),
+                    absent_halves=Count('id', filter=Q(status='absent')),
+                    leave_halves=Count('id', filter=Q(status='leave')),
+                )
+            )
+            for row in horti_attendance_rows:
+                horti_attendance_by_worker_id[row['worker_id']] = {
+                    'total_halves': int(row.get('total_halves', 0) or 0),
+                    'present_halves': int(row.get('present_halves', 0) or 0),
+                    'late_halves': int(row.get('late_halves', 0) or 0),
+                    'absent_halves': int(row.get('absent_halves', 0) or 0),
+                    'leave_halves': int(row.get('leave_halves', 0) or 0),
+                }
+
         def aggregate_attendance(worker_ids):
             total_halves = 0
             present_halves = 0
@@ -476,6 +543,31 @@ class DashboardInsightsView(APIView):
             leave_halves = 0
             for worker_id in worker_ids:
                 att = attendance_by_worker_id.get(worker_id)
+                if not att:
+                    continue
+                total_halves += int(att.get('total_halves', 0) or 0)
+                present_halves += int(att.get('present_halves', 0) or 0)
+                late_halves += int(att.get('late_halves', 0) or 0)
+                absent_halves += int(att.get('absent_halves', 0) or 0)
+                leave_halves += int(att.get('leave_halves', 0) or 0)
+            attendance_pct = round((present_halves / total_halves) * 100, 1) if total_halves else 0.0
+            return {
+                'total_halves': total_halves,
+                'present_halves': present_halves,
+                'late_halves': late_halves,
+                'absent_halves': absent_halves,
+                'leave_halves': leave_halves,
+                'attendance_pct': attendance_pct,
+            }
+
+        def aggregate_horti_attendance(worker_ids):
+            total_halves = 0
+            present_halves = 0
+            late_halves = 0
+            absent_halves = 0
+            leave_halves = 0
+            for worker_id in worker_ids:
+                att = horti_attendance_by_worker_id.get(worker_id)
                 if not att:
                     continue
                 total_halves += int(att.get('total_halves', 0) or 0)
@@ -607,18 +699,159 @@ class DashboardInsightsView(APIView):
             if rec.status in {'done', 'pending', 'in_progress', 'skipped'}:
                 caretaker_row[rec.status] += 1
 
+        horti_worker_ids_by_area_id = defaultdict(set)
+        horti_worker_ids_by_zone_id = defaultdict(set)
+        for worker in horti_workers:
+            for assignment in worker.area_assignments.all():
+                if not assignment.is_active or not assignment.area_id:
+                    continue
+                horti_worker_ids_by_area_id[assignment.area_id].add(worker.id)
+                if assignment.area and assignment.area.zone_id:
+                    horti_worker_ids_by_zone_id[assignment.area.zone_id].add(worker.id)
+
+        horti_area_ids = list(HorticultureArea.objects.values_list('id', flat=True))
+        horti_daily_by_area = {
+            row['area_id']: row
+            for row in (
+                HorticultureDailyAssignment.objects.filter(
+                    date__range=(start_date, end_date),
+                    area_id__in=horti_area_ids,
+                )
+                .values('area_id')
+                .annotate(total=Count('id'), done=Count('id'))
+            )
+        }
+        horti_pending_by_area = {
+            row['area_id']: int(row['pending'] or 0)
+            for row in (
+                HorticultureAreaTaskAssignment.objects.filter(
+                    date__range=(start_date, end_date),
+                    is_active=True,
+                    area_id__in=horti_area_ids,
+                )
+                .values('area_id')
+                .annotate(pending=Count('id'))
+            )
+        }
+
+        for area in HorticultureArea.objects.select_related('zone__supervisor').order_by('area_number'):
+            if area_class != 'all' and area_class != 'others':
+                continue
+            daily = horti_daily_by_area.get(area.id, {})
+            done = int(daily.get('done', 0) or 0)
+            pending = int(horti_pending_by_area.get(area.id, 0) or 0)
+            total = done + pending
+            worker_ids = horti_worker_ids_by_area_id.get(area.id, set())
+            area_stats[f"horticulture-area-{area.id}"] = {
+                'area_id': f"horticulture-area-{area.id}",
+                'area_name': f"Horticulture Area {area.area_number} - {area.name}",
+                'area_type': 'horticulture',
+                'area_class': 'others',
+                'department': 'horticulture',
+                'total': total,
+                'done': done,
+                'pending': pending,
+                'in_progress': 0,
+                'skipped': 0,
+                '_horticulture_worker_ids': worker_ids,
+            }
+
+        horti_daily_by_zone = {
+            row['area__zone_id']: row
+            for row in (
+                HorticultureDailyAssignment.objects.filter(date__range=(start_date, end_date))
+                .values('area__zone_id')
+                .annotate(total=Count('id'), done=Count('id'))
+            )
+        }
+        horti_pending_by_zone = {
+            row['area__zone_id']: int(row['pending'] or 0)
+            for row in (
+                HorticultureAreaTaskAssignment.objects.filter(date__range=(start_date, end_date), is_active=True)
+                .values('area__zone_id')
+                .annotate(pending=Count('id'))
+            )
+        }
+        for zone in HorticultureZone.objects.select_related('supervisor').order_by('name'):
+            if area_class != 'all' and area_class != 'others':
+                continue
+            supervisor = zone.supervisor
+            if supervisor is None:
+                continue
+            daily = horti_daily_by_zone.get(zone.id, {})
+            done = int(daily.get('done', 0) or 0)
+            pending = int(horti_pending_by_zone.get(zone.id, 0) or 0)
+            total = done + pending
+            owner_key = f"horticulture-supervisor-{supervisor.id}"
+            owner_name = supervisor.get_full_name() or supervisor.username
+            caretaker_stats[owner_key] = {
+                'staff_pk': f"horticulture-{supervisor.id}",
+                'staff_id': owner_key,
+                'staff_name': owner_name,
+                'pay_code': supervisor.pay_code,
+                'role': 'horticulture_supervisor',
+                'area_class': 'others',
+                'department': 'horticulture',
+                'areas': {zone.name},
+                'total': total,
+                'done': done,
+                'pending': pending,
+                'in_progress': 0,
+                'skipped': 0,
+                '_horticulture_worker_ids': horti_worker_ids_by_zone_id.get(zone.id, set()),
+            }
+
+        horti_daily_by_worker = {
+            row['worker_id']: row
+            for row in (
+                HorticultureDailyAssignment.objects.filter(date__range=(start_date, end_date))
+                .values('worker_id')
+                .annotate(total=Count('id'), done=Count('id'))
+            )
+        }
+        for worker in horti_workers:
+            if area_class != 'all' and area_class != 'others':
+                continue
+            daily = horti_daily_by_worker.get(worker.id, {})
+            done = int(daily.get('done', 0) or 0)
+            total = int(daily.get('total', 0) or 0)
+            areas = []
+            for assignment in worker.area_assignments.all():
+                if assignment.is_active and assignment.area:
+                    areas.append(f"Horticulture Area {assignment.area.area_number}")
+            worker_stats[f"horticulture-worker-{worker.id}"] = {
+                'worker_pk': f"horticulture-{worker.id}",
+                'worker_id': f"horticulture-worker-{worker.id}",
+                'worker_name': worker.name,
+                'pay_code': worker.pay_code,
+                'area_class': 'others',
+                'department': 'horticulture',
+                'areas': set(areas),
+                'total': total,
+                'done': done,
+                'pending': max(0, total - done),
+                'in_progress': 0,
+                'skipped': 0,
+                '_horticulture_worker_id': worker.id,
+            }
+
         area_rows = []
         for row in area_stats.values():
             total = int(row['total'] or 0)
             done = int(row['done'] or 0)
-            worker_ids = area_worker_ids_map.get(row['area_id'], set())
-            attendance = aggregate_attendance(worker_ids)
+            if row.get('department') == 'horticulture':
+                worker_ids = row.get('_horticulture_worker_ids', set())
+                attendance = aggregate_horti_attendance(worker_ids)
+            else:
+                worker_ids = area_worker_ids_map.get(row['area_id'], set())
+                attendance = aggregate_attendance(worker_ids)
 
             row['worker_count'] = len(worker_ids)
             row['tasks_per_worker'] = round((total / row['worker_count']), 2) if row['worker_count'] else 0.0
             row['completion_pct'] = round((done / total * 100), 1) if total else 0.0
             row['pending_total'] = int(row['pending'] or 0) + int(row['in_progress'] or 0)
             row.update(attendance)
+            row.pop('_horticulture_worker_ids', None)
             area_rows.append(row)
 
         self._apply_fair_scoring(area_rows)
@@ -638,8 +871,12 @@ class DashboardInsightsView(APIView):
         for row in caretaker_stats.values():
             total = int(row['total'] or 0)
             done = int(row['done'] or 0)
-            worker_ids = staff_worker_ids_map.get(row['staff_pk'], set())
-            attendance = aggregate_attendance(worker_ids)
+            if row.get('department') == 'horticulture':
+                worker_ids = row.get('_horticulture_worker_ids', set())
+                attendance = aggregate_horti_attendance(worker_ids)
+            else:
+                worker_ids = staff_worker_ids_map.get(row['staff_pk'], set())
+                attendance = aggregate_attendance(worker_ids)
 
             row['worker_count'] = len(worker_ids)
             row['tasks_per_worker'] = round((total / row['worker_count']), 2) if row['worker_count'] else 0.0
@@ -648,6 +885,7 @@ class DashboardInsightsView(APIView):
             row['areas_count'] = len(row['areas'])
             row['areas'] = sorted(list(row['areas']))
             row.update(attendance)
+            row.pop('_horticulture_worker_ids', None)
             caretaker_rows.append(row)
 
         self._apply_fair_scoring(caretaker_rows)
@@ -667,8 +905,12 @@ class DashboardInsightsView(APIView):
         for row in worker_stats.values():
             total = int(row['total'] or 0)
             done = int(row['done'] or 0)
-            worker_id = row.get('worker_pk')
-            attendance = aggregate_attendance({worker_id} if worker_id else set())
+            if row.get('department') == 'horticulture':
+                worker_id = row.get('_horticulture_worker_id')
+                attendance = aggregate_horti_attendance({worker_id} if worker_id else set())
+            else:
+                worker_id = row.get('worker_pk')
+                attendance = aggregate_attendance({worker_id} if worker_id else set())
 
             row['worker_count'] = 1
             row['tasks_per_worker'] = float(total)
@@ -677,36 +919,41 @@ class DashboardInsightsView(APIView):
             row['areas_count'] = len(row['areas'])
             row['areas'] = sorted(list(row['areas']))
             row.update(attendance)
+            row.pop('_horticulture_worker_id', None)
             worker_rows.append(row)
 
-        if not worker_rows:
-            for wk in active_workers:
-                area_name = wk.area.name if wk.area else ''
-                area_label = self._area_class_label(wk.area.area_type if wk.area else 'other', area_name)
-                if area_class != 'all' and area_label != area_class:
-                    continue
-                attendance = aggregate_attendance({wk.id})
-                worker_rows.append(
-                    {
-                        'worker_pk': wk.id,
-                        'worker_id': f"worker-{wk.id}",
-                        'worker_name': wk.name,
-                        'pay_code': wk.pay_code,
-                        'area_class': area_label,
-                        'areas': [area_name] if area_name else [],
-                        'areas_count': 1 if area_name else 0,
-                        'worker_count': 1,
-                        'total': 0,
-                        'done': 0,
-                        'pending': 0,
-                        'in_progress': 0,
-                        'skipped': 0,
-                        'pending_total': 0,
-                        'completion_pct': 0.0,
-                        'tasks_per_worker': 0.0,
-                        **attendance,
-                    }
-                )
+        existing_worker_ids = {row.get('worker_id') for row in worker_rows}
+        for wk in active_workers:
+            worker_key = f"worker-{wk.id}"
+            if worker_key in existing_worker_ids:
+                continue
+            area_name = wk.area.name if wk.area else ''
+            area_label = self._area_class_label(wk.area.area_type if wk.area else 'other', area_name)
+            if area_class != 'all' and area_label != area_class:
+                continue
+            attendance = aggregate_attendance({wk.id})
+            worker_rows.append(
+                {
+                    'worker_pk': wk.id,
+                    'worker_id': worker_key,
+                    'worker_name': wk.name,
+                    'pay_code': wk.pay_code,
+                    'area_class': area_label,
+                    'department': 'housekeeping',
+                    'areas': [area_name] if area_name else [],
+                    'areas_count': 1 if area_name else 0,
+                    'worker_count': 1,
+                    'total': 0,
+                    'done': 0,
+                    'pending': 0,
+                    'in_progress': 0,
+                    'skipped': 0,
+                    'pending_total': 0,
+                    'completion_pct': 0.0,
+                    'tasks_per_worker': 0.0,
+                    **attendance,
+                }
+            )
 
         self._apply_fair_scoring(worker_rows)
         worker_rows.sort(
@@ -726,6 +973,10 @@ class DashboardInsightsView(APIView):
             area.id: area
             for area in HKArea.objects.filter(is_active=True).only('id', 'name', 'area_type')
         }
+        horti_areas_by_id = {
+            area.id: area
+            for area in HorticultureArea.objects.select_related('zone').only('id', 'area_number', 'name', 'zone__id', 'zone__name')
+        }
 
         user_primary_area = {}
         for link in (
@@ -744,6 +995,10 @@ class DashboardInsightsView(APIView):
         request_ids = [issue.request_id for issue in issues]
         hk_req_area_map = dict(
             HKStockRequest.objects.filter(inventory_request_id__in=request_ids, area_id__isnull=False)
+            .values_list('inventory_request_id', 'area_id')
+        )
+        horti_req_area_map = dict(
+            HorticultureStockRequest.objects.filter(inventory_request_id__in=request_ids, area_id__isnull=False)
             .values_list('inventory_request_id', 'area_id')
         )
 
@@ -770,6 +1025,10 @@ class DashboardInsightsView(APIView):
         for issue in issues:
             area_obj = None
             area_id = hk_req_area_map.get(issue.request_id)
+            horti_area_obj = None
+            horti_area_id = horti_req_area_map.get(issue.request_id)
+            if horti_area_id:
+                horti_area_obj = horti_areas_by_id.get(horti_area_id)
             if area_id:
                 area_obj = areas_by_id.get(area_id)
             if not area_obj:
@@ -777,12 +1036,18 @@ class DashboardInsightsView(APIView):
                 if fallback_area_id:
                     area_obj = areas_by_id.get(fallback_area_id)
 
-            if area_obj:
+            if horti_area_obj and horti_area_obj.zone:
+                issue_area_name = horti_area_obj.zone.name
+                issue_area_class = 'others'
+                issue_area_detail = f"Horticulture Area {horti_area_obj.area_number} - {horti_area_obj.name}"
+            elif area_obj:
                 issue_area_name = area_obj.name
                 issue_area_class = self._area_class_label(area_obj.area_type, area_obj.name)
+                issue_area_detail = issue_area_name
             else:
                 issue_area_name = 'Direct Request'
                 issue_area_class = 'others'
+                issue_area_detail = issue_area_name
 
             if area_class != 'all' and issue_area_class != area_class:
                 continue
@@ -801,6 +1066,8 @@ class DashboardInsightsView(APIView):
             area_row = area_consumption[area_key]
             area_row['area_name'] = issue_area_name
             area_row['area_class'] = issue_area_class
+            if horti_area_obj:
+                area_row['department'] = 'horticulture'
             area_row['transactions'] += 1
             area_row['total_qty'] += quantity
             if item_type == 'asset':
@@ -813,7 +1080,14 @@ class DashboardInsightsView(APIView):
             item_row['item_type'] = item_type or 'consumable'
             item_row['quantity'] += quantity
             item_row['transactions'] += 1
-            item_row['areas'].add(issue_area_name)
+            item_row['areas'].add(issue_area_detail)
+
+        if area_class in {'all', 'others'}:
+            for zone in HorticultureZone.objects.order_by('name'):
+                area_row = area_consumption[zone.name]
+                area_row['area_name'] = zone.name
+                area_row['area_class'] = 'others'
+                area_row['department'] = 'horticulture'
 
         area_consumption_rows = list(area_consumption.values())
         area_consumption_rows.sort(

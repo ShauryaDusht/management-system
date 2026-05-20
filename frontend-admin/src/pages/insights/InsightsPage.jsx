@@ -484,8 +484,8 @@ export default function InsightsPage() {
       exportCsv(baseName, ['Worker','Pay Code','Areas','Total Tasks','Completed','Pending','In Progress','Skipped','Completion %','Attendance %','Fair Score'],
         workerRows.map(r => [r.worker_name, r.pay_code||'-', (r.areas||[]).join(' | '), r.total||0, r.done||0, r.pending||0, r.in_progress||0, r.skipped||0, Number(r.completion_pct||0).toFixed(1), Number(r.attendance_pct||0).toFixed(1), Number(r.fair_score||0).toFixed(2)]))
     } else if (activeView === 'area_hk') {
-      exportCsv(baseName, ['Area','Area Class','Worker Count','Total Tasks','Completed','Pending','Completion %','Attendance %','Fair Score'],
-        areaRows.map(r => [r.area_name, r.area_class, r.worker_count||0, r.total||0, r.done||0, r.pending||0, Number(r.completion_pct||0).toFixed(1), Number(r.attendance_pct||0).toFixed(1), Number(r.fair_score||0).toFixed(2)]))
+      exportCsv(baseName, ['Area / Zone','Department','Area Class','Worker Count','Total Tasks','Completed','Pending','Completion %','Attendance %','Fair Score'],
+        areaRows.map(r => [r.area_name, r.department || 'housekeeping', r.area_class, r.worker_count||0, r.total||0, r.done||0, r.pending||0, Number(r.completion_pct||0).toFixed(1), Number(r.attendance_pct||0).toFixed(1), Number(r.fair_score||0).toFixed(2)]))
     } else if (activeView === 'area_inventory') {
       exportCsv(baseName, ['Area','Area Class','Transactions','Consumable Qty','Asset Qty','Total Qty'],
         invAreaRows.map(r => [r.area_name, r.area_class, r.transactions||0, r.consumable_qty||0, r.asset_qty||0, r.total_qty||0]))
@@ -501,7 +501,7 @@ export default function InsightsPage() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
           {VIEW_OPTIONS.map(opt => (
             <Btn key={opt.key} size="sm" variant={activeView === opt.key ? 'primary' : 'secondary'} onClick={() => setActiveView(opt.key)}>
-              {opt.label}
+              {opt.key === 'area_hk' ? 'Area-wise Comparison' : opt.label}
             </Btn>
           ))}
         </div>

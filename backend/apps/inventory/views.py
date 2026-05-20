@@ -25,6 +25,17 @@ from apps.users.permissions import IsAdmin, IsSupervisor
 from .permissions import IsAdminOrInventoryManager
 
 
+def _sync_horticulture_request_status(item_request, status_value):
+    try:
+        from apps.horticulture.models import HorticultureStockRequest
+        horti_req = HorticultureStockRequest.objects.filter(inventory_request=item_request).first()
+        if horti_req:
+            horti_req.status = status_value
+            horti_req.save(update_fields=['status'])
+    except Exception:
+        pass
+
+
 # ─────────────────────────────────────────────────
 # CATEGORY VIEWS
 # ─────────────────────────────────────────────────
@@ -355,6 +366,7 @@ class ReviewRequestView(APIView):
         item_request.reviewed_at = timezone.now()
         item_request.units_remaining = max(item.available_quantity - item.reserved_quantity, 0)
         item_request.save()
+        _sync_horticulture_request_status(item_request, item_request.status)
 
         return Response(ItemRequestSerializer(item_request).data)
 
@@ -412,6 +424,7 @@ class IssueItemView(APIView):
 
         item_request.status = ItemRequest.Status.ISSUED
         item_request.save()
+        _sync_horticulture_request_status(item_request, ItemRequest.Status.ISSUED)
         try:
             from apps.housekeeping.models import HKStockRequest
             hk_req = HKStockRequest.objects.filter(inventory_request=item_request).first()

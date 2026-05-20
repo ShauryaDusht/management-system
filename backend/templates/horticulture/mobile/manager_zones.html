@@ -1,0 +1,57 @@
+{% extends 'horticulture/mobile/base_horti.html' %}
+{% block title %}Zones{% endblock %}
+{% block hdr_title %}ZONES{% endblock %}
+{% block back_btn %}<a href="/horticulture/dashboard/" class="bk">&lt;</a>{% endblock %}
+{% block hm2 %}on{% endblock %}
+
+{% block content %}
+<div class="tabs">
+  {% for row in zones %}
+  <a href="#zone-{{ row.zone.id }}" class="atab">{{ row.zone.name }}</a>
+  {% endfor %}
+</div>
+
+{% for row in zones %}
+<div id="zone-{{ row.zone.id }}" class="card hero" style="background:linear-gradient(135deg,#29543a,#1b3a28)">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+    <div>
+      <div style="font-size:20px;font-weight:900">{{ row.zone.name }}</div>
+      <div style="font-size:12px;opacity:.84;margin-top:3px">{{ row.zone.supervisor.get_full_name|default:row.zone.supervisor.username }}{% if row.zone.supervisor.phone %} | {{ row.zone.supervisor.phone }}{% endif %}</div>
+    </div>
+    <span class="bdg" style="background:#fff;color:#29543a">{{ row.workers_count }} workers</span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:13px;text-align:center">
+    <div style="background:rgba(255,255,255,.14);border-radius:10px;padding:9px"><div style="font-size:19px;font-weight:900">{{ row.areas|length }}</div><div style="font-size:11px;opacity:.8">Areas</div></div>
+    <div style="background:rgba(255,255,255,.14);border-radius:10px;padding:9px"><div style="font-size:19px;font-weight:900">{{ row.done_today }}</div><div style="font-size:11px;opacity:.8">Done Today</div></div>
+    <div style="background:rgba(255,255,255,.14);border-radius:10px;padding:9px"><div style="font-size:19px;font-weight:900">{{ row.assigned_today }}</div><div style="font-size:11px;opacity:.8">Assigned</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <div style="font-weight:900;color:#29543a;margin-bottom:8px">Worker Preview</div>
+  {% for worker in row.workers_preview %}
+  <div style="display:flex;justify-content:space-between;border-bottom:1px solid #eef2f7;padding:7px 0">
+    <span style="font-weight:700">{{ worker.name }}</span>
+    <span class="muted">#{{ worker.pay_code|default:"-" }}</span>
+  </div>
+  {% empty %}
+  <div class="muted">No workers assigned.</div>
+  {% endfor %}
+</div>
+
+<div class="area-grid">
+  {% for area in row.areas %}
+  <div class="card area-card compact {% if area.urgency == 'overdue' %}is-overdue{% elif area.urgency == 'due_soon' %}is-due-soon{% endif %}" style="margin:0 0 10px">
+    <div>
+      <div class="area-title">Area {{ area.area_number }}</div>
+      <div class="area-size">{{ area.name }}</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span class="bdg {% if area.urgency == 'overdue' %}r{% elif area.urgency == 'due_soon' %}y{% else %}g{% endif %}">{{ area.urgency|title }}</span>
+      <span class="muted">{{ area.done_task_count }}/{{ area.total_task_count }} ok</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+{% endblock %}

@@ -31,7 +31,7 @@
     {% elif not is_today or cur_half == 'first' %}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
       {% for sv, sl, bg, clr in attn_choices %}
-      <form method="post" action="/horticulture/attendance/?zone={{ selected_zone.id }}&area={{ selected_area.id }}">
+      <form method="post" action="/horticulture/attendance/?zone={{ selected_zone.id }}">
         {% csrf_token %}
         <input type="hidden" name="action" value="mark">
         <input type="hidden" name="half" value="first">
@@ -64,7 +64,7 @@
     {% elif not is_today or cur_half == 'second' %}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
       {% for sv, sl, bg, clr in attn_choices %}
-      <form method="post" action="/horticulture/attendance/?zone={{ selected_zone.id }}&area={{ selected_area.id }}">
+      <form method="post" action="/horticulture/attendance/?zone={{ selected_zone.id }}">
         {% csrf_token %}
         <input type="hidden" name="action" value="mark">
         <input type="hidden" name="half" value="second">

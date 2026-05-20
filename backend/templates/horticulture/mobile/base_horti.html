@@ -108,7 +108,7 @@ label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4
     </span>
   </div>
   {% if request.user.is_authenticated %}
-  <a href="/horticulture/profile/{% if selected_zone %}?zone={{ selected_zone.id }}{% endif %}" class="ava" aria-label="Open profile">
+  <a href="/horticulture/profile/{% if selected_zone and not is_horti_manager %}?zone={{ selected_zone.id }}{% endif %}" class="ava" aria-label="Open profile">
     {% if request.user.profile_photo %}<img src="{{ request.user.profile_photo.url }}" alt="">
     {% else %}{{ request.user.first_name|default:request.user.username|first|upper }}{% endif %}
   </a>
@@ -119,6 +119,20 @@ label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4
 
 {% if request.user.is_authenticated %}
 <div class="bottom">
+  {% if is_horti_manager or request.user.role == 'horticulture_manager' or request.user.role == 'admin' %}
+  <a href="/horticulture/dashboard/">
+    <button class="nav {% block hm1 %}{% endblock %}">Dashboard</button>
+  </a>
+  <a href="/horticulture/zones/">
+    <button class="nav {% block hm2 %}{% endblock %}">Zones</button>
+  </a>
+  <a href="/horticulture/requests/">
+    <button class="nav {% block hm3 %}{% endblock %}">Requests</button>
+  </a>
+  <a href="/horticulture/reports/">
+    <button class="nav {% block hm4 %}{% endblock %}">Reports</button>
+  </a>
+  {% else %}
   <a href="/horticulture/dashboard/{% if selected_zone %}?zone={{ selected_zone.id }}{% endif %}">
     <button class="nav {% block n1 %}{% endblock %}">Home</button>
   </a>
@@ -131,6 +145,7 @@ label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4
   <a href="/horticulture/stock/{% if selected_zone or selected_area %}?{% if selected_zone %}zone={{ selected_zone.id }}{% endif %}{% if selected_area %}{% if selected_zone %}&{% endif %}area={{ selected_area.id }}{% endif %}{% endif %}">
     <button class="nav {% block n5 %}{% endblock %}">Stock</button>
   </a>
+  {% endif %}
 </div>
 {% endif %}
 </body>

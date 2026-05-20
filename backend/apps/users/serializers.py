@@ -63,7 +63,11 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.get_full_name() or obj.username
 
     def get_areas_incharge(self, obj):
-        return [link.area.name for link in obj.hk_areas.all() if link.area]
+        names = [link.area.name for link in obj.hk_areas.all() if link.area]
+        horticulture_zones = getattr(obj, 'horticulture_supervised_zones', None)
+        if horticulture_zones is not None:
+            names.extend(zone.name for zone in horticulture_zones.all())
+        return names
 
     def get_assigned_area_ids(self, obj):
         return [link.area_id for link in obj.hk_areas.all() if link.area_id]

@@ -1,0 +1,79 @@
+{% extends 'horticulture/mobile/base_horti.html' %}
+{% block title %}Horticulture Manager{% endblock %}
+{% block hdr_title %}HORTI MANAGER{% endblock %}
+{% block hm1 %}on{% endblock %}
+
+{% block content %}
+{% if messages %}
+  {% for message in messages %}
+  <div class="flash {% if 'error' in message.tags %}err{% else %}ok{% endif %}">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<div class="card hero">
+  <div style="font-size:13px;opacity:.84;font-weight:700">Today</div>
+  <div style="font-size:24px;font-weight:900;margin-top:3px">{{ today|date:"d M Y" }}</div>
+  <div style="font-size:12px;opacity:.8;margin-top:6px">All horticulture zones, supervisors, workers, tasks and stock requests in one place.</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+  <div class="card" style="margin:0;text-align:center"><div style="font-size:24px;font-weight:900;color:#29543a">{{ totals.zones }}</div><div class="muted">Zones</div></div>
+  <div class="card" style="margin:0;text-align:center"><div style="font-size:24px;font-weight:900;color:#29543a">{{ totals.areas }}</div><div class="muted">Areas</div></div>
+  <div class="card" style="margin:0;text-align:center"><div style="font-size:24px;font-weight:900;color:#29543a">{{ totals.workers }}</div><div class="muted">Workers</div></div>
+  <div class="card" style="margin:0;text-align:center"><div style="font-size:24px;font-weight:900;color:#c2622a">{{ totals.pending_requests }}</div><div class="muted">Pending Requests</div></div>
+</div>
+
+<div class="card">
+  <div class="summary">
+    <div>
+      <div style="font-size:15px;font-weight:900;color:#29543a">Task Progress</div>
+      <div class="muted">{{ totals.done_today }} done today, {{ totals.assigned_today }} manager-assigned pending</div>
+    </div>
+    <a href="/horticulture/reports/" class="btn-g" style="width:auto;padding:9px 12px">Reports</a>
+  </div>
+  <div class="prog" style="margin-top:12px">
+    <div class="fill" style="width:{{ totals.task_progress_pct }}%"></div>
+  </div>
+</div>
+
+<div class="sec">Zones</div>
+{% for row in zone_rows %}
+<a href="/horticulture/zones/#zone-{{ row.zone.id }}" class="area-link">
+  <div class="card area-card">
+    <div class="area-head">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;font-weight:900">
+          <span class="zone-dot" style="background:{{ row.zone.color_code }}"></span>
+          {{ row.zone.name }}
+        </div>
+        <div class="muted" style="margin-top:3px">{{ row.zone.supervisor.get_full_name|default:row.zone.supervisor.username }}</div>
+      </div>
+      <span class="bdg {% if row.overdue_tasks %}r{% else %}g{% endif %}">{{ row.overdue_tasks }} overdue</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:12px;text-align:center">
+      <div><div style="font-weight:900">{{ row.areas_count }}</div><div class="muted">Areas</div></div>
+      <div><div style="font-weight:900">{{ row.workers_count }}</div><div class="muted">Workers</div></div>
+      <div><div style="font-weight:900">{{ row.done_today }}</div><div class="muted">Done</div></div>
+      <div><div style="font-weight:900">{{ row.low_stock_count }}</div><div class="muted">Low</div></div>
+    </div>
+  </div>
+</a>
+{% endfor %}
+
+<div class="sec">Urgent / Pending Requests</div>
+{% for req in pending_requests %}
+<a href="/horticulture/requests/" class="area-link">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:8px">
+      <div>
+        <div style="font-weight:800">{{ req.item_name }}</div>
+        <div class="muted">{{ req.quantity }} {{ req.unit }} | {{ req.area.zone.name }} | {{ req.requested_by.get_full_name|default:req.requested_by.username }}</div>
+      </div>
+      {% if req.is_urgent %}<span class="bdg r">Urgent</span>{% else %}<span class="bdg y">Pending</span>{% endif %}
+    </div>
+  </div>
+</a>
+{% empty %}
+<div class="card" style="text-align:center;color:#6b7280">No pending horticulture stock requests.</div>
+{% endfor %}
+{% endblock %}

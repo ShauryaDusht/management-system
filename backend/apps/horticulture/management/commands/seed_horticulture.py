@@ -318,11 +318,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         verbosity = options.get('verbosity', 1)
 
-        if HorticultureZone.objects.exists() and HorticultureWorker.objects.exists():
-            if verbosity > 0:
-                self.stdout.write('Horticulture data already seeded, skipping.')
-            return
-
         self.stats = {
             'manager_created': 0,
             'manager_updated': 0,
@@ -422,7 +417,7 @@ class Command(BaseCommand):
                 .order_by('area_number')
                 .values_list('id', flat=True)
             )
-            for full_name, pay_code, phone in workers:
+            for index, (full_name, pay_code, phone) in enumerate(workers):
                 worker, created = HorticultureWorker.objects.get_or_create(
                     pay_code=pay_code,
                     defaults={
@@ -445,7 +440,6 @@ class Command(BaseCommand):
                     worker.save(update_fields=['name', 'phone', 'is_active', 'updated_at'])
 
                 if area_ids:
-                    index = self.stats['workers_created'] + self.stats['workers_updated']
                     primary_area_id = area_ids[index % len(area_ids)]
                     HorticultureWorkerArea.objects.update_or_create(
                         worker=worker,

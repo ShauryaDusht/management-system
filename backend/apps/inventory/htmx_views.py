@@ -722,6 +722,14 @@ def mobile_approve_request(request, pk):
             item_request.save(update_fields=[
                 'status', 'approved_by', 'reviewed_at', 'units_remaining'
             ])
+            try:
+                from apps.horticulture.models import HorticultureStockRequest
+                horti_req = HorticultureStockRequest.objects.filter(inventory_request=item_request).first()
+                if horti_req:
+                    horti_req.status = 'approved'
+                    horti_req.save(update_fields=['status'])
+            except Exception:
+                pass
     return redirect('mobile_manager_requests')
 
 
@@ -749,6 +757,14 @@ def mobile_reject_request(request, pk):
                 if hk_req:
                     hk_req.status = 'rejected'
                     hk_req.save(update_fields=['status'])
+            except Exception:
+                pass
+            try:
+                from apps.horticulture.models import HorticultureStockRequest
+                horti_req = HorticultureStockRequest.objects.filter(inventory_request=item_request).first()
+                if horti_req:
+                    horti_req.status = 'rejected'
+                    horti_req.save(update_fields=['status'])
             except Exception:
                 pass
     return redirect('mobile_manager_requests')
@@ -806,4 +822,12 @@ def mobile_issue_request(request, pk):
                 'notes': request.POST.get('notes', ''),
             },
         )
+        try:
+            from apps.horticulture.models import HorticultureStockRequest
+            horti_req = HorticultureStockRequest.objects.filter(inventory_request=item_request).first()
+            if horti_req:
+                horti_req.status = 'issued'
+                horti_req.save(update_fields=['status'])
+        except Exception:
+            pass
     return redirect('mobile_manager_requests')

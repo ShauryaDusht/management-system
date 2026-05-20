@@ -1,0 +1,56 @@
+{% extends 'horticulture/mobile/base_horti.html' %}
+{% block title %}Reports{% endblock %}
+{% block hdr_title %}REPORTS{% endblock %}
+{% block back_btn %}<a href="/horticulture/dashboard/" class="bk">&lt;</a>{% endblock %}
+{% block hm4 %}on{% endblock %}
+
+{% block content %}
+<div class="card">
+  <form method="get">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="fg"><label>From</label><input type="date" name="start" value="{{ start_date|date:'Y-m-d' }}"></div>
+      <div class="fg"><label>To</label><input type="date" name="end" value="{{ end_date|date:'Y-m-d' }}"></div>
+    </div>
+    <button class="btn-s" type="submit">Apply Filter</button>
+  </form>
+</div>
+
+<div class="sec">Zone Performance</div>
+{% for row in zone_reports %}
+<div class="card">
+  <div class="summary">
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;font-weight:900">
+        <span class="zone-dot" style="background:{{ row.zone.color_code }}"></span>
+        {{ row.zone.name }}
+      </div>
+      <div class="muted">{{ row.zone.supervisor.get_full_name|default:row.zone.supervisor.username }} | {{ row.areas }} areas | {{ row.workers }} workers</div>
+    </div>
+    <span class="bdg {% if row.completion_pct >= 70 %}g{% elif row.completion_pct >= 40 %}y{% else %}r{% endif %}">{{ row.completion_pct }}%</span>
+  </div>
+  <div class="prog" style="margin:11px 0 9px"><div class="fill" style="width:{{ row.completion_pct }}%"></div></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;text-align:center">
+    <div><div style="font-weight:900">{{ row.done }}</div><div class="muted">Done</div></div>
+    <div><div style="font-weight:900">{{ row.assigned }}</div><div class="muted">Pending</div></div>
+    <div><div style="font-weight:900">{{ row.attendance_pct }}%</div><div class="muted">Attend.</div></div>
+    <div><div style="font-weight:900">{{ row.requests }}</div><div class="muted">Req.</div></div>
+  </div>
+</div>
+{% endfor %}
+
+<div class="sec">Recent Completed Work</div>
+{% for item in recent_done %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;gap:10px">
+    <div>
+      <div style="font-weight:800">{{ item.task_type.name }}</div>
+      <div class="muted">{{ item.area.zone.name }} | Area {{ item.area.area_number }} | {{ item.area.name }}</div>
+      <div class="muted">{{ item.worker.name }} | {{ item.date|date:"d M Y" }} | {{ item.session|title }}</div>
+    </div>
+    {% if item.photo %}<span class="bdg b">Photo</span>{% else %}<span class="bdg gr">No Photo</span>{% endif %}
+  </div>
+</div>
+{% empty %}
+<div class="card" style="text-align:center;color:#6b7280;padding:28px">No completed horticulture work in this period.</div>
+{% endfor %}
+{% endblock %}

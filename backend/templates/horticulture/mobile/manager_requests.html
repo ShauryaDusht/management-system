@@ -1,0 +1,67 @@
+{% extends 'horticulture/mobile/base_horti.html' %}
+{% block title %}Requests{% endblock %}
+{% block hdr_title %}REQUESTS{% endblock %}
+{% block back_btn %}<a href="/horticulture/dashboard/" class="bk">&lt;</a>{% endblock %}
+{% block hm3 %}on{% endblock %}
+
+{% block content %}
+{% if messages %}
+  {% for message in messages %}
+  <div class="flash {% if 'error' in message.tags %}err{% else %}ok{% endif %}">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+
+<div class="tabs">
+  <a class="atab {% if status_filter == 'pending' %}on{% endif %}" href="?status=pending">Pending {{ counts.pending }}</a>
+  <a class="atab {% if status_filter == 'approved' %}on{% endif %}" href="?status=approved">Approved {{ counts.approved }}</a>
+  <a class="atab {% if status_filter == 'issued' %}on{% endif %}" href="?status=issued">Issued {{ counts.issued }}</a>
+  <a class="atab {% if status_filter == 'rejected' %}on{% endif %}" href="?status=rejected">Rejected {{ counts.rejected }}</a>
+  <a class="atab {% if status_filter == 'all' %}on{% endif %}" href="?status=all">All {{ counts.all }}</a>
+</div>
+
+{% for req in requests %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+    <div style="min-width:0">
+      <div style="font-size:15px;font-weight:900">{{ req.item_name }}</div>
+      <div class="muted">{{ req.quantity }} {{ req.unit|default:"units" }} | {{ req.area.zone.name|default:"Zone" }} | {{ req.area.name|default:"General" }}</div>
+      <div class="muted" style="margin-top:3px">By {{ req.requested_by.get_full_name|default:req.requested_by.username }} | {{ req.created_at|date:"d M Y H:i" }}</div>
+    </div>
+    <span class="bdg {% if req.status == 'pending' %}y{% elif req.status == 'rejected' %}r{% else %}g{% endif %}">{{ req.status|title }}</span>
+  </div>
+  {% if req.is_urgent %}<div class="flash err" style="margin-top:10px;margin-bottom:0;padding:8px 10px">Urgent request</div>{% endif %}
+  <div style="font-size:13px;color:#374151;line-height:1.45;margin-top:10px">{{ req.reason }}</div>
+  {% if req.inventory_request %}
+  <div class="muted" style="margin-top:8px">Inventory request: #{{ req.inventory_request.id }} | {{ req.inventory_request.status|title }}</div>
+  {% endif %}
+  {% if req.status == 'pending' %}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+    <form method="post" action="/horticulture/requests/">
+      {% csrf_token %}
+      <input type="hidden" name="request_id" value="{{ req.id }}">
+      <input type="hidden" name="action" value="approve">
+      <button type="submit" class="btn-s">Approve</button>
+    </form>
+    <button class="btn-g" type="button" onclick="document.getElementById('reject-{{ req.id }}').style.display='block'">Reject</button>
+  </div>
+  <form id="reject-{{ req.id }}" method="post" action="/horticulture/requests/" style="display:none;margin-top:8px">
+    {% csrf_token %}
+    <input type="hidden" name="request_id" value="{{ req.id }}">
+    <input type="hidden" name="action" value="reject">
+    <textarea name="reason" rows="2" placeholder="Reason for rejection"></textarea>
+    <button type="submit" class="btn-p" style="margin-top:8px">Confirm Reject</button>
+  </form>
+  {% endif %}
+</div>
+{% empty %}
+<div class="card" style="text-align:center;color:#6b7280;padding:28px">No horticulture requests for this filter.</div>
+{% endfor %}
+
+{% if page_obj.has_other_pages %}
+<div class="card" style="display:flex;justify-content:space-between;align-items:center">
+  {% if page_obj.has_previous %}<a class="btn-g" style="width:auto" href="?status={{ status_filter }}&page={{ page_obj.previous_page_number }}">Prev</a>{% else %}<span></span>{% endif %}
+  <span class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}<a class="btn-g" style="width:auto" href="?status={{ status_filter }}&page={{ page_obj.next_page_number }}">Next</a>{% else %}<span></span>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

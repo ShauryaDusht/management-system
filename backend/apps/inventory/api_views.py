@@ -12,6 +12,17 @@ from .models import Item, ItemRequest
 from .serializers import ItemSerializer, ItemRequestSerializer
 
 
+def _sync_horticulture_request_status(item_request, status_value):
+    try:
+        from apps.horticulture.models import HorticultureStockRequest
+        horti_req = HorticultureStockRequest.objects.filter(inventory_request=item_request).first()
+        if horti_req:
+            horti_req.status = status_value
+            horti_req.save(update_fields=['status'])
+    except Exception:
+        pass
+
+
 class AdjustStockView(APIView):
     permission_classes = [IsAdmin]
 
@@ -114,6 +125,7 @@ class ApproveRequestView(APIView):
         item_request.reviewed_at = timezone.now()
         item_request.units_remaining = max(item.available_quantity - item.reserved_quantity, 0)
         item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'units_remaining'])
+        _sync_horticulture_request_status(item_request, ItemRequest.Status.APPROVED)
 
         return Response(ItemRequestSerializer(item_request).data, status=status.HTTP_200_OK)
 
@@ -141,6 +153,7 @@ class RejectRequestView(APIView):
         item_request.rejection_reason = request.data.get('rejection_reason', '')
         item_request.units_remaining = item_request.item.available_quantity
         item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'rejection_reason', 'units_remaining'])
+        _sync_horticulture_request_status(item_request, ItemRequest.Status.REJECTED)
 
         return Response(ItemRequestSerializer(item_request).data, status=status.HTTP_200_OK)
 
