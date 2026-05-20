@@ -28,15 +28,20 @@
 </div>
 
 <div class="card">
-  <div style="font-weight:900;color:#29543a;margin-bottom:8px">Worker Preview</div>
-  {% for worker in row.workers_preview %}
-  <div style="display:flex;justify-content:space-between;border-bottom:1px solid #eef2f7;padding:7px 0">
-    <span style="font-weight:700">{{ worker.name }}</span>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div style="font-weight:900;color:#29543a">All Workers</div>
+    <span class="bdg g">{{ row.workers_count }}</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px">
+  {% for worker in row.workers %}
+  <div style="border:1px solid #eef2f7;border-radius:10px;padding:8px;background:#fbfdfb;min-width:0">
+    <div style="font-weight:800;font-size:13px;line-height:1.2;word-break:break-word">{{ worker.name }}</div>
     <span class="muted">#{{ worker.pay_code|default:"-" }}</span>
   </div>
   {% empty %}
   <div class="muted">No workers assigned.</div>
   {% endfor %}
+  </div>
 </div>
 
 <div class="area-grid">

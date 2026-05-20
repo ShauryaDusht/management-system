@@ -1650,7 +1650,7 @@ def horticulture_manager_zones(request):
                 'payload': payload,
                 'areas': payload['areas'],
                 'workers_count': workers.count(),
-                'workers_preview': list(workers[:5]),
+                'workers': list(workers),
                 'done_today': HorticultureDailyAssignment.objects.filter(area_id__in=area_ids, date=today).count(),
                 'assigned_today': HorticultureAreaTaskAssignment.objects.filter(area_id__in=area_ids, date=today, is_active=True).count(),
             }
