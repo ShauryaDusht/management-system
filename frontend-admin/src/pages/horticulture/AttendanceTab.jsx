@@ -3,7 +3,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { horticultureAPI } from '../../api/horticulture'
 import { Alert, Btn, Card, DataTable, Input, Spinner, StatCard } from '../../components/ui'
 import { BarGroupChart } from '../../components/ui/Charts'
-import { asList, getErrorMessage, todayISO } from '../../shared/utils'
+import { asList, getErrorMessage, todayISO, triggerDownload } from '../../shared/utils'
+
+function csvValue(value) {
+  if (value === null || value === undefined) return ''
+  const str = String(value)
+  if (str.includes(',') || str.includes('\n') || str.includes('"')) return `"${str.replace(/"/g, '""')}"`
+  return str
+}
 
 export default function AttendanceTab() {
   const [date, setDate] = useState(todayISO())
@@ -70,6 +77,46 @@ export default function AttendanceTab() {
     return String(record.status).replace('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase())
   }
 
+  const downloadAttendanceCsv = () => {
+    const summaryRows = [
+      ['Report Title', 'Horticulture Worker Attendance Report'],
+      ['Date', date],
+      ['Zone Filter', zoneFilter === 'all' ? 'All zones' : zoneFilter],
+      [],
+      ['Area Attendance Summary'],
+      ['Area', 'Zone', 'Total', 'Present', 'Absent', 'Late', 'Leave', 'Attendance %'],
+      ...visibleRows.map((row) => {
+        const pct = row.total_workers ? Math.round((Number(row.present || 0) / Number(row.total_workers || 1)) * 100) : 0
+        return [
+          row.area_name,
+          row.zone_name || '',
+          row.total_workers,
+          row.present,
+          row.absent,
+          row.late || 0,
+          row.leave || 0,
+          `${pct}%`,
+        ]
+      }),
+      [],
+      ['Worker Attendance Marked by Supervisors'],
+      ['Worker', 'Areas', 'Pay Code', 'First Half', 'Second Half'],
+      ...workers.map((worker) => {
+        const first = recordMap.get(`${worker.id}-first`)
+        const second = recordMap.get(`${worker.id}-second`)
+        return [
+          worker.name,
+          asList(worker.area_names).join(', ') || '',
+          worker.pay_code || '',
+          statusText(first),
+          statusText(second),
+        ]
+      }),
+    ]
+    const csv = summaryRows.map((row) => row.map((cell) => csvValue(cell)).join(',')).join('\n')
+    triggerDownload(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), `horticulture_attendance_${date}.csv`)
+  }
+
   return (
     <div>
       <Alert message={error} />
@@ -80,6 +127,11 @@ export default function AttendanceTab() {
         <Card style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ fontSize: 12, color: 'var(--text-3)', minWidth: 40 }}>Date</div>
           <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+        </Card>
+        <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Btn size="sm" variant="secondary" onClick={downloadAttendanceCsv} disabled={loading || (!visibleRows.length && !workers.length)}>
+            Download CSV
+          </Btn>
         </Card>
       </div>
 

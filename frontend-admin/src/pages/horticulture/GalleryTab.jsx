@@ -2,7 +2,23 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
 import { Alert, Btn, Card, DataTable, Input, SelectField, Spinner, StatCard } from '../../components/ui'
-import { asList, getErrorMessage, todayISO } from '../../shared/utils'
+import { asList, getErrorMessage, todayISO, triggerDownload } from '../../shared/utils'
+
+function csvValue(value) {
+  if (value === null || value === undefined) return ''
+  const str = String(value)
+  if (str.includes(',') || str.includes('\n') || str.includes('"')) return `"${str.replace(/"/g, '""')}"`
+  return str
+}
+
+function safeName(value, fallback = 'photo') {
+  const text = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return text || fallback
+}
 
 export default function GalleryTab() {
   const [date, setDate] = useState(todayISO())
@@ -42,6 +58,39 @@ export default function GalleryTab() {
   )
   const photoRows = useMemo(() => visibleRows.filter((row) => row.photo_url), [visibleRows])
 
+  const exportPhotoLog = () => {
+    const rowsForCsv = [
+      ['Date', 'Session', 'Worker', 'Area', 'Task', 'Photo URL', 'Uploaded At'],
+      ...visibleRows.map((row) => [
+        row.date || '',
+        row.session || '',
+        row.worker_name || '',
+        row.area_name || '',
+        row.task_type_name || '',
+        row.photo_url || '',
+        row.photo_uploaded_at ? new Date(row.photo_uploaded_at).toLocaleString('en-IN') : '',
+      ]),
+    ]
+    const csv = rowsForCsv.map((row) => row.map((cell) => csvValue(cell)).join(',')).join('\n')
+    triggerDownload(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), `horticulture_gallery_${date}.csv`)
+  }
+
+  const downloadPhoto = async (row) => {
+    if (!row?.photo_url) return
+    try {
+      const response = await fetch(row.photo_url, { credentials: 'include' })
+      if (!response.ok) throw new Error('Failed to fetch photo.')
+      const blob = await response.blob()
+      const extension = blob.type?.split('/')?.[1] || 'jpg'
+      triggerDownload(
+        blob,
+        `horticulture_${safeName(row.area_name, 'area')}_${safeName(row.task_type_name, 'task')}_${row.date || date}.${extension}`
+      )
+    } catch (err) {
+      window.open(row.photo_url, '_blank', 'noopener,noreferrer')
+    }
+  }
+
   return (
     <div>
       <Alert message={error} />
@@ -62,6 +111,11 @@ export default function GalleryTab() {
             ))}
           </SelectField>
         </Card>
+        <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Btn size="sm" variant="secondary" onClick={exportPhotoLog} disabled={loading || !visibleRows.length}>
+            Export Photo Log
+          </Btn>
+        </Card>
       </div>
 
       <Card noPad>
@@ -80,14 +134,18 @@ export default function GalleryTab() {
               row.area_name || '-',
               row.task_type_name || '-',
               row.photo_url ? (
-                <Btn
-                  key={`photo-${row.id}`}
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => window.open(row.photo_url, '_blank', 'noopener,noreferrer')}
-                >
-                  View Photo
-                </Btn>
+                <div key={`photo-${row.id}`} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <Btn
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => window.open(row.photo_url, '_blank', 'noopener,noreferrer')}
+                  >
+                    View
+                  </Btn>
+                  <Btn size="sm" variant="ghost" onClick={() => downloadPhoto(row)}>
+                    Download
+                  </Btn>
+                </div>
               ) : '-',
               row.photo_uploaded_at ? new Date(row.photo_uploaded_at).toLocaleString('en-IN') : '-',
             ])}

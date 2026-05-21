@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
-import { Alert, Card, DataTable, Modal, SelectField, Spinner } from '../../components/ui'
-import { getErrorMessage } from '../../shared/utils'
+import { Alert, Btn, Card, DataTable, Modal, SelectField, Spinner } from '../../components/ui'
+import { getErrorMessage, triggerDownload } from '../../shared/utils'
 import { humanizeStatus } from './helpers'
 
 const MONTH_NAMES = [
@@ -42,10 +42,27 @@ function formatDate(value) {
   return d.toLocaleDateString('en-IN')
 }
 
+function csvValue(value) {
+  if (value === null || value === undefined) return ''
+  const str = String(value)
+  if (str.includes(',') || str.includes('\n') || str.includes('"')) return `"${str.replace(/"/g, '""')}"`
+  return str
+}
+
+function safeName(value, fallback = 'worker') {
+  const text = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return text || fallback
+}
+
 export default function WorkerReportModal({ open, worker, onClose }) {
   const monthOptions = useMemo(() => makeMonthOptions(), [])
   const [selectedValue, setSelectedValue] = useState(monthOptions[0]?.value || '')
   const [loading, setLoading] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [error, setError] = useState('')
   const [report, setReport] = useState(null)
 
@@ -82,18 +99,61 @@ export default function WorkerReportModal({ open, worker, onClose }) {
     setSelectedValue(monthOptions[0]?.value || '')
     setReport(null)
     setError('')
+    setDownloading(false)
   }, [monthOptions, open, worker?.id])
 
+  const downloadCsv = () => {
+    if (!worker || !report || !selectedPeriod) return
+    setDownloading(true)
+    try {
+      const rows = [
+        ['Report Title', 'Horticulture Worker Attendance Report'],
+        ['Worker', worker.name || '-'],
+        ['Pay Code', worker.pay_code || '-'],
+        ['Period', `${String(selectedPeriod.month).padStart(2, '0')}/${selectedPeriod.year}`],
+        ['Attendance %', `${Number(report.attendance_pct || 0).toFixed(2)}%`],
+        ['Present', report.days_present || 0],
+        ['Absent', report.days_absent || 0],
+        ['Half Day', report.half_days || 0],
+        [],
+        ['Date', 'Status', 'Supervisor'],
+        ...(report.daily_breakdown || []).map((row) => [
+          row.date || '',
+          humanizeStatus(row.status),
+          row.supervisor_name || '',
+        ]),
+      ]
+      const csv = rows.map((row) => row.map((cell) => csvValue(cell)).join(',')).join('\n')
+      triggerDownload(
+        new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }),
+        `horticulture_worker_${safeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}.csv`
+      )
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   return (
-    <Modal open={open} onClose={onClose} title={worker?.name || 'Worker Report'} width={860}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={worker?.name || 'Worker Report'}
+      width={860}
+      footer={<Btn variant="ghost" onClick={onClose} disabled={loading || downloading}>Close</Btn>}
+    >
       <Alert message={error} />
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
-        <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Select Month</div>
-        <SelectField value={selectedValue} onChange={(event) => setSelectedValue(event.target.value)} style={{ width: 240 }}>
-          {monthOptions.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </SelectField>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Select Month</div>
+          <SelectField value={selectedValue} onChange={(event) => setSelectedValue(event.target.value)} style={{ width: 240 }}>
+            {monthOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </SelectField>
+        </div>
+        <Btn size="sm" variant="secondary" onClick={downloadCsv} disabled={loading || downloading || !report}>
+          {downloading ? 'Preparing...' : 'Download CSV'}
+        </Btn>
       </div>
 
       {loading ? (

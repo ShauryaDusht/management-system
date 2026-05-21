@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
-import { Alert, Card, SelectField, Spinner } from '../../components/ui'
-import { asList, getErrorMessage } from '../../shared/utils'
+import { Alert, Btn, Card, SelectField, Spinner } from '../../components/ui'
+import { asList, getErrorMessage, triggerDownload } from '../../shared/utils'
 import { formatDate, getZoneTone, taskChipStyle } from './helpers'
 
 const FREQUENCY_FILTERS = [
@@ -31,6 +31,13 @@ function formatTaskAge(daysSinceDone) {
   if (daysSinceDone === 0) return 'Completed today'
   if (daysSinceDone === 1) return 'Completed 1 day ago'
   return `Completed ${daysSinceDone} days ago`
+}
+
+function csvValue(value) {
+  if (value === null || value === undefined) return ''
+  const str = String(value)
+  if (str.includes(',') || str.includes('\n') || str.includes('"')) return `"${str.replace(/"/g, '""')}"`
+  return str
 }
 
 function getTaskPresentation(task, fallbackThreshold) {
@@ -247,6 +254,34 @@ export default function ZonesTab() {
     [visibleTaskTypes.length]
   )
 
+  const downloadAreaTaskCsv = () => {
+    if (!detail || !areas.length) return
+    const headers = ['Zone', 'Area', 'Area Number', 'Area Sqm', ...visibleTaskTypes.map((taskType) => taskType.name)]
+    const rows = areas.map((area) => {
+      const taskMap = new Map(asList(area.tasks).map((task) => [String(task.task_type_id), task]))
+      return [
+        detail.zone_name || selectedZone?.name || '',
+        area.name || '',
+        area.area_number || '',
+        area.area_sqm || '',
+        ...visibleTaskTypes.map((taskType) => {
+          const task = taskMap.get(String(taskType.id))
+          const presentation = getTaskPresentation(task, taskType.threshold)
+          return `${presentation.label} - ${presentation.detail}`
+        }),
+      ]
+    })
+    const csv = [headers, ...rows].map((row) => row.map((cell) => csvValue(cell)).join(',')).join('\n')
+    const zoneName = String(detail.zone_name || selectedZone?.name || 'zone')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+    triggerDownload(
+      new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }),
+      `horticulture_area_task_report_${zoneName || 'zone'}_${frequencyFilter}.csv`
+    )
+  }
+
   return (
     <div>
       <Alert message={error} />
@@ -385,6 +420,14 @@ export default function ZonesTab() {
                 <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
                   Showing {visibleTaskTypes.length} of {taskTypes.length} task types
                 </div>
+                <Btn
+                  size="sm"
+                  variant="secondary"
+                  onClick={downloadAreaTaskCsv}
+                  disabled={detailLoading || !areas.length || !visibleTaskTypes.length}
+                >
+                  Download CSV
+                </Btn>
               </div>
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

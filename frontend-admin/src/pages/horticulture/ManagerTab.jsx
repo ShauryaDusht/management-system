@@ -271,8 +271,8 @@ export default function ManagerTab() {
               {summary?.week_start ? formatDate(summary.week_start) : '-'} to {summary?.week_end ? formatDate(summary.week_end) : '-'}
             </div>
           </div>
-          <Btn onClick={exportWeeklyReport} disabled={loading || updatingSeason}>
-            Generate Weekly Report
+          <Btn onClick={exportWeeklyReport} disabled={loading || updatingSeason || !reportRows.length}>
+            Download Weekly CSV
           </Btn>
         </div>
       </Card>

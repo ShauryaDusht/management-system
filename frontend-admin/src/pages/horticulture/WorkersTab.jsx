@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
 import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
-import { asList, getErrorMessage } from '../../shared/utils'
+import { asList, getErrorMessage, triggerDownload } from '../../shared/utils'
 import WorkerReportModal from './WorkerReportModal'
 
 const EMPTY_FORM = {
@@ -20,6 +20,13 @@ function areaNames(worker) {
 
 function zoneNames(worker) {
   return asList(worker.zone_names).join(', ') || '-'
+}
+
+function csvValue(value) {
+  if (value === null || value === undefined) return ''
+  const str = String(value)
+  if (str.includes(',') || str.includes('\n') || str.includes('"')) return `"${str.replace(/"/g, '""')}"`
+  return str
 }
 
 export default function WorkersTab() {
@@ -132,6 +139,23 @@ export default function WorkersTab() {
     }
   }
 
+  const downloadWorkersCsv = () => {
+    const rows = [
+      ['Worker Name', 'Areas', 'Zones', 'Supervisor', 'Phone', 'Pay Code', 'Status'],
+      ...visibleWorkers.map((worker) => [
+        worker.name || '',
+        areaNames(worker),
+        zoneNames(worker),
+        worker.supervisor_name || '',
+        worker.phone || '',
+        worker.pay_code || '',
+        worker.is_active ? 'Active' : 'Inactive',
+      ]),
+    ]
+    const csv = rows.map((row) => row.map((cell) => csvValue(cell)).join(',')).join('\n')
+    triggerDownload(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), 'horticulture_workers.csv')
+  }
+
   return (
     <div>
       <Alert message={error} />
@@ -161,6 +185,9 @@ export default function WorkersTab() {
                 <option key={zone} value={zone}>{zone}</option>
               ))}
             </SelectField>
+            <Btn size="sm" variant="secondary" onClick={downloadWorkersCsv} disabled={loading || !visibleWorkers.length}>
+              Download CSV
+            </Btn>
             <Btn size="sm" onClick={openCreate}>+ Add Worker</Btn>
           </div>
         </div>

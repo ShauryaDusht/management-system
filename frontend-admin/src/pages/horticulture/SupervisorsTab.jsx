@@ -29,13 +29,43 @@ function toCsvValue(value) {
 }
 
 function HorticultureReportModal({ open, supervisor, onClose }) {
+  const downloadCsv = () => {
+    if (!supervisor) return
+    const rows = [
+      ['Report Title', 'Horticulture Staff Report'],
+      ['Name', toDisplayName(supervisor)],
+      ['Username', supervisor.username || '-'],
+      ['Pay Code', supervisor.pay_code || '-'],
+      ['Phone', supervisor.phone || '-'],
+      ['Workers', supervisor.workers_count ?? 0],
+      ['Tasks This Week', supervisor.tasks_logged_this_week ?? 0],
+      ['Last Login', formatDateTime(supervisor.last_login, 'Never')],
+      [],
+      ['Zones', 'Assigned Areas'],
+      [
+        asList(supervisor.zone_names).join(', ') || '-',
+        asList(supervisor.area_names).join(', ') || '-',
+      ],
+    ]
+    const csv = rows.map((row) => row.map((cell) => toCsvValue(cell)).join(',')).join('\n')
+    triggerDownload(
+      new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }),
+      `horticulture_staff_${toCsvSafe(supervisor.username || supervisor.id)}.csv`
+    )
+  }
+
   return (
     <Modal
       open={open}
       onClose={onClose}
       title={`${toDisplayName(supervisor)} - Horticulture Report`}
       width={760}
-      footer={<Btn variant="ghost" onClick={onClose}>Close</Btn>}
+      footer={(
+        <>
+          <Btn variant="secondary" onClick={downloadCsv} disabled={!supervisor}>Download CSV</Btn>
+          <Btn variant="ghost" onClick={onClose}>Close</Btn>
+        </>
+      )}
     >
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 12 }}>
         <Card>
@@ -192,13 +222,37 @@ export default function SupervisorsTab() {
     }
   }, [])
 
+  const downloadStaffCsv = () => {
+    const csvRows = [
+      ['Role', 'Name', 'Pay Code', 'Email', 'Username', 'Phone', 'Assigned Areas', 'Zones', 'Workers', 'Tasks This Week', 'Status'],
+      ...rows.map((row) => [
+        row.role || 'supervisor',
+        toDisplayName(row),
+        row.pay_code || '',
+        row.email || '',
+        row.username || '',
+        row.phone || '',
+        asList(row.area_names).join(', '),
+        asList(row.zone_names).join(', '),
+        row.workers_count ?? 0,
+        row.tasks_logged_this_week ?? 0,
+        row.is_active ? 'Active' : 'Inactive',
+      ]),
+    ]
+    const csv = csvRows.map((row) => row.map((cell) => toCsvValue(cell)).join(',')).join('\n')
+    triggerDownload(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), 'horticulture_staff.csv')
+  }
+
   return (
     <div>
       <Alert message={error} />
 
       <Card noPad>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700 }}>
-          Supervisor List
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ fontWeight: 700 }}>Supervisor List</div>
+          <Btn size="sm" variant="secondary" onClick={downloadStaffCsv} disabled={loading || !rows.length}>
+            Download Staff CSV
+          </Btn>
         </div>
 
         {loading ? (
