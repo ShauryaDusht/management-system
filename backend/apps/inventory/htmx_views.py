@@ -795,10 +795,18 @@ def mobile_issue_request(request, pk):
             qty = item_request.quantity_requested
 
         qty = max(1, qty)
+        expected_return_date = None
 
         if item.available_quantity < qty:
             # Not enough stock — redirect back without issuing
             return redirect('mobile_manager_requests')
+
+        if item.item_type == Item.ItemType.ASSET:
+            raw_return_date = (request.POST.get('expected_return_date') or '').strip()
+            if raw_return_date:
+                expected_return_date = parse_date(raw_return_date)
+                if expected_return_date is None or expected_return_date < timezone.localdate():
+                    return redirect('mobile_manager_requests')
 
         # Deduct stock atomically
         Item.objects.filter(pk=item.pk).update(
@@ -819,6 +827,7 @@ def mobile_issue_request(request, pk):
             defaults={
                 'issued_by': request.user,
                 'issued_quantity': qty,
+                'expected_return_date': expected_return_date,
                 'notes': request.POST.get('notes', ''),
             },
         )

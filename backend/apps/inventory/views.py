@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from django.db import transaction
 from django.db.models import Sum, F, Count, Value, DecimalField, Prefetch
@@ -408,6 +409,19 @@ class IssueItemView(APIView):
                 status=400
             )
 
+        expected_return_date = None
+        if item.item_type == Item.ItemType.ASSET:
+            raw_return_date = (request.data.get('expected_return_date') or '').strip()
+            if raw_return_date:
+                expected_return_date = parse_date(raw_return_date)
+                if expected_return_date is None:
+                    return Response({'detail': 'Invalid expected return date.'}, status=400)
+                if expected_return_date < timezone.localdate():
+                    return Response(
+                        {'detail': 'Expected return date cannot be in the past.'},
+                        status=400,
+                    )
+
         reserved_to_release = min(item.reserved_quantity, item_request.quantity_requested)
         Item.objects.filter(pk=item.pk).update(
             available_quantity=F('available_quantity') - issued_qty,
@@ -418,7 +432,7 @@ class IssueItemView(APIView):
             request=item_request,
             issued_by=request.user,
             issued_quantity=issued_qty,
-            expected_return_date=request.data.get('expected_return_date'),
+            expected_return_date=expected_return_date,
             notes=request.data.get('notes', ''),
         )
 

@@ -1,6 +1,32 @@
 from django.contrib import admin
+from django import forms
+from django.utils import timezone
 from config.admin import admin_site
 from .models import Category, Item, ItemRequest, ItemIssue, PurchaseRequest, StockEntry
+
+
+class ItemIssueAdminForm(forms.ModelForm):
+    class Meta:
+        model = ItemIssue
+        fields = '__all__'
+        widgets = {
+            'expected_return_date': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'expected_return_date' in self.fields:
+            self.fields['expected_return_date'].widget.attrs['min'] = timezone.localdate().isoformat()
+
+    def clean_expected_return_date(self):
+        expected_return_date = self.cleaned_data.get('expected_return_date')
+        if (
+            expected_return_date
+            and expected_return_date < timezone.localdate()
+            and (not self.instance.pk or 'expected_return_date' in self.changed_data)
+        ):
+            raise forms.ValidationError('Expected return date cannot be in the past.')
+        return expected_return_date
 
 
 @admin.register(Category, site=admin_site)
@@ -39,6 +65,7 @@ class ItemRequestAdmin(admin.ModelAdmin):
 
 @admin.register(ItemIssue, site=admin_site)
 class ItemIssueAdmin(admin.ModelAdmin):
+    form = ItemIssueAdminForm
     list_display = [
         'id', 'request', 'issued_by', 'issued_quantity', 'issued_at',
         'returned_at', 'usage_finalized',

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-import { asList } from '../../shared/utils'
+import { asList, todayISO } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../context/NotificationContext'
@@ -27,6 +27,7 @@ export default function RequestsTab({ userRole }) {
   const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
   const [filter, setFilter] = useState('all')
+  const today = todayISO()
 
   const [newModal, setNewModal] = useState(false)
   const [savingNew, setSavingNew] = useState(false)
@@ -163,6 +164,9 @@ export default function RequestsTab({ userRole }) {
           notes: issueForm.notes || '',
         }
         if (issueTarget.item_type === 'asset' && issueForm.expected_return_date) {
+          if (issueForm.expected_return_date < today) {
+            throw new Error('Expected return date cannot be in the past.')
+          }
           payload.expected_return_date = issueForm.expected_return_date
         }
         await inventoryAPI.issueRequest(issueTarget.id, payload)
@@ -702,6 +706,7 @@ export default function RequestsTab({ userRole }) {
               <Field label="Expected Return Date">
                 <Input
                   type="date"
+                  min={today}
                   value={issueForm.expected_return_date}
                   onChange={(e) =>
                     setIssueForm((p) => ({ ...p, expected_return_date: e.target.value }))
