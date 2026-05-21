@@ -22,7 +22,7 @@
 
 <div class="card" style="position:sticky;top:62px;z-index:50">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-    <div style="font-weight:800;color:#29543a">{{ today|date:"d M Y" }}</div>
+    <div style="font-weight:800;color:#2d4a3e">📅 {{ today|date:"d M Y" }}</div>
     <div style="font-size:11px;color:#6b7280">{{ selected_zone.name|default:"No zone" }}</div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
@@ -39,8 +39,8 @@
       <div style="font-size:10px;color:#6b7280">Workers</div>
     </div>
   </div>
-  <div style="font-size:12px;font-weight:600;color:{% if cur_half == 'first' %}#c2622a{% else %}#29543a{% endif %}">
-    Active: {{ cur_half|title }} Half ({% if cur_half == 'first' %}8AM-1PM{% else %}1PM-5PM{% endif %})
+  <div style="font-size:12px;font-weight:600;color:{% if cur_half == 'first' %}#c2622a{% else %}#2d4a3e{% endif %}">
+    🕐 Active: {{ cur_half|title }} Half ({% if cur_half == 'first' %}8AM-1PM{% else %}1PM-5PM{% endif %})
   </div>
 </div>
 
@@ -57,18 +57,18 @@
     {% csrf_token %}
     <input type="hidden" name="action" value="submit_half">
     <input type="hidden" name="half" value="first">
-    <button type="submit" class="btn-s">Submit First Half Attendance</button>
+    <button type="submit" class="btn-s">✅ Submit First Half Attendance</button>
   </form>
   {% elif cur_half == 'second' and not second_submitted %}
   <form method="post" action="/horticulture/attendance/?zone={{ selected_zone.id }}">
     {% csrf_token %}
     <input type="hidden" name="action" value="submit_half">
     <input type="hidden" name="half" value="second">
-    <button type="submit" class="btn-p">Submit Second Half Attendance</button>
+    <button type="submit" class="btn-p">✅ Submit Second Half Attendance</button>
   </form>
   {% elif first_submitted and second_submitted %}
   <div class="card" style="text-align:center;background:#d1fae5;border:1px solid #6ee7b7;color:#065f46;font-weight:700;padding:14px">
-    Both halves submitted for today
+    ✅ Both halves submitted for today
   </div>
   {% endif %}
 </div>

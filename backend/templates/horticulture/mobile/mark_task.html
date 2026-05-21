@@ -15,7 +15,7 @@
 {% endif %}
 
 {% if zone_count > 1 %}
-<div class="tabs">
+<div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;-webkit-overflow-scrolling:touch">
   {% for zone in zones %}
   <a href="/horticulture/mark-task/?zone={{ zone.id }}{% if selected_area and selected_zone and selected_zone.id == zone.id %}&area={{ selected_area.id }}{% endif %}" class="atab {% if selected_zone and selected_zone.id == zone.id %}on{% endif %}">
     {{ zone.name }}
@@ -25,10 +25,10 @@
 {% endif %}
 
 {% if selected_zone and areas %}
-<div class="tabs">
+<div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;-webkit-overflow-scrolling:touch">
   {% for area in areas %}
   <a href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ area.id }}" class="atab {% if selected_area and selected_area.id == area.id %}on{% endif %}">
-    Area {{ area.area_number }}
+    {{ area.name }}
   </a>
   {% endfor %}
 </div>
@@ -38,42 +38,48 @@
 <div class="card hero">
   <div style="font-size:16px;font-weight:800">{{ selected_area.name }}</div>
   <div style="display:flex;align-items:center;gap:8px;margin:5px 0 10px;font-size:12px;opacity:.88">
-    <span class="zone-dot" style="background:{{ selected_zone.color_code|default:'#29543a' }}"></span>
+    <span class="zone-dot" style="background:{{ selected_zone.color_code|default:'#2d4a3e' }}"></span>
     <span>{{ selected_area.area_sqm }} sqm</span>
     <span>{{ today|date:"d M Y" }}</span>
   </div>
-  <div style="background:rgba(255,255,255,.14);border-radius:10px;padding:10px 11px">
-    <div style="font-size:13px;font-weight:700">One tap marks the task done for today.</div>
-    <div style="font-size:11px;opacity:.8;margin-top:4px">Overdue tasks are shown first in red.</div>
+  <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
+    <div style="font-size:13px;font-weight:700">Select worker, add photo, then submit completion.</div>
+    <div style="font-size:11px;opacity:.8;margin-top:4px">Same task flow as housekeeping staff.</div>
   </div>
 </div>
 
-<div class="task-stack">
+<div class="wtag">Tasks</div>
+<div style="display:grid;gap:10px">
   {% for task in task_rows %}
-  <div class="task-btn {% if task.urgency == 'overdue' %}overdue{% elif task.urgency == 'due_soon' %}due{% else %}ok{% endif %}">
+  <div class="card" style="padding:11px;border-left:4px solid {% if task.urgency == 'overdue' %}#dc2626{% elif task.urgency == 'due_soon' %}#d97706{% else %}#e5e7eb{% endif %}">
     <a
       href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}"
       style="text-decoration:none;color:inherit;display:block"
     >
-      <span class="task-title">{{ task.task_type_name }}</span>
-      <span class="task-meta">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="font-weight:700;font-size:13px">{{ task.task_type_name }}</div>
+        {% if task.urgency == 'overdue' %}<span class="bdg r">Overdue</span>
+        {% elif task.urgency == 'due_soon' %}<span class="bdg y">Due Soon</span>
+        {% else %}<span class="bdg gr">Pending</span>{% endif %}
+      </div>
+      <div style="font-size:11px;color:#6b7280;margin-top:3px">
         {% if task.last_done_date %}
           Last done {{ task.last_done_date|date:"d M Y" }} | {{ task.days_since_done }} days ago | Threshold {{ task.threshold }} days
         {% else %}
           Never logged yet | Threshold {{ task.threshold }} days
         {% endif %}
-      </span>
-      <span class="task-hint">
+      </div>
+      <div style="font-size:12px;font-weight:700;color:#2d4a3e;margin-top:6px">
         {% if request.GET.task == task.task_type_id|stringformat:"s" %}
           Select worker and session, then submit with optional photo.
         {% else %}
           Tap to select worker and upload photo.
         {% endif %}
-      </span>
+      </div>
     </a>
 
     {% if request.GET.task == task.task_type_id|stringformat:"s" %}
-    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}">
+    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="margin-top:8px">
     {% csrf_token %}
     <input type="hidden" name="zone_id" value="{{ selected_zone.id }}">
     <input type="hidden" name="area_id" value="{{ selected_area.id }}">
@@ -99,12 +105,13 @@
       <div style="margin-top:8px">
         <label>Task Photo</label>
         <input type="file" name="photo" accept="image/*" capture="environment" required>
+        <div style="font-size:10px;color:#6b7280;margin-top:3px">Photo proof is required for horticulture task completion.</div>
       </div>
       <div style="margin-top:8px">
         <label>Note</label>
         <input type="text" name="note" placeholder="Optional note">
       </div>
-      <button type="submit" class="btn-s" style="margin-top:10px">Submit Task</button>
+      <button type="submit" class="btn-s" style="margin-top:10px;padding:9px;font-size:12px">Mark Completed</button>
     </form>
     {% endif %}
   </div>

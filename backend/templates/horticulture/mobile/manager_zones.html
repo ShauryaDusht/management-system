@@ -12,13 +12,13 @@
 </div>
 
 {% for row in zones %}
-<div id="zone-{{ row.zone.id }}" class="card hero" style="background:linear-gradient(135deg,#29543a,#1b3a28)">
+<div id="zone-{{ row.zone.id }}" class="card hero">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
     <div>
       <div style="font-size:20px;font-weight:900">{{ row.zone.name }}</div>
       <div style="font-size:12px;opacity:.84;margin-top:3px">{{ row.zone.supervisor.get_full_name|default:row.zone.supervisor.username }}{% if row.zone.supervisor.phone %} | {{ row.zone.supervisor.phone }}{% endif %}</div>
     </div>
-    <span class="bdg" style="background:#fff;color:#29543a">{{ row.workers_count }} workers</span>
+    <span class="bdg" style="background:#fff;color:#2d4a3e">{{ row.workers_count }} workers</span>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:13px;text-align:center">
     <div style="background:rgba(255,255,255,.14);border-radius:10px;padding:9px"><div style="font-size:19px;font-weight:900">{{ row.areas|length }}</div><div style="font-size:11px;opacity:.8">Areas</div></div>
@@ -29,12 +29,12 @@
 
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-    <div style="font-weight:900;color:#29543a">All Workers</div>
+    <div style="font-weight:900;color:#2d4a3e">All Workers</div>
     <span class="bdg g">{{ row.workers_count }}</span>
   </div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px">
   {% for worker in row.workers %}
-  <div style="border:1px solid #eef2f7;border-radius:10px;padding:8px;background:#fbfdfb;min-width:0">
+  <div style="border:1px solid #e5e7eb;border-radius:10px;padding:8px;background:#fff;min-width:0">
     <div style="font-weight:800;font-size:13px;line-height:1.2;word-break:break-word">{{ worker.name }}</div>
     <span class="muted">#{{ worker.pay_code|default:"-" }}</span>
   </div>
@@ -48,8 +48,8 @@
   {% for area in row.areas %}
   <div class="card area-card compact {% if area.urgency == 'overdue' %}is-overdue{% elif area.urgency == 'due_soon' %}is-due-soon{% endif %}" style="margin:0 0 10px">
     <div>
-      <div class="area-title">Area {{ area.area_number }}</div>
-      <div class="area-size">{{ area.name }}</div>
+      <div class="area-title">{{ area.name }}</div>
+      <div class="area-size">Area {{ area.area_number }}</div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center">
       <span class="bdg {% if area.urgency == 'overdue' %}r{% elif area.urgency == 'due_soon' %}y{% else %}g{% endif %}">{{ area.urgency|title }}</span>

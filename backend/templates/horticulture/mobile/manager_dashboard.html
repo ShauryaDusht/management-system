@@ -17,16 +17,16 @@
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-  <div class="card" style="margin:0;text-align:center"><div style="font-size:24px;font-weight:900;color:#29543a">{{ totals.zones }}</div><div class="muted">Zones</div></div>
-  <div class="card" style="margin:0;text-align:center"><div style="font-size:24px;font-weight:900;color:#29543a">{{ totals.areas }}</div><div class="muted">Areas</div></div>
-  <div class="card" style="margin:0;text-align:center"><div style="font-size:24px;font-weight:900;color:#29543a">{{ totals.workers }}</div><div class="muted">Workers</div></div>
+  <div class="card" style="margin:0;text-align:center"><div style="font-size:24px;font-weight:900;color:#2d4a3e">{{ totals.zones }}</div><div class="muted">Zones</div></div>
+  <div class="card" style="margin:0;text-align:center"><div style="font-size:24px;font-weight:900;color:#2d4a3e">{{ totals.areas }}</div><div class="muted">Areas</div></div>
+  <div class="card" style="margin:0;text-align:center"><div style="font-size:24px;font-weight:900;color:#2d4a3e">{{ totals.workers }}</div><div class="muted">Workers</div></div>
   <div class="card" style="margin:0;text-align:center"><div style="font-size:24px;font-weight:900;color:#c2622a">{{ totals.pending_requests }}</div><div class="muted">Pending Requests</div></div>
 </div>
 
 <div class="card">
   <div class="summary">
     <div>
-      <div style="font-size:15px;font-weight:900;color:#29543a">Task Progress</div>
+      <div style="font-size:15px;font-weight:900;color:#2d4a3e">Task Progress</div>
       <div class="muted">{{ totals.done_today }} done today, {{ totals.assigned_today }} manager-assigned pending</div>
     </div>
     <a href="/horticulture/reports/" class="btn-g" style="width:auto;padding:9px 12px">Reports</a>
@@ -36,7 +36,7 @@
   </div>
 </div>
 
-<div class="sec">Zones</div>
+<div class="wtag">Zones</div>
 {% for row in zone_rows %}
 <a href="/horticulture/zones/#zone-{{ row.zone.id }}" class="area-link">
   <div class="card area-card">
@@ -60,7 +60,7 @@
 </a>
 {% endfor %}
 
-<div class="sec">Urgent / Pending Requests</div>
+<div class="wtag">Urgent / Pending Requests</div>
 {% for req in pending_requests %}
 <a href="/horticulture/requests/" class="area-link">
   <div class="card">

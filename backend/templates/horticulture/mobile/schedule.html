@@ -1,7 +1,7 @@
 {% extends 'horticulture/mobile/base_horti.html' %}
 {% block title %}Schedule{% endblock %}
 {% block hdr_title %}SCHEDULE{% endblock %}
-{% block n4 %}on{% endblock %}
+{% block n2 %}on{% endblock %}
 
 {% block content %}
 {% if zone_count > 1 %}
@@ -15,23 +15,23 @@
 {% if selected_zone and areas %}
 <div class="tabs">
   {% for area in areas %}
-  <a href="/horticulture/schedule/?zone={{ selected_zone.id }}&area={{ area.id }}" class="atab {% if selected_area and selected_area.id == area.id %}on{% endif %}">Area {{ area.area_number }}</a>
+  <a href="/horticulture/schedule/?zone={{ selected_zone.id }}&area={{ area.id }}" class="atab {% if selected_area and selected_area.id == area.id %}on{% endif %}">{{ area.name }}</a>
   {% endfor %}
 </div>
 {% endif %}
 
 <div class="card hero">
   <div style="font-size:16px;font-weight:800">{{ selected_area.name|default:selected_zone.name }}</div>
-  <div style="font-size:12px;margin-top:4px;opacity:.88">Season: {{ season|title }} - {{ today|date:"d M Y" }}</div>
+  <div style="font-size:12px;margin-top:4px;opacity:.88">Season: {{ season|title }} | {{ today|date:"d M Y" }}</div>
 </div>
 
 <div class="sec">Assigned Area Tasks</div>
 {% for assignment in area_task_assignments %}
-<div class="card" style="border-left:4px solid #29543a">
+<div class="card" style="border-left:4px solid #2d4a3e">
   <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
     <div>
       <div style="font-weight:900">{{ assignment.task_type.name }}</div>
-      <div class="muted">{{ assignment.get_session_display }}{% if assignment.assigned_by %} - {{ assignment.assigned_by.get_full_name|default:assignment.assigned_by.username }}{% endif %}</div>
+      <div class="muted">{{ assignment.get_session_display }}{% if assignment.assigned_by %} | {{ assignment.assigned_by.get_full_name|default:assignment.assigned_by.username }}{% endif %}</div>
       {% if assignment.note %}<div class="muted" style="margin-top:4px">{{ assignment.note }}</div>{% endif %}
     </div>
     <a class="bdg b" href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ assignment.task_type.id }}&session={{ assignment.session }}">Do Task</a>
@@ -47,7 +47,7 @@
   <div style="display:flex;justify-content:space-between;gap:10px">
     <div>
       <div style="font-weight:800">{{ assignment.worker.name }}</div>
-      <div class="muted">{{ assignment.get_session_display }} - {{ assignment.task_type.name }}</div>
+      <div class="muted">{{ assignment.get_session_display }} | {{ assignment.task_type.name }}</div>
       {% if assignment.note %}<div class="muted">{{ assignment.note }}</div>{% endif %}
     </div>
     {% if assignment.photo %}

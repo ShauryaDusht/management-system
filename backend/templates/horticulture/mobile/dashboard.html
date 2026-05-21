@@ -11,7 +11,7 @@
 {% endif %}
 
 {% if zone_count > 1 %}
-<div class="tabs">
+<div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;-webkit-overflow-scrolling:touch">
   {% for zone in zones %}
   <a href="/horticulture/dashboard/?zone={{ zone.id }}" class="atab {% if selected_zone and selected_zone.id == zone.id %}on{% endif %}">
     {{ zone.name }}
@@ -21,10 +21,10 @@
 {% endif %}
 
 {% if selected_zone and areas %}
-<div class="tabs">
+<div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;-webkit-overflow-scrolling:touch">
   {% for area in areas %}
   <a href="/horticulture/dashboard/?zone={{ selected_zone.id }}&area={{ area.id }}" class="atab {% if selected_area and selected_area.id == area.id %}on{% endif %}">
-    Area {{ area.area_number }}
+    {{ area.name }}
   </a>
   {% endfor %}
 </div>
@@ -50,13 +50,15 @@
   </div>
 </div>
 
-<div class="sec">Today's Area Tasks</div>
+<div class="wtag">Today's Area Tasks</div>
 {% for task in task_rows %}
-<div class="card" style="border-left:4px solid {% if task.task_type_id in completed_task_ids %}#16a34a{% elif task.urgency == 'overdue' %}#dc2626{% elif task.urgency == 'due_soon' %}#d97706{% else %}#29543a{% endif %}">
+<div class="card" style="padding:11px;border-left:4px solid {% if task.task_type_id in completed_task_ids %}#16a34a{% elif task.urgency == 'overdue' %}#dc2626{% elif task.urgency == 'due_soon' %}#d97706{% else %}#e5e7eb{% endif %}">
   <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
     <div style="min-width:0">
-      <div style="font-size:15px;font-weight:900">{{ task.task_type_name }}</div>
-      <div class="muted">
+      <div style="font-weight:700;font-size:13px;{% if task.task_type_id in completed_task_ids %}text-decoration:line-through;color:#9ca3af{% endif %}">
+        {{ task.task_type_name }}
+      </div>
+      <div style="font-size:11px;color:#6b7280;margin-top:3px">
         {% if task.last_done_date %}
           Last done {{ task.last_done_date|date:"d M Y" }} | {{ task.days_since_done }} days ago
         {% else %}
@@ -64,20 +66,22 @@
         {% endif %}
         | Threshold {{ task.threshold }} days
       </div>
-      {% if task.urgency == 'overdue' %}
-      <span class="bdg r" style="margin-top:6px">Overdue</span>
-      {% elif task.urgency == 'due_soon' %}
-      <span class="bdg y" style="margin-top:6px">Due Soon</span>
-      {% else %}
-      <span class="bdg g" style="margin-top:6px">On Track</span>
-      {% endif %}
     </div>
     {% if task.task_type_id in completed_task_ids %}
     <span class="bdg g">Done</span>
+    {% elif task.urgency == 'overdue' %}
+    <span class="bdg r">Overdue</span>
+    {% elif task.urgency == 'due_soon' %}
+    <span class="bdg y">Due Soon</span>
     {% else %}
-    <a class="bdg b" href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}">Do Task</a>
+    <span class="bdg gr">Pending</span>
     {% endif %}
   </div>
+  {% if task.task_type_id not in completed_task_ids %}
+  <a href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="display:block;margin-top:8px;text-decoration:none">
+    <button class="btn-g" style="padding:9px;font-size:12px">Start Work</button>
+  </a>
+  {% endif %}
 </div>
 {% empty %}
 <div class="card" style="text-align:center;color:#9ca3af;padding:22px">
@@ -86,7 +90,7 @@
 {% endfor %}
 
 {% if area_task_assignments %}
-<div class="sec">Admin Assigned Priority</div>
+<div class="wtag">Admin Assigned Priority</div>
 {% for assignment in area_task_assignments %}
 <div class="card" style="padding:11px;border-left:4px solid #1d4ed8">
   <div style="font-weight:800">{{ assignment.task_type.name }}</div>
@@ -95,11 +99,11 @@
 {% endfor %}
 {% endif %}
 
-<div class="sec">Area Health</div>
+<div class="wtag">Area Health</div>
 <div class="card area-card">
   <div class="area-head">
     <div class="area-left">
-      <span class="zone-dot" style="margin-top:5px;background:{{ selected_zone.color_code|default:'#29543a' }}"></span>
+      <span class="zone-dot" style="margin-top:5px;background:{{ selected_zone.color_code|default:'#2d4a3e' }}"></span>
       <div>
         <div style="font-size:15px;font-weight:800">{{ selected_area.name }}</div>
         <div class="muted">{{ selected_area.area_sqm }} sqm</div>
