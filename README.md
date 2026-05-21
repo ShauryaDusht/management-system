@@ -35,7 +35,29 @@ Docker/nginx HTTPS setup on a LAN server:
 - Certificate setup page: `http://SERVER_IP:8000/setup/`
 - CA certificate download: `http://SERVER_IP:8000/ca.crt`
 
-Replace `SERVER_IP` with the machine's local network IP address, for example `192.168.1.10`.
+Replace `SERVER_IP` with the server's local network IP address for your LAN. If you are running the services only on one machine for local development, keep using `localhost` or `127.0.0.1` for the URLs above.
+
+### Find your local server IP
+
+On Windows, run:
+
+```powershell
+ipconfig | Select-String 'IPv4 Address'
+```
+
+On macOS or Linux, run:
+
+```bash
+ip addr show | grep -E 'inet .*brd'
+```
+
+or:
+
+```bash
+ip route get 1.1.1.1 | awk '{print $7; exit}'
+```
+
+Use the IP address assigned to your machine on the same network as the devices that will access the app.
 
 ## Recent Highlights
 
@@ -58,14 +80,14 @@ cd management-system
 cp .env.example .env
 ```
 
-Update `.env` for your machine:
+Update `.env` for your machine. Set `SERVER_IP` to the local IP address that other devices on the same network will use to reach the server:
 
 ```env
 SECRET_KEY=replace-with-a-long-random-secret-key
 DEBUG=False
-SERVER_IP=192.168.1.10
+SERVER_IP=YOUR_LOCAL_NETWORK_IP
 
-ALLOWED_HOSTS=localhost,127.0.0.1,backend,192.168.1.10
+ALLOWED_HOSTS=localhost,127.0.0.1,backend,YOUR_LOCAL_NETWORK_IP
 
 DB_NAME=inventory_db
 DB_USER=postgres
@@ -74,12 +96,12 @@ DB_PORT=5432
 DB_HOST=db
 DB_ENGINE=django.db.backends.postgresql
 
-CORS_ALLOWED_ORIGINS=https://192.168.1.10:9443,https://192.168.1.10:8443
-CSRF_TRUSTED_ORIGINS=https://192.168.1.10:9443,https://192.168.1.10:8443
+CORS_ALLOWED_ORIGINS=https://YOUR_LOCAL_NETWORK_IP:9443,https://YOUR_LOCAL_NETWORK_IP:8443
+CSRF_TRUSTED_ORIGINS=https://YOUR_LOCAL_NETWORK_IP:9443,https://YOUR_LOCAL_NETWORK_IP:8443
 VITE_API_URL=
 ```
 
-Keep `SERVER_IP`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, and `CSRF_TRUSTED_ORIGINS` aligned with the exact IP address users will open in their browser.
+If this setup is only for a single local machine, you can also keep `localhost` and `127.0.0.1` in the URLs above. For LAN access, ensure `SERVER_IP`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, and `CSRF_TRUSTED_ORIGINS` all use the same IP address that clients will type in their browser.
 
 ### 3. Generate the local CA and HTTPS certificate
 
