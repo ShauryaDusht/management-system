@@ -1667,17 +1667,54 @@ def horticulture_manager_zones(request):
 
 
 @horticulture_manager_required
+@transaction.atomic
 def horticulture_manager_requests(request):
     if request.method == 'POST':
         stock_request = get_object_or_404(
-            HorticultureStockRequest.objects.select_related('inventory_request'),
+            HorticultureStockRequest.objects.select_for_update().select_related(
+                'inventory_request',
+                'inventory_request__item',
+            ),
             pk=request.POST.get('request_id'),
         )
         action = request.POST.get('action')
         if action == 'approve' and stock_request.status == HorticultureStockRequest.Status.PENDING:
+            if stock_request.inventory_request_id:
+                from apps.inventory.models import Item, ItemRequest as InvItemRequest
+
+                inv_req = stock_request.inventory_request
+                item = inv_req.item
+                should_mark_inventory_approved = inv_req.status == InvItemRequest.Status.PENDING
+                if inv_req.status == InvItemRequest.Status.PENDING:
+                    available_to_reserve = item.available_quantity - item.reserved_quantity
+                    if inv_req.quantity_requested > available_to_reserve:
+                        messages.error(
+                            request,
+                            f'Cannot approve: only {available_to_reserve} {item.unit} available for inventory issue.',
+                        )
+                        return redirect('/horticulture/requests/')
+
+                    Item.objects.filter(pk=item.pk).update(
+                        reserved_quantity=models.F('reserved_quantity') + inv_req.quantity_requested
+                    )
+                    item.refresh_from_db(fields=['available_quantity', 'reserved_quantity'])
+                elif inv_req.status != InvItemRequest.Status.APPROVED:
+                    messages.error(
+                        request,
+                        f'Cannot approve: linked inventory request is already {inv_req.status}.',
+                    )
+                    return redirect('/horticulture/requests/')
+
+                if should_mark_inventory_approved:
+                    inv_req.status = InvItemRequest.Status.APPROVED
+                    inv_req.approved_by = request.user
+                    inv_req.reviewed_at = timezone.now()
+                    inv_req.units_remaining = max(item.available_quantity - item.reserved_quantity, 0)
+                    inv_req.save(update_fields=['status', 'approved_by', 'reviewed_at', 'units_remaining'])
+
             stock_request.status = HorticultureStockRequest.Status.APPROVED
             stock_request.save(update_fields=['status'])
-            messages.success(request, 'Horticulture request approved for inventory processing.')
+            messages.success(request, 'Horticulture request approved and sent to inventory for issue.')
         elif action == 'reject' and stock_request.status == HorticultureStockRequest.Status.PENDING:
             stock_request.status = HorticultureStockRequest.Status.REJECTED
             stock_request.save(update_fields=['status'])
