@@ -3,9 +3,6 @@
 set -e
 set -u
 
-printf '%s\n' "Collecting static files..."
-python manage.py collectstatic --noinput -v 0
-
 printf '%s\n' "Applying database migrations..."
 python manage.py migrate --noinput -v 0
 
@@ -18,6 +15,9 @@ python manage.py update_pay_codes --quiet
 python manage.py update_names --quiet
 python manage.py sync_guesthouse_director_staff --quiet
 python manage.py seed_horticulture
+
+printf '%s\n' "Collecting static files..."
+python manage.py collectstatic --noinput -v 0
 
 printf '%s\n' "Setting up cron job for photo cleanup..."
 chmod +x /app/scripts/cron_cleanup.sh

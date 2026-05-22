@@ -14,17 +14,10 @@ const todayStr = () => {
 }
 const API_ORIGIN = (() => {
   try {
-    const apiUrl = import.meta.env.VITE_API_URL || (() => {
-      const { protocol, hostname, port } = window.location
-      if (protocol === 'https:') {
-        const apiPort = port === '9443' ? '8443' : port
-        return `${protocol}//${hostname}${apiPort ? `:${apiPort}` : ''}/api`
-      }
-      return `http://${hostname}:8000/api`
-    })()
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
     return new URL(apiUrl, window.location.origin).origin
   } catch {
-    return window.location.origin
+    return 'http://localhost:8000'
   }
 })()
 

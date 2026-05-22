@@ -51,13 +51,10 @@ services:
     image: nginx:1.25-alpine
     restart: unless-stopped
     ports:
-      - "5173:5173"                         # HTTP redirect for React admin dashboard
-      - "9443:9443"                         # HTTPS React admin dashboard
-      - "8000:8000"                         # HTTP redirect for Django portal/API/mobile apps
-      - "8443:8443"                         # HTTPS Django portal/API/mobile apps
+      - "5173:5173"                         # React admin dashboard
+      - "8000:8000"                         # Django portal, API, housekeeping
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
       - static_files:/app/staticfiles:ro   # serve Django static files directly
       - media_files:/app/media:ro          # serve media files directly
     depends_on:

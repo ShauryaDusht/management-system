@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'cs-v2';
+const CACHE_VERSION = 'cs-v1';
 const ASSET_CACHE = CACHE_VERSION + '-assets';
 const PAGE_CACHE = CACHE_VERSION + '-pages';
 const PRECACHE = ['/static/pwa/offline.html', '/static/branding/campus-sanchalika-logo.png'];
@@ -27,7 +27,7 @@ self.addEventListener('fetch', e => {
     e.respondWith(cacheFirst(request, ASSET_CACHE));
     return;
   }
-  const isMobile = url.pathname.startsWith('/portal/') || url.pathname.startsWith('/housekeeping/') || url.pathname.startsWith('/horticulture/') || url.pathname.startsWith('/inventory/mobile/');
+  const isMobile = url.pathname.startsWith('/housekeeping/') || url.pathname.startsWith('/horticulture/') || url.pathname.startsWith('/inventory/mobile/');
   if (isMobile) { e.respondWith(networkFirst(request)); return; }
 });
 
