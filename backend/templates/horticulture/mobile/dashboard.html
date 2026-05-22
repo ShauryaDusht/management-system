@@ -68,7 +68,7 @@
       </div>
     </div>
     {% if task.task_type_id in completed_task_ids %}
-    <span class="bdg g">Done</span>
+    <span class="bdg g">Submitted</span>
     {% elif task.urgency == 'overdue' %}
     <span class="bdg r">Overdue</span>
     {% elif task.urgency == 'due_soon' %}
@@ -81,6 +81,10 @@
   <a href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="display:block;margin-top:8px;text-decoration:none">
     <button class="btn-g" style="padding:9px;font-size:12px">Start Work</button>
   </a>
+  {% else %}
+  <div style="font-size:11px;color:#16a34a;margin-top:8px">
+    Submitted for today.
+  </div>
   {% endif %}
 </div>
 {% empty %}

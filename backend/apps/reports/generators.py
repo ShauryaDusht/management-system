@@ -533,18 +533,28 @@ def generate_worker_report(worker_id: int, month: int, year: int) -> dict:
     )
     all_task_ids = direct_task_ids | multi_task_ids
 
-    task_rows = list(
+    task_records = list(
         HKDailyRecord.objects
         .filter(id__in=all_task_ids)
-        .values('id', 'date', 'status')
+        .select_related('schedule', 'area', 'assigned_by', 'completed_by')
+        .order_by('date', 'schedule__start_time', 'id')
     )
+    multi_assigned_at = {
+        row['daily_record_id']: row['assigned_at']
+        for row in (
+            HKTaskWorkerAssignment.objects
+            .filter(worker=worker, daily_record_id__in=all_task_ids)
+            .values('daily_record_id', 'assigned_at')
+        )
+    }
 
     daily_task_counts = {}
     total_completed = 0
     total_skipped = 0
-    for row in task_rows:
-        task_date = row['date']
-        status = row['status']
+    task_details = []
+    for record in task_records:
+        task_date = record.date
+        status = record.status
         day_data = daily_task_counts.setdefault(task_date, {'assigned': 0, 'completed': 0})
         day_data['assigned'] += 1
         if status == 'done':
@@ -552,6 +562,28 @@ def generate_worker_report(worker_id: int, month: int, year: int) -> dict:
             total_completed += 1
         if status == 'skipped':
             total_skipped += 1
+
+        assigned_by_name = ''
+        if record.assigned_by:
+            assigned_by_name = record.assigned_by.get_full_name() or record.assigned_by.username
+        completed_by_name = ''
+        if record.completed_by:
+            completed_by_name = record.completed_by.get_full_name() or record.completed_by.username
+        task_details.append({
+            'date': task_date.isoformat(),
+            'area_name': record.area.name if record.area else '',
+            'task_name': record.schedule.task_name if record.schedule else '',
+            'status': status,
+            'assigned_at': (
+                record.assigned_at or multi_assigned_at.get(record.id)
+            ).isoformat() if (record.assigned_at or multi_assigned_at.get(record.id)) else '',
+            'started_at': record.started_at.isoformat() if record.started_at else '',
+            'completed_at': record.completed_at.isoformat() if record.completed_at else '',
+            'assigned_by': assigned_by_name,
+            'completed_by': completed_by_name,
+            'remarks': record.note or '',
+            'photo_submitted': bool(record.photo_after),
+        })
 
     total_assigned = len(all_task_ids)
     completion_pct = round((total_completed / total_assigned * 100), 2) if total_assigned else 0.0
@@ -621,9 +653,12 @@ def generate_worker_report(worker_id: int, month: int, year: int) -> dict:
         'tasks': {
             'total_assigned': total_assigned,
             'total_completed': total_completed,
+            'total_pending': sum(1 for record in task_records if record.status == 'pending'),
+            'total_in_progress': sum(1 for record in task_records if record.status == 'in_progress'),
             'total_skipped': total_skipped,
             'completion_pct': completion_pct,
         },
+        'task_details': task_details,
         'extra_work_count': extra_work_count,
         'reliever_days': reliever_days,
         'daily_breakdown': daily_breakdown,

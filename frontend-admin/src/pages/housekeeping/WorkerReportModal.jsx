@@ -46,6 +46,13 @@ function formatDate(value) {
   return d.toLocaleDateString('en-IN')
 }
 
+function formatDateTime(value) {
+  if (!value) return '-'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return String(value)
+  return d.toLocaleString('en-IN')
+}
+
 function toLabel(value) {
   if (!value || value === 'unmarked') return '-'
   return String(value)
@@ -135,6 +142,7 @@ export default function WorkerReportModal({ open, worker, onClose }) {
   const snap = report?.snapshot || {}
   const attendance = snap.attendance || {}
   const tasks = snap.tasks || {}
+  const taskDetails = snap.task_details || []
 
   return (
     <Modal
@@ -217,6 +225,12 @@ export default function WorkerReportModal({ open, worker, onClose }) {
               </div>
             </Card>
             <Card>
+              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Pending / Ongoing</div>
+              <div style={{ fontSize: 22, fontWeight: 700 }}>
+                {tasks.total_pending || 0} / {tasks.total_in_progress || 0}
+              </div>
+            </Card>
+            <Card>
               <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Completion %</div>
               <div style={{ fontSize: 22, fontWeight: 700 }}>{formatPct(tasks.completion_pct)}</div>
             </Card>
@@ -238,6 +252,27 @@ export default function WorkerReportModal({ open, worker, onClose }) {
                 row.supervisor_name || '-',
               ]))}
               emptyMsg="No daily data for this month."
+            />
+          </Card>
+
+          <Card noPad style={{ marginTop: 12 }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700 }}>
+              Worker Task Details
+            </div>
+            <DataTable
+              headers={['Date', 'Area', 'Task', 'Status', 'Assigned At', 'Completed At', 'Assigned By', 'Completed By', 'Remarks']}
+              rows={taskDetails.map((row) => ([
+                formatDate(row.date),
+                row.area_name || '-',
+                row.task_name || '-',
+                toLabel(row.status),
+                formatDateTime(row.assigned_at),
+                formatDateTime(row.completed_at),
+                row.assigned_by || '-',
+                row.completed_by || '-',
+                row.remarks || '-',
+              ]))}
+              emptyMsg="No assigned tasks for this month."
             />
           </Card>
         </>

@@ -292,11 +292,17 @@ class HKWorkerReportView(APIView):
                 year=year,
             ).first()
             if cached_report:
+                if not cached_report.snapshot.get('task_details'):
+                    snapshot = generate_worker_report(worker.id, month, year)
+                    cached_report.snapshot = snapshot
+                    cached_report.save(update_fields=['snapshot'])
+                else:
+                    snapshot = cached_report.snapshot
                 return Response(
                     {
                         'cached': True,
                         'generated_at': cached_report.generated_at,
-                        'snapshot': cached_report.snapshot,
+                        'snapshot': snapshot,
                     }
                 )
 
@@ -331,6 +337,8 @@ class HKWorkerReportCSVView(APIView):
                 month=month,
                 year=year,
             ).first()
+            if cached_report and not cached_report.snapshot.get('task_details'):
+                cached_report = None
 
         result = _stream_or_generate_csv(
             cached_report,

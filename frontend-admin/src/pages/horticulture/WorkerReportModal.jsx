@@ -42,6 +42,13 @@ function formatDate(value) {
   return d.toLocaleDateString('en-IN')
 }
 
+function formatDateTime(value) {
+  if (!value) return '-'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return String(value)
+  return d.toLocaleString('en-IN')
+}
+
 function csvValue(value) {
   if (value === null || value === undefined) return ''
   const str = String(value)
@@ -115,12 +122,31 @@ export default function WorkerReportModal({ open, worker, onClose }) {
         ['Present', report.days_present || 0],
         ['Absent', report.days_absent || 0],
         ['Half Day', report.half_days || 0],
+        ['Tasks Assigned', report.tasks_assigned || 0],
+        ['Tasks Completed', report.tasks_completed || 0],
+        ['Tasks Pending', report.tasks_pending || 0],
+        ['Task Completion %', `${Number(report.task_completion_pct || 0).toFixed(2)}%`],
         [],
         ['Date', 'Status', 'Supervisor'],
         ...(report.daily_breakdown || []).map((row) => [
           row.date || '',
           humanizeStatus(row.status),
           row.supervisor_name || '',
+        ]),
+        [],
+        ['Task Details'],
+        ['Date', 'Area', 'Task', 'Session', 'Status', 'Assigned At', 'Submitted At', 'Supervisor', 'Remarks', 'Photo Submitted'],
+        ...(report.task_details || []).map((row) => [
+          row.date || '',
+          row.area_name || '',
+          row.task_name || '',
+          humanizeStatus(row.session),
+          humanizeStatus(row.status),
+          row.assigned_at || '',
+          row.submitted_at || '',
+          row.supervisor_name || '',
+          row.remarks || '',
+          row.photo_submitted ? 'Yes' : 'No',
         ]),
       ]
       const csv = rows.map((row) => row.map((cell) => csvValue(cell)).join(',')).join('\n')
@@ -183,6 +209,14 @@ export default function WorkerReportModal({ open, worker, onClose }) {
               <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Half Day</div>
               <div style={{ fontSize: 22, fontWeight: 700 }}>{report.half_days || 0}</div>
             </Card>
+            <Card>
+              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Tasks Completed</div>
+              <div style={{ fontSize: 22, fontWeight: 700 }}>{report.tasks_completed || 0} / {report.tasks_assigned || 0}</div>
+            </Card>
+            <Card>
+              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Task Completion %</div>
+              <div style={{ fontSize: 22, fontWeight: 700 }}>{Number(report.task_completion_pct || 0).toFixed(2)}%</div>
+            </Card>
           </div>
           <Card noPad>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700 }}>
@@ -196,6 +230,26 @@ export default function WorkerReportModal({ open, worker, onClose }) {
                 row.supervisor_name || '-',
               ])}
               emptyMsg="No attendance data for this month."
+            />
+          </Card>
+          <Card noPad style={{ marginTop: 12 }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700 }}>
+              Worker Task Details
+            </div>
+            <DataTable
+              headers={['Date', 'Area', 'Task', 'Session', 'Status', 'Assigned At', 'Submitted At', 'Supervisor', 'Remarks']}
+              rows={(report.task_details || []).map((row) => [
+                formatDate(row.date),
+                row.area_name || '-',
+                row.task_name || '-',
+                humanizeStatus(row.session),
+                humanizeStatus(row.status),
+                formatDateTime(row.assigned_at),
+                formatDateTime(row.submitted_at),
+                row.supervisor_name || '-',
+                row.remarks || '-',
+              ])}
+              emptyMsg="No task data for this month."
             />
           </Card>
         </>

@@ -288,6 +288,19 @@ class AdminWorkerReportDaySerializer(serializers.Serializer):
     supervisor_name = serializers.CharField(allow_blank=True)
 
 
+class AdminWorkerReportTaskSerializer(serializers.Serializer):
+    date = serializers.DateField()
+    area_name = serializers.CharField(allow_blank=True)
+    task_name = serializers.CharField(allow_blank=True)
+    session = serializers.CharField(allow_blank=True)
+    status = serializers.CharField()
+    assigned_at = serializers.DateTimeField(allow_null=True)
+    submitted_at = serializers.DateTimeField(allow_null=True)
+    supervisor_name = serializers.CharField(allow_blank=True)
+    remarks = serializers.CharField(allow_blank=True)
+    photo_submitted = serializers.BooleanField()
+
+
 class AdminWorkerReportSerializer(serializers.Serializer):
     worker = serializers.DictField()
     month = serializers.IntegerField()
@@ -297,7 +310,12 @@ class AdminWorkerReportSerializer(serializers.Serializer):
     half_days = serializers.IntegerField()
     marked_days = serializers.IntegerField()
     attendance_pct = serializers.FloatField()
+    tasks_assigned = serializers.IntegerField()
+    tasks_completed = serializers.IntegerField()
+    tasks_pending = serializers.IntegerField()
+    task_completion_pct = serializers.FloatField()
     daily_breakdown = AdminWorkerReportDaySerializer(many=True)
+    task_details = AdminWorkerReportTaskSerializer(many=True)
 
 
 class AdminTaskTypeSerializer(serializers.ModelSerializer):
@@ -351,12 +369,16 @@ class AdminDailyAssignmentSerializer(serializers.ModelSerializer):
             'assigned_by',
             'assigned_by_name',
             'assigned_at',
+            'status',
+            'started_at',
+            'completed_by',
+            'completed_at',
             'photo',
             'photo_url',
             'photo_uploaded_at',
             'note',
         ]
-        read_only_fields = ['assigned_by', 'assigned_by_name', 'assigned_at', 'photo_uploaded_at']
+        read_only_fields = ['assigned_by', 'assigned_by_name', 'assigned_at', 'started_at', 'completed_by', 'completed_at', 'photo_uploaded_at']
 
     def get_assigned_by_name(self, obj):
         if obj.assigned_by:
@@ -376,25 +398,16 @@ class AdminDailyAssignmentSerializer(serializers.ModelSerializer):
         task_type = attrs.get('task_type') or getattr(self.instance, 'task_type', None)
         if worker and area and not HorticultureWorkerArea.objects.filter(
             worker=worker,
-            area=area,
+            area__zone=area.zone,
             is_active=True,
         ).exists():
-            raise serializers.ValidationError({'area': 'Selected worker is not assigned to this area.'})
+            raise serializers.ValidationError({'area': 'Selected worker is not assigned to this zone.'})
         if task_type and not task_type.is_active:
             raise serializers.ValidationError({'task_type': 'Selected task is inactive.'})
         return attrs
 
     def create(self, validated_data):
-        lookup = {
-            'worker': validated_data.pop('worker'),
-            'date': validated_data.pop('date'),
-            'session': validated_data.pop('session'),
-        }
-        assignment, _created = HorticultureDailyAssignment.objects.update_or_create(
-            **lookup,
-            defaults=validated_data,
-        )
-        return assignment
+        return HorticultureDailyAssignment.objects.create(**validated_data)
 
 
 class AdminAreaTaskAssignmentSerializer(serializers.ModelSerializer):

@@ -11,7 +11,7 @@ from django.core.paginator import Paginator
 from django.db import models, transaction
 from django.db.models import Count, DecimalField, Prefetch, Sum, Value
 from django.db.models.functions import Coalesce
-from django.http import HttpResponseForbidden
+from django.http import FileResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -126,6 +126,15 @@ def _workers_for_zone(zone):
         .distinct()
         .order_by('name', 'pay_code')
     )
+
+
+def _horticulture_attendance_choices():
+    return [
+        ('present', 'Present', '#d1fae5', '#065f46'),
+        ('absent', 'Absent', '#fee2e2', '#991b1b'),
+        ('late', 'Late', '#fef3c7', '#92400e'),
+        ('leave', 'Leave', '#dbeafe', '#1d4ed8'),
+    ]
 
 
 def _current_half():
@@ -722,6 +731,41 @@ class AdminHorticultureWorkerReportAPIView(APIView):
 
         marked_days = len(daily_breakdown)
         attendance_pct = round((days_present / marked_days) * 100, 2) if marked_days else 0
+        task_assignments = list(
+            HorticultureDailyAssignment.objects
+            .filter(worker_id=worker_id, date__gte=start, date__lte=end)
+            .select_related('area', 'task_type', 'assigned_by', 'completed_by')
+            .order_by('date', 'session', 'assigned_at')
+        )
+        task_details = [
+            {
+                'date': item.date,
+                'area_name': item.area.name if item.area else '',
+                'task_name': item.task_type.name if item.task_type else '',
+                'session': item.session,
+                'status': item.status,
+                'assigned_at': item.assigned_at,
+                'submitted_at': item.completed_at or item.photo_uploaded_at,
+                'supervisor_name': _display_name(item.completed_by or item.assigned_by),
+                'remarks': item.note or '',
+                'photo_submitted': bool(item.photo),
+            }
+            for item in task_assignments
+        ]
+        tasks_assigned = len(task_details)
+        tasks_completed = sum(
+            1
+            for item in task_assignments
+            if item.status == HorticultureDailyAssignment.Status.DONE
+        )
+        tasks_pending = sum(
+            1
+            for item in task_assignments
+            if item.status in {
+                HorticultureDailyAssignment.Status.PENDING,
+                HorticultureDailyAssignment.Status.IN_PROGRESS,
+            }
+        )
         serializer = AdminWorkerReportSerializer(
             {
                 'worker': worker_row,
@@ -732,7 +776,12 @@ class AdminHorticultureWorkerReportAPIView(APIView):
                 'half_days': half_days,
                 'marked_days': marked_days,
                 'attendance_pct': attendance_pct,
+                'tasks_assigned': tasks_assigned,
+                'tasks_completed': tasks_completed,
+                'tasks_pending': tasks_pending,
+                'task_completion_pct': round((tasks_completed / tasks_assigned) * 100, 2) if tasks_assigned else 0,
                 'daily_breakdown': daily_breakdown,
+                'task_details': task_details,
             }
         )
         return Response(serializer.data)
@@ -813,7 +862,7 @@ class AdminHorticultureDailyAssignmentListCreateAPIView(generics.ListCreateAPIVi
     permission_classes = [IsAdminOrHorticultureManager]
 
     def get_queryset(self):
-        qs = HorticultureDailyAssignment.objects.select_related('worker', 'area', 'task_type', 'assigned_by')
+        qs = HorticultureDailyAssignment.objects.select_related('worker', 'area', 'task_type', 'assigned_by', 'completed_by')
         date_str = self.request.query_params.get('date')
         area_id = self.request.query_params.get('area')
         worker_id = self.request.query_params.get('worker')
@@ -827,8 +876,11 @@ class AdminHorticultureDailyAssignmentListCreateAPIView(generics.ListCreateAPIVi
 
     def perform_create(self, serializer):
         photo = serializer.validated_data.get('photo')
+        is_done = serializer.validated_data.get('status', HorticultureDailyAssignment.Status.DONE) == HorticultureDailyAssignment.Status.DONE
         serializer.save(
             assigned_by=self.request.user,
+            completed_by=self.request.user if is_done else None,
+            completed_at=timezone.now() if is_done else None,
             photo_uploaded_at=timezone.now() if photo else None,
         )
 
@@ -836,11 +888,30 @@ class AdminHorticultureDailyAssignmentListCreateAPIView(generics.ListCreateAPIVi
 class AdminHorticultureDailyAssignmentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AdminDailyAssignmentSerializer
     permission_classes = [IsAdminOrHorticultureManager]
-    queryset = HorticultureDailyAssignment.objects.select_related('worker', 'area', 'task_type', 'assigned_by')
+    queryset = HorticultureDailyAssignment.objects.select_related('worker', 'area', 'task_type', 'assigned_by', 'completed_by')
 
     def perform_update(self, serializer):
         photo = serializer.validated_data.get('photo')
-        serializer.save(photo_uploaded_at=timezone.now() if photo else serializer.instance.photo_uploaded_at)
+        status_value = serializer.validated_data.get('status', serializer.instance.status)
+        completion_updates = {}
+        if status_value == HorticultureDailyAssignment.Status.DONE and serializer.instance.status != HorticultureDailyAssignment.Status.DONE:
+            completion_updates = {'completed_by': self.request.user, 'completed_at': timezone.now()}
+        serializer.save(
+            photo_uploaded_at=timezone.now() if photo else serializer.instance.photo_uploaded_at,
+            **completion_updates,
+        )
+
+
+class AdminHorticultureDailyAssignmentPhotoAPIView(APIView):
+    permission_classes = [IsAdminOrHorticultureManager]
+
+    def get(self, request, pk):
+        assignment = get_object_or_404(HorticultureDailyAssignment, pk=pk)
+        if not assignment.photo:
+            return Response({'detail': 'Photo not found.'}, status=status.HTTP_404_NOT_FOUND)
+        file_handle = assignment.photo.open('rb')
+        filename = f"horticulture_{assignment.date}_{assignment.area_id}_{assignment.task_type_id}_{assignment.worker_id}.jpg"
+        return FileResponse(file_handle, as_attachment=True, filename=filename)
 
 
 class AdminHorticultureAreaTaskAssignmentListCreateAPIView(generics.ListCreateAPIView):
@@ -1171,7 +1242,11 @@ def _horticulture_manager_context():
             .distinct()
             .count()
         )
-        done_today = HorticultureDailyAssignment.objects.filter(area_id__in=area_ids, date=today).count()
+        done_today = HorticultureDailyAssignment.objects.filter(
+            area_id__in=area_ids,
+            date=today,
+            status=HorticultureDailyAssignment.Status.DONE,
+        ).count()
         assigned_today = HorticultureAreaTaskAssignment.objects.filter(
             area_id__in=area_ids,
             date=today,
@@ -1276,7 +1351,7 @@ def horticulture_dashboard(request):
     ) if selected_area else []
     completed_assignments = (
         HorticultureDailyAssignment.objects
-        .filter(area=selected_area, date=today)
+        .filter(area=selected_area, date=today, status=HorticultureDailyAssignment.Status.DONE)
         .select_related('worker', 'task_type')
     ) if selected_area else []
     completed_task_ids = {assignment.task_type_id for assignment in completed_assignments}
@@ -1391,76 +1466,188 @@ def horticulture_mark_task(request):
         request.GET.get('area') or request.POST.get('area_id'),
     )
     error_message = ''
+    today = timezone.localdate()
 
     if request.method == 'POST':
-        worker = HorticultureWorker.objects.filter(
-            pk=request.POST.get('worker_id'),
-            is_active=True,
-            area_assignments__area__zone=selected_zone,
-            area_assignments__is_active=True,
-        ).first()
-        session = request.POST.get('session') or HorticultureDailyAssignment.Session.MORNING
-        if selected_zone is None:
-            error_message = 'No horticulture zone is assigned to this supervisor.'
-        elif selected_area is None:
-            error_message = 'Select a valid area before marking a task.'
-        elif worker is None:
-            error_message = 'Select a valid worker assigned to this zone.'
-        elif session not in {HorticultureDailyAssignment.Session.MORNING, HorticultureDailyAssignment.Session.AFTERNOON}:
-            error_message = 'Select morning or afternoon session.'
-        else:
-            serializer = SupervisorTaskLogSerializer(
-                data={
-                    'zone_id': selected_zone.id,
-                    'area_id': selected_area.id,
-                    'task_type_id': request.POST.get('task_type_id'),
-                    'done_date': timezone.localdate(),
-                    'notes': '',
-                },
-                context={'request': request},
-            )
-            if serializer.is_valid():
-                task_log = serializer.save()
-                assignment, _created = HorticultureDailyAssignment.objects.update_or_create(
-                    worker=worker,
-                    date=timezone.localdate(),
-                    session=session,
-                    defaults={
-                        'area': selected_area,
-                        'task_type': task_log.task_type,
-                        'assigned_by': request.user,
-                        'note': request.POST.get('note', '').strip(),
-                    },
+        action = request.POST.get('action') or ''
+        query = _query_string(
+            zone=selected_zone.id if selected_zone else None,
+            area=selected_area.id if selected_area else None,
+            task=request.POST.get('task_type_id') or request.GET.get('task'),
+        )
+        with transaction.atomic():
+            if selected_area is not None:
+                selected_area = (
+                    HorticultureArea.objects
+                    .select_for_update()
+                    .filter(pk=selected_area.pk, zone=selected_zone)
+                    .first()
                 )
-                if request.FILES.get('photo'):
-                    assignment.photo = request.FILES['photo']
-                    assignment.photo_uploaded_at = timezone.now()
-                    assignment.save(update_fields=['photo', 'photo_uploaded_at'])
-                messages.success(
-                    request,
-                    f'{task_log.task_type.name} assigned to {worker.name} and marked done for {selected_area.name}.',
+            assignment = None
+            if request.POST.get('assignment_id'):
+                assignment = (
+                    HorticultureDailyAssignment.objects
+                    .select_for_update()
+                    .filter(
+                        pk=request.POST.get('assignment_id'),
+                        area=selected_area,
+                        date=today,
+                    )
+                    .first()
                 )
-                query = _query_string(zone=selected_zone.id, area=selected_area.id)
-                return redirect(f'/horticulture/mark-task/?{query}')
-            error_message = _flatten_errors(serializer.errors)
+            worker = None
+            if request.POST.get('worker_id'):
+                worker = HorticultureWorker.objects.filter(
+                    pk=request.POST.get('worker_id'),
+                    is_active=True,
+                    area_assignments__area__zone=selected_zone,
+                    area_assignments__is_active=True,
+                ).first()
+            session = request.POST.get('session') or HorticultureDailyAssignment.Session.MORNING
+            task_type_id = request.POST.get('task_type_id')
+            task_type = TaskType.objects.filter(pk=task_type_id, is_active=True).first()
+            if selected_zone is None:
+                error_message = 'No horticulture zone is assigned to this supervisor.'
+            elif selected_area is None:
+                error_message = 'Select a valid area before marking a task.'
+            elif action == 'assign' and worker is None:
+                error_message = 'Select a valid worker assigned to this zone.'
+            elif session not in {HorticultureDailyAssignment.Session.MORNING, HorticultureDailyAssignment.Session.AFTERNOON}:
+                error_message = 'Select morning or afternoon session.'
+            elif action == 'assign':
+                if task_type is None:
+                    error_message = 'Select a valid active task.'
+                elif TaskLog.objects.filter(zone=selected_zone, area=selected_area, task_type=task_type, done_date=today).exists():
+                    error_message = 'This task is already submitted for today.'
+                elif HorticultureDailyAssignment.objects.filter(
+                    area=selected_area,
+                    date=today,
+                    task_type=task_type,
+                    status__in=[
+                        HorticultureDailyAssignment.Status.PENDING,
+                        HorticultureDailyAssignment.Status.IN_PROGRESS,
+                    ],
+                ).exists():
+                    error_message = 'Worker is already assigned for this task.'
+                else:
+                    HorticultureDailyAssignment.objects.create(
+                        worker=worker,
+                        date=today,
+                        session=session,
+                        area=selected_area,
+                        task_type=task_type,
+                        assigned_by=request.user,
+                        status=HorticultureDailyAssignment.Status.PENDING,
+                        note=request.POST.get('note', '').strip(),
+                    )
+                    messages.success(request, f'{worker.name} assigned to {task_type.name}.')
+                    return redirect(f'/horticulture/mark-task/?{query}')
+            elif action == 'start':
+                if assignment is None:
+                    error_message = 'Task assignment not found.'
+                elif assignment.status != HorticultureDailyAssignment.Status.PENDING:
+                    error_message = 'Only pending tasks can be started.'
+                else:
+                    assignment.status = HorticultureDailyAssignment.Status.IN_PROGRESS
+                    assignment.started_at = timezone.now()
+                    assignment.save(update_fields=['status', 'started_at'])
+                    return redirect(f'/horticulture/mark-task/?{query}')
+            elif action == 'undo':
+                if assignment is None:
+                    error_message = 'Task assignment not found.'
+                elif assignment.status != HorticultureDailyAssignment.Status.IN_PROGRESS:
+                    error_message = 'Only in-progress tasks can move back to pending.'
+                else:
+                    assignment.status = HorticultureDailyAssignment.Status.PENDING
+                    assignment.started_at = None
+                    assignment.save(update_fields=['status', 'started_at'])
+                    return redirect(f'/horticulture/mark-task/?{query}')
+            elif action == 'done':
+                if assignment is None:
+                    error_message = 'Task assignment not found.'
+                elif assignment.status != HorticultureDailyAssignment.Status.IN_PROGRESS:
+                    error_message = 'Start work before marking completed.'
+                elif (request.POST.get('captureMethod') or '').strip().lower() != 'camera':
+                    error_message = 'Use the camera to capture the task photo.'
+                elif not request.FILES.get('photo'):
+                    error_message = 'Task photo is required. Use the camera to capture it.'
+                elif TaskLog.objects.filter(zone=selected_zone, area=selected_area, task_type=assignment.task_type, done_date=today).exists():
+                    error_message = 'This task is already submitted for today.'
+                else:
+                    task_log = TaskLog.objects.create(
+                        zone=selected_zone,
+                        area=selected_area,
+                        task_type=assignment.task_type,
+                        done_by=request.user,
+                        done_date=today,
+                        notes=request.POST.get('note', '').strip(),
+                    )
+                    if request.FILES.get('photo'):
+                        assignment.photo = request.FILES['photo']
+                        assignment.photo_uploaded_at = timezone.now()
+                    assignment.status = HorticultureDailyAssignment.Status.DONE
+                    assignment.completed_by = request.user
+                    assignment.completed_at = timezone.now()
+                    assignment.note = request.POST.get('note', '').strip()
+                    assignment.save(update_fields=['photo', 'photo_uploaded_at', 'status', 'completed_by', 'completed_at', 'note'])
+                    messages.success(
+                        request,
+                        f'{task_log.task_type.name} completed for {selected_area.name}.',
+                    )
+                    return redirect(f'/horticulture/mark-task/?{query}')
+            else:
+                error_message = 'Select a valid task action.'
 
     selected_area_payload = None
     for area in dashboard_payload['areas']:
         if selected_area and area['id'] == selected_area.id:
             selected_area_payload = area
             break
+    all_assignments = list(
+        HorticultureDailyAssignment.objects
+        .filter(area=selected_area, date=today)
+        .select_related('worker', 'task_type', 'assigned_by', 'completed_by')
+        .order_by('-assigned_at')
+    ) if selected_area else []
+    completed_assignments = [
+        assignment for assignment in all_assignments
+        if assignment.status == HorticultureDailyAssignment.Status.DONE
+    ]
+    completed_task_ids = {assignment.task_type_id for assignment in completed_assignments}
+    completed_task_ids.update(
+        task['task_type_id']
+        for task in (selected_area_payload['tasks'] if selected_area_payload else [])
+        if task.get('last_done_date') == today
+    )
+    assignment_by_task = {}
+    for assignment in all_assignments:
+        assignment_by_task.setdefault(assignment.task_type_id, assignment)
+    task_rows = []
+    for task in (selected_area_payload['tasks'] if selected_area_payload else []):
+        enriched = dict(task)
+        enriched['assignment'] = assignment_by_task.get(task['task_type_id'])
+        task_rows.append(enriched)
+    pending_task_count = sum(
+        1
+        for task in task_rows
+        if task['task_type_id'] not in completed_task_ids
+    )
+    workers = list(_workers_for_zone(selected_zone))
 
     return render(
         request,
         'horticulture/mobile/mark_task.html',
         {
-            'today': timezone.localdate(),
+            'today': today,
             'zones': dashboard_payload['zones'],
             'selected_zone': selected_zone,
             'selected_area': selected_area,
             'areas': dashboard_payload['areas'],
-            'task_rows': selected_area_payload['tasks'] if selected_area_payload else [],
-            'workers': _workers_for_zone(selected_zone),
+            'task_rows': task_rows,
+            'workers': workers,
+            'completed_task_ids': completed_task_ids,
+            'completed_assignments': completed_assignments,
+            'pending_task_count': pending_task_count,
             'sessions': HorticultureDailyAssignment.Session.choices,
             'season': dashboard_payload['season'],
             'error_message': error_message,
@@ -1524,6 +1711,22 @@ def horticulture_attendance(request):
                     record.marked_by = request.user
                     record.submitted_at = timezone.now()
                     record.save(update_fields=['status', 'marked_by', 'submitted_at'])
+                if request.headers.get('HX-Request'):
+                    return render(
+                        request,
+                        'horticulture/mobile/partials_attendance_worker_card.html',
+                        {
+                            'row': {
+                                'worker': worker,
+                                'first_att': HorticultureAttendanceRecord.objects.filter(worker=worker, date=today, half='first').first(),
+                                'second_att': HorticultureAttendanceRecord.objects.filter(worker=worker, date=today, half='second').first(),
+                            },
+                            'selected_zone': selected_zone,
+                            'cur_half': cur_half,
+                            'is_today': is_today,
+                            'attn_choices': _horticulture_attendance_choices(),
+                        },
+                    )
                 query = _query_string(zone=selected_zone.id if selected_zone else None)
                 return redirect(f'/horticulture/attendance/?{query}' if query else '/horticulture/attendance/')
         else:
@@ -1584,12 +1787,7 @@ def horticulture_attendance(request):
             'second_submitted': all_submitted('second'),
             'cur_half': cur_half,
             'is_today': is_today,
-            'attn_choices': [
-                ('present', 'Present', '#d1fae5', '#065f46'),
-                ('absent', 'Absent', '#fee2e2', '#991b1b'),
-                ('late', 'Late', '#fef3c7', '#92400e'),
-                ('leave', 'Leave', '#dbeafe', '#1d4ed8'),
-            ],
+            'attn_choices': _horticulture_attendance_choices(),
             'error_message': error_message,
             'zone_count': len(zones),
         },
@@ -1651,7 +1849,11 @@ def horticulture_manager_zones(request):
                 'areas': payload['areas'],
                 'workers_count': workers.count(),
                 'workers': list(workers),
-                'done_today': HorticultureDailyAssignment.objects.filter(area_id__in=area_ids, date=today).count(),
+                'done_today': HorticultureDailyAssignment.objects.filter(
+                    area_id__in=area_ids,
+                    date=today,
+                    status=HorticultureDailyAssignment.Status.DONE,
+                ).count(),
                 'assigned_today': HorticultureAreaTaskAssignment.objects.filter(area_id__in=area_ids, date=today, is_active=True).count(),
             }
         )
@@ -1771,7 +1973,11 @@ def horticulture_manager_reports(request):
     zone_reports = []
     for zone in get_horticulture_zones():
         area_ids = list(zone.areas.values_list('id', flat=True))
-        done = HorticultureDailyAssignment.objects.filter(area_id__in=area_ids, date__range=(start_date, end_date)).count()
+        done = HorticultureDailyAssignment.objects.filter(
+            area_id__in=area_ids,
+            date__range=(start_date, end_date),
+            status=HorticultureDailyAssignment.Status.DONE,
+        ).count()
         assigned = HorticultureAreaTaskAssignment.objects.filter(area_id__in=area_ids, date__range=(start_date, end_date), is_active=True).count()
         worker_ids = list(
             HorticultureWorker.objects
@@ -1798,7 +2004,7 @@ def horticulture_manager_reports(request):
 
     recent_done = (
         HorticultureDailyAssignment.objects
-        .filter(date__range=(start_date, end_date))
+        .filter(date__range=(start_date, end_date), status=HorticultureDailyAssignment.Status.DONE)
         .select_related('worker', 'area__zone', 'task_type', 'assigned_by')
         .order_by('-date', '-assigned_at')[:12]
     )

@@ -35,13 +35,9 @@
     <div style="font-size:11px;color:#16a34a;margin-top:6px">
       Completed at {{ record.completed_at|time:"g:i A" }}{% if record.completed_by %} by {{ record.completed_by.get_full_name|default:record.completed_by.username }}{% endif %}
     </div>
-    <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
-          hx-target="#task-{{ record.id }}" hx-swap="outerHTML"
-          style="margin-top:6px">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="undo">
-      <button type="submit" class="btn-g" style="padding:8px;font-size:12px">Reopen Break Task</button>
-    </form>
+    <div style="font-size:11px;color:#16a34a;margin-top:6px;background:#dcfce7;border-radius:8px;padding:7px 8px">
+      Completed task is locked. Reopen is not allowed.
+    </div>
     {% endif %}
   {% else %}
   <div style="font-size:11px;color:#9ca3af;margin-top:6px">Only supervisor can mark this break task.</div>
@@ -99,13 +95,15 @@
       <div style="font-size:11px;font-weight:700;color:#374151;margin:0 0 6px 2px">Select workers</div>
       <div style="max-height:180px;overflow:auto;border:1px solid #d1d5db;border-radius:8px;background:#fff">
         {% for w in area_workers %}
-        <label style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last %}1px solid #eef2f7{% else %}none{% endif %};cursor:pointer">
-          <input type="checkbox" name="worker_ids" value="{{ w.id }}" style="width:16px;height:16px;flex-shrink:0">
-          <span style="font-weight:700;color:#1f2937;font-size:14px">{{ w.name }}</span>
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last %}1px solid #eef2f7{% else %}none{% endif %};cursor:{% if w.is_busy_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if w.is_busy_for_task %}.55{% else %}1{% endif %}">
+          <input type="checkbox" name="worker_ids" value="{{ w.id }}" {% if w.is_busy_for_task %}disabled{% endif %} style="width:16px;height:16px;flex-shrink:0">
+          <span style="font-weight:700;color:#1f2937;font-size:14px">
+            {{ w.name }}{% if w.is_busy_for_task %} - Busy{% endif %}
+          </span>
         </label>
         {% endfor %}
       </div>
-      <div style="font-size:10px;color:#6b7280;margin-top:4px">Select multiple workers, then assign once.</div>
+      <div style="font-size:10px;color:#6b7280;margin-top:4px">Busy workers unlock after their current task is completed.</div>
       <div style="display:flex;gap:6px;margin-top:6px">
         <button type="submit" style="border:none;background:#2d4a3e;color:#fff;padding:8px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">
           Assign Team
@@ -131,8 +129,8 @@
     <select name="worker_id" style="flex:1;padding:7px 8px;font-size:12px">
       <option value="">Assign worker</option>
       {% for w in area_workers %}
-      <option value="{{ w.id }}" {% if record.assigned_worker_id == w.id %}selected{% endif %}>
-        {{ w.name }}{% if w.worker_type %} ({{ w.get_worker_type_display }}){% endif %}
+      <option value="{{ w.id }}" {% if record.assigned_worker_id == w.id %}selected{% endif %} {% if w.is_busy_for_task %}disabled{% endif %}>
+        {{ w.name }}{% if w.worker_type %} ({{ w.get_worker_type_display }}){% endif %}{% if w.is_busy_for_task %} - Busy{% endif %}
       </option>
       {% endfor %}
     </select>
@@ -248,15 +246,13 @@
   </div>
   {% endif %}
   {% if record.note %}<div style="font-size:11px;color:#374151;margin-top:3px">Remark: {{ record.note }}</div>{% endif %}
-  <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
-        hx-target="#task-{{ record.id }}" hx-swap="outerHTML"
-        style="margin-top:6px">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="undo">
-    <button type="submit" class="btn-g" style="padding:8px;font-size:12px">
-      {% if record.photo_after %}Retake Photo{% else %}Reopen Task{% endif %}
-    </button>
-  </form>
+  <div style="font-size:11px;color:#16a34a;margin-top:6px;background:#dcfce7;border-radius:8px;padding:7px 8px">
+    {% if record.photo_after %}
+      Completion photo submitted. Upload is locked.
+    {% else %}
+      Completed task is locked. Reopen is not allowed.
+    {% endif %}
+  </div>
   {% endif %}
   {% endif %}
 </div>

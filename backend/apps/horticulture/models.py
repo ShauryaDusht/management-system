@@ -227,6 +227,11 @@ class HorticultureDailyAssignment(models.Model):
         MORNING = 'morning', 'Morning'
         AFTERNOON = 'afternoon', 'Afternoon'
 
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        IN_PROGRESS = 'in_progress', 'In Progress'
+        DONE = 'done', 'Done'
+
     worker = models.ForeignKey(
         HorticultureWorker,
         on_delete=models.CASCADE,
@@ -252,18 +257,22 @@ class HorticultureDailyAssignment(models.Model):
         related_name='horticulture_daily_assignments',
     )
     assigned_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DONE)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='horticulture_daily_assignments_completed',
+    )
+    completed_at = models.DateTimeField(null=True, blank=True)
     photo = models.ImageField(upload_to='horticulture/tasks/%Y/%m/%d/', null=True, blank=True)
     photo_uploaded_at = models.DateTimeField(null=True, blank=True)
     note = models.CharField(max_length=300, blank=True)
 
     class Meta:
         ordering = ['-date', 'session', 'area__area_number', 'worker__name']
-        constraints = [
-            models.UniqueConstraint(
-                fields=['worker', 'date', 'session'],
-                name='horticulture_daily_assignment_unique_worker_session',
-            ),
-        ]
 
     def __str__(self):
         return f'{self.date} | {self.session} | {self.worker} | {self.task_type}'

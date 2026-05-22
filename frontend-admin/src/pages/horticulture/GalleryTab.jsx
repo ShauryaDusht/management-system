@@ -293,18 +293,17 @@ export default function GalleryTab() {
   }
 
   const downloadPhoto = async (row) => {
-    if (!row?.photo_url) return
+    if (!row?.id) return
     try {
-      const response = await fetch(row.photo_url, { credentials: 'include' })
-      if (!response.ok) throw new Error('Failed to fetch photo.')
-      const blob = await response.blob()
+      const response = await horticultureAPI.downloadDailyAssignmentPhoto(row.id)
+      const blob = response.data
       const extension = blob.type?.split('/')?.[1] || 'jpg'
       triggerDownload(
         blob,
         `horticulture_${safeName(row.area_name, 'area')}_${safeName(row.task_type_name, 'task')}_${row.date || 'photo'}.${extension}`
       )
-    } catch {
-      window.open(row.photo_url, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Photo download failed.'))
     }
   }
 

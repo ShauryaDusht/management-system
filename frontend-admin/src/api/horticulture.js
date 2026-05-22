@@ -23,6 +23,8 @@ export const horticultureAPI = {
   updateAttendanceRecord: (id, data) => api.patch(`/horticulture/admin/attendance-records/${id}/`, data),
   listDailyAssignments: (params = {}) =>
     api.get('/horticulture/admin/daily-assignments/', { params }),
+  downloadDailyAssignmentPhoto: (id) =>
+    api.get(`/horticulture/admin/daily-assignments/${id}/photo/`, { responseType: 'blob' }),
   createDailyAssignment: (data) => api.post('/horticulture/admin/daily-assignments/', data),
   updateDailyAssignment: (id, data) => api.patch(`/horticulture/admin/daily-assignments/${id}/`, data),
   deleteDailyAssignment: (id) => api.delete(`/horticulture/admin/daily-assignments/${id}/`),

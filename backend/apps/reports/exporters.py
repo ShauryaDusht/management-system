@@ -81,6 +81,7 @@ def export_worker_report_csv(snapshot: dict) -> bytes:
     attendance = snapshot.get('attendance', {})
     tasks = snapshot.get('tasks', {})
     daily_breakdown = snapshot.get('daily_breakdown', [])
+    task_details = snapshot.get('task_details', [])
 
     buffer = io.StringIO()
     writer = csv.writer(buffer)
@@ -101,6 +102,8 @@ def export_worker_report_csv(snapshot: dict) -> bytes:
     writer.writerow(['Days On Leave', attendance.get('days_on_leave', 0)])
     writer.writerow(['Tasks Assigned', tasks.get('total_assigned', 0)])
     writer.writerow(['Tasks Completed', tasks.get('total_completed', 0)])
+    writer.writerow(['Tasks Pending', tasks.get('total_pending', 0)])
+    writer.writerow(['Tasks In Progress', tasks.get('total_in_progress', 0)])
     writer.writerow(['Tasks Skipped', tasks.get('total_skipped', 0)])
     writer.writerow(['Extra Work Count', snapshot.get('extra_work_count', 0)])
     writer.writerow([])
@@ -115,6 +118,27 @@ def export_worker_report_csv(snapshot: dict) -> bytes:
             row.get('tasks_completed', 0),
             row.get('extra_work', 0),
             row.get('supervisor_name', ''),
+        ])
+
+    writer.writerow([])
+    writer.writerow(['Task Details'])
+    writer.writerow([
+        'Date', 'Area', 'Task', 'Status', 'Assigned At', 'Started At',
+        'Completed At', 'Assigned By', 'Completed By', 'Remarks', 'Photo Submitted',
+    ])
+    for row in task_details:
+        writer.writerow([
+            row.get('date', ''),
+            row.get('area_name', ''),
+            row.get('task_name', ''),
+            _human_status(row.get('status', '')),
+            row.get('assigned_at', ''),
+            row.get('started_at', ''),
+            row.get('completed_at', ''),
+            row.get('assigned_by', ''),
+            row.get('completed_by', ''),
+            row.get('remarks', ''),
+            'Yes' if row.get('photo_submitted') else 'No',
         ])
 
     return buffer.getvalue().encode('utf-8-sig')

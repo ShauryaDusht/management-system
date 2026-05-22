@@ -568,6 +568,31 @@ def current_half():
     return "first" if h < 13 else "second"
 
 
+def busy_worker_ids_for_tasks(area, date, exclude_record_id=None):
+    if area is None:
+        return set()
+    active_records = HKDailyRecord.objects.filter(area=area, date=date).exclude(status="done")
+    if exclude_record_id:
+        active_records = active_records.exclude(pk=exclude_record_id)
+    busy_ids = set(
+        active_records
+        .exclude(assigned_worker__isnull=True)
+        .values_list("assigned_worker_id", flat=True)
+    )
+    busy_ids.update(
+        HKTaskWorkerAssignment.objects
+        .filter(daily_record__in=active_records)
+        .values_list("worker_id", flat=True)
+    )
+    return busy_ids
+
+
+def mark_busy_workers(area_workers, busy_worker_ids):
+    for worker in area_workers:
+        worker.is_busy_for_task = worker.id in busy_worker_ids
+    return area_workers
+
+
 def worker_options_for_selection_request(req_obj, current_area):
     """
     Build eligible worker options for a pending worker-selection request.
@@ -711,6 +736,7 @@ def hk_dashboard(request):
 
     today_dow = today.weekday()
     area_workers = list(HKWorker.objects.filter(area=sel_area, is_active=True).order_by("name")) if sel_area else []
+    mark_busy_workers(area_workers, busy_worker_ids_for_tasks(sel_area, today))
 
     extra_works = HKExtraWork.objects.filter(area=sel_area, date=today).order_by("-logged_at") if sel_area else []
 
@@ -1136,10 +1162,11 @@ def hk_incharge_respond(request):
 
 
 @hk_required
+@transaction.atomic
 def hk_mark_task(request, record_id):
     if request.method != "POST":
         return HttpResponseForbidden()
-    record = get_object_or_404(HKDailyRecord, pk=record_id)
+    record = get_object_or_404(HKDailyRecord.objects.select_for_update(), pk=record_id)
     user = request.user
     if record.area not in get_user_areas(user):
         return HttpResponseForbidden("Not your area.")
@@ -1169,44 +1196,51 @@ def hk_mark_task(request, record_id):
             if record.assigned_worker_id or record.worker_assignments.exists():
                 task_error = "Team already assigned for this SWM task."
             else:
-                worker_ids = [w for w in request.POST.getlist("worker_ids") if w]
+                worker_ids = list(dict.fromkeys(w for w in request.POST.getlist("worker_ids") if w))
                 if not worker_ids:
                     single_worker_id = request.POST.get("worker_id")
                     if single_worker_id:
                         worker_ids = [single_worker_id]
+                busy_ids = busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id)
+                selected_busy_ids = {int(wid) for wid in worker_ids if str(wid).isdigit()} & busy_ids
 
-                workers = list(
-                    HKWorker.objects.filter(
-                        pk__in=worker_ids,
-                        area=record.area,
-                        is_active=True,
-                    ).order_by("name")
-                )
-                if not workers:
-                    task_error = "Please select at least one valid SWM worker."
+                if selected_busy_ids:
+                    task_error = "One or more selected workers are already assigned to an unfinished task."
                 else:
-                    HKTaskWorkerAssignment.objects.bulk_create(
-                        [
-                            HKTaskWorkerAssignment(
-                                daily_record=record,
-                                worker=w,
-                                assigned_by=user,
-                            )
-                            for w in workers
-                        ]
+                    workers = list(
+                        HKWorker.objects.filter(
+                            pk__in=worker_ids,
+                            area=record.area,
+                            is_active=True,
+                        ).order_by("name")
                     )
+                    if not workers:
+                        task_error = "Please select at least one valid SWM worker."
+                    else:
+                        HKTaskWorkerAssignment.objects.bulk_create(
+                            [
+                                HKTaskWorkerAssignment(
+                                    daily_record=record,
+                                    worker=w,
+                                    assigned_by=user,
+                                )
+                                for w in workers
+                            ]
+                        )
 
-                    # Keep legacy single-assignee field for backward-compatible reporting.
-                    record.assigned_worker = workers[0]
-                    record.assigned_by = user
-                    record.assigned_at = now
-                    record.save(update_fields=["assigned_worker", "assigned_by", "assigned_at"])
+                        # Keep legacy single-assignee field for backward-compatible reporting.
+                        record.assigned_worker = workers[0]
+                        record.assigned_by = user
+                        record.assigned_at = now
+                        record.save(update_fields=["assigned_worker", "assigned_by", "assigned_at"])
         elif record.assigned_worker_id:
             task_error = "Worker already assigned for this task."
         else:
             worker_id = request.POST.get("worker_id")
             worker = HKWorker.objects.filter(pk=worker_id, area=record.area, is_active=True).first()
-            if worker:
+            if worker and worker.id in busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id):
+                task_error = "This worker is already assigned to an unfinished task."
+            elif worker:
                 record.assigned_worker = worker
                 record.assigned_by = user
                 record.assigned_at = now
@@ -1227,30 +1261,35 @@ def hk_mark_task(request, record_id):
             record.save(update_fields=["status", "started_at", "note"])
 
     elif action == "undo":
-        record.status = "pending"
-        record.started_at = None
-        record.completed_by = None
-        record.completed_at = None
-        record.photo_after = None
-        record.photo_after_thumbnail = None
-        record.photo_after_captured_at = None
-        record.photo_after_capture_method = ""
-        record.photo_after_original_size = 0
-        record.photo_after_saved_size = 0
-        record.photo_after_thumb_size = 0
-        record.photo_after_compression_ratio = 0
-        record.photo_after_format = ""
-        record.save(update_fields=[
-            "status", "started_at", "completed_by", "completed_at", "photo_after",
-            "photo_after_thumbnail",
-            "photo_after_captured_at", "photo_after_capture_method",
-            "photo_after_original_size", "photo_after_saved_size", "photo_after_thumb_size",
-            "photo_after_compression_ratio", "photo_after_format",
-        ])
+        if record.status == "done":
+            task_error = "Completed task is locked and cannot be reopened."
+        else:
+            record.status = "pending"
+            record.started_at = None
+            record.completed_by = None
+            record.completed_at = None
+            record.photo_after = None
+            record.photo_after_thumbnail = None
+            record.photo_after_captured_at = None
+            record.photo_after_capture_method = ""
+            record.photo_after_original_size = 0
+            record.photo_after_saved_size = 0
+            record.photo_after_thumb_size = 0
+            record.photo_after_compression_ratio = 0
+            record.photo_after_format = ""
+            record.save(update_fields=[
+                "status", "started_at", "completed_by", "completed_at", "photo_after",
+                "photo_after_thumbnail",
+                "photo_after_captured_at", "photo_after_capture_method",
+                "photo_after_original_size", "photo_after_saved_size", "photo_after_thumb_size",
+                "photo_after_compression_ratio", "photo_after_format",
+            ])
 
     elif action == "done":
         if is_break_task and not can_mark_break:
             task_error = "Only supervisor can mark break done."
+        elif record.status == "done":
+            task_error = "Task already completed. Photo upload is locked."
         elif is_break_task:
             record.status = "done"
             record.completed_by = user
@@ -1352,6 +1391,7 @@ def hk_mark_task(request, record_id):
         "schedule", "assigned_worker", "assigned_by", "area", "completed_by"
     ).prefetch_related("worker_assignments__worker").get(pk=record.pk)
     area_workers = list(HKWorker.objects.filter(area=record.area, is_active=True).order_by("name"))
+    mark_busy_workers(area_workers, busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id))
     return render(request, "housekeeping/mobile/partials/task_card.html", {
         "record": record,
         "tag_labels": WORKER_TAG_LABELS,

@@ -1,4 +1,5 @@
 {% extends 'horticulture/mobile/base_horti.html' %}
+{% load static %}
 {% block title %}Mark Task{% endblock %}
 {% block hdr_title %}MARK TASK{% endblock %}
 {% block back_btn %}<a href="/horticulture/dashboard/{% if selected_zone %}?zone={{ selected_zone.id }}{% endif %}" class="bk">&lt;</a>{% endblock %}
@@ -42,77 +43,149 @@
     <span>{{ selected_area.area_sqm }} sqm</span>
     <span>{{ today|date:"d M Y" }}</span>
   </div>
+  {% if pending_task_count %}
   <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
-    <div style="font-size:13px;font-weight:700">Select worker, add photo, then submit completion.</div>
-    <div style="font-size:11px;opacity:.8;margin-top:4px">Same task flow as housekeeping staff.</div>
+    <div style="font-size:13px;font-weight:700">Open a task, capture a camera photo, and submit.</div>
   </div>
+  {% else %}
+  <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
+    <div style="font-size:13px;font-weight:700">All listed tasks are submitted for today.</div>
+  </div>
+  {% endif %}
 </div>
 
 <div class="wtag">Tasks</div>
 <div style="display:grid;gap:10px">
   {% for task in task_rows %}
-  <div class="card" style="padding:11px;border-left:4px solid {% if task.urgency == 'overdue' %}#dc2626{% elif task.urgency == 'due_soon' %}#d97706{% else %}#e5e7eb{% endif %}">
-    <a
-      href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}"
-      style="text-decoration:none;color:inherit;display:block"
-    >
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div style="font-weight:700;font-size:13px">{{ task.task_type_name }}</div>
-        {% if task.urgency == 'overdue' %}<span class="bdg r">Overdue</span>
-        {% elif task.urgency == 'due_soon' %}<span class="bdg y">Due Soon</span>
-        {% else %}<span class="bdg gr">Pending</span>{% endif %}
+  <div class="card" style="padding:11px;border-left:4px solid {% if task.assignment.status == 'done' or task.task_type_id in completed_task_ids %}#16a34a{% elif task.assignment.status == 'in_progress' %}#2563eb{% elif task.urgency == 'overdue' %}#dc2626{% elif task.urgency == 'due_soon' %}#d97706{% else %}#e5e7eb{% endif %}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+      <div style="font-weight:700;font-size:13px;{% if task.assignment.status == 'done' or task.task_type_id in completed_task_ids %}text-decoration:line-through;color:#9ca3af{% endif %}">
+        {{ task.task_type_name }}
       </div>
-      <div style="font-size:11px;color:#6b7280;margin-top:3px">
-        {% if task.last_done_date %}
-          Last done {{ task.last_done_date|date:"d M Y" }} | {{ task.days_since_done }} days ago | Threshold {{ task.threshold }} days
-        {% else %}
-          Never logged yet | Threshold {{ task.threshold }} days
-        {% endif %}
-      </div>
-      <div style="font-size:12px;font-weight:700;color:#2d4a3e;margin-top:6px">
-        {% if request.GET.task == task.task_type_id|stringformat:"s" %}
-          Select worker and session, then submit with optional photo.
-        {% else %}
-          Tap to select worker and upload photo.
-        {% endif %}
-      </div>
-    </a>
+      {% if task.assignment.status == 'done' or task.task_type_id in completed_task_ids %}<span class="bdg g">Done</span>
+      {% elif task.assignment.status == 'in_progress' %}<span class="bdg b">In Progress</span>
+      {% elif task.assignment.status == 'pending' %}<span class="bdg gr">Pending</span>
+      {% elif task.urgency == 'overdue' %}<span class="bdg r">Overdue</span>
+      {% elif task.urgency == 'due_soon' %}<span class="bdg y">Due Soon</span>
+      {% else %}<span class="bdg gr">Pending</span>{% endif %}
+    </div>
+    <div style="font-size:11px;color:#6b7280;margin-top:3px">
+      {% if task.last_done_date %}
+        Last done {{ task.last_done_date|date:"d M Y" }} | {{ task.days_since_done }} days ago | Threshold {{ task.threshold }} days
+      {% else %}
+        Never logged yet | Threshold {{ task.threshold }} days
+      {% endif %}
+    </div>
+    {% if task.assignment %}
+    <div style="font-size:11px;color:#374151;margin-top:4px">
+      Assigned Worker: <b>{{ task.assignment.worker.name }}</b> | {{ task.assignment.assigned_at|time:"g:i A" }}
+    </div>
+    {% endif %}
 
-    {% if request.GET.task == task.task_type_id|stringformat:"s" %}
-    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="margin-top:8px">
+    {% if not task.assignment and task.task_type_id not in completed_task_ids %}
+    <form method="post" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="margin-top:8px">
     {% csrf_token %}
+    <input type="hidden" name="action" value="assign">
     <input type="hidden" name="zone_id" value="{{ selected_zone.id }}">
     <input type="hidden" name="area_id" value="{{ selected_area.id }}">
     <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-        <div>
-          <label>Worker</label>
-          <select name="worker_id" required>
-            <option value="">Select worker</option>
-            {% for worker in workers %}
-            <option value="{{ worker.id }}">{{ worker.name }}{% if worker.pay_code %} ({{ worker.pay_code }}){% endif %}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label>Session</label>
-          <select name="session" required>
-            <option value="morning" {% if request.GET.session == 'morning' %}selected{% endif %}>Morning</option>
-            <option value="afternoon" {% if request.GET.session == 'afternoon' %}selected{% endif %}>Afternoon</option>
-          </select>
-        </div>
-      </div>
-      <div style="margin-top:8px">
-        <label>Task Photo</label>
-        <input type="file" name="photo" accept="image/*" capture="environment" required>
-        <div style="font-size:10px;color:#6b7280;margin-top:3px">Photo proof is required for horticulture task completion.</div>
-      </div>
-      <div style="margin-top:8px">
-        <label>Note</label>
-        <input type="text" name="note" placeholder="Optional note">
-      </div>
-      <button type="submit" class="btn-s" style="margin-top:10px;padding:9px;font-size:12px">Mark Completed</button>
+    <div style="display:flex;gap:6px;align-items:center;margin-top:8px">
+      <select name="worker_id" required style="flex:1;padding:9px 10px;font-size:13px">
+        <option value="">Assign worker</option>
+        {% for worker in workers %}
+        <option value="{{ worker.id }}">{{ worker.name }}{% if worker.pay_code %} ({{ worker.pay_code }}){% endif %}</option>
+        {% endfor %}
+      </select>
+      <select name="session" required style="width:118px;padding:9px 8px;font-size:13px">
+        <option value="morning">Morning</option>
+        <option value="afternoon">Afternoon</option>
+      </select>
+      <button type="submit" style="border:none;background:#2d4a3e;color:#fff;padding:10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">Assign</button>
+    </div>
     </form>
+    <button type="button" class="btn-g" disabled style="padding:9px;font-size:12px;margin-top:7px;opacity:.65">Start Work</button>
+
+    {% elif task.assignment.status == 'pending' %}
+    <div style="margin-top:7px;font-size:11px;color:#6b7280;background:#f3f4f6;border-radius:7px;padding:6px 8px">
+      Worker selection locked for this task.
+    </div>
+    <form method="post" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="margin-top:8px">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="start">
+    <input type="hidden" name="assignment_id" value="{{ task.assignment.id }}">
+    <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
+    <button type="submit" class="btn-g" style="padding:9px;font-size:12px">Start Work</button>
+    </form>
+
+    {% elif task.assignment.status == 'in_progress' %}
+    <div style="margin-top:7px;font-size:11px;color:#6b7280;background:#f3f4f6;border-radius:7px;padding:6px 8px">
+      Worker selection locked for this task.
+    </div>
+    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" class="js-horti-task-complete-form" style="margin-top:8px">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="done">
+    <input type="hidden" name="assignment_id" value="{{ task.assignment.id }}">
+    <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
+    <input type="hidden" name="capturedAt" class="js-photo-captured-at" value="">
+    <input type="hidden" name="captureMethod" class="js-photo-capture-method" value="">
+    <input type="hidden" name="originalSize" class="js-photo-original-size" value="">
+    <input type="hidden" name="compressedSize" class="js-photo-compressed-size" value="">
+    <input type="hidden" name="format" class="js-photo-format" value="">
+      <div style="margin-top:8px">
+        <input type="text" name="note" placeholder="Remark / completion note" style="font-size:13px;padding:8px 10px">
+      </div>
+      <div style="margin-top:8px">
+        <button type="button"
+                class="btn-g js-horti-open-camera"
+                data-task-id="{{ task.task_type_id }}"
+                data-task-name="{{ task.task_type_name|escape }}"
+                style="padding:9px;font-size:12px">
+          Take Photo
+        </button>
+        <input type="file" name="photo" class="js-photo-file-input" accept="image/*" capture="environment" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+        <div class="js-photo-selected" style="display:none;margin-top:8px;background:#f9fafb;border:1px solid #d1d5db;border-radius:8px;padding:7px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <img class="js-photo-thumb" alt="Captured task photo" style="width:52px;height:52px;border-radius:7px;object-fit:cover;border:1px solid #e5e7eb;flex-shrink:0">
+            <div style="flex:1;min-width:0">
+              <div class="js-photo-meta" style="font-size:11px;color:#374151;font-weight:700">Captured with camera</div>
+              <div class="js-photo-size" style="font-size:10px;color:#6b7280;margin-top:2px"></div>
+            </div>
+            <button type="button" class="js-photo-clear" style="border:none;background:#fee2e2;color:#991b1b;border-radius:7px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer">
+              Retake
+            </button>
+          </div>
+        </div>
+        <div class="js-photo-error" style="display:none;margin-top:8px;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:7px 8px;border-radius:7px;font-size:11px;font-weight:700"></div>
+      </div>
+      <button type="submit" class="btn-s js-submit-btn" style="margin-top:10px;padding:9px;font-size:12px">Mark Completed</button>
+    </form>
+    <form method="post" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="margin-top:6px">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="undo">
+    <input type="hidden" name="assignment_id" value="{{ task.assignment.id }}">
+    <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
+    <button type="submit" class="btn-g" style="padding:8px;font-size:12px">Move Back To Pending</button>
+    </form>
+
+    {% elif task.assignment.status == 'done' or task.task_type_id in completed_task_ids %}
+    {% if task.assignment.completed_at %}
+    <div style="font-size:11px;color:#16a34a;margin-top:6px">
+      Completed at {{ task.assignment.completed_at|time:"g:i A" }}{% if task.assignment.completed_by %} by {{ task.assignment.completed_by.get_full_name|default:task.assignment.completed_by.username }}{% endif %}
+    </div>
+    {% endif %}
+    {% if task.assignment.photo %}
+    <div style="margin-top:7px">
+      <img src="{{ task.assignment.photo.url }}" alt="Completed task proof" style="width:86px;height:86px;border-radius:8px;object-fit:cover;border:1px solid #d1d5db">
+      <div style="font-size:10px;color:#6b7280;margin-top:4px">
+        Captured:
+        {% if task.assignment.photo_uploaded_at %}{{ task.assignment.photo_uploaded_at|date:"g:i A d M Y" }}{% else %}{{ task.assignment.completed_at|date:"g:i A d M Y" }}{% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% if task.assignment.note %}<div style="font-size:11px;color:#374151;margin-top:3px">Remark: {{ task.assignment.note }}</div>{% endif %}
+    <div style="font-size:11px;color:#16a34a;margin-top:6px;background:#dcfce7;border-radius:8px;padding:7px 8px">
+      Completion photo submitted. Upload is locked.
+    </div>
     {% endif %}
   </div>
   {% empty %}
@@ -126,4 +199,132 @@
   Select an area from the dashboard to mark a task.
 </div>
 {% endif %}
+<script>
+var hortiCamera = null;
+
+function ensureHortiCamera() {
+  if (hortiCamera || typeof HKCameraCapture === 'undefined') return;
+  hortiCamera = new HKCameraCapture();
+}
+
+function showHortiPhotoError(form, message) {
+  var error = form ? form.querySelector('.js-photo-error') : null;
+  if (!error) return;
+  error.textContent = message || '';
+  error.style.display = message ? 'block' : 'none';
+}
+
+function setHortiPhoto(form, payload) {
+  var fileInput = form.querySelector('.js-photo-file-input');
+  var capturedAt = form.querySelector('.js-photo-captured-at');
+  var captureMethod = form.querySelector('.js-photo-capture-method');
+  var originalSize = form.querySelector('.js-photo-original-size');
+  var compressedSize = form.querySelector('.js-photo-compressed-size');
+  var format = form.querySelector('.js-photo-format');
+  var selected = form.querySelector('.js-photo-selected');
+  var thumb = form.querySelector('.js-photo-thumb');
+  var meta = form.querySelector('.js-photo-meta');
+  var size = form.querySelector('.js-photo-size');
+  if (!fileInput || !payload || !payload.file) return;
+  try {
+    if (typeof DataTransfer !== 'undefined') {
+      var dt = new DataTransfer();
+      dt.items.add(payload.file);
+      fileInput.files = dt.files;
+    }
+  } catch (err) {}
+  if (capturedAt) capturedAt.value = payload.capturedAt || new Date().toISOString();
+  if (captureMethod) captureMethod.value = 'camera';
+  if (originalSize) originalSize.value = String(payload.originalSize || payload.file.size || 0);
+  if (compressedSize) compressedSize.value = String(payload.compressedSize || payload.file.size || 0);
+  if (format) format.value = payload.format || 'jpeg';
+  if (thumb) {
+    if (thumb.dataset.objectUrl) URL.revokeObjectURL(thumb.dataset.objectUrl);
+    var url = URL.createObjectURL(payload.file);
+    thumb.src = url;
+    thumb.dataset.objectUrl = url;
+  }
+  if (meta) meta.textContent = 'Captured with camera';
+  if (size) {
+    var kb = Math.max(1, Math.round((payload.compressedSize || payload.file.size || 0) / 1024));
+    size.textContent = kb + ' KB';
+  }
+  if (selected) selected.style.display = 'block';
+  showHortiPhotoError(form, '');
+}
+
+function clearHortiPhoto(form) {
+  if (!form) return;
+  var fileInput = form.querySelector('.js-photo-file-input');
+  var selected = form.querySelector('.js-photo-selected');
+  var thumb = form.querySelector('.js-photo-thumb');
+  ['.js-photo-captured-at', '.js-photo-capture-method', '.js-photo-original-size', '.js-photo-compressed-size', '.js-photo-format'].forEach(function(selector) {
+    var field = form.querySelector(selector);
+    if (field) field.value = '';
+  });
+  if (fileInput) fileInput.value = '';
+  if (thumb) {
+    if (thumb.dataset.objectUrl) URL.revokeObjectURL(thumb.dataset.objectUrl);
+    thumb.removeAttribute('src');
+    thumb.dataset.objectUrl = '';
+  }
+  if (selected) selected.style.display = 'none';
+}
+
+document.addEventListener('submit', function(event) {
+  var form = event.target.closest('.js-horti-task-complete-form');
+  if (!form) return;
+  var captureMethod = form.querySelector('.js-photo-capture-method');
+  var fileInput = form.querySelector('.js-photo-file-input');
+  if (!captureMethod || captureMethod.value !== 'camera' || !fileInput || !fileInput.files || !fileInput.files.length) {
+    event.preventDefault();
+    showHortiPhotoError(form, 'Use Take Photo to capture directly from camera.');
+    return;
+  }
+  if (form.dataset.submitting === '1') {
+    event.preventDefault();
+    return;
+  }
+  form.dataset.submitting = '1';
+  var submitButton = form.querySelector('.js-submit-btn');
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = 'Submitting...';
+  }
+  if (fileInput) fileInput.readOnly = true;
+});
+
+document.addEventListener('click', function(event) {
+  var cameraButton = event.target.closest('.js-horti-open-camera');
+  if (cameraButton) {
+    event.preventDefault();
+    var form = cameraButton.closest('.js-horti-task-complete-form');
+    if (!form) return;
+    ensureHortiCamera();
+    if (!hortiCamera) {
+      showHortiPhotoError(form, 'Camera is not available on this device/browser.');
+      return;
+    }
+    try {
+      hortiCamera.open({
+        taskId: cameraButton.getAttribute('data-task-id') || '',
+        taskName: cameraButton.getAttribute('data-task-name') || 'Task',
+        onUsePhoto: function(payload) {
+          setHortiPhoto(form, payload);
+        }
+      });
+    } catch (err) {
+      showHortiPhotoError(form, 'Camera is not available on this device/browser.');
+    }
+    return;
+  }
+  var clearButton = event.target.closest('.js-photo-clear');
+  if (clearButton) {
+    event.preventDefault();
+    clearHortiPhoto(clearButton.closest('.js-horti-task-complete-form'));
+  }
+});
+
+</script>
+<script src="{% static 'housekeeping/mobile/camera_capture.js' %}?v=20260309_2"></script>
 {% endblock %}

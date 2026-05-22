@@ -31,7 +31,11 @@
     {% elif not is_today or cur_half == 'first' %}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
       {% for sv, sl, bg, clr in attn_choices %}
-      <form method="post" action="/horticulture/attendance/?zone={{ selected_zone.id }}">
+      <form method="post"
+            action="/horticulture/attendance/?zone={{ selected_zone.id }}"
+            hx-post="/horticulture/attendance/?zone={{ selected_zone.id }}"
+            hx-target="#horti-att-{{ row.worker.id }}"
+            hx-swap="outerHTML">
         {% csrf_token %}
         <input type="hidden" name="action" value="mark">
         <input type="hidden" name="half" value="first">
@@ -64,7 +68,11 @@
     {% elif not is_today or cur_half == 'second' %}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
       {% for sv, sl, bg, clr in attn_choices %}
-      <form method="post" action="/horticulture/attendance/?zone={{ selected_zone.id }}">
+      <form method="post"
+            action="/horticulture/attendance/?zone={{ selected_zone.id }}"
+            hx-post="/horticulture/attendance/?zone={{ selected_zone.id }}"
+            hx-target="#horti-att-{{ row.worker.id }}"
+            hx-swap="outerHTML">
         {% csrf_token %}
         <input type="hidden" name="action" value="mark">
         <input type="hidden" name="half" value="second">
