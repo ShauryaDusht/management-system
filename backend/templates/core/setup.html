@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ app_name }} Setup</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.5;
+      color: #172033;
+      background: #f5f7fb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+    }
+
+    main {
+      width: 100%;
+      max-width: 760px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #d8deea;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(23, 32, 51, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+
+    h2 {
+      margin: 28px 0 10px;
+      font-size: 20px;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    ol {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    .lead {
+      color: #475569;
+      font-size: 16px;
+    }
+
+    .notice {
+      margin: 18px 0;
+      padding: 14px;
+      border-left: 4px solid #1d4ed8;
+      background: #eff6ff;
+      border-radius: 6px;
+    }
+
+    .button {
+      display: block;
+      width: 100%;
+      margin: 20px 0;
+      padding: 14px 18px;
+      border-radius: 6px;
+      background: #1d4ed8;
+      color: #ffffff;
+      text-align: center;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .button.secondary {
+      background: #166534;
+      margin-top: 28px;
+    }
+
+    code {
+      word-break: break-all;
+      color: #0f172a;
+      background: #eef2f7;
+      border-radius: 4px;
+      padding: 2px 5px;
+    }
+
+    @media (max-width: 520px) {
+      body {
+        padding: 12px;
+      }
+
+      main {
+        padding: 18px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>{{ app_name }}</h1>
+    <p class="lead">Install the IITGN certificate once so this phone can open the management apps securely.</p>
+
+    <a class="button" href="{{ download_url }}">Download IITGN CA Certificate</a>
+
+    <p class="notice">
+      Download the certificate first, then follow the steps for your device. This page works before the certificate is installed.
+    </p>
+
+    <h2>Android (Samsung One UI)</h2>
+    <ol>
+      <li>Open <code>{{ download_url }}</code> in Chrome. The file downloads automatically.</li>
+      <li>Open <strong>Settings</strong> and search for <strong>Install certificates</strong> in the search bar.</li>
+      <li>Tap <strong>Install from device storage</strong>.</li>
+      <li>Select the downloaded <strong>ca.crt</strong> file.</li>
+      <li>When prompted for certificate type, select <strong>CA Certificate</strong>.</li>
+      <li>Give it a name like <strong>IITGN-Management</strong>.</li>
+      <li>Return to this page and tap the button at the bottom.</li>
+    </ol>
+
+    <h2>iOS (iPhone or iPad)</h2>
+    <ol>
+      <li>Open <code>{{ download_url }}</code> in Safari and tap <strong>Allow</strong> to download the profile.</li>
+      <li>Open <strong>Settings &gt; General &gt; VPN and Device Management</strong>.</li>
+      <li>Tap the downloaded profile, tap <strong>Install</strong>, then enter the passcode.</li>
+      <li>Open <strong>Settings &gt; General &gt; About &gt; Certificate Trust Settings</strong>.</li>
+      <li>Enable full trust for <strong>IITGN-Management</strong>.</li>
+      <li>Return to this page and tap the button below.</li>
+    </ol>
+
+    <a class="button secondary" href="{{ portal_url }}">I have installed the certificate</a>
+  </main>
+</body>
+</html>

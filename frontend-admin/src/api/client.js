@@ -1,6 +1,15 @@
 import axios from 'axios'
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+function defaultApiUrl() {
+  const { protocol, hostname, port } = window.location
+  if (protocol === 'https:') {
+    const apiPort = port === '9443' ? '8443' : port
+    return `${protocol}//${hostname}${apiPort ? `:${apiPort}` : ''}/api`
+  }
+  return `http://${hostname}:8000/api`
+}
+
+const BASE_URL = import.meta.env.VITE_API_URL || defaultApiUrl()
 
 const api = axios.create({
   baseURL: BASE_URL,

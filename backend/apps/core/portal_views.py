@@ -6,8 +6,15 @@ GET  /portal/        -> if authenticated, redirect to role dashboard; else to lo
 """
 
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.http.request import split_domain_port
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
+
+
+def get_react_admin_url(request):
+    domain, _port = split_domain_port(request.get_host())
+    host = domain or request.get_host().split(':', 1)[0]
+    return f'https://{host}:9443/'
 
 
 def get_portal_redirect(user):
@@ -26,20 +33,23 @@ def get_portal_redirect(user):
         return '/housekeeping/dashboard/'
     if role == 'caretaker':
         return '/housekeeping/dashboard/'
-    # admin should never reach portal login, but handle gracefully
     if role == 'admin':
-        return '/admin-portal/'
+        return '/portal/login/'
     return '/portal/login/'
 
 
 def portal_root(request):
     if request.user.is_authenticated and request.user.is_active:
+        if getattr(request.user, 'role', '') == 'admin':
+            return redirect(get_react_admin_url(request))
         return redirect(get_portal_redirect(request.user))
     return redirect('/portal/login/')
 
 
 def portal_login(request):
     if request.user.is_authenticated and request.user.is_active:
+        if getattr(request.user, 'role', '') == 'admin':
+            return redirect(get_react_admin_url(request))
         return redirect(get_portal_redirect(request.user))
 
     error = ''
@@ -51,10 +61,9 @@ def portal_login(request):
         )
         if user and user.is_active:
             if user.role == 'admin':
-                error = 'Please use the admin portal to log in.'
-            else:
-                auth_login(request, user)
-                return redirect(get_portal_redirect(user))
+                return redirect(get_react_admin_url(request))
+            auth_login(request, user)
+            return redirect(get_portal_redirect(user))
         else:
             error = 'Invalid username or password.'
 

@@ -1,1 +1,39 @@
-{"name":"Campus Sanchalika – Horticulture","short_name":"Horticulture","start_url":"/horticulture/dashboard/","scope":"/horticulture/","display":"standalone","orientation":"portrait","background_color":"#efece4","theme_color":"#29543a","icons":[{"src":"/static/branding/campus-sanchalika-logo.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},{"src":"/static/branding/campus-sanchalika-logo.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
+{
+  "name": "Campus Sanchalika \u2013 Horticulture",
+  "short_name": "Horticulture",
+  "start_url": "/horticulture/dashboard/",
+  "scope": "/horticulture/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#efece4",
+  "theme_color": "#2d4a3e",
+  "icons": [
+    {
+      "src": "/static/branding/campus-sanchalika-logo.png",
+      "sizes": "405x405",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/branding/campus-sanchalika-logo.png",
+      "sizes": "405x405",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/branding/campus-sanchalika-logo.png",
+      "sizes": "405x405",
+      "type": "image/png",
+      "label": "Horticulture Mobile App"
+    },
+    {
+      "src": "/static/branding/campus-sanchalika-logo.png",
+      "sizes": "405x405",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Horticulture Dashboard"
+    }
+  ]
+}

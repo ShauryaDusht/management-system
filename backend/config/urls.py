@@ -39,6 +39,7 @@ def legacy_admin_redirect(_request):
 
 urlpatterns = [
     path('', backend_root),
+    path('', include('apps.core.urls')),
     path('sw.js', service_worker, name='service-worker'),
     path('admin/', legacy_admin_redirect),
     path('login/', portal_login, name='portal_login_alias'),
