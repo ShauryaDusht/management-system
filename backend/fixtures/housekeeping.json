@@ -480,7 +480,15 @@
   "pk": 13,
   "fields": {
     "user": 9,
-    "area": 37
+    "area": 4
+  }
+},
+{
+  "model": "housekeeping.hkuserarea",
+  "pk": 38,
+  "fields": {
+    "user": 9,
+    "area": 5
   }
 },
 {
