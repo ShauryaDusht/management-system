@@ -2,6 +2,7 @@ import axios from 'axios'
 
 function defaultApiUrl() {
   const { protocol, hostname, port } = window.location
+  if (!port) return `${window.location.origin}/api`
   if (protocol === 'https:') {
     const apiPort = port === '9443' ? '8443' : port
     return `${protocol}//${hostname}${apiPort ? `:${apiPort}` : ''}/api`
@@ -10,6 +11,7 @@ function defaultApiUrl() {
 }
 
 const BASE_URL = import.meta.env.VITE_API_URL || defaultApiUrl()
+const loginUrl = `${import.meta.env.BASE_URL}login`
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -53,7 +55,7 @@ api.interceptors.response.use(
     // Don't intercept refresh calls themselves (avoid infinite loop)
     if (original.url?.includes('/auth/token/refresh/')) {
       localStorage.clear()
-      window.location.href = '/login'
+      window.location.href = loginUrl
       return Promise.reject(error)
     }
 
@@ -76,7 +78,7 @@ api.interceptors.response.use(
       const refresh = localStorage.getItem('refresh_token')
       if (!refresh) {
         localStorage.clear()
-        window.location.href = '/login'
+        window.location.href = loginUrl
         return Promise.reject(error)
       }
 
@@ -92,7 +94,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null)
         localStorage.clear()
-        window.location.href = '/login'
+        window.location.href = loginUrl
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false
