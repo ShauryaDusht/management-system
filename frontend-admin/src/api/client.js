@@ -11,7 +11,7 @@ function defaultApiUrl() {
 }
 
 const BASE_URL = import.meta.env.VITE_API_URL || defaultApiUrl()
-const loginUrl = `${import.meta.env.BASE_URL}login`
+const loginUrl = '/admin/login'
 
 const api = axios.create({
   baseURL: BASE_URL,

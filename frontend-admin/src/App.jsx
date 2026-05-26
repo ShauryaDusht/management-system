@@ -15,7 +15,7 @@ import UsersPage from './pages/users/UsersPage'
 
 const ADMIN_ONLY = ['admin']
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
-const ROUTER_BASENAME = import.meta.env.BASE_URL === '/' ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '')
+const ROUTER_BASENAME = '/admin'
 
 function getLandingRoute(user) {
   if (user?.role === 'admin') return '/dashboard'
