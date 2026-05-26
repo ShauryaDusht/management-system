@@ -1,7 +1,7 @@
 const CACHE_VERSION = 'cs-v2';
 const ASSET_CACHE = CACHE_VERSION + '-assets';
 const PAGE_CACHE = CACHE_VERSION + '-pages';
-const PRECACHE = ['/static/pwa/offline.html', '/static/branding/campus-sanchalika-logo.png'];
+const PRECACHE = ['/static/pwa/offline.html', '/campus-sanchalika-logo.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(ASSET_CACHE).then(c => c.addAll(PRECACHE)));

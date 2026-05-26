@@ -9,13 +9,13 @@
   "theme_color": "#2d4a3e",
   "icons": [
     {
-      "src": "/static/branding/campus-sanchalika-logo.png",
+      "src": "/campus-sanchalika-logo.png",
       "sizes": "405x405",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/static/branding/campus-sanchalika-logo.png",
+      "src": "/campus-sanchalika-logo.png",
       "sizes": "405x405",
       "type": "image/png",
       "purpose": "maskable"
@@ -23,13 +23,13 @@
   ],
   "screenshots": [
     {
-      "src": "/static/branding/campus-sanchalika-logo.png",
+      "src": "/campus-sanchalika-logo.png",
       "sizes": "405x405",
       "type": "image/png",
       "label": "Horticulture Mobile App"
     },
     {
-      "src": "/static/branding/campus-sanchalika-logo.png",
+      "src": "/campus-sanchalika-logo.png",
       "sizes": "405x405",
       "type": "image/png",
       "form_factor": "wide",

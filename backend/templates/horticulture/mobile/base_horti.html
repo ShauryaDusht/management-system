@@ -4,7 +4,7 @@
 {% load static %}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<link rel="icon" type="image/png" href="{% static 'branding/campus-sanchalika-logo.png' %}">
+<link rel="icon" type="image/png" href="/campus-sanchalika-logo.png">
 <title>{% block title %}Horticulture{% endblock %} | Campus Sanchalika</title>
 <link rel="manifest" href="{% static 'pwa/manifest-horticulture.json' %}">
 <meta name="mobile-web-app-capable" content="yes">
@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Horticulture">
 <meta name="theme-color" content="#2d4a3e">
-<link rel="apple-touch-icon" href="{% static 'branding/campus-sanchalika-logo.png' %}">
+<link rel="apple-touch-icon" href="/campus-sanchalika-logo.png">
 <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 <script src="{% static 'shared/authService.js' %}" defer></script>
 <style>
@@ -98,7 +98,7 @@ label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4
 <div class="hdr">
   <div class="hdr-l">
     {% block back_btn %}{% endblock %}
-    <img class="brand-logo" src="{% static 'branding/campus-sanchalika-logo.png' %}" alt="Campus Sanchalika">
+    <img class="brand-logo" src="/campus-sanchalika-logo.png" alt="Campus Sanchalika">
     <span class="hdr-copy">
       <span class="hdr-app">Campus Sanchalika</span>
       <span class="hdr-ttl">{% block hdr_title %}HORTICULTURE{% endblock %}</span>

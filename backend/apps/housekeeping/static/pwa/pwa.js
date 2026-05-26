@@ -23,7 +23,7 @@
       var b = document.createElement('div');
       b.style.cssText = 'position:fixed;bottom:80px;left:12px;right:12px;background:#fff;border-radius:14px;padding:14px;box-shadow:0 4px 24px rgba(0,0,0,0.18);z-index:9999;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
       b.innerHTML = '<div style="display:flex;align-items:flex-start;gap:12px">'
-        + '<img src="/static/branding/campus-sanchalika-logo.png" style="width:44px;height:44px;border-radius:12px;flex-shrink:0" alt="">'
+        + '<img src="/campus-sanchalika-logo.png" style="width:44px;height:44px;border-radius:12px;flex-shrink:0" alt="">'
         + '<div style="flex:1"><div style="font-weight:800;font-size:13px;margin-bottom:3px">Install this app</div>'
         + '<div style="font-size:12px;color:#4b5563;line-height:1.4">Tap <b>Share</b> &#x2197; then <b>Add to Home Screen</b></div></div>'
         + '<button id="cs-close" style="background:none;border:none;font-size:22px;cursor:pointer;color:#9ca3af;padding:0;flex-shrink:0">&times;</button></div>'
@@ -44,7 +44,7 @@
       var b = document.createElement('div');
       b.style.cssText = 'position:fixed;bottom:80px;left:12px;right:12px;background:#fff;border-radius:14px;padding:14px;box-shadow:0 4px 24px rgba(0,0,0,0.18);z-index:9999;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
       b.innerHTML = '<div style="display:flex;align-items:center;gap:12px">'
-        + '<img src="/static/branding/campus-sanchalika-logo.png" style="width:44px;height:44px;border-radius:12px;flex-shrink:0" alt="">'
+        + '<img src="/campus-sanchalika-logo.png" style="width:44px;height:44px;border-radius:12px;flex-shrink:0" alt="">'
         + '<div><div style="font-weight:800;font-size:13px;margin-bottom:2px">Install Campus Sanchalika</div>'
         + '<div style="font-size:12px;color:#4b5563">Add to your home screen for quick access</div></div></div>'
         + '<div style="display:flex;gap:8px;margin-top:12px">'
