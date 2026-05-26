@@ -5,8 +5,11 @@ POST /portal/login/  -> authenticates and redirects to role-specific dashboard
 GET  /portal/        -> if authenticated, redirect to role dashboard; else to login
 """
 
+from pathlib import Path
+
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
-from django.http import JsonResponse
+from django.conf import settings
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
@@ -42,6 +45,20 @@ def portal_root(request):
             return redirect(get_react_admin_url(request))
         return redirect(get_portal_redirect(request.user))
     return redirect('/portal/login/')
+
+
+def portal_logo(_request):
+    logo_path = (
+        Path(settings.BASE_DIR)
+        / 'apps'
+        / 'housekeeping'
+        / 'static'
+        / 'branding'
+        / 'campus-sanchalika-logo.png'
+    )
+    if not logo_path.exists():
+        raise Http404('Logo not found.')
+    return FileResponse(open(logo_path, 'rb'), content_type='image/png')
 
 
 def portal_login(request):
