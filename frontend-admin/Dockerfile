@@ -23,5 +23,5 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 5173
 
-# serve the dist folder under the /admin path prefix
-CMD ["serve", "-s", "dist", "-l", "5173", "--single"]
+# serve the dist folder; nginx strips the /admin prefix before proxying
+CMD ["serve", "dist", "-l", "5173", "--single"]
