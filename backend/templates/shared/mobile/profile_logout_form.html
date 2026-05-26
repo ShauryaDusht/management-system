@@ -1,1 +1,4 @@
-<button type="button" class="btn-p" style="margin-top:4px" onclick="logoutUser()">Logout</button>
+<form method="post" action="/portal/logout/" data-logout-form data-redirect-url="/portal/login/">
+  {% csrf_token %}
+  <button type="submit" class="btn-p" style="margin-top:4px">Logout</button>
+</form>

@@ -18,7 +18,10 @@ button{display:inline-block;padding:10px 14px;border-radius:8px;background:#1f3f
   <div class="card">
     <h1>Horticulture Manager Dashboard</h1>
     <p>Module under development.</p>
-    <button type="button" onclick="logoutUser()">Logout</button>
+    <form method="post" action="/portal/logout/" data-logout-form data-redirect-url="/portal/login/">
+      {% csrf_token %}
+      <button type="submit">Logout</button>
+    </form>
   </div>
 </body>
 </html>

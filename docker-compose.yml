@@ -21,8 +21,8 @@ services:
     restart: unless-stopped
     volumes:
       - ./backend:/app
-      - media_files:/app/media
-      - static_files:/app/staticfiles
+      - /srv/campussanchalika/media:/app/media
+      - /srv/campussanchalika/staticfiles:/app/staticfiles
     env_file:
       - .env
     environment:
@@ -44,5 +44,3 @@ services:
 
 volumes:
   postgres_data:
-  media_files:
-  static_files:

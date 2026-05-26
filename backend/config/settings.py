@@ -138,7 +138,7 @@ CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS')
 
 CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
 
-LOGIN_URL = '/housekeeping/login/'
+LOGIN_URL = '/portal/login/'
 ADMIN_URL = 'manage/iitgn-staff/'
 
 LOGGING = {

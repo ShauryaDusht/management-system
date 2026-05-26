@@ -7,7 +7,6 @@ from django.contrib.auth import (
     authenticate,
     get_user_model,
     login as auth_login,
-    logout as auth_logout,
     update_session_auth_hash,
 )
 from django.db import models as dm
@@ -666,13 +665,6 @@ def hk_login(request):
             return redirect(next_url)
         error = "You do not have housekeeping access." if (user and user.is_active) else "Invalid username or password."
     return render(request, "housekeeping/mobile/login.html", {"error": error, "next": next_url})
-
-
-# require POST for logout to prevent CSRF-style logout via GET
-@require_POST
-def hk_logout(request):
-    auth_logout(request)
-    return redirect("/portal/login/")
 
 
 @hk_required

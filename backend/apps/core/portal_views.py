@@ -6,15 +6,13 @@ GET  /portal/        -> if authenticated, redirect to role dashboard; else to lo
 """
 
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
-from django.http.request import split_domain_port
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 
 def get_react_admin_url(request):
-    domain, _port = split_domain_port(request.get_host())
-    host = domain or request.get_host().split(':', 1)[0]
-    return f'https://{host}:9443/'
+    return '/admin/'
 
 
 def get_portal_redirect(user):
@@ -73,4 +71,6 @@ def portal_login(request):
 @require_POST
 def portal_logout(request):
     auth_logout(request)
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'redirect_url': '/portal/login/'})
     return redirect('/portal/login/')

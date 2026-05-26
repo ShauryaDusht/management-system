@@ -1,6 +1,6 @@
 from django.urls import path
 from .htmx_views import (
-    hk_login, hk_logout, hk_dashboard, hk_mark_task, hk_log_extra_work,
+    hk_login, hk_dashboard, hk_mark_task, hk_log_extra_work,
     hk_schedule, hk_attendance,
     hk_stock, hk_stock_request, hk_profile, hk_alerts_manage,
     hk_log_usage,
@@ -10,7 +10,6 @@ from .htmx_views import (
 
 urlpatterns = [
     path('login/',    hk_login,             name='hk_login'),
-    path('logout/',   hk_logout,            name='hk_logout'),
     path('dashboard/', hk_dashboard,        name='hk_dashboard'),
     path('task/<int:record_id>/mark/', hk_mark_task, name='hk_mark_task'),
     path('extra-work/', hk_log_extra_work,  name='hk_extra_work'),

@@ -134,9 +134,12 @@
   <hr class="divider">
 
   {# ── Logout ── #}
-  <button type="button" class="btn btn-danger btn-full" onclick="logoutUser()">
-    <span class="material-icons-round" style="font-size:18px">logout</span>
-    Sign Out
-  </button>
+  <form method="post" action="/portal/logout/" data-logout-form data-redirect-url="/portal/login/">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger btn-full">
+      <span class="material-icons-round" style="font-size:18px">logout</span>
+      Sign Out
+    </button>
+  </form>
 </div>
 {% endblock %}
