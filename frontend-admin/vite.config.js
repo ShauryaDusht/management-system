@@ -1,25 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
 export default defineConfig({
-  base: process.env.VITE_ADMIN_BASE || '/admin/',
   plugins: [react()],
-  resolve: {
-    dedupe: ['react', 'react-dom'],
-  },
-  optimizeDeps: {
-    include: ['react', 'react-dom', 'react-dom/client', 'react-router-dom'],
-  },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          react: ['react', 'react-dom', 'react-router-dom'],
-          charts: ['recharts'],
-          http: ['axios'],
-        },
-      },
-    },
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    allowedHosts: 'all',
   },
 })
