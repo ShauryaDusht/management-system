@@ -37,17 +37,12 @@ services:
   frontend-admin:
     build: ./frontend-admin
     restart: unless-stopped
-    env_file:
-      - .env
-    volumes:
-      - ./frontend-admin/src:/app/src
     ports:
       - "127.0.0.1:5173:5173"
     depends_on:
       - backend
-    command: npm run dev -- --host 0.0.0.0
 
 volumes:
   postgres_data:
   media_files:
-  static_files:                            # new shared volume for static files
+  static_files:

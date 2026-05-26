@@ -36,7 +36,7 @@ if (import.meta.env.DEV && 'serviceWorker' in navigator) {
 if (import.meta.env.PROD && 'serviceWorker' in navigator && window.location.protocol === 'https:') {
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('/admin-sw.js', { scope: '/' })
+      .register('/admin/admin-sw.js', { scope: '/admin/' })
       .catch((error) => console.warn('Admin PWA service worker registration failed:', error))
   })
 }

@@ -1,10 +1,27 @@
-FROM node:22-alpine
+# ── Stage 1: Build ──────────────────────────────────────────────
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY . .
 
+# Build with production env (picks up .env.production)
+RUN npm run build
+
+# ── Stage 2: Serve static files ─────────────────────────────────
+FROM node:22-alpine AS runner
+
+WORKDIR /app
+
+RUN npm install -g serve
+
+# Copy only the built output
+COPY --from=builder /app/dist ./dist
+
 EXPOSE 5173
+
+# serve the dist folder under the /admin path prefix
+CMD ["serve", "-s", "dist", "-l", "5173", "--single"]

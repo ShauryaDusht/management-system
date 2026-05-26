@@ -22,6 +22,9 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Only handle requests scoped to /admin/
+  if (!event.request.url.includes('/admin/')) return;
+
   const { request } = event;
   const url = new URL(request.url);
 
