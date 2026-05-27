@@ -137,6 +137,43 @@ def _horticulture_attendance_choices():
     ]
 
 
+def _auto_create_horti_second_half_from_first(workers, date, marked_by):
+    worker_ids = [worker.id for worker in workers]
+    if not worker_ids:
+        return 0
+    first_present_ids = set(
+        HorticultureAttendanceRecord.objects.filter(
+            worker_id__in=worker_ids,
+            date=date,
+            half='first',
+            status__in=['present', 'late'],
+        ).values_list('worker_id', flat=True)
+    )
+    if not first_present_ids:
+        return 0
+    existing_second_ids = set(
+        HorticultureAttendanceRecord.objects.filter(
+            worker_id__in=first_present_ids,
+            date=date,
+            half='second',
+        ).values_list('worker_id', flat=True)
+    )
+    now = timezone.now()
+    records = [
+        HorticultureAttendanceRecord(
+            worker_id=worker_id,
+            date=date,
+            half='second',
+            status='present',
+            marked_by=marked_by,
+            submitted_at=now,
+        )
+        for worker_id in sorted(first_present_ids - existing_second_ids)
+    ]
+    HorticultureAttendanceRecord.objects.bulk_create(records, ignore_conflicts=True)
+    return len(records)
+
+
 def _current_half():
     return 'first' if timezone.localtime().hour < 13 else 'second'
 
@@ -876,12 +913,16 @@ class AdminHorticultureDailyAssignmentListCreateAPIView(generics.ListCreateAPIVi
 
     def perform_create(self, serializer):
         photo = serializer.validated_data.get('photo')
+        photo_before = serializer.validated_data.get('photo_before')
+        photo_after = serializer.validated_data.get('photo_after')
         is_done = serializer.validated_data.get('status', HorticultureDailyAssignment.Status.DONE) == HorticultureDailyAssignment.Status.DONE
         serializer.save(
             assigned_by=self.request.user,
             completed_by=self.request.user if is_done else None,
             completed_at=timezone.now() if is_done else None,
             photo_uploaded_at=timezone.now() if photo else None,
+            photo_before_uploaded_at=timezone.now() if photo_before else None,
+            photo_after_uploaded_at=timezone.now() if photo_after else None,
         )
 
 
@@ -892,12 +933,16 @@ class AdminHorticultureDailyAssignmentDetailAPIView(generics.RetrieveUpdateDestr
 
     def perform_update(self, serializer):
         photo = serializer.validated_data.get('photo')
+        photo_before = serializer.validated_data.get('photo_before')
+        photo_after = serializer.validated_data.get('photo_after')
         status_value = serializer.validated_data.get('status', serializer.instance.status)
         completion_updates = {}
         if status_value == HorticultureDailyAssignment.Status.DONE and serializer.instance.status != HorticultureDailyAssignment.Status.DONE:
             completion_updates = {'completed_by': self.request.user, 'completed_at': timezone.now()}
         serializer.save(
             photo_uploaded_at=timezone.now() if photo else serializer.instance.photo_uploaded_at,
+            photo_before_uploaded_at=timezone.now() if photo_before else serializer.instance.photo_before_uploaded_at,
+            photo_after_uploaded_at=timezone.now() if photo_after else serializer.instance.photo_after_uploaded_at,
             **completion_updates,
         )
 
@@ -907,9 +952,10 @@ class AdminHorticultureDailyAssignmentPhotoAPIView(APIView):
 
     def get(self, request, pk):
         assignment = get_object_or_404(HorticultureDailyAssignment, pk=pk)
-        if not assignment.photo:
+        photo = assignment.photo_after or assignment.photo
+        if not photo:
             return Response({'detail': 'Photo not found.'}, status=status.HTTP_404_NOT_FOUND)
-        file_handle = assignment.photo.open('rb')
+        file_handle = photo.open('rb')
         filename = f"horticulture_{assignment.date}_{assignment.area_id}_{assignment.task_type_id}_{assignment.worker_id}.jpg"
         return FileResponse(file_handle, as_attachment=True, filename=filename)
 
@@ -1550,7 +1596,12 @@ def horticulture_mark_task(request):
                 else:
                     assignment.status = HorticultureDailyAssignment.Status.IN_PROGRESS
                     assignment.started_at = timezone.now()
-                    assignment.save(update_fields=['status', 'started_at'])
+                    update_fields = ['status', 'started_at']
+                    if request.FILES.get('photo_before'):
+                        assignment.photo_before = request.FILES['photo_before']
+                        assignment.photo_before_uploaded_at = timezone.now()
+                        update_fields.extend(['photo_before', 'photo_before_uploaded_at'])
+                    assignment.save(update_fields=update_fields)
                     return redirect(f'/horticulture/mark-task/?{query}')
             elif action == 'undo':
                 if assignment is None:
@@ -1560,17 +1611,15 @@ def horticulture_mark_task(request):
                 else:
                     assignment.status = HorticultureDailyAssignment.Status.PENDING
                     assignment.started_at = None
-                    assignment.save(update_fields=['status', 'started_at'])
+                    assignment.photo_before = None
+                    assignment.photo_before_uploaded_at = None
+                    assignment.save(update_fields=['status', 'started_at', 'photo_before', 'photo_before_uploaded_at'])
                     return redirect(f'/horticulture/mark-task/?{query}')
             elif action == 'done':
                 if assignment is None:
                     error_message = 'Task assignment not found.'
                 elif assignment.status != HorticultureDailyAssignment.Status.IN_PROGRESS:
                     error_message = 'Start work before marking completed.'
-                elif (request.POST.get('captureMethod') or '').strip().lower() != 'camera':
-                    error_message = 'Use the camera to capture the task photo.'
-                elif not request.FILES.get('photo'):
-                    error_message = 'Task photo is required. Use the camera to capture it.'
                 elif TaskLog.objects.filter(zone=selected_zone, area=selected_area, task_type=assignment.task_type, done_date=today).exists():
                     error_message = 'This task is already submitted for today.'
                 else:
@@ -1585,11 +1634,19 @@ def horticulture_mark_task(request):
                     if request.FILES.get('photo'):
                         assignment.photo = request.FILES['photo']
                         assignment.photo_uploaded_at = timezone.now()
+                        assignment.photo_after = request.FILES['photo']
+                        assignment.photo_after_uploaded_at = timezone.now()
+                    if request.FILES.get('photo_after'):
+                        assignment.photo_after = request.FILES['photo_after']
+                        assignment.photo_after_uploaded_at = timezone.now()
                     assignment.status = HorticultureDailyAssignment.Status.DONE
                     assignment.completed_by = request.user
                     assignment.completed_at = timezone.now()
                     assignment.note = request.POST.get('note', '').strip()
-                    assignment.save(update_fields=['photo', 'photo_uploaded_at', 'status', 'completed_by', 'completed_at', 'note'])
+                    assignment.save(update_fields=[
+                        'photo', 'photo_uploaded_at', 'photo_after', 'photo_after_uploaded_at',
+                        'status', 'completed_by', 'completed_at', 'note',
+                    ])
                     messages.success(
                         request,
                         f'{task_log.task_type.name} completed for {selected_area.name}.',
@@ -1677,6 +1734,8 @@ def horticulture_attendance(request):
         elif not selected_zone:
             error_message = 'Select a valid zone before marking attendance.'
         elif action == 'submit_half':
+            if half == 'second':
+                _auto_create_horti_second_half_from_first(workers, today, request.user)
             HorticultureAttendanceRecord.objects.filter(
                 worker__in=workers,
                 date=today,

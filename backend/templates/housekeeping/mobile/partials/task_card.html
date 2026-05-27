@@ -145,9 +145,15 @@
   {% if record.status == 'pending' %}
   <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
         hx-target="#task-{{ record.id }}" hx-swap="outerHTML"
+        hx-encoding="multipart/form-data"
+        enctype="multipart/form-data"
         style="margin-top:8px">
     {% csrf_token %}
     <input type="hidden" name="action" value="start">
+    <div style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:8px;background:#f9fafb;margin-bottom:7px">
+      <div style="font-size:11px;font-weight:800;color:#374151;margin-bottom:5px">Before photo (optional)</div>
+      <input type="file" name="photo_before" accept="image/*" capture="environment" style="font-size:12px;width:100%">
+    </div>
     <button type="submit" class="btn-g" style="padding:9px;font-size:12px">Start Work</button>
   </form>
   {% elif record.status == 'in_progress' %}
@@ -157,7 +163,7 @@
         style="margin-top:8px"
         id="task-complete-form-{{ record.id }}"
         class="js-task-complete-form"
-        data-requires-photo="{% if record.schedule.requires_photo %}1{% else %}0{% endif %}">
+        data-requires-photo="0">
     {% csrf_token %}
     <input type="hidden" name="action" value="done">
     <input type="hidden" name="capturedAt" class="js-photo-captured-at" value="">
@@ -168,8 +174,8 @@
     <input type="hidden" name="format" class="js-photo-format" value="">
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <input type="text" name="note" placeholder="Remark / completion note" style="flex:1;padding:7px 8px;font-size:12px;min-width:140px">
-      {% if record.schedule.requires_photo %}
       <div style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:8px;background:#f9fafb">
+        <div style="font-size:11px;font-weight:800;color:#374151;margin-bottom:5px">After photo (optional)</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
           <button type="button"
                   class="btn-g js-open-camera"
@@ -177,7 +183,7 @@
                   data-task-id="{{ record.id }}"
                   data-task-name="{{ record.schedule.task_name|escape }}"
                   style="width:auto;padding:8px 10px;font-size:12px;line-height:1.2">
-            Take Photo
+            Take After Photo
           </button>
         </div>
         <input type="file"
@@ -209,7 +215,6 @@
           Retry Upload
         </button>
       </div>
-      {% endif %}
     </div>
     <button type="submit" class="btn-s" style="padding:9px;font-size:12px;margin-top:7px">Mark Completed</button>
   </form>
@@ -224,8 +229,21 @@
   <div style="font-size:11px;color:#16a34a;margin-top:6px">
     Completed at {{ record.completed_at|time:"g:i A" }}{% if record.completed_by %} by {{ record.completed_by.get_full_name|default:record.completed_by.username }}{% endif %}
   </div>
-  {% if record.photo_after %}
-  <div style="margin-top:7px">
+  {% if record.photo_before or record.photo_after %}
+  <div style="margin-top:7px;display:flex;gap:8px;flex-wrap:wrap">
+    {% if record.photo_before %}
+    <div>
+      <img src="{{ record.photo_before.url }}"
+           alt="Before task proof"
+           class="js-task-photo-thumb"
+           data-photo-url="{{ record.photo_before.url }}"
+           data-photo-title="Before - {{ record.schedule.task_name|escape }}"
+           style="width:86px;height:86px;border-radius:8px;object-fit:cover;border:1px solid #d1d5db;cursor:pointer">
+      <div style="font-size:10px;color:#6b7280;margin-top:4px">Before photo</div>
+    </div>
+    {% endif %}
+    {% if record.photo_after %}
+    <div>
     <img src="{{ record.photo_after.url }}"
          alt="Completed task proof"
          class="js-task-photo-thumb"
@@ -243,6 +261,8 @@
       {% if record.photo_after_saved_size %}| {{ record.photo_after_saved_size|filesizeformat }}{% endif %}
       {% if record.photo_after_compression_ratio %}| {{ record.photo_after_compression_ratio }}% saved{% endif %}
     </div>
+    </div>
+    {% endif %}
   </div>
   {% endif %}
   {% if record.note %}<div style="font-size:11px;color:#374151;margin-top:3px">Remark: {{ record.note }}</div>{% endif %}

@@ -1253,8 +1253,8 @@ def _gallery_base_queryset():
     return (
         HKDailyRecord.objects
         .select_related('schedule', 'area', 'completed_by', 'assigned_worker', 'photo_after_flagged_by')
-        .filter(photo_after__isnull=False)
-        .exclude(photo_after='')
+        .filter(Q(photo_after__isnull=False) | Q(photo_before__isnull=False))
+        .exclude(photo_after='', photo_before='')
         .annotate(capture_ts=Coalesce('photo_after_captured_at', 'completed_at'))
     )
 

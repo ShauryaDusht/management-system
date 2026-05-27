@@ -26,7 +26,7 @@ export default function OverviewTab() {
     period_minutes: '60',
     task_mode: 'temporary',
     add_to_daily: false,
-    requires_photo: true,
+    requires_photo: false,
     note: '',
   })
 
@@ -182,7 +182,7 @@ export default function OverviewTab() {
       period_minutes: '60',
       task_mode: 'temporary',
       add_to_daily: false,
-      requires_photo: true,
+      requires_photo: false,
       note: '',
     })
   }
@@ -527,7 +527,7 @@ export default function OverviewTab() {
             checked={assignForm.requires_photo}
             onChange={(e) => setAssignForm((p) => ({ ...p, requires_photo: e.target.checked }))}
           />
-          Require after-photo on completion
+          Ask for optional after-photo on completion
         </label>
       </Modal>
     </div>

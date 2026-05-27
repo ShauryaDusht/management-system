@@ -267,7 +267,7 @@ class Command(BaseCommand):
     ]
 
     SWM_SUPERVISOR_BY_AREA = {
-        "Solid Waste Management": "pradip.swm",
+        "Solid Waste Management": "pradip.chauhan",
     }
 
     SWM_TARGET_ROSTER = [
@@ -316,7 +316,7 @@ class Command(BaseCommand):
         "Jurqia": "jaimin",
         "Lekhaag": "jaimin",
         "Kyzeel": "ramsingh",
-        "Hostel Common Area": "vishwajeet",
+        "Hostel Common Area": "vishvajeet.kumar",
     }
 
     HOSTEL_TARGET_ROSTER = [

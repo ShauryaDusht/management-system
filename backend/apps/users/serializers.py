@@ -3,7 +3,25 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from apps.core.portal_views import get_portal_redirect
 
-from .models import User
+from .models import User, build_username_from_names, is_standard_username, normalize_username_value
+
+
+def _canonical_username(attrs, instance=None):
+    first_name = attrs.get('first_name', getattr(instance, 'first_name', ''))
+    last_name = attrs.get('last_name', getattr(instance, 'last_name', ''))
+    supplied = normalize_username_value(attrs.get('username', getattr(instance, 'username', '')))
+    generated = build_username_from_names(first_name, last_name)
+    username = generated or supplied
+    if not username:
+        raise serializers.ValidationError({'username': 'Enter first and last name to generate username.'})
+    if not is_standard_username(username):
+        raise serializers.ValidationError({'username': 'Username must be lowercase firstname.lastname.'})
+    qs = User.objects.filter(username=username)
+    if instance is not None:
+        qs = qs.exclude(pk=instance.pk)
+    if qs.exists():
+        raise serializers.ValidationError({'username': 'A user with this standardized username already exists.'})
+    return username
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -14,6 +32,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return get_portal_redirect(user)
 
     def validate(self, attrs):
+        attrs['username'] = normalize_username_value(attrs.get('username'))
         data = super().validate(attrs)
         user = self.user
         data['user'] = {
@@ -91,6 +110,7 @@ class UserSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         area_ids = validated_data.pop('area_ids', None)
         password = validated_data.pop('password', None)
+        validated_data['username'] = _canonical_username(validated_data, instance)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -126,6 +146,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             if missing:
                 raise serializers.ValidationError({'area_ids': [f'Invalid area ids: {missing}']})
 
+        validated_data['username'] = _canonical_username(validated_data)
         password = validated_data.pop('password')
         user = User(**validated_data)
         user.set_password(password)

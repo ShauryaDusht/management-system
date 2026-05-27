@@ -95,10 +95,10 @@ class HorticultureAttendanceRecordAdmin(admin.ModelAdmin):
 
 @admin.register(HorticultureDailyAssignment, site=admin_site)
 class HorticultureDailyAssignmentAdmin(admin.ModelAdmin):
-    list_display = ('worker', 'area', 'date', 'session', 'task_type', 'assigned_by', 'assigned_at')
+    list_display = ('worker', 'area', 'date', 'session', 'task_type', 'status', 'assigned_by', 'assigned_at')
     list_filter = ('date', 'session', 'task_type', 'area__zone')
     search_fields = ('worker__name', 'area__name', 'task_type__name')
-    readonly_fields = ('assigned_at', 'photo_uploaded_at')
+    readonly_fields = ('assigned_at', 'photo_uploaded_at', 'photo_before_uploaded_at', 'photo_after_uploaded_at')
     date_hierarchy = 'date'
 
 

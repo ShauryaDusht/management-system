@@ -139,10 +139,14 @@ export default function GalleryTab() {
         horticultureAPI.getAreas(),
       ])
       setRows(
-        asList(assignmentRes.data).map((row) => ({
-          ...row,
-          photo_url: normalizeMediaUrl(row.photo_url),
-        }))
+        asList(assignmentRes.data).flatMap((row) => {
+          const beforeUrl = normalizeMediaUrl(row.photo_before_url)
+          const afterUrl = normalizeMediaUrl(row.photo_after_url || row.photo_url)
+          return [
+            beforeUrl ? { ...row, photo_url: beforeUrl, photo_type: 'before', photo_uploaded_at: row.photo_before_uploaded_at || row.started_at } : null,
+            afterUrl ? { ...row, photo_url: afterUrl, photo_type: 'after', photo_uploaded_at: row.photo_after_uploaded_at || row.photo_uploaded_at || row.completed_at } : null,
+          ].filter(Boolean)
+        })
       )
       setAreas(asList(areaRes.data))
     } catch (err) {
@@ -274,9 +278,10 @@ export default function GalleryTab() {
 
   const exportPhotoLog = () => {
     const rowsForCsv = [
-      ['Date', 'Session', 'Worker', 'Area', 'Task', 'Assigned By', 'Photo URL', 'Uploaded At', 'Note'],
+      ['Date', 'Type', 'Session', 'Worker', 'Area', 'Task', 'Assigned By', 'Photo URL', 'Uploaded At', 'Note'],
       ...filteredPhotos.map((row) => [
         row.date || '',
+        row.photo_type || 'after',
         row.session || '',
         row.worker_name || '',
         row.area_name || '',
@@ -295,12 +300,14 @@ export default function GalleryTab() {
   const downloadPhoto = async (row) => {
     if (!row?.id) return
     try {
-      const response = await horticultureAPI.downloadDailyAssignmentPhoto(row.id)
-      const blob = response.data
+      const response = row.photo_type === 'before'
+        ? await fetch(row.photo_url)
+        : await horticultureAPI.downloadDailyAssignmentPhoto(row.id)
+      const blob = row.photo_type === 'before' ? await response.blob() : response.data
       const extension = blob.type?.split('/')?.[1] || 'jpg'
       triggerDownload(
         blob,
-        `horticulture_${safeName(row.area_name, 'area')}_${safeName(row.task_type_name, 'task')}_${row.date || 'photo'}.${extension}`
+    `horticulture_${safeName(row.photo_type, 'photo')}_${safeName(row.area_name, 'area')}_${safeName(row.task_type_name, 'task')}_${row.date || 'photo'}.${extension}`
       )
     } catch (err) {
       setError(getErrorMessage(err, 'Photo download failed.'))
@@ -313,6 +320,7 @@ export default function GalleryTab() {
       <PhotoTile row={row} height={48} onClick={() => openLightbox(row)} />
     </div>,
     row.area_name || '-',
+    <span key={`type-${row.id}-${row.photo_type}`} style={{ textTransform: 'capitalize' }}>{row.photo_type || 'after'}</span>,
     row.task_type_name || '-',
     row.worker_name || '-',
     formatDateTime(row.photo_uploaded_at || row.assigned_at),
@@ -331,7 +339,7 @@ export default function GalleryTab() {
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800 }}>Task Photo Gallery</div>
-            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Visual log of horticulture task photos uploaded by staff</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Before and after horticulture task photos uploaded by staff</div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 700 }}>{stats.visiblePhotos.toLocaleString()} photos</span>
@@ -469,7 +477,7 @@ export default function GalleryTab() {
       ) : (
         <Card noPad>
           <DataTable
-            headers={['Thumbnail', 'Area', 'Task Name', 'Worker', 'Uploaded At', 'Actions']}
+            headers={['Thumbnail', 'Area', 'Type', 'Task Name', 'Worker', 'Uploaded At', 'Actions']}
             rows={listRows}
             emptyMsg="No horticulture task photos found."
           />
@@ -511,7 +519,7 @@ export default function GalleryTab() {
             </div>
             <div style={{ padding: '8px 10px', color: '#dbeafe', fontSize: 12 }}>
               Photo {filteredPhotos.length ? box.index + 1 : 0} of {filteredPhotos.length}
-              {current ? ` | ${current.task_type_name || '-'} | ${current.area_name || '-'} | ${formatDate(current.date)}` : ''}
+              {current ? ` | ${(current.photo_type || 'after').toUpperCase()} | ${current.task_type_name || '-'} | ${current.area_name || '-'} | ${formatDate(current.date)}` : ''}
             </div>
           </div>
         </div>

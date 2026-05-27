@@ -47,6 +47,13 @@ const EMPTY = {
   password: '',
 }
 
+const buildUsername = (first, last) => {
+  const cleanFirst = String(first || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '')
+  const parts = String(last || '').trim().toLowerCase().match(/[a-z0-9]+/g) || []
+  const cleanLast = parts[parts.length - 1] || ''
+  return cleanFirst && cleanLast ? `${cleanFirst}.${cleanLast}` : ''
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState([])
   const [areas, setAreas] = useState([])
@@ -94,8 +101,9 @@ export default function UsersPage() {
   }
 
   const save = async () => {
-    if (!form.username || !form.role) {
-      setFormError('Username and Role are required.')
+    const standardizedUsername = buildUsername(form.first_name, form.last_name) || String(form.username || '').trim().toLowerCase()
+    if (!standardizedUsername || !form.role) {
+      setFormError('First name, last name, and role are required.')
       return
     }
     if (modal.mode === 'create' && !form.password) {
@@ -106,7 +114,7 @@ export default function UsersPage() {
       setFormError('')
       try {
         const payload = {
-          username: form.username,
+          username: standardizedUsername,
           first_name: form.first_name,
           last_name: form.last_name,
           email: form.email,
@@ -347,14 +355,14 @@ export default function UsersPage() {
         <Alert message={formError} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="First Name">
-            <Input value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} />
+            <Input value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value, username: buildUsername(e.target.value, p.last_name) || p.username }))} />
           </Field>
           <Field label="Last Name">
-            <Input value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} />
+            <Input value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value, username: buildUsername(p.first_name, e.target.value) || p.username }))} />
           </Field>
         </div>
         <Field label="Username" required>
-          <Input value={form.username} onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))} />
+          <Input value={form.username} onChange={(e) => setForm((p) => ({ ...p, username: e.target.value.toLowerCase().replace(/\s+/g, '') }))} />
         </Field>
         <Field label="Email">
           <Input type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />

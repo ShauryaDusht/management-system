@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from apps.horticulture.management.commands.seed_horticulture import WORKER_TEAMS
+from apps.users.models import normalize_username_value
 
 from .models import HorticultureZone, SeasonSetting, TaskLog, TaskType
 
@@ -62,7 +63,9 @@ def get_selected_supervisor_zone(supervisor, zone_id=None):
 
 
 def get_supervisor_worker_queryset(supervisor):
-    specs = WORKER_TEAMS.get(getattr(supervisor, 'username', ''), [])
+    username = normalize_username_value(getattr(supervisor, 'username', ''))
+    team_map = {normalize_username_value(key): value for key, value in WORKER_TEAMS.items()}
+    specs = team_map.get(username, [])
     if not specs:
         return User.objects.none()
 

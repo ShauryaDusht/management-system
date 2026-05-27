@@ -215,7 +215,7 @@ Existing account passwords are preserved.
             ('nikul.caretaker', 'Nikulsinh Ashoksinh', 'Bihola', '427', '9714730290', 'nikulsinghbhola862@gmail.com', ['Hiqom']),
             ('jaimin', 'Jaimin', 'Parmar', '318', '7600738945', 'hostel.caretaker@iitgn.ac.in', ['Jurqia', 'Lekhaag']),
             ('ramsingh', 'Ramprakash Lembabhai', 'Parmar', '317', '9687460280', 'ramairy1198@gmail.com', ['Kyzeel']),
-            ('vishwajeet', 'Vishvajeet', 'Kumar', '316', '9898037530', 'mishra.vishwajeet@iitgn.ac.in', ['Hostel Common Area']),
+            ('vishvajeet.kumar', 'Vishvajeet', 'Kumar', '316', '9898037530', 'mishra.vishwajeet@iitgn.ac.in', ['Hostel Common Area']),
         ]
         for username, first, last, pc, phone, email, areas in caretakers:
             self.make_user(username, first, last, phone, 'caretaker', areas, email=email, pay_code=pc)
@@ -231,7 +231,7 @@ Existing account passwords are preserved.
             ('mukesh.vaghela', 'Mukeshkumar', 'Vaghela', '466', '9265591836', 'm.vaghela23@gmail.com', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Academic Block 8', 'Old Academic Reliever']),
             ('bipin.vaghela', 'Bipinchandra Dineshkumar', 'Vaghela', '350', '9979627312', 'bipin.vaghela4u@gmail.com', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Old Academic Common Area']),
             ('narendra.shreemali', 'Narendrakumar Natvarbhai', 'Shrimali', '328', '9898661986', 'narendrashrimali36262@gmail.com', ['Roads & Outdoor', 'Old Guest House']),
-            ('pradip.swm', 'Pradip', 'Chauhan', '3', '8200560889', 'pradipchauhan783@gmail.com', ['Solid Waste Management']),
+            ('pradip.chauhan', 'Pradip', 'Chauhan', '3', '8200560889', 'pradipchauhan783@gmail.com', ['Solid Waste Management']),
         ]
         for username, first, last, pc, phone, email, areas in supervisors:
             self.make_user(username, first, last, phone, 'supervisor', areas, email=email, pay_code=pc)
@@ -672,7 +672,7 @@ Existing account passwords are preserved.
                 worker.save(update_fields=update_fields)
 
         # Common Area staffing details
-        common_supervisor = User.objects.filter(username='vishwajeet').first()
+        common_supervisor = User.objects.filter(username='vishvajeet.kumar').first()
         common_shift_map = {
             'Vinayak Solanki': 'night',
             'Anil Thakur': 'day',
@@ -807,7 +807,7 @@ Existing account passwords are preserved.
             {'area': 'Solid Waste Management', 'name': 'Dineshbhai Babubhai Chauhan', 'pay_code': '146', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': []},
             {'area': 'Solid Waste Management', 'name': 'Sunilbhai Prabhatji Thakor', 'pay_code': '407', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': []},
         ]
-        swm_synced, swm_deactivated = self._sync_area_roster(swm_roster, 'pradip.swm')
+        swm_synced, swm_deactivated = self._sync_area_roster(swm_roster, 'pradip.chauhan')
         swm_deleted, swm_kept = self._cleanup_unused_inactive_workers(['Solid Waste Management'])
         self.stdout.write(
             '  [OK] Solid Waste Management roster synced: '

@@ -353,6 +353,8 @@ class AdminDailyAssignmentSerializer(serializers.ModelSerializer):
     task_type_name = serializers.CharField(source='task_type.name', read_only=True)
     assigned_by_name = serializers.SerializerMethodField()
     photo_url = serializers.SerializerMethodField()
+    photo_before_url = serializers.SerializerMethodField()
+    photo_after_url = serializers.SerializerMethodField()
 
     class Meta:
         model = HorticultureDailyAssignment
@@ -373,12 +375,18 @@ class AdminDailyAssignmentSerializer(serializers.ModelSerializer):
             'started_at',
             'completed_by',
             'completed_at',
+            'photo_before',
+            'photo_before_url',
+            'photo_before_uploaded_at',
             'photo',
             'photo_url',
             'photo_uploaded_at',
+            'photo_after',
+            'photo_after_url',
+            'photo_after_uploaded_at',
             'note',
         ]
-        read_only_fields = ['assigned_by', 'assigned_by_name', 'assigned_at', 'started_at', 'completed_by', 'completed_at', 'photo_uploaded_at']
+        read_only_fields = ['assigned_by', 'assigned_by_name', 'assigned_at', 'started_at', 'completed_by', 'completed_at', 'photo_uploaded_at', 'photo_before_uploaded_at', 'photo_after_uploaded_at']
 
     def get_assigned_by_name(self, obj):
         if obj.assigned_by:
@@ -386,10 +394,19 @@ class AdminDailyAssignmentSerializer(serializers.ModelSerializer):
         return ''
 
     def get_photo_url(self, obj):
+        return self._file_url(obj.photo_after or obj.photo)
+
+    def get_photo_before_url(self, obj):
+        return self._file_url(obj.photo_before)
+
+    def get_photo_after_url(self, obj):
+        return self._file_url(obj.photo_after or obj.photo)
+
+    def _file_url(self, file_field):
         request = self.context.get('request')
-        if not obj.photo:
+        if not file_field:
             return ''
-        url = obj.photo.url
+        url = file_field.url
         return request.build_absolute_uri(url) if request else url
 
     def validate(self, attrs):

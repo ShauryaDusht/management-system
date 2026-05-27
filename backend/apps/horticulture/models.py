@@ -267,8 +267,12 @@ class HorticultureDailyAssignment(models.Model):
         related_name='horticulture_daily_assignments_completed',
     )
     completed_at = models.DateTimeField(null=True, blank=True)
+    photo_before = models.ImageField(upload_to='horticulture/tasks/%Y/%m/%d/before/', null=True, blank=True)
+    photo_before_uploaded_at = models.DateTimeField(null=True, blank=True)
     photo = models.ImageField(upload_to='horticulture/tasks/%Y/%m/%d/', null=True, blank=True)
     photo_uploaded_at = models.DateTimeField(null=True, blank=True)
+    photo_after = models.ImageField(upload_to='horticulture/tasks/%Y/%m/%d/after/', null=True, blank=True)
+    photo_after_uploaded_at = models.DateTimeField(null=True, blank=True)
     note = models.CharField(max_length=300, blank=True)
 
     class Meta:

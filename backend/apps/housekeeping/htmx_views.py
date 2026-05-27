@@ -40,6 +40,7 @@ from .models import (
     HKWorkerSelectionRequest,
 )
 from .photo_utils import process_task_photo
+from apps.users.models import normalize_username_value
 from apps.inventory.models import ItemIssue, ItemUsageLog
 
 logger = logging.getLogger(__name__)
@@ -133,6 +134,44 @@ def _attendance_relievers_for_area(area):
         return qs.filter(area__name="New Academic Reliever").order_by("name")
 
     return qs.none()
+
+
+def _auto_create_second_half_from_first(workers, date, marked_by):
+    worker_ids = list(workers.values_list("id", flat=True) if hasattr(workers, "values_list") else [w.id for w in workers])
+    if not worker_ids:
+        return 0
+    first_present_ids = set(
+        HKAttendanceRecord.objects.filter(
+            worker_id__in=worker_ids,
+            date=date,
+            half="first",
+            status__in=["present", "late"],
+        ).values_list("worker_id", flat=True)
+    )
+    if not first_present_ids:
+        return 0
+    existing_second_ids = set(
+        HKAttendanceRecord.objects.filter(
+            worker_id__in=first_present_ids,
+            date=date,
+            half="second",
+        ).values_list("worker_id", flat=True)
+    )
+    now = timezone.now()
+    records = [
+        HKAttendanceRecord(
+            worker_id=worker_id,
+            date=date,
+            half="second",
+            status="present",
+            marked_by=marked_by,
+            submitted_at=now,
+            note="Auto-present from first half",
+        )
+        for worker_id in sorted(first_present_ids - existing_second_ids)
+    ]
+    HKAttendanceRecord.objects.bulk_create(records, ignore_conflicts=True)
+    return len(records)
 
 
 def _uses_sunday_special_only(area):
@@ -653,7 +692,7 @@ def hk_login(request):
 
         user = authenticate(
             request,
-            username=request.POST.get("username", "").strip(),
+            username=normalize_username_value(request.POST.get("username", "")),
             password=request.POST.get("password", ""),
         )
         if user and user.is_active and user.role in [
@@ -1250,7 +1289,11 @@ def hk_mark_task(request, record_id):
             if not record.started_at:
                 record.started_at = now
             record.note = request.POST.get("note", "").strip()
-            record.save(update_fields=["status", "started_at", "note"])
+            update_fields = ["status", "started_at", "note"]
+            if "photo_before" in request.FILES:
+                record.photo_before = request.FILES["photo_before"]
+                update_fields.append("photo_before")
+            record.save(update_fields=update_fields)
 
     elif action == "undo":
         if record.status == "done":
@@ -1260,6 +1303,7 @@ def hk_mark_task(request, record_id):
             record.started_at = None
             record.completed_by = None
             record.completed_at = None
+            record.photo_before = None
             record.photo_after = None
             record.photo_after_thumbnail = None
             record.photo_after_captured_at = None
@@ -1270,7 +1314,7 @@ def hk_mark_task(request, record_id):
             record.photo_after_compression_ratio = 0
             record.photo_after_format = ""
             record.save(update_fields=[
-                "status", "started_at", "completed_by", "completed_at", "photo_after",
+                "status", "started_at", "completed_by", "completed_at", "photo_before", "photo_after",
                 "photo_after_thumbnail",
                 "photo_after_captured_at", "photo_after_capture_method",
                 "photo_after_original_size", "photo_after_saved_size", "photo_after_thumb_size",
@@ -1290,8 +1334,6 @@ def hk_mark_task(request, record_id):
             record.save(update_fields=["status", "completed_by", "completed_at", "note"])
         elif not has_worker_assignment():
             task_error = "Assign worker first."
-        elif record.schedule.requires_photo and "photo_after" not in request.FILES and not record.photo_after:
-            task_error = "After-photo is required to complete this task."
         else:
             record.status = "done"
             record.completed_by = user
@@ -1487,6 +1529,8 @@ def hk_attendance(request):
 
         if action == "submit_half":
             half = request.POST.get("half", cur_half)
+            if half == "second":
+                _auto_create_second_half_from_first(workers, sel_date, user)
             HKAttendanceRecord.objects.filter(
                 worker__in=workers, date=sel_date, half=half, is_submitted=False
             ).update(is_submitted=True, submitted_at=timezone.now())

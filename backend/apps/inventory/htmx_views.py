@@ -10,6 +10,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
+
+from apps.users.models import normalize_username_value
 from django.views.decorators.http import require_POST
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
@@ -31,7 +33,7 @@ def mobile_login(request):
     next_url = '/inventory/mobile/'
 
     if request.method == 'POST':
-        username = request.POST.get('username', '').strip()
+        username = normalize_username_value(request.POST.get('username', ''))
         password = request.POST.get('password', '')
         raw_next = request.POST.get('next', '').strip()
 

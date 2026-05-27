@@ -23,7 +23,11 @@
         {{ row.first_att.status|title }}{% if row.first_att.is_submitted %} ✓{% endif %}
       </span>
       {% else %}
+      {% if row.first_att and row.first_att.status == 'present' %}
+      <span class="bdg g">Auto Present</span>
+      {% else %}
       <span class="bdg gr">Not Marked</span>
+      {% endif %}
       {% endif %}
     </div>
     {% if row.first_att and row.first_att.is_submitted %}

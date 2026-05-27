@@ -1,5 +1,25 @@
+import re
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+
+USERNAME_RE = re.compile(r'^[a-z]+[a-z0-9]*\.[a-z]+[a-z0-9]*$')
+
+
+def normalize_username_value(username):
+    return re.sub(r'\s+', '', (username or '').strip().lower())
+
+
+def build_username_from_names(first_name, last_name):
+    first = re.sub(r'[^a-z0-9]', '', (first_name or '').strip().lower())
+    last_parts = re.findall(r'[a-z0-9]+', (last_name or '').strip().lower())
+    last = last_parts[-1] if last_parts else ''
+    return f'{first}.{last}' if first and last else ''
+
+
+def is_standard_username(username):
+    return bool(USERNAME_RE.fullmatch(username or ''))
 
 
 class User(AbstractUser):
@@ -16,6 +36,14 @@ class User(AbstractUser):
     pay_code = models.CharField(max_length=20, blank=True)
     profile_photo = models.ImageField(upload_to='users/photos/', null=True, blank=True)
     is_active = models.BooleanField(default=True)
+
+    def clean(self):
+        super().clean()
+        self.username = normalize_username_value(self.username)
+
+    def save(self, *args, **kwargs):
+        self.username = normalize_username_value(self.username)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.get_full_name() or self.username} ({self.role})"

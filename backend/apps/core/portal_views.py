@@ -13,6 +13,8 @@ from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
+from apps.users.models import normalize_username_value
+
 
 def get_react_admin_url(request):
     return '/admin/'
@@ -71,7 +73,7 @@ def portal_login(request):
     if request.method == 'POST':
         user = authenticate(
             request,
-            username=request.POST.get('username', '').strip(),
+            username=normalize_username_value(request.POST.get('username', '')),
             password=request.POST.get('password', ''),
         )
         if user and user.is_active:

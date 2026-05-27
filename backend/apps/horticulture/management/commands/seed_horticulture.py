@@ -30,7 +30,7 @@ MANAGER_SPEC = {
 
 SUPERVISOR_SPECS = [
     {
-        'username': 'Jaynti.Thakur',
+        'username': 'jaynti.thakur',
         'full_name': 'Jaynti Bhai Thakur',
         'role': User.Role.SUPERVISOR,
         'phone': '9662133181',
@@ -39,7 +39,7 @@ SUPERVISOR_SPECS = [
         'is_superuser': False,
     },
     {
-        'username': 'Rajesh.Thakur',
+        'username': 'rajesh.thakur',
         'full_name': 'Rajesh Bhai Thakur',
         'role': User.Role.SUPERVISOR,
         'phone': '7383662356',
@@ -48,7 +48,7 @@ SUPERVISOR_SPECS = [
         'is_superuser': False,
     },
     {
-        'username': 'Mukesh.Solanki',
+        'username': 'mukesh.solanki',
         'full_name': 'Mukesh Bhai Solanki',
         'role': User.Role.SUPERVISOR,
         'phone': '8140776096',
@@ -59,7 +59,7 @@ SUPERVISOR_SPECS = [
 ]
 
 WORKER_TEAMS = {
-    'Jaynti.Thakur': [
+    'jaynti.thakur': [
         ('Vikram Thakor', '174', '9574871515'),
         ('Somiben Thakor', '193', '9723010853'),
         ('Mafaji A Thakor', '167', '8488911915'),
@@ -83,7 +83,7 @@ WORKER_TEAMS = {
         ('Kanti Yadav', '171', '9727488591'),
         ('Lalaji D Thakor', '182', '6355298895'),
     ],
-    'Rajesh.Thakur': [
+    'rajesh.thakur': [
         ('Pankaj solanki', '225', '6351213549'),
         ('Jalam K Bihola', '201', '8401039214'),
         ('Ajay P Thakor', '213', '7203907287'),
@@ -103,7 +103,7 @@ WORKER_TEAMS = {
         ('Shailesh Rathod', '169', '9924226169'),
         ('Tushar Thakor', '168', '8401415602'),
     ],
-    'Mukesh.Solanki': [
+    'mukesh.solanki': [
         ('Vijay Thakor', '369', '9328149914'),
         ('Kishan Thakor', '188', '6355027361'),
         ('Chetan Thakor', '286', '9737011918'),
@@ -120,9 +120,9 @@ WORKER_TEAMS = {
 }
 
 ZONE_SPECS = [
-    {'name': 'Zone Red', 'color_code': 'red', 'supervisor_username': 'Jaynti.Thakur'},
-    {'name': 'Zone Blue', 'color_code': 'blue', 'supervisor_username': 'Mukesh.Solanki'},
-    {'name': 'Zone Black', 'color_code': 'black', 'supervisor_username': 'Rajesh.Thakur'},
+    {'name': 'Zone Red', 'color_code': 'red', 'supervisor_username': 'jaynti.thakur'},
+    {'name': 'Zone Blue', 'color_code': 'blue', 'supervisor_username': 'mukesh.solanki'},
+    {'name': 'Zone Black', 'color_code': 'black', 'supervisor_username': 'rajesh.thakur'},
 ]
 
 AREA_ZONE_MAP = {

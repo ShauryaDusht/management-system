@@ -23,7 +23,7 @@ from apps.housekeeping.models import HKWorker
 # RATHOD ASHOKBHAI ISHWARBHAI       → ashok.rathod       → 2
 # SHAILESH NATVARBHAI PRAJAPATI     → shailesh.prajapati → 4
 # MAULIKKUMAR DILIPBHAI PATEL       → maulik.patel       → 7
-# CHAUHAN DINESH (pradip.swm)       → pradip.swm         → 3  (SWM supervisor)
+# CHAUHAN DINESH (pradip.chauhan)   → pradip.chauhan     → 3  (SWM supervisor)
 # NARENDRAKUMAR NATVARLAL SHRIMALI  → narendra.shreemali → 328
 # VAGHELA BIPINCHANDRA DINESHKUMAR  → bipin.vaghela      → 350
 # KAUSHIKKUMAR BALVANTBHAI PARMAR   → kaushik.parmar     → 396
@@ -31,7 +31,7 @@ from apps.housekeeping.models import HKWorker
 # MUKESHKUMAR VAGHELA               → mukesh.vaghela     → 466
 SUPERVISOR_BY_USERNAME = {
     'ashok.rathod':        '2',
-    'pradip.swm':          '3',
+    'pradip.chauhan':      '3',
     'shailesh.prajapati':  '4',
     'maulik.patel':        '7',
     'narendra.shreemali':  '328',
@@ -47,19 +47,19 @@ SUPERVISOR_BY_USERNAME = {
 # PANKAJSINH AMARSINH BIHOLA   → pankaj          → 293
 # RHUSHITA CHETANKUMAR CHAVDA  → rushita         → 294
 # SOLANKI ANIL                 → anil.caretaker  → 300
-# VISHVAJEET KUMAR             → vishwajeet      → 316
+# VISHVAJEET KUMAR             → vishvajeet.kumar → 316
 # PARMAR RAMPRAKASH LEMBABHAI  → ramsingh        → 317
 # JAIMIN PARMAR                → jaimin          → 318
 # SHAILESHKUMAR VAGHELA        → (no DB user)    — skip
 # MANISHA THAPA                → anita           → 424  (Anita is caretaker, best match)
 # BIHOLA NIKULSINH ASHOKSINH   → nikul.caretaker → 427
-# VISHWAJEET MISHRA            → (vishwajeet already used above)
+# VISHWAJEET MISHRA            → (vishvajeet.kumar already used above)
 CARETAKER_BY_USERNAME = {
     'priyanka':         '237',
     'pankaj':           '293',
     'rushita':          '294',
     'anil.caretaker':   '300',
-    'vishwajeet':       '316',
+    'vishvajeet.kumar': '316',
     'ramsingh':         '317',
     'jaimin':           '318',
     'anita':            '424',

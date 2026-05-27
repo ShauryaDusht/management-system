@@ -19,7 +19,7 @@ PORTAL_USERS = {
 # Canonical name: "RATHOD ASHOKBHAI ISHWARBHAI" → title-cased
 SUPERVISOR_NAMES = {
     'ashok.rathod':        ('Ashokbhai Ishwarbhai', 'Rathod', 'ashok2969798@gmail.com'),
-    'pradip.swm':          ('Pradip', 'Chauhan', 'pradipchauhan783@gmail.com'),
+    'pradip.chauhan':      ('Pradip', 'Chauhan', 'pradipchauhan783@gmail.com'),
     'shailesh.prajapati':  ('Shailesh Natvarbhai', 'Prajapati', ''),
     'maulik.patel':        ('Maulikkumar Dilipbhai', 'Patel', 'moulikpatel81290@gmail.com'),
     'narendra.shreemali':  ('Narendrakumar Natvarbhai', 'Shrimali', 'narendrashrimali36262@gmail.com'),
@@ -35,7 +35,7 @@ CARETAKER_NAMES = {
     'pankaj':           ('Pankajsinh Amarsinh', 'Bihola', 'pankajsingh2753@gmail.com'),
     'rushita':          ('Rhushita Chetankumar', 'Chavda', ''),
     'anil.caretaker':   ('Anil', 'Solanki', 'anil8155037413@gmail.com'),
-    'vishwajeet':       ('Vishvajeet', 'Kumar', 'mishra.vishwajeet@iitgn.ac.in'),
+    'vishvajeet.kumar': ('Vishvajeet', 'Kumar', 'mishra.vishwajeet@iitgn.ac.in'),
     'ramsingh':         ('Ramprakash Lembabhai', 'Parmar', 'ramairi1198@gmail.com'),
     'jaimin':           ('Jaimin', 'Parmar', 'hostel.caretaker@iitgn.ac.in'),
     'anita':            ('Manisha', 'Thapa', 'anitavaghela98@gmail.com'),

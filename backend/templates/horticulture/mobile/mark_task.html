@@ -44,8 +44,8 @@
     <span>{{ today|date:"d M Y" }}</span>
   </div>
   {% if pending_task_count %}
-  <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
-    <div style="font-size:13px;font-weight:700">Open a task, capture a camera photo, and submit.</div>
+    <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
+    <div style="font-size:13px;font-weight:700">Open a task, optionally attach before/after photos, and submit.</div>
   </div>
   {% else %}
   <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
@@ -83,7 +83,7 @@
     {% endif %}
 
     {% if not task.assignment and task.task_type_id not in completed_task_ids %}
-    <form method="post" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="margin-top:8px">
+    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="margin-top:8px">
     {% csrf_token %}
     <input type="hidden" name="action" value="assign">
     <input type="hidden" name="zone_id" value="{{ selected_zone.id }}">
@@ -114,6 +114,10 @@
     <input type="hidden" name="action" value="start">
     <input type="hidden" name="assignment_id" value="{{ task.assignment.id }}">
     <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
+    <div style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:8px;background:#f9fafb;margin-bottom:7px">
+      <div style="font-size:11px;font-weight:800;color:#374151;margin-bottom:5px">Before photo (optional)</div>
+      <input type="file" name="photo_before" accept="image/*" capture="environment" style="font-size:12px;width:100%">
+    </div>
     <button type="submit" class="btn-g" style="padding:9px;font-size:12px">Start Work</button>
     </form>
 
@@ -135,14 +139,15 @@
         <input type="text" name="note" placeholder="Remark / completion note" style="font-size:13px;padding:8px 10px">
       </div>
       <div style="margin-top:8px">
+        <div style="font-size:11px;font-weight:800;color:#374151;margin-bottom:5px">After photo (optional)</div>
         <button type="button"
                 class="btn-g js-horti-open-camera"
                 data-task-id="{{ task.task_type_id }}"
                 data-task-name="{{ task.task_type_name|escape }}"
                 style="padding:9px;font-size:12px">
-          Take Photo
+          Take After Photo
         </button>
-        <input type="file" name="photo" class="js-photo-file-input" accept="image/*" capture="environment" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+        <input type="file" name="photo_after" class="js-photo-file-input" accept="image/*" capture="environment" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
         <div class="js-photo-selected" style="display:none;margin-top:8px;background:#f9fafb;border:1px solid #d1d5db;border-radius:8px;padding:7px">
           <div style="display:flex;gap:8px;align-items:center">
             <img class="js-photo-thumb" alt="Captured task photo" style="width:52px;height:52px;border-radius:7px;object-fit:cover;border:1px solid #e5e7eb;flex-shrink:0">
@@ -173,18 +178,28 @@
       Completed at {{ task.assignment.completed_at|time:"g:i A" }}{% if task.assignment.completed_by %} by {{ task.assignment.completed_by.get_full_name|default:task.assignment.completed_by.username }}{% endif %}
     </div>
     {% endif %}
-    {% if task.assignment.photo %}
-    <div style="margin-top:7px">
-      <img src="{{ task.assignment.photo.url }}" alt="Completed task proof" style="width:86px;height:86px;border-radius:8px;object-fit:cover;border:1px solid #d1d5db">
+    {% if task.assignment.photo_before or task.assignment.photo_after or task.assignment.photo %}
+    <div style="margin-top:7px;display:flex;gap:8px;flex-wrap:wrap">
+      {% if task.assignment.photo_before %}
+      <div>
+        <img src="{{ task.assignment.photo_before.url }}" alt="Before task proof" style="width:86px;height:86px;border-radius:8px;object-fit:cover;border:1px solid #d1d5db">
+        <div style="font-size:10px;color:#6b7280;margin-top:4px">Before photo</div>
+      </div>
+      {% endif %}
+      {% if task.assignment.photo_after or task.assignment.photo %}
+      <div>
+      <img src="{% if task.assignment.photo_after %}{{ task.assignment.photo_after.url }}{% else %}{{ task.assignment.photo.url }}{% endif %}" alt="After task proof" style="width:86px;height:86px;border-radius:8px;object-fit:cover;border:1px solid #d1d5db">
       <div style="font-size:10px;color:#6b7280;margin-top:4px">
         Captured:
-        {% if task.assignment.photo_uploaded_at %}{{ task.assignment.photo_uploaded_at|date:"g:i A d M Y" }}{% else %}{{ task.assignment.completed_at|date:"g:i A d M Y" }}{% endif %}
+        {% if task.assignment.photo_after_uploaded_at %}{{ task.assignment.photo_after_uploaded_at|date:"g:i A d M Y" }}{% elif task.assignment.photo_uploaded_at %}{{ task.assignment.photo_uploaded_at|date:"g:i A d M Y" }}{% else %}{{ task.assignment.completed_at|date:"g:i A d M Y" }}{% endif %}
       </div>
+      </div>
+      {% endif %}
     </div>
     {% endif %}
     {% if task.assignment.note %}<div style="font-size:11px;color:#374151;margin-top:3px">Remark: {{ task.assignment.note }}</div>{% endif %}
     <div style="font-size:11px;color:#16a34a;margin-top:6px;background:#dcfce7;border-radius:8px;padding:7px 8px">
-      Completion photo submitted. Upload is locked.
+      Completed task is locked. Optional photo upload is closed.
     </div>
     {% endif %}
   </div>
@@ -274,13 +289,6 @@ function clearHortiPhoto(form) {
 document.addEventListener('submit', function(event) {
   var form = event.target.closest('.js-horti-task-complete-form');
   if (!form) return;
-  var captureMethod = form.querySelector('.js-photo-capture-method');
-  var fileInput = form.querySelector('.js-photo-file-input');
-  if (!captureMethod || captureMethod.value !== 'camera' || !fileInput || !fileInput.files || !fileInput.files.length) {
-    event.preventDefault();
-    showHortiPhotoError(form, 'Use Take Photo to capture directly from camera.');
-    return;
-  }
   if (form.dataset.submitting === '1') {
     event.preventDefault();
     return;
