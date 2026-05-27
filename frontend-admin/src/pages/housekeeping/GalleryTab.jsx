@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { hkAPI } from '../../api/housekeeping'
 import { Alert, Btn, Card, DataTable, Input, SelectField, Spinner } from '../../components/ui'
 import { triggerDownload } from '../../shared/utils'
+import { normalizeMediaUrl } from '../../shared/media'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 
 const todayStr = () => {
@@ -12,22 +13,6 @@ const todayStr = () => {
   const day = String(now.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
-const API_ORIGIN = (() => {
-  try {
-    const apiUrl = import.meta.env.VITE_API_URL || (() => {
-      const { protocol, hostname, port } = window.location
-      if (protocol === 'https:') {
-        const apiPort = port === '9443' ? '8443' : port
-        return `${protocol}//${hostname}${apiPort ? `:${apiPort}` : ''}/api`
-      }
-      return `http://${hostname}:8000/api`
-    })()
-    return new URL(apiUrl, window.location.origin).origin
-  } catch {
-    return window.location.origin
-  }
-})()
-
 function list(data) {
   if (Array.isArray(data)) return data
   if (Array.isArray(data?.results)) return data.results
@@ -51,28 +36,6 @@ function fmtBytes(bytes) {
   if (size < 1024) return `${size} B`
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(0)} KB`
   return `${(size / (1024 * 1024)).toFixed(2)} MB`
-}
-
-function normalizeMediaUrl(raw) {
-  if (!raw) return ''
-  try {
-    const baseOrigin = raw.startsWith('/media/') || raw.startsWith('/static/')
-      ? API_ORIGIN
-      : window.location.origin
-    const parsed = new URL(raw, baseOrigin)
-    const internal = ['backend', 'web', 'app', 'django', 'server']
-    const mediaPath = parsed.pathname.startsWith('/media/') || parsed.pathname.startsWith('/static/')
-    const missingPublicPort = ['localhost', '127.0.0.1'].includes(parsed.hostname) && !parsed.port
-    if ((internal.includes(parsed.hostname) || (mediaPath && missingPublicPort)) && mediaPath) {
-      const publicApp = new URL(window.location.origin)
-      parsed.protocol = publicApp.protocol
-      parsed.hostname = publicApp.hostname
-      parsed.port = publicApp.port
-    }
-    return parsed.toString()
-  } catch {
-    return raw
-  }
 }
 
 const PHOTO_PLACEHOLDER =
@@ -106,6 +69,9 @@ function PhotoTile({ src, label, height, onClick }) {
 function BeforeAfterBlock({ beforeUrl, afterUrl, height, layout = 'split', onBeforeClick, onAfterClick }) {
   if (!beforeUrl) {
     return <PhotoTile src={afterUrl} label="After" height={height} onClick={onAfterClick} />
+  }
+  if (!afterUrl) {
+    return <PhotoTile src={beforeUrl} label="Before" height={height} onClick={onBeforeClick} />
   }
   if (layout === 'stack') {
     return (
@@ -282,7 +248,7 @@ export default function GalleryTab() {
 
   const current = box.photos[box.index]
   const currentView = resolveView(current, box.view)
-  const currentUrl = currentView === 'before' ? (current?.beforeUrl || current?.url) : current?.url
+  const currentUrl = currentView === 'before' ? (current?.beforeUrl || current?.url) : (current?.url || current?.beforeUrl)
 
   useEffect(() => {
     if (!box.open) return undefined

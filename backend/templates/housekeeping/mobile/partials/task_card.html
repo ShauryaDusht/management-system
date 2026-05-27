@@ -157,6 +157,19 @@
     <button type="submit" class="btn-g" style="padding:9px;font-size:12px">Start Work</button>
   </form>
   {% elif record.status == 'in_progress' %}
+  {% if record.photo_before %}
+  <div style="margin-top:7px;display:flex;gap:8px;flex-wrap:wrap">
+    <div>
+      <img src="{{ record.photo_before.url }}"
+           alt="Before task proof"
+           class="js-task-photo-thumb"
+           data-photo-url="{{ record.photo_before.url }}"
+           data-photo-title="Before - {{ record.schedule.task_name|escape }}"
+           style="width:86px;height:86px;border-radius:8px;object-fit:cover;border:1px solid #d1d5db;cursor:pointer">
+      <div style="font-size:10px;color:#6b7280;margin-top:4px">Before photo</div>
+    </div>
+  </div>
+  {% endif %}
   <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
         hx-target="#task-{{ record.id }}" hx-swap="outerHTML"
         hx-encoding="multipart/form-data"
