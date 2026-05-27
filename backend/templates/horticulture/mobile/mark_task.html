@@ -109,7 +109,7 @@
     <div style="margin-top:7px;font-size:11px;color:#6b7280;background:#f3f4f6;border-radius:7px;padding:6px 8px">
       Worker selection locked for this task.
     </div>
-    <form method="post" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="margin-top:8px">
+    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="margin-top:8px">
     {% csrf_token %}
     <input type="hidden" name="action" value="start">
     <input type="hidden" name="assignment_id" value="{{ task.assignment.id }}">
@@ -125,6 +125,14 @@
     <div style="margin-top:7px;font-size:11px;color:#6b7280;background:#f3f4f6;border-radius:7px;padding:6px 8px">
       Worker selection locked for this task.
     </div>
+    {% if task.assignment.photo_before %}
+    <div style="margin-top:7px;display:flex;gap:8px;flex-wrap:wrap">
+      <div>
+        <img src="{{ task.assignment.photo_before.url }}" alt="Before task proof" style="width:86px;height:86px;border-radius:8px;object-fit:cover;border:1px solid #d1d5db">
+        <div style="font-size:10px;color:#6b7280;margin-top:4px">Before photo</div>
+      </div>
+    </div>
+    {% endif %}
     <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" class="js-horti-task-complete-form" style="margin-top:8px">
     {% csrf_token %}
     <input type="hidden" name="action" value="done">

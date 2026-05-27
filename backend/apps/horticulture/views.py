@@ -20,6 +20,7 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.image_urls import image_debug_payload, log_image_event
 from apps.users.permissions import IsSupervisor
 
 from .models import (
@@ -1602,6 +1603,14 @@ def horticulture_mark_task(request):
                         assignment.photo_before_uploaded_at = timezone.now()
                         update_fields.extend(['photo_before', 'photo_before_uploaded_at'])
                     assignment.save(update_fields=update_fields)
+                    if assignment.photo_before:
+                        log_image_event(
+                            'horticulture_start_saved',
+                            request,
+                            assignment_id=assignment.id,
+                            field='photo_before',
+                            debug=image_debug_payload(request, assignment.photo_before),
+                        )
                     return redirect(f'/horticulture/mark-task/?{query}')
             elif action == 'undo':
                 if assignment is None:
@@ -1647,6 +1656,13 @@ def horticulture_mark_task(request):
                         'photo', 'photo_uploaded_at', 'photo_after', 'photo_after_uploaded_at',
                         'status', 'completed_by', 'completed_at', 'note',
                     ])
+                    log_image_event(
+                        'horticulture_complete_saved',
+                        request,
+                        assignment_id=assignment.id,
+                        legacy=image_debug_payload(request, assignment.photo),
+                        after=image_debug_payload(request, assignment.photo_after),
+                    )
                     messages.success(
                         request,
                         f'{task_log.task_type.name} completed for {selected_area.name}.',

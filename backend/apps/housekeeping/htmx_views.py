@@ -40,6 +40,7 @@ from .models import (
     HKWorkerSelectionRequest,
 )
 from .photo_utils import process_task_photo
+from apps.core.image_urls import image_debug_payload, log_image_event
 from apps.users.models import normalize_username_value
 from apps.inventory.models import ItemIssue, ItemUsageLog
 
@@ -1294,6 +1295,14 @@ def hk_mark_task(request, record_id):
                 record.photo_before = request.FILES["photo_before"]
                 update_fields.append("photo_before")
             record.save(update_fields=update_fields)
+            if record.photo_before:
+                log_image_event(
+                    "housekeeping_start_saved",
+                    request,
+                    record_id=record.id,
+                    field="photo_before",
+                    debug=image_debug_payload(request, record.photo_before),
+                )
 
     elif action == "undo":
         if record.status == "done":
@@ -1420,6 +1429,14 @@ def hk_mark_task(request, record_id):
                 except (ValueError, TypeError):
                     pass
             record.save()
+            log_image_event(
+                "housekeeping_complete_saved",
+                request,
+                record_id=record.id,
+                before=image_debug_payload(request, record.photo_before),
+                after=image_debug_payload(request, record.photo_after),
+                thumbnail=image_debug_payload(request, record.photo_after_thumbnail),
+            )
 
     record = HKDailyRecord.objects.select_related(
         "schedule", "assigned_worker", "assigned_by", "area", "completed_by"

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { hkAPI } from '../../api/housekeeping'
 import { Alert, Btn, Card, DataTable, Input, SelectField, Spinner } from '../../components/ui'
 import { triggerDownload } from '../../shared/utils'
+import { generateImageUrl, handleImageError, imageDebugEnabled, imageDebugLog } from '../../shared/imageUrls'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 
 const todayStr = () => {
@@ -12,22 +13,6 @@ const todayStr = () => {
   const day = String(now.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
-const API_ORIGIN = (() => {
-  try {
-    const apiUrl = import.meta.env.VITE_API_URL || (() => {
-      const { protocol, hostname, port } = window.location
-      if (protocol === 'https:') {
-        const apiPort = port === '9443' ? '8443' : port
-        return `${protocol}//${hostname}${apiPort ? `:${apiPort}` : ''}/api`
-      }
-      return `http://${hostname}:8000/api`
-    })()
-    return new URL(apiUrl, window.location.origin).origin
-  } catch {
-    return window.location.origin
-  }
-})()
-
 function list(data) {
   if (Array.isArray(data)) return data
   if (Array.isArray(data?.results)) return data.results
@@ -53,36 +38,13 @@ function fmtBytes(bytes) {
   return `${(size / (1024 * 1024)).toFixed(2)} MB`
 }
 
-function normalizeMediaUrl(raw) {
-  if (!raw) return ''
-  try {
-    const baseOrigin = raw.startsWith('/media/') || raw.startsWith('/static/')
-      ? API_ORIGIN
-      : window.location.origin
-    const parsed = new URL(raw, baseOrigin)
-    const internal = ['backend', 'web', 'app', 'django', 'server']
-    const mediaPath = parsed.pathname.startsWith('/media/') || parsed.pathname.startsWith('/static/')
-    const missingPublicPort = ['localhost', '127.0.0.1'].includes(parsed.hostname) && !parsed.port
-    if ((internal.includes(parsed.hostname) || (mediaPath && missingPublicPort)) && mediaPath) {
-      const publicApp = new URL(window.location.origin)
-      parsed.protocol = publicApp.protocol
-      parsed.hostname = publicApp.hostname
-      parsed.port = publicApp.port
-    }
-    return parsed.toString()
-  } catch {
-    return raw
-  }
-}
+const normalizeMediaUrl = generateImageUrl
 
 const PHOTO_PLACEHOLDER =
   "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='220'%3E%3Crect width='100%25' height='100%25' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='sans-serif' font-size='14'%3EPhoto unavailable%3C/text%3E%3C/svg%3E"
 
 function handlePhotoError(e) {
-  const el = e.currentTarget
-  if (el.dataset.fallbackApplied === '1') return
-  el.dataset.fallbackApplied = '1'
-  el.src = PHOTO_PLACEHOLDER
+  handleImageError(e, PHOTO_PLACEHOLDER, { gallery: 'housekeeping' })
 }
 
 function PhotoTile({ src, label, height, onClick }) {
@@ -106,6 +68,9 @@ function PhotoTile({ src, label, height, onClick }) {
 function BeforeAfterBlock({ beforeUrl, afterUrl, height, layout = 'split', onBeforeClick, onAfterClick }) {
   if (!beforeUrl) {
     return <PhotoTile src={afterUrl} label="After" height={height} onClick={onAfterClick} />
+  }
+  if (!afterUrl) {
+    return <PhotoTile src={beforeUrl} label="Before" height={height} onClick={onBeforeClick} />
   }
   if (layout === 'stack') {
     return (
@@ -167,6 +132,7 @@ export default function GalleryTab() {
     Object.entries(filters).forEach(([k, v]) => {
       if (v) p[k] = v
     })
+    if (imageDebugEnabled()) p.debugImages = '1'
     return p
   }, [filters])
 
@@ -180,6 +146,7 @@ export default function GalleryTab() {
         hkAPI.getGalleryGroupedByArea(params),
         hkAPI.getGallery({ ...params, page: nextPage, limit: 50, sort }),
       ])
+      imageDebugLog('housekeeping.gallery.response', { photos: p.data?.photos?.slice?.(0, 3), grouped: g.data?.slice?.(0, 1), stats: s.data })
       setStats({
         totalPhotos: Number(s.data?.totalPhotos || 0),
         thisWeekPhotos: Number(s.data?.thisWeekPhotos || 0),
@@ -282,7 +249,7 @@ export default function GalleryTab() {
 
   const current = box.photos[box.index]
   const currentView = resolveView(current, box.view)
-  const currentUrl = currentView === 'before' ? (current?.beforeUrl || current?.url) : current?.url
+  const currentUrl = currentView === 'before' ? (current?.beforeUrl || current?.url) : (current?.url || current?.beforeUrl)
 
   useEffect(() => {
     if (!box.open) return undefined

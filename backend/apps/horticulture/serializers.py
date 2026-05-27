@@ -3,6 +3,8 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.core.image_urls import image_debug_payload, image_field_url
+
 from .models import (
     HorticultureArea,
     HorticultureAreaTaskAssignment,
@@ -21,6 +23,11 @@ from .models import (
 from .services import get_supervisor_worker_queryset, get_supervisor_zones
 
 User = get_user_model()
+
+
+def _request_has_param(request, name):
+    params = getattr(request, 'query_params', None) or getattr(request, 'GET', None) or {}
+    return bool(params.get(name))
 
 
 class SupervisorZoneOptionSerializer(serializers.Serializer):
@@ -241,11 +248,7 @@ class AdminWorkerSerializer(serializers.ModelSerializer):
         return ', '.join(names)
 
     def get_photo_url(self, obj):
-        request = self.context.get('request')
-        if not obj.photo:
-            return ''
-        url = obj.photo.url
-        return request.build_absolute_uri(url) if request else url
+        return image_field_url(self.context.get('request'), obj.photo)
 
     def _apply_area_assignments(self, worker, area_ids):
         if area_ids is None:
@@ -403,11 +406,18 @@ class AdminDailyAssignmentSerializer(serializers.ModelSerializer):
         return self._file_url(obj.photo_after or obj.photo)
 
     def _file_url(self, file_field):
+        return image_field_url(self.context.get('request'), file_field)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
         request = self.context.get('request')
-        if not file_field:
-            return ''
-        url = file_field.url
-        return request.build_absolute_uri(url) if request else url
+        if request and _request_has_param(request, 'debugImages'):
+            data['debugImage'] = {
+                'before': image_debug_payload(request, instance.photo_before),
+                'legacy': image_debug_payload(request, instance.photo),
+                'after': image_debug_payload(request, instance.photo_after),
+            }
+        return data
 
     def validate(self, attrs):
         worker = attrs.get('worker') or getattr(self.instance, 'worker', None)

@@ -2,47 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
 import { Alert, Btn, Card, DataTable, Input, SelectField, Spinner, StatCard } from '../../components/ui'
+import { generateImageUrl, handleImageError, imageDebugEnabled, imageDebugLog } from '../../shared/imageUrls'
 import { asList, getErrorMessage, todayISO, triggerDownload } from '../../shared/utils'
-
-const API_ORIGIN = (() => {
-  try {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
-    return new URL(apiUrl, window.location.origin).origin
-  } catch {
-    return 'http://localhost:8000'
-  }
-})()
 
 const PHOTO_PLACEHOLDER =
   "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='220'%3E%3Crect width='100%25' height='100%25' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='sans-serif' font-size='14'%3EPhoto unavailable%3C/text%3E%3C/svg%3E"
 
-function normalizeMediaUrl(raw) {
-  if (!raw) return ''
-  try {
-    const baseOrigin = raw.startsWith('/media/') || raw.startsWith('/static/')
-      ? API_ORIGIN
-      : window.location.origin
-    const parsed = new URL(raw, baseOrigin)
-    const internalHosts = ['backend', 'web', 'app', 'django', 'server']
-    const mediaPath = parsed.pathname.startsWith('/media/') || parsed.pathname.startsWith('/static/')
-    const missingPublicPort = ['localhost', '127.0.0.1'].includes(parsed.hostname) && !parsed.port
-    if ((internalHosts.includes(parsed.hostname) || (mediaPath && missingPublicPort)) && mediaPath) {
-      const publicApp = new URL(window.location.origin)
-      parsed.protocol = publicApp.protocol
-      parsed.hostname = publicApp.hostname
-      parsed.port = publicApp.port
-    }
-    return parsed.toString()
-  } catch {
-    return raw
-  }
-}
+const normalizeMediaUrl = generateImageUrl
 
 function handlePhotoError(event) {
-  const img = event.currentTarget
-  if (img.dataset.fallbackApplied === '1') return
-  img.dataset.fallbackApplied = '1'
-  img.src = PHOTO_PLACEHOLDER
+  handleImageError(event, PHOTO_PLACEHOLDER, { gallery: 'horticulture' })
 }
 
 function csvValue(value) {
@@ -135,16 +104,17 @@ export default function GalleryTab() {
     setError('')
     try {
       const [assignmentRes, areaRes] = await Promise.all([
-        horticultureAPI.listDailyAssignments(),
+        horticultureAPI.listDailyAssignments(imageDebugEnabled() ? { debugImages: '1' } : {}),
         horticultureAPI.getAreas(),
       ])
+      imageDebugLog('horticulture.gallery.response', { assignments: assignmentRes.data?.slice?.(0, 3), areas: areaRes.data?.slice?.(0, 3) })
       setRows(
         asList(assignmentRes.data).flatMap((row) => {
           const beforeUrl = normalizeMediaUrl(row.photo_before_url)
           const afterUrl = normalizeMediaUrl(row.photo_after_url || row.photo_url)
           return [
-            beforeUrl ? { ...row, photo_url: beforeUrl, photo_type: 'before', photo_uploaded_at: row.photo_before_uploaded_at || row.started_at } : null,
-            afterUrl ? { ...row, photo_url: afterUrl, photo_type: 'after', photo_uploaded_at: row.photo_after_uploaded_at || row.photo_uploaded_at || row.completed_at } : null,
+            beforeUrl ? { ...row, photo_url: beforeUrl, photo_type: 'before', photo_key: `${row.id}-before`, photo_uploaded_at: row.photo_before_uploaded_at || row.started_at } : null,
+            afterUrl ? { ...row, photo_url: afterUrl, photo_type: 'after', photo_key: `${row.id}-after`, photo_uploaded_at: row.photo_after_uploaded_at || row.photo_uploaded_at || row.completed_at } : null,
           ].filter(Boolean)
         })
       )
@@ -253,7 +223,7 @@ export default function GalleryTab() {
   }, [areas.length, filteredPhotos.length, photoRows])
 
   const openLightbox = (row) => {
-    const index = filteredPhotos.findIndex((photo) => Number(photo.id) === Number(row.id))
+    const index = filteredPhotos.findIndex((photo) => photo.photo_key === row.photo_key)
     setBox({ open: true, index: Math.max(0, index) })
   }
 
@@ -316,15 +286,15 @@ export default function GalleryTab() {
 
   const current = filteredPhotos[box.index]
   const listRows = filteredPhotos.map((row) => [
-    <div key={`thumb-${row.id}`} style={{ width: 86 }}>
+    <div key={`thumb-${row.photo_key}`} style={{ width: 86 }}>
       <PhotoTile row={row} height={48} onClick={() => openLightbox(row)} />
     </div>,
     row.area_name || '-',
-    <span key={`type-${row.id}-${row.photo_type}`} style={{ textTransform: 'capitalize' }}>{row.photo_type || 'after'}</span>,
+    <span key={`type-${row.photo_key}`} style={{ textTransform: 'capitalize' }}>{row.photo_type || 'after'}</span>,
     row.task_type_name || '-',
     row.worker_name || '-',
     formatDateTime(row.photo_uploaded_at || row.assigned_at),
-    <div key={`actions-${row.id}`} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+    <div key={`actions-${row.photo_key}`} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
       <Btn size="sm" variant="ghost" onClick={() => openLightbox(row)}>View</Btn>
       <Btn size="sm" variant="secondary" onClick={() => downloadPhoto(row)}>Download</Btn>
     </div>,
@@ -447,7 +417,7 @@ export default function GalleryTab() {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 8, marginTop: 8 }}>
                       {task.rows.slice(0, 8).map((row) => (
-                        <PhotoTile key={row.id} row={row} height={105} onClick={() => openLightbox(row)} />
+                        <PhotoTile key={row.photo_key} row={row} height={105} onClick={() => openLightbox(row)} />
                       ))}
                     </div>
                   </div>
@@ -459,7 +429,7 @@ export default function GalleryTab() {
       ) : view === 'grid' ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 10 }}>
           {filteredPhotos.map((row) => (
-            <Card key={row.id} noPad>
+            <Card key={row.photo_key} noPad>
               <PhotoTile row={row} height={155} onClick={() => openLightbox(row)} />
               <div style={{ padding: '10px 11px', fontSize: 12 }}>
                 <div style={{ fontWeight: 700 }}>Task: {row.task_type_name || '-'}</div>

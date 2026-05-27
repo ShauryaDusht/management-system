@@ -10,7 +10,7 @@ function defaultApiUrl() {
   return `http://${hostname}:8000/api`
 }
 
-const BASE_URL = import.meta.env.VITE_API_URL || defaultApiUrl()
+export const BASE_URL = import.meta.env.VITE_API_URL || defaultApiUrl()
 const loginUrl = '/admin/login'
 
 const api = axios.create({
