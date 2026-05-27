@@ -3,8 +3,6 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.core.media_urls import file_field_url
-
 from .models import (
     HorticultureArea,
     HorticultureAreaTaskAssignment,
@@ -243,7 +241,11 @@ class AdminWorkerSerializer(serializers.ModelSerializer):
         return ', '.join(names)
 
     def get_photo_url(self, obj):
-        return file_field_url(self.context.get('request'), obj.photo)
+        request = self.context.get('request')
+        if not obj.photo:
+            return ''
+        url = obj.photo.url
+        return request.build_absolute_uri(url) if request else url
 
     def _apply_area_assignments(self, worker, area_ids):
         if area_ids is None:
@@ -401,7 +403,11 @@ class AdminDailyAssignmentSerializer(serializers.ModelSerializer):
         return self._file_url(obj.photo_after or obj.photo)
 
     def _file_url(self, file_field):
-        return file_field_url(self.context.get('request'), file_field)
+        request = self.context.get('request')
+        if not file_field:
+            return ''
+        url = file_field.url
+        return request.build_absolute_uri(url) if request else url
 
     def validate(self, attrs):
         worker = attrs.get('worker') or getattr(self.instance, 'worker', None)

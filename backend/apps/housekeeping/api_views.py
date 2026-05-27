@@ -3,6 +3,7 @@ import csv
 import io
 import re
 import zipfile
+from urllib.parse import urlparse, urlunparse
 
 from django.contrib.auth import get_user_model
 from django.db import OperationalError, ProgrammingError, transaction
@@ -23,7 +24,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from apps.core.media_urls import file_field_url
 from apps.reports.exporters import (
     export_supervisor_report_csv,
     export_worker_report_csv,
@@ -1324,8 +1324,52 @@ def _apply_gallery_filters(request, qs):
     return qs
 
 
+def _public_gallery_host(request):
+    forwarded = (request.META.get("HTTP_X_FORWARDED_HOST") or "").split(",")[0].strip()
+    host = forwarded or request.get_host() or "localhost:8000"
+    hostname = host.split(":")[0].lower()
+    if hostname in {"backend", "web", "app", "django", "server"}:
+        return "localhost:8000"
+    if hostname in {"localhost", "127.0.0.1"} and ":" not in host:
+        origin = request.META.get("HTTP_ORIGIN") or request.META.get("HTTP_REFERER") or ""
+        try:
+            origin_host = urlparse(origin).netloc
+            if origin_host:
+                return origin_host
+        except Exception:
+            pass
+        return "localhost:8000"
+    return host
+
+
+def _public_media_url(request, raw_url):
+    if not raw_url:
+        return ""
+    try:
+        absolute = request.build_absolute_uri(raw_url)
+    except Exception:
+        absolute = raw_url
+
+    try:
+        parsed = urlparse(absolute)
+        hostname = (parsed.hostname or "").lower()
+        if hostname in {"backend", "web", "app", "django", "server"} or (
+            hostname in {"localhost", "127.0.0.1"} and not parsed.port
+        ):
+            parsed = parsed._replace(netloc=_public_gallery_host(request))
+            return urlunparse(parsed)
+    except Exception:
+        return absolute
+    return absolute
+
+
 def _file_field_url(request, file_field):
-    return file_field_url(request, file_field)
+    if not file_field:
+        return ""
+    try:
+        return _public_media_url(request, file_field.url)
+    except Exception:
+        return ""
 
 
 def _serialize_gallery_photo(request, record):
