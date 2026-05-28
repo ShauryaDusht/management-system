@@ -1,10 +1,11 @@
-from django.urls import include, path
+from django.urls import include, path, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from config.admin import admin_site
 from apps.core.portal_views import portal_root, portal_login, portal_logout, portal_logo
+from apps.core.media_views import serve_media_file
 from apps.core.pwa_views import service_worker
 from apps.horticulture.urls import mobile_urlpatterns as horticulture_mobile_urlpatterns
 from apps.housekeeping import api_views as hk_api_views
@@ -65,4 +66,5 @@ urlpatterns = [
     path('portal/', portal_root),
     path('portal/login/', portal_login, name='portal_login'),
     path('portal/logout/', portal_logout, name='portal_logout'),
+    re_path(r'^media/(?P<path>.*)$', serve_media_file, name='media-file-fallback'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
