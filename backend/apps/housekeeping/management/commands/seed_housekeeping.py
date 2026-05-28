@@ -154,7 +154,7 @@ Existing account passwords are preserved.
 
     def make_user(self, username, first_name, last_name, phone, role, area_names, email='', pay_code='', match_pay_code=True):
         is_superuser = role == 'admin'
-        is_staff = role in {'admin', 'inventory_manager', 'housekeeping_manager', 'horticulture_manager'}
+        is_staff = role in {'admin', 'inventory_manager', 'housekeeping_manager', 'hk_inventory_manager', 'horticulture_manager'}
         base_username = build_username_from_names(first_name, last_name)
         username_candidates = [base_username, username]
         if pay_code and match_pay_code:
@@ -319,15 +319,32 @@ Existing account passwords are preserved.
         accounts = [
             ('admin.user', 'Admin', 'User', '9727757096', 'admin', [], 'pragnesh@iitgn.ac.in', ''),
             ('mahesh.prajapati', 'Maheshbhai', 'Prajapati', '9723889424', 'horticulture_manager', [], 'managerhort.iwd@iitgn.ac.in', '474'),
-            ('housekeeping.manager', 'Housekeeping', 'Manager', '8758120645', 'housekeeping_manager', [], 'manager.hk@iitgn.ac.in', '469'),
-            ('inventory.manager', 'Inventory', 'Manager', '8758120645', 'inventory_manager', [], 'manager.hk@iitgn.ac.in', '469'),
+            ('hk_inventory_manager', 'Housekeeping Inventory', 'Manager', '8758120645', 'hk_inventory_manager', [], 'manager.hk@iitgn.ac.in', '469'),
         ]
         for username, first, last, phone, role, areas, email, pay_code in accounts:
-            self.make_user(username, first, last, phone, role, areas, email=email, pay_code=pay_code)
+            self.make_user(
+                username,
+                first,
+                last,
+                phone,
+                role,
+                areas,
+                email=email,
+                pay_code=pay_code,
+                match_pay_code=False,
+            )
+
+        disabled = User.objects.filter(username__in=['housekeeping.manager', 'inventory.manager']).update(
+            is_active=False,
+            is_staff=False,
+            is_superuser=False,
+        )
 
         self.stdout.write(
-            f'  [OK] Portal users: {User.objects.filter(role__in=["admin","inventory_manager","housekeeping_manager","horticulture_manager"]).count()}'
+            f'  [OK] Portal users: {User.objects.filter(role__in=["admin","inventory_manager","housekeeping_manager","hk_inventory_manager","horticulture_manager"]).count()}'
         )
+        if disabled:
+            self.stdout.write(f'  [OK] Disabled old HK/inventory manager portal logins: {disabled}')
 
     def cleanup_legacy_accounts(self):
         """
