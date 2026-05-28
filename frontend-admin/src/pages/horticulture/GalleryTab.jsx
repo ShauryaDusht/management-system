@@ -45,6 +45,8 @@ function formatDate(value) {
 }
 
 function PhotoTile({ row, height = 150, onClick }) {
+  const typeLabel = row.photo_type === 'before' ? 'Before' : 'After'
+  const sessionLabel = row.session ? ` | ${row.session}` : ''
   return (
     <div style={{ position: 'relative', width: '100%', height }}>
       <img
@@ -75,7 +77,7 @@ function PhotoTile({ row, height = 150, onClick }) {
           padding: '2px 6px',
         }}
       >
-        {row.session || 'task'}
+        {typeLabel}{sessionLabel}
       </span>
     </div>
   )

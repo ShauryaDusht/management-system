@@ -50,10 +50,12 @@ def generate_image_url(request, raw_url):
         parsed = urlparse(absolute)
         is_asset = parsed.path.startswith(settings.MEDIA_URL) or parsed.path.startswith(settings.STATIC_URL)
         hostname = (parsed.hostname or "").lower()
+        origin_hostname = (urlparse(origin).hostname or "").lower()
         missing_public_port = hostname in LOCAL_HOSTS and not parsed.port
+        local_backend_on_public_origin = hostname in LOCAL_HOSTS and origin_hostname not in LOCAL_HOSTS
         is_mixed_content = origin.startswith("https://") and parsed.scheme == "http"
         should_rewrite = is_asset and (
-            hostname in INTERNAL_HOSTS or missing_public_port or is_mixed_content
+            hostname in INTERNAL_HOSTS or missing_public_port or local_backend_on_public_origin or is_mixed_content
         )
         if should_rewrite and origin:
             public = urlparse(origin)

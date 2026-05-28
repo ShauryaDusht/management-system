@@ -20,7 +20,7 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.image_urls import image_debug_payload, log_image_event
+from apps.core.image_urls import image_debug_payload, image_field_url, log_image_event
 from apps.users.permissions import IsSupervisor
 
 from .models import (
@@ -1682,6 +1682,10 @@ def horticulture_mark_task(request):
         .select_related('worker', 'task_type', 'assigned_by', 'completed_by')
         .order_by('-assigned_at')
     ) if selected_area else []
+    for assignment in all_assignments:
+        assignment.photo_before_display_url = image_field_url(request, assignment.photo_before)
+        assignment.photo_after_display_url = image_field_url(request, assignment.photo_after)
+        assignment.photo_legacy_display_url = image_field_url(request, assignment.photo)
     completed_assignments = [
         assignment for assignment in all_assignments
         if assignment.status == HorticultureDailyAssignment.Status.DONE
@@ -1886,6 +1890,10 @@ def horticulture_schedule(request):
         .select_related('worker', 'task_type')
         .order_by('session', 'worker__name')
     ) if selected_area else []
+    for assignment in assignments:
+        assignment.photo_before_display_url = image_field_url(request, assignment.photo_before)
+        assignment.photo_after_display_url = image_field_url(request, assignment.photo_after)
+        assignment.photo_legacy_display_url = image_field_url(request, assignment.photo)
     return render(
         request,
         'horticulture/mobile/schedule.html',

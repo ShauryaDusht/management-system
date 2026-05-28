@@ -128,7 +128,7 @@
     {% if task.assignment.photo_before %}
     <div style="margin-top:7px;display:flex;gap:8px;flex-wrap:wrap">
       <div>
-        <img src="{{ task.assignment.photo_before.url }}" alt="Before task proof" style="width:86px;height:86px;border-radius:8px;object-fit:cover;border:1px solid #d1d5db">
+        <img src="{{ task.assignment.photo_before_display_url }}" alt="Before task proof" style="width:86px;height:86px;border-radius:8px;object-fit:cover;border:1px solid #d1d5db">
         <div style="font-size:10px;color:#6b7280;margin-top:4px">Before photo</div>
       </div>
     </div>
@@ -190,15 +190,15 @@
     <div style="margin-top:7px;display:flex;gap:8px;flex-wrap:wrap">
       {% if task.assignment.photo_before %}
       <div>
-        <img src="{{ task.assignment.photo_before.url }}" alt="Before task proof" style="width:86px;height:86px;border-radius:8px;object-fit:cover;border:1px solid #d1d5db">
+        <img src="{{ task.assignment.photo_before_display_url }}" alt="Before task proof" style="width:86px;height:86px;border-radius:8px;object-fit:cover;border:1px solid #d1d5db">
         <div style="font-size:10px;color:#6b7280;margin-top:4px">Before photo</div>
       </div>
       {% endif %}
       {% if task.assignment.photo_after or task.assignment.photo %}
       <div>
-      <img src="{% if task.assignment.photo_after %}{{ task.assignment.photo_after.url }}{% else %}{{ task.assignment.photo.url }}{% endif %}" alt="After task proof" style="width:86px;height:86px;border-radius:8px;object-fit:cover;border:1px solid #d1d5db">
+      <img src="{% if task.assignment.photo_after %}{{ task.assignment.photo_after_display_url }}{% else %}{{ task.assignment.photo_legacy_display_url }}{% endif %}" alt="After task proof" style="width:86px;height:86px;border-radius:8px;object-fit:cover;border:1px solid #d1d5db">
       <div style="font-size:10px;color:#6b7280;margin-top:4px">
-        Captured:
+        After photo:
         {% if task.assignment.photo_after_uploaded_at %}{{ task.assignment.photo_after_uploaded_at|date:"g:i A d M Y" }}{% elif task.assignment.photo_uploaded_at %}{{ task.assignment.photo_uploaded_at|date:"g:i A d M Y" }}{% else %}{{ task.assignment.completed_at|date:"g:i A d M Y" }}{% endif %}
       </div>
       </div>
@@ -307,6 +307,7 @@ document.addEventListener('submit', function(event) {
     submitButton.disabled = true;
     submitButton.textContent = 'Submitting...';
   }
+  var fileInput = form.querySelector('.js-photo-file-input');
   if (fileInput) fileInput.readOnly = true;
 });
 

@@ -50,9 +50,14 @@
       <div class="muted">{{ assignment.get_session_display }} | {{ assignment.task_type.name }}</div>
       {% if assignment.note %}<div class="muted">{{ assignment.note }}</div>{% endif %}
     </div>
-    {% if assignment.photo %}
-    <a class="bdg b" href="{{ assignment.photo.url }}" target="_blank">Photo</a>
-    {% endif %}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+      {% if assignment.photo_before %}
+      <a class="bdg b" href="{{ assignment.photo_before_display_url }}" target="_blank">Before</a>
+      {% endif %}
+      {% if assignment.photo_after or assignment.photo %}
+      <a class="bdg b" href="{% if assignment.photo_after %}{{ assignment.photo_after_display_url }}{% else %}{{ assignment.photo_legacy_display_url }}{% endif %}" target="_blank">After</a>
+      {% endif %}
+    </div>
   </div>
 </div>
 {% empty %}

@@ -34,9 +34,10 @@ export function generateImageUrl(raw) {
     const parsed = new URL(raw, baseOrigin)
     const isAsset = parsed.pathname.startsWith('/media/') || parsed.pathname.startsWith('/static/')
     const missingPublicPort = LOCAL_HOSTS.includes(parsed.hostname) && !parsed.port
+    const localBackendOnPublicApp = LOCAL_HOSTS.includes(parsed.hostname) && !LOCAL_HOSTS.includes(window.location.hostname)
     const mixedContent = window.location.protocol === 'https:' && parsed.protocol === 'http:' && isAsset
 
-    if ((INTERNAL_HOSTS.includes(parsed.hostname) || missingPublicPort || mixedContent) && isAsset) {
+    if ((INTERNAL_HOSTS.includes(parsed.hostname) || missingPublicPort || localBackendOnPublicApp || mixedContent) && isAsset) {
       const publicApp = new URL(window.location.origin)
       parsed.protocol = publicApp.protocol
       parsed.hostname = publicApp.hostname

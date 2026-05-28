@@ -632,6 +632,13 @@ def mark_busy_workers(area_workers, busy_worker_ids):
     return area_workers
 
 
+def can_multi_worker_task(user, record):
+    username = getattr(user, "username", "")
+    return bool(record and record.area and (
+        record.area.area_type == "swm" or username == "ashok.rathod"
+    ))
+
+
 def worker_options_for_selection_request(req_obj, current_area):
     """
     Build eligible worker options for a pending worker-selection request.
@@ -769,6 +776,8 @@ def hk_dashboard(request):
     today_dow = today.weekday()
     area_workers = list(HKWorker.objects.filter(area=sel_area, is_active=True).order_by("name")) if sel_area else []
     mark_busy_workers(area_workers, busy_worker_ids_for_tasks(sel_area, today))
+    for record in records:
+        record.can_multi_worker_assignment = can_multi_worker_task(user, record)
 
     extra_works = HKExtraWork.objects.filter(area=sel_area, date=today).order_by("-logged_at") if sel_area else []
 
@@ -1211,22 +1220,22 @@ def hk_mark_task(request, record_id):
     task_title = (record.schedule.task_name or "").lower()
     is_break_task = ("break" in task_title) or ("lunch" in task_title)
     can_mark_break = user.role == "supervisor"
-    is_swm_task = record.area.area_type == "swm"
+    is_multi_worker_task = can_multi_worker_task(user, record)
 
     def has_worker_assignment():
         if record.assigned_worker_id:
             return True
-        if is_swm_task:
+        if is_multi_worker_task:
             return record.worker_assignments.exists()
         return False
 
     if action == "assign":
         if is_break_task:
             task_error = "Break tasks do not need worker assignment."
-        elif is_swm_task:
-            # SWM rule: once team is assigned for a task, do not allow reassignment.
+        elif is_multi_worker_task:
+            # Multi-worker tasks lock once a team is assigned.
             if record.assigned_worker_id or record.worker_assignments.exists():
-                task_error = "Team already assigned for this SWM task."
+                task_error = "Team already assigned for this task."
             else:
                 worker_ids = list(dict.fromkeys(w for w in request.POST.getlist("worker_ids") if w))
                 if not worker_ids:
@@ -1247,7 +1256,7 @@ def hk_mark_task(request, record_id):
                         ).order_by("name")
                     )
                     if not workers:
-                        task_error = "Please select at least one valid SWM worker."
+                        task_error = "Please select at least one valid worker."
                     else:
                         HKTaskWorkerAssignment.objects.bulk_create(
                             [
@@ -1441,6 +1450,7 @@ def hk_mark_task(request, record_id):
     record = HKDailyRecord.objects.select_related(
         "schedule", "assigned_worker", "assigned_by", "area", "completed_by"
     ).prefetch_related("worker_assignments__worker").get(pk=record.pk)
+    record.can_multi_worker_assignment = can_multi_worker_task(user, record)
     area_workers = list(HKWorker.objects.filter(area=record.area, is_active=True).order_by("name"))
     mark_busy_workers(area_workers, busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id))
     return render(request, "housekeeping/mobile/partials/task_card.html", {
