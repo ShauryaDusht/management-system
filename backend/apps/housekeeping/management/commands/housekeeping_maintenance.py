@@ -170,7 +170,7 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS('\n--- TASK 1: Removing Worker Names ---'))
 
-        area_13_prefixes = ['Mahesh: ', 'Ajay: ', 'Shailesh: ', 'Dharmishtaben: ']
+        area_13_prefixes = ['Dhaval: ', 'Mahesh: ', 'Shailesh: ', 'Dharmishtaben: ']
         for template in HKScheduleTemplate.objects.filter(area_id=13):
             original = template.task_name
             new_name = original

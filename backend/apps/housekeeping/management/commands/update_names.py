@@ -159,6 +159,8 @@ WORKER_NAMES = {
     'Dharmishtaben':     'Vaghela Dharmishtha Ben',
     # MAHESH SOLANKI
     'Mahesh Solanki':    'Mahesh Solanki',
+    # DHAVAL S SOLANKI
+    'Dhaval S Solanki':  'Dhaval S Solanki',
     # ANILKUMAR BHUPATJI THAKOR
     'Anil Thakur':       'Anilkumar Bhupatji Thakor',
     'Anil Thakor':       'Thakor Anilkumar Naginji',
@@ -636,6 +638,8 @@ class Command(BaseCommand):
             '461': 'Solanki Lalit',
             '463': 'Satish Vikrambhai Vayhela',
             '464': 'Chirag Gampatji Thakor',
+            '484': 'Dhaval S Solanki',
+            '484.2': 'Dhaval S Solanki',
             '534': 'Prakash Shakaraji Thakor',
             '542': 'Thakor Anilkumar Naginji',
             '801': 'Mukeshji Thakor',

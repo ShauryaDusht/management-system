@@ -144,7 +144,7 @@ WORKER_PAY_CODES = [
 
     # Research Park
     ('Mahesh Solanki',   '267'),   # MAHESH SOLANKI
-    ('Ajay Thakor',      '349'),   # THAKOR AJAYKUMAR PRAHLADJI
+    ('Dhaval S Solanki', '484'),   # DHAVAL S SOLANKI
     ('Shailesh Vaghela', '266'),   # SAILESH A VAGHELA (Research Park)
     ('Sailesh A Vaghela','266'),   # SAILESH A VAGHELA (Research Park)
     ('Dharmishtaben',    '264'),   # VAGHELA DHARMISHTHA BEN

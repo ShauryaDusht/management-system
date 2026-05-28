@@ -462,7 +462,13 @@ Existing account passwords are preserved.
                 created = True
 
             worker.name = spec['name']
-            worker.pay_code = spec.get('pay_code', '')
+            pay_code = spec.get('pay_code', '')
+            if (
+                spec['name'] == 'Dhaval S Solanki'
+                and HKWorker.objects.filter(pay_code='484').exclude(pk=getattr(worker, 'pk', None)).exists()
+            ):
+                pay_code = '484.2'
+            worker.pay_code = pay_code
             if spec.get('phone'):
                 worker.phone = spec['phone']
             elif created and not worker.phone:
@@ -596,7 +602,7 @@ Existing account passwords are preserved.
 
             # -- RESEARCH PARK -----------------------------------------------
             ('Mahesh Solanki',              '267', '7046959603', 'Research Park', 'floor',    False),
-            ('Thakor Ajaykumar Prahladji',  '349', '8780940745', 'Research Park', 'floor',    False),
+            ('Dhaval S Solanki',            '484', '',           'Research Park', 'floor',    False),
             ('Sailesh A Vaghela',           '266', '7284950619', 'Research Park', 'room',     False),
             ('Vaghela Dharmishtha Ben',     '264', '9328002335', 'Research Park', 'washroom', False),
 
@@ -738,11 +744,17 @@ Existing account passwords are preserved.
             area = self.area(area_name) if area_name else None
             worker = HKWorker.objects.filter(name=name, area=area).order_by('-is_active', '-id').first()
             created = worker is None
+            effective_pay_code = pay_code
+            if (
+                name == 'Dhaval S Solanki'
+                and HKWorker.objects.filter(pay_code='484').exclude(pk=getattr(worker, 'pk', None)).exists()
+            ):
+                effective_pay_code = '484.2'
             if created:
                 worker = HKWorker(
                     name=name,
                     area=area,
-                    pay_code=pay_code,
+                    pay_code=effective_pay_code,
                     phone=phone,
                     worker_type=wtype,
                     shift='day',
@@ -754,7 +766,7 @@ Existing account passwords are preserved.
                 created_count += 1
             else:
                 # Update phone/punching if changed
-                worker.pay_code = pay_code
+                worker.pay_code = effective_pay_code
                 update_fields = [
                     'pay_code', 'worker_type',
                     'is_reliever', 'shift', 'is_active',
@@ -787,7 +799,7 @@ Existing account passwords are preserved.
 
         research_roster = [
             {'area': 'Research Park', 'name': 'Mahesh Solanki', 'pay_code': '267', 'phone': '7046959603', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Mahesh Solanki']},
-            {'area': 'Research Park', 'name': 'Thakor Ajaykumar Prahladji', 'pay_code': '349', 'phone': '8780940745', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Ajay Thakor', 'Thakor Ajaykumar Prahladji']},
+            {'area': 'Research Park', 'name': 'Dhaval S Solanki', 'pay_code': '484', 'phone': '', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Dhaval S Solanki']},
             {'area': 'Research Park', 'name': 'Sailesh A Vaghela', 'pay_code': '266', 'phone': '7284950619', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Shailesh Vaghela', 'Sailesh Vaghela', 'Vaghela Shaileshbhai', 'Vaghela Shaileshkumar']},
             {'area': 'Research Park', 'name': 'Vaghela Dharmishtha Ben', 'pay_code': '264', 'phone': '9328002335', 'worker_type': 'washroom', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Dharmishtaben', 'Vaghela Dharmishtha Ben']},
         ]
@@ -1135,31 +1147,31 @@ Existing account passwords are preserved.
             HKScheduleTemplate.objects.filter(area=research_park).delete()
 
             rp_floor_tasks = [
-                (1, '08:00', '08:30', 'Mahesh: GF + 3F Gents and Handicap Washroom Touch Up', True, ''),
-                (2, '08:30', '09:00', 'Mahesh: Admin Office Cleaning', True, ''),
-                (3, '09:00', '09:20', 'Mahesh: Board Room Cleaning', True, ''),
-                (4, '09:20', '10:00', 'Mahesh: Fountain Common Area Cleaning', True, ''),
-                (5, '10:00', '10:15', 'Mahesh: Tea Break', False, ''),
-                (6, '10:15', '11:00', 'Mahesh: Classroom Cleaning', True, ''),
-                (7, '11:00', '12:15', 'Mahesh: GF + 3F Gents and Handicap Washroom Cleaning', True, ''),
-                (8, '12:15', '13:00', 'Mahesh: Conference Room Cleaning', True, ''),
-                (9, '13:00', '14:00', 'Mahesh: Lunch Break', False, ''),
-                (10, '14:00', '14:30', 'Mahesh: GF + 3F Washroom Touch Up', True, ''),
-                (11, '14:30', '16:30', 'Mahesh: Building Inside 2 Staircase + Railing Dusting', True, ''),
-                (12, '16:30', '17:00', 'Mahesh: GF + 3F Washroom Touch Up', True, ''),
+                (1, '08:00', '08:30', 'Dhaval: GF + 3F Gents and Handicap Washroom Touch Up', True, ''),
+                (2, '08:30', '09:00', 'Dhaval: Admin Office Cleaning', True, ''),
+                (3, '09:00', '09:20', 'Dhaval: Board Room Cleaning', True, ''),
+                (4, '09:20', '10:00', 'Dhaval: Fountain Common Area Cleaning', True, ''),
+                (5, '10:00', '10:15', 'Dhaval: Tea Break', False, ''),
+                (6, '10:15', '11:00', 'Dhaval: Classroom Cleaning', True, ''),
+                (7, '11:00', '12:15', 'Dhaval: GF + 3F Gents and Handicap Washroom Cleaning', True, ''),
+                (8, '12:15', '13:00', 'Dhaval: Conference Room Cleaning', True, ''),
+                (9, '13:00', '14:00', 'Dhaval: Lunch Break', False, ''),
+                (10, '14:00', '14:30', 'Dhaval: GF + 3F Washroom Touch Up', True, ''),
+                (11, '14:30', '16:30', 'Dhaval: Building Inside 2 Staircase + Railing Dusting', True, ''),
+                (12, '16:30', '17:00', 'Dhaval: GF + 3F Washroom Touch Up', True, ''),
 
-                (13, '09:00', '09:45', 'Ajay: 2 Office Cleaning', True, 'Senior shift 9:00 AM to 6:00 PM'),
-                (14, '09:45', '11:15', 'Ajay: Ground Floor Cleaning', True, ''),
-                (15, '11:15', '11:30', 'Ajay: Tea Break', False, ''),
-                (16, '11:30', '12:00', 'Ajay: 1 Office Cleaning', True, ''),
-                (17, '12:00', '12:30', 'Ajay: Ground Floor All Dusting', True, ''),
-                (18, '12:30', '13:00', 'Ajay: Lift and CCTV Room Cleaning', True, ''),
-                (19, '13:00', '14:00', 'Ajay: Lunch Break', False, ''),
-                (20, '14:00', '14:30', 'Ajay: Ground Floor Touch Up', True, ''),
-                (21, '14:30', '15:15', 'Ajay: 2 Office Cleaning', True, ''),
-                (22, '15:15', '16:00', 'Ajay: Building Inside Staircase + Railing Dusting', True, ''),
-                (23, '16:00', '17:30', 'Ajay: Building Outside 2 Staircase + Railing Dusting', True, ''),
-                (24, '17:30', '18:00', 'Ajay: All Floor Gents Washroom Touch Up', True, ''),
+                (13, '09:00', '09:45', 'Mahesh: 2 Office Cleaning', True, 'Senior shift 9:00 AM to 6:00 PM'),
+                (14, '09:45', '11:15', 'Mahesh: Ground Floor Cleaning', True, ''),
+                (15, '11:15', '11:30', 'Mahesh: Tea Break', False, ''),
+                (16, '11:30', '12:00', 'Mahesh: 1 Office Cleaning', True, ''),
+                (17, '12:00', '12:30', 'Mahesh: Ground Floor All Dusting', True, ''),
+                (18, '12:30', '13:00', 'Mahesh: Lift and CCTV Room Cleaning', True, ''),
+                (19, '13:00', '14:00', 'Mahesh: Lunch Break', False, ''),
+                (20, '14:00', '14:30', 'Mahesh: Ground Floor Touch Up', True, ''),
+                (21, '14:30', '15:15', 'Mahesh: 2 Office Cleaning', True, ''),
+                (22, '15:15', '16:00', 'Mahesh: Building Inside Staircase + Railing Dusting', True, ''),
+                (23, '16:00', '17:30', 'Mahesh: Building Outside 2 Staircase + Railing Dusting', True, ''),
+                (24, '17:30', '18:00', 'Mahesh: All Floor Gents Washroom Touch Up', True, ''),
             ]
 
             rp_room_tasks = [

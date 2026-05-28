@@ -261,7 +261,7 @@ class Command(BaseCommand):
 
     RESEARCH_TARGET_ROSTER = [
         {"area": "Research Park", "name": "Mahesh Solanki", "phone": "7046959603", "pay_code": "267", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Mahesh Solanki"]},
-        {"area": "Research Park", "name": "Thakor Ajaykumar Prahladji", "phone": "8780940745", "pay_code": "349", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Ajay Thakor", "Thakor Ajaykumar Prahladji"]},
+        {"area": "Research Park", "name": "Dhaval S Solanki", "phone": "", "pay_code": "484", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Dhaval S Solanki"]},
         {"area": "Research Park", "name": "Sailesh A Vaghela", "phone": "7284950619", "pay_code": "266", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Shailesh Vaghela", "Sailesh Vaghela", "Vaghela Shaileshbhai", "Vaghela Shaileshkumar"]},
         {"area": "Research Park", "name": "Vaghela Dharmishtha Ben", "phone": "9328002335", "pay_code": "264", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Dharmishtaben", "Vaghela Dharmishtha Ben"]},
     ]
@@ -287,6 +287,30 @@ class Command(BaseCommand):
     ]
 
     SCHEDULE_UPDATES = [
+        ("Research Park", "floor", 1, "Dhaval: GF + 3F Gents and Handicap Washroom Touch Up", ""),
+        ("Research Park", "floor", 2, "Dhaval: Admin Office Cleaning", ""),
+        ("Research Park", "floor", 3, "Dhaval: Board Room Cleaning", ""),
+        ("Research Park", "floor", 4, "Dhaval: Fountain Common Area Cleaning", ""),
+        ("Research Park", "floor", 5, "Dhaval: Tea Break", ""),
+        ("Research Park", "floor", 6, "Dhaval: Classroom Cleaning", ""),
+        ("Research Park", "floor", 7, "Dhaval: GF + 3F Gents and Handicap Washroom Cleaning", ""),
+        ("Research Park", "floor", 8, "Dhaval: Conference Room Cleaning", ""),
+        ("Research Park", "floor", 9, "Dhaval: Lunch Break", ""),
+        ("Research Park", "floor", 10, "Dhaval: GF + 3F Washroom Touch Up", ""),
+        ("Research Park", "floor", 11, "Dhaval: Building Inside 2 Staircase + Railing Dusting", ""),
+        ("Research Park", "floor", 12, "Dhaval: GF + 3F Washroom Touch Up", ""),
+        ("Research Park", "floor", 13, "Mahesh: 2 Office Cleaning", "Senior shift 9:00 AM to 6:00 PM"),
+        ("Research Park", "floor", 14, "Mahesh: Ground Floor Cleaning", ""),
+        ("Research Park", "floor", 15, "Mahesh: Tea Break", ""),
+        ("Research Park", "floor", 16, "Mahesh: 1 Office Cleaning", ""),
+        ("Research Park", "floor", 17, "Mahesh: Ground Floor All Dusting", ""),
+        ("Research Park", "floor", 18, "Mahesh: Lift and CCTV Room Cleaning", ""),
+        ("Research Park", "floor", 19, "Mahesh: Lunch Break", ""),
+        ("Research Park", "floor", 20, "Mahesh: Ground Floor Touch Up", ""),
+        ("Research Park", "floor", 21, "Mahesh: 2 Office Cleaning", ""),
+        ("Research Park", "floor", 22, "Mahesh: Building Inside Staircase + Railing Dusting", ""),
+        ("Research Park", "floor", 23, "Mahesh: Building Outside 2 Staircase + Railing Dusting", ""),
+        ("Research Park", "floor", 24, "Mahesh: All Floor Gents Washroom Touch Up", ""),
         ("Guest House New", "floor", 1, "Raju: Ground Floor Office, Reception and Front Corridor", "Dusting, sweeping and mopping"),
         ("Guest House New", "floor", 2, "Raju: Parking, Washroom and Lobby Touch Up", "Ladies/Gents/Handicapped washroom, lobby and dining passage"),
         ("Guest House New", "floor", 3, "Raju: Front Glass, Lift and Ground Floor Final Round", ""),
@@ -631,7 +655,13 @@ class Command(BaseCommand):
             worker.name = spec["name"]
             if spec["phone"] or not worker.phone:
                 worker.phone = spec["phone"]
-            worker.pay_code = spec["pay_code"]
+            pay_code = spec["pay_code"]
+            if (
+                spec["name"] == "Dhaval S Solanki"
+                and HKWorker.objects.filter(pay_code="484").exclude(pk=getattr(worker, "pk", None)).exists()
+            ):
+                pay_code = "484.2"
+            worker.pay_code = pay_code
             worker.worker_type = spec["worker_type"]
             worker.shift = spec["shift"]
             worker.area = area
@@ -762,24 +792,28 @@ class Command(BaseCommand):
         if not lane:
             return []
 
+        start_minutes, end_minutes = self._lane_workday_bounds(lane)
+        total_minutes = end_minutes - start_minutes
+
         if len(lane) == 1:
             template = lane[0]
             start_minutes = (template.start_time.hour * 60) + template.start_time.minute
             end_minutes = (template.end_time.hour * 60) + template.end_time.minute
             if end_minutes <= start_minutes:
                 end_minutes += 24 * 60
-            if WORKDAY_START_MINUTES <= start_minutes and end_minutes <= WORKDAY_END_MINUTES:
+            target_start, target_end = self._lane_workday_bounds(lane)
+            if target_start <= start_minutes and end_minutes <= target_end:
                 return []
-            template.start_time = _minutes_to_time(WORKDAY_START_MINUTES)
-            template.end_time = _minutes_to_time(WORKDAY_END_MINUTES)
+            template.start_time = _minutes_to_time(target_start)
+            template.end_time = _minutes_to_time(target_end)
             return [template]
 
         raw_durations = [max(5, template.duration_minutes) for template in lane]
-        scaled_durations = self._scaled_durations(raw_durations, WORKDAY_TOTAL_MINUTES)
-        cursor = WORKDAY_START_MINUTES
+        scaled_durations = self._scaled_durations(raw_durations, total_minutes)
+        cursor = start_minutes
         changed = []
         for template, duration in zip(lane, scaled_durations):
-            next_cursor = min(WORKDAY_END_MINUTES, cursor + duration)
+            next_cursor = min(end_minutes, cursor + duration)
             start_time = _minutes_to_time(cursor)
             end_time = _minutes_to_time(next_cursor)
             if template.start_time != start_time or template.end_time != end_time:
@@ -788,12 +822,22 @@ class Command(BaseCommand):
                 changed.append(template)
             cursor = next_cursor
 
-        final_end_time = _minutes_to_time(WORKDAY_END_MINUTES)
+        final_end_time = _minutes_to_time(end_minutes)
         if lane[-1].end_time != final_end_time:
             lane[-1].end_time = final_end_time
             if lane[-1] not in changed:
                 changed.append(lane[-1])
         return changed
+
+    def _lane_workday_bounds(self, lane):
+        first = lane[0] if lane else None
+        if (
+            first
+            and getattr(first.area, "name", "") == "Research Park"
+            and (first.task_name or "").startswith("Mahesh:")
+        ):
+            return 9 * 60, 18 * 60
+        return WORKDAY_START_MINUTES, WORKDAY_END_MINUTES
 
     def _scaled_durations(self, raw_durations, target_total):
         total = sum(raw_durations) or len(raw_durations) or 1
