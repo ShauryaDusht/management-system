@@ -6,6 +6,8 @@ import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner 
 import { TrendArea } from '../../components/ui/Charts'
 import { getAreaGroup, todayISO } from '../../shared/utils'
 
+const HIDDEN_STAFF_AREA_NAMES = new Set(['hostels reliever', 'old academic reliever', 'new academic reliever'])
+
 export default function OverviewTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -44,7 +46,7 @@ export default function OverviewTab() {
         hkAPI.getDailyRecords({ date: todayStr }).catch(() => ({ data: [] })),
       ])
       const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
-        .filter((a) => a.name?.toLowerCase() !== 'hostels reliever')
+        .filter((a) => !HIDDEN_STAFF_AREA_NAMES.has(String(a.name || '').toLowerCase()))
       const records = Array.isArray(recordsResult.data)
         ? recordsResult.data
         : recordsResult.data?.results || []

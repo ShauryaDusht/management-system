@@ -6,6 +6,8 @@ import { Alert, Btn, Card, DataTable, Modal, SelectField, Spinner } from '../../
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import { getAreaGroup, triggerDownload } from '../../shared/utils'
 
+const HIDDEN_STAFF_AREA_NAMES = new Set(['hostels reliever', 'old academic reliever', 'new academic reliever'])
+
 export default function SectionsTab() {
   const [success, setSuccess] = useState('')
   const [areas, setAreas] = useState([])
@@ -31,7 +33,7 @@ export default function SectionsTab() {
       ])
 
     const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
-      .filter((a) => a.name?.toLowerCase() !== 'hostels reliever')
+      .filter((a) => !HIDDEN_STAFF_AREA_NAMES.has(String(a.name || '').toLowerCase()))
     const caretakers = Array.isArray(caretakersData) ? caretakersData : caretakersData?.results || []
     const supervisors = Array.isArray(supervisorsData) ? supervisorsData : supervisorsData?.results || []
 

@@ -8,6 +8,8 @@ import { triggerDownload } from '../../shared/utils'
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
 import { useMonthYear } from '../../shared/hooks/useMonthYear'
 
+const HIDDEN_STAFF_AREA_NAMES = new Set(['hostels reliever', 'old academic reliever', 'new academic reliever'])
+
 function normalizeUsers(payload) {
   if (Array.isArray(payload)) return payload
   if (Array.isArray(payload?.results)) return payload.results
@@ -501,7 +503,7 @@ export default function SupervisorsTab() {
         if (!mounted) return
 
         const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
-          .filter((a) => a.name?.toLowerCase() !== 'hostels reliever')
+          .filter((a) => !HIDDEN_STAFF_AREA_NAMES.has(String(a.name || '').toLowerCase()))
         const caretakers = normalizeUsers(caretakersData).map((u) => ({ ...u, role: 'caretaker' }))
         const supervisors = normalizeUsers(supervisorsData).map((u) => ({ ...u, role: 'supervisor' }))
         const sortedUsers = [...caretakers, ...supervisors].sort((a, b) => toDisplayName(a).localeCompare(toDisplayName(b)))

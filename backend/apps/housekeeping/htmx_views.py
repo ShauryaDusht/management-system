@@ -47,6 +47,7 @@ from apps.inventory.models import ItemIssue, ItemUsageLog
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
 PERMANENT_RELIEVER_USERNAMES = {"dinesh.chauhan"}
+STAFF_HIDDEN_AREA_NAMES = {"Hostels Reliever", "Old Academic Reliever", "New Academic Reliever"}
 
 ATTENDANCE_CHOICES = [
     ("present", "Present", "#d1fae5", "#065f46"),
@@ -524,6 +525,12 @@ def get_user_areas(user):
     return HKArea.objects.filter(is_active=True, id__in=all_ids)
 
 
+def visible_user_areas(user, user_areas):
+    if user.role in ["admin", "housekeeping_manager"]:
+        return user_areas
+    return user_areas.exclude(name__in=STAFF_HIDDEN_AREA_NAMES)
+
+
 def hk_required(fn):
     @functools.wraps(fn)
     def wrapper(request, *args, **kwargs):
@@ -728,7 +735,8 @@ def hk_dashboard(request):
     user = request.user
     today = timezone.localdate()
     user_areas = get_user_areas(user)
-    sel_area = selected_area(request, user_areas)
+    visible_areas = visible_user_areas(user, user_areas)
+    sel_area = selected_area(request, visible_areas)
 
     records = list(get_today_records(sel_area, today)) if sel_area else []
     area_name = sel_area.name if sel_area else ""
@@ -985,7 +993,7 @@ def hk_dashboard(request):
     return render(request, "housekeeping/mobile/dashboard.html", {
         "today": today,
         "today_dow": today_dow,
-        "user_areas": user_areas,
+        "user_areas": visible_areas,
         "selected_area": sel_area,
         "records": records,
         "grouped": grouped,
@@ -1030,7 +1038,7 @@ def hk_worker_selection_request(request):
     Worker selection request creation is now admin-only (admin dashboard).
     """
     user_areas = get_user_areas(request.user)
-    area = selected_area(request, user_areas)
+    area = selected_area(request, visible_user_areas(request.user, user_areas))
     if not area:
         return redirect("/housekeeping/dashboard/?ws_err=no_area")
     return redirect(f"/housekeeping/dashboard/?area={area.id}&ws_err=admin_only")
@@ -1047,7 +1055,7 @@ def hk_worker_selection_submit(request):
     """
     user = request.user
     user_areas = get_user_areas(user)
-    area = selected_area(request, user_areas)
+    area = selected_area(request, visible_user_areas(user, user_areas))
     if not area:
         return redirect("/housekeeping/dashboard/?ws_err=no_area")
 
@@ -1107,7 +1115,7 @@ def hk_worker_selection_submit(request):
 def hk_incharge_assign(request):
     user = request.user
     user_areas = get_user_areas(user)
-    area = selected_area(request, user_areas)
+    area = selected_area(request, visible_user_areas(user, user_areas))
 
     leave_request_id = request.POST.get("leave_request_id")
     assigned_staff_id = request.POST.get("assigned_staff_id")
@@ -1146,7 +1154,7 @@ def hk_incharge_assign(request):
 def hk_incharge_respond(request):
     user = request.user
     user_areas = get_user_areas(user)
-    area = selected_area(request, user_areas)
+    area = selected_area(request, visible_user_areas(user, user_areas))
 
     assignment_id = request.POST.get("assignment_id")
     decision = (request.POST.get("decision") or "").strip().lower()
@@ -1505,7 +1513,8 @@ def hk_log_extra_work(request):
 def hk_schedule(request):
     user = request.user
     user_areas = get_user_areas(user)
-    sel_area = selected_area(request, user_areas)
+    visible_areas = visible_user_areas(user, user_areas)
+    sel_area = selected_area(request, visible_areas)
     area_name = sel_area.name if sel_area else ""
     is_common_area = area_name == "Hostel Common Area"
     is_research_park = area_name == "Research Park"
@@ -1527,7 +1536,7 @@ def hk_schedule(request):
             weekly.append({"day": day, "day_idx": i, "tasks": tasks})
 
     return render(request, "housekeeping/mobile/schedule.html", {
-        "user_areas": user_areas,
+        "user_areas": visible_areas,
         "selected_area": sel_area,
         "is_common_area": is_common_area,
         "is_research_park": is_research_park,
@@ -1548,7 +1557,8 @@ def hk_schedule(request):
 def hk_attendance(request):
     user = request.user
     user_areas = get_user_areas(user)
-    sel_area = selected_area(request, user_areas)
+    visible_areas = visible_user_areas(user, user_areas)
+    sel_area = selected_area(request, visible_areas)
 
     sel_date = timezone.localdate()
 
@@ -1657,7 +1667,7 @@ def hk_attendance(request):
         "type_groups": type_groups,
         "sel_date": sel_date,
         "sel_area": sel_area,
-        "user_areas": user_areas,
+        "user_areas": visible_areas,
         "today": timezone.localdate(),
         "is_today": is_today,
         "cur_half": cur_half,
@@ -1758,14 +1768,15 @@ def hk_assign_reliever(request):
 def hk_stock(request):
     user = request.user
     user_areas = get_user_areas(user)
-    sel_area = selected_area(request, user_areas)
+    visible_areas = visible_user_areas(user, user_areas)
+    sel_area = selected_area(request, visible_areas)
     area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
     issued_items = _build_usage_issues(user, limit=10)
     return render(request, "housekeeping/mobile/stock.html", {
         "area_stocks": area_stocks,
         "low_stocks": [s for s in area_stocks if s.is_low],
         "issued_items": issued_items,
-        "user_areas": user_areas,
+        "user_areas": visible_areas,
         "selected_area": sel_area,
         "requested": request.GET.get("requested"),
     })
@@ -1848,7 +1859,8 @@ def hk_log_usage(request, pk):
         return redirect("/housekeeping/stock/")
 
     user_areas = get_user_areas(user)
-    sel_area = selected_area(request, user_areas)
+    visible_areas = visible_user_areas(user, user_areas)
+    sel_area = selected_area(request, visible_areas)
     area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
     my_requests = HKStockRequest.objects.filter(requested_by=user).order_by("-created_at")[:10]
     issued_items = _build_usage_issues(user, limit=10)
@@ -1857,7 +1869,7 @@ def hk_log_usage(request, pk):
         "low_stocks": [s for s in area_stocks if s.is_low],
         "my_requests": my_requests,
         "issued_items": issued_items,
-        "user_areas": user_areas,
+        "user_areas": visible_areas,
         "selected_area": sel_area,
         "requested": request.GET.get("requested"),
         "form_error": error,
@@ -1872,6 +1884,7 @@ def hk_stock_request(request):
 
     user = request.user
     user_areas = get_user_areas(user)
+    visible_areas = visible_user_areas(user, user_areas)
     hk_cats = ["Cleaning Supplies", "Housekeeping Supplies", "Consumables",
                "Tools & Equipment", "Garden & Horticulture Equipment"]
     inv_items = Item.objects.filter(category__name__in=hk_cats).select_related("category").order_by("name")
@@ -1886,7 +1899,7 @@ def hk_stock_request(request):
                 item_name = inv_item.name
 
         area_id = request.POST.get("area_id")
-        area = user_areas.filter(pk=area_id).first() if area_id else user_areas.first()
+        area = visible_areas.filter(pk=area_id).first() if area_id else visible_areas.first()
         if not item_name:
             return redirect(f"/housekeeping/stock/?error=item_name_required&area={area.id if area else ''}")
         qty = max(1, int(request.POST.get("quantity", 1) or 1))
@@ -1922,10 +1935,10 @@ def hk_stock_request(request):
 
         return redirect(f"/housekeeping/stock/?requested=1&area={area.id if area else ''}")
 
-    sel_area = selected_area(request, user_areas)
+    sel_area = selected_area(request, visible_areas)
     return render(request, "housekeeping/mobile/stock_request.html", {
         "inv_items": inv_items,
-        "user_areas": user_areas,
+        "user_areas": visible_areas,
         "selected_area": sel_area,
         "pre_item": request.GET.get("item", ""),
     })
@@ -1935,12 +1948,13 @@ def hk_stock_request(request):
 def hk_profile(request):
     user = request.user
     user_areas = get_user_areas(user)
+    visible_areas = visible_user_areas(user, user_areas)
     user_area_items = [
         {
             "name": area.name,
             "meta": area.get_area_type_display(),
         }
-        for area in user_areas
+        for area in visible_areas
     ]
     today = timezone.localdate()
     success = error = ""
@@ -1982,9 +1996,9 @@ def hk_profile(request):
 
             all_areas = str(area_id or "").strip().lower() == "all"
             if all_areas:
-                area = user_areas.first()
+                area = visible_areas.first()
             else:
-                area = user_areas.filter(pk=area_id).first() if area_id else selected_area(request, user_areas)
+                area = visible_areas.filter(pk=area_id).first() if area_id else selected_area(request, visible_areas)
             if not area:
                 error = "Please select a valid area."
             else:
@@ -2052,7 +2066,7 @@ def hk_profile(request):
     )
     return render(request, "housekeeping/mobile/profile.html", {
         "user": user,
-        "user_areas": user_areas,
+        "user_areas": visible_areas,
         "user_area_items": user_area_items,
         "success": success,
         "error": error,
