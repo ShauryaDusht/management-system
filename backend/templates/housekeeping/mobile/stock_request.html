@@ -4,44 +4,173 @@
 {% block back_btn %}<a href="/housekeeping/stock/" class="bk">←</a>{% endblock %}
 
 {% block content %}
+<style>
+.stock-form{display:grid;gap:12px}
+.item-picker{display:flex;gap:8px;align-items:stretch}
+.item-picker select{flex:1;min-width:0}
+.tap-btn{min-width:46px;min-height:46px;border-radius:8px;border:1.5px solid #d1d5db;background:#fff;font-size:22px;font-weight:800;color:#166534}
+.selected-panel{max-height:42vh;overflow-y:auto;-webkit-overflow-scrolling:touch;display:grid;gap:8px;padding-right:2px}
+.selected-item{border:1px solid #e5e7eb;background:#f9fafb;border-radius:8px;padding:10px;display:grid;gap:8px}
+.selected-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.selected-title{font-weight:700;font-size:14px;line-height:1.25}
+.selected-meta{font-size:12px;color:#6b7280;margin-top:2px}
+.qty-row{display:flex;align-items:center;gap:8px}
+.qty-val{min-width:58px;text-align:center;font-size:16px;font-weight:800;background:#fff;border:1.5px solid #d1d5db;border-radius:8px;padding:10px 8px}
+.remove-btn{border:0;background:#fee2e2;color:#991b1b;border-radius:8px;min-width:42px;min-height:42px;font-weight:800;font-size:18px}
+.empty-items{font-size:13px;color:#6b7280;background:#f3f4f6;border-radius:8px;padding:12px;text-align:center}
+.stock-error{background:#fee2e2;color:#991b1b;border-radius:8px;padding:10px;font-size:13px;font-weight:700}
+@media (max-width:420px){.card{padding:14px}.selected-panel{max-height:34vh}.btn-grid{grid-template-columns:1fr!important}}
+</style>
+
 <div class="card">
-  <form method="post" action="/housekeeping/stock/request/">
+  <form method="post" action="/housekeeping/stock/request/" class="stock-form" onsubmit="return beforeSubmit()">
     {% csrf_token %}
+    {% if form_error %}<div class="stock-error">{{ form_error }}</div>{% endif %}
     <div class="fg"><label>Requester</label><input type="text" value="{{ request.user.get_full_name|default:request.user.username }}" disabled style="background:#f3f4f6;color:#6b7280"></div>
+
     <div class="fg">
-      <label>Select from Inventory (optional)</label>
-      <select name="inventory_item_id" id="inv_sel" onchange="fillItem(this)">
-        <option value="">— Choose existing item —</option>
-        {% for item in inv_items %}<option value="{{ item.id }}" data-name="{{ item.name }}" data-unit="{{ item.get_unit_display }}">{% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} ({{ item.available_quantity }} {{ item.get_unit_display }})</option>{% endfor %}
-      </select>
-    </div>
-    <div class="fg"><label>Required Item *</label><input type="text" name="item_name" id="iname" required placeholder="Item name" value="{{ pre_item }}"></div>
-    <div class="fg">
-      <label>Quantity</label>
-      <div style="display:flex;gap:10px;align-items:center">
-        <button type="button" onclick="chg(-1)" style="width:44px;height:44px;border-radius:8px;border:1.5px solid #d1d5db;background:#fff;font-size:22px;cursor:pointer;flex-shrink:0">−</button>
-        <input type="number" name="quantity" id="qty" value="1" min="1" style="text-align:center;font-size:20px;font-weight:700;flex:1">
-        <button type="button" onclick="chg(1)" style="width:44px;height:44px;border-radius:8px;border:1.5px solid #d1d5db;background:#fff;font-size:22px;cursor:pointer;flex-shrink:0">+</button>
+      <label>Select from Inventory</label>
+      <div class="item-picker">
+        <select id="inv_sel">
+          <option value="">Choose existing item</option>
+          {% for item in inv_items %}
+          <option value="{{ item.id }}"
+            data-name="{{ item.name }}"
+            data-unit="{{ item.unit }}"
+            data-unit-label="{{ item.get_unit_display }}"
+            data-stock="{{ item.available_quantity }}"
+            {% if item.available_quantity <= 0 %}disabled{% endif %}>
+            {% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} ({{ item.available_quantity }} {{ item.get_unit_display }}){% if item.available_quantity <= 0 %} - Out of stock{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+        <button type="button" class="tap-btn" onclick="addSelectedItem()" aria-label="Add selected item">+</button>
       </div>
     </div>
-    <div class="fg"><label>Unit</label><input type="text" name="unit" id="unit" placeholder="e.g. bottles, kg, rolls, pieces"></div>
+
+    <input type="hidden" name="items" id="items_payload" value="[]">
+    <div class="selected-panel" id="selected_items"></div>
+
     {% if user_areas.count > 1 %}
     <div class="fg"><label>For Area</label>
       <select name="area_id">{% for a in user_areas %}<option value="{{ a.id }}" {% if selected_area.id == a.id %}selected{% endif %}>{{ a.name }}</option>{% endfor %}</select>
     </div>
     {% elif user_areas %}<input type="hidden" name="area_id" value="{{ user_areas.first.id }}">{% endif %}
+
     <div class="fg"><label>Reason *</label><textarea name="reason" rows="3" required placeholder="Why is this needed? For which task?"></textarea></div>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-weight:400;font-size:14px;cursor:pointer">
-      <input type="checkbox" name="is_urgent" style="width:18px;height:18px"> ⚡ Mark as Urgent
+    <label style="display:flex;align-items:center;gap:10px;margin-bottom:2px;font-weight:400;font-size:14px;cursor:pointer;min-height:42px">
+      <input type="checkbox" name="is_urgent" style="width:20px;height:20px"> Mark as Urgent
     </label>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <button type="submit" class="btn-s">📋 Submit Request</button>
-      <a href="/housekeeping/stock/" style="display:block"><button type="button" class="btn-g">← Cancel</button></a>
+    <div class="btn-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button type="submit" class="btn-s">Submit Request</button>
+      <a href="/housekeeping/stock/" style="display:block"><button type="button" class="btn-g">Cancel</button></a>
     </div>
   </form>
 </div>
 <script>
-function chg(d){const i=document.getElementById('qty');i.value=Math.max(1,parseInt(i.value)+d);}
-function fillItem(s){const o=s.options[s.selectedIndex];if(o.value){document.getElementById('iname').value=o.dataset.name||'';document.getElementById('unit').value=o.dataset.unit||'';}}
+let selectedItems = [];
+
+function syncPayload() {
+  document.getElementById('items_payload').value = JSON.stringify(
+    selectedItems.map((item) => ({
+      inventory_item_id: item.itemId,
+      quantity: item.quantity,
+    }))
+  );
+}
+
+function renderSelectedItems() {
+  const wrap = document.getElementById('selected_items');
+  if (!selectedItems.length) {
+    wrap.innerHTML = '<div class="empty-items">No items selected yet.</div>';
+    syncPayload();
+    return;
+  }
+  wrap.innerHTML = selectedItems.map((item, index) => `
+    <div class="selected-item">
+      <div class="selected-head">
+        <div>
+          <div class="selected-title">${escapeHtml(item.itemName)}</div>
+          <div class="selected-meta">Available: ${item.availableStock} ${escapeHtml(item.unitLabel || item.unit)}</div>
+        </div>
+        <button type="button" class="remove-btn" onclick="removeSelectedItem(${index})" aria-label="Remove ${escapeHtml(item.itemName)}">×</button>
+      </div>
+      <div class="qty-row">
+        <button type="button" class="tap-btn" onclick="changeQty(${index}, -1)" aria-label="Decrease quantity">−</button>
+        <div class="qty-val">${item.quantity}</div>
+        <button type="button" class="tap-btn" onclick="changeQty(${index}, 1)" aria-label="Increase quantity">+</button>
+      </div>
+    </div>
+  `).join('');
+  syncPayload();
+}
+
+function addSelectedItem() {
+  const sel = document.getElementById('inv_sel');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value || opt.disabled) return;
+  const itemId = Number(opt.value);
+  if (selectedItems.some((item) => item.itemId === itemId)) {
+    sel.value = '';
+    return;
+  }
+  const availableStock = Number(opt.dataset.stock || 0);
+  if (availableStock <= 0) return;
+  selectedItems.push({
+    itemId,
+    itemName: opt.dataset.name || opt.textContent.trim(),
+    availableStock,
+    quantity: 1,
+    unit: opt.dataset.unit || '',
+    unitLabel: opt.dataset.unitLabel || opt.dataset.unit || '',
+  });
+  sel.value = '';
+  renderSelectedItems();
+}
+
+function changeQty(index, delta) {
+  const item = selectedItems[index];
+  if (!item) return;
+  item.quantity = Math.max(1, Math.min(item.availableStock, item.quantity + delta));
+  renderSelectedItems();
+}
+
+function removeSelectedItem(index) {
+  selectedItems.splice(index, 1);
+  renderSelectedItems();
+}
+
+function beforeSubmit() {
+  if (!selectedItems.length) {
+    alert('Please add at least one inventory item.');
+    return false;
+  }
+  const invalid = selectedItems.find((item) => item.quantity < 1 || item.quantity > item.availableStock);
+  if (invalid) {
+    alert(`${invalid.itemName} has only ${invalid.availableStock} available.`);
+    return false;
+  }
+  syncPayload();
+  return true;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[char]));
+}
+
+renderSelectedItems();
+
+{% if pre_item %}
+Array.from(document.getElementById('inv_sel').options).some((opt) => {
+  if ((opt.dataset.name || '') === '{{ pre_item|escapejs }}' && !opt.disabled) {
+    document.getElementById('inv_sel').value = opt.value;
+    addSelectedItem();
+    return true;
+  }
+  return false;
+});
+{% endif %}
 </script>
 {% endblock %}

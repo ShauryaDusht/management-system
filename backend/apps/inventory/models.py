@@ -228,6 +228,48 @@ class ItemRequest(models.Model):
     def updated_at(self):
         return self.reviewed_at or self.requested_at
 
+    def requisition_lines(self):
+        lines = list(self.requisition_items.select_related('inventory_item').all())
+        if lines:
+            return lines
+        return [
+            RequisitionItem(
+                requisition=self,
+                inventory_item=self.item,
+                quantity=self.quantity_requested,
+                unit=self.item.unit,
+            )
+        ]
+
+
+class RequisitionItem(models.Model):
+    requisition = models.ForeignKey(
+        ItemRequest,
+        on_delete=models.CASCADE,
+        related_name='requisition_items',
+    )
+    inventory_item = models.ForeignKey(
+        Item,
+        on_delete=models.PROTECT,
+        related_name='requisition_lines',
+    )
+    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    unit = models.CharField(max_length=50, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'requisition_items'
+        ordering = ['id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['requisition', 'inventory_item'],
+                name='unique_requisition_inventory_item',
+            ),
+        ]
+
+    def __str__(self):
+        return f"Req #{self.requisition_id} - {self.inventory_item.name} x{self.quantity}"
+
 
 class PurchaseRequest(models.Model):
     class Status(models.TextChoices):

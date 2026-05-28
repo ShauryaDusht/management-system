@@ -14,6 +14,14 @@ from .serializers import ItemSerializer, ItemRequestSerializer
 
 def _sync_horticulture_request_status(item_request, status_value):
     try:
+        from apps.housekeeping.models import HKStockRequest
+        hk_req = HKStockRequest.objects.filter(inventory_request=item_request).first()
+        if hk_req:
+            hk_req.status = status_value
+            hk_req.save(update_fields=['status'])
+    except Exception:
+        pass
+    try:
         from apps.horticulture.models import HorticultureStockRequest
         horti_req = HorticultureStockRequest.objects.filter(inventory_request=item_request).first()
         if horti_req:
@@ -76,7 +84,7 @@ class ItemRequestViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = ItemRequest.objects.all().select_related('requested_by', 'item', 'approved_by')
+        queryset = ItemRequest.objects.all().select_related('requested_by', 'item', 'approved_by').prefetch_related('requisition_items__inventory_item')
         if user.can_manage_inventory:
             return queryset
         return queryset.filter(requested_by=user)
@@ -98,32 +106,42 @@ class ApproveRequestView(APIView):
             return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            item_request = ItemRequest.objects.select_related('item').select_for_update().get(pk=pk)
+            item_request = ItemRequest.objects.select_related('item').prefetch_related('requisition_items').select_for_update().get(pk=pk)
         except ItemRequest.DoesNotExist:
             return Response({'error': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
 
         if item_request.status != ItemRequest.Status.PENDING:
             return Response({'error': 'Request is not pending'}, status=status.HTTP_400_BAD_REQUEST)
 
-        item = Item.objects.select_for_update().get(pk=item_request.item_id)
-        qty = item_request.quantity_requested
-        available_to_reserve = item.available_quantity - item.reserved_quantity
+        lines = item_request.requisition_lines()
+        item_ids = [line.inventory_item_id for line in lines]
+        locked_items = {
+            item.id: item
+            for item in Item.objects.select_for_update().filter(pk__in=item_ids)
+        }
+        for line in lines:
+            item = locked_items.get(line.inventory_item_id)
+            if not item or item.available_quantity < line.quantity:
+                available = item.available_quantity if item else 0
+                return Response(
+                    {'error': f'Not enough stock for {line.inventory_item.name}. Available: {available}, Requested: {line.quantity}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        if available_to_reserve < qty:
-            return Response(
-                {'error': f'Not enough stock. Available: {available_to_reserve}, Requested: {qty}'},
-                status=status.HTTP_400_BAD_REQUEST,
+        for line in lines:
+            Item.objects.filter(pk=line.inventory_item_id).update(
+                available_quantity=F('available_quantity') - line.quantity
             )
-
-        Item.objects.filter(pk=item.pk).update(
-            reserved_quantity=F('reserved_quantity') + qty
-        )
-        item.refresh_from_db(fields=['available_quantity', 'reserved_quantity'])
+        first_line = next((line for line in lines if line.inventory_item_id == item_request.item_id), None)
+        first_item = locked_items.get(item_request.item_id)
 
         item_request.status = ItemRequest.Status.APPROVED
         item_request.approved_by = user
         item_request.reviewed_at = timezone.now()
-        item_request.units_remaining = max(item.available_quantity - item.reserved_quantity, 0)
+        item_request.units_remaining = max(
+            (first_item.available_quantity if first_item else 0) - (first_line.quantity if first_line else 0),
+            0,
+        )
         item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'units_remaining'])
         _sync_horticulture_request_status(item_request, ItemRequest.Status.APPROVED)
 

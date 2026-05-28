@@ -28,6 +28,14 @@ from .permissions import IsAdminOrInventoryManager
 
 def _sync_horticulture_request_status(item_request, status_value):
     try:
+        from apps.housekeeping.models import HKStockRequest
+        hk_req = HKStockRequest.objects.filter(inventory_request=item_request).first()
+        if hk_req:
+            hk_req.status = status_value
+            hk_req.save(update_fields=['status'])
+    except Exception:
+        pass
+    try:
         from apps.horticulture.models import HorticultureStockRequest
         horti_req = HorticultureStockRequest.objects.filter(inventory_request=item_request).first()
         if horti_req:
@@ -244,7 +252,7 @@ class ItemRequestListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = ItemRequest.objects.select_related('item', 'requested_by', 'approved_by')
+        qs = ItemRequest.objects.select_related('item', 'requested_by', 'approved_by').prefetch_related('requisition_items__inventory_item')
         if getattr(user, 'role', '') in ['supervisor', 'caretaker']:
             return qs.filter(requested_by=user)
         return qs
@@ -271,7 +279,7 @@ class ItemRequestBatchCreateView(generics.CreateAPIView):
 
 
 class ItemRequestDetailView(generics.RetrieveAPIView):
-    queryset = ItemRequest.objects.select_related('item', 'requested_by', 'approved_by')
+    queryset = ItemRequest.objects.select_related('item', 'requested_by', 'approved_by').prefetch_related('requisition_items__inventory_item')
     serializer_class = ItemRequestSerializer
     permission_classes = [IsAuthenticated]
 
@@ -344,7 +352,7 @@ class ReviewRequestView(APIView):
     @transaction.atomic
     def post(self, request, pk):
         try:
-            item_request = ItemRequest.objects.select_related('item').select_for_update().get(
+            item_request = ItemRequest.objects.select_related('item').prefetch_related('requisition_items').select_for_update().get(
                 pk=pk, status=ItemRequest.Status.PENDING
             )
         except ItemRequest.DoesNotExist:
@@ -355,27 +363,40 @@ class ReviewRequestView(APIView):
             return Response(serializer.errors, status=400)
 
         action = serializer.validated_data['action']
-        item = Item.objects.select_for_update().get(pk=item_request.item_id)
-
         if action == 'approve':
-            available_to_reserve = item.available_quantity - item.reserved_quantity
-            if item_request.quantity_requested > available_to_reserve:
-                return Response(
-                    {'detail': f'Insufficient stock. Available: {available_to_reserve} {item.unit}.'},
-                    status=400
+            lines = item_request.requisition_lines()
+            item_ids = [line.inventory_item_id for line in lines]
+            locked_items = {
+                item.id: item
+                for item in Item.objects.select_for_update().filter(pk__in=item_ids)
+            }
+            for line in lines:
+                item = locked_items.get(line.inventory_item_id)
+                if not item or line.quantity > item.available_quantity:
+                    available = item.available_quantity if item else 0
+                    return Response(
+                        {'detail': f'Insufficient stock for {line.inventory_item.name}. Available: {available} {line.unit}.'},
+                        status=400
+                    )
+            for line in lines:
+                Item.objects.filter(pk=line.inventory_item_id).update(
+                    available_quantity=F('available_quantity') - line.quantity
                 )
-            Item.objects.filter(pk=item.pk).update(
-                reserved_quantity=F('reserved_quantity') + item_request.quantity_requested
+            first_line = next((line for line in lines if line.inventory_item_id == item_request.item_id), None)
+            first_item = locked_items.get(item_request.item_id)
+            item_request.units_remaining = max(
+                (first_item.available_quantity if first_item else 0) - (first_line.quantity if first_line else 0),
+                0,
             )
-            item.refresh_from_db(fields=['available_quantity', 'reserved_quantity'])
             item_request.status = ItemRequest.Status.APPROVED
         else:
             item_request.status = ItemRequest.Status.REJECTED
             item_request.rejection_reason = serializer.validated_data.get('rejection_reason', '')
+            item = Item.objects.select_for_update().get(pk=item_request.item_id)
+            item_request.units_remaining = item.available_quantity
 
         item_request.approved_by = request.user
         item_request.reviewed_at = timezone.now()
-        item_request.units_remaining = max(item.available_quantity - item.reserved_quantity, 0)
         item_request.save()
         _sync_horticulture_request_status(item_request, item_request.status)
 
@@ -413,7 +434,7 @@ class IssueItemView(APIView):
         except Item.DoesNotExist:
             return Response({'detail': 'Item not found.'}, status=404)
 
-        if issued_qty > item.available_quantity:
+        if item_request.status == ItemRequest.Status.PENDING and issued_qty > item.available_quantity:
             return Response(
                 {'detail': f'Insufficient stock. Available: {item.available_quantity}.'},
                 status=400
@@ -432,11 +453,10 @@ class IssueItemView(APIView):
                         status=400,
                     )
 
-        reserved_to_release = min(item.reserved_quantity, item_request.quantity_requested)
-        Item.objects.filter(pk=item.pk).update(
-            available_quantity=F('available_quantity') - issued_qty,
-            reserved_quantity=F('reserved_quantity') - reserved_to_release,
-        )
+        if item_request.status == ItemRequest.Status.PENDING:
+            Item.objects.filter(pk=item.pk).update(
+                available_quantity=F('available_quantity') - issued_qty,
+            )
 
         issue = ItemIssue.objects.create(
             request=item_request,

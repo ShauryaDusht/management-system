@@ -1,5 +1,6 @@
 import datetime
 import functools
+import json
 import logging
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
@@ -1880,7 +1881,7 @@ def hk_log_usage(request, pk):
 
 @hk_required
 def hk_stock_request(request):
-    from apps.inventory.models import Item, ItemRequest as InvItemRequest
+    from apps.inventory.models import Item, ItemRequest as InvItemRequest, RequisitionItem
 
     user = request.user
     user_areas = get_user_areas(user)
@@ -1890,6 +1891,99 @@ def hk_stock_request(request):
     inv_items = Item.objects.filter(category__name__in=hk_cats).select_related("category").order_by("name")
 
     if request.method == "POST":
+        posted_items_raw = request.POST.get("items")
+        if posted_items_raw is not None:
+            area_id = request.POST.get("area_id")
+            area = visible_areas.filter(pk=area_id).first() if area_id else visible_areas.first()
+            reason = request.POST.get("reason", "").strip()
+            try:
+                posted_items = json.loads(posted_items_raw or "[]")
+            except json.JSONDecodeError:
+                posted_items = []
+
+            item_quantities = {}
+            error = ""
+            for line in posted_items:
+                try:
+                    item_id = int(line.get("inventory_item_id") or line.get("itemId"))
+                    quantity = int(line.get("quantity"))
+                except (TypeError, ValueError, AttributeError):
+                    error = "Please select valid inventory items and quantities."
+                    break
+                if quantity <= 0:
+                    error = "Quantity must be greater than 0."
+                    break
+                if item_id in item_quantities:
+                    error = "Same item cannot be added twice."
+                    break
+                item_quantities[item_id] = quantity
+
+            if not error and not item_quantities:
+                error = "Please add at least one inventory item."
+            if not error and not reason:
+                error = "Please enter a reason."
+
+            if not error:
+                with transaction.atomic():
+                    locked_items = {
+                        item.id: item
+                        for item in Item.objects.select_for_update().filter(pk__in=item_quantities.keys())
+                    }
+                    if len(locked_items) != len(item_quantities):
+                        error = "One or more selected inventory items were not found."
+                    else:
+                        for item_id, quantity in item_quantities.items():
+                            item = locked_items[item_id]
+                            if item.available_quantity <= 0:
+                                error = f"{item.name} is out of stock."
+                                break
+                            if quantity > item.available_quantity:
+                                error = f"{item.name} has only {item.available_quantity} {item.unit} available."
+                                break
+
+                    if not error:
+                        first_item_id = next(iter(item_quantities))
+                        first_item = locked_items[first_item_id]
+                        item_names = [locked_items[item_id].name for item_id in item_quantities]
+                        summary_name = item_names[0] if len(item_names) == 1 else f"{item_names[0]} + {len(item_names) - 1} more"
+                        total_qty = sum(item_quantities.values())
+                        is_urgent = request.POST.get("is_urgent") == "on"
+                        hk_req = HKStockRequest.objects.create(
+                            requested_by=user, area=area,
+                            item_name=summary_name, item=first_item,
+                            quantity=total_qty, unit="items" if len(item_names) > 1 else first_item.unit,
+                            reason=reason,
+                            is_urgent=is_urgent,
+                        )
+                        inv_req = InvItemRequest.objects.create(
+                            item=first_item, requested_by=user,
+                            quantity_requested=item_quantities[first_item_id],
+                            units_remaining=first_item.available_quantity,
+                            purpose=f"[HK - {area.name if area else 'General'}] {hk_req.reason}",
+                            notes=f"Urgent: {'Yes' if is_urgent else 'No'}",
+                            is_urgent=is_urgent,
+                        )
+                        RequisitionItem.objects.bulk_create([
+                            RequisitionItem(
+                                requisition=inv_req,
+                                inventory_item=locked_items[item_id],
+                                quantity=quantity,
+                                unit=locked_items[item_id].unit,
+                            )
+                            for item_id, quantity in item_quantities.items()
+                        ])
+                        hk_req.inventory_request = inv_req
+                        hk_req.save(update_fields=["inventory_request"])
+                        return redirect(f"/housekeeping/stock/?requested=1&area={area.id if area else ''}")
+
+            return render(request, "housekeeping/mobile/stock_request.html", {
+                "inv_items": inv_items,
+                "user_areas": visible_areas,
+                "selected_area": area or selected_area(request, visible_areas),
+                "pre_item": request.GET.get("item", ""),
+                "form_error": error,
+            })
+
         item_name = request.POST.get("item_name", "").strip()
         inv_item = None
         inv_id = request.POST.get("inventory_item_id")

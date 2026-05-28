@@ -2,7 +2,7 @@ from django.contrib import admin
 from django import forms
 from django.utils import timezone
 from config.admin import admin_site
-from .models import Category, Item, ItemRequest, ItemRequestBatch, ItemIssue, PurchaseRequest, StockEntry
+from .models import Category, Item, ItemRequest, ItemRequestBatch, ItemIssue, PurchaseRequest, RequisitionItem, StockEntry
 
 
 class ItemIssueAdminForm(forms.ModelForm):
@@ -99,12 +99,20 @@ class ItemRequestBatchAdmin(admin.ModelAdmin):
         formset.save_m2m()
 
 
+class RequisitionItemInline(admin.TabularInline):
+    model = RequisitionItem
+    extra = 0
+    fields = ['inventory_item', 'quantity', 'unit', 'created_at']
+    readonly_fields = ['created_at']
+
+
 @admin.register(ItemRequest, site=admin_site)
 class ItemRequestAdmin(admin.ModelAdmin):
     list_display = ['id', 'batch', 'item', 'requested_by', 'quantity_requested', 'status', 'requested_at']
     list_filter = ['status']
     search_fields = ['item__name', 'requested_by__username', 'batch__purpose']
     readonly_fields = ['requested_at', 'reviewed_at']
+    inlines = [RequisitionItemInline]
 
 
 @admin.register(ItemIssue, site=admin_site)

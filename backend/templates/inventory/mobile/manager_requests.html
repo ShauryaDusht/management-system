@@ -92,6 +92,17 @@
   </div>
   {% endif %}
 
+  {% if req.requisition_items.all|length > 1 %}
+  <div style="display:grid;gap:7px;margin-bottom:10px">
+    {% for line in req.requisition_lines %}
+    <div style="display:flex;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--bg);border-radius:var(--radius-sm);font-size:12px">
+      <span style="font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ line.inventory_item.name }}</span>
+      <span style="white-space:nowrap">{{ line.quantity }} {{ line.unit|default:line.inventory_item.unit }} / {{ line.inventory_item.available_quantity }} available</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {# ── Purpose ── #}
   <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;padding:0 2px">
     <span class="material-icons-round" style="font-size:14px;vertical-align:middle;color:var(--text-muted)">notes</span>

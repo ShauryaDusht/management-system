@@ -2,7 +2,7 @@ from django.db import transaction
 from django.db.models import Sum, Value, DecimalField
 from django.db.models.functions import Coalesce
 from rest_framework import serializers
-from .models import Category, Item, ItemRequest, ItemRequestBatch, ItemIssue, ItemUsageLog, PurchaseRequest, StockEntry
+from .models import Category, Item, ItemRequest, ItemRequestBatch, ItemIssue, ItemUsageLog, PurchaseRequest, RequisitionItem, StockEntry
 
 
 # Plan to remove this shim in a future cleanup once all callers are updated.
@@ -82,6 +82,22 @@ class StockEntrySerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'added_by', 'added_at']
 
 
+class RequisitionItemSerializer(serializers.ModelSerializer):
+    inventory_item_id = serializers.IntegerField(source='inventory_item.id', read_only=True)
+    item_name = serializers.CharField(source='inventory_item.name', read_only=True)
+    item_code = serializers.CharField(source='inventory_item.item_code', read_only=True)
+    available_stock = serializers.IntegerField(source='inventory_item.available_quantity', read_only=True)
+    item_unit = serializers.CharField(source='inventory_item.unit', read_only=True)
+
+    class Meta:
+        model = RequisitionItem
+        fields = [
+            'id', 'inventory_item_id', 'item_name', 'item_code',
+            'available_stock', 'quantity', 'unit', 'item_unit',
+        ]
+        read_only_fields = fields
+
+
 class ItemRequestSerializer(serializers.ModelSerializer):
     quantity_requested = serializers.IntegerField(min_value=1)
     requester = serializers.PrimaryKeyRelatedField(source='requested_by', read_only=True)
@@ -95,6 +111,7 @@ class ItemRequestSerializer(serializers.ModelSerializer):
     item_unit = serializers.CharField(source='item.unit', read_only=True)
     item_type = serializers.CharField(source='item.item_type', read_only=True)
     item_description = serializers.CharField(source='item.description', read_only=True)
+    items = serializers.SerializerMethodField()
 
     is_low_stock = serializers.BooleanField(source='item.is_below_threshold', read_only=True)
 
@@ -143,6 +160,21 @@ class ItemRequestSerializer(serializers.ModelSerializer):
 
     def get_updated_at(self, obj):
         return obj.reviewed_at or obj.requested_at
+
+    def get_items(self, obj):
+        return RequisitionItemSerializer(obj.requisition_lines(), many=True).data
+
+    def create(self, validated_data):
+        item_request = super().create(validated_data)
+        RequisitionItem.objects.get_or_create(
+            requisition=item_request,
+            inventory_item=item_request.item,
+            defaults={
+                'quantity': item_request.quantity_requested,
+                'unit': item_request.item.unit,
+            },
+        )
+        return item_request
 
     class Meta:
         model = ItemRequest
@@ -193,7 +225,7 @@ class ItemRequestBatchSerializer(serializers.ModelSerializer):
         lines = validated_data.pop('items')
         requested_by = validated_data['requested_by']
         batch = ItemRequestBatch.objects.create(**validated_data)
-        ItemRequest.objects.bulk_create([
+        requests = [
             ItemRequest(
                 batch=batch,
                 requested_by=requested_by,
@@ -206,6 +238,16 @@ class ItemRequestBatchSerializer(serializers.ModelSerializer):
                 status=ItemRequest.Status.PENDING,
             )
             for line in lines
+        ]
+        ItemRequest.objects.bulk_create(requests)
+        RequisitionItem.objects.bulk_create([
+            RequisitionItem(
+                requisition=req,
+                inventory_item=req.item,
+                quantity=req.quantity_requested,
+                unit=req.item.unit,
+            )
+            for req in requests
         ])
         return batch
 

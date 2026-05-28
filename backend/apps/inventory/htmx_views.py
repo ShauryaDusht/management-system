@@ -15,7 +15,7 @@ from apps.users.models import normalize_username_value
 from django.views.decorators.http import require_POST
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
-from .models import Category, Item, ItemIssue, ItemUsageLog, ItemRequest, ItemRequestBatch, PurchaseRequest, StockEntry
+from .models import Category, Item, ItemIssue, ItemUsageLog, ItemRequest, ItemRequestBatch, PurchaseRequest, RequisitionItem, StockEntry
 
 
 # ─────────────────────────────────────────────────
@@ -257,7 +257,9 @@ def mobile_manager_requests(request):
 
     all_pending = ItemRequest.objects.filter(
         status='pending'
-    ).select_related('requested_by', 'item', 'item__category').order_by('-requested_at')
+    ).select_related('requested_by', 'item', 'item__category').prefetch_related(
+        'requisition_items__inventory_item'
+    ).order_by('-requested_at')
 
     paginator = Paginator(all_pending, 5)
     page_obj = paginator.get_page(request.GET.get('page', 1))
@@ -745,17 +747,43 @@ def mobile_approve_request(request, pk):
             return redirect('mobile_dashboard')
 
         item_request = get_object_or_404(
-            ItemRequest.objects.select_for_update(), pk=pk
+            ItemRequest.objects.select_for_update().prefetch_related('requisition_items'), pk=pk
         )
         if item_request.status == 'pending':
-            item = item_request.item
-            item_request.units_remaining = item.available_quantity
+            lines = item_request.requisition_lines()
+            item_ids = [line.inventory_item_id for line in lines]
+            locked_items = {
+                item.id: item
+                for item in Item.objects.select_for_update().filter(pk__in=item_ids)
+            }
+            for line in lines:
+                item = locked_items.get(line.inventory_item_id)
+                if not item or line.quantity > item.available_quantity:
+                    return redirect('mobile_manager_requests')
+            for line in lines:
+                Item.objects.filter(pk=line.inventory_item_id).update(
+                    available_quantity=F('available_quantity') - line.quantity
+                )
+            first_line = next((line for line in lines if line.inventory_item_id == item_request.item_id), None)
+            first_item = locked_items.get(item_request.item_id)
+            item_request.units_remaining = max(
+                (first_item.available_quantity if first_item else 0) - (first_line.quantity if first_line else 0),
+                0,
+            )
             item_request.status = 'approved'
             item_request.approved_by = request.user
             item_request.reviewed_at = timezone.now()
             item_request.save(update_fields=[
                 'status', 'approved_by', 'reviewed_at', 'units_remaining'
             ])
+            try:
+                from apps.housekeeping.models import HKStockRequest
+                hk_req = HKStockRequest.objects.filter(inventory_request=item_request).first()
+                if hk_req:
+                    hk_req.status = 'approved'
+                    hk_req.save(update_fields=['status'])
+            except Exception:
+                pass
             try:
                 from apps.horticulture.models import HorticultureStockRequest
                 horti_req = HorticultureStockRequest.objects.filter(inventory_request=item_request).first()
@@ -831,7 +859,7 @@ def mobile_issue_request(request, pk):
         qty = max(1, qty)
         expected_return_date = None
 
-        if item.available_quantity < qty:
+        if item_request.status == 'pending' and item.available_quantity < qty:
             # Not enough stock — redirect back without issuing
             return redirect('mobile_manager_requests')
 
@@ -842,10 +870,10 @@ def mobile_issue_request(request, pk):
                 if expected_return_date is None or expected_return_date < timezone.localdate():
                     return redirect('mobile_manager_requests')
 
-        # Deduct stock atomically
-        Item.objects.filter(pk=item.pk).update(
-            available_quantity=F('available_quantity') - qty
-        )
+        if item_request.status == 'pending':
+            Item.objects.filter(pk=item.pk).update(
+                available_quantity=F('available_quantity') - qty
+            )
 
         # If still pending, mark it approved first
         if item_request.status == 'pending':
