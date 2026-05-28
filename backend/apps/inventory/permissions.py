@@ -38,5 +38,7 @@ class IsAdminOrManagerOrSupervisor(BasePermission):
 class IsAdminOrInventoryManager(BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and (
-            request.user.is_admin or request.user.is_inventory_manager
+            request.user.is_admin
+            or request.user.is_inventory_manager
+            or getattr(request.user, 'is_hk_inventory_manager', False)
         )

@@ -10,6 +10,8 @@ def _canonical_username(attrs, instance=None):
     first_name = attrs.get('first_name', getattr(instance, 'first_name', ''))
     last_name = attrs.get('last_name', getattr(instance, 'last_name', ''))
     supplied = normalize_username_value(attrs.get('username', getattr(instance, 'username', '')))
+    if supplied == 'hk_inventory_manager':
+        return supplied
     generated = unique_standard_username(
         first_name,
         last_name,

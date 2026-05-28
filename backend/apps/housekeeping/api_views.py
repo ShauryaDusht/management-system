@@ -99,6 +99,18 @@ def _push_incharge_notice(user, assignment, message, level='info'):
     )
 
 
+def _can_manage_housekeeping(user):
+    return bool(
+        user
+        and user.is_authenticated
+        and (
+            user.is_admin
+            or user.is_housekeeping_manager
+            or getattr(user, 'is_hk_inventory_manager', False)
+        )
+    )
+
+
 def _parse_report_period(month_raw, year_raw):
     today = timezone.localdate()
 
@@ -570,7 +582,7 @@ class HKWorkerSelectionRequestListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        if not request.user.is_admin:
+        if not _can_manage_housekeeping(request.user):
             return Response({'detail': 'Only admin can create worker selection requests.'}, status=403)
 
         data = request.data
@@ -750,7 +762,7 @@ class HKInchargeAssignmentListView(APIView):
             .prefetch_related('leave_staff__hk_areas__area')
             .order_by('-created_at')
         )
-        if request.user.role not in ['admin', 'housekeeping_manager']:
+        if not _can_manage_housekeeping(request.user):
             qs = qs.filter(Q(leave_staff=request.user) | Q(assigned_staff=request.user))
         if status_filter:
             qs = qs.filter(status=status_filter)
@@ -870,7 +882,7 @@ class HKLeaveRequestListView(APIView):
             .select_related('staff', 'area')
             .order_by('-leave_date', '-created_at')
         )
-        if request.user.role not in ['admin', 'housekeeping_manager']:
+        if not _can_manage_housekeeping(request.user):
             qs = qs.filter(staff=request.user)
         serializer = HKLeaveRequestSerializer(qs, many=True)
         return Response(serializer.data)
@@ -1046,7 +1058,7 @@ class HKStockRequestListView(ListAPIView):
     def get_queryset(self):
         user = self.request.user
         qs = HKStockRequest.objects.select_related('requested_by', 'area').order_by('-created_at')
-        if user.role not in ['admin', 'housekeeping_manager']:
+        if not _can_manage_housekeeping(user):
             qs = qs.filter(requested_by=user)
         return qs[:50]
 

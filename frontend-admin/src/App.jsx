@@ -14,11 +14,13 @@ import UnauthorizedPage from './pages/UnauthorizedPage'
 import UsersPage from './pages/users/UsersPage'
 
 const ADMIN_ONLY = ['admin']
+const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager']
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
 const ROUTER_BASENAME = '/admin'
 
 function getLandingRoute(user) {
   if (user?.role === 'admin') return '/dashboard'
+  if (user?.role === 'hk_inventory_manager') return '/dashboard'
   if (user?.role === 'horticulture_manager') return '/horticulture'
   return '/unauthorized'
 }
@@ -35,7 +37,7 @@ function AdminOnlyRedirectRoute({ children }) {
   }
   if (unauthorized) return <Navigate to="/unauthorized" replace />
   if (!user) return <Navigate to="/login" replace />
-  if (user.role !== 'admin') {
+  if (!ADMIN_DASHBOARD_ALLOWED.includes(user.role)) {
     return <Navigate to={getLandingRoute(user)} replace />
   }
   return children
@@ -61,7 +63,7 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+              <ProtectedRoute allowedRoles={ADMIN_DASHBOARD_ALLOWED}>
                 <DashboardPage />
               </ProtectedRoute>
             }
@@ -69,7 +71,7 @@ export default function App() {
           <Route
             path="/inventory/*"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+              <ProtectedRoute allowedRoles={ADMIN_DASHBOARD_ALLOWED}>
                 <InventoryPage />
               </ProtectedRoute>
             }
@@ -77,7 +79,7 @@ export default function App() {
           <Route
             path="/housekeeping/*"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+              <ProtectedRoute allowedRoles={ADMIN_DASHBOARD_ALLOWED}>
                 <HousekeepingPage />
               </ProtectedRoute>
             }
@@ -101,9 +103,9 @@ export default function App() {
           <Route
             path="/users"
             element={
-              <AdminOnlyRedirectRoute>
+              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
                 <UsersPage />
-              </AdminOnlyRedirectRoute>
+              </ProtectedRoute>
             }
           />
           <Route

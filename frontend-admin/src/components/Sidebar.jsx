@@ -50,6 +50,23 @@ export default function Sidebar() {
       { to: '/horticulture', icon: 'HT', label: 'Horticulture' },
       { to: '/profile', icon: 'PR', label: 'Profile' },
     ]
+    : user?.role === 'hk_inventory_manager'
+    ? [
+      { to: '/dashboard', icon: 'DB', label: 'Dashboard' },
+      {
+        to: '/inventory', icon: 'IN', label: 'Inventory',
+        badge: badges.inventory,
+        badgeYellow: false,
+        extraBadge: badges.lowStock,
+        extraYellow: true,
+        extraTitle: 'low stock items',
+      },
+      {
+        to: '/housekeeping', icon: 'HK', label: 'Housekeeping',
+        badge: badges.housekeeping,
+      },
+      { to: '/insights', icon: 'AN', label: 'Insights' },
+    ]
     : [
       { to: '/dashboard', icon: 'DB', label: 'Dashboard' },
       {

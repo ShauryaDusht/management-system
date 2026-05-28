@@ -26,7 +26,7 @@ export default function InventoryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const { badges, markSeen } = useNotifications()
-  const canViewReports = user?.role === 'admin'
+  const canViewReports = user?.role === 'admin' || user?.role === 'hk_inventory_manager'
 
   const tabConfig = useMemo(() => {
     const base = BASE_TAB_CONFIG.map((tab) => {

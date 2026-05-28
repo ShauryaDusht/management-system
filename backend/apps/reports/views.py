@@ -14,7 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.users.permissions import IsAdmin as IsAdminUser
+from apps.users.permissions import IsAdminOrHKInventoryManager as IsAdminUser
 from .exporters import (
     export_consumption_item_csv,
     export_consumption_requester_csv,
@@ -299,6 +299,7 @@ class DashboardInsightsView(APIView):
     def get(self, request):
         range_key, start_date, end_date, dates = self._resolve_range(request.query_params.get('range'))
         area_class = self._normalize_area_class(request.query_params.get('area_class'))
+        include_horticulture = not getattr(request.user, 'is_hk_inventory_manager', False)
 
         from apps.inventory.models import ItemIssue, ItemRequest, PurchaseRequest, StockEntry
         from apps.housekeeping.htmx_views import get_today_records
@@ -399,8 +400,8 @@ class DashboardInsightsView(APIView):
             hk_in_progress = int(hk.get('in_progress', 0) or 0)
             hk_skipped = int(hk.get('skipped', 0) or 0)
 
-            horticulture_done = int(horti_map.get(dt, 0) or 0)
-            horticulture_pending = int(horti_pending_map.get(dt, 0) or 0)
+            horticulture_done = int(horti_map.get(dt, 0) or 0) if include_horticulture else 0
+            horticulture_pending = int(horti_pending_map.get(dt, 0) or 0) if include_horticulture else 0
             horticulture_total = horticulture_done + horticulture_pending
             total = inventory_total + hk_total + horticulture_total
             label = 'Today' if range_key == 'today' else dt.strftime('%d %b')
@@ -1029,6 +1030,8 @@ class DashboardInsightsView(APIView):
             horti_area_id = horti_req_area_map.get(issue.request_id)
             if horti_area_id:
                 horti_area_obj = horti_areas_by_id.get(horti_area_id)
+            if horti_area_obj and not include_horticulture:
+                continue
             if area_id:
                 area_obj = areas_by_id.get(area_id)
             if not area_obj:
@@ -1082,7 +1085,7 @@ class DashboardInsightsView(APIView):
             item_row['transactions'] += 1
             item_row['areas'].add(issue_area_detail)
 
-        if area_class in {'all', 'others'}:
+        if include_horticulture and area_class in {'all', 'others'}:
             for zone in HorticultureZone.objects.order_by('name'):
                 area_row = area_consumption[zone.name]
                 area_row['area_name'] = zone.name
@@ -1090,6 +1093,14 @@ class DashboardInsightsView(APIView):
                 area_row['department'] = 'horticulture'
 
         area_consumption_rows = list(area_consumption.values())
+        if not include_horticulture:
+            area_rows = [row for row in area_rows if row.get('department') != 'horticulture']
+            caretaker_rows = [row for row in caretaker_rows if row.get('department') != 'horticulture']
+            worker_rows = [row for row in worker_rows if row.get('department') != 'horticulture']
+            area_consumption_rows = [
+                row for row in area_consumption_rows
+                if row.get('department') != 'horticulture'
+            ]
         area_consumption_rows.sort(
             key=lambda r: (
                 -int(r.get('total_qty', 0)),

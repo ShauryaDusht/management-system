@@ -9,6 +9,7 @@ import { inventoryAPI, reportsAPI } from '../../api/inventory'
 import { hkAPI } from '../../api/housekeeping'
 import { Btn, Card, Spinner, StatCard } from '../../components/ui'
 import { DonutChart, DONUT_PALETTE } from '../../components/ui/Charts'
+import { useAuth } from '../../context/AuthContext'
 import AdminLayout from '../../layout/AdminLayout'
 
 const PALETTE = DONUT_PALETTE
@@ -179,6 +180,8 @@ function ActivityPieChart({ data, lines }) {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth()
+  const canViewHorticulture = user?.role !== 'hk_inventory_manager'
   const [invSummary, setInvSummary]     = useState(null)
   const [hkSummary, setHkSummary]       = useState(null)
   const [hortiSummary, setHortiSummary] = useState(null)
@@ -199,7 +202,7 @@ export default function DashboardPage() {
         const [inv, hk, horti, trend] = await Promise.all([
           inventoryAPI.getDashboard().catch(() => null),
           hkAPI.getDashboardSummary().catch(() => null),
-          horticultureAPI.getSummary().catch(() => null),
+          canViewHorticulture ? horticultureAPI.getSummary().catch(() => null) : Promise.resolve(null),
           reportsAPI.getActivityTrend({ range: trendRange }).catch(() => null),
         ])
         if (!alive) return
@@ -230,10 +233,20 @@ export default function DashboardPage() {
     fetchData()
     const interval = setInterval(fetchData, 30000)
     return () => { alive = false; clearInterval(interval) }
-  }, [trendRange])
+  }, [trendRange, canViewHorticulture])
+
+  useEffect(() => {
+    if (!canViewHorticulture && trendModule === 'horticulture') {
+      setTrendModule('all')
+    }
+  }, [canViewHorticulture, trendModule])
 
   const todayLabel = useMemo(() =>
     new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), [])
+  const moduleOptions = useMemo(
+    () => MODULE_OPTIONS.filter((option) => canViewHorticulture || option.key !== 'horticulture'),
+    [canViewHorticulture]
+  )
 
   const inStockCount = invSummary
     ? (invSummary.in_stock_count ?? Math.max(0, (invSummary.total_items || 0) - (invSummary.low_stock_count || 0) - (invSummary.out_of_stock_count || 0)))
@@ -301,6 +314,13 @@ export default function DashboardPage() {
         { label: 'Horticulture', value: trendTotals?.horticulture ?? 0, color: 'var(--green-700)', icon: '🌿' },
       ]
 
+  const visibleTrendLines = canViewHorticulture
+    ? trendLines
+    : trendLines.filter((line) => line.key !== 'horticulture')
+  const visibleSummaryBoxes = canViewHorticulture
+    ? summaryBoxes
+    : summaryBoxes.filter((box) => box.label !== 'Horticulture')
+
   const statCards = [
     { label: 'Total Inventory Items',  value: invSummary?.total_items ?? '-',           icon: '📦', color: 'var(--green-800)', sub: `${invSummary?.pending_requests ?? 0} requests pending`, to: '/inventory?tab=items' },
     { label: 'Low Stock Alerts',       value: invSummary?.low_stock_count ?? '-',        icon: '⚠️', color: 'var(--orange-600)', sub: `${invSummary?.out_of_stock_count ?? 0} out of stock`,  to: '/inventory?tab=items' },
@@ -330,8 +350,8 @@ export default function DashboardPage() {
             {[
               { title: 'Inventory', subtitle: 'Stock overview', data: invDonut, total: invSummary?.total_items, label: 'Items', palette: DONUT_PALETTE, to: '/inventory' },
               { title: 'Housekeeping', subtitle: 'Today tasks', data: hkDonutData, total: hkSummary?.total_tasks, label: hkHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/housekeeping' },
-              { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTotal, label: hortiTotal > 0 ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' },
-            ].map(card => (
+              canViewHorticulture ? { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTotal, label: hortiTotal > 0 ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' } : null,
+            ].filter(Boolean).map(card => (
               <Card key={card.title}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                   <div>
@@ -374,7 +394,7 @@ export default function DashboardPage() {
             {/* Module + Chart type row */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {MODULE_OPTIONS.map(opt => (
+                {moduleOptions.map(opt => (
                   <Btn key={opt.key} size="sm" variant={trendModule === opt.key ? 'primary' : 'secondary'} onClick={() => setTrendModule(opt.key)}>
                     {opt.label}
                   </Btn>
@@ -391,7 +411,7 @@ export default function DashboardPage() {
 
             {/* Summary stat boxes */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
-              {summaryBoxes.map(b => (
+              {visibleSummaryBoxes.map(b => (
                 <SummaryStatBox key={b.label} label={b.label} value={b.value} color={b.color} icon={b.icon} />
               ))}
             </div>
@@ -400,16 +420,16 @@ export default function DashboardPage() {
             {trendLoading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></div>
             ) : chartType === 'area' ? (
-              <ActivityAreaChart data={trendData} lines={trendLines} height={240} />
+              <ActivityAreaChart data={trendData} lines={visibleTrendLines} height={240} />
             ) : chartType === 'bar' ? (
-              <ActivityBarChart data={trendData} lines={trendLines} height={240} />
+              <ActivityBarChart data={trendData} lines={visibleTrendLines} height={240} />
             ) : (
-              <ActivityPieChart data={trendData} lines={trendLines} />
+              <ActivityPieChart data={trendData} lines={visibleTrendLines} />
             )}
 
             {/* Peak day insight */}
             {!trendLoading && trendData.length > 0 && chartType !== 'pie' && (() => {
-              const primaryKey = trendLines[0]?.key
+              const primaryKey = visibleTrendLines[0]?.key
               const peak = trendData.reduce((best, row) => Number(row[primaryKey] || 0) > Number(best[primaryKey] || 0) ? row : best, trendData[0])
               const total = trendData.reduce((s, row) => s + Number(row[primaryKey] || 0), 0)
               const avg = total / trendData.length

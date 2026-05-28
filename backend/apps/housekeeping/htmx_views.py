@@ -494,12 +494,6 @@ def get_user_areas(user):
 
     assigned_areas = list(HKArea.objects.filter(is_active=True, id__in=all_ids))
 
-    # Hostel staff should be able to mark the dedicated hostel reliever pool too.
-    if any(area_bucket(area) == "hostels" and area.name != "Hostels Reliever" for area in assigned_areas):
-        reliever_area_id = HKArea.objects.filter(name='Hostels Reliever', is_active=True).values_list('id', flat=True).first()
-        if reliever_area_id:
-            all_ids.add(reliever_area_id)
-
     # Academic supervisors for Blocks 1-9 should also see the shared academic reliever pool.
     if any(_uses_academic_reliever_pool(area) for area in assigned_areas):
         academic_reliever_area_id = HKArea.objects.filter(name='Old Academic Reliever', is_active=True).values_list('id', flat=True).first()

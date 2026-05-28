@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.users.permissions import IsAdmin
+from .permissions import IsAdminOrInventoryManager
 from .models import Item, ItemRequest
 from .serializers import ItemSerializer, ItemRequestSerializer
 
@@ -24,7 +24,7 @@ def _sync_horticulture_request_status(item_request, status_value):
 
 
 class AdjustStockView(APIView):
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrInventoryManager]
 
     @transaction.atomic
     def post(self, request, pk):
@@ -77,7 +77,7 @@ class ItemRequestViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         queryset = ItemRequest.objects.all().select_related('requested_by', 'item', 'approved_by')
-        if user.is_admin or user.is_inventory_manager:
+        if user.can_manage_inventory:
             return queryset
         return queryset.filter(requested_by=user)
 
@@ -94,7 +94,7 @@ class ApproveRequestView(APIView):
     @transaction.atomic
     def post(self, request, pk):
         user = request.user
-        if not (user.is_admin or user.is_inventory_manager):
+        if not user.can_manage_inventory:
             return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -136,7 +136,7 @@ class RejectRequestView(APIView):
     @transaction.atomic
     def post(self, request, pk):
         user = request.user
-        if not (user.is_admin or user.is_inventory_manager):
+        if not user.can_manage_inventory:
             return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -170,7 +170,7 @@ class MarkUrgentView(APIView):
 
         user = request.user
         is_owner = item_request.requested_by == user
-        is_privileged = user.is_admin or user.is_inventory_manager
+        is_privileged = user.can_manage_inventory
         if not (is_owner or is_privileged):
             return Response(
                 {'error': 'Only the requester or an inventory manager can change urgency.'},

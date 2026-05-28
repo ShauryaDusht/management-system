@@ -28,6 +28,8 @@ def build_username_from_names(first_name, last_name):
 
 
 def is_standard_username(username):
+    if username == 'hk_inventory_manager':
+        return True
     return bool(USERNAME_RE.fullmatch(username or ''))
 
 
@@ -67,6 +69,7 @@ class User(AbstractUser):
         ADMIN = 'admin', 'Admin'
         INVENTORY_MANAGER = 'inventory_manager', 'Inventory Manager'
         HOUSEKEEPING_MANAGER = 'housekeeping_manager', 'Housekeeping Manager'
+        HK_INVENTORY_MANAGER = 'hk_inventory_manager', 'Housekeeping / Inventory Manager'
         HORTICULTURE_MANAGER = 'horticulture_manager', 'Horticulture Manager'
         SUPERVISOR = 'supervisor', 'Supervisor'
         CARETAKER = 'caretaker', 'Caretaker'
@@ -101,6 +104,10 @@ class User(AbstractUser):
         return self.role == self.Role.HOUSEKEEPING_MANAGER
 
     @property
+    def is_hk_inventory_manager(self):
+        return self.role == self.Role.HK_INVENTORY_MANAGER
+
+    @property
     def is_horticulture_manager(self):
         return self.role == self.Role.HORTICULTURE_MANAGER
 
@@ -109,8 +116,21 @@ class User(AbstractUser):
         return self.role in (
             self.Role.INVENTORY_MANAGER,
             self.Role.HOUSEKEEPING_MANAGER,
+            self.Role.HK_INVENTORY_MANAGER,
             self.Role.HORTICULTURE_MANAGER,
         )
+
+    @property
+    def can_manage_inventory(self):
+        return self.is_admin or self.is_inventory_manager or self.is_hk_inventory_manager
+
+    @property
+    def can_manage_housekeeping(self):
+        return self.is_admin or self.is_housekeeping_manager or self.is_hk_inventory_manager
+
+    @property
+    def can_view_admin_reports(self):
+        return self.is_admin or self.is_hk_inventory_manager
 
     @property
     def is_manager(self):

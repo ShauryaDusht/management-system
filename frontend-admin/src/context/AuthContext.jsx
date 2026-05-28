@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { authAPI } from '../api/auth'
 
 const AuthContext = createContext(null)
-const ALLOWED_PORTAL_ROLES = ['admin', 'horticulture_manager']
+const ALLOWED_PORTAL_ROLES = ['admin', 'horticulture_manager', 'hk_inventory_manager']
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -67,8 +67,9 @@ export function AuthProvider({ children }) {
   const isAdmin = user?.role === 'admin'
   const isInventoryManager = user?.role === 'inventory_manager'
   const isHousekeepingManager = user?.role === 'housekeeping_manager'
+  const isHKInventoryManager = user?.role === 'hk_inventory_manager'
   const isHorticultureManager = user?.role === 'horticulture_manager'
-  const isAnyManager = isInventoryManager || isHousekeepingManager || isHorticultureManager
+  const isAnyManager = isInventoryManager || isHousekeepingManager || isHKInventoryManager || isHorticultureManager
   const isSupervisor = user?.role === 'supervisor'
   const isCaretaker = user?.role === 'caretaker'
 
@@ -81,6 +82,7 @@ export function AuthProvider({ children }) {
     isAdmin,
     isInventoryManager,
     isHousekeepingManager,
+    isHKInventoryManager,
     isHorticultureManager,
     isAnyManager,
     isSupervisor,
