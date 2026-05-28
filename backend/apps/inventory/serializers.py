@@ -43,6 +43,28 @@ class ItemSerializer(serializers.ModelSerializer):
             return 0
         return float(obj.unit_cost * obj.total_quantity)
 
+    def validate_item_code(self, value):
+        if value is None:
+            return None
+        value = str(value).strip()
+        return value or None
+
+    def validate(self, attrs):
+        instance = self.instance
+        total_quantity = attrs.get(
+            'total_quantity',
+            instance.total_quantity if instance else 0,
+        )
+        available_quantity = attrs.get(
+            'available_quantity',
+            instance.available_quantity if instance else 0,
+        )
+        if available_quantity > total_quantity:
+            raise serializers.ValidationError({
+                'available_quantity': 'Available quantity cannot exceed total quantity.'
+            })
+        return attrs
+
 
 class StockEntrySerializer(serializers.ModelSerializer):
     added_by_name = serializers.CharField(source='added_by.get_full_name', read_only=True)

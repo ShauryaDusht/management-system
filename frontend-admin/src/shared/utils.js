@@ -25,6 +25,20 @@ export function asList(data) {
 
 // Error message extractor — replaces all local getErrorMessage copies
 export function getErrorMessage(error, fallback = 'Something went wrong.') {
+  const data = error?.response?.data
+  if (data?.error || data?.detail || data?.message) {
+    return data.error || data.detail || data.message
+  }
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const firstField = Object.keys(data).find((key) => data[key])
+    const firstValue = firstField ? data[firstField] : null
+    if (Array.isArray(firstValue) && firstValue.length) {
+      return `${firstField}: ${firstValue[0]}`
+    }
+    if (typeof firstValue === 'string') {
+      return `${firstField}: ${firstValue}`
+    }
+  }
   return error?.response?.data?.error
     || error?.response?.data?.detail
     || error?.response?.data?.message

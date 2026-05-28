@@ -73,11 +73,18 @@ export default function ItemsTab({ userRole }) {
   const error = actionError || loadError
 
   const resolveCategoryId = (item) => {
-    if (item?.category) return item.category
-    if (item?.category_id) return item.category_id
-    if (item?.category_name) {
-      const match = categories.find((c) => c.name === item.category_name)
-      return match?.id || ''
+    const directId = item?.category_id ?? item?.category
+    if (typeof directId === 'number' || (typeof directId === 'string' && /^\d+$/.test(directId))) {
+      return String(directId)
+    }
+    if (directId && typeof directId === 'object' && directId.id) {
+      return String(directId.id)
+    }
+
+    const categoryName = typeof item?.category === 'string' ? item.category : item?.category_name
+    if (categoryName) {
+      const match = categories.find((c) => String(c.name || '').trim() === String(categoryName).trim())
+      return match?.id ? String(match.id) : ''
     }
     return ''
   }
@@ -152,21 +159,30 @@ export default function ItemsTab({ userRole }) {
 
   const doCreateItem = async () => {
     const trimmedName = String(newItem.name || '').trim()
+    const categoryId = Number(newItem.category)
+    const totalQuantity = Number(newItem.total_quantity || 0)
+    const availableQuantity = Number(newItem.available_quantity || 0)
+    const thresholdQuantity = Number(newItem.threshold_quantity || 0)
+    const unitCost = newItem.unit_cost === '' ? null : Number(newItem.unit_cost || 0)
     const errors = {}
     if (!trimmedName) errors.name = 'Name is required.'
-    if (!newItem.category) errors.category = 'Category is required.'
+    if (!Number.isInteger(categoryId) || categoryId <= 0) errors.category = 'Category is required.'
+    if (availableQuantity > totalQuantity) {
+      errors.available_quantity = 'Available quantity cannot exceed total quantity.'
+    }
     setFormErrors(errors)
     if (Object.keys(errors).length > 0) return
 
     await runAction(async () => {
       const payload = {
         ...newItem,
-        item_code: newItem.item_code || null,
+        item_code: String(newItem.item_code || '').trim() || null,
         name: trimmedName,
-        total_quantity: Number(newItem.total_quantity || 0),
-        available_quantity: Number(newItem.available_quantity || 0),
-        threshold_quantity: Number(newItem.threshold_quantity || 0),
-        unit_cost: Number(newItem.unit_cost || 0),
+        category: categoryId,
+        total_quantity: totalQuantity,
+        available_quantity: availableQuantity,
+        threshold_quantity: thresholdQuantity,
+        unit_cost: unitCost,
       }
       if (editItem) {
         await inventoryAPI.updateItem(editItem.id, payload)
@@ -484,8 +500,16 @@ export default function ItemsTab({ userRole }) {
             <Input
               type="number"
               value={newItem.available_quantity}
-              onChange={(e) => setNewItem((p) => ({ ...p, available_quantity: e.target.value }))}
+              onChange={(e) => {
+                setNewItem((p) => ({ ...p, available_quantity: e.target.value }))
+                if (formErrors.available_quantity) {
+                  setFormErrors((p) => ({ ...p, available_quantity: '' }))
+                }
+              }}
             />
+            {formErrors.available_quantity && (
+              <div style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>{formErrors.available_quantity}</div>
+            )}
           </Field>
           <Field label="Threshold">
             <Input
