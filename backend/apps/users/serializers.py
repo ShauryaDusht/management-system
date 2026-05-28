@@ -5,6 +5,8 @@ from apps.core.portal_views import get_portal_redirect
 
 from .models import User, is_standard_username, normalize_username_value, unique_standard_username
 
+STAFF_HIDDEN_AREA_NAMES = {'Hostels Reliever', 'Old Academic Reliever', 'New Academic Reliever'}
+
 
 def _canonical_username(attrs, instance=None):
     first_name = attrs.get('first_name', getattr(instance, 'first_name', ''))
@@ -89,7 +91,14 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.get_full_name() or obj.username
 
     def get_areas_incharge(self, obj):
-        names = [link.area.name for link in obj.hk_areas.all() if link.area]
+        names = []
+        hide_staff_reliever_areas = obj.role in {User.Role.SUPERVISOR, User.Role.CARETAKER}
+        for link in obj.hk_areas.all():
+            if not link.area:
+                continue
+            if hide_staff_reliever_areas and link.area.name in STAFF_HIDDEN_AREA_NAMES:
+                continue
+            names.append(link.area.name)
         horticulture_zones = getattr(obj, 'horticulture_supervised_zones', None)
         if horticulture_zones is not None:
             names.extend(zone.name for zone in horticulture_zones.all())
