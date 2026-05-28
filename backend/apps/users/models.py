@@ -5,6 +5,7 @@ from django.db import models
 
 
 USERNAME_RE = re.compile(r'^[a-z]+[a-z0-9]*\.[a-z]+[a-z0-9]*$')
+FIRST_NAME_SUFFIXES = ('chandra', 'kumar', 'sinh', 'bhai')
 
 
 def normalize_username_value(username):
@@ -12,7 +13,15 @@ def normalize_username_value(username):
 
 
 def build_username_from_names(first_name, last_name):
-    first = re.sub(r'[^a-z0-9]', '', (first_name or '').strip().lower())
+    # Portal usernames follow the supervisor convention:
+    # first token of first_name + "." + surname, e.g. "Ashokbhai Ishwarbhai Rathod"
+    # becomes "ashok.rathod". Duplicate handling appends a numeric suffix.
+    first_parts = re.findall(r'[a-z0-9]+', (first_name or '').strip().lower())
+    first = first_parts[0] if first_parts else ''
+    for suffix in FIRST_NAME_SUFFIXES:
+        if first.endswith(suffix) and len(first) > len(suffix) + 1:
+            first = first[:-len(suffix)]
+            break
     last_parts = re.findall(r'[a-z0-9]+', (last_name or '').strip().lower())
     last = last_parts[-1] if last_parts else ''
     return f'{first}.{last}' if first and last else ''
@@ -20,6 +29,37 @@ def build_username_from_names(first_name, last_name):
 
 def is_standard_username(username):
     return bool(USERNAME_RE.fullmatch(username or ''))
+
+
+def split_full_name(full_name):
+    parts = (full_name or '').strip().split()
+    if not parts:
+        return '', ''
+    if len(parts) == 1:
+        return parts[0], ''
+    return ' '.join(parts[:-1]), parts[-1]
+
+
+def unique_standard_username(first_name, last_name, *, model=None, exclude_pk=None, reserved=None):
+    base = build_username_from_names(first_name, last_name)
+    if not base:
+        return ''
+
+    if model is None:
+        model = User
+
+    first, last = base.split('.', 1)
+    reserved = set(reserved or [])
+    candidate = base
+    suffix = 2
+    while True:
+        qs = model.objects.filter(username=candidate)
+        if exclude_pk is not None:
+            qs = qs.exclude(pk=exclude_pk)
+        if candidate not in reserved and not qs.exists():
+            return candidate
+        candidate = f'{first}.{last}{suffix}'
+        suffix += 1
 
 
 class User(AbstractUser):

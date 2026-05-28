@@ -3,14 +3,19 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from apps.core.portal_views import get_portal_redirect
 
-from .models import User, build_username_from_names, is_standard_username, normalize_username_value
+from .models import User, is_standard_username, normalize_username_value, unique_standard_username
 
 
 def _canonical_username(attrs, instance=None):
     first_name = attrs.get('first_name', getattr(instance, 'first_name', ''))
     last_name = attrs.get('last_name', getattr(instance, 'last_name', ''))
     supplied = normalize_username_value(attrs.get('username', getattr(instance, 'username', '')))
-    generated = build_username_from_names(first_name, last_name)
+    generated = unique_standard_username(
+        first_name,
+        last_name,
+        model=User,
+        exclude_pk=getattr(instance, 'pk', None),
+    )
     username = generated or supplied
     if not username:
         raise serializers.ValidationError({'username': 'Enter first and last name to generate username.'})
@@ -19,7 +24,7 @@ def _canonical_username(attrs, instance=None):
     qs = User.objects.filter(username=username)
     if instance is not None:
         qs = qs.exclude(pk=instance.pk)
-    if qs.exists():
+    if qs.exists() and username == supplied:
         raise serializers.ValidationError({'username': 'A user with this standardized username already exists.'})
     return username
 

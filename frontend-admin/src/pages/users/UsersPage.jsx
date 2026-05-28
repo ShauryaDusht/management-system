@@ -46,9 +46,17 @@ const EMPTY = {
   area_ids: [],
   password: '',
 }
+const FIRST_NAME_SUFFIXES = ['chandra', 'kumar', 'sinh', 'bhai']
 
 const buildUsername = (first, last) => {
-  const cleanFirst = String(first || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '')
+  const firstParts = String(first || '').trim().toLowerCase().match(/[a-z0-9]+/g) || []
+  let cleanFirst = firstParts[0] || ''
+  for (const suffix of FIRST_NAME_SUFFIXES) {
+    if (cleanFirst.endsWith(suffix) && cleanFirst.length > suffix.length + 1) {
+      cleanFirst = cleanFirst.slice(0, -suffix.length)
+      break
+    }
+  }
   const parts = String(last || '').trim().toLowerCase().match(/[a-z0-9]+/g) || []
   const cleanLast = parts[parts.length - 1] || ''
   return cleanFirst && cleanLast ? `${cleanFirst}.${cleanLast}` : ''

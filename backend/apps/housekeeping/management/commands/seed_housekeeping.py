@@ -12,6 +12,7 @@ from django.db.models.deletion import ProtectedError
 from apps.housekeeping.models import (
     HKArea, HKUserArea, HKWorker, HKScheduleTemplate,
 )
+from apps.users.models import build_username_from_names, unique_standard_username
 
 User = get_user_model()
 DEFAULT_PASSWORD = 'IITGN@2025'
@@ -154,16 +155,43 @@ Existing account passwords are preserved.
     def make_user(self, username, first_name, last_name, phone, role, area_names, email='', pay_code=''):
         is_superuser = role == 'admin'
         is_staff = role in {'admin', 'inventory_manager', 'housekeeping_manager', 'horticulture_manager'}
-
-        user, created = User.objects.get_or_create(  # NOTE: capture `created`
-            username=username,
-            defaults={
-                'first_name': first_name, 'last_name': last_name,
-                'phone': phone, 'role': role, 'is_active': True,
-                'is_staff': is_staff, 'is_superuser': is_superuser,
-                'email': email, 'pay_code': pay_code,
-            }
+        base_username = build_username_from_names(first_name, last_name)
+        username_candidates = [base_username, username]
+        if pay_code:
+            username_candidates.append(
+                User.objects.filter(role=role, pay_code=pay_code).values_list('username', flat=True).first()
+            )
+        user = User.objects.filter(username__in=[u for u in username_candidates if u]).first()
+        canonical_username = unique_standard_username(
+            first_name,
+            last_name,
+            model=User,
+            exclude_pk=getattr(user, 'pk', None),
         )
+
+        if user is None:
+            user = User(
+                username=canonical_username,
+                first_name=first_name,
+                last_name=last_name,
+                phone=phone,
+                role=role,
+                is_active=True,
+                is_staff=is_staff,
+                is_superuser=is_superuser,
+                email=email,
+                pay_code=pay_code,
+            )
+            created = True
+        else:
+            created = False
+            if user.username != canonical_username:
+                user.username = unique_standard_username(
+                    first_name,
+                    last_name,
+                    model=User,
+                    exclude_pk=user.pk,
+                )
         user.first_name = first_name
         user.last_name = last_name
         if email:
@@ -207,14 +235,14 @@ Existing account passwords are preserved.
         """
         caretakers = [
             # (username, first, last, pay_code, phone, email, areas)
-            ('priyanka', 'Priyanka Vijaykumar', 'Parmar', '237', '6353228604', 'priyankavijayparmar27@gmail.com', ['Aibaan']),
-            ('anita', 'Manisha', 'Thapa', '424', '9512389739', 'anitavaghela98@gmail.com', ['Beuaki', 'Chimair']),
-            ('rushita', 'Rhushita Chetankumar', 'Chavda', '294', '7083740424', '', ['Ijokha']),
-            ('pankaj', 'Pankajsinh Amarsinh', 'Bihola', '293', '9904883975', 'pankajsingh2753@gmail.com', ['Duven', 'Emiet']),
-            ('anil.caretaker', 'Anil', 'Solanki', '300', '8155037413', 'anil8155037413@gmail.com', ['Firpeal', 'Griwiksh']),
-            ('nikul.caretaker', 'Nikulsinh Ashoksinh', 'Bihola', '427', '9714730290', 'nikulsinghbhola862@gmail.com', ['Hiqom']),
-            ('jaimin', 'Jaimin', 'Parmar', '318', '7600738945', 'hostel.caretaker@iitgn.ac.in', ['Jurqia', 'Lekhaag']),
-            ('ramsingh', 'Ramprakash Lembabhai', 'Parmar', '317', '9687460280', 'ramairy1198@gmail.com', ['Kyzeel']),
+            ('priyanka.parmar', 'Priyanka Vijaykumar', 'Parmar', '237', '6353228604', 'priyankavijayparmar27@gmail.com', ['Aibaan']),
+            ('manisha.thapa', 'Manisha', 'Thapa', '424', '9512389739', 'anitavaghela98@gmail.com', ['Beuaki', 'Chimair']),
+            ('rhushita.chavda', 'Rhushita Chetankumar', 'Chavda', '294', '7083740424', '', ['Ijokha']),
+            ('pankaj.bihola', 'Pankajsinh Amarsinh', 'Bihola', '293', '9904883975', 'pankajsingh2753@gmail.com', ['Duven', 'Emiet']),
+            ('anil.solanki', 'Anil', 'Solanki', '300', '8155037413', 'anil8155037413@gmail.com', ['Firpeal', 'Griwiksh']),
+            ('nikul.bihola', 'Nikulsinh Ashoksinh', 'Bihola', '427', '9714730290', 'nikulsinghbhola862@gmail.com', ['Hiqom']),
+            ('jaimin.parmar', 'Jaimin', 'Parmar', '318', '7600738945', 'hostel.caretaker@iitgn.ac.in', ['Jurqia', 'Lekhaag']),
+            ('ramprakash.parmar', 'Ramprakash Lembabhai', 'Parmar', '317', '9687460280', 'ramairy1198@gmail.com', ['Kyzeel']),
             ('vishvajeet.kumar', 'Vishvajeet', 'Kumar', '316', '9898037530', 'mishra.vishwajeet@iitgn.ac.in', ['Hostel Common Area']),
         ]
         for username, first, last, pc, phone, email, areas in caretakers:
@@ -246,7 +274,8 @@ Existing account passwords are preserved.
         # Migrate old manager usernames to new portal nomenclature.
         # This preserves existing user relations while updating login identity.
         rename_map = [
-            ('estate.manager', 'horticulture.manager', 'Horticulture', 'Manager', 'managerhort.iwd@iitgn.ac.in', 'horticulture_manager'),
+            ('estate.manager', 'mahesh.prajapati', 'Maheshbhai', 'Prajapati', 'managerhort.iwd@iitgn.ac.in', 'horticulture_manager'),
+            ('horticulture.manager', 'mahesh.prajapati', 'Maheshbhai', 'Prajapati', 'managerhort.iwd@iitgn.ac.in', 'horticulture_manager'),
             ('hostel.manager', 'housekeeping.manager', 'Housekeeping', 'Manager', 'manager.hk@iitgn.ac.in', 'housekeeping_manager'),
         ]
         for old_un, new_un, first, last, email, target_role in rename_map:
@@ -266,10 +295,10 @@ Existing account passwords are preserved.
                 ])
 
         accounts = [
-            ('admin', 'Admin', '', '9727757096', 'admin', [], 'pragnesh@iitgn.ac.in', ''),
-            ('horticulture.manager', 'Horticulture', 'Manager', '9723889424', 'horticulture_manager', [], 'managerhort.iwd@iitgn.ac.in', '474'),
+            ('admin.user', 'Admin', 'User', '9727757096', 'admin', [], 'pragnesh@iitgn.ac.in', ''),
+            ('mahesh.prajapati', 'Maheshbhai', 'Prajapati', '9723889424', 'horticulture_manager', [], 'managerhort.iwd@iitgn.ac.in', '474'),
             ('housekeeping.manager', 'Housekeeping', 'Manager', '8758120645', 'housekeeping_manager', [], 'manager.hk@iitgn.ac.in', '469'),
-            ('inv.manager', 'Inventory', 'Manager', '8758120645', 'inventory_manager', [], 'manager.hk@iitgn.ac.in', '469'),
+            ('inventory.manager', 'Inventory', 'Manager', '8758120645', 'inventory_manager', [], 'manager.hk@iitgn.ac.in', '469'),
         ]
         for username, first, last, phone, role, areas, email, pay_code in accounts:
             self.make_user(username, first, last, phone, role, areas, email=email, pay_code=pay_code)
@@ -283,8 +312,9 @@ Existing account passwords are preserved.
         Remove deprecated/old usernames so shared datasets remain clean and deterministic.
         """
         legacy_usernames = [
-            'anil.hk', 'nikul.hk', 'lab.supervisor',
-            'estate.manager', 'hostel.manager',
+            'admin', 'priyanka', 'anita', 'rushita', 'pankaj', 'ramsingh', 'jaimin',
+            'anil.hk', 'nikul.hk', 'anil.caretaker', 'nikul.caretaker', 'lab.supervisor',
+            'estate.manager', 'hostel.manager', 'horticulture.manager', 'inv.manager',
         ]
         removed = 0
         blocked = []

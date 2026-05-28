@@ -14,12 +14,13 @@ from apps.horticulture.models import (
     SeasonSetting,
     TaskType,
 )
+from apps.users.models import build_username_from_names, unique_standard_username
 
 User = get_user_model()
 DEFAULT_PASSWORD = 'IITGN@2025'
 
 MANAGER_SPEC = {
-    'username': 'horticulture.manager',
+    'username': 'mahesh.prajapati',
     'full_name': 'Maheshbhai Prajapati',
     'role': User.Role.HORTICULTURE_MANAGER,
     'phone': '9723889424',
@@ -380,7 +381,8 @@ class Command(BaseCommand):
 
     def _get_existing_admin(self):
         admin_user = (
-            User.objects.filter(username='admin').first()
+            User.objects.filter(username='admin.user').first()
+            or User.objects.filter(username='admin').first()
             or User.objects.filter(role=User.Role.ADMIN).order_by('id').first()
         )
         if admin_user is None:
@@ -600,21 +602,37 @@ class Command(BaseCommand):
         is_superuser=False,
     ):
         first_name, last_name = self._split_name(full_name)
-        user, created = User.objects.get_or_create(
-            username=username,
-            defaults={
-                'first_name': first_name,
-                'last_name': last_name,
-                'role': role,
-                'phone': phone,
-                'pay_code': pay_code,
-                'is_active': True,
-                'is_staff': is_staff,
-                'is_superuser': is_superuser,
-            },
+        base_username = build_username_from_names(first_name, last_name)
+        user = User.objects.filter(username__in=[base_username, username]).first()
+        if user is None and pay_code:
+            user = User.objects.filter(role=role, pay_code=pay_code).first()
+        canonical_username = unique_standard_username(
+            first_name,
+            last_name,
+            model=User,
+            exclude_pk=getattr(user, 'pk', None),
         )
+        username_changed = False
+        if user is None:
+            user = User(
+                username=canonical_username,
+                first_name=first_name,
+                last_name=last_name,
+                role=role,
+                phone=phone,
+                pay_code=pay_code,
+                is_active=True,
+                is_staff=is_staff,
+                is_superuser=is_superuser,
+            )
+            created = True
+        else:
+            created = False
+            if user.username != canonical_username:
+                user.username = canonical_username
+                username_changed = True
 
-        changed = False
+        changed = bool(created or username_changed)
         for field, value in (
             ('first_name', first_name),
             ('last_name', last_name),
@@ -643,6 +661,7 @@ class Command(BaseCommand):
                 'is_active',
                 'is_staff',
                 'is_superuser',
+                'username',
             ]
             if created:
                 user.save()

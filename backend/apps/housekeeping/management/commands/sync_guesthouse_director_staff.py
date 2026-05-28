@@ -304,18 +304,18 @@ class Command(BaseCommand):
     ]
 
     HOSTEL_SUPERVISOR_BY_AREA = {
-        "Aibaan": "priyanka",
-        "Beuaki": "anita",
-        "Chimair": "anita",
-        "Ijokha": "rushita",
-        "Duven": "pankaj",
-        "Emiet": "pankaj",
-        "Firpeal": "anil.caretaker",
-        "Griwiksh": "anil.caretaker",
-        "Hiqom": "nikul.caretaker",
-        "Jurqia": "jaimin",
-        "Lekhaag": "jaimin",
-        "Kyzeel": "ramsingh",
+        "Aibaan": "priyanka.parmar",
+        "Beuaki": "manisha.thapa",
+        "Chimair": "manisha.thapa",
+        "Ijokha": "rhushita.chavda",
+        "Duven": "pankaj.bihola",
+        "Emiet": "pankaj.bihola",
+        "Firpeal": "anil.solanki",
+        "Griwiksh": "anil.solanki",
+        "Hiqom": "nikul.bihola",
+        "Jurqia": "jaimin.parmar",
+        "Lekhaag": "jaimin.parmar",
+        "Kyzeel": "ramprakash.parmar",
         "Hostel Common Area": "vishvajeet.kumar",
     }
 

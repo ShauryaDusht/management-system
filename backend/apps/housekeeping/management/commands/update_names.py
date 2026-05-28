@@ -9,10 +9,10 @@ from django.core.management.base import BaseCommand
 from apps.housekeeping.models import HKWorker
 
 PORTAL_USERS = {
-    'admin': ('Admin', '', 'pragnesh@iitgn.ac.in'),
-    'horticulture.manager': ('Horticulture', 'Manager', 'managerhort.iwd@iitgn.ac.in'),
+    'admin.user': ('Admin', 'User', 'pragnesh@iitgn.ac.in'),
+    'mahesh.prajapati': ('Maheshbhai', 'Prajapati', 'managerhort.iwd@iitgn.ac.in'),
     'housekeeping.manager': ('Housekeeping', 'Manager', 'manager.hk@iitgn.ac.in'),
-    'inv.manager': ('Inventory', 'Manager', 'manager.hk@iitgn.ac.in'),
+    'inventory.manager': ('Inventory', 'Manager', 'manager.hk@iitgn.ac.in'),
 }
 
 # ── Supervisors: username → (first_name, last_name, email) ───────────────────
@@ -31,15 +31,15 @@ SUPERVISOR_NAMES = {
 
 # ── Caretakers: username → (first_name, last_name, email) ────────────────────
 CARETAKER_NAMES = {
-    'priyanka':         ('Priyanka Vijaykumar', 'Parmar', 'priyankavijayparmar27@gmail.com'),
-    'pankaj':           ('Pankajsinh Amarsinh', 'Bihola', 'pankajsingh2753@gmail.com'),
-    'rushita':          ('Rhushita Chetankumar', 'Chavda', ''),
-    'anil.caretaker':   ('Anil', 'Solanki', 'anil8155037413@gmail.com'),
+    'priyanka.parmar':  ('Priyanka Vijaykumar', 'Parmar', 'priyankavijayparmar27@gmail.com'),
+    'pankaj.bihola':    ('Pankajsinh Amarsinh', 'Bihola', 'pankajsingh2753@gmail.com'),
+    'rhushita.chavda':  ('Rhushita Chetankumar', 'Chavda', ''),
+    'anil.solanki':     ('Anil', 'Solanki', 'anil8155037413@gmail.com'),
     'vishvajeet.kumar': ('Vishvajeet', 'Kumar', 'mishra.vishwajeet@iitgn.ac.in'),
-    'ramsingh':         ('Ramprakash Lembabhai', 'Parmar', 'ramairi1198@gmail.com'),
-    'jaimin':           ('Jaimin', 'Parmar', 'hostel.caretaker@iitgn.ac.in'),
-    'anita':            ('Manisha', 'Thapa', 'anitavaghela98@gmail.com'),
-    'nikul.caretaker':  ('Nikulsinh Ashoksinh', 'Bihola', 'nikulsinghbhola862@gmail.com'),
+    'ramprakash.parmar': ('Ramprakash Lembabhai', 'Parmar', 'ramairi1198@gmail.com'),
+    'jaimin.parmar':    ('Jaimin', 'Parmar', 'hostel.caretaker@iitgn.ac.in'),
+    'manisha.thapa':    ('Manisha', 'Thapa', 'anitavaghela98@gmail.com'),
+    'nikul.bihola':     ('Nikulsinh Ashoksinh', 'Bihola', 'nikulsinghbhola862@gmail.com'),
 }
 
 # ── Workers: current DB name → new full name ─────────────────────────────────

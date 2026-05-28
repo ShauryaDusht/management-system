@@ -43,27 +43,27 @@ SUPERVISOR_BY_USERNAME = {
 
 # ── Caretakers — matched by DB username ──────────────────────────────────────
 # Canonical pay-slip name → DB username → pay_code
-# PARMAR PRIYANKA VIJAYKUMAR    → priyanka        → 237
-# PANKAJSINH AMARSINH BIHOLA   → pankaj          → 293
-# RHUSHITA CHETANKUMAR CHAVDA  → rushita         → 294
-# SOLANKI ANIL                 → anil.caretaker  → 300
+# PARMAR PRIYANKA VIJAYKUMAR    → priyanka.parmar      → 237
+# PANKAJSINH AMARSINH BIHOLA   → pankaj.bihola        → 293
+# RHUSHITA CHETANKUMAR CHAVDA  → rhushita.chavda      → 294
+# SOLANKI ANIL                 → anil.solanki         → 300
 # VISHVAJEET KUMAR             → vishvajeet.kumar → 316
-# PARMAR RAMPRAKASH LEMBABHAI  → ramsingh        → 317
-# JAIMIN PARMAR                → jaimin          → 318
+# PARMAR RAMPRAKASH LEMBABHAI  → ramprakash.parmar    → 317
+# JAIMIN PARMAR                → jaimin.parmar        → 318
 # SHAILESHKUMAR VAGHELA        → (no DB user)    — skip
-# MANISHA THAPA                → anita           → 424  (Anita is caretaker, best match)
-# BIHOLA NIKULSINH ASHOKSINH   → nikul.caretaker → 427
+# MANISHA THAPA                → manisha.thapa        → 424
+# BIHOLA NIKULSINH ASHOKSINH   → nikul.bihola         → 427
 # VISHWAJEET MISHRA            → (vishvajeet.kumar already used above)
 CARETAKER_BY_USERNAME = {
-    'priyanka':         '237',
-    'pankaj':           '293',
-    'rushita':          '294',
-    'anil.caretaker':   '300',
+    'priyanka.parmar':  '237',
+    'pankaj.bihola':    '293',
+    'rhushita.chavda':  '294',
+    'anil.solanki':     '300',
     'vishvajeet.kumar': '316',
-    'ramsingh':         '317',
-    'jaimin':           '318',
-    'anita':            '424',
-    'nikul.caretaker':  '427',
+    'ramprakash.parmar': '317',
+    'jaimin.parmar':    '318',
+    'manisha.thapa':    '424',
+    'nikul.bihola':     '427',
 }
 
 # ── Workers — matched by HKWorker.name ───────────────────────────────────────
