@@ -39,7 +39,7 @@ export default function HousekeepingPage() {
         { key: 'workers', label: 'Workers' },
         { key: 'worker_selection', label: 'Worker Selection' },
       ]
-      if (['admin', 'housekeeping_manager'].includes(user?.role)) {
+      if (['admin', 'housekeeping_manager', 'hk_inventory_manager'].includes(user?.role)) {
         base.push({ key: 'schedule', label: 'Schedule' })
         base.push({
           key: 'incharge_approvals',
@@ -48,7 +48,7 @@ export default function HousekeepingPage() {
           countTone: 'red',
         })
       }
-      if (user?.role === 'admin') {
+      if (['admin', 'hk_inventory_manager'].includes(user?.role)) {
         base.push({ key: 'gallery', label: 'Gallery' })
       }
       return base
