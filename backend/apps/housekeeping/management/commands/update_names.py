@@ -38,7 +38,7 @@ CARETAKER_NAMES = {
     'vishvajeet.kumar': ('Vishvajeet', 'Kumar', 'mishra.vishwajeet@iitgn.ac.in'),
     'ramprakash.parmar': ('Ramprakash Lembabhai', 'Parmar', 'ramairi1198@gmail.com'),
     'jaimin.parmar':    ('Jaimin', 'Parmar', 'hostel.caretaker@iitgn.ac.in'),
-    'manisha.thapa':    ('Manisha', 'Thapa', 'anitavaghela98@gmail.com'),
+    'anita.vaghela':    ('Anita', 'Vaghela', 'anitavaghela98@gmail.com'),
     'nikul.bihola':     ('Nikulsinh Ashoksinh', 'Bihola', 'nikulsinghbhola862@gmail.com'),
 }
 
@@ -612,7 +612,7 @@ class Command(BaseCommand):
             '418': 'Dipikaben Hasamukhbhai Parmar',
             '419': 'Shilpaben D Chauhan',
             '422': 'Shaileshkumar Vaghela',
-            '424': 'Manisha Thapa',
+            '10': 'Anita Vaghela',
             '427': 'Bihola Nikulsinh Ashoksinh',
             '428': 'Vaghela Uttambhai',
             '429': 'Rameshbhai Ambalal Parmar',

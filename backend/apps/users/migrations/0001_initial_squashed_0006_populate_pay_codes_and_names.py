@@ -36,7 +36,7 @@ CARETAKER_DATA = {
     "vishwajeet": ("Vishvajeet", "Kumar", "316"),
     "ramsingh": ("Ramprakash Lembabhai", "Parmar", "317"),
     "jaimin": ("Jaimin", "Parmar", "318"),
-    "anita": ("Manisha", "Thapa", "424"),
+    "anita.vaghela": ("Anita", "Vaghela", "10"),
     "nikul.caretaker": ("Nikulsinh Ashoksinh", "Bihola", "427"),
 }
 

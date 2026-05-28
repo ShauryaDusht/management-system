@@ -305,8 +305,8 @@ class Command(BaseCommand):
 
     HOSTEL_SUPERVISOR_BY_AREA = {
         "Aibaan": "priyanka.parmar",
-        "Beuaki": "manisha.thapa",
-        "Chimair": "manisha.thapa",
+        "Beuaki": "anita.vaghela",
+        "Chimair": "anita.vaghela",
         "Ijokha": "rhushita.chavda",
         "Duven": "pankaj.bihola",
         "Emiet": "pankaj.bihola",

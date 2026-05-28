@@ -152,16 +152,32 @@ Existing account passwords are preserved.
     def area(self, name):
         return HKArea.objects.filter(name=name).first()
 
-    def make_user(self, username, first_name, last_name, phone, role, area_names, email='', pay_code='', match_pay_code=True):
+    def make_user(
+        self,
+        username,
+        first_name,
+        last_name,
+        phone,
+        role,
+        area_names,
+        email='',
+        pay_code='',
+        match_pay_code=True,
+        legacy_usernames=(),
+    ):
         is_superuser = role == 'admin'
         is_staff = role in {'admin', 'inventory_manager', 'housekeeping_manager', 'hk_inventory_manager', 'horticulture_manager'}
         base_username = build_username_from_names(first_name, last_name)
-        username_candidates = [base_username, username]
+        username_candidates = [base_username, username, *legacy_usernames]
         if pay_code and match_pay_code:
             username_candidates.append(
                 User.objects.filter(role=role, pay_code=pay_code).values_list('username', flat=True).first()
             )
-        user = User.objects.filter(username__in=[u for u in username_candidates if u]).first()
+        user = None
+        for candidate in [u for u in username_candidates if u]:
+            user = User.objects.filter(username=candidate).first()
+            if user:
+                break
         canonical_username = unique_standard_username(
             first_name,
             last_name,
@@ -236,7 +252,7 @@ Existing account passwords are preserved.
         caretakers = [
             # (username, first, last, pay_code, phone, email, areas)
             ('priyanka.parmar', 'Priyanka Vijaykumar', 'Parmar', '237', '6353228604', 'priyankavijayparmar27@gmail.com', ['Aibaan']),
-            ('manisha.thapa', 'Manisha', 'Thapa', '424', '9512389739', 'anitavaghela98@gmail.com', ['Beuaki', 'Chimair']),
+            ('anita.vaghela', 'Anita', 'Vaghela', '10', '9512389739', 'anitavaghela98@gmail.com', ['Beuaki', 'Chimair'], ['manisha.thapa', 'anita']),
             ('rhushita.chavda', 'Rhushita Chetankumar', 'Chavda', '294', '7083740424', '', ['Ijokha']),
             ('pankaj.bihola', 'Pankajsinh Amarsinh', 'Bihola', '293', '9904883975', 'pankajsingh2753@gmail.com', ['Duven', 'Emiet']),
             ('anil.solanki', 'Anil', 'Solanki', '300', '8155037413', 'anil8155037413@gmail.com', ['Firpeal', 'Griwiksh']),
@@ -245,8 +261,20 @@ Existing account passwords are preserved.
             ('ramprakash.parmar', 'Ramprakash Lembabhai', 'Parmar', '317', '9687460280', 'ramairy1198@gmail.com', ['Kyzeel']),
             ('vishvajeet.kumar', 'Vishvajeet', 'Kumar', '316', '9898037530', 'mishra.vishwajeet@iitgn.ac.in', ['Hostel Common Area']),
         ]
-        for username, first, last, pc, phone, email, areas in caretakers:
-            self.make_user(username, first, last, phone, 'caretaker', areas, email=email, pay_code=pc)
+        for caretaker in caretakers:
+            username, first, last, pc, phone, email, areas, *rest = caretaker
+            legacy_usernames = rest[0] if rest else ()
+            self.make_user(
+                username,
+                first,
+                last,
+                phone,
+                'caretaker',
+                areas,
+                email=email,
+                pay_code=pc,
+                legacy_usernames=legacy_usernames,
+            )
 
         # Supervisors (campus sections)
         supervisors = [

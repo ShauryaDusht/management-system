@@ -51,7 +51,7 @@ SUPERVISOR_BY_USERNAME = {
 # PARMAR RAMPRAKASH LEMBABHAI  → ramprakash.parmar    → 317
 # JAIMIN PARMAR                → jaimin.parmar        → 318
 # SHAILESHKUMAR VAGHELA        → (no DB user)    — skip
-# MANISHA THAPA                → manisha.thapa        → 424
+# ANITA VAGHELA                -> anita.vaghela       -> 10
 # BIHOLA NIKULSINH ASHOKSINH   → nikul.bihola         → 427
 # VISHWAJEET MISHRA            → (vishvajeet.kumar already used above)
 CARETAKER_BY_USERNAME = {
@@ -62,7 +62,7 @@ CARETAKER_BY_USERNAME = {
     'vishvajeet.kumar': '316',
     'ramprakash.parmar': '317',
     'jaimin.parmar':    '318',
-    'manisha.thapa':    '424',
+    'anita.vaghela':    '10',
     'nikul.bihola':     '427',
 }
 
