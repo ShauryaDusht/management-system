@@ -32,8 +32,7 @@ export default function RequestsTab({ userRole }) {
   const [newModal, setNewModal] = useState(false)
   const [savingNew, setSavingNew] = useState(false)
   const [form, setForm] = useState({
-    item: '',
-    quantity_requested: 1,
+    items: [{ item: '', quantity_requested: 1 }],
     purpose: '',
     notes: '',
     is_urgent: false,
@@ -84,11 +83,14 @@ export default function RequestsTab({ userRole }) {
 
   const error = actionError || loadError
 
-  const selectedItem = useMemo(() => {
-    const id = Number(form.item)
-    if (!id) return null
-    return items.find((it) => Number(it.id) === id) || null
-  }, [form.item, items])
+  const selectedItems = useMemo(
+    () =>
+      form.items.map((line) => {
+        const id = Number(line.item)
+        return id ? items.find((it) => Number(it.id) === id) || null : null
+      }),
+    [form.items, items]
+  )
 
   const pending = useMemo(
     () => requests.filter((r) => r.status === 'pending'),
@@ -184,17 +186,21 @@ export default function RequestsTab({ userRole }) {
     setSuccess('')
     try {
       await runAction(async () => {
-        await inventoryAPI.createRequest({
-          item: Number(form.item),
-          quantity_requested: Number(form.quantity_requested || 1),
+        const requestItems = form.items
+          .filter((line) => line.item)
+          .map((line) => ({
+            item: Number(line.item),
+            quantity_requested: Number(line.quantity_requested || 1),
+          }))
+        await inventoryAPI.createRequestBatch({
+          items: requestItems,
           purpose: form.purpose,
           notes: form.notes,
           is_urgent: Boolean(form.is_urgent),
         })
         setNewModal(false)
         setForm({
-          item: '',
-          quantity_requested: 1,
+          items: [{ item: '', quantity_requested: 1 }],
           purpose: '',
           notes: '',
           is_urgent: false,
@@ -485,35 +491,90 @@ export default function RequestsTab({ userRole }) {
           </>
         }
       >
-        <Field label="Item" required>
-          <SelectField
-            value={form.item}
-            onChange={(e) => setForm((p) => ({ ...p, item: e.target.value }))}
-          >
-            <option value="">Select item</option>
-            {items.map((it) => (
-              <option key={it.id} value={it.id}>
-                {it.name} ({it.available_quantity} {it.unit})
-              </option>
-            ))}
-          </SelectField>
-        </Field>
-        {selectedItem && (
-          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: -8, marginBottom: 10 }}>
-            Available: {selectedItem.available_quantity} {selectedItem.unit} | Type:{' '}
-            {selectedItem.item_type}
-          </div>
-        )}
-        <Field label="Quantity" required>
-          <Input
-            type="number"
-            min="1"
-            value={form.quantity_requested}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, quantity_requested: e.target.value }))
+        <div style={{ display: 'grid', gap: 10, marginBottom: 10 }}>
+          {form.items.map((line, index) => {
+            const selected = selectedItems[index]
+            return (
+              <div
+                key={`request-line-${index}`}
+                style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 10 }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 12 }}>Item {index + 1}</div>
+                  {form.items.length > 1 && (
+                    <Btn
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        setForm((p) => ({
+                          ...p,
+                          items: p.items.filter((_, lineIndex) => lineIndex !== index),
+                        }))
+                      }
+                    >
+                      Remove
+                    </Btn>
+                  )}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 120px', gap: 10 }}>
+                  <Field label="Item" required>
+                    <SelectField
+                      value={line.item}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          items: p.items.map((current, lineIndex) =>
+                            lineIndex === index ? { ...current, item: e.target.value } : current
+                          ),
+                        }))
+                      }
+                    >
+                      <option value="">Select item</option>
+                      {items.map((it) => (
+                        <option key={it.id} value={it.id}>
+                          {it.name} ({it.available_quantity} {it.unit})
+                        </option>
+                      ))}
+                    </SelectField>
+                  </Field>
+                  <Field label="Quantity" required>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={line.quantity_requested}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          items: p.items.map((current, lineIndex) =>
+                            lineIndex === index
+                              ? { ...current, quantity_requested: e.target.value }
+                              : current
+                          ),
+                        }))
+                      }
+                    />
+                  </Field>
+                </div>
+                {selected && (
+                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 6 }}>
+                    Available: {selected.available_quantity} {selected.unit} | Type: {selected.item_type}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+          <Btn
+            variant="secondary"
+            onClick={() =>
+              setForm((p) => ({
+                ...p,
+                items: [...p.items, { item: '', quantity_requested: 1 }],
+              }))
             }
-          />
-        </Field>
+          >
+            + Add Item
+          </Btn>
+        </div>
         <Field label="Purpose" required>
           <Input
             value={form.purpose}

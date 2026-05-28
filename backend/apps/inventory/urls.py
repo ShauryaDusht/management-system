@@ -9,7 +9,7 @@ from .views import (
     ItemListCreateView, ItemDetailView, LowStockItemsView,
     ItemHistoryView, ItemStockEntriesView,
     StockEntryListCreateView,
-    ItemRequestListCreateView, ItemRequestDetailView,
+    ItemRequestListCreateView, ItemRequestBatchCreateView, ItemRequestDetailView,
     PurchaseRequestListCreateView, PurchaseRequestDecisionView,
     ReviewRequestView, IssueItemView,
     ItemIssueListView,
@@ -57,6 +57,7 @@ urlpatterns = [
 
     # ── Requests ─────────────────────────────────────────────────────────────
     path('requests/', ItemRequestListCreateView.as_view(), name='request-list'),
+    path('requests/batch/', ItemRequestBatchCreateView.as_view(), name='request-batch-create'),
     path('requests/<int:pk>/', ItemRequestDetailView.as_view(), name='request-detail'),
     path('requests/<int:pk>/review/', ReviewRequestView.as_view(), name='request-review'),
     path('requests/<int:pk>/issue/', IssueItemView.as_view(), name='request-issue'),

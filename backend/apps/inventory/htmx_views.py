@@ -15,7 +15,7 @@ from apps.users.models import normalize_username_value
 from django.views.decorators.http import require_POST
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
-from .models import Category, Item, ItemIssue, ItemUsageLog, ItemRequest, PurchaseRequest, StockEntry
+from .models import Category, Item, ItemIssue, ItemUsageLog, ItemRequest, ItemRequestBatch, PurchaseRequest, StockEntry
 
 
 # ─────────────────────────────────────────────────
@@ -148,50 +148,82 @@ def mobile_inventory_list(request):
 
 @login_required
 def mobile_request_form(request):
+    def _render_form(error=None, form_lines=None, reason='', notes='', is_urgent=False):
+        return render(request, 'inventory/mobile/request_form.html', {
+            'items': Item.objects.select_related('category').all().order_by('name'),
+            'error': error,
+            'form_lines': form_lines or [{'item': request.GET.get('item', ''), 'quantity_requested': '1'}],
+            'reason': reason,
+            'notes': notes,
+            'is_urgent': is_urgent,
+            'preselected_item': request.GET.get('item', ''),
+        })
+
     if request.method == 'POST':
-        item_id = request.POST.get('item')
-        items = Item.objects.all().order_by('name')
-
-        try:
-            quantity = int(request.POST.get('quantity_requested', 1))
-        except (ValueError, TypeError):
-            return render(request, 'inventory/mobile/request_form.html', {
-                'items': items,
-                'error': 'Quantity must be a whole number.',
-            })
-
-        if quantity <= 0:
-            return render(request, 'inventory/mobile/request_form.html', {
-                'items': items,
-                'error': 'Quantity must be at least 1.',
-            })
+        item_ids = request.POST.getlist('item')
+        quantities = request.POST.getlist('quantity_requested')
+        if not item_ids:
+            item_ids = [request.POST.get('item', '')]
+        if not quantities:
+            quantities = [request.POST.get('quantity_requested', '1')]
 
         reason = request.POST.get('reason', '').strip()
-        if not reason:
-            return render(request, 'inventory/mobile/request_form.html', {
-                'items': items,
-                'error': 'Please provide a reason for your request.',
-            })
-
         notes = request.POST.get('notes', '')
-        item = get_object_or_404(Item, id=item_id)
+        is_urgent = request.POST.get('is_urgent') == 'on'
+        form_lines = [
+            {'item': item_id, 'quantity_requested': quantities[index] if index < len(quantities) else '1'}
+            for index, item_id in enumerate(item_ids)
+            if item_id or (index < len(quantities) and quantities[index])
+        ]
 
-        ItemRequest.objects.create(
-            requested_by=request.user,
-            item=item,
-            quantity_requested=quantity,
-            units_remaining=item.available_quantity,
-            purpose=reason,
-            notes=notes,
-            status='pending',
-        )
+        if not reason:
+            return _render_form('Please provide a reason for your request.', form_lines, reason, notes, is_urgent)
+
+        if not form_lines:
+            return _render_form('Add at least one item.', form_lines, reason, notes, is_urgent)
+
+        item_ids_clean = []
+        request_lines = []
+        for line in form_lines:
+            item_id = line['item']
+            if not item_id:
+                return _render_form('Select an item for each request line.', form_lines, reason, notes, is_urgent)
+            if item_id in item_ids_clean:
+                return _render_form('Each item can only appear once in a request.', form_lines, reason, notes, is_urgent)
+            item_ids_clean.append(item_id)
+            try:
+                quantity = int(line['quantity_requested'])
+            except (ValueError, TypeError):
+                return _render_form('Quantity must be a whole number.', form_lines, reason, notes, is_urgent)
+            if quantity <= 0:
+                return _render_form('Quantity must be at least 1.', form_lines, reason, notes, is_urgent)
+            item = get_object_or_404(Item, id=item_id)
+            request_lines.append((item, quantity))
+
+        with transaction.atomic():
+            batch = ItemRequestBatch.objects.create(
+                requested_by=request.user,
+                purpose=reason,
+                notes=notes,
+                is_urgent=is_urgent,
+            )
+            ItemRequest.objects.bulk_create([
+                ItemRequest(
+                    batch=batch,
+                    requested_by=request.user,
+                    item=item,
+                    quantity_requested=quantity,
+                    units_remaining=item.available_quantity,
+                    purpose=reason,
+                    notes=notes,
+                    is_urgent=is_urgent,
+                    status='pending',
+                )
+                for item, quantity in request_lines
+            ])
         return redirect('mobile_my_requests')
 
-    items = Item.objects.select_related('category').all().order_by('name')
-    return render(request, 'inventory/mobile/request_form.html', {
-        'items': items,
-        'preselected_item': request.GET.get('item', ''),
-    })
+    return _render_form()
 
 
 # ─────────────────────────────────────────────────

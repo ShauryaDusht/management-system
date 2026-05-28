@@ -135,6 +135,27 @@ class StockEntry(models.Model):
         )
 
 
+class ItemRequestBatch(models.Model):
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='item_request_batches',
+        limit_choices_to={'role__in': ['supervisor', 'caretaker']},
+    )
+    purpose = models.TextField(help_text='What will these items be used for?')
+    notes = models.TextField(blank=True)
+    is_urgent = models.BooleanField(default=False)
+    requested_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-requested_at']
+
+    def __str__(self):
+        if not self.pk:
+            return f"New batch by {self.requested_by}"
+        return f"Batch #{self.id} by {self.requested_by} ({self.requests.count()} items)"
+
+
 class ItemRequest(models.Model):
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
@@ -143,6 +164,13 @@ class ItemRequest(models.Model):
         ISSUED = 'issued', 'Issued'
 
     item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name='requests')
+    batch = models.ForeignKey(
+        ItemRequestBatch,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='requests',
+    )
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

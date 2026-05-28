@@ -2,7 +2,7 @@ from django.contrib import admin
 from django import forms
 from django.utils import timezone
 from config.admin import admin_site
-from .models import Category, Item, ItemRequest, ItemIssue, PurchaseRequest, StockEntry
+from .models import Category, Item, ItemRequest, ItemRequestBatch, ItemIssue, PurchaseRequest, StockEntry
 
 
 class ItemIssueAdminForm(forms.ModelForm):
@@ -55,11 +55,55 @@ class StockEntryAdmin(admin.ModelAdmin):
     readonly_fields = ['added_at']
 
 
+class ItemRequestInline(admin.TabularInline):
+    model = ItemRequest
+    extra = 1
+    fields = ['item', 'quantity_requested', 'status', 'units_remaining']
+    readonly_fields = ['status', 'units_remaining']
+
+
+@admin.register(ItemRequestBatch, site=admin_site)
+class ItemRequestBatchAdmin(admin.ModelAdmin):
+    list_display = ['id', 'requested_by', 'item_count', 'is_urgent', 'requested_at']
+    list_filter = ['is_urgent', 'requested_at']
+    search_fields = ['requested_by__username', 'requested_by__first_name', 'requested_by__last_name', 'purpose']
+    readonly_fields = ['requested_at']
+    inlines = [ItemRequestInline]
+
+    def item_count(self, obj):
+        return obj.requests.count()
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        if change:
+            form.instance.requests.update(
+                requested_by=form.instance.requested_by,
+                purpose=form.instance.purpose,
+                notes=form.instance.notes,
+                is_urgent=form.instance.is_urgent,
+            )
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        for obj in formset.deleted_objects:
+            obj.delete()
+        for obj in instances:
+            if isinstance(obj, ItemRequest):
+                obj.requested_by = form.instance.requested_by
+                obj.purpose = form.instance.purpose
+                obj.notes = form.instance.notes
+                obj.is_urgent = form.instance.is_urgent
+                if obj.item_id and not obj.units_remaining:
+                    obj.units_remaining = obj.item.available_quantity
+            obj.save()
+        formset.save_m2m()
+
+
 @admin.register(ItemRequest, site=admin_site)
 class ItemRequestAdmin(admin.ModelAdmin):
-    list_display = ['id', 'item', 'requested_by', 'quantity_requested', 'status', 'requested_at']
+    list_display = ['id', 'batch', 'item', 'requested_by', 'quantity_requested', 'status', 'requested_at']
     list_filter = ['status']
-    search_fields = ['item__name', 'requested_by__username']
+    search_fields = ['item__name', 'requested_by__username', 'batch__purpose']
     readonly_fields = ['requested_at', 'reviewed_at']
 
 

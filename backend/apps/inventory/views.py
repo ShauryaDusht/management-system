@@ -15,7 +15,7 @@ from .models import Category, Item, ItemRequest, ItemIssue, ItemUsageLog, Purcha
 from .serializers import (
     CategorySerializer, ItemSerializer,
     StockEntrySerializer,
-    ItemRequestSerializer, ItemRequestReviewSerializer,
+    ItemRequestSerializer, ItemRequestBatchSerializer, ItemRequestReviewSerializer,
     PurchaseRequestSerializer,
     ItemIssueSerializer, ItemUsageLogSerializer,
     ReturnAssetSerializer, FinalizeConsumableSerializer,
@@ -253,6 +253,16 @@ class ItemRequestListCreateView(generics.ListCreateAPIView):
         if self.request.method == 'POST':
             return [IsAuthenticated()]
         return [IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        if getattr(self.request.user, 'role', '') not in ['supervisor', 'caretaker']:
+            raise PermissionDenied('Only supervisors/caretakers can create item requests.')
+        serializer.save(requested_by=self.request.user)
+
+
+class ItemRequestBatchCreateView(generics.CreateAPIView):
+    serializer_class = ItemRequestBatchSerializer
+    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         if getattr(self.request.user, 'role', '') not in ['supervisor', 'caretaker']:

@@ -1,7 +1,8 @@
+from django.db import transaction
 from django.db.models import Sum, Value, DecimalField
 from django.db.models.functions import Coalesce
 from rest_framework import serializers
-from .models import Category, Item, ItemRequest, ItemIssue, ItemUsageLog, PurchaseRequest, StockEntry
+from .models import Category, Item, ItemRequest, ItemRequestBatch, ItemIssue, ItemUsageLog, PurchaseRequest, StockEntry
 
 
 # Plan to remove this shim in a future cleanup once all callers are updated.
@@ -127,6 +128,64 @@ class ItemRequestSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id', 'requested_by', 'approved_by', 'requested_at', 'reviewed_at',
         ]
+
+
+class ItemRequestBatchLineSerializer(serializers.Serializer):
+    item = serializers.PrimaryKeyRelatedField(queryset=Item.objects.all())
+    quantity_requested = serializers.IntegerField(min_value=1)
+
+
+class ItemRequestBatchSerializer(serializers.ModelSerializer):
+    items = ItemRequestBatchLineSerializer(many=True, write_only=True)
+    requests = ItemRequestSerializer(many=True, read_only=True)
+    requester_name = serializers.SerializerMethodField()
+    total_items = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ItemRequestBatch
+        fields = [
+            'id', 'requested_by', 'requester_name', 'purpose', 'notes', 'is_urgent',
+            'requested_at', 'total_items', 'items', 'requests',
+        ]
+        read_only_fields = ['id', 'requested_by', 'requested_at']
+
+    def get_requester_name(self, obj):
+        return obj.requested_by.get_full_name() or obj.requested_by.username
+
+    def get_total_items(self, obj):
+        return obj.requests.count()
+
+    def validate_items(self, value):
+        if not value:
+            raise serializers.ValidationError('Add at least one item.')
+        seen = set()
+        for line in value:
+            item_id = line['item'].id
+            if item_id in seen:
+                raise serializers.ValidationError('Each item can only appear once in a batch.')
+            seen.add(item_id)
+        return value
+
+    @transaction.atomic
+    def create(self, validated_data):
+        lines = validated_data.pop('items')
+        requested_by = validated_data['requested_by']
+        batch = ItemRequestBatch.objects.create(**validated_data)
+        ItemRequest.objects.bulk_create([
+            ItemRequest(
+                batch=batch,
+                requested_by=requested_by,
+                item=line['item'],
+                quantity_requested=line['quantity_requested'],
+                units_remaining=line['item'].available_quantity,
+                purpose=batch.purpose,
+                notes=batch.notes,
+                is_urgent=batch.is_urgent,
+                status=ItemRequest.Status.PENDING,
+            )
+            for line in lines
+        ])
+        return batch
 
 
 class ItemRequestReviewSerializer(serializers.Serializer):

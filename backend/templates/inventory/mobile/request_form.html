@@ -1,6 +1,6 @@
 {% extends 'inventory/mobile/base_mobile.html' %}
-{% block title %}Request Item{% endblock %}
-{% block header_title %}REQUEST ITEM{% endblock %}
+{% block title %}Request Items{% endblock %}
+{% block header_title %}REQUEST ITEMS{% endblock %}
 {% block back_button %}
 <a href="{% url 'mobile_dashboard' %}" class="back-btn">
   <span class="material-icons-round" style="font-size:20px">arrow_back</span>
@@ -18,46 +18,66 @@
 <div class="card">
   <p style="color:var(--text-secondary);font-size:13px;margin:0 0 16px;display:flex;align-items:center;gap:6px">
     <span class="material-icons-round" style="font-size:16px;color:var(--brand-green)">info</span>
-    Fill in the details below to submit an item request.
+    Add one or more items and submit them as a single request.
   </p>
 
   <form method="POST" action="{% url 'mobile_request_form' %}">
     {% csrf_token %}
 
-    <div style="margin-bottom:14px">
-      <label style="font-weight:600;display:block;margin-bottom:6px;font-size:13px;color:var(--text-primary)">
-        <span class="material-icons-round" style="font-size:15px;vertical-align:middle;color:var(--brand-green)">inventory_2</span>
-        Item
-      </label>
-      <select name="item" required class="input"
-        onchange="updateUnitsRemaining(this)">
-        <option value="">— Select an item —</option>
-        {% for item in items %}
-        <option value="{{ item.id }}"
-          data-available="{{ item.available_quantity }}"
-          data-unit="{{ item.unit }}"
-          {% if preselected_item == item.id|stringformat:'s' %}selected{% endif %}>
-          {% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} — {{ item.available_quantity }} {{ item.unit }} available
-        </option>
-        {% endfor %}
-      </select>
+    <div id="request-lines">
+      {% for line in form_lines %}
+      <div class="request-line" style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <strong style="font-size:13px;color:var(--text-primary)">Item {{ forloop.counter }}</strong>
+          <button type="button" class="btn btn-outline remove-line" style="padding:6px 8px;display:none" onclick="removeLine(this)">
+            <span class="material-icons-round" style="font-size:16px">delete</span>
+          </button>
+        </div>
+
+        <div style="margin-bottom:14px">
+          <label style="font-weight:600;display:block;margin-bottom:6px;font-size:13px;color:var(--text-primary)">
+            <span class="material-icons-round" style="font-size:15px;vertical-align:middle;color:var(--brand-green)">inventory_2</span>
+            Item
+          </label>
+          <select name="item" required class="input" onchange="updateUnitsRemaining(this)">
+            <option value="">Select an item</option>
+            {% for item in items %}
+            <option value="{{ item.id }}"
+              data-available="{{ item.available_quantity }}"
+              data-unit="{{ item.unit }}"
+              {% if line.item == item.id|stringformat:'s' %}selected{% endif %}>
+              {% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} - {{ item.available_quantity }} {{ item.unit }} available
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-weight:600;display:block;margin-bottom:6px;font-size:13px;color:var(--text-primary)">
+              <span class="material-icons-round" style="font-size:15px;vertical-align:middle;color:var(--brand-green)">numbers</span>
+              Quantity
+            </label>
+            <input type="number" name="quantity_requested" min="1" required class="input" value="{{ line.quantity_requested|default:'1' }}">
+          </div>
+
+          <div>
+            <label style="font-weight:600;display:block;margin-bottom:6px;font-size:13px;color:var(--text-muted)">
+              <span class="material-icons-round" style="font-size:15px;vertical-align:middle">info_outline</span>
+              Available
+            </label>
+            <input type="number" readonly class="input units-remaining" style="background:#f8f8f8;color:var(--text-muted)" placeholder="-">
+          </div>
+        </div>
+      </div>
+      {% endfor %}
     </div>
 
     <div style="margin-bottom:14px">
-      <label style="font-weight:600;display:block;margin-bottom:6px;font-size:13px;color:var(--text-primary)">
-        <span class="material-icons-round" style="font-size:15px;vertical-align:middle;color:var(--brand-green)">numbers</span>
-        Quantity Needed
-      </label>
-      <input type="number" name="quantity_requested" min="1" required class="input" placeholder="0">
-    </div>
-
-    <div style="margin-bottom:14px">
-      <label style="font-weight:600;display:block;margin-bottom:6px;font-size:13px;color:var(--text-muted)">
-        <span class="material-icons-round" style="font-size:15px;vertical-align:middle">info_outline</span>
-        Units Available
-      </label>
-      <input type="number" name="units_remaining" id="units_remaining" readonly class="input"
-        style="background:#f8f8f8;color:var(--text-muted)" placeholder="—">
+      <button type="button" class="btn btn-outline btn-full" onclick="addLine()">
+        <span class="material-icons-round" style="font-size:18px">add</span>
+        Add Another Item
+      </button>
     </div>
 
     <div style="margin-bottom:14px">
@@ -65,18 +85,21 @@
         <span class="material-icons-round" style="font-size:15px;vertical-align:middle;color:var(--brand-green)">notes</span>
         Reason for Request <span style="color:#ef4444">*</span>
       </label>
-      <textarea name="reason" required rows="3" class="input" style="resize:none"
-        placeholder="Describe why you need this item..."></textarea>
+      <textarea name="reason" required rows="3" class="input" style="resize:none" placeholder="Describe why you need these items...">{{ reason }}</textarea>
     </div>
 
-    <div style="margin-bottom:20px">
+    <div style="margin-bottom:14px">
       <label style="font-weight:600;display:block;margin-bottom:6px;font-size:13px;color:var(--text-primary)">
         <span class="material-icons-round" style="font-size:15px;vertical-align:middle;color:var(--brand-green)">edit_note</span>
         Additional Notes <span style="font-weight:400;color:var(--text-muted)">(Optional)</span>
       </label>
-      <textarea name="notes" rows="2" class="input" style="resize:none"
-        placeholder="Any additional details..."></textarea>
+      <textarea name="notes" rows="2" class="input" style="resize:none" placeholder="Any additional details...">{{ notes }}</textarea>
     </div>
+
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:20px;font-size:13px;color:var(--text-primary)">
+      <input type="checkbox" name="is_urgent" {% if is_urgent %}checked{% endif %}>
+      Mark as urgent
+    </label>
 
     <div style="display:flex;gap:10px">
       <a href="{% url 'mobile_dashboard' %}" style="flex:1">
@@ -97,20 +120,43 @@
 function updateUnitsRemaining(select) {
   const opt = select.options[select.selectedIndex];
   const avail = opt.dataset.available || '';
-  document.getElementById('units_remaining').value = avail;
+  const line = select.closest('.request-line');
+  const target = line ? line.querySelector('.units-remaining') : null;
+  if (target) target.value = avail;
 }
 
-// Pre-select if item query param is present
-document.addEventListener('DOMContentLoaded', function () {
-  const params = new URLSearchParams(window.location.search);
-  const itemId = params.get('item');
-  if (itemId) {
-    const sel = document.querySelector('select[name="item"]');
-    if (sel) {
-      sel.value = itemId;
-      updateUnitsRemaining(sel);
-    }
+function refreshLineControls() {
+  const lines = document.querySelectorAll('.request-line');
+  lines.forEach((line, index) => {
+    const title = line.querySelector('strong');
+    const remove = line.querySelector('.remove-line');
+    if (title) title.textContent = `Item ${index + 1}`;
+    if (remove) remove.style.display = lines.length > 1 ? 'inline-flex' : 'none';
+  });
+}
+
+function addLine() {
+  const container = document.getElementById('request-lines');
+  const first = container.querySelector('.request-line');
+  const clone = first.cloneNode(true);
+  clone.querySelectorAll('select').forEach((select) => select.value = '');
+  clone.querySelectorAll('input[name="quantity_requested"]').forEach((input) => input.value = '1');
+  clone.querySelectorAll('.units-remaining').forEach((input) => input.value = '');
+  container.appendChild(clone);
+  refreshLineControls();
+}
+
+function removeLine(button) {
+  const line = button.closest('.request-line');
+  if (line && document.querySelectorAll('.request-line').length > 1) {
+    line.remove();
+    refreshLineControls();
   }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('select[name="item"]').forEach(updateUnitsRemaining);
+  refreshLineControls();
 });
 </script>
 {% endblock %}

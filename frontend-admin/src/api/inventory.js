@@ -34,6 +34,7 @@ export const inventoryAPI = {
   // ── Requests ───────────────────────────────────────────────────────────────
   getRequests: (params = {}) => api.get('/inventory/requests/', { params: { page_size: 200, ...params } }),
   createRequest: (data) => api.post('/inventory/requests/', data),
+  createRequestBatch: (data) => api.post('/inventory/requests/batch/', data),
   reviewRequest: (id, data) => api.post(`/inventory/requests/${id}/review/`, data),
   issueRequest: (id, data) => api.post(`/inventory/requests/${id}/issue/`, data),
   getPurchaseRequests: (params = {}) => api.get('/inventory/purchase-requests/', { params: { page_size: 200, ...params } }),
