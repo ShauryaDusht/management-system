@@ -9,6 +9,8 @@ from .models import User
 from .serializers import CustomTokenObtainPairSerializer, UserSerializer, UserCreateSerializer
 from .permissions import IsAdmin, IsAdminOrHKInventoryManager
 
+DEPRECATED_MANAGER_USERNAMES = ['housekeeping.manager', 'inventory.manager']
+
 
 class LoginView(TokenObtainPairView):
     """
@@ -61,7 +63,7 @@ class UserListCreateView(generics.ListCreateAPIView):
         qs = User.objects.prefetch_related(
             'hk_areas__area',
             'horticulture_supervised_zones',
-        ).all().order_by('role', 'first_name')
+        ).exclude(username__in=DEPRECATED_MANAGER_USERNAMES).order_by('role', 'first_name')
         role = self.request.query_params.get('role')
         if role:
             qs = qs.filter(role=role)

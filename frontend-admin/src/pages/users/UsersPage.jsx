@@ -20,23 +20,20 @@ import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 
 const ROLES = [
   'admin',
-  'inventory_manager',
-  'housekeeping_manager',
   'hk_inventory_manager',
   'horticulture_manager',
   'supervisor',
   'caretaker',
 ]
-const HK_ROLES = ['supervisor', 'caretaker', 'housekeeping_manager']
+const HK_ROLES = ['supervisor', 'caretaker']
 const ROLE_FILTERS = [
   { key: 'admin', label: 'Admin' },
-  { key: 'inventory_manager', label: 'Inventory Manager' },
-  { key: 'housekeeping_manager', label: 'Housekeeping Manager' },
   { key: 'hk_inventory_manager', label: 'HK / Inventory Manager' },
   { key: 'horticulture_manager', label: 'Horticulture Manager' },
   { key: 'supervisor', label: 'Supervisor' },
   { key: 'caretaker', label: 'Caretaker' },
 ]
+const DEPRECATED_MANAGER_USERNAMES = new Set(['inventory.manager', 'housekeeping.manager'])
 const EMPTY = {
   username: '',
   first_name: '',
@@ -80,7 +77,8 @@ export default function UsersPage() {
       usersAPI.getAll(),
       hkAPI.getAreas().catch(() => ({ data: [] })),
     ])
-    setUsers(Array.isArray(usersRes.data) ? usersRes.data : usersRes.data.results || [])
+    const loadedUsers = Array.isArray(usersRes.data) ? usersRes.data : usersRes.data.results || []
+    setUsers(loadedUsers.filter((u) => !DEPRECATED_MANAGER_USERNAMES.has(u.username)))
     const areaList = Array.isArray(areasRes.data) ? areasRes.data : areasRes.data.results || []
     setAreas(areaList)
     return null
@@ -183,8 +181,7 @@ export default function UsersPage() {
   const roleCounts = useMemo(() => {
     const counts = {
       admin: 0,
-      inventory_manager: 0,
-      housekeeping_manager: 0,
+      hk_inventory_manager: 0,
       horticulture_manager: 0,
       supervisor: 0,
       caretaker: 0,
