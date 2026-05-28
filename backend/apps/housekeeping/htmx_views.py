@@ -46,6 +46,7 @@ from apps.inventory.models import ItemIssue, ItemUsageLog
 
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
+PERMANENT_RELIEVER_USERNAMES = {"dinesh.chauhan"}
 
 ATTENDANCE_CHOICES = [
     ("present", "Present", "#d1fae5", "#065f46"),
@@ -367,6 +368,7 @@ def _staff_candidates_for_area(target_area, exclude_user_id=None):
             continue
         by_user.setdefault(link.user_id, {"user": link.user, "areas": []})
         by_user[link.user_id]["areas"].append(link.area)
+    _add_permanent_reliever_candidates(by_user, exclude_user_id=exclude_user_id)
     return list(by_user.values())
 
 
@@ -390,7 +392,20 @@ def _staff_candidates_for_all_areas(exclude_user_id=None):
         by_user.setdefault(link.user_id, {"user": link.user, "areas": []})
         if not any(a.id == link.area_id for a in by_user[link.user_id]["areas"]):
             by_user[link.user_id]["areas"].append(link.area)
+    _add_permanent_reliever_candidates(by_user, exclude_user_id=exclude_user_id)
     return list(by_user.values())
+
+
+def _add_permanent_reliever_candidates(by_user, exclude_user_id=None):
+    relievers = UserModel.objects.filter(
+        username__in=PERMANENT_RELIEVER_USERNAMES,
+        is_active=True,
+        role__in=["supervisor", "caretaker"],
+    ).order_by("first_name", "username")
+    for user in relievers:
+        if exclude_user_id and user.id == exclude_user_id:
+            continue
+        by_user.setdefault(user.id, {"user": user, "areas": []})
 
 
 def _staff_candidates_for_leave_request(leave_req, exclude_user_id=None):

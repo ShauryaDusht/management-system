@@ -152,12 +152,12 @@ Existing account passwords are preserved.
     def area(self, name):
         return HKArea.objects.filter(name=name).first()
 
-    def make_user(self, username, first_name, last_name, phone, role, area_names, email='', pay_code=''):
+    def make_user(self, username, first_name, last_name, phone, role, area_names, email='', pay_code='', match_pay_code=True):
         is_superuser = role == 'admin'
         is_staff = role in {'admin', 'inventory_manager', 'housekeeping_manager', 'horticulture_manager'}
         base_username = build_username_from_names(first_name, last_name)
         username_candidates = [base_username, username]
-        if pay_code:
+        if pay_code and match_pay_code:
             username_candidates.append(
                 User.objects.filter(role=role, pay_code=pay_code).values_list('username', flat=True).first()
             )
@@ -262,7 +262,29 @@ Existing account passwords are preserved.
             ('pradip.chauhan', 'Pradip', 'Chauhan', '3', '8200560889', 'pradipchauhan783@gmail.com', ['Solid Waste Management']),
         ]
         for username, first, last, pc, phone, email, areas in supervisors:
-            self.make_user(username, first, last, phone, 'supervisor', areas, email=email, pay_code=pc)
+            self.make_user(
+                username,
+                first,
+                last,
+                phone,
+                'supervisor',
+                areas,
+                email=email,
+                pay_code=pc,
+                match_pay_code=username != 'pradip.chauhan',
+            )
+
+        self.make_user(
+            'dinesh.chauhan',
+            'Dinesh',
+            'Chauhan',
+            '9925192578',
+            'supervisor',
+            [],
+            email='dineshchauhan0257@gmail.com',
+            pay_code='3',
+            match_pay_code=False,
+        )
 
         self.stdout.write(f'  [OK] Users: {User.objects.filter(role__in=["caretaker","supervisor"]).count()}')
 
