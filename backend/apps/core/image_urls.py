@@ -40,6 +40,19 @@ def generate_image_url(request, raw_url):
     if not raw_url:
         return ""
 
+    def asset_path(parsed):
+        if parsed.path.startswith(settings.MEDIA_URL) or parsed.path.startswith(settings.STATIC_URL):
+            return urlunparse(("", "", parsed.path, "", parsed.query, parsed.fragment))
+        api_media = f"/api{settings.MEDIA_URL}"
+        api_static = f"/api{settings.STATIC_URL}"
+        if parsed.path.startswith(api_media):
+            path = parsed.path[len("/api"):]
+            return urlunparse(("", "", path, "", parsed.query, parsed.fragment))
+        if parsed.path.startswith(api_static):
+            path = parsed.path[len("/api"):]
+            return urlunparse(("", "", path, "", parsed.query, parsed.fragment))
+        return ""
+
     origin = public_origin(request)
     try:
         absolute = request.build_absolute_uri(raw_url) if request is not None else raw_url
@@ -48,6 +61,10 @@ def generate_image_url(request, raw_url):
 
     try:
         parsed = urlparse(absolute)
+        normalized_asset = asset_path(parsed)
+        if normalized_asset:
+            return normalized_asset
+
         is_asset = parsed.path.startswith(settings.MEDIA_URL) or parsed.path.startswith(settings.STATIC_URL)
         hostname = (parsed.hostname or "").lower()
         origin_hostname = (urlparse(origin).hostname or "").lower()

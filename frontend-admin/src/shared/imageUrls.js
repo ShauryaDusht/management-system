@@ -28,10 +28,23 @@ export function imageDebugLog(label, payload) {
 export function generateImageUrl(raw) {
   if (!raw) return ''
   try {
+    const normalizeAssetPath = (pathname, search = '', hash = '') => {
+      if (pathname.startsWith('/media/') || pathname.startsWith('/static/')) return `${pathname}${search}${hash}`
+      if (pathname.startsWith('/api/media/') || pathname.startsWith('/api/static/')) {
+        return `${pathname.slice(4)}${search}${hash}`
+      }
+      return ''
+    }
     const baseOrigin = raw.startsWith('/media/') || raw.startsWith('/static/')
       ? API_ORIGIN
       : window.location.origin
     const parsed = new URL(raw, baseOrigin)
+    const assetPath = normalizeAssetPath(parsed.pathname, parsed.search, parsed.hash)
+    if (assetPath) {
+      const url = new URL(assetPath, API_ORIGIN).toString()
+      imageDebugLog('generateImageUrl.asset', { raw, url, apiOrigin: API_ORIGIN })
+      return url
+    }
     const isAsset = parsed.pathname.startsWith('/media/') || parsed.pathname.startsWith('/static/')
     const missingPublicPort = LOCAL_HOSTS.includes(parsed.hostname) && !parsed.port
     const localBackendOnPublicApp = LOCAL_HOSTS.includes(parsed.hostname) && !LOCAL_HOSTS.includes(window.location.hostname)
