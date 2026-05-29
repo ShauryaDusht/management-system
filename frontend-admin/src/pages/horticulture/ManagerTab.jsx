@@ -180,13 +180,19 @@ export default function ManagerTab() {
   const [updatingSeason, setUpdatingSeason] = useState(false)
   const [error, setError] = useState('')
   const [summary, setSummary] = useState(null)
+  const [leaveApprovals, setLeaveApprovals] = useState([])
+  const [decidingId, setDecidingId] = useState(null)
 
   const load = async () => {
     setLoading(true)
     setError('')
     try {
-      const { data } = await horticultureAPI.getManagerWeeklySummary()
+      const [{ data }, approvalsResp] = await Promise.all([
+        horticultureAPI.getManagerWeeklySummary(),
+        horticultureAPI.getLeaveApprovals().catch(() => ({ data: [] })),
+      ])
       setSummary(data)
+      setLeaveApprovals(asList(approvalsResp.data))
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to load manager weekly summary.'))
     } finally {
@@ -220,9 +226,77 @@ export default function ManagerTab() {
     downloadWeeklyReport(reportRows, summary?.week_end)
   }
 
+  const decideLeave = async (id, decision) => {
+    setDecidingId(id)
+    setError('')
+    try {
+      await horticultureAPI.decideLeaveApproval(id, decision)
+      await load()
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to update leave approval.'))
+    } finally {
+      setDecidingId(null)
+    }
+  }
+
   return (
     <div>
       <Alert message={error} />
+
+      <Card style={{ marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800 }}>Temporary Incharge Approvals</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
+              Approve horticulture leave coverage after the selected supervisor accepts.
+            </div>
+          </div>
+          <Btn variant="secondary" onClick={load} disabled={loading || decidingId}>Refresh</Btn>
+        </div>
+        {leaveApprovals.length === 0 ? (
+          <div style={{ fontSize: 13, color: 'var(--text-3)' }}>No pending temporary incharge approvals.</div>
+        ) : (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {leaveApprovals.map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(0, 1fr) auto',
+                  gap: 12,
+                  alignItems: 'center',
+                  padding: 12,
+                  border: '1px solid var(--border)',
+                  borderRadius: 12,
+                  background: 'var(--surface-2)',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 800 }}>
+                    {item.leave_staff_name} -> {item.assigned_staff_name}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>
+                    {item.zone_name} | {formatDate(item.leave_date)}{item.reason ? ` | ${item.reason}` : ''}
+                  </div>
+                  {item.staff_action_note ? (
+                    <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>
+                      Note: {item.staff_action_note}
+                    </div>
+                  ) : null}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Btn size="sm" onClick={() => decideLeave(item.id, 'approve')} disabled={decidingId === item.id}>
+                    Approve
+                  </Btn>
+                  <Btn size="sm" variant="secondary" onClick={() => decideLeave(item.id, 'reject')} disabled={decidingId === item.id}>
+                    Reject
+                  </Btn>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       <Card style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>

@@ -282,6 +282,156 @@ class HorticultureDailyAssignment(models.Model):
         return f'{self.date} | {self.session} | {self.worker} | {self.task_type}'
 
 
+class HorticultureTaskWorkerAssignment(models.Model):
+    daily_assignment = models.ForeignKey(
+        HorticultureDailyAssignment,
+        on_delete=models.CASCADE,
+        related_name='worker_assignments',
+    )
+    worker = models.ForeignKey(
+        HorticultureWorker,
+        on_delete=models.CASCADE,
+        related_name='task_assignments',
+    )
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='horticulture_multi_worker_assignments',
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['assigned_at', 'worker__name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['daily_assignment', 'worker'],
+                name='horticulture_task_worker_unique_assignment',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.daily_assignment_id} | {self.worker.name}'
+
+
+class HorticultureLeaveRequest(models.Model):
+    class Status(models.TextChoices):
+        AWAITING_INCHARGE = 'awaiting_incharge', 'Awaiting Incharge'
+        PENDING_ACCEPTANCE = 'pending_acceptance', 'Pending Acceptance'
+        PENDING_ADMIN_APPROVAL = 'pending_admin_approval', 'Pending Admin Approval'
+        APPROVED = 'approved', 'Approved'
+        REASSIGN_REQUIRED = 'reassign_required', 'Reassign Required'
+        REJECTED = 'rejected', 'Rejected'
+
+    staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='horticulture_leave_requests',
+        limit_choices_to={'role': 'supervisor'},
+    )
+    zone = models.ForeignKey(
+        HorticultureZone,
+        on_delete=models.PROTECT,
+        related_name='leave_requests',
+    )
+    leave_date = models.DateField()
+    reason = models.CharField(max_length=300, blank=True)
+    status = models.CharField(max_length=30, choices=Status.choices, default=Status.AWAITING_INCHARGE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-leave_date', '-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['staff', 'leave_date', 'zone'],
+                name='horticulture_leave_unique_staff_date_zone',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.staff} | {self.zone} | {self.leave_date} | {self.status}'
+
+
+class HorticultureInchargeAssignment(models.Model):
+    class Status(models.TextChoices):
+        PENDING_ACCEPTANCE = 'pending_acceptance', 'Pending Acceptance'
+        PENDING_ADMIN_APPROVAL = 'pending_admin_approval', 'Pending Admin Approval'
+        APPROVED = 'approved', 'Approved'
+        DECLINED = 'declined', 'Declined'
+        ADMIN_REJECTED = 'admin_rejected', 'Admin Rejected'
+
+    leave_request = models.OneToOneField(
+        HorticultureLeaveRequest,
+        on_delete=models.CASCADE,
+        related_name='incharge_assignment',
+    )
+    zone = models.ForeignKey(
+        HorticultureZone,
+        on_delete=models.PROTECT,
+        related_name='incharge_assignments',
+    )
+    leave_staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='horticulture_leave_incharge_requests',
+    )
+    leave_staff_name = models.CharField(max_length=150)
+    leave_date = models.DateField()
+    assigned_staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='horticulture_incharge_assignments',
+        limit_choices_to={'role': 'supervisor'},
+    )
+    assigned_staff_name = models.CharField(max_length=150)
+    status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING_ACCEPTANCE)
+    staff_action_at = models.DateTimeField(null=True, blank=True)
+    staff_action_note = models.CharField(max_length=300, blank=True)
+    admin_action_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='horticulture_incharge_admin_actions',
+    )
+    admin_action_at = models.DateTimeField(null=True, blank=True)
+    admin_action_note = models.CharField(max_length=300, blank=True)
+    arrival_notified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['leave_date', '-created_at']
+
+    def __str__(self):
+        return f'{self.leave_staff_name} -> {self.assigned_staff_name} | {self.leave_date} | {self.status}'
+
+
+class HorticultureInchargeNotification(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='horticulture_incharge_notifications',
+    )
+    assignment = models.ForeignKey(
+        HorticultureInchargeAssignment,
+        on_delete=models.CASCADE,
+        related_name='notifications',
+    )
+    message = models.CharField(max_length=400)
+    level = models.CharField(max_length=20, default='info')
+    is_seen = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user} | {self.message[:40]}'
+
+
 class HorticultureAreaTaskAssignment(models.Model):
     class Session(models.TextChoices):
         ANY = 'any', 'Any Time'

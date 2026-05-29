@@ -30,7 +30,11 @@ from .models import (
     HorticultureAreaStock,
     HorticultureAreaTaskAssignment,
     HorticultureDailyAssignment,
+    HorticultureInchargeAssignment,
+    HorticultureInchargeNotification,
+    HorticultureLeaveRequest,
     HorticultureStockRequest,
+    HorticultureTaskWorkerAssignment,
     HorticultureWorker,
     HorticultureWorkerArea,
     HorticultureZone,
@@ -129,6 +133,34 @@ def _workers_for_zone(zone):
     )
 
 
+def _busy_horticulture_worker_ids(zone, date, exclude_assignment_id=None):
+    if zone is None:
+        return set()
+    active_assignments = HorticultureDailyAssignment.objects.filter(
+        area__zone=zone,
+        date=date,
+        status__in=[
+            HorticultureDailyAssignment.Status.PENDING,
+            HorticultureDailyAssignment.Status.IN_PROGRESS,
+        ],
+    )
+    if exclude_assignment_id:
+        active_assignments = active_assignments.exclude(pk=exclude_assignment_id)
+    busy_ids = set(active_assignments.values_list('worker_id', flat=True))
+    busy_ids.update(
+        HorticultureTaskWorkerAssignment.objects
+        .filter(daily_assignment__in=active_assignments)
+        .values_list('worker_id', flat=True)
+    )
+    return busy_ids
+
+
+def _mark_horticulture_busy_workers(workers, busy_ids):
+    for worker in workers:
+        worker.is_busy_for_task = worker.id in busy_ids
+    return workers
+
+
 def _horticulture_attendance_choices():
     return [
         ('present', 'Present', '#d1fae5', '#065f46'),
@@ -194,6 +226,73 @@ def _attendance_for_date(supervisor, date):
 def _query_string(**params):
     clean = {key: value for key, value in params.items() if value not in (None, '', [])}
     return urlencode(clean)
+
+
+def _create_horti_incharge_notice(user, assignment, message, level='info'):
+    if user:
+        HorticultureInchargeNotification.objects.create(
+            user=user,
+            assignment=assignment,
+            message=message,
+            level=level,
+        )
+
+
+def _horticulture_incharge_candidates(leave_req, exclude_user_id=None):
+    qs = (
+        User.objects
+        .filter(
+            is_active=True,
+            role=User.Role.SUPERVISOR,
+            horticulture_supervised_zones__isnull=False,
+        )
+        .exclude(pk=exclude_user_id)
+        .distinct()
+        .order_by('first_name', 'last_name', 'username')
+    )
+    rows = []
+    for user in qs:
+        zones = list(get_supervisor_zones(user))
+        rows.append({'user': user, 'zones': zones})
+    return rows
+
+
+def _assign_horti_incharge_for_leave(leave_req, assigned_staff, acted_by_user, note=''):
+    leave_staff_name = leave_req.staff.get_full_name() or leave_req.staff.username
+    assigned_staff_name = assigned_staff.get_full_name() or assigned_staff.username
+    assignment, _ = HorticultureInchargeAssignment.objects.update_or_create(
+        leave_request=leave_req,
+        defaults={
+            'zone': leave_req.zone,
+            'leave_staff': leave_req.staff,
+            'leave_staff_name': leave_staff_name,
+            'leave_date': leave_req.leave_date,
+            'assigned_staff': assigned_staff,
+            'assigned_staff_name': assigned_staff_name,
+            'status': HorticultureInchargeAssignment.Status.PENDING_ACCEPTANCE,
+            'staff_action_at': None,
+            'staff_action_note': '',
+            'admin_action_by': None,
+            'admin_action_at': None,
+            'admin_action_note': '',
+            'arrival_notified': False,
+        },
+    )
+    leave_req.status = HorticultureLeaveRequest.Status.PENDING_ACCEPTANCE
+    leave_req.save(update_fields=['status', 'updated_at'])
+    message = (
+        f'You have been assigned as Temporary Incharge for {leave_req.zone.name} '
+        f'on {leave_req.leave_date} by {leave_staff_name}.'
+    )
+    if note:
+        message = f'{message} Note: {note}'
+    _create_horti_incharge_notice(assigned_staff, assignment, message)
+    _create_horti_incharge_notice(
+        leave_req.staff,
+        assignment,
+        f'Incharge request sent to {assigned_staff_name} for {leave_req.zone.name} on {leave_req.leave_date}. Awaiting confirmation.',
+    )
+    return assignment
 
 
 class IsAdminOrHorticultureManager(BasePermission):
@@ -1411,6 +1510,77 @@ def horticulture_dashboard(request):
     total_tasks = len(task_rows)
     done_tasks = sum(1 for task in task_rows if task['task_type_id'] in done_task_type_ids)
     percent_done = int(round((done_tasks / total_tasks) * 100)) if total_tasks else 0
+    incharge_notice = (
+        HorticultureInchargeNotification.objects
+        .filter(user=request.user, is_seen=False)
+        .select_related('assignment', 'assignment__zone')
+        .order_by('-created_at')
+        .first()
+    )
+    if incharge_notice:
+        incharge_notice.is_seen = True
+        incharge_notice.save(update_fields=['is_seen'])
+    incoming_incharge_requests = list(
+        HorticultureInchargeAssignment.objects
+        .filter(
+            assigned_staff=request.user,
+            status=HorticultureInchargeAssignment.Status.PENDING_ACCEPTANCE,
+            leave_date__gte=today,
+        )
+        .select_related('zone', 'leave_staff')
+        .order_by('leave_date', '-created_at')[:10]
+    )
+    incoming_waiting_admin = list(
+        HorticultureInchargeAssignment.objects
+        .filter(
+            assigned_staff=request.user,
+            status=HorticultureInchargeAssignment.Status.PENDING_ADMIN_APPROVAL,
+            leave_date__gte=today,
+        )
+        .select_related('zone', 'leave_staff')
+        .order_by('leave_date', '-created_at')[:10]
+    )
+    incharge_today_assignments = list(
+        HorticultureInchargeAssignment.objects
+        .filter(
+            assigned_staff=request.user,
+            status=HorticultureInchargeAssignment.Status.APPROVED,
+            leave_date=today,
+        )
+        .select_related('zone', 'leave_staff')
+        .order_by('-created_at')
+    )
+    for assignment in incharge_today_assignments:
+        if not assignment.arrival_notified:
+            _create_horti_incharge_notice(
+                request.user,
+                assignment,
+                f'Incharge mode active today for {assignment.zone.name}.',
+                level='success',
+            )
+            assignment.arrival_notified = True
+            assignment.save(update_fields=['arrival_notified', 'updated_at'])
+    my_open_leave_reqs = list(
+        HorticultureLeaveRequest.objects
+        .filter(
+            staff=request.user,
+            leave_date__gte=today,
+            status__in=[
+                HorticultureLeaveRequest.Status.AWAITING_INCHARGE,
+                HorticultureLeaveRequest.Status.REASSIGN_REQUIRED,
+            ],
+        )
+        .select_related('zone')
+        .order_by('leave_date', '-created_at')[:10]
+    )
+    leave_reselection_cards = [
+        {
+            'leave_request': leave_req,
+            'candidates': _horticulture_incharge_candidates(leave_req, exclude_user_id=request.user.id),
+            'latest_assignment': getattr(leave_req, 'incharge_assignment', None),
+        }
+        for leave_req in my_open_leave_reqs
+    ]
 
     return render(
         request,
@@ -1430,6 +1600,11 @@ def horticulture_dashboard(request):
             'percent_done': percent_done,
             'season': dashboard_payload['season'],
             'zone_count': len(zones),
+            'incharge_notice': incharge_notice,
+            'incoming_incharge_requests': incoming_incharge_requests,
+            'incoming_waiting_admin': incoming_waiting_admin,
+            'incharge_today_assignments': incharge_today_assignments,
+            'leave_reselection_cards': leave_reselection_cards,
         },
     )
 
@@ -1447,6 +1622,13 @@ def horticulture_profile(request):
     zones = []
     success = ''
     error = ''
+    today = timezone.localdate()
+    show_incharge_selector = False
+    selector_leave_request = None
+    selector_candidates = []
+    selected_leave_date = ''
+    selected_leave_zone_id = ''
+    leave_reason_value = ''
 
     if user.role == 'supervisor':
         selected_zone, zones, _dashboard_payload = _mobile_zone_context(
@@ -1476,6 +1658,64 @@ def horticulture_profile(request):
             user.profile_photo = request.FILES['profile_photo']
             user.save(update_fields=['profile_photo'])
             success = 'Photo updated.'
+        elif action == 'submit_leave' and user.role == 'supervisor':
+            zone_id = request.POST.get('leave_zone_id')
+            selected_leave_zone_id = zone_id or ''
+            selected_leave_date = (request.POST.get('leave_date') or '').strip()
+            leave_reason_value = (request.POST.get('leave_reason') or '').strip()
+            zone = get_supervisor_zones(user).filter(pk=zone_id).first() if zone_id else selected_zone
+            leave_date = parse_date(selected_leave_date)
+            if not zone:
+                error = 'Please select a valid zone.'
+            elif not leave_date:
+                error = 'Please select a valid leave date.'
+            elif leave_date < today:
+                error = 'Leave date cannot be in the past.'
+            else:
+                leave_req, _created = HorticultureLeaveRequest.objects.get_or_create(
+                    staff=user,
+                    zone=zone,
+                    leave_date=leave_date,
+                    defaults={
+                        'reason': leave_reason_value,
+                        'status': HorticultureLeaveRequest.Status.AWAITING_INCHARGE,
+                    },
+                )
+                leave_req.reason = leave_reason_value
+                if leave_req.status in {
+                    HorticultureLeaveRequest.Status.APPROVED,
+                    HorticultureLeaveRequest.Status.PENDING_ADMIN_APPROVAL,
+                    HorticultureLeaveRequest.Status.PENDING_ACCEPTANCE,
+                }:
+                    leave_req.status = HorticultureLeaveRequest.Status.AWAITING_INCHARGE
+                leave_req.save(update_fields=['reason', 'status', 'updated_at'])
+                show_incharge_selector = True
+                selector_leave_request = leave_req
+                selector_candidates = _horticulture_incharge_candidates(leave_req, exclude_user_id=user.id)
+                success = 'Leave request submitted. Select temporary incharge.' if selector_candidates else ''
+                if not selector_candidates:
+                    error = 'No eligible horticulture supervisor found for temporary incharge.'
+        elif action == 'assign_temp_incharge' and user.role == 'supervisor':
+            leave_req = (
+                HorticultureLeaveRequest.objects
+                .select_related('zone', 'staff')
+                .filter(pk=request.POST.get('leave_request_id'), staff=user)
+                .first()
+            )
+            assigned_staff_id = request.POST.get('assigned_staff_id')
+            note = (request.POST.get('incharge_note') or '').strip()
+            if not leave_req:
+                error = 'Leave request not found.'
+            else:
+                candidate_ids = {row['user'].id for row in _horticulture_incharge_candidates(leave_req, exclude_user_id=user.id)}
+                if not assigned_staff_id or not str(assigned_staff_id).isdigit():
+                    error = 'Please select temporary incharge.'
+                elif int(assigned_staff_id) not in candidate_ids:
+                    error = 'Selected incharge is not valid.'
+                else:
+                    assigned_staff = get_object_or_404(User, pk=int(assigned_staff_id), is_active=True, role=User.Role.SUPERVISOR)
+                    _assign_horti_incharge_for_leave(leave_req, assigned_staff, user, note=note)
+                    return redirect(f'/horticulture/dashboard/?zone={leave_req.zone_id}&ic_ok=sent')
 
     zone_source = get_supervisor_zones(user) if user.role == 'supervisor' else get_horticulture_zones()
     zone_items = [
@@ -1485,6 +1725,12 @@ def horticulture_profile(request):
         }
         for zone in zone_source.annotate(area_count=Count('areas'))
     ]
+    recent_leaves = list(
+        HorticultureLeaveRequest.objects
+        .filter(staff=user, leave_date__gte=today - timedelta(days=30))
+        .select_related('zone')
+        .order_by('-leave_date', '-created_at')[:20]
+    ) if user.role == 'supervisor' else []
 
     return render(
         request,
@@ -1495,11 +1741,123 @@ def horticulture_profile(request):
             'selected_area': selected_area,
             'success': success,
             'error': error,
+            'today': today,
+            'recent_leaves': recent_leaves,
+            'show_incharge_selector': show_incharge_selector,
+            'selector_leave_request': selector_leave_request,
+            'selector_candidates': selector_candidates,
+            'selected_leave_date': selected_leave_date,
+            'selected_leave_zone_id': selected_leave_zone_id,
+            'leave_reason_value': leave_reason_value,
             'zone_items': zone_items,
+            'zones': zones,
             'zone_count': len(zones),
             'is_horti_manager': user.role in ['admin', 'horticulture_manager'],
         },
     )
+
+
+@horticulture_supervisor_required
+def horticulture_incharge_respond(request):
+    if request.method != 'POST':
+        return HttpResponseForbidden()
+    assignment = (
+        HorticultureInchargeAssignment.objects
+        .select_related('leave_request', 'zone', 'leave_staff', 'assigned_staff')
+        .filter(pk=request.POST.get('assignment_id'), assigned_staff=request.user)
+        .first()
+    )
+    zone_id = request.POST.get('zone') or (assignment.zone_id if assignment else None)
+    query = _query_string(zone=zone_id)
+    if not assignment:
+        return redirect(f'/horticulture/dashboard/?{query}&ic_err=invalid_assignment')
+    if assignment.status != HorticultureInchargeAssignment.Status.PENDING_ACCEPTANCE:
+        return redirect(f'/horticulture/dashboard/?{query}&ic_err=assignment_locked')
+    decision = (request.POST.get('decision') or '').strip().lower()
+    note = (request.POST.get('note') or '').strip()
+    if decision == 'accept':
+        assignment.status = HorticultureInchargeAssignment.Status.PENDING_ADMIN_APPROVAL
+        assignment.staff_action_at = timezone.now()
+        assignment.staff_action_note = note
+        assignment.save(update_fields=['status', 'staff_action_at', 'staff_action_note', 'updated_at'])
+        assignment.leave_request.status = HorticultureLeaveRequest.Status.PENDING_ADMIN_APPROVAL
+        assignment.leave_request.save(update_fields=['status', 'updated_at'])
+        _create_horti_incharge_notice(
+            assignment.leave_staff,
+            assignment,
+            f'{assignment.assigned_staff_name} accepted temporary incharge for {assignment.zone.name}. Awaiting admin approval.',
+        )
+        return redirect(f'/horticulture/dashboard/?{query}&ic_ok=accepted')
+    if decision == 'decline':
+        assignment.status = HorticultureInchargeAssignment.Status.DECLINED
+        assignment.staff_action_at = timezone.now()
+        assignment.staff_action_note = note
+        assignment.save(update_fields=['status', 'staff_action_at', 'staff_action_note', 'updated_at'])
+        assignment.leave_request.status = HorticultureLeaveRequest.Status.REASSIGN_REQUIRED
+        assignment.leave_request.save(update_fields=['status', 'updated_at'])
+        _create_horti_incharge_notice(
+            assignment.leave_staff,
+            assignment,
+            f'{assignment.assigned_staff_name} declined temporary incharge for {assignment.leave_date}. Please select another incharge.',
+            level='error',
+        )
+        return redirect(f'/horticulture/dashboard/?{query}&ic_ok=declined')
+    return redirect(f'/horticulture/dashboard/?{query}&ic_err=invalid_decision')
+
+
+class AdminHorticultureLeaveApprovalAPIView(APIView):
+    permission_classes = [IsAdminOrHorticultureManager]
+
+    def get(self, request):
+        rows = []
+        assignments = (
+            HorticultureInchargeAssignment.objects
+            .filter(status=HorticultureInchargeAssignment.Status.PENDING_ADMIN_APPROVAL)
+            .select_related('zone', 'leave_request', 'leave_staff', 'assigned_staff')
+            .order_by('leave_date', '-created_at')
+        )
+        for assignment in assignments:
+            rows.append({
+                'id': assignment.id,
+                'leave_request_id': assignment.leave_request_id,
+                'zone_name': assignment.zone.name,
+                'leave_staff_name': assignment.leave_staff_name,
+                'assigned_staff_name': assignment.assigned_staff_name,
+                'leave_date': assignment.leave_date,
+                'reason': assignment.leave_request.reason,
+                'staff_action_note': assignment.staff_action_note,
+                'created_at': assignment.created_at,
+            })
+        return Response(rows)
+
+    def post(self, request, assignment_id):
+        assignment = get_object_or_404(
+            HorticultureInchargeAssignment.objects.select_related('leave_request', 'zone', 'leave_staff', 'assigned_staff'),
+            pk=assignment_id,
+            status=HorticultureInchargeAssignment.Status.PENDING_ADMIN_APPROVAL,
+        )
+        decision = (request.data.get('decision') or '').strip().lower()
+        note = (request.data.get('note') or '').strip()
+        if decision not in {'approve', 'reject'}:
+            return Response({'detail': 'decision must be approve or reject.'}, status=status.HTTP_400_BAD_REQUEST)
+        if decision == 'approve':
+            assignment.status = HorticultureInchargeAssignment.Status.APPROVED
+            assignment.leave_request.status = HorticultureLeaveRequest.Status.APPROVED
+            level = 'success'
+            msg = f'Admin approved temporary incharge: {assignment.assigned_staff_name} for {assignment.zone.name} on {assignment.leave_date}.'
+        else:
+            assignment.status = HorticultureInchargeAssignment.Status.ADMIN_REJECTED
+            assignment.leave_request.status = HorticultureLeaveRequest.Status.REASSIGN_REQUIRED
+            level = 'error'
+            msg = f'Admin rejected temporary incharge: {assignment.assigned_staff_name} for {assignment.zone.name} on {assignment.leave_date}. Please select another.'
+        assignment.admin_action_by = request.user
+        assignment.admin_action_at = timezone.now()
+        assignment.admin_action_note = note
+        assignment.save(update_fields=['status', 'admin_action_by', 'admin_action_at', 'admin_action_note', 'updated_at'])
+        assignment.leave_request.save(update_fields=['status', 'updated_at'])
+        _create_horti_incharge_notice(assignment.leave_staff, assignment, msg, level=level)
+        _create_horti_incharge_notice(assignment.assigned_staff, assignment, msg, level=level)
+        return Response({'detail': 'Decision saved.'})
 
 
 @horticulture_supervisor_required
@@ -1542,14 +1900,23 @@ def horticulture_mark_task(request):
                     )
                     .first()
                 )
-            worker = None
-            if request.POST.get('worker_id'):
-                worker = HorticultureWorker.objects.filter(
-                    pk=request.POST.get('worker_id'),
-                    is_active=True,
-                    area_assignments__area__zone=selected_zone,
-                    area_assignments__is_active=True,
-                ).first()
+            worker_ids = list(dict.fromkeys(wid for wid in request.POST.getlist('worker_ids') if str(wid).isdigit()))
+            fallback_worker_id = request.POST.get('worker_id')
+            if not worker_ids and fallback_worker_id and str(fallback_worker_id).isdigit():
+                worker_ids = [fallback_worker_id]
+            workers = []
+            if worker_ids:
+                workers = list(
+                    HorticultureWorker.objects.filter(
+                        pk__in=worker_ids,
+                        is_active=True,
+                        area_assignments__area__zone=selected_zone,
+                        area_assignments__is_active=True,
+                    )
+                    .distinct()
+                    .order_by('name', 'pay_code')
+                )
+            worker = workers[0] if workers else None
             session = request.POST.get('session') or HorticultureDailyAssignment.Session.MORNING
             task_type_id = request.POST.get('task_type_id')
             task_type = TaskType.objects.filter(pk=task_type_id, is_active=True).first()
@@ -1557,8 +1924,8 @@ def horticulture_mark_task(request):
                 error_message = 'No horticulture zone is assigned to this supervisor.'
             elif selected_area is None:
                 error_message = 'Select a valid area before marking a task.'
-            elif action == 'assign' and worker is None:
-                error_message = 'Select a valid worker assigned to this zone.'
+            elif action == 'assign' and not workers:
+                error_message = 'Select at least one valid worker assigned to this zone.'
             elif session not in {HorticultureDailyAssignment.Session.MORNING, HorticultureDailyAssignment.Session.AFTERNOON}:
                 error_message = 'Select morning or afternoon session.'
             elif action == 'assign':
@@ -1576,8 +1943,12 @@ def horticulture_mark_task(request):
                     ],
                 ).exists():
                     error_message = 'Worker is already assigned for this task.'
+                elif len(workers) != len(set(int(wid) for wid in worker_ids)):
+                    error_message = 'One or more selected workers are invalid for this zone.'
+                elif set(worker.id for worker in workers) & _busy_horticulture_worker_ids(selected_zone, today):
+                    error_message = 'One or more selected workers are already assigned to an unfinished task.'
                 else:
-                    HorticultureDailyAssignment.objects.create(
+                    assignment = HorticultureDailyAssignment.objects.create(
                         worker=worker,
                         date=today,
                         session=session,
@@ -1587,7 +1958,18 @@ def horticulture_mark_task(request):
                         status=HorticultureDailyAssignment.Status.PENDING,
                         note=request.POST.get('note', '').strip(),
                     )
-                    messages.success(request, f'{worker.name} assigned to {task_type.name}.')
+                    HorticultureTaskWorkerAssignment.objects.bulk_create([
+                        HorticultureTaskWorkerAssignment(
+                            daily_assignment=assignment,
+                            worker=item,
+                            assigned_by=request.user,
+                        )
+                        for item in workers
+                    ])
+                    if len(workers) > 1:
+                        messages.success(request, f'{len(workers)} workers assigned to {task_type.name}.')
+                    else:
+                        messages.success(request, f'{worker.name} assigned to {task_type.name}.')
                     return redirect(f'/horticulture/mark-task/?{query}')
             elif action == 'start':
                 if assignment is None:
@@ -1680,6 +2062,7 @@ def horticulture_mark_task(request):
         HorticultureDailyAssignment.objects
         .filter(area=selected_area, date=today)
         .select_related('worker', 'task_type', 'assigned_by', 'completed_by')
+        .prefetch_related('worker_assignments__worker')
         .order_by('-assigned_at')
     ) if selected_area else []
     for assignment in all_assignments:
@@ -1710,6 +2093,7 @@ def horticulture_mark_task(request):
         if task['task_type_id'] not in completed_task_ids
     )
     workers = list(_workers_for_zone(selected_zone))
+    _mark_horticulture_busy_workers(workers, _busy_horticulture_worker_ids(selected_zone, today))
 
     return render(
         request,

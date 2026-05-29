@@ -482,16 +482,20 @@ def get_user_areas(user):
         HKArea.objects.filter(assigned_users__user=user, is_active=True).values_list("id", flat=True)
     )
     today = timezone.localdate()
-    approved_assignments = list(
+    assignment_qs = (
         HKInchargeAssignment.objects.filter(
             assigned_staff=user,
-            status="approved",
-            leave_date=today,
-        ).select_related("leave_staff")
+            leave_date__gte=today,
+        )
+        .filter(
+            dm.Q(status__in=["pending_acceptance", "pending_admin_approval"])
+            | dm.Q(status="approved", leave_date=today)
+        )
+        .select_related("leave_staff")
     )
     temp_incharge_area_ids = set()
     leave_staff_ids_for_all_scope = set()
-    for assignment in approved_assignments:
+    for assignment in assignment_qs:
         if assignment.cover_all_areas:
             leave_staff_ids_for_all_scope.add(assignment.leave_staff_id)
         elif assignment.area_id:
@@ -650,10 +654,29 @@ def mark_busy_workers(area_workers, busy_worker_ids):
 
 
 def can_multi_worker_task(user, record):
-    username = getattr(user, "username", "")
-    return bool(record and record.area and (
-        record.area.area_type == "swm" or username == "ashok.rathod"
-    ))
+    if not record or not record.area:
+        return False
+    if getattr(user, "role", "") == "caretaker":
+        return False
+
+    # Keep Research Park on the existing single-worker flow. Other supervisor
+    # areas can assign a team, matching the SWM/Ashok workflow.
+    if record.area.area_type == "research_park":
+        return False
+
+    return bool(
+        record.area.area_type in {
+            "academic",
+            "central_arcade",
+            "sports",
+            "roads",
+            "swm",
+            "guesthouse",
+            "director",
+            "other",
+        }
+        and getattr(user, "role", "") in {"supervisor", "admin", "housekeeping_manager"}
+    )
 
 
 def worker_options_for_selection_request(req_obj, current_area):

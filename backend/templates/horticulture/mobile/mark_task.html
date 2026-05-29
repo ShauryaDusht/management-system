@@ -78,7 +78,15 @@
     </div>
     {% if task.assignment %}
     <div style="font-size:11px;color:#374151;margin-top:4px">
-      Assigned Worker: <b>{{ task.assignment.worker.name }}</b> | {{ task.assignment.assigned_at|time:"g:i A" }}
+      {% if task.assignment.worker_assignments.count %}
+        Assigned Team:
+        {% for asn in task.assignment.worker_assignments.all %}
+          <b>{{ asn.worker.name }}</b>{% if not forloop.last %}, {% endif %}
+        {% endfor %}
+      {% else %}
+        Assigned Worker: <b>{{ task.assignment.worker.name }}</b>
+      {% endif %}
+      | {{ task.assignment.assigned_at|time:"g:i A" }}
     </div>
     {% endif %}
 
@@ -89,18 +97,28 @@
     <input type="hidden" name="zone_id" value="{{ selected_zone.id }}">
     <input type="hidden" name="area_id" value="{{ selected_area.id }}">
     <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
-    <div style="display:flex;gap:6px;align-items:center;margin-top:8px">
-      <select name="worker_id" required style="flex:1;padding:9px 10px;font-size:13px">
-        <option value="">Assign worker</option>
+    <div style="display:grid;gap:8px;margin-top:8px">
+      <div style="display:flex;gap:6px;align-items:center">
+        <select name="session" required style="flex:1;padding:9px 8px;font-size:13px">
+          <option value="morning">Morning</option>
+          <option value="afternoon">Afternoon</option>
+        </select>
+        <button type="submit" style="border:none;background:#2d4a3e;color:#fff;padding:10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">Assign Team</button>
+      </div>
+      <div style="font-size:11px;font-weight:800;color:#374151">Select workers</div>
+      <div style="max-height:180px;overflow:auto;border:1px solid #d1d5db;border-radius:8px;background:#fff">
         {% for worker in workers %}
-        <option value="{{ worker.id }}">{{ worker.name }}{% if worker.pay_code %} ({{ worker.pay_code }}){% endif %}</option>
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last %}1px solid #eef2f7{% else %}none{% endif %};cursor:{% if worker.is_busy_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if worker.is_busy_for_task %}.55{% else %}1{% endif %}">
+          <input type="checkbox" name="worker_ids" value="{{ worker.id }}" {% if worker.is_busy_for_task %}disabled{% endif %} style="width:16px;height:16px;flex-shrink:0">
+          <span style="font-weight:700;color:#1f2937;font-size:14px">
+            {{ worker.name }}{% if worker.pay_code %} ({{ worker.pay_code }}){% endif %}{% if worker.is_busy_for_task %} - Busy{% endif %}
+          </span>
+        </label>
+        {% empty %}
+        <div style="font-size:12px;color:#9ca3af;padding:10px">No active workers found for this zone.</div>
         {% endfor %}
-      </select>
-      <select name="session" required style="width:118px;padding:9px 8px;font-size:13px">
-        <option value="morning">Morning</option>
-        <option value="afternoon">Afternoon</option>
-      </select>
-      <button type="submit" style="border:none;background:#2d4a3e;color:#fff;padding:10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">Assign</button>
+      </div>
+      <div style="font-size:10px;color:#6b7280">Busy workers unlock after their current task is completed.</div>
     </div>
     </form>
     <button type="button" class="btn-g" disabled style="padding:9px;font-size:12px;margin-top:7px;opacity:.65">Start Work</button>

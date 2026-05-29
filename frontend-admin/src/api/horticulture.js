@@ -39,4 +39,7 @@ export const horticultureAPI = {
   deleteTaskType: (id) => api.delete(`/horticulture/admin/task-types/${id}/`),
   getManagerWeeklySummary: () => api.get('/horticulture/manager/weekly-summary/'),
   updateSeason: (season) => api.patch('/horticulture/manager/season/', { season }),
+  getLeaveApprovals: () => api.get('/horticulture/admin/leave-approvals/'),
+  decideLeaveApproval: (id, decision, note = '') =>
+    api.post(`/horticulture/admin/leave-approvals/${id}/decision/`, { decision, note }),
 }

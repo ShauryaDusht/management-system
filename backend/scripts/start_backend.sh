@@ -8,6 +8,7 @@ python manage.py collectstatic --noinput -v 0
 
 printf '%s\n' "Applying database migrations..."
 python manage.py migrate --noinput -v 0
+python manage.py ensure_portal_logins -v 0
 
 printf '%s\n' "Syncing baseline data..."
 python manage.py seed_all_data_if_empty -v 0

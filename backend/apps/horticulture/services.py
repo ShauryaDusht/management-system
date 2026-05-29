@@ -1,12 +1,13 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Case, IntegerField, When
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.text import slugify
 
 from apps.horticulture.management.commands.seed_horticulture import WORKER_TEAMS
 from apps.users.models import normalize_username_value
 
-from .models import HorticultureZone, SeasonSetting, TaskLog, TaskType
+from .models import HorticultureInchargeAssignment, HorticultureZone, SeasonSetting, TaskLog, TaskType
 
 User = get_user_model()
 VISIBLE_HORTICULTURE_ZONE_NAMES = {'Zone Red', 'Zone Blue', 'Zone Black'}
@@ -27,7 +28,20 @@ def build_seed_worker_username(full_name, pay_code):
 
 
 def get_supervisor_zones(supervisor):
-    return _visible_zone_queryset().filter(supervisor=supervisor).order_by('name', 'id')
+    today = timezone.localdate()
+    temporary_zone_ids = HorticultureInchargeAssignment.objects.filter(
+        assigned_staff=supervisor,
+        leave_date__gte=today,
+    ).filter(
+        Q(status__in=[
+            HorticultureInchargeAssignment.Status.PENDING_ACCEPTANCE,
+            HorticultureInchargeAssignment.Status.PENDING_ADMIN_APPROVAL,
+        ])
+        | Q(status=HorticultureInchargeAssignment.Status.APPROVED, leave_date=today)
+    ).values_list('zone_id', flat=True)
+    return _visible_zone_queryset().filter(
+        Q(supervisor=supervisor) | Q(id__in=temporary_zone_ids)
+    ).distinct().order_by('name', 'id')
 
 
 def get_horticulture_zones():
