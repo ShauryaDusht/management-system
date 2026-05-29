@@ -261,8 +261,10 @@ WORKER_NAMES = {
     'Mahesh Raval':      'Mahesh Ranjitbhai Raval',
     # PARAMAR GAUTAMKUMAR
     'Gautam Parmar':     'Paramar Gautamkumar',
-    # CHAUHAN NILAMBEN
-    'Nilamben':          'Chauhan Nilamben',
+    # NISHABEN H. PARMAR
+    'Nilamben':          'Nishaben H. Parmar',
+    'Nishaben':          'Nishaben H. Parmar',
+    'Nishaben H Parmar': 'Nishaben H. Parmar',
     # RAMESHBHAI NARSINHBHAI PARMAR
     'Ramesh Parmar':     'Rameshbhai Narsinhbhai Parmar',
     # PATEL SANGITABEN MAHESHBHAI
@@ -604,7 +606,7 @@ class Command(BaseCommand):
             '400': 'Pravinbhai Vaghela',
             '402': 'Vaghela Maheshbhai Dineshbhai',
             '403': 'Paramar Gautamkumar',
-            '410': 'Chauhan Nilamben',
+            '477': 'Nishaben H. Parmar',
             '411': 'Rameshbhai Narsinhbhai Parmar',
             '412': 'Patel Sangitaben Maheshbhai',
             '414': 'Axaykumar Rameshbhai Parmar',

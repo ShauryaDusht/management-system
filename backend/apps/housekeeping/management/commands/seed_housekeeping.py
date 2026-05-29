@@ -720,7 +720,7 @@ Existing account passwords are preserved.
             ('Solanki Dineshkumar Vinubhai',       '83',  '9714159412', 'Academic Block 5', 'floor',    False),
             ('Parmar Anjanaben Kalpeshkumar',      '130', '6351220899', 'Academic Block 5', 'washroom', False),
             ('Vaghela Shaileshbhai',               '82',  '8155861394', 'Academic Block 5', 'room',     False),
-            ('Chauhan Nilamben',                   '410', '7041529877', 'Academic Block 6', 'washroom', False),
+            ('Nishaben H. Parmar',                 '477', '7984047705', 'Academic Block 6', 'washroom', False),
             ('Ashokkumar Maheriya',                '114', '7383949367', 'Academic Block 6', 'floor',    False),
             ('Hitenkumar Parmar',                  '307', '8866745431', 'Academic Block 6', 'room',     False),
             ('Gurjar Chandrikaben',                '74',  '9737520471', 'Academic Block 7', 'washroom', False),
@@ -1962,7 +1962,7 @@ Existing account passwords are preserved.
                     (9, '16:00', '17:00', 'AB-5: Staircase and Water Cooler Dusting', 'floor', True, ''),
                 ],
                 'Academic Block 6': [
-                    (1, '08:00', '08:30', 'AB-6: All Floors Washroom Touch Up', 'washroom', True, 'Nilamben + Ashok + Hiten'),
+                    (1, '08:00', '08:30', 'AB-6: All Floors Washroom Touch Up', 'washroom', True, 'Nishaben + Ashok + Hiten'),
                     (2, '08:30', '09:30', 'AB-6: Floor Cleaning', 'floor', True, ''),
                     (3, '10:00', '10:15', 'Tea Break', 'floor', False, ''),
                     (4, '10:30', '12:30', 'AB-6: Office, Lab and Classroom Cleaning', 'room', True, ''),

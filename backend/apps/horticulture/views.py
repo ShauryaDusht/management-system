@@ -239,7 +239,7 @@ def _create_horti_incharge_notice(user, assignment, message, level='info'):
 
 
 def _horticulture_incharge_candidates(leave_req, exclude_user_id=None):
-    qs = (
+    supervisor_qs = (
         User.objects
         .filter(
             is_active=True,
@@ -250,10 +250,18 @@ def _horticulture_incharge_candidates(leave_req, exclude_user_id=None):
         .distinct()
         .order_by('first_name', 'last_name', 'username')
     )
+    manager_qs = (
+        User.objects
+        .filter(is_active=True, role=User.Role.HORTICULTURE_MANAGER)
+        .exclude(pk=exclude_user_id)
+        .order_by('first_name', 'last_name', 'username')
+    )
     rows = []
-    for user in qs:
+    for user in supervisor_qs:
         zones = list(get_supervisor_zones(user))
         rows.append({'user': user, 'zones': zones})
+    for user in manager_qs:
+        rows.append({'user': user, 'zones': list(get_horticulture_zones())})
     return rows
 
 
@@ -1457,6 +1465,36 @@ def horticulture_dashboard(request):
             .select_related('requested_by', 'area__zone', 'item')
             .order_by('-is_urgent', '-created_at')[:6]
         )
+        incharge_notice = (
+            HorticultureInchargeNotification.objects
+            .filter(user=request.user, is_seen=False)
+            .select_related('assignment', 'assignment__zone')
+            .order_by('-created_at')
+            .first()
+        )
+        if incharge_notice:
+            incharge_notice.is_seen = True
+            incharge_notice.save(update_fields=['is_seen'])
+        incoming_incharge_requests = list(
+            HorticultureInchargeAssignment.objects
+            .filter(
+                assigned_staff=request.user,
+                status=HorticultureInchargeAssignment.Status.PENDING_ACCEPTANCE,
+                leave_date__gte=today,
+            )
+            .select_related('zone', 'leave_staff')
+            .order_by('leave_date', '-created_at')[:10]
+        )
+        incoming_waiting_admin = list(
+            HorticultureInchargeAssignment.objects
+            .filter(
+                assigned_staff=request.user,
+                status=HorticultureInchargeAssignment.Status.PENDING_ADMIN_APPROVAL,
+                leave_date__gte=today,
+            )
+            .select_related('zone', 'leave_staff')
+            .order_by('leave_date', '-created_at')[:10]
+        )
         return render(
             request,
             'horticulture/mobile/manager_dashboard.html',
@@ -1466,6 +1504,9 @@ def horticulture_dashboard(request):
                 'zone_rows': zone_rows,
                 'totals': totals,
                 'pending_requests': pending_requests,
+                'incharge_notice': incharge_notice,
+                'incoming_incharge_requests': incoming_incharge_requests,
+                'incoming_waiting_admin': incoming_waiting_admin,
                 'is_horti_manager': True,
             },
         )
@@ -1713,7 +1754,12 @@ def horticulture_profile(request):
                 elif int(assigned_staff_id) not in candidate_ids:
                     error = 'Selected incharge is not valid.'
                 else:
-                    assigned_staff = get_object_or_404(User, pk=int(assigned_staff_id), is_active=True, role=User.Role.SUPERVISOR)
+                    assigned_staff = get_object_or_404(
+                        User,
+                        pk=int(assigned_staff_id),
+                        is_active=True,
+                        role__in=[User.Role.SUPERVISOR, User.Role.HORTICULTURE_MANAGER],
+                    )
                     _assign_horti_incharge_for_leave(leave_req, assigned_staff, user, note=note)
                     return redirect(f'/horticulture/dashboard/?zone={leave_req.zone_id}&ic_ok=sent')
 
@@ -1757,8 +1803,12 @@ def horticulture_profile(request):
     )
 
 
-@horticulture_supervisor_required
+@login_required
 def horticulture_incharge_respond(request):
+    if not request.user.is_active:
+        return redirect('/portal/login/')
+    if request.user.role not in [User.Role.SUPERVISOR, User.Role.HORTICULTURE_MANAGER]:
+        return HttpResponseForbidden()
     if request.method != 'POST':
         return HttpResponseForbidden()
     assignment = (

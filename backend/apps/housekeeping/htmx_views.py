@@ -140,6 +140,36 @@ def _attendance_relievers_for_area(area):
     return qs.none()
 
 
+def _shared_display_worker_qs_for_area(area):
+    if not area or area.name != "Academic Block 8":
+        return HKWorker.objects.none()
+
+    return HKWorker.objects.filter(
+        is_active=True,
+    ).filter(
+        dm.Q(area__name="Old Academic Reliever", is_reliever=True)
+        | dm.Q(pay_code="309", name__iexact="Parmar Nikulkumar Punjabhai")
+    )
+
+
+def display_workers_for_area(area):
+    if not area:
+        return []
+
+    workers = {}
+    shared_ids = _shared_display_worker_qs_for_area(area).values_list("id", flat=True)
+    for worker in HKWorker.objects.filter(
+        dm.Q(area=area) | dm.Q(id__in=shared_ids),
+        is_active=True,
+    ).order_by("worker_type", "name", "id"):
+        workers[worker.id] = worker
+    return list(workers.values())
+
+
+def display_worker_ids_for_area(area):
+    return {worker.id for worker in display_workers_for_area(area)}
+
+
 def _auto_create_second_half_from_first(workers, date, marked_by):
     worker_ids = list(workers.values_list("id", flat=True) if hasattr(workers, "values_list") else [w.id for w in workers])
     if not worker_ids:
@@ -819,7 +849,7 @@ def hk_dashboard(request):
     pct = int((done / total) * 100) if total else 0
 
     today_dow = today.weekday()
-    area_workers = list(HKWorker.objects.filter(area=sel_area, is_active=True).order_by("name")) if sel_area else []
+    area_workers = display_workers_for_area(sel_area)
     mark_busy_workers(area_workers, busy_worker_ids_for_tasks(sel_area, today))
     for record in records:
         record.can_multi_worker_assignment = can_multi_worker_task(user, record)
@@ -1287,16 +1317,21 @@ def hk_mark_task(request, record_id):
                     single_worker_id = request.POST.get("worker_id")
                     if single_worker_id:
                         worker_ids = [single_worker_id]
+                allowed_worker_ids = display_worker_ids_for_area(record.area)
                 busy_ids = busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id)
-                selected_busy_ids = {int(wid) for wid in worker_ids if str(wid).isdigit()} & busy_ids
+                selected_worker_ids = {int(wid) for wid in worker_ids if str(wid).isdigit()}
+                selected_busy_ids = selected_worker_ids & busy_ids
 
-                if selected_busy_ids:
+                if len(selected_worker_ids) != len(worker_ids):
+                    task_error = "Please select only valid workers for this area."
+                elif selected_busy_ids:
                     task_error = "One or more selected workers are already assigned to an unfinished task."
+                elif not selected_worker_ids.issubset(allowed_worker_ids):
+                    task_error = "Please select only valid workers for this area."
                 else:
                     workers = list(
                         HKWorker.objects.filter(
-                            pk__in=worker_ids,
-                            area=record.area,
+                            pk__in=selected_worker_ids,
                             is_active=True,
                         ).order_by("name")
                     )
@@ -1323,7 +1358,9 @@ def hk_mark_task(request, record_id):
             task_error = "Worker already assigned for this task."
         else:
             worker_id = request.POST.get("worker_id")
-            worker = HKWorker.objects.filter(pk=worker_id, area=record.area, is_active=True).first()
+            worker = HKWorker.objects.filter(pk=worker_id, is_active=True).first()
+            if worker and worker.id not in display_worker_ids_for_area(record.area):
+                worker = None
             if worker and worker.id in busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id):
                 task_error = "This worker is already assigned to an unfinished task."
             elif worker:
@@ -1496,7 +1533,7 @@ def hk_mark_task(request, record_id):
         "schedule", "assigned_worker", "assigned_by", "area", "completed_by"
     ).prefetch_related("worker_assignments__worker").get(pk=record.pk)
     record.can_multi_worker_assignment = can_multi_worker_task(user, record)
-    area_workers = list(HKWorker.objects.filter(area=record.area, is_active=True).order_by("name"))
+    area_workers = display_workers_for_area(record.area)
     mark_busy_workers(area_workers, busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id))
     return render(request, "housekeeping/mobile/partials/task_card.html", {
         "record": record,
@@ -1590,9 +1627,7 @@ def hk_attendance(request):
 
     sel_date = timezone.localdate()
 
-    workers = HKWorker.objects.filter(
-        area=sel_area, is_active=True
-    ).order_by("worker_type", "name") if sel_area else HKWorker.objects.none()
+    workers = display_workers_for_area(sel_area)
 
     cur_half = current_half()
     is_today = sel_date == timezone.localdate()
@@ -1624,6 +1659,8 @@ def hk_attendance(request):
             worker_id = request.POST.get("worker_id")
             status = request.POST.get("status", "present")
             worker = get_object_or_404(HKWorker, pk=worker_id)
+            if worker.id not in {w.id for w in workers}:
+                return HttpResponseBadRequest("Worker does not belong to the selected area.")
             existing = HKAttendanceRecord.objects.filter(worker=worker, date=sel_date, half=half).first()
             if not (existing and existing.is_submitted):
                 att, _ = HKAttendanceRecord.objects.get_or_create(
@@ -1645,6 +1682,7 @@ def hk_attendance(request):
                         "first_att": HKAttendanceRecord.objects.filter(worker=worker, date=sel_date, half="first").first(),
                         "second_att": HKAttendanceRecord.objects.filter(worker=worker, date=sel_date, half="second").first(),
                         "substitution": sub,
+                        "can_assign_reliever": not worker.is_reliever,
                     },
                     "sel_date": sel_date,
                     "sel_area": sel_area,
@@ -1662,6 +1700,7 @@ def hk_attendance(request):
         "worker": w,
         "first_att": att_map.get((w.id, "first")),
         "second_att": att_map.get((w.id, "second")),
+        "can_assign_reliever": not w.is_reliever,
     } for w in workers]
 
     # Reliever substitutions for today
@@ -1685,7 +1724,7 @@ def hk_attendance(request):
         type_groups.setdefault(wt, []).append(row)
 
     def all_submitted(half):
-        return workers.exists() and all(
+        return bool(workers) and all(
             att_map.get((w.id, half)) and att_map[(w.id, half)].is_submitted
             for w in workers
         )
@@ -1723,7 +1762,7 @@ def hk_assign_reliever(request):
     today = timezone.localdate()
 
     original = get_object_or_404(HKWorker, pk=request.POST.get("original_worker_id"))
-    if area and original.area_id != area.id:
+    if area and original.id not in display_worker_ids_for_area(area):
         return HttpResponseBadRequest("Worker does not belong to the selected area.")
     if original.is_reliever:
         return HttpResponseBadRequest("Reliever workers cannot receive another reliever.")

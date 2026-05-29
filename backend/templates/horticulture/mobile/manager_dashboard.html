@@ -10,6 +10,41 @@
   {% endfor %}
 {% endif %}
 
+{% if incharge_notice %}
+<div class="card" style="border:1.5px solid {% if incharge_notice.level == 'error' %}#fca5a5{% elif incharge_notice.level == 'success' %}#86efac{% else %}#93c5fd{% endif %};background:{% if incharge_notice.level == 'error' %}#fef2f2{% elif incharge_notice.level == 'success' %}#f0fdf4{% else %}#eff6ff{% endif %}">
+  <div style="font-size:13px;font-weight:800">{{ incharge_notice.message }}</div>
+</div>
+{% endif %}
+
+{% if incoming_incharge_requests %}
+<div class="card" style="border:1.5px solid #93c5fd;background:#eff6ff">
+  <div style="font-weight:800;color:#1d4ed8;margin-bottom:8px">Temporary Incharge Requests</div>
+  {% for ic in incoming_incharge_requests %}
+  <div style="background:#fff;border:1px solid #bfdbfe;border-radius:9px;padding:10px;margin-bottom:8px">
+    <div style="font-size:13px;font-weight:700;color:#1e3a8a">{{ ic.zone.name }} | {{ ic.leave_date|date:"d M Y" }}</div>
+    <div style="font-size:12px;color:#475569;margin-top:3px">Requested by {{ ic.leave_staff_name }}</div>
+    <form method="post" action="/horticulture/incharge/respond/" style="margin-top:8px;display:flex;gap:7px;align-items:center">
+      {% csrf_token %}
+      <input type="hidden" name="assignment_id" value="{{ ic.id }}">
+      <input type="hidden" name="zone" value="{{ ic.zone.id }}">
+      <input type="text" name="note" placeholder="Optional note..." style="flex:1;font-size:12px;padding:8px 9px">
+      <button type="submit" name="decision" value="accept" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer">Accept</button>
+      <button type="submit" name="decision" value="decline" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer">Decline</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if incoming_waiting_admin %}
+<div class="card" style="border:1px solid #fde68a;background:#fffbeb">
+  <div style="font-weight:800;color:#92400e;margin-bottom:6px">Awaiting Admin Approval</div>
+  {% for ic in incoming_waiting_admin %}
+  <div style="font-size:12px;color:#7c2d12;margin-bottom:3px">{{ ic.zone.name }} | {{ ic.leave_date|date:"d M Y" }} (requested by {{ ic.leave_staff_name }})</div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <div class="card hero">
   <div style="font-size:13px;opacity:.84;font-weight:700">Today</div>
   <div style="font-size:24px;font-weight:900;margin-top:3px">{{ today|date:"d M Y" }}</div>

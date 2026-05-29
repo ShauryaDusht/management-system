@@ -383,7 +383,7 @@ class HorticultureInchargeAssignment(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='horticulture_incharge_assignments',
-        limit_choices_to={'role': 'supervisor'},
+        limit_choices_to={'role__in': ['supervisor', 'horticulture_manager']},
     )
     assigned_staff_name = models.CharField(max_length=150)
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING_ACCEPTANCE)

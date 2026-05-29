@@ -228,7 +228,7 @@ WORKER_PAY_CODES = [
     ('Harshad',              '280'),  # SOLANKI HARSHADBHAI DINESHBHAI
     ('Dinesh',               '83'),   # SOLANKI DINESHKUMAR VINUBHAI
     ('Shaileshbhai',         '82'),   # VAGHELA SHAILESHBHAI
-    ('Nilamben',             '410'),  # CHAUHAN NILAMBEN
+    ('Nishaben',             '477'),  # NISHABEN H. PARMAR
     ('Ashok',                '114'),  # ASHOKKUMAR MAHERIYA
     ('Hiten',                '307'),  # HITENKUMAR PARMAR
     ('Chandrikaben',         '74'),   # GURJAR CHANDRIKABEN
@@ -277,6 +277,7 @@ WORKER_LOOKUP_HINTS = {
     'Krunal': {'area': 'Academic Block 3'},
     'Dinesh': {'area': 'Academic Block 5'},
     'Shaileshbhai': {'area': 'Academic Block 5'},
+    'Nishaben': {'area': 'Academic Block 6', 'phone': '7984047705'},
     'Ashok': {'area': 'Academic Block 6'},
     'Nikul': {'area': 'Academic Block 7'},
 }
