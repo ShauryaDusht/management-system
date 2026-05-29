@@ -256,14 +256,13 @@ export default function ZonesTab() {
 
   const downloadAreaTaskCsv = () => {
     if (!detail || !areas.length) return
-    const headers = ['Zone', 'Area', 'Area Number', 'Area Sqm', ...visibleTaskTypes.map((taskType) => taskType.name)]
+    const headers = ['Zone', 'Area', 'Area Number', ...visibleTaskTypes.map((taskType) => taskType.name)]
     const rows = areas.map((area) => {
       const taskMap = new Map(asList(area.tasks).map((task) => [String(task.task_type_id), task]))
       return [
         detail.zone_name || selectedZone?.name || '',
         area.name || '',
         area.area_number || '',
-        area.area_sqm || '',
         ...visibleTaskTypes.map((taskType) => {
           const task = taskMap.get(String(taskType.id))
           const presentation = getTaskPresentation(task, taskType.threshold)
@@ -516,7 +515,7 @@ export default function ZonesTab() {
                             <div style={{ display: 'grid', gap: 8 }}>
                               <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{area.name}</div>
                               <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                                Area {area.area_number} | {area.area_sqm} sqm
+                                Area {area.area_number}
                               </div>
                               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                 {area.overdue_task_count > 0 ? (

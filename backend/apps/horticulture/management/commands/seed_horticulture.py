@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
@@ -31,8 +29,8 @@ MANAGER_SPEC = {
 
 SUPERVISOR_SPECS = [
     {
-        'username': 'jaynti.thakur',
-        'full_name': 'Jaynti Bhai Thakur',
+        'username': 'jayanti.thakor',
+        'full_name': 'Jayanti Bhai Thakor',
         'role': User.Role.SUPERVISOR,
         'phone': '9662133181',
         'pay_code': '159',
@@ -40,8 +38,8 @@ SUPERVISOR_SPECS = [
         'is_superuser': False,
     },
     {
-        'username': 'rajesh.thakur',
-        'full_name': 'Rajesh Bhai Thakur',
+        'username': 'rajesh.thakor',
+        'full_name': 'Rajesh Bhai Thakor',
         'role': User.Role.SUPERVISOR,
         'phone': '7383662356',
         'pay_code': '440',
@@ -60,7 +58,7 @@ SUPERVISOR_SPECS = [
 ]
 
 WORKER_TEAMS = {
-    'jaynti.thakur': [
+    'jayanti.thakor': [
         ('Vikram Thakor', '174', '9574871515'),
         ('Somiben Thakor', '193', '9723010853'),
         ('Mafaji A Thakor', '167', '8488911915'),
@@ -84,7 +82,7 @@ WORKER_TEAMS = {
         ('Kanti Yadav', '171', '9727488591'),
         ('Lalaji D Thakor', '182', '6355298895'),
     ],
-    'rajesh.thakur': [
+    'rajesh.thakor': [
         ('Pankaj solanki', '225', '6351213549'),
         ('Jalam K Bihola', '201', '8401039214'),
         ('Ajay P Thakor', '213', '7203907287'),
@@ -121,9 +119,9 @@ WORKER_TEAMS = {
 }
 
 ZONE_SPECS = [
-    {'name': 'Zone Red', 'color_code': 'red', 'supervisor_username': 'jaynti.thakur'},
+    {'name': 'Zone Red', 'color_code': 'red', 'supervisor_username': 'jayanti.thakor'},
     {'name': 'Zone Blue', 'color_code': 'blue', 'supervisor_username': 'mukesh.solanki'},
-    {'name': 'Zone Black', 'color_code': 'black', 'supervisor_username': 'rajesh.thakur'},
+    {'name': 'Zone Black', 'color_code': 'black', 'supervisor_username': 'rajesh.thakor'},
 ]
 
 AREA_ZONE_MAP = {
@@ -132,7 +130,7 @@ AREA_ZONE_MAP = {
     24: 'Zone Red',
     29: 'Zone Red',
     30: 'Zone Black',
-    33: 'Zone Red',#TBC
+    33: 'Zone Black',
     35: 'Zone Red',
     36: 'Zone Blue',
     15: 'Zone Black',
@@ -142,12 +140,12 @@ AREA_ZONE_MAP = {
     25: 'Zone Red',
     5: 'Zone Red',
     1: 'Zone Blue',
-    2: 'Zone Blue',# Under Construction
+    2: 'Zone Red',
     16: 'Zone Black',
     18: 'Zone Blue',
     19: 'Zone Black',
     20: 'Zone Blue',
-    3: 'Zone Red',#TBC
+    3: 'Zone Red',
     4: 'Zone Blue',
     6: 'Zone Black',
     7: 'Zone Black',
@@ -156,86 +154,89 @@ AREA_ZONE_MAP = {
     10: 'Zone Blue',
     11: 'Zone Blue',
     12: 'Zone Blue',
-    13: 'Zone Blue',#TBC
-    14: 'Zone Blue',#TBC
-    26: 'Zone Red',#TBC
+    13: 'Zone Blue',
+    14: 'Zone Black',
+    26: 'Zone Blue',
     27: 'Zone Blue',
     28: 'Zone Blue',
-    31: 'Zone Red',
-    32: 'Zone Blue',#TBC
+    31: 'Zone Blue',
+    32: 'Zone Red',
+    37: 'Zone Black',
+    38: 'Zone Red',
+    39: 'Zone Black',
+    40: 'Zone Blue',
+    41: 'Zone Black',
+    42: 'Zone Black',
 }
 
 AREA_SPECS = [
-    (1, 'Gate No.2 to A1 Road start (E2 Road)', '2200'),    #Mukesh sir
-    (2, 'A1 Road + roadside opp Sports Complex', '3532'),  #Jaynti sir
-    (3, 'B1 Road + roadside', '3576'),#Jaynti
-    (4, 'Housing Blocks 1-14 front (F1 Road)', '3990'),#M
-    (5, "Director's Residence to Temp Gate (F1)", '474'), #J
-    (6, 'Temp Gate to Fire Building (F1)', '2415'),#R
-    (7, 'Fire Building to Triangular Lawn near RP (F1)', '2815'),#R
-    (8, 'Housing Blocks 31-34 front (F2 Road)', '1500'), #M
-    (9, 'Housing Blocks 17-30 front (H2 Road)', '3705'), #M
-    (10, 'Housing Blocks 14-17 front (H3 Road)', '420'), #M
-    (11, 'Jalmandap to Tennis Court (J2)', '2358'), #M
-    (12, 'Hostel Lawn Tennis to SPS (C3D1)', '10560'), #M
-    (13, 'New Housing to Sabarmati Cycle Track (C2)', '5076'),#M  # new housing se 5 no gate tak (M) & AB9 se 5 no gate tak (M)
-    (14, 'River Promenade Road (C2)', '2928'), #R
-    (15, 'Triangular Lawn near Research Park', '64'),#R
-    (16, 'Scenic Drive Road (G1)', '2000'), #R
-    (17, 'Triangular Junction to Research Park', '608'), #R
-    (18, 'Gate No.2', '1500'), #M
-    (19, 'Gate No.1', '1500'), #R  #outer boundary of gate bhi included he
-    (20, 'Gate No.3', '1500'), #M
-    (21, 'Gate No.1 to Triangular Lawn (E1 Road)', '1620'), #R
-    (22, 'Academic Blocks all floor planters', '17398'),#J
-    (23, 'Central Vista Lawn', '26163'),#J
-    (24, 'Lawn near AB-11,12,13 opp Library', '7135'),#J
-    (25, 'Guest House Lawn', '2243'),#J
-    (26, 'Housing Jalmandap Lawn', '1362'),#M
-    (27, 'Old Mess Lawn Side of Tennis Court', '7675'),#M
-    (28, 'Hostel Lawn Area', '9850'),#M isko hostel jalmandap me hi daal dena he
-    (29, 'Academic Lawn AB-9 to AB-3', '2532'),#J
-    (30, 'Rang Manch Lawn Hedges Planters', '1962'),#R
-    (31, 'Sports Complex Lawn', '15438'),#M
-    (32, 'Temporary Sports Field Lawn', '16228'),#J
-    (33, 'Open Parking near 2-degree cafe', '1100'),#divide in 2 op(r) 2deg(j)
-    (34, 'Directors Residence Rectangular Area', '553'),#J
-    (35, 'Between Guest House and E2 Road', '1625'),#J
-    (36, 'Between AB-9 and Solar Parking', '2720'),#M
-    # add new area biogas plant --> R
-    # from gate no 2 to gate no 3 boundary side --> M
-    # F1 road circle--> fire building--> chaar rasta (R)
-    # U shape --> R
-    # C2 road ke 2 part:- new housing se 5 no gate tak (M) & AB9 se 5 no gate tak (M)
-    # old housing (inside boundary) (M)
-    # Hostels (M):- old and new
-    # Research park:- boundary (R) from park to up north , building(R)
-    # firebuilding ke paas ek nursery bhi he (R)
+    (1, 'Gate No.2 to A1 Road start (E2 Road)'),
+    (2, 'A1 Road + roadside opp Sports Complex'),
+    (3, 'B1 Road + roadside'),
+    (4, 'Housing Blocks 1-14 front (F1 Road)'),
+    (5, "Director's Residence to Temp Gate (F1)"),
+    (6, 'Temp Gate to Fire Building (F1)'),
+    (7, 'Fire Building to Triangular Lawn near RP (F1)'),
+    (8, 'Housing Blocks 31-34 front (F2 Road)'),
+    (9, 'Housing Blocks 17-30 front (H2 Road)'),
+    (10, 'Housing Blocks 14-17 front (H3 Road)'),
+    (11, 'Jalmandap to Tennis Court (J2)'),
+    (12, 'Hostel Lawn Tennis to SPS (C3D1)'),
+    (13, 'New Housing to Sabarmati Cycle Track (C2)'),
+    (14, 'River Promenade Road (C2)'),
+    (15, 'Triangular Lawn near Research Park'),
+    (16, 'Scenic Drive Road (G1)'),
+    (17, 'Triangular Junction to Research Park'),
+    (18, 'Gate No.2'),
+    (19, 'Gate No.1 And Outer Lawn'),
+    (20, 'Gate No.3'),
+    (21, 'Gate No.1 to Triangular Lawn (E1 Road)'),
+    (22, 'Academic Blocks all floor planters'),
+    (23, 'Central Vista Lawn'),
+    (24, 'Lawn near AB-11,12,13 opp Library'),
+    (25, 'Guest House Lawn'),
+    (26, 'Housing Jalmandap Lawn'),
+    (27, 'Old Mess Lawn Side of Tennis Court'),
+    (28, 'Hostel Area'),
+    (29, 'Academic Lawn AB-9 to AB-3'),
+    (30, 'Rang Manch Lawn Hedges Planters'),
+    (31, 'Sports Complex Lawn'),
+    (32, 'Temporary Sports Field Lawn'),
+    (33, 'Open Parking near 2-degree cafe'),
+    (34, 'Directors Residence Rectangular Area'),
+    (35, 'Between Guest House and E2 Road'),
+    (36, 'Between AB-9 and Solar Parking to Gate 5'),
+    (37, 'Biogas plan'),
+    (38, '2-degree cafe'),
+    (39, 'U-shape'),
+    (40, 'Gate 2 To gate 3 boundary'),
+    (41, 'Boundary fromResearch park to  north Building'),
+    (42, 'Nursery near fire building'),
 ]
 
 ROAD_SPECS = [
-    ('A1', 'Zone Red', 'A1 Road', ''),
-    ('A2', 'Zone Blue', 'A2 Road', ''),
-    ('B1', 'Zone Red', 'B1 Road', ''),
-    ('C1', 'Zone Black', 'C1 Road', ''),
-    ('C2', 'Zone Blue', 'C2 Road', ''),# 8B to Riverside(3)
-    ('C3', 'Zone Blue', 'C3 Road', ''),
-    ('D1', 'Zone Blue', 'D1 Road', ''),
-    ('E1', 'Zone Black', 'E1 Road', ''),
-    ('E2', 'Zone Black', 'E2 Road', ''),# Director (2)
-    ('F1', 'Zone Blue', 'F1 Road', ''),# SR1 to Fire(3)
-    ('F1a', 'Zone Black', 'F1a Road', ''),
-    ('F2', 'Zone Blue', 'F2 Road', ''),
-    ('G1', 'Zone Black', 'G1 Road', ''),
-    ('H1', 'Zone Red', 'H1 Road', ''),
-    ('H2', 'Zone Blue', 'H2 Road', ''),
-    ('I1', 'Zone Black', 'I1 Road', ''),# to be confirmed
-    ('I2', 'Zone Red', 'I2 Road', ''),
-    ('I3', 'Zone Red', 'I3 Road', ''),
-    ('I4', 'Zone Blue', 'I4 Road', ''),
-    ('J1', 'Zone Red', 'J1 Road', ''),
-    ('J2', 'Zone Blue', 'J2 Road', ''),# Water body to CA2(2)
-    ('K', 'Zone Black', 'K Road', ''),
+    ('A1', 'Zone Red', 'A1 Road'),
+    ('A2', 'Zone Blue', 'A2 Road'),
+    ('B1', 'Zone Red', 'B1 Road'),
+    ('C1', 'Zone Black', 'C1 Road'),
+    ('C2', 'Zone Blue', 'C2 Road'),
+    ('C3', 'Zone Blue', 'C3 Road'),
+    ('D1', 'Zone Blue', 'D1 Road'),
+    ('E1', 'Zone Black', 'E1 Road'),
+    ('E2', 'Zone Black', 'E2 Road'),
+    ('F1', 'Zone Blue', 'F1 Road'),
+    ('F1a', 'Zone Black', 'F1a Road'),
+    ('F2', 'Zone Blue', 'F2 Road'),
+    ('G1', 'Zone Black', 'G1 Road'),
+    ('H1', 'Zone Red', 'H1 Road'),
+    ('H2', 'Zone Blue', 'H2 Road'),
+    ('I1', 'Zone Black', 'I1 Road'),
+    ('I2', 'Zone Red', 'I2 Road'),
+    ('I3', 'Zone Red', 'I3 Road'),
+    ('I4', 'Zone Blue', 'I4 Road'),
+    ('J1', 'Zone Red', 'J1 Road'),
+    ('J2', 'Zone Blue', 'J2 Road'),
+    ('K', 'Zone Black', 'K Road'),
 ]
 
 TASK_TYPE_SPECS = [
@@ -491,13 +492,12 @@ class Command(BaseCommand):
         return zones
 
     def _seed_areas(self, zones):
-        for area_number, name, area_sqm in AREA_SPECS:
+        for area_number, name in AREA_SPECS:
             zone_name = AREA_ZONE_MAP[area_number]
             area, created = HorticultureArea.objects.get_or_create(
                 area_number=area_number,
                 defaults={
                     'name': name,
-                    'area_sqm': Decimal(area_sqm),
                     'zone': zones[zone_name],
                 },
             )
@@ -505,38 +505,30 @@ class Command(BaseCommand):
             if area.name != name:
                 area.name = name
                 changed = True
-            decimal_area_sqm = Decimal(area_sqm)
-            if area.area_sqm != decimal_area_sqm:
-                area.area_sqm = decimal_area_sqm
-                changed = True
             if area.zone_id != zones[zone_name].id:
                 area.zone = zones[zone_name]
                 changed = True
             if changed:
-                area.save(update_fields=['name', 'area_sqm', 'zone'])
+                area.save(update_fields=['name', 'zone'])
 
             self.stats['areas_created'] += int(created)
             self.stats['areas_updated'] += int(not created and changed)
 
     def _seed_roads(self, zones):
-        for road_code, zone_name, name, notes in ROAD_SPECS:
+        for road_code, zone_name, name in ROAD_SPECS:
             road, created = HorticultureRoad.objects.get_or_create(
                 zone=zones[zone_name],
                 road_code=road_code,
                 defaults={
                     'name': name,
-                    'notes': notes,
                 },
             )
             changed = False
             if road.name != name:
                 road.name = name
                 changed = True
-            if road.notes != notes:
-                road.notes = notes
-                changed = True
             if changed:
-                road.save(update_fields=['name', 'notes'])
+                road.save(update_fields=['name'])
 
             self.stats['roads_created'] += int(created)
             self.stats['roads_updated'] += int(not created and changed)

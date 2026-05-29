@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -30,14 +28,9 @@ class HorticultureZone(models.Model):
 class HorticultureArea(models.Model):
     area_number = models.PositiveSmallIntegerField(
         unique=True,
-        validators=[MinValueValidator(1), MaxValueValidator(36)],
+        validators=[MinValueValidator(1), MaxValueValidator(42)],
     )
     name = models.CharField(max_length=200)
-    area_sqm = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        validators=[MinValueValidator(Decimal('0.01'))],
-    )
     zone = models.ForeignKey(
         HorticultureZone,
         on_delete=models.CASCADE,

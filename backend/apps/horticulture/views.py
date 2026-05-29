@@ -660,7 +660,6 @@ class AdminHorticultureAreasAPIView(APIView):
                 'id': area.id,
                 'area_number': area.area_number,
                 'name': area.name,
-                'area_sqm': area.area_sqm,
                 'zone_id': area.zone_id,
                 'zone_name': area.zone.name if area.zone else '',
                 'supervisor_name': _display_name(area.zone.supervisor) if area.zone and area.zone.supervisor else '',

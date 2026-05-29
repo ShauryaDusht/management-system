@@ -28,7 +28,7 @@ class HorticultureZoneAdmin(admin.ModelAdmin):
 
 @admin.register(HorticultureArea, site=admin_site)
 class HorticultureAreaAdmin(admin.ModelAdmin):
-    list_display = ('area_number', 'name', 'area_sqm', 'zone')
+    list_display = ('area_number', 'name', 'zone')
     list_filter = ('zone',)
     search_fields = ('name',)
 

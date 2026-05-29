@@ -51,7 +51,6 @@ class SupervisorAreaDashboardSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     area_number = serializers.IntegerField()
     name = serializers.CharField()
-    area_sqm = serializers.DecimalField(max_digits=12, decimal_places=2)
     urgency = serializers.CharField()
     overdue_task_count = serializers.IntegerField()
     due_soon_task_count = serializers.IntegerField()

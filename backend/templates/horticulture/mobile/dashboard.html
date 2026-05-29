@@ -186,7 +186,6 @@
       <span class="zone-dot" style="margin-top:5px;background:{{ selected_zone.color_code|default:'#2d4a3e' }}"></span>
       <div>
         <div style="font-size:15px;font-weight:800">{{ selected_area.name }}</div>
-        <div class="muted">{{ selected_area.area_sqm }} sqm</div>
       </div>
     </div>
     <a class="bdg b" href="/horticulture/schedule/?zone={{ selected_zone.id }}&area={{ selected_area.id }}">Schedule</a>
@@ -198,7 +197,6 @@
   <a class="area-link" href="/horticulture/dashboard/?zone={{ selected_zone.id }}&area={{ area.id }}">
     <div class="card area-card compact {% if area.urgency == 'overdue' %}is-overdue{% elif area.urgency == 'due_soon' %}is-due-soon{% endif %}">
       <div class="area-title">{{ area.name }}</div>
-      <div class="area-size">{{ area.area_sqm }} sqm</div>
     </div>
   </a>
   {% empty %}

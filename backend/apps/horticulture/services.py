@@ -264,7 +264,6 @@ def build_zone_dashboard_payload(zone, today=None):
                 'id': area.id,
                 'area_number': area.area_number,
                 'name': area.name,
-                'area_sqm': area.area_sqm,
                 'urgency': area_urgency,
                 'urgency_rank': 0 if area_urgency == 'overdue' else 1 if area_urgency == 'due_soon' else 2,
                 'overdue_task_count': overdue_count,

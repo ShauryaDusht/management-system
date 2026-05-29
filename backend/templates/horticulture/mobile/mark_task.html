@@ -40,7 +40,6 @@
   <div style="font-size:16px;font-weight:800">{{ selected_area.name }}</div>
   <div style="display:flex;align-items:center;gap:8px;margin:5px 0 10px;font-size:12px;opacity:.88">
     <span class="zone-dot" style="background:{{ selected_zone.color_code|default:'#2d4a3e' }}"></span>
-    <span>{{ selected_area.area_sqm }} sqm</span>
     <span>{{ today|date:"d M Y" }}</span>
   </div>
   {% if pending_task_count %}

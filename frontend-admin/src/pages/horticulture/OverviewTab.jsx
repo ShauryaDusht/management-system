@@ -253,7 +253,7 @@ function AreaOverviewGroup({ area, expanded, onToggle }) {
             <span style={{ minWidth: 0 }}>
               <span style={{ display: 'block', fontWeight: 800, fontSize: 14 }}>{area.name}</span>
               <span style={{ display: 'block', fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
-                Area {area.area_number} | {area.area_sqm} sqm
+                Area {area.area_number}
               </span>
             </span>
           </span>
