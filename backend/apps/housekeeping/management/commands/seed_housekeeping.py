@@ -452,6 +452,25 @@ Existing account passwords are preserved.
 
         return None
 
+    def _existing_worker_phone(self, name, pay_code, current_worker=None):
+        qs = HKWorker.objects.exclude(phone='')
+        if current_worker and getattr(current_worker, 'pk', None):
+            qs = qs.exclude(pk=current_worker.pk)
+
+        pay_code = (pay_code or '').strip()
+        if pay_code:
+            donor = qs.filter(pay_code=pay_code).order_by('-is_active', 'id').first()
+            if donor:
+                return donor.phone
+
+        name = (name or '').strip()
+        if name:
+            donor = qs.filter(name__iexact=name).order_by('-is_active', 'id').first()
+            if donor:
+                return donor.phone
+
+        return ''
+
     def _sync_area_roster(self, roster_specs, supervisor_username):
         supervisor = User.objects.filter(username=supervisor_username).first()
         managed_areas = {}
@@ -485,8 +504,9 @@ Existing account passwords are preserved.
             ):
                 pay_code = '484.2'
             worker.pay_code = pay_code
-            if spec.get('phone'):
-                worker.phone = spec['phone']
+            phone = spec.get('phone') or self._existing_worker_phone(spec['name'], pay_code, worker)
+            if phone:
+                worker.phone = phone
             elif created and not worker.phone:
                 worker.phone = ''
             worker.worker_type = spec.get('worker_type', 'general')
@@ -766,6 +786,7 @@ Existing account passwords are preserved.
                 and HKWorker.objects.filter(pay_code='484').exclude(pk=getattr(worker, 'pk', None)).exists()
             ):
                 effective_pay_code = '484.2'
+            phone = phone or self._existing_worker_phone(name, effective_pay_code, worker)
             if created:
                 worker = HKWorker(
                     name=name,

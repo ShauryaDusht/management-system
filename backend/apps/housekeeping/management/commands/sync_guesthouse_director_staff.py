@@ -653,14 +653,15 @@ class Command(BaseCommand):
             )
 
             worker.name = spec["name"]
-            if spec["phone"] or not worker.phone:
-                worker.phone = spec["phone"]
             pay_code = spec["pay_code"]
             if (
                 spec["name"] == "Dhaval S Solanki"
                 and HKWorker.objects.filter(pay_code="484").exclude(pk=getattr(worker, "pk", None)).exists()
             ):
                 pay_code = "484.2"
+            phone = spec["phone"] or self._existing_worker_phone(spec["name"], pay_code, worker)
+            if phone or not worker.phone:
+                worker.phone = phone
             worker.pay_code = pay_code
             worker.worker_type = spec["worker_type"]
             worker.shift = spec["shift"]
@@ -1016,6 +1017,25 @@ class Command(BaseCommand):
             HKWorker.objects.filter(id__in=deleted_ids).delete()
 
         return len(deleted_ids), kept_with_history
+
+    def _existing_worker_phone(self, name, pay_code, current_worker=None):
+        qs = HKWorker.objects.exclude(phone="")
+        if current_worker and getattr(current_worker, "pk", None):
+            qs = qs.exclude(pk=current_worker.pk)
+
+        pay_code = (pay_code or "").strip()
+        if pay_code:
+            donor = qs.filter(pay_code=pay_code).order_by("-is_active", "id").first()
+            if donor:
+                return donor.phone
+
+        name = (name or "").strip()
+        if name:
+            donor = qs.filter(name__iexact=name).order_by("-is_active", "id").first()
+            if donor:
+                return donor.phone
+
+        return ""
 
     def _find_worker(self, spec, area, all_workers, keep_ids):
         legacy = {_normalize(spec["name"])}
