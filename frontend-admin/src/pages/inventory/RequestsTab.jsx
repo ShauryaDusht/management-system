@@ -65,8 +65,8 @@ export default function RequestsTab({ userRole }) {
   })
 
   const canCreate = isSupervisor || isCaretaker
-  const canReview = userRole === 'admin'
-  const canCreatePurchase = userRole === 'inventory_manager'
+  const canReview = userRole === 'admin' || userRole === 'hk_inventory_manager'
+  const canCreatePurchase = userRole === 'admin' || userRole === 'hk_inventory_manager'
 
   const { run: runAction, error: actionError, clearError } = useAsyncAction()
   const { loading, error: loadError, reload } = useAsyncLoad(async () => {

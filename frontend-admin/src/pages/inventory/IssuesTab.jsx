@@ -85,7 +85,7 @@ export default function IssuesTab({ userRole }) {
   const [reportData, setReportData] = useState(null)
   const [reportModal, setReportModal] = useState(false)
 
-  const canManager = userRole === 'admin'
+  const canManager = userRole === 'admin' || userRole === 'hk_inventory_manager'
 
   const { run: runAction, error: actionError, clearError } = useAsyncAction()
   const { loading, error: loadError, reload } = useAsyncLoad(async () => {

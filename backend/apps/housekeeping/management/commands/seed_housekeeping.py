@@ -362,6 +362,22 @@ Existing account passwords are preserved.
                 match_pay_code=False,
             )
 
+        for username in ['admin.user', 'hk_inventory_manager']:
+            user = User.objects.filter(username=username).first()
+            if user:
+                user.set_password(DEFAULT_PASSWORD)
+                user.is_active = True
+                user.is_staff = True
+                user.is_superuser = username == 'admin.user'
+                if username == 'hk_inventory_manager':
+                    user.first_name = 'Housekeeping Inventory'
+                    user.last_name = 'Manager'
+                    user.email = 'manager.hk@iitgn.ac.in'
+                    user.phone = '8758120645'
+                    user.pay_code = '469'
+                    user.role = 'hk_inventory_manager'
+                user.save()
+
         disabled = User.objects.filter(username__in=['housekeeping.manager', 'inventory.manager']).update(
             is_active=False,
             is_staff=False,

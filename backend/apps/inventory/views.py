@@ -22,7 +22,7 @@ from .serializers import (
     UserActivitySerializer,
     StandardPagination,
 )
-from apps.users.permissions import IsAdmin, IsSupervisor
+from apps.users.permissions import IsAdmin, IsAdminOrHKInventoryManager, IsSupervisor
 from .permissions import IsAdminOrInventoryManager
 
 
@@ -57,7 +57,7 @@ class CategoryListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [IsAdmin()]
+            return [IsAdminOrHKInventoryManager()]
         return [IsAuthenticated()]
 
 
@@ -90,7 +90,7 @@ class ItemListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [IsAdmin()]
+            return [IsAdminOrHKInventoryManager()]
         return [IsAuthenticated()]
 
 
@@ -100,12 +100,12 @@ class ItemDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_permissions(self):
         if self.request.method in ['PUT', 'PATCH', 'DELETE']:
-            return [IsAdmin()]
+            return [IsAdminOrHKInventoryManager()]
         return [IsAuthenticated()]
 
 
 class LowStockItemsView(APIView):
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrHKInventoryManager]
 
     def get(self, request):
         items = Item.objects.filter(
@@ -121,7 +121,7 @@ class LowStockItemsView(APIView):
 # ─────────────────────────────────────────────────
 
 class ItemHistoryView(APIView):
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrHKInventoryManager]
 
     # Max merged rows considered per request before pagination
     _MAX_MERGED_EVENTS = 400
@@ -218,7 +218,7 @@ class ItemHistoryView(APIView):
 
 class StockEntryListCreateView(generics.ListCreateAPIView):
     serializer_class = StockEntrySerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrHKInventoryManager]
     pagination_class = StandardPagination
 
     def get_queryset(self):
@@ -234,7 +234,7 @@ class StockEntryListCreateView(generics.ListCreateAPIView):
 
 class ItemStockEntriesView(generics.ListAPIView):
     serializer_class = StockEntrySerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrHKInventoryManager]
 
     def get_queryset(self):
         return StockEntry.objects.filter(
@@ -315,13 +315,13 @@ class PurchaseRequestListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         role = getattr(self.request.user, 'role', '')
-        if role not in ['inventory_manager', 'admin']:
+        if role not in ['inventory_manager', 'admin', 'hk_inventory_manager']:
             raise PermissionDenied('Only inventory managers/admin can create purchase requests.')
         serializer.save(requested_by=self.request.user)
 
 
 class PurchaseRequestDecisionView(APIView):
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrHKInventoryManager]
 
     def post(self, request, pk):
         try:
@@ -569,7 +569,7 @@ class FinalizeConsumableView(APIView):
             base_qs = ItemIssue.objects.select_for_update().select_related(
                 'request__item', 'request__requested_by'
             )
-            if user.is_admin or user.is_inventory_manager:
+            if user.is_admin or user.is_inventory_manager or getattr(user, 'is_hk_inventory_manager', False):
                 issue = base_qs.get(pk=pk)
             elif user.is_supervisor:
                 # Supervisors can only finalize their own issues
@@ -625,7 +625,7 @@ class IssueUsageLogView(APIView):
         if for_update:
             base_qs = base_qs.select_for_update()
 
-        if user.is_admin or user.is_inventory_manager:
+        if user.is_admin or user.is_inventory_manager or getattr(user, 'is_hk_inventory_manager', False):
             return base_qs.get(pk=pk)
         if user.is_supervisor or user.is_caretaker:
             return base_qs.get(pk=pk, request__requested_by=user)
@@ -815,7 +815,7 @@ class UserUsageLogsView(APIView):
 # ─────────────────────────────────────────────────
 
 class UserActivityView(APIView):
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrHKInventoryManager]
 
     def get(self, request, user_id):
         from apps.users.models import User

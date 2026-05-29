@@ -13,7 +13,7 @@ export default function StockLogTab({ userRole }) {
   const [items, setItems] = useState([])
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState({ item: '', quantity_added: 1, notes: '' })
-  const canAdmin = userRole === 'admin'
+  const canAdmin = userRole === 'admin' || userRole === 'hk_inventory_manager'
 
   const { run: runAction, saving, error: actionError } = useAsyncAction()
   const { loading, error: loadError, reload } = useAsyncLoad(async () => {
