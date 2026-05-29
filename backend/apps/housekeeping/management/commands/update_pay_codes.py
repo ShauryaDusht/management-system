@@ -213,6 +213,7 @@ WORKER_PAY_CODES = [
     ('Naveenbhai Chauhan',   '282'),  # RUDRESHABEN SANDIPKUMAR SOLANKI
     ('Rajnibhai Parmar',     '390'),  # PARMAR KRUNALBHAI
     ('Dineshbhai Purohit',   '83'),   # SOLANKI DINESHKUMAR VINUBHAI
+    ('Nilamben',             '410'),  # CHAUHAN NILAMBEN
     ('Baldevbhai Vaghela',   '455'),  # VAGHELA SUNILKUMAR RAJUBHAI
     ('Saleshbhai Vaghela',   '459'),  # URVASHIBEN NAYANBHAI VAGHELA
     ('Kanti bhai Thakur',    '461'),  # SOLANKI LALIT
@@ -270,6 +271,7 @@ WORKER_LOOKUP_HINTS = {
     'Mukesh': {'area': 'Hiqom', 'phone': '8141885315'},
     'Rajesh': {'area': 'Kyzeel', 'phone': '7046510026'},
     'Anil Thakur': {'area': 'Hostel Common Area', 'phone': '9265665289'},
+    'Nilamben': {'area': 'Central Arcade', 'phone': '7041529877'},
     'Shailesh Vaghela': {'area': 'Research Park'},
     'Sailesh A Vaghela': {'area': 'Research Park'},
     'Minaben': {'area': 'Academic Block 1'},

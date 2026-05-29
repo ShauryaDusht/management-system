@@ -643,13 +643,9 @@ Existing account passwords are preserved.
             ('Vaghela Dharmishtha Ben',     '264', '9328002335', 'Research Park', 'washroom', False),
 
             # -- CENTRAL ARCADE ----------------------------------------------
-            ('Chirag Vaghela',     '303', '', 'Central Arcade', 'floor',    False),
-            ('Sunil Vaghela',      '455', '', 'Central Arcade', 'floor',    False),
-            ('Vijay Parmar',       '329', '', 'Central Arcade', 'floor',    False),
             ('Ramesh Parmar',      '429', '', 'Central Arcade', 'washroom', False),
-            ('Nikhil Makvana',     '364', '', 'Central Arcade', 'room',     False),
-            ('Bhavna Ben Chavda',  '218', '', 'Central Arcade', 'room',     False),
-            ('Sikandar Bhangi',    '389', '', 'Central Arcade', 'general',  False),
+            ('Rudhreshben S Solanki', '282', '', 'Central Arcade', 'room',  False),
+            ('Chauhan Nilamben',   '410', '7041529877', 'Central Arcade', 'floor', False),
 
             # -- SPORTS COMPLEX ----------------------------------------------
             ('Shohil J Vaghela',      '257', '', 'Sports Complex', 'washroom', False),
@@ -657,7 +653,7 @@ Existing account passwords are preserved.
             ('Jaydeep D Vaghela',     '447', '', 'Sports Complex', 'general',  False),
             ('Rahul J Vaghela',       '337', '', 'Sports Complex', 'washroom', False),
             ('Akshay R Parmar',       '414', '', 'Sports Complex', 'floor',    False),
-            ('Rudhreshben S Solanki', '282', '', 'Sports Complex', 'room',     False),
+            ('Bhavna Ben Chavda',     '218', '', 'Sports Complex', 'room',     False),
             ('Anitaben',              '385', '', 'Sports Complex', 'floor',    False),
             ('Uttam Vaghela',         '428', '', 'Sports Complex', 'room',     False),
             ('Rajendra Bhai Chavda',  '354', '', 'Sports Complex', 'floor',    False),
@@ -849,19 +845,15 @@ Existing account passwords are preserved.
         )
 
         bharat_roster = [
-            {'area': 'Central Arcade', 'name': 'Chirag Vaghela', 'pay_code': '303', 'phone': '', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Chirag Vaghela']},
-            {'area': 'Central Arcade', 'name': 'Sunil Vaghela', 'pay_code': '455', 'phone': '', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Sunil Vaghela']},
-            {'area': 'Central Arcade', 'name': 'Vijay Parmar', 'pay_code': '329', 'phone': '', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Vijay Parmar']},
             {'area': 'Central Arcade', 'name': 'Ramesh Parmar', 'pay_code': '429', 'phone': '', 'worker_type': 'washroom', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Ramesh Parmar']},
-            {'area': 'Central Arcade', 'name': 'Nikhil Makvana', 'pay_code': '364', 'phone': '', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Nikhil', 'Nikhil Makvana', 'Nikhil makvana']},
-            {'area': 'Central Arcade', 'name': 'Bhavna Ben Chavda', 'pay_code': '218', 'phone': '', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Bhavnaben', 'Bhavna ben chavda']},
-            {'area': 'Central Arcade', 'name': 'Sikandar Bhangi', 'pay_code': '389', 'phone': '', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Sikandar bhangi']},
+            {'area': 'Central Arcade', 'name': 'Rudhreshben S Solanki', 'pay_code': '282', 'phone': '', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Retuben Solanki', 'Rudhreshben.S. solanki', 'Rudhreshben S Solanki']},
+            {'area': 'Central Arcade', 'name': 'Chauhan Nilamben', 'pay_code': '410', 'phone': '7041529877', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Nilam ben chohan', 'Nilamben', 'Nilamben H Chouhan']},
             {'area': 'Sports Complex', 'name': 'Shohil J Vaghela', 'pay_code': '257', 'phone': '', 'worker_type': 'washroom', 'shift': 'evening', 'is_reliever': False, 'legacy_names': ['Sohil Vaghela', 'Shohil Vaghela', 'Shohil.J.vaghela']},
             {'area': 'Sports Complex', 'name': 'Ramesh N Parmar', 'pay_code': '411', 'phone': '', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Ramesh Sports', 'Ramesh.N.parmar']},
             {'area': 'Sports Complex', 'name': 'Jaydeep D Vaghela', 'pay_code': '447', 'phone': '', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Jaydeep Vaghela', 'Jaydeep.D.vaghela']},
             {'area': 'Sports Complex', 'name': 'Rahul J Vaghela', 'pay_code': '337', 'phone': '', 'worker_type': 'washroom', 'shift': 'evening', 'is_reliever': False, 'legacy_names': ['Rahul Vaghela', 'Rahul.J.vgahela', 'Rahul.J.vaghela']},
             {'area': 'Sports Complex', 'name': 'Akshay R Parmar', 'pay_code': '414', 'phone': '', 'worker_type': 'floor', 'shift': 'evening', 'is_reliever': False, 'legacy_names': ['Akshay Parmar', 'Akshay.R.parmar']},
-            {'area': 'Sports Complex', 'name': 'Rudhreshben S Solanki', 'pay_code': '282', 'phone': '', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Retuben Solanki', 'Rudhreshben.S. solanki', 'Rudhreshben S Solanki']},
+            {'area': 'Sports Complex', 'name': 'Bhavna Ben Chavda', 'pay_code': '218', 'phone': '', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Bhavnaben', 'Bhavna ben chavda']},
             {'area': 'Sports Complex', 'name': 'Anitaben', 'pay_code': '385', 'phone': '', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Anita Solanki', 'Anitaben']},
             {'area': 'Sports Complex', 'name': 'Uttam Vaghela', 'pay_code': '428', 'phone': '', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Uttam Vaghela']},
             {'area': 'Sports Complex', 'name': 'Rajendra Bhai Chavda', 'pay_code': '354', 'phone': '', 'worker_type': 'floor', 'shift': 'evening', 'is_reliever': False, 'legacy_names': ['Rajendra Chavda', 'Rajendra Bhai chavda']},
@@ -1315,13 +1307,11 @@ Existing account passwords are preserved.
             HKScheduleTemplate.objects.filter(area=central_arcade).delete()
 
             ca_floor_tasks = [
-                (1, '08:00', '10:00', 'Vijay: Ground Floor Outside and Fire Entry Cleaning', True, ''),
-                (2, '10:00', '11:00', 'Vijay: Fire and Entry Gate Round', True, ''),
-                (3, '11:00', '13:00', 'Vijay: Ground Floor Washroom Round Cleaning', True, ''),
-                (4, '13:00', '14:00', 'Vijay: Lunch Break', False, ''),
-                (5, '14:00', '15:00', 'Vijay: Staircase Cleaning', True, ''),
-                (6, '15:00', '16:00', 'Vijay: Basement/Equipment Area Cleaning', True, ''),
-                (7, '16:00', '17:00', 'Vijay: Extra Work and Pending Points', True, ''),
+                (1, '11:00', '13:00', 'Vijay: Ground Floor Washroom Round Cleaning', True, ''),
+                (2, '13:00', '14:00', 'Vijay: Lunch Break', False, ''),
+                (3, '14:00', '15:00', 'Vijay: Staircase Cleaning', True, ''),
+                (4, '15:00', '16:00', 'Vijay: Basement/Equipment Area Cleaning', True, ''),
+                (5, '16:00', '17:00', 'Vijay: Extra Work and Pending Points', True, ''),
             ]
 
             ca_room_tasks = [
