@@ -166,42 +166,51 @@ AREA_ZONE_MAP = {
 }
 
 AREA_SPECS = [
-    (1, 'Gate No.2 to A1 Road start (E2 Road)', '2200'),
-    (2, 'A1 Road + roadside opp Sports Complex', '3532'),
-    (3, 'B1 Road + roadside', '3576'),
-    (4, 'Housing Blocks 1-14 front (F1 Road)', '3990'),
-    (5, "Director's Residence to Temp Gate (F1)", '474'),
-    (6, 'Temp Gate to Fire Building (F1)', '2415'),
-    (7, 'Fire Building to Triangular Lawn near RP (F1)', '2815'),
-    (8, 'Housing Blocks 31-34 front (F2 Road)', '1500'),
-    (9, 'Housing Blocks 17-30 front (H2 Road)', '3705'),
-    (10, 'Housing Blocks 14-17 front (H3 Road)', '420'),
-    (11, 'Jalmandap to Tennis Court (J2)', '2358'),
-    (12, 'Hostel Lawn Tennis to SPS (C3D1)', '10560'),
-    (13, 'New Housing to Sabarmati Cycle Track (C2)', '5076'),
-    (14, 'River Promenade Road (C2)', '2928'),
-    (15, 'Triangular Lawn near Research Park', '64'),
-    (16, 'Scenic Drive Road (G1)', '2000'),
-    (17, 'Triangular Junction to Research Park', '608'),
-    (18, 'Gate No.2', '1500'),
-    (19, 'Gate No.1', '1500'),
-    (20, 'Gate No.3', '1500'),
-    (21, 'Gate No.1 to Triangular Lawn (E1 Road)', '1620'),
-    (22, 'Academic Blocks all floor planters', '17398'),
-    (23, 'Central Vista Lawn', '26163'),
-    (24, 'Lawn near AB-11,12,13 opp Library', '7135'),
-    (25, 'Guest House Lawn', '2243'),
-    (26, 'Housing Jalmandap Lawn', '1362'),
-    (27, 'Old Mess Lawn Side of Tennis Court', '7675'),
-    (28, 'Hostel Lawn Area', '9850'),
-    (29, 'Academic Lawn AB-9 to AB-3', '2532'),
-    (30, 'Rang Manch Lawn Hedges Planters', '1962'),
-    (31, 'Sports Complex Lawn', '15438'),
-    (32, 'Temporary Sports Field Lawn', '16228'),
-    (33, 'Open Parking near 2-degree cafe', '1100'),
-    (34, 'Directors Residence Rectangular Area', '553'),
-    (35, 'Between Guest House and E2 Road', '1625'),
-    (36, 'Between AB-9 and Solar Parking', '2720'),
+    (1, 'Gate No.2 to A1 Road start (E2 Road)', '2200'),    #Mukesh sir
+    (2, 'A1 Road + roadside opp Sports Complex', '3532'),  #Jaynti sir
+    (3, 'B1 Road + roadside', '3576'),#Jaynti
+    (4, 'Housing Blocks 1-14 front (F1 Road)', '3990'),#M
+    (5, "Director's Residence to Temp Gate (F1)", '474'), #J
+    (6, 'Temp Gate to Fire Building (F1)', '2415'),#R
+    (7, 'Fire Building to Triangular Lawn near RP (F1)', '2815'),#R
+    (8, 'Housing Blocks 31-34 front (F2 Road)', '1500'), #M
+    (9, 'Housing Blocks 17-30 front (H2 Road)', '3705'), #M
+    (10, 'Housing Blocks 14-17 front (H3 Road)', '420'), #M
+    (11, 'Jalmandap to Tennis Court (J2)', '2358'), #M
+    (12, 'Hostel Lawn Tennis to SPS (C3D1)', '10560'), #M
+    (13, 'New Housing to Sabarmati Cycle Track (C2)', '5076'),#M  # new housing se 5 no gate tak (M) & AB9 se 5 no gate tak (M)
+    (14, 'River Promenade Road (C2)', '2928'), #R
+    (15, 'Triangular Lawn near Research Park', '64'),#R
+    (16, 'Scenic Drive Road (G1)', '2000'), #R
+    (17, 'Triangular Junction to Research Park', '608'), #R
+    (18, 'Gate No.2', '1500'), #M
+    (19, 'Gate No.1', '1500'), #R  #outer boundary of gate bhi included he
+    (20, 'Gate No.3', '1500'), #M
+    (21, 'Gate No.1 to Triangular Lawn (E1 Road)', '1620'), #R
+    (22, 'Academic Blocks all floor planters', '17398'),#J
+    (23, 'Central Vista Lawn', '26163'),#J
+    (24, 'Lawn near AB-11,12,13 opp Library', '7135'),#J
+    (25, 'Guest House Lawn', '2243'),#J
+    (26, 'Housing Jalmandap Lawn', '1362'),#M
+    (27, 'Old Mess Lawn Side of Tennis Court', '7675'),#M
+    (28, 'Hostel Lawn Area', '9850'),#M isko hostel jalmandap me hi daal dena he
+    (29, 'Academic Lawn AB-9 to AB-3', '2532'),#J
+    (30, 'Rang Manch Lawn Hedges Planters', '1962'),#R
+    (31, 'Sports Complex Lawn', '15438'),#M
+    (32, 'Temporary Sports Field Lawn', '16228'),#J
+    (33, 'Open Parking near 2-degree cafe', '1100'),#divide in 2 op(r) 2deg(j)
+    (34, 'Directors Residence Rectangular Area', '553'),#J
+    (35, 'Between Guest House and E2 Road', '1625'),#J
+    (36, 'Between AB-9 and Solar Parking', '2720'),#M
+    # add new area biogas plant --> R
+    # from gate no 2 to gate no 3 boundary side --> M
+    # F1 road circle--> fire building--> chaar rasta (R)
+    # U shape --> R
+    # C2 road ke 2 part:- new housing se 5 no gate tak (M) & AB9 se 5 no gate tak (M)
+    # old housing (inside boundary) (M)
+    # Hostels (M):- old and new
+    # Research park:- boundary (R) from park to up north , building(R)
+    # firebuilding ke paas ek nursery bhi he (R)
 ]
 
 ROAD_SPECS = [
