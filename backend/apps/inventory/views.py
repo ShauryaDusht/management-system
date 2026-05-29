@@ -24,6 +24,7 @@ from .serializers import (
 )
 from apps.users.permissions import IsAdmin, IsAdminOrHKInventoryManager, IsSupervisor
 from .permissions import IsAdminOrInventoryManager
+from .request_permissions import filter_requestable_items
 
 
 def _sync_horticulture_request_status(item_request, status_value):
@@ -70,7 +71,7 @@ class ItemListCreateView(generics.ListCreateAPIView):
     pagination_class = StandardPagination
 
     def get_queryset(self):
-        qs = Item.objects.select_related('category').all()
+        qs = filter_requestable_items(Item.objects.select_related('category').all(), self.request.user)
         item_type = self.request.query_params.get('type')
         if item_type:
             qs = qs.filter(item_type=item_type)
@@ -90,17 +91,19 @@ class ItemListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [IsAdminOrHKInventoryManager()]
+            return [IsAdminOrInventoryManager()]
         return [IsAuthenticated()]
 
 
 class ItemDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Item.objects.select_related('category').all()
     serializer_class = ItemSerializer
+
+    def get_queryset(self):
+        return filter_requestable_items(Item.objects.select_related('category').all(), self.request.user)
 
     def get_permissions(self):
         if self.request.method in ['PUT', 'PATCH', 'DELETE']:
-            return [IsAdminOrHKInventoryManager()]
+            return [IsAdminOrInventoryManager()]
         return [IsAuthenticated()]
 
 

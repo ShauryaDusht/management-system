@@ -170,6 +170,26 @@ function NavTabs({ tabs, active, onChange }) {
   )
 }
 
+function SecondaryActions({ active, onChange }) {
+  const actions = [
+    { key:'report', label:'📋 Monthly Report' },
+    { key:'history', label:'🗂 History' },
+  ]
+  return (
+    <div style={{ display:'flex', justifyContent:'flex-end', gap:8, flexWrap:'wrap', margin:'-8px 0 20px' }}>
+      {actions.map((action)=>(
+        <button key={action.key} onClick={()=>onChange(action.key)} style={{
+          padding:'8px 16px', borderRadius:9, fontSize:13, fontWeight:700, cursor:'pointer',
+          border: active===action.key ? 'none' : '1px solid var(--border)',
+          background: active===action.key ? 'var(--green-800)' : 'var(--surface)',
+          color: active===action.key ? '#fff' : 'var(--text-2)',
+          transition:'all 0.15s',
+        }}>{action.label}</button>
+      ))}
+    </div>
+  )
+}
+
 function Th({ children }) {
   return (
     <th style={{ padding:'9px 12px', textAlign:'left', fontWeight:700, fontSize:11,
@@ -319,11 +339,8 @@ export default function MonthlyReportTab() {
     { key:'budget',   label:'💰 Budget Overview' },
     { key:'charts',   label:'📊 Analytics' },
     { key:'purchase', label:'🧾 Purchase Planner' },
-    { key:'stock',    label:'📦 Stock Register' },
     { key:'reorder',  label:`🔴 Reorder Alerts${reorderItems.length>0?` (${reorderItems.length})`:''}` },
     { key:'consumed', label:'📈 Top Consumed' },
-    { key:'report',   label:'📋 Monthly Report' },
-    { key:'history',  label:'🗂 History' },
   ]
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -346,6 +363,7 @@ export default function MonthlyReportTab() {
       <Alert message={budgetError} type="warn" />
 
       <NavTabs tabs={VIEWS} active={view} onChange={setView} />
+      <SecondaryActions active={view} onChange={setView} />
 
       {/* ══════════════════════════════════════════════════════════════════════
           BUDGET OVERVIEW

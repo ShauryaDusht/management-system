@@ -42,6 +42,12 @@ from .models import (
 )
 from .photo_utils import process_task_photo
 from apps.core.image_urls import image_debug_payload, log_image_event
+from apps.inventory.request_permissions import (
+    EXCESSIVE_QUANTITY_MESSAGE,
+    UNAUTHORIZED_ITEM_REQUEST_MESSAGE,
+    filter_requestable_items,
+    user_can_request_item,
+)
 from apps.users.models import normalize_username_value
 from apps.inventory.models import ItemIssue, ItemUsageLog
 
@@ -212,6 +218,33 @@ def _uses_sunday_special_only(area):
     return bool(area and area.area_type == "research_park")
 
 
+SWM_WEEKDAY_NAMES = {
+    0: "monday",
+    1: "tuesday",
+    2: "wednesday",
+    3: "thursday",
+    4: "friday",
+    5: "saturday",
+    6: "sunday",
+}
+
+
+def _swm_template_matches_day(template, day_idx):
+    if getattr(template.area, "name", "") != "Solid Waste Management":
+        return True
+
+    desc = (template.task_description or "").lower()
+    if "days:" not in desc:
+        return True
+
+    day_text = desc.split("days:", 1)[1].split("|", 1)[0]
+    if "daily" in day_text or "every day" in day_text:
+        return True
+
+    today = SWM_WEEKDAY_NAMES.get(day_idx)
+    return bool(today and today in day_text)
+
+
 def _schedule_templates_for_day(area, day_idx):
     base_qs = HKScheduleTemplate.objects.filter(area=area, is_active=True)
     if day_idx == 6 and _uses_sunday_special_only(area):
@@ -222,6 +255,13 @@ def _schedule_templates_for_day(area, day_idx):
         templates = (templates | base_qs.filter(frequency="saturday_special")).distinct()
     if day_idx == 6:
         templates = (templates | base_qs.filter(frequency="sunday_extra")).distinct()
+    if getattr(area, "name", "") == "Solid Waste Management":
+        template_ids = [
+            template.pk
+            for template in templates.select_related("area")
+            if _swm_template_matches_day(template, day_idx)
+        ]
+        return base_qs.filter(pk__in=template_ids)
     return templates
 
 
@@ -1972,7 +2012,10 @@ def hk_stock_request(request):
     visible_areas = visible_user_areas(user, user_areas)
     hk_cats = ["Cleaning Supplies", "Housekeeping Supplies", "Consumables",
                "Tools & Equipment", "Garden & Horticulture Equipment"]
-    inv_items = Item.objects.filter(category__name__in=hk_cats).select_related("category").order_by("name")
+    inv_items = filter_requestable_items(
+        Item.objects.filter(category__name__in=hk_cats).select_related("category").order_by("name"),
+        user,
+    )
 
     if request.method == "POST":
         posted_items_raw = request.POST.get("items")
@@ -2032,11 +2075,14 @@ def hk_stock_request(request):
                     else:
                         for item_id, quantity in item_quantities.items():
                             item = locked_items[item_id]
+                            if not user_can_request_item(user, item):
+                                error = UNAUTHORIZED_ITEM_REQUEST_MESSAGE
+                                break
                             if item.available_quantity <= 0:
                                 error = f"{item.name} is out of stock."
                                 break
                             if quantity > item.available_quantity:
-                                error = f"{item.name} has only {item.available_quantity} {item.unit} available."
+                                error = EXCESSIVE_QUANTITY_MESSAGE
                                 break
 
                     if not error:
@@ -2126,7 +2172,28 @@ def hk_stock_request(request):
         area = visible_areas.filter(pk=area_id).first() if area_id else visible_areas.first()
         if not item_name:
             return redirect(f"/housekeeping/stock/?error=item_name_required&area={area.id if area else ''}")
-        qty = max(1, int(request.POST.get("quantity", 1) or 1))
+        try:
+            qty = int(request.POST.get("quantity", 1) or 1)
+        except (TypeError, ValueError):
+            qty = 0
+        if qty <= 0:
+            return redirect(f"/housekeeping/stock/?error=invalid_quantity&area={area.id if area else ''}")
+        if inv_item and not user_can_request_item(user, inv_item):
+            return render(request, "housekeeping/mobile/stock_request.html", {
+                "inv_items": inv_items,
+                "user_areas": visible_areas,
+                "selected_area": area or selected_area(request, visible_areas),
+                "pre_item": request.GET.get("item", ""),
+                "form_error": UNAUTHORIZED_ITEM_REQUEST_MESSAGE,
+            })
+        if inv_item and qty > inv_item.available_quantity:
+            return render(request, "housekeeping/mobile/stock_request.html", {
+                "inv_items": inv_items,
+                "user_areas": visible_areas,
+                "selected_area": area or selected_area(request, visible_areas),
+                "pre_item": request.GET.get("item", ""),
+                "form_error": EXCESSIVE_QUANTITY_MESSAGE,
+            })
 
         hk_req = HKStockRequest.objects.create(
             requested_by=user, area=area,

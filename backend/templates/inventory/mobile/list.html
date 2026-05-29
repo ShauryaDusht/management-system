@@ -46,11 +46,13 @@
       All Types
     </div>
   </a>
+  {% if can_request_assets %}
   <a href="?item_type=asset{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if low_stock_filter %}&low_stock=true{% endif %}">
     <div class="chip {% if selected_item_type == 'asset' %}active{% endif %}">
       Assets
     </div>
   </a>
+  {% endif %}
   <a href="?item_type=consumable{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if low_stock_filter %}&low_stock=true{% endif %}">
     <div class="chip {% if selected_item_type == 'consumable' %}active{% endif %}">
       Consumables
@@ -96,9 +98,8 @@
         </div>
       </div>
     </div>
-    <div style="text-align:right;flex-shrink:0;margin-left:8px">
-      <div style="font-size:24px;font-weight:800;color:var(--brand-green);line-height:1">{{ item.available_quantity }}</div>
-      <div style="font-size:11px;color:var(--text-muted)">{{ item.unit }}</div>
+    <div style="text-align:right;flex-shrink:0;margin-left:8px;color:var(--text-muted);font-size:12px;font-weight:700">
+      {% if item.status == 'out_of_stock' %}Out of stock{% elif item.status == 'low_stock' %}Low stock{% else %}In stock{% endif %}
     </div>
   </div>
 </a>
@@ -107,16 +108,18 @@
   <div class="card" style="border-top:3px solid var(--brand-green);border-radius:0 0 var(--radius-md) var(--radius-md);padding:14px 16px">
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
       <div style="text-align:center;background:var(--bg);padding:10px;border-radius:8px">
-        <div style="font-size:11px;color:var(--text-muted)">Available</div>
-        <div style="font-weight:700;font-size:18px;color:var(--brand-green)">{{ item.available_quantity }}</div>
+        <div style="font-size:11px;color:var(--text-muted)">Availability</div>
+        <div style="font-weight:700;font-size:14px;color:var(--brand-green)">
+          {% if item.status == 'out_of_stock' %}Out of stock{% elif item.status == 'low_stock' %}Low stock{% else %}In stock{% endif %}
+        </div>
       </div>
       <div style="text-align:center;background:var(--bg);padding:10px;border-radius:8px">
-        <div style="font-size:11px;color:var(--text-muted)">Total</div>
-        <div style="font-weight:700;font-size:18px;color:var(--text-primary)">{{ item.total_quantity }}</div>
+        <div style="font-size:11px;color:var(--text-muted)">Type</div>
+        <div style="font-weight:700;font-size:14px;color:var(--text-primary)">{{ item.get_item_type_display }}</div>
       </div>
       <div style="text-align:center;background:var(--bg);padding:10px;border-radius:8px">
-        <div style="font-size:11px;color:var(--text-muted)">Threshold</div>
-        <div style="font-weight:700;font-size:18px;color:var(--brand-orange)">{{ item.threshold_quantity }}</div>
+        <div style="font-size:11px;color:var(--text-muted)">Unit</div>
+        <div style="font-weight:700;font-size:14px;color:var(--brand-orange)">{{ item.get_unit_display }}</div>
       </div>
     </div>
     {% if item.description %}

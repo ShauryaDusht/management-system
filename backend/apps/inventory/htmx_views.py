@@ -16,6 +16,13 @@ from django.views.decorators.http import require_POST
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from .models import Category, Item, ItemIssue, ItemUsageLog, ItemRequest, ItemRequestBatch, PurchaseRequest, RequisitionItem, StockEntry
+from .request_permissions import (
+    EXCESSIVE_QUANTITY_MESSAGE,
+    UNAUTHORIZED_ITEM_REQUEST_MESSAGE,
+    can_request_assets,
+    filter_requestable_items,
+    user_can_request_item,
+)
 
 
 # ─────────────────────────────────────────────────
@@ -107,8 +114,9 @@ def mobile_inventory_list(request):
     if item_type_filter not in {'all', 'asset', 'consumable'}:
         item_type_filter = 'all'
 
-    categories = Category.objects.all()
-    items_qs = Item.objects.select_related('category').all()
+    base_items_qs = filter_requestable_items(Item.objects.select_related('category').all(), request.user)
+    items_qs = base_items_qs
+    categories = Category.objects.filter(items__in=base_items_qs).distinct().order_by('name')
 
     if category_id:
         items_qs = items_qs.filter(category_id=category_id)
@@ -134,10 +142,11 @@ def mobile_inventory_list(request):
         'page_obj': page_obj,
         'categories': categories,
         'selected_category': category_id,
-        'total_count': Item.objects.count(),
+        'total_count': base_items_qs.count(),
         'search_query': search_query,
         'low_stock_filter': low_stock_filter,
         'selected_item_type': item_type_filter,
+        'can_request_assets': can_request_assets(request.user),
         'highlight_id': request.GET.get('highlight', ''),
     })
 
@@ -148,9 +157,14 @@ def mobile_inventory_list(request):
 
 @login_required
 def mobile_request_form(request):
+    requestable_items = filter_requestable_items(
+        Item.objects.select_related('category').all().order_by('name'),
+        request.user,
+    )
+
     def _render_form(error=None, form_lines=None, reason='', notes='', is_urgent=False):
         return render(request, 'inventory/mobile/request_form.html', {
-            'items': Item.objects.select_related('category').all().order_by('name'),
+            'items': requestable_items,
             'error': error,
             'form_lines': form_lines or [{'item': request.GET.get('item', ''), 'quantity_requested': '1'}],
             'reason': reason,
@@ -198,6 +212,10 @@ def mobile_request_form(request):
             if quantity <= 0:
                 return _render_form('Quantity must be at least 1.', form_lines, reason, notes, is_urgent)
             item = get_object_or_404(Item, id=item_id)
+            if not user_can_request_item(request.user, item):
+                return _render_form(UNAUTHORIZED_ITEM_REQUEST_MESSAGE, form_lines, reason, notes, is_urgent)
+            if quantity > item.available_quantity:
+                return _render_form(EXCESSIVE_QUANTITY_MESSAGE, form_lines, reason, notes, is_urgent)
             request_lines.append((item, quantity))
 
         with transaction.atomic():

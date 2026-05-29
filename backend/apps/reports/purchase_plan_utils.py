@@ -168,6 +168,7 @@ def build_default_purchase_plan_data(month: int, year: int):
         data[str(item.id)] = {
             "purchase_quantity": int(default_quantities.get(item.name, 0) or 0),
             "planned_unit_cost": float(_as_decimal(item.unit_cost, 0)),
+            "applied_quantity": 0,
         }
     return data
 
@@ -181,6 +182,7 @@ def merge_purchase_plan_data(existing_data, month: int, year: int):
         merged[str(item.id)] = {
             "purchase_quantity": int(existing.get("purchase_quantity", default_quantities.get(item.name, 0)) or 0),
             "planned_unit_cost": float(_as_decimal(existing.get("planned_unit_cost"), item.unit_cost or 0)),
+            "applied_quantity": max(0, int(existing.get("applied_quantity", 0) or 0)),
         }
     return merged
 
@@ -195,6 +197,7 @@ def serialize_purchase_plan(plan):
     for item in Item.objects.select_related("category").all().order_by("category__name", "name"):
         entry = merged_data.get(str(item.id), {})
         purchase_quantity = int(entry.get("purchase_quantity", 0) or 0)
+        applied_quantity = max(0, int(entry.get("applied_quantity", 0) or 0))
         planned_unit_cost = _as_decimal(entry.get("planned_unit_cost"), item.unit_cost or 0)
         estimated_cost = (planned_unit_cost * purchase_quantity).quantize(_TWOPLACES, rounding=ROUND_HALF_UP)
 
@@ -215,6 +218,8 @@ def serialize_purchase_plan(plan):
                 "current_unit_cost": float(_as_decimal(item.unit_cost, 0)),
                 "planned_unit_cost": float(planned_unit_cost),
                 "purchase_quantity": purchase_quantity,
+                "received_quantity": applied_quantity,
+                "pending_quantity": max(purchase_quantity - applied_quantity, 0),
                 "estimated_cost": float(estimated_cost),
                 "status": item.status,
             }
@@ -299,6 +304,7 @@ def normalize_purchase_plan_rows(rows, month: int, year: int):
         normalized[str(item.id)] = {
             "purchase_quantity": purchase_quantity,
             "planned_unit_cost": float(_as_decimal(payload.get("planned_unit_cost"), item.unit_cost or 0)),
+            "applied_quantity": max(0, int(payload.get("applied_quantity", 0) or 0)),
         }
 
     return normalized

@@ -39,34 +39,25 @@
             <span class="material-icons-round" style="font-size:15px;vertical-align:middle;color:var(--brand-green)">inventory_2</span>
             Item
           </label>
-          <select name="item" required class="input" onchange="updateUnitsRemaining(this)">
+          <select name="item" required class="input">
             <option value="">Select an item</option>
             {% for item in items %}
             <option value="{{ item.id }}"
-              data-available="{{ item.available_quantity }}"
               data-unit="{{ item.unit }}"
               {% if line.item == item.id|stringformat:'s' %}selected{% endif %}>
-              {% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} - {{ item.available_quantity }} {{ item.unit }} available
+              {% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} - {% if item.available_quantity <= 0 %}Out of stock{% else %}In stock{% endif %}
             </option>
             {% endfor %}
           </select>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
           <div>
             <label style="font-weight:600;display:block;margin-bottom:6px;font-size:13px;color:var(--text-primary)">
               <span class="material-icons-round" style="font-size:15px;vertical-align:middle;color:var(--brand-green)">numbers</span>
               Quantity
             </label>
             <input type="number" name="quantity_requested" min="1" required class="input" value="{{ line.quantity_requested|default:'1' }}">
-          </div>
-
-          <div>
-            <label style="font-weight:600;display:block;margin-bottom:6px;font-size:13px;color:var(--text-muted)">
-              <span class="material-icons-round" style="font-size:15px;vertical-align:middle">info_outline</span>
-              Available
-            </label>
-            <input type="number" readonly class="input units-remaining" style="background:#f8f8f8;color:var(--text-muted)" placeholder="-">
           </div>
         </div>
       </div>
@@ -117,14 +108,6 @@
 </div>
 
 <script>
-function updateUnitsRemaining(select) {
-  const opt = select.options[select.selectedIndex];
-  const avail = opt.dataset.available || '';
-  const line = select.closest('.request-line');
-  const target = line ? line.querySelector('.units-remaining') : null;
-  if (target) target.value = avail;
-}
-
 function refreshLineControls() {
   const lines = document.querySelectorAll('.request-line');
   lines.forEach((line, index) => {
@@ -141,7 +124,6 @@ function addLine() {
   const clone = first.cloneNode(true);
   clone.querySelectorAll('select').forEach((select) => select.value = '');
   clone.querySelectorAll('input[name="quantity_requested"]').forEach((input) => input.value = '1');
-  clone.querySelectorAll('.units-remaining').forEach((input) => input.value = '');
   container.appendChild(clone);
   refreshLineControls();
 }
@@ -155,7 +137,6 @@ function removeLine(button) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('select[name="item"]').forEach(updateUnitsRemaining);
   refreshLineControls();
 });
 </script>

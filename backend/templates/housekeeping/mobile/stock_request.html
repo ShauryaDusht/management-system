@@ -15,7 +15,7 @@
 .selected-title{font-weight:700;font-size:14px;line-height:1.25}
 .selected-meta{font-size:12px;color:#6b7280;margin-top:2px}
 .qty-row{display:flex;align-items:center;gap:8px}
-.qty-val{min-width:58px;text-align:center;font-size:16px;font-weight:800;background:#fff;border:1.5px solid #d1d5db;border-radius:8px;padding:10px 8px}
+.qty-val{width:74px;text-align:center;font-size:16px;font-weight:800;background:#fff;border:1.5px solid #d1d5db;border-radius:8px;padding:10px 8px}
 .remove-btn{border:0;background:#fee2e2;color:#991b1b;border-radius:8px;min-width:42px;min-height:42px;font-weight:800;font-size:18px}
 .empty-items{font-size:13px;color:#6b7280;background:#f3f4f6;border-radius:8px;padding:12px;text-align:center}
 .stock-error{background:#fee2e2;color:#991b1b;border-radius:8px;padding:10px;font-size:13px;font-weight:700}
@@ -38,9 +38,8 @@
             data-name="{{ item.name }}"
             data-unit="{{ item.unit }}"
             data-unit-label="{{ item.get_unit_display }}"
-            data-stock="{{ item.available_quantity }}"
             {% if item.available_quantity <= 0 %}disabled{% endif %}>
-            {% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} ({{ item.available_quantity }} {{ item.get_unit_display }}){% if item.available_quantity <= 0 %} - Out of stock{% endif %}
+            {% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} - {% if item.available_quantity <= 0 %}Out of stock{% else %}In stock{% endif %}
           </option>
           {% endfor %}
         </select>
@@ -91,13 +90,14 @@ function renderSelectedItems() {
       <div class="selected-head">
         <div>
           <div class="selected-title">${escapeHtml(item.itemName)}</div>
-          <div class="selected-meta">Available: ${item.availableStock} ${escapeHtml(item.unitLabel || item.unit)}</div>
+          <div class="selected-meta">In stock</div>
         </div>
         <button type="button" class="remove-btn" onclick="removeSelectedItem(${index})" aria-label="Remove ${escapeHtml(item.itemName)}">×</button>
       </div>
       <div class="qty-row">
         <button type="button" class="tap-btn" onclick="changeQty(${index}, -1)" aria-label="Decrease quantity">−</button>
-        <div class="qty-val">${item.quantity}</div>
+        <input class="qty-val" type="text" inputmode="numeric" pattern="[0-9]*" value="${item.quantity || ''}"
+          oninput="updateQtyFromInput(${index}, this.value, this)" onblur="normalizeQtyInput(${index})" aria-label="Quantity for ${escapeHtml(item.itemName)}">
         <button type="button" class="tap-btn" onclick="changeQty(${index}, 1)" aria-label="Increase quantity">+</button>
       </div>
     </div>
@@ -114,12 +114,9 @@ function addSelectedItem() {
     sel.value = '';
     return;
   }
-  const availableStock = Number(opt.dataset.stock || 0);
-  if (availableStock <= 0) return;
   selectedItems.push({
     itemId,
     itemName: opt.dataset.name || opt.textContent.trim(),
-    availableStock,
     quantity: 1,
     unit: opt.dataset.unit || '',
     unitLabel: opt.dataset.unitLabel || opt.dataset.unit || '',
@@ -131,7 +128,24 @@ function addSelectedItem() {
 function changeQty(index, delta) {
   const item = selectedItems[index];
   if (!item) return;
-  item.quantity = Math.max(1, Math.min(item.availableStock, item.quantity + delta));
+  item.quantity = Math.max(1, Number(item.quantity || 0) + delta);
+  renderSelectedItems();
+}
+
+function updateQtyFromInput(index, value, input) {
+  const item = selectedItems[index];
+  if (!item) return;
+  const match = String(value || '').match(/^\d+/);
+  const digits = match ? match[0] : '';
+  input.value = digits;
+  item.quantity = digits ? Number(digits) : 0;
+  syncPayload();
+}
+
+function normalizeQtyInput(index) {
+  const item = selectedItems[index];
+  if (!item) return;
+  item.quantity = Math.max(1, Number.parseInt(item.quantity, 10) || 1);
   renderSelectedItems();
 }
 
@@ -145,9 +159,9 @@ function beforeSubmit() {
     alert('Please add at least one inventory item.');
     return false;
   }
-  const invalid = selectedItems.find((item) => item.quantity < 1 || item.quantity > item.availableStock);
+  const invalid = selectedItems.find((item) => !Number.isInteger(item.quantity) || item.quantity < 1);
   if (invalid) {
-    alert(`${invalid.itemName} has only ${invalid.availableStock} available.`);
+    alert('Quantity must be a positive whole number.');
     return false;
   }
   syncPayload();

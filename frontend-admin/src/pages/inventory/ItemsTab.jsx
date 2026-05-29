@@ -57,7 +57,7 @@ export default function ItemsTab({ userRole }) {
   const [formErrors, setFormErrors] = useState({})
   const [deleting, setDeleting] = useState(false)
 
-  const canAdmin = userRole === 'admin' || userRole === 'hk_inventory_manager'
+  const canAdmin = ['admin', 'inventory_manager', 'hk_inventory_manager'].includes(userRole)
   const { loading, error: loadError, reload } = useAsyncLoad(async () => {
     const [itemsRes, categoriesRes, summaryRes] = await Promise.all([
       inventoryAPI.getItems(),

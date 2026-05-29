@@ -20,7 +20,7 @@
       <select name="inventory_item_id" id="inv_sel" onchange="fillItem(this)">
         <option value="">Choose existing item</option>
         {% for item in inv_items %}
-        <option value="{{ item.id }}" data-name="{{ item.name }}" data-unit="{{ item.get_unit_display }}">{% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} ({{ item.available_quantity }} {{ item.get_unit_display }})</option>
+        <option value="{{ item.id }}" data-name="{{ item.name }}" data-unit="{{ item.get_unit_display }}">{% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} - {% if item.available_quantity <= 0 %}Out of stock{% else %}In stock{% endif %}</option>
         {% endfor %}
       </select>
     </div>

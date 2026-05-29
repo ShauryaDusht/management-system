@@ -3,6 +3,11 @@ from django.db.models import Sum, Value, DecimalField
 from django.db.models.functions import Coalesce
 from rest_framework import serializers
 from .models import Category, Item, ItemRequest, ItemRequestBatch, ItemIssue, ItemUsageLog, PurchaseRequest, RequisitionItem, StockEntry
+from .request_permissions import (
+    EXCESSIVE_QUANTITY_MESSAGE,
+    UNAUTHORIZED_ITEM_REQUEST_MESSAGE,
+    user_can_request_item,
+)
 
 
 # Plan to remove this shim in a future cleanup once all callers are updated.
@@ -42,6 +47,15 @@ class ItemSerializer(serializers.ModelSerializer):
         if obj.unit_cost is None or obj.total_quantity is None:
             return 0
         return float(obj.unit_cost * obj.total_quantity)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user and not getattr(user, 'can_manage_inventory', False):
+            data['available_quantity'] = None
+            data['reserved_quantity'] = None
+        return data
 
     def validate_item_code(self, value):
         if value is None:
@@ -96,6 +110,14 @@ class RequisitionItemSerializer(serializers.ModelSerializer):
             'available_stock', 'quantity', 'unit', 'item_unit',
         ]
         read_only_fields = fields
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user and not getattr(user, 'can_manage_inventory', False):
+            data['available_stock'] = None
+        return data
 
 
 class ItemRequestSerializer(serializers.ModelSerializer):
@@ -164,10 +186,33 @@ class ItemRequestSerializer(serializers.ModelSerializer):
         return obj.reviewed_at or obj.requested_at
 
     def get_items(self, obj):
-        return RequisitionItemSerializer(obj.requisition_lines(), many=True).data
+        return RequisitionItemSerializer(obj.requisition_lines(), many=True, context=self.context).data
 
     def get_item_available_to_request(self, obj):
         return max((obj.item.available_quantity or 0) - (obj.item.reserved_quantity or 0), 0)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user and not getattr(user, 'can_manage_inventory', False):
+            data['item_available'] = None
+            data['item_reserved'] = None
+            data['item_available_to_request'] = None
+            data['item_threshold'] = None
+        return data
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        item = attrs.get('item') or getattr(self.instance, 'item', None)
+        quantity = attrs.get('quantity_requested') or getattr(self.instance, 'quantity_requested', None)
+        if user and item and not user_can_request_item(user, item):
+            raise serializers.ValidationError({'item': UNAUTHORIZED_ITEM_REQUEST_MESSAGE})
+        if item and quantity and quantity > item.available_quantity:
+            raise serializers.ValidationError({'quantity_requested': EXCESSIVE_QUANTITY_MESSAGE})
+        return attrs
 
     def create(self, validated_data):
         item_request = super().create(validated_data)
@@ -217,11 +262,18 @@ class ItemRequestBatchSerializer(serializers.ModelSerializer):
     def validate_items(self, value):
         if not value:
             raise serializers.ValidationError('Add at least one item.')
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
         seen = set()
         for line in value:
-            item_id = line['item'].id
+            item = line['item']
+            item_id = item.id
             if item_id in seen:
                 raise serializers.ValidationError('Each item can only appear once in a batch.')
+            if user and not user_can_request_item(user, item):
+                raise serializers.ValidationError(UNAUTHORIZED_ITEM_REQUEST_MESSAGE)
+            if line['quantity_requested'] > item.available_quantity:
+                raise serializers.ValidationError(EXCESSIVE_QUANTITY_MESSAGE)
             seen.add(item_id)
         return value
 
@@ -325,6 +377,7 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
 class ItemIssueSerializer(serializers.ModelSerializer):
     issued_by_name = serializers.CharField(source='issued_by.get_full_name', read_only=True)
     item_name = serializers.CharField(source='request.item.name', read_only=True)
+    item_code = serializers.CharField(source='request.item.item_code', read_only=True)
     item_type = serializers.CharField(source='request.item.item_type', read_only=True)
     item_unit = serializers.CharField(source='request.item.unit', read_only=True)
     requested_by_name = serializers.CharField(source='request.requested_by.get_full_name', read_only=True)
@@ -377,7 +430,7 @@ class ItemIssueSerializer(serializers.ModelSerializer):
     class Meta:
         model = ItemIssue
         fields = [
-            'id', 'request', 'item_name', 'item_type', 'item_unit',
+            'id', 'request', 'item_name', 'item_code', 'item_type', 'item_unit',
             'requested_by_name', 'area_name', 'area_type', 'issued_by', 'issued_by_name',
             'issued_quantity', 'issued_at',
             'expected_return_date', 'returned_quantity', 'returned_at',

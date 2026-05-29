@@ -23,7 +23,7 @@ from apps.housekeeping.models import HKWorker
 # RATHOD ASHOKBHAI ISHWARBHAI       → ashok.rathod       → 2
 # SHAILESH NATVARBHAI PRAJAPATI     → shailesh.prajapati → 4
 # MAULIKKUMAR DILIPBHAI PATEL       → maulik.patel       → 7
-# CHAUHAN DINESH (pradip.chauhan)   → pradip.chauhan     → 3  (SWM supervisor)
+# PRADIP CHAUHAN                    → pradip.chauhan     → 460  (SWM supervisor)
 # NARENDRAKUMAR NATVARLAL SHRIMALI  → narendra.shreemali → 328
 # VAGHELA BIPINCHANDRA DINESHKUMAR  → bipin.vaghela      → 350
 # KAUSHIKKUMAR BALVANTBHAI PARMAR   → kaushik.parmar     → 396
@@ -31,7 +31,7 @@ from apps.housekeeping.models import HKWorker
 # MUKESHKUMAR VAGHELA               → mukesh.vaghela     → 466
 SUPERVISOR_BY_USERNAME = {
     'ashok.rathod':        '2',
-    'pradip.chauhan':      '3',
+    'pradip.chauhan':      '460',
     'shailesh.prajapati':  '4',
     'maulik.patel':        '7',
     'narendra.shreemali':  '328',

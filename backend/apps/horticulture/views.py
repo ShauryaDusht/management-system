@@ -2586,14 +2586,21 @@ def horticulture_stock(request):
 @horticulture_supervisor_required
 def horticulture_stock_request(request):
     from apps.inventory.models import Item, ItemRequest as InvItemRequest
+    from apps.inventory.request_permissions import (
+        EXCESSIVE_QUANTITY_MESSAGE,
+        UNAUTHORIZED_ITEM_REQUEST_MESSAGE,
+        filter_requestable_items,
+        user_can_request_item,
+    )
 
     selected_zone, zones, dashboard_payload = _mobile_zone_context(request.user, request.GET.get('zone') or request.POST.get('zone'))
     selected_area = _selected_area_for_zone(selected_zone, request.GET.get('area') or request.POST.get('area_id'))
-    inv_items = (
+    inv_items = filter_requestable_items(
         Item.objects
         .filter(category__name__in=['Garden & Horticulture Equipment', 'Tools & Equipment', 'Consumables'])
         .select_related('category')
-        .order_by('name')
+        .order_by('name'),
+        request.user,
     )
 
     if request.method == 'POST':
@@ -2601,8 +2608,43 @@ def horticulture_stock_request(request):
         item_name = (request.POST.get('item_name') or (inv_item.name if inv_item else '')).strip()
         if not item_name:
             messages.error(request, 'Item name is required.')
+        elif inv_item and not user_can_request_item(request.user, inv_item):
+            messages.error(request, UNAUTHORIZED_ITEM_REQUEST_MESSAGE)
         else:
-            qty = max(1, int(request.POST.get('quantity') or 1))
+            try:
+                qty = int(request.POST.get('quantity') or 1)
+            except (TypeError, ValueError):
+                qty = 0
+            if qty <= 0:
+                messages.error(request, 'Quantity must be greater than 0.')
+                return render(
+                    request,
+                    'horticulture/mobile/stock_request.html',
+                    {
+                        'inv_items': inv_items,
+                        'zones': dashboard_payload['zones'],
+                        'selected_zone': selected_zone,
+                        'selected_area': selected_area,
+                        'areas': dashboard_payload['areas'],
+                        'pre_item': request.GET.get('item', ''),
+                        'zone_count': len(zones),
+                    },
+                )
+            if inv_item and qty > inv_item.available_quantity:
+                messages.error(request, EXCESSIVE_QUANTITY_MESSAGE)
+                return render(
+                    request,
+                    'horticulture/mobile/stock_request.html',
+                    {
+                        'inv_items': inv_items,
+                        'zones': dashboard_payload['zones'],
+                        'selected_zone': selected_zone,
+                        'selected_area': selected_area,
+                        'areas': dashboard_payload['areas'],
+                        'pre_item': request.GET.get('item', ''),
+                        'zone_count': len(zones),
+                    },
+                )
             stock_req = HorticultureStockRequest.objects.create(
                 requested_by=request.user,
                 area=selected_area,

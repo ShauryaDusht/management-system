@@ -6,6 +6,7 @@ from statistics import median
 
 from django.http import FileResponse, HttpResponse
 from django.core.files.base import ContentFile
+from django.db import transaction
 from django.db.models import Count, Q
 from django.db.models.functions import TruncDate
 from django.utils import timezone
@@ -15,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.users.permissions import IsAdminOrHKInventoryManager as IsAdminUser
+from apps.inventory.models import Item, StockEntry
 from .exporters import (
     export_consumption_item_csv,
     export_consumption_requester_csv,
@@ -1917,10 +1919,52 @@ class MonthlyPurchasePlanView(APIView):
         if not isinstance(rows, list):
             return Response({'rows': 'This field must be a list.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        plan = self._get_or_create_plan(month, year, user=request.user)
-        plan.data = normalize_purchase_plan_rows(rows, month, year)
-        plan.updated_by = request.user
-        plan.save(update_fields=['data', 'updated_by', 'updated_at'])
+        with transaction.atomic():
+            plan = self._get_or_create_plan(month, year, user=request.user)
+            previous_data = plan.data or {}
+            normalized = normalize_purchase_plan_rows(rows, month, year)
+            items_by_id = {
+                item.id: item
+                for item in Item.objects.select_for_update().filter(
+                    pk__in=[int(item_id) for item_id in normalized.keys()]
+                )
+            }
+
+            for item_id_text, payload in normalized.items():
+                item_id = int(item_id_text)
+                item = items_by_id.get(item_id)
+                if item is None:
+                    continue
+
+                purchase_quantity = int(payload.get('purchase_quantity', 0) or 0)
+                previous_applied = max(
+                    0,
+                    int((previous_data.get(item_id_text, {}) or {}).get('applied_quantity', 0) or 0),
+                )
+                delta = max(purchase_quantity - previous_applied, 0)
+                planned_unit_cost = payload.get('planned_unit_cost')
+
+                if delta > 0:
+                    StockEntry.objects.create(
+                        item=item,
+                        quantity_added=delta,
+                        added_by=request.user,
+                        notes=(
+                            f"Monthly purchase planner receipt for {plan.period_label}. "
+                            f"Planned quantity: {purchase_quantity}."
+                        ),
+                    )
+                    payload['applied_quantity'] = previous_applied + delta
+                else:
+                    payload['applied_quantity'] = previous_applied
+
+                if purchase_quantity > 0 and planned_unit_cost not in (None, ''):
+                    item.unit_cost = planned_unit_cost
+                    item.save(update_fields=['unit_cost', 'updated_at'])
+
+            plan.data = normalized
+            plan.updated_by = request.user
+            plan.save(update_fields=['data', 'updated_by', 'updated_at'])
         return Response(serialize_purchase_plan(plan))
 
 
@@ -1966,10 +2010,22 @@ class MonthlyPurchasePlanCSVView(APIView):
             'Current Unit Cost',
             'Purchase Unit Cost',
             'Want To Purchase',
+            'Updated In Inventory',
+            'Pending',
             'Estimated Cost',
             'Status',
         ])
-        for row in payload['rows']:
+        item_ids_param = (request.query_params.get('item_ids') or '').strip()
+        selected_item_ids = {
+            int(value)
+            for value in item_ids_param.split(',')
+            if value.strip().isdigit()
+        }
+        rows = payload['rows']
+        if selected_item_ids:
+            rows = [row for row in rows if row['item_id'] in selected_item_ids]
+
+        for row in rows:
             writer.writerow([
                 row['item_code'] or '',
                 row['item_name'],
@@ -1980,11 +2036,14 @@ class MonthlyPurchasePlanCSVView(APIView):
                 row['current_unit_cost'],
                 row['planned_unit_cost'],
                 row['purchase_quantity'],
+                row.get('received_quantity', 0),
+                row.get('pending_quantity', 0),
                 row['estimated_cost'],
                 row['status'],
             ])
+        total_estimated_cost = sum(float(row.get('estimated_cost') or 0) for row in rows)
         writer.writerow([])
-        writer.writerow(['', '', '', '', '', '', '', '', 'Total Estimated Cost', payload['summary']['total_estimated_cost']])
+        writer.writerow(['', '', '', '', '', '', '', '', '', '', 'Total Estimated Cost', round(total_estimated_cost, 2), ''])
 
         response = HttpResponse(output.getvalue(), content_type='text/csv')
         response['Content-Disposition'] = (

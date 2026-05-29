@@ -105,9 +105,13 @@ export const getPurchasePlan = (month, year) =>
   api.get('/reports/purchase-plan/', { params: { month, year } })
 export const savePurchasePlan = (month, year, rows) =>
   api.post('/reports/purchase-plan/', { month, year, rows })
-export const downloadPurchasePlanCSV = (month, year) =>
+export const downloadPurchasePlanCSV = (month, year, itemIds = []) =>
   api.get('/reports/purchase-plan/csv/', {
-    params: { month, year },
+    params: {
+      month,
+      year,
+      ...(itemIds.length ? { item_ids: itemIds.join(',') } : {}),
+    },
     responseType: 'blob',
   })
 

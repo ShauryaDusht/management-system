@@ -213,7 +213,7 @@ export default function PurchasePlannerPanel() {
       setPlan(data)
       setDirty(false)
       await loadPeriods()
-      if (!silent) setNotice(`Saved ${titleFor(month, year)} purchase plan.`)
+      if (!silent) setNotice(`Saved ${titleFor(month, year)} purchase plan and updated inventory for newly received quantities.`)
       return data
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed to save purchase plan.')
@@ -230,8 +230,14 @@ export default function PurchasePlannerPanel() {
       if (!latest) return
     }
     try {
-      const resp = await downloadPurchasePlanCSV(month, year)
-      triggerDownload(resp.data, `purchase_plan_${year}_${String(month).padStart(2, '0')}.csv`)
+      const visibleItemIds = filteredRows.map((row) => row.item_id)
+      if (!visibleItemIds.length) {
+        setError('No visible rows to export.')
+        return
+      }
+      const resp = await downloadPurchasePlanCSV(month, year, visibleItemIds)
+      const suffix = hasActiveFilters ? '_filtered' : ''
+      triggerDownload(resp.data, `purchase_plan_${year}_${String(month).padStart(2, '0')}${suffix}.csv`)
     } catch {
       setError('CSV export failed.')
     }
@@ -368,7 +374,7 @@ export default function PurchasePlannerPanel() {
           <div>
             <div style={{ fontWeight: 800, fontSize: 16 }}>Monthly Purchase Planner</div>
             <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-              Track month-wise investment, edit procurement quantities, and export the final plan for admin review.
+              Enter received purchase quantities, save to update inventory stock once, and export the visible filtered worksheet.
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -377,10 +383,10 @@ export default function PurchasePlannerPanel() {
               Refresh
             </Btn>
             <Btn onClick={() => handleSave()} disabled={loading || saving || !plan} style={{ marginBottom: 14 }}>
-              {saving ? 'Saving...' : dirty ? 'Save Changes' : 'Saved'}
+              {saving ? 'Saving...' : dirty ? 'Save & Update Stock' : 'Saved'}
             </Btn>
             <Btn variant="secondary" onClick={handleExport} disabled={loading || saving || !plan} style={{ marginBottom: 14 }}>
-              Export CSV
+              Export Visible CSV
             </Btn>
           </div>
         </div>
@@ -673,15 +679,17 @@ export default function PurchasePlannerPanel() {
                     <Th>Type</Th>
                     <Th>Unit</Th>
                     <Th>Available</Th>
-                    <Th>Current Cost</Th>
-                    <Th>Purchase Cost</Th>
+                    <Th>Current Price</Th>
+                    <Th>Purchase Price</Th>
                     <Th>Want To Purchase</Th>
+                    <Th>Updated</Th>
+                    <Th>Pending</Th>
                     <Th>Estimated Cost</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredRows.length === 0
-                    ? <tr><td colSpan={10} style={{ padding: 30, textAlign: 'center', color: 'var(--text-3)' }}>No items match the current filters.</td></tr>
+                    ? <tr><td colSpan={12} style={{ padding: 30, textAlign: 'center', color: 'var(--text-3)' }}>No items match the current filters.</td></tr>
                     : filteredRows.map((row) => (
                       <tr key={row.item_id} style={{ borderBottom: '1px solid var(--border)', background: row.purchase_quantity > 0 ? '#eff6ff55' : 'transparent' }}>
                         <td style={{ padding: '10px 12px', fontSize: 11, color: 'var(--text-3)' }}>{row.item_code || '-'}</td>
@@ -711,6 +719,12 @@ export default function PurchasePlannerPanel() {
                             style={{ width: 100, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
                           />
                         </td>
+                        <Td style={{ fontWeight: 700, color: Number(row.received_quantity || 0) > 0 ? '#065f46' : 'var(--text-3)' }}>
+                          {whole(row.received_quantity || 0)}
+                        </Td>
+                        <Td style={{ fontWeight: 700, color: Number(row.pending_quantity || 0) > 0 ? '#c2410c' : 'var(--text-3)' }}>
+                          {whole(row.pending_quantity || 0)}
+                        </Td>
                         <td style={{ padding: '10px 12px', fontWeight: 700 }}>{inr(row.estimated_cost)}</td>
                       </tr>
                     ))
@@ -722,6 +736,12 @@ export default function PurchasePlannerPanel() {
                       </td>
                       <td style={{ padding: '10px 12px', fontWeight: 700, color: '#1d4ed8' }}>
                         {filteredRows.reduce((sum, row) => sum + row.purchase_quantity, 0)}
+                      </td>
+                      <td style={{ padding: '10px 12px', fontWeight: 700, color: '#065f46' }}>
+                        {filteredRows.reduce((sum, row) => sum + Number(row.received_quantity || 0), 0)}
+                      </td>
+                      <td style={{ padding: '10px 12px', fontWeight: 700, color: '#c2410c' }}>
+                        {filteredRows.reduce((sum, row) => sum + Number(row.pending_quantity || 0), 0)}
                       </td>
                       <td style={{ padding: '10px 12px', fontWeight: 900, fontSize: 14, color: '#dc2626' }}>
                         {inr(visibleEstimatedCost)}

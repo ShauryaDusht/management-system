@@ -287,7 +287,7 @@ Existing account passwords are preserved.
             ('mukesh.vaghela', 'Mukeshkumar', 'Vaghela', '466', '9265591836', 'm.vaghela23@gmail.com', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Academic Block 8', 'Old Academic Reliever']),
             ('bipin.vaghela', 'Bipinchandra Dineshkumar', 'Vaghela', '350', '9979627312', 'bipin.vaghela4u@gmail.com', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Old Academic Common Area']),
             ('narendra.shreemali', 'Narendrakumar Natvarbhai', 'Shrimali', '328', '9898661986', 'narendrashrimali36262@gmail.com', ['Roads & Outdoor', 'Old Guest House']),
-            ('pradip.chauhan', 'Pradip', 'Chauhan', '3', '8200560889', 'pradipchauhan783@gmail.com', ['Solid Waste Management']),
+            ('pradip.chauhan', 'Pradip', 'Chauhan', '460', '8200560889', 'pradipchauhan783@gmail.com', ['Solid Waste Management']),
         ]
         for username, first, last, pc, phone, email, areas in supervisors:
             self.make_user(
@@ -1796,52 +1796,40 @@ Existing account passwords are preserved.
                 )
                 total += 1
 
-        # Solid Waste Management (SWM): worker-wise operations + Sunday deep cleaning
+        # Solid Waste Management (SWM): collection, CNG, segregation and Bio-Gas routes.
         swm_area = self.area('Solid Waste Management')
         if swm_area:
             HKScheduleTemplate.objects.filter(area=swm_area).delete()
 
             swm_collection_tasks = [
-                (1, '07:45', '08:00', 'Attendance and Preparation (All SWM workers)', False, 'Attendance, tools, PPE and route confirmation'),
-                (2, '08:00', '09:15', 'Housing Area Collection', True, 'Door-to-door wet and dry collection'),
-                (3, '08:00', '09:15', 'Hostel Area Collection', True, 'Hostel waste collection and transfer'),
-                (4, '09:15', '09:45', 'Break Time', False, 'Rest and equipment check'),
-                (5, '10:15', '11:30', 'Secondary Collection and Bin Clearance', True, 'Campus bins and remaining points'),
-                (6, '11:30', '13:00', 'Waste Transfer Support (All SWM workers)', True, 'Transfer remaining waste to AB-3'),
-                (7, '13:00', '14:00', 'Lunch Break', False, ''),
-                (8, '14:00', '15:30', 'Housing and Hostel Follow-up Collection', True, 'Second collection round'),
-                (9, '15:30', '16:30', 'Final Waste Clearance (All routes)', True, 'Final bin check and area clearance'),
-                (10, '16:30', '17:00', 'Closing Work and Report Handover', True, 'Tool cleanup and completion report'),
+                (1, '08:00', '08:45', 'HB Collection', True, 'Days: Daily | Collection route'),
+                (2, '08:45', '09:30', 'Hostel Collection', True, 'Days: Daily | Collection route'),
+                (3, '09:30', '10:15', 'AB Collection', True, 'Days: Daily | Collection route'),
+                (4, '10:15', '11:00', 'GCS Collection', True, 'Days: Monday, Wednesday, Friday, Sunday | Collection route'),
+                (5, '11:00', '11:45', 'Hostel Shops Collection', True, 'Days: Daily | Collection route'),
+                (6, '11:45', '12:30', 'AB Shops Collection', True, 'Days: Daily | Collection route'),
             ]
 
-            swm_transport_tasks = [
-                (1, '08:00', '09:15', 'Tempo Vehicle Collection', True, 'Mess, canteen, academic blocks, campus bins and guest house'),
-                (2, '09:45', '10:15', 'Waste Unloading at AB-3 Segregation Area', True, 'Unload and stage for sorting'),
-                (3, '10:15', '11:30', 'Vehicle Transport - Remaining Campus Bins', True, 'Carry remaining waste to segregation point'),
-                (4, '11:30', '13:00', 'Recyclable Transfer Support', True, 'Dry recyclable transfer support'),
-                (5, '13:00', '14:00', 'Lunch Break', False, ''),
-                (6, '14:00', '15:30', 'Afternoon Vehicle Collection Run', True, 'Academic/event waste and follow-up collection'),
-                (7, '15:30', '16:30', 'Final Waste Transport and Storage Cleanup', True, 'Final shift transport cycle'),
-                (8, '16:30', '17:00', 'Tempo Parking and Day Close', True, 'Park vehicle and submit status'),
+            swm_cng_tasks = [
+                (1, '08:00', '09:00', 'All Mess Dinner & Breakfast Collection', True, 'Days: Daily | CNG route'),
+                (2, '09:00', '10:00', 'Campus Inside Route Collection', True, 'Days: Daily | CA Shops, GH Canteen, HB, NCP17'),
+                (3, '10:00', '10:45', 'Dry Waste Shifting to Scrap Room', True, 'Days: Daily | CNG route'),
+                (4, '10:45', '11:30', 'Research Park Collection', True, 'Days: Tuesday, Thursday, Saturday | CNG route'),
+                (5, '11:30', '12:15', 'Pollaji G5 Collection', True, 'Days: Monday, Wednesday, Friday, Sunday | CNG route'),
+                (6, '12:15', '13:00', 'All Mess Lunch Waste Collection', True, 'Days: Daily | CNG route'),
+                (7, '16:00', '16:30', 'CNG Park Key Handover', True, 'Days: Daily | CNG route'),
             ]
 
             swm_segregation_tasks = [
-                (1, '09:45', '10:15', 'Segregation: Wet/Dry/Plastic/Paper/Cardboard', True, 'AB-3 segregation zone'),
-                (2, '10:15', '11:30', 'Segregation Support and Sorting', True, 'Sort recyclable and mixed inflow'),
-                (3, '11:30', '13:00', 'Waste Supply Support to Biogas Team', True, 'Only waste supply support, not plant operation'),
-                (4, '13:00', '14:00', 'Lunch Break', False, ''),
-                (5, '14:00', '15:30', 'Segregation Support for Second Collection', True, 'Handle second round inflow'),
-                (6, '15:30', '16:30', 'Final Segregation and Storage Area Hygiene', True, 'Ensure no pending mixed waste'),
-                (7, '16:30', '17:00', 'Supervisor Verification and Close', False, 'Checklist and final verification'),
+                (1, '09:00', '11:00', 'Sorting/Segregation at Scrap Room', True, 'Days: Daily | Scrap room'),
+                (2, '15:00', '16:00', 'Cleaning Outside Area of Scrap Room', True, 'Days: Daily | Scrap room'),
             ]
 
-            swm_sunday_extra = [
-                (1, '08:00', '10:00', 'Sunday Deep Clean: Floor Machine Cleaning (campus priority points)', True, ''),
-                (2, '10:00', '11:00', 'Sunday Deep Clean: Lift and Glass Deep Cleaning', True, ''),
-                (3, '11:00', '12:00', 'Sunday Deep Clean: Fountain Area Deep Cleaning', True, ''),
-                (4, '12:00', '13:00', 'Sunday Deep Clean: Common Area Polishing', True, ''),
-                (5, '14:00', '15:00', 'Sunday Deep Clean: Segregation Bay Wash and Sanitization', True, ''),
-                (6, '15:00', '16:00', 'Sunday Deep Clean: Final Disposal and Reporting', True, ''),
+            swm_biogas_tasks = [
+                (1, '08:00', '08:45', 'Cleaning Common Area of Rooms', True, 'Days: Daily | Bio-Gas'),
+                (2, '08:45', '09:30', 'Watering Plants', True, 'Days: Daily | Bio-Gas'),
+                (3, '09:30', '11:00', 'Wet Waste Feeding & Other Regular Work', True, 'Days: Daily | Bio-Gas'),
+                (4, '15:00', '16:00', 'Manure Shifting Work', True, 'Days: Daily | Bio-Gas'),
             ]
 
             for order, start, end, name, req_photo, desc in swm_collection_tasks:
@@ -1854,7 +1842,7 @@ Existing account passwords are preserved.
                 )
                 total += 1
 
-            for order, start, end, name, req_photo, desc in swm_transport_tasks:
+            for order, start, end, name, req_photo, desc in swm_cng_tasks:
                 HKScheduleTemplate.objects.create(
                     area=swm_area, order=order,
                     start_time=t(start), end_time=t(end),
@@ -1874,13 +1862,13 @@ Existing account passwords are preserved.
                 )
                 total += 1
 
-            for order, start, end, name, req_photo, desc in swm_sunday_extra:
+            for order, start, end, name, req_photo, desc in swm_biogas_tasks:
                 HKScheduleTemplate.objects.create(
                     area=swm_area, order=order,
                     start_time=t(start), end_time=t(end),
                     task_name=name, task_description=desc,
                     worker_tag='all', requires_photo=req_photo,
-                    frequency='sunday_extra', is_active=True,
+                    frequency='daily', is_active=True,
                 )
                 total += 1
 

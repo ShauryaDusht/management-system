@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { inventoryAPI, reportsAPI } from '../../api/inventory'
 import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, SelectField } from '../../components/ui'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
-import { asList, triggerDownload } from '../../shared/utils'
+import { asList, todayISO, triggerDownload } from '../../shared/utils'
 
 const AREA_CLASS_LABELS = {
   all: 'All Areas',
@@ -26,8 +26,6 @@ const MONTHS = [
   'November',
   'December',
 ]
-
-const todayStr = () => new Date().toISOString().split('T')[0]
 
 function getAreaClass(areaType, areaName) {
   const name = String(areaName || '').trim()
@@ -75,8 +73,8 @@ export default function IssuesTab({ userRole }) {
   const [selectedArea, setSelectedArea] = useState('all')
   const [personFilter, setPersonFilter] = useState('all')
   const [itemFilter, setItemFilter] = useState('all')
-  const [dateFrom, setDateFrom] = useState(todayStr())
-  const [dateTo, setDateTo] = useState(todayStr())
+  const [dateFrom, setDateFrom] = useState(todayISO())
+  const [dateTo, setDateTo] = useState(todayISO())
 
   const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1)
   const [reportYear, setReportYear] = useState(new Date().getFullYear())
@@ -85,7 +83,7 @@ export default function IssuesTab({ userRole }) {
   const [reportData, setReportData] = useState(null)
   const [reportModal, setReportModal] = useState(false)
 
-  const canManager = userRole === 'admin' || userRole === 'hk_inventory_manager'
+  const canManager = ['admin', 'inventory_manager', 'hk_inventory_manager'].includes(userRole)
 
   const { run: runAction, error: actionError, clearError } = useAsyncAction()
   const { loading, error: loadError, reload } = useAsyncLoad(async () => {
@@ -498,7 +496,7 @@ export default function IssuesTab({ userRole }) {
             <Input
               type="date"
               value={dateFrom}
-              max={dateTo || todayStr()}
+              max={dateTo || todayISO()}
               onChange={(e) => {
                 const val = e.target.value
                 setDateFrom(val)
@@ -511,7 +509,7 @@ export default function IssuesTab({ userRole }) {
               type="date"
               value={dateTo}
               min={dateFrom}
-              max={todayStr()}
+              max={todayISO()}
               onChange={(e) => {
                 const val = e.target.value
                 setDateTo(val)
