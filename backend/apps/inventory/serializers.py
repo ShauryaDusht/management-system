@@ -29,7 +29,7 @@ class ItemSerializer(serializers.ModelSerializer):
         model = Item
         fields = [
             'id', 'item_code', 'name', 'category', 'category_name', 'item_type', 'unit',
-            'total_quantity', 'available_quantity', 'threshold_quantity',
+            'total_quantity', 'available_quantity', 'reserved_quantity', 'threshold_quantity',
             'unit_cost', 'total_value', 'unit_cost_missing', 'description', 'status',
             'is_below_threshold', 'created_at', 'updated_at',
         ]
@@ -107,6 +107,8 @@ class ItemRequestSerializer(serializers.ModelSerializer):
     item_name = serializers.CharField(source='item.name', read_only=True)
     item_code = serializers.CharField(source='item.item_code', read_only=True)
     item_available = serializers.IntegerField(source='item.available_quantity', read_only=True)
+    item_reserved = serializers.IntegerField(source='item.reserved_quantity', read_only=True)
+    item_available_to_request = serializers.SerializerMethodField()
     item_threshold = serializers.IntegerField(source='item.threshold_quantity', read_only=True)
     item_unit = serializers.CharField(source='item.unit', read_only=True)
     item_type = serializers.CharField(source='item.item_type', read_only=True)
@@ -163,6 +165,9 @@ class ItemRequestSerializer(serializers.ModelSerializer):
 
     def get_items(self, obj):
         return RequisitionItemSerializer(obj.requisition_lines(), many=True).data
+
+    def get_item_available_to_request(self, obj):
+        return max((obj.item.available_quantity or 0) - (obj.item.reserved_quantity or 0), 0)
 
     def create(self, validated_data):
         item_request = super().create(validated_data)

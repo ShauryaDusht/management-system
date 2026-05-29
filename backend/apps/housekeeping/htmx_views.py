@@ -316,12 +316,8 @@ def _build_usage_issues(user, limit=None):
         request__requested_by=user
     ).order_by('-issued_at')
 
-    if limit:
-        issues = list(issues_qs[:limit])
-    else:
-        issues = list(issues_qs)
-
-    for issue in issues:
+    issues = []
+    for issue in issues_qs:
         total_used = issue.total_consumed or Decimal('0')
         issued_qty = Decimal(issue.issued_quantity)
         remaining = issued_qty - total_used
@@ -331,6 +327,14 @@ def _build_usage_issues(user, limit=None):
             issue.consumption_percent = int(min((total_used / issued_qty) * 100, 100))
         else:
             issue.consumption_percent = 0
+        if issue.request.item.item_type == "asset":
+            if issue.returned_at:
+                continue
+        elif issue.remaining_quantity <= 0:
+            continue
+        issues.append(issue)
+        if limit and len(issues) >= limit:
+            break
     return issues
 
 
@@ -1773,10 +1777,19 @@ def hk_stock(request):
     sel_area = selected_area(request, visible_areas)
     area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
     issued_items = _build_usage_issues(user, limit=10)
+    active_requests = (
+        HKStockRequest.objects
+        .filter(requested_by=user, area=sel_area, status__in=["pending", "approved"])
+        .select_related("item", "inventory_request")
+        .order_by("-created_at")[:10]
+        if sel_area else []
+    )
     return render(request, "housekeeping/mobile/stock.html", {
         "area_stocks": area_stocks,
         "low_stocks": [s for s in area_stocks if s.is_low],
         "issued_items": issued_items,
+        "active_requests": active_requests,
+        "stock_card_count": len(area_stocks) + len(issued_items) + len(active_requests),
         "user_areas": visible_areas,
         "selected_area": sel_area,
         "requested": request.GET.get("requested"),
@@ -1865,11 +1878,20 @@ def hk_log_usage(request, pk):
     area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
     my_requests = HKStockRequest.objects.filter(requested_by=user).order_by("-created_at")[:10]
     issued_items = _build_usage_issues(user, limit=10)
+    active_requests = (
+        HKStockRequest.objects
+        .filter(requested_by=user, area=sel_area, status__in=["pending", "approved"])
+        .select_related("item", "inventory_request")
+        .order_by("-created_at")[:10]
+        if sel_area else []
+    )
     return render(request, "housekeeping/mobile/stock.html", {
         "area_stocks": area_stocks,
         "low_stocks": [s for s in area_stocks if s.is_low],
         "my_requests": my_requests,
         "issued_items": issued_items,
+        "active_requests": active_requests,
+        "stock_card_count": len(area_stocks) + len(issued_items) + len(active_requests),
         "user_areas": visible_areas,
         "selected_area": sel_area,
         "requested": request.GET.get("requested"),
@@ -1881,7 +1903,7 @@ def hk_log_usage(request, pk):
 
 @hk_required
 def hk_stock_request(request):
-    from apps.inventory.models import Item, ItemRequest as InvItemRequest, RequisitionItem
+    from apps.inventory.models import Item, ItemRequest as InvItemRequest, ItemRequestBatch, RequisitionItem
 
     user = request.user
     user_areas = get_user_areas(user)
@@ -1896,6 +1918,13 @@ def hk_stock_request(request):
             area_id = request.POST.get("area_id")
             area = visible_areas.filter(pk=area_id).first() if area_id else visible_areas.first()
             reason = request.POST.get("reason", "").strip()
+            logger.debug(
+                "HK stock request received: user=%s area_id=%s post_keys=%s raw_items=%s",
+                user.pk,
+                area_id,
+                list(request.POST.keys()),
+                posted_items_raw,
+            )
             try:
                 posted_items = json.loads(posted_items_raw or "[]")
             except json.JSONDecodeError:
@@ -1917,6 +1946,13 @@ def hk_stock_request(request):
                     error = "Same item cannot be added twice."
                     break
                 item_quantities[item_id] = quantity
+            logger.debug(
+                "HK stock request parsed: user=%s area=%s item_count=%s items=%s",
+                user.pk,
+                area.name if area else None,
+                len(item_quantities),
+                item_quantities,
+            )
 
             if not error and not item_quantities:
                 error = "Please add at least one inventory item."
@@ -1942,39 +1978,71 @@ def hk_stock_request(request):
                                 break
 
                     if not error:
-                        first_item_id = next(iter(item_quantities))
-                        first_item = locked_items[first_item_id]
-                        item_names = [locked_items[item_id].name for item_id in item_quantities]
-                        summary_name = item_names[0] if len(item_names) == 1 else f"{item_names[0]} + {len(item_names) - 1} more"
-                        total_qty = sum(item_quantities.values())
                         is_urgent = request.POST.get("is_urgent") == "on"
-                        hk_req = HKStockRequest.objects.create(
-                            requested_by=user, area=area,
-                            item_name=summary_name, item=first_item,
-                            quantity=total_qty, unit="items" if len(item_names) > 1 else first_item.unit,
-                            reason=reason,
-                            is_urgent=is_urgent,
-                        )
-                        inv_req = InvItemRequest.objects.create(
-                            item=first_item, requested_by=user,
-                            quantity_requested=item_quantities[first_item_id],
-                            units_remaining=first_item.available_quantity,
-                            purpose=f"[HK - {area.name if area else 'General'}] {hk_req.reason}",
+                        batch = ItemRequestBatch.objects.create(
+                            requested_by=user,
+                            purpose=f"[HK - {area.name if area else 'General'}] {reason}",
                             notes=f"Urgent: {'Yes' if is_urgent else 'No'}",
                             is_urgent=is_urgent,
                         )
-                        RequisitionItem.objects.bulk_create([
-                            RequisitionItem(
-                                requisition=inv_req,
-                                inventory_item=locked_items[item_id],
-                                quantity=quantity,
-                                unit=locked_items[item_id].unit,
+                        created_count = 0
+                        for item_id, quantity in item_quantities.items():
+                            item = locked_items[item_id]
+                            logger.debug(
+                                "HK stock request creating line: batch_id=%s item_id=%s item=%s quantity=%s",
+                                batch.pk,
+                                item.pk,
+                                item.name,
+                                quantity,
                             )
-                            for item_id, quantity in item_quantities.items()
-                        ])
-                        hk_req.inventory_request = inv_req
-                        hk_req.save(update_fields=["inventory_request"])
+                            hk_req = HKStockRequest.objects.create(
+                                requested_by=user,
+                                area=area,
+                                item_name=item.name,
+                                item=item,
+                                quantity=quantity,
+                                unit=item.unit,
+                                reason=reason,
+                                is_urgent=is_urgent,
+                            )
+                            inv_req = InvItemRequest.objects.create(
+                                batch=batch,
+                                item=item,
+                                requested_by=user,
+                                quantity_requested=quantity,
+                                units_remaining=item.available_quantity,
+                                purpose=f"[HK - {area.name if area else 'General'}] {reason}",
+                                notes=f"Urgent: {'Yes' if is_urgent else 'No'}",
+                                is_urgent=is_urgent,
+                            )
+                            RequisitionItem.objects.create(
+                                requisition=inv_req,
+                                inventory_item=item,
+                                quantity=quantity,
+                                unit=item.unit,
+                            )
+                            hk_req.inventory_request = inv_req
+                            hk_req.save(update_fields=["inventory_request"])
+                            created_count += 1
+                            logger.debug(
+                                "HK stock request created line: hk_request_id=%s inventory_request_id=%s",
+                                hk_req.pk,
+                                inv_req.pk,
+                            )
+                        logger.debug(
+                            "HK stock request completed: batch_id=%s total_created=%s",
+                            batch.pk,
+                            created_count,
+                        )
                         return redirect(f"/housekeeping/stock/?requested=1&area={area.id if area else ''}")
+
+            if error:
+                logger.debug(
+                    "HK stock request validation failed: user=%s area=%s error=%s",
+                    user.pk,
+                    area.name if area else None,
+                    error,
+                )
 
             return render(request, "housekeeping/mobile/stock_request.html", {
                 "inv_items": inv_items,

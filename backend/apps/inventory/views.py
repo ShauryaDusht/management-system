@@ -372,20 +372,26 @@ class ReviewRequestView(APIView):
             }
             for line in lines:
                 item = locked_items.get(line.inventory_item_id)
-                if not item or line.quantity > item.available_quantity:
-                    available = item.available_quantity if item else 0
+                available_to_reserve = (
+                    item.available_quantity - item.reserved_quantity
+                    if item else 0
+                )
+                if not item or line.quantity > available_to_reserve:
                     return Response(
-                        {'detail': f'Insufficient stock for {line.inventory_item.name}. Available: {available} {line.unit}.'},
+                        {'detail': f'Insufficient stock for {line.inventory_item.name}. Available: {available_to_reserve} {line.unit}.'},
                         status=400
                     )
             for line in lines:
                 Item.objects.filter(pk=line.inventory_item_id).update(
-                    available_quantity=F('available_quantity') - line.quantity
+                    reserved_quantity=F('reserved_quantity') + line.quantity
                 )
             first_line = next((line for line in lines if line.inventory_item_id == item_request.item_id), None)
             first_item = locked_items.get(item_request.item_id)
             item_request.units_remaining = max(
-                (first_item.available_quantity if first_item else 0) - (first_line.quantity if first_line else 0),
+                (
+                    (first_item.available_quantity - first_item.reserved_quantity)
+                    if first_item else 0
+                ) - (first_line.quantity if first_line else 0),
                 0,
             )
             item_request.status = ItemRequest.Status.APPROVED
@@ -434,9 +440,12 @@ class IssueItemView(APIView):
         except Item.DoesNotExist:
             return Response({'detail': 'Item not found.'}, status=404)
 
-        if item_request.status == ItemRequest.Status.PENDING and issued_qty > item.available_quantity:
+        available_to_issue = item.available_quantity
+        if item.reserved_quantity >= item_request.quantity_requested:
+            available_to_issue = min(item.available_quantity, item.reserved_quantity)
+        if issued_qty > available_to_issue:
             return Response(
-                {'detail': f'Insufficient stock. Available: {item.available_quantity}.'},
+                {'detail': f'Insufficient stock. Available: {available_to_issue}.'},
                 status=400
             )
 
@@ -453,10 +462,11 @@ class IssueItemView(APIView):
                         status=400,
                     )
 
-        if item_request.status == ItemRequest.Status.PENDING:
-            Item.objects.filter(pk=item.pk).update(
-                available_quantity=F('available_quantity') - issued_qty,
-            )
+        reserved_release = min(item.reserved_quantity, item_request.quantity_requested)
+        Item.objects.filter(pk=item.pk).update(
+            available_quantity=F('available_quantity') - issued_qty,
+            reserved_quantity=F('reserved_quantity') - reserved_release,
+        )
 
         issue = ItemIssue.objects.create(
             request=item_request,

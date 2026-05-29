@@ -121,16 +121,19 @@ class ApproveRequestView(APIView):
         }
         for line in lines:
             item = locked_items.get(line.inventory_item_id)
-            if not item or item.available_quantity < line.quantity:
-                available = item.available_quantity if item else 0
+            available_to_reserve = (
+                item.available_quantity - item.reserved_quantity
+                if item else 0
+            )
+            if not item or available_to_reserve < line.quantity:
                 return Response(
-                    {'error': f'Not enough stock for {line.inventory_item.name}. Available: {available}, Requested: {line.quantity}'},
+                    {'error': f'Not enough stock for {line.inventory_item.name}. Available: {available_to_reserve}, Requested: {line.quantity}'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
         for line in lines:
             Item.objects.filter(pk=line.inventory_item_id).update(
-                available_quantity=F('available_quantity') - line.quantity
+                reserved_quantity=F('reserved_quantity') + line.quantity
             )
         first_line = next((line for line in lines if line.inventory_item_id == item_request.item_id), None)
         first_item = locked_items.get(item_request.item_id)
@@ -139,7 +142,10 @@ class ApproveRequestView(APIView):
         item_request.approved_by = user
         item_request.reviewed_at = timezone.now()
         item_request.units_remaining = max(
-            (first_item.available_quantity if first_item else 0) - (first_line.quantity if first_line else 0),
+            (
+                (first_item.available_quantity - first_item.reserved_quantity)
+                if first_item else 0
+            ) - (first_line.quantity if first_line else 0),
             0,
         )
         item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'units_remaining'])

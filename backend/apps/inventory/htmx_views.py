@@ -758,16 +758,23 @@ def mobile_approve_request(request, pk):
             }
             for line in lines:
                 item = locked_items.get(line.inventory_item_id)
-                if not item or line.quantity > item.available_quantity:
+                available_to_reserve = (
+                    item.available_quantity - item.reserved_quantity
+                    if item else 0
+                )
+                if not item or line.quantity > available_to_reserve:
                     return redirect('mobile_manager_requests')
             for line in lines:
                 Item.objects.filter(pk=line.inventory_item_id).update(
-                    available_quantity=F('available_quantity') - line.quantity
+                    reserved_quantity=F('reserved_quantity') + line.quantity
                 )
             first_line = next((line for line in lines if line.inventory_item_id == item_request.item_id), None)
             first_item = locked_items.get(item_request.item_id)
             item_request.units_remaining = max(
-                (first_item.available_quantity if first_item else 0) - (first_line.quantity if first_line else 0),
+                (
+                    (first_item.available_quantity - first_item.reserved_quantity)
+                    if first_item else 0
+                ) - (first_line.quantity if first_line else 0),
                 0,
             )
             item_request.status = 'approved'
@@ -859,7 +866,13 @@ def mobile_issue_request(request, pk):
         qty = max(1, qty)
         expected_return_date = None
 
-        if item_request.status == 'pending' and item.available_quantity < qty:
+        available_to_issue = item.available_quantity
+        if (
+            item_request.status == 'approved'
+            and item.reserved_quantity >= item_request.quantity_requested
+        ):
+            available_to_issue = min(item.available_quantity, item.reserved_quantity)
+        if available_to_issue < qty:
             # Not enough stock — redirect back without issuing
             return redirect('mobile_manager_requests')
 
@@ -870,16 +883,17 @@ def mobile_issue_request(request, pk):
                 if expected_return_date is None or expected_return_date < timezone.localdate():
                     return redirect('mobile_manager_requests')
 
-        if item_request.status == 'pending':
-            Item.objects.filter(pk=item.pk).update(
-                available_quantity=F('available_quantity') - qty
-            )
+        reserved_release = min(item.reserved_quantity, item_request.quantity_requested)
+        Item.objects.filter(pk=item.pk).update(
+            available_quantity=F('available_quantity') - qty,
+            reserved_quantity=F('reserved_quantity') - reserved_release,
+        )
 
         # If still pending, mark it approved first
         if item_request.status == 'pending':
             item_request.approved_by = request.user
             item_request.reviewed_at = timezone.now()
-            item_request.units_remaining = item.available_quantity
+            item_request.units_remaining = max(item.available_quantity - qty, 0)
 
         item_request.status = 'issued'
         item_request.save()
@@ -893,6 +907,14 @@ def mobile_issue_request(request, pk):
                 'notes': request.POST.get('notes', ''),
             },
         )
+        try:
+            from apps.housekeeping.models import HKStockRequest
+            hk_req = HKStockRequest.objects.filter(inventory_request=item_request).first()
+            if hk_req:
+                hk_req.status = 'issued'
+                hk_req.save(update_fields=['status'])
+        except Exception:
+            pass
         try:
             from apps.horticulture.models import HorticultureStockRequest
             horti_req = HorticultureStockRequest.objects.filter(inventory_request=item_request).first()
