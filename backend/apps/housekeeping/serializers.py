@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from apps.core.image_urls import image_field_url
+
 from .models import (
     HKAlert,
     HKArea,
@@ -82,6 +84,9 @@ class HKDailyRecordSerializer(serializers.ModelSerializer):
     area_name = serializers.CharField(source='area.name', read_only=True)
     assigned_worker_name = serializers.CharField(source='assigned_worker.name', read_only=True, default='')
     assigned_by_name = serializers.SerializerMethodField()
+    photo_before_url = serializers.SerializerMethodField()
+    photo_after_url = serializers.SerializerMethodField()
+    photo_after_thumbnail_url = serializers.SerializerMethodField()
 
     class Meta:
         model = HKDailyRecord
@@ -99,9 +104,9 @@ class HKDailyRecordSerializer(serializers.ModelSerializer):
             'assigned_at',
             'started_at',
             'completed_at',
-            'photo_before',
-            'photo_after',
-            'photo_after_thumbnail',
+            'photo_before_url',
+            'photo_after_url',
+            'photo_after_thumbnail_url',
             'photo_after_captured_at',
             'photo_after_capture_method',
             'photo_after_original_size',
@@ -116,6 +121,15 @@ class HKDailyRecordSerializer(serializers.ModelSerializer):
         if obj.assigned_by:
             return obj.assigned_by.get_full_name() or obj.assigned_by.username
         return ''
+
+    def get_photo_before_url(self, obj):
+        return image_field_url(self.context.get('request'), obj.photo_before)
+
+    def get_photo_after_url(self, obj):
+        return image_field_url(self.context.get('request'), obj.photo_after)
+
+    def get_photo_after_thumbnail_url(self, obj):
+        return image_field_url(self.context.get('request'), obj.photo_after_thumbnail)
 
 
 class HKStaffAttendanceRecordSerializer(serializers.ModelSerializer):

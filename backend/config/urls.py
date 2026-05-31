@@ -1,6 +1,5 @@
 from django.urls import include, path, re_path
 from django.conf import settings
-from django.conf.urls.static import static
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from config.admin import admin_site
@@ -67,4 +66,4 @@ urlpatterns = [
     path('portal/login/', portal_login, name='portal_login'),
     path('portal/logout/', portal_logout, name='portal_logout'),
     re_path(r'^media/(?P<path>.*)$', serve_media_file, name='media-file-fallback'),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]

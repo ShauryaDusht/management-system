@@ -1161,7 +1161,7 @@ class HKAssignAreaTaskView(APIView):
 
         return Response(
             {
-                'record': HKDailyRecordSerializer(record).data,
+                'record': HKDailyRecordSerializer(record, context={'request': request}).data,
                 'task_mode': task_mode,
                 'added_to_daily': is_active,
                 'can_promote_to_daily': bool(task_mode == 'permanent' and not is_active),
@@ -1196,7 +1196,7 @@ class HKPromoteTaskToDailyView(APIView):
 
         return Response(
             {
-                'record': HKDailyRecordSerializer(record).data,
+                'record': HKDailyRecordSerializer(record, context={'request': request}).data,
                 'promoted': True,
             },
             status=200,

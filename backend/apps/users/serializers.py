@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from apps.core.image_urls import image_field_url
 from apps.core.portal_views import get_portal_redirect
 
 from .models import User, is_standard_username, normalize_username_value, unique_standard_username
@@ -60,6 +61,8 @@ class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     areas_incharge = serializers.SerializerMethodField()
     assigned_area_ids = serializers.SerializerMethodField()
+    profile_photo_url = serializers.SerializerMethodField()
+    profile_photo = serializers.ImageField(required=False, allow_null=True)
     area_ids = serializers.ListField(
         child=serializers.IntegerField(min_value=1),
         write_only=True,
@@ -79,6 +82,8 @@ class UserSerializer(serializers.ModelSerializer):
             'role',
             'phone',
             'pay_code',
+            'profile_photo',
+            'profile_photo_url',
             'is_active',
             'areas_incharge',
             'assigned_area_ids',
@@ -106,6 +111,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_assigned_area_ids(self, obj):
         return [link.area_id for link in obj.hk_areas.all() if link.area_id]
+
+    def get_profile_photo_url(self, obj):
+        return image_field_url(self.context.get('request'), obj.profile_photo)
 
     def _apply_area_assignments(self, user, area_ids):
         from apps.housekeeping.models import HKArea, HKUserArea
