@@ -149,6 +149,22 @@ def _is_jrha_area(area):
     return bool(area and area.name in JRHA_AREA_NAMES)
 
 
+HOSTEL_RELIEVER_ASSIGNMENTS = {
+    "Aibaan": {"names": ["Anju Ben"]},
+    "Ijokha": {"names": ["Anju Ben"]},
+    "Beuaki": {"pay_codes": ["356"]},
+    "Chimair": {"pay_codes": ["356"]},
+    "Duven": {"pay_codes": ["435"]},
+    "Emiet": {"pay_codes": ["121"]},
+    "Griwiksh": {"pay_codes": ["261"]},
+    "Hiqom": {"pay_codes": ["75"]},
+    "Jurqia": {"pay_codes": ["136"]},
+    "Kyzeel": {"pay_codes": ["154"]},
+    "Lekhaag": {"pay_codes": ["88"]},
+    "Hostel Common Area": {"pay_codes": ["471"]},
+}
+
+
 def _attendance_relievers_for_area(area):
     qs = HKWorker.objects.filter(is_active=True)
     if not area:
@@ -158,7 +174,18 @@ def _attendance_relievers_for_area(area):
         return qs.filter(area__name__in=JRHA_AREA_NAMES).exclude(area=area).order_by("area__name", "name")
 
     if area_bucket(area) == "hostels":
-        return qs.filter(is_reliever=True, area__area_type="hostel").order_by("name")
+        assigned = HOSTEL_RELIEVER_ASSIGNMENTS.get(area.name)
+        relievers = qs.filter(is_reliever=True, area__area_type="hostel")
+        if assigned:
+            reliever_filter = dm.Q()
+            pay_codes = [code for code in assigned.get("pay_codes", []) if code]
+            names = [name for name in assigned.get("names", []) if name]
+            if pay_codes:
+                reliever_filter |= dm.Q(pay_code__in=pay_codes)
+            if names:
+                reliever_filter |= dm.Q(name__in=names)
+            return relievers.filter(reliever_filter).order_by("name")
+        return relievers.order_by("name")
 
     if _uses_academic_reliever_pool(area):
         return qs.filter(is_reliever=True, area__name="Old Academic Reliever").order_by("name")

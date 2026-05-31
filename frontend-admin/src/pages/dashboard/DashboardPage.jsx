@@ -366,7 +366,7 @@ export default function DashboardPage() {
                   icon={card.icon}
                   color={card.color}
                   sub={card.sub}
-                  style={{ height: '100%', cursor: 'default', userSelect: 'none', transition: 'none' }}
+                  style={{ height: '100%', cursor: 'default', userSelect: 'none', transition: 'none', pointerEvents: 'none' }}
                 />
               ) : (
                 <a key={card.label} href={card.to} className="ui-interactive-card-link" style={{ height: '100%', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
@@ -381,7 +381,7 @@ export default function DashboardPage() {
             {[
               canViewInventory ? { title: 'Inventory', subtitle: 'Stock overview', data: invDonut, total: invSummary?.total_items, label: 'Items', palette: DONUT_PALETTE, to: '/inventory' } : null,
               canViewHousekeeping ? { title: 'Housekeeping', subtitle: 'Today tasks', data: hkDonutData, total: hkSummary?.total_tasks, label: hkHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/housekeeping' } : null,
-              canViewHorticulture ? { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTotal, label: hortiTotal > 0 ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' } : null,
+              canViewHorticulture && !isHorticultureManager ? { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTotal, label: hortiTotal > 0 ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' } : null,
             ].filter(Boolean).map(card => (
               <Card key={card.title}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
