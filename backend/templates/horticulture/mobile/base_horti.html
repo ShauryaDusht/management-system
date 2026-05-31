@@ -93,6 +93,14 @@ label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4
 .wtag{font-size:11px;font-weight:800;color:#2d4a3e;background:rgba(45,74,62,.1);padding:3px 9px;border-radius:6px;display:inline-block;margin:8px 0 4px}
 </style>
 <script src="{% static 'pwa/pwa.js' %}" defer></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var activeTab = document.querySelector('.atab.on');
+  if (activeTab && typeof activeTab.scrollIntoView === 'function') {
+    activeTab.scrollIntoView({block: 'nearest', inline: 'center'});
+  }
+});
+</script>
 </head>
 <body>
 <div class="hdr">

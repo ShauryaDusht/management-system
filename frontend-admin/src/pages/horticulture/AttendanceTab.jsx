@@ -17,6 +17,7 @@ export default function AttendanceTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [rows, setRows] = useState([])
+  const [staffRows, setStaffRows] = useState([])
   const [workers, setWorkers] = useState([])
   const [records, setRecords] = useState([])
   const [zoneFilter, setZoneFilter] = useState('all')
@@ -27,15 +28,17 @@ export default function AttendanceTab() {
       setLoading(true)
       setError('')
       try {
-        const [summaryRes, workerRes, recordRes] = await Promise.all([
+        const [summaryRes, workerRes, recordRes, staffRes] = await Promise.all([
           horticultureAPI.getAttendanceSummary(date),
           horticultureAPI.getWorkers(),
           horticultureAPI.getAttendanceRecords(date),
+          horticultureAPI.getAttendance(date),
         ])
         if (mounted) {
           setRows(asList(summaryRes.data))
           setWorkers(asList(workerRes.data?.workers))
           setRecords(asList(recordRes.data))
+          setStaffRows(asList(staffRes.data?.supervisors))
         }
       } catch (err) {
         if (mounted) setError(getErrorMessage(err, 'Failed to load horticulture worker attendance.'))
@@ -48,10 +51,25 @@ export default function AttendanceTab() {
     }
   }, [date])
 
-  const zoneNames = useMemo(() => Array.from(new Set(rows.map((row) => row.zone_name).filter(Boolean))).sort(), [rows])
+  const zoneNames = useMemo(() => {
+    const names = new Set()
+    rows.forEach((row) => {
+      if (row.zone_name) names.add(row.zone_name)
+    })
+    staffRows.forEach((row) => asList(row.zone_names).forEach((zone) => names.add(zone)))
+    return Array.from(names).sort()
+  }, [rows, staffRows])
   const visibleRows = useMemo(
     () => (zoneFilter === 'all' ? rows : rows.filter((row) => row.zone_name === zoneFilter)),
     [rows, zoneFilter]
+  )
+  const visibleStaffRows = useMemo(
+    () => (
+      zoneFilter === 'all'
+        ? staffRows
+        : staffRows.filter((row) => asList(row.zone_names).includes(zoneFilter))
+    ),
+    [staffRows, zoneFilter]
   )
   const totals = useMemo(
     () =>
@@ -64,6 +82,18 @@ export default function AttendanceTab() {
         { total: 0, present: 0, absent: 0 }
       ),
     [visibleRows]
+  )
+  const staffTotals = useMemo(
+    () =>
+      visibleStaffRows.reduce(
+        (acc, row) => ({
+          total: acc.total + 1,
+          present: acc.present + (row.submitted ? 1 : 0),
+          absent: acc.absent + (row.submitted ? 0 : 1),
+        }),
+        { total: 0, present: 0, absent: 0 }
+      ),
+    [visibleStaffRows]
   )
 
   const recordMap = useMemo(() => {
@@ -82,6 +112,21 @@ export default function AttendanceTab() {
       ['Report Title', 'Horticulture Worker Attendance Report'],
       ['Date', date],
       ['Zone Filter', zoneFilter === 'all' ? 'All zones' : zoneFilter],
+      [],
+      ['Staff Attendance by Zone'],
+      ['Staff Name', 'Pay Code', 'Role', 'Zones', 'Status', 'Submitted At', 'Workers', 'Present', 'Absent', 'Half Day'],
+      ...visibleStaffRows.map((row) => [
+        row.supervisor_name || '',
+        row.pay_code || '',
+        row.role || 'supervisor',
+        asList(row.zone_names).join(', '),
+        row.submitted ? 'Present' : 'Absent',
+        row.submitted_at || '',
+        row.total_workers || 0,
+        row.present_count || 0,
+        row.absent_count || 0,
+        row.half_day_count || 0,
+      ]),
       [],
       ['Area Attendance Summary'],
       ['Area', 'Zone', 'Total', 'Present', 'Absent', 'Late', 'Leave', 'Attendance %'],
@@ -134,6 +179,39 @@ export default function AttendanceTab() {
           </Btn>
         </Card>
       </div>
+
+      <Card noPad style={{ marginBottom: 14 }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontWeight: 700 }}>Staff Attendance by Zone</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+              {staffTotals.present} present | {staffTotals.absent} absent | {staffTotals.total} total
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <Btn size="sm" variant={zoneFilter === 'all' ? 'primary' : 'secondary'} onClick={() => setZoneFilter('all')}>All</Btn>
+            {zoneNames.map((zone) => (
+              <Btn key={zone} size="sm" variant={zoneFilter === zone ? 'primary' : 'secondary'} onClick={() => setZoneFilter(zone)}>{zone}</Btn>
+            ))}
+          </div>
+        </div>
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}><Spinner /></div>
+        ) : (
+          <DataTable
+            headers={['Staff Name', 'Pay Code', 'Zone', 'Role', 'Status', 'Worker Attendance']}
+            rows={visibleStaffRows.map((row) => [
+              row.supervisor_name || '-',
+              row.pay_code || '-',
+              asList(row.zone_names).join(', ') || '-',
+              row.role || 'supervisor',
+              row.submitted ? 'Present' : 'Absent',
+              `${row.present_count || 0} present / ${row.absent_count || 0} absent / ${row.half_day_count || 0} half day`,
+            ])}
+            emptyMsg="No horticulture staff attendance found for selected date."
+          />
+        )}
+      </Card>
 
       <div className="ui-two-pane-grid">
         <Card noPad>

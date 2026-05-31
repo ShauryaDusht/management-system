@@ -336,7 +336,7 @@ class Command(BaseCommand):
         "Jurqia": "jaimin.parmar",
         "Lekhaag": "jaimin.parmar",
         "Kyzeel": "ramprakash.parmar",
-        "Hostel Common Area": "vishvajeet.kumar",
+        "Hostel Common Area": "vishwajeet.mishra",
     }
 
     HOSTEL_TARGET_ROSTER = [

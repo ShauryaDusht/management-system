@@ -17,6 +17,7 @@ import {
 import AdminLayout from '../../layout/AdminLayout'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
+import { exportCsv, todayISO } from '../../shared/utils'
 
 const ROLES = [
   'admin',
@@ -59,6 +60,26 @@ const buildUsername = (first, last) => {
   const parts = String(last || '').trim().toLowerCase().match(/[a-z0-9]+/g) || []
   const cleanLast = parts[parts.length - 1] || ''
   return cleanFirst && cleanLast ? `${cleanFirst}.${cleanLast}` : ''
+}
+
+function safeFilePart(value, fallback = 'all') {
+  const cleaned = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return cleaned || fallback
+}
+
+function userDisplayName(user) {
+  return user.first_name || user.last_name ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : user.username
+}
+
+function areaInchargeText(user) {
+  if (Array.isArray(user.areas_incharge) && user.areas_incharge.length > 0) {
+    return user.areas_incharge.join(', ')
+  }
+  return HK_ROLES.includes(user.role) ? 'Not assigned' : 'All areas'
 }
 
 export default function UsersPage() {
@@ -178,6 +199,26 @@ export default function UsersPage() {
     return matchRole && matchSearch
   })
 
+  const csvRows = useMemo(
+    () =>
+      filtered.map((user) => ({
+        Name: userDisplayName(user),
+        Username: user.username || '',
+        'Pay Code': user.pay_code || '',
+        Email: user.email || '',
+        Phone: user.phone || '',
+        Role: String(user.role || '').replace(/_/g, ' '),
+        'Area Incharge': areaInchargeText(user),
+        Status: user.is_active ? 'Active' : 'Inactive',
+      })),
+    [filtered]
+  )
+
+  const downloadCsv = () => {
+    const scope = roleFilter === 'all' ? 'all_roles' : roleFilter
+    exportCsv(csvRows, `manage_users_${safeFilePart(scope)}_${todayISO()}.csv`)
+  }
+
   const roleCounts = useMemo(() => {
     const counts = {
       admin: 0,
@@ -201,7 +242,14 @@ export default function UsersPage() {
     <AdminLayout
       title="Manage Users"
       subtitle={`${users.length} total users across all roles`}
-      actions={<Btn onClick={openCreate}>+ Add User</Btn>}
+      actions={(
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Btn variant="secondary" onClick={downloadCsv} disabled={loading || csvRows.length === 0}>
+            Download CSV
+          </Btn>
+          <Btn onClick={openCreate}>+ Add User</Btn>
+        </div>
+      )}
     >
       <Alert message={error} />
 
@@ -302,7 +350,7 @@ export default function UsersPage() {
             rows={filtered.map((u) => [
               <div key={`name-${u.id}`}>
                 <div style={{ fontWeight: 600 }}>
-                  {u.first_name || u.last_name ? `${u.first_name} ${u.last_name}`.trim() : u.username}
+                  {userDisplayName(u)}
                 </div>
               </div>,
               <code key={`username-${u.id}`} style={{ fontSize: 12, background: 'var(--surface-2)', padding: '2px 6px', borderRadius: 5 }}>
@@ -315,11 +363,7 @@ export default function UsersPage() {
               u.phone || '-',
               <Badge key={`role-${u.id}`} value={u.role} />,
               <div key={`areas-${u.id}`} style={{ fontSize: 12, color: 'var(--text-2)', maxWidth: 280 }}>
-                {Array.isArray(u.areas_incharge) && u.areas_incharge.length > 0
-                  ? u.areas_incharge.join(', ')
-                  : HK_ROLES.includes(u.role)
-                    ? 'Not assigned'
-                    : 'All areas'}
+                {areaInchargeText(u)}
               </div>,
               <span
                 key={`active-${u.id}`}

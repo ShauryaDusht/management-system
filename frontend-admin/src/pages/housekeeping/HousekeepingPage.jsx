@@ -12,7 +12,6 @@ import WorkersTab from './WorkersTab'
 
 const AttendanceTab = lazy(() => import('./AttendanceTab'))
 const StaffAttendanceTab = lazy(() => import('./StaffAttendanceTab'))
-const WorkerSelectionTab = lazy(() => import('./WorkerSelectionTab'))
 const InchargeApprovalsTab = lazy(() => import('./InchargeApprovalsTab'))
 const GalleryTab = lazy(() => import('./GalleryTab'))
 const ScheduleTab = lazy(() => import('./ScheduleTab'))
@@ -37,7 +36,6 @@ export default function HousekeepingPage() {
         { key: 'attendance', label: 'Worker Attendance' },
         { key: 'staff_attendance', label: 'Staff Attendance' },
         { key: 'workers', label: 'Workers' },
-        { key: 'worker_selection', label: 'Worker Selection' },
       ]
       if (['admin', 'housekeeping_manager', 'hk_inventory_manager'].includes(user?.role)) {
         base.push({ key: 'schedule', label: 'Schedule' })
@@ -59,7 +57,7 @@ export default function HousekeepingPage() {
   const validTabs = useMemo(() => tabs.map((t) => t.key), [tabs])
   const mapLegacyTab = (tab) => {
     if (tab === 'sections' || tab === 'caretakers') return 'directory'
-    if (tab === 'worker-selection') return 'worker_selection'
+    if (tab === 'worker-selection' || tab === 'worker_selection') return 'workers'
     return tab
   }
   const initialTab = mapLegacyTab(searchParams.get('tab'))
@@ -110,11 +108,6 @@ export default function HousekeepingPage() {
         </Suspense>
       )}
       {active === 'workers' && <WorkersTab />}
-      {active === 'worker_selection' && (
-        <Suspense fallback={tabFallback}>
-          <WorkerSelectionTab />
-        </Suspense>
-      )}
       {active === 'schedule' && (
         <Suspense fallback={tabFallback}>
           <ScheduleTab />

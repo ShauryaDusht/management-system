@@ -181,6 +181,9 @@ function ActivityPieChart({ data, lines }) {
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const isHorticultureManager = user?.role === 'horticulture_manager'
+  const canViewInventory = !isHorticultureManager
+  const canViewHousekeeping = !isHorticultureManager
   const canViewHorticulture = user?.role !== 'hk_inventory_manager'
   const [invSummary, setInvSummary]     = useState(null)
   const [hkSummary, setHkSummary]       = useState(null)
@@ -200,8 +203,8 @@ export default function DashboardPage() {
       setTrendLoading(true)
       try {
         const [inv, hk, horti, trend] = await Promise.all([
-          inventoryAPI.getDashboard().catch(() => null),
-          hkAPI.getDashboardSummary().catch(() => null),
+          canViewInventory ? inventoryAPI.getDashboard().catch(() => null) : Promise.resolve(null),
+          canViewHousekeeping ? hkAPI.getDashboardSummary().catch(() => null) : Promise.resolve(null),
           canViewHorticulture ? horticultureAPI.getSummary().catch(() => null) : Promise.resolve(null),
           reportsAPI.getActivityTrend({ range: trendRange }).catch(() => null),
         ])
@@ -233,19 +236,24 @@ export default function DashboardPage() {
     fetchData()
     const interval = setInterval(fetchData, 30000)
     return () => { alive = false; clearInterval(interval) }
-  }, [trendRange, canViewHorticulture])
+  }, [trendRange, canViewHorticulture, canViewHousekeeping, canViewInventory])
 
   useEffect(() => {
-    if (!canViewHorticulture && trendModule === 'horticulture') {
+    if (isHorticultureManager && trendModule !== 'horticulture') {
+      setTrendModule('horticulture')
+    } else if (!canViewHorticulture && trendModule === 'horticulture') {
       setTrendModule('all')
     }
-  }, [canViewHorticulture, trendModule])
+  }, [canViewHorticulture, isHorticultureManager, trendModule])
 
   const todayLabel = useMemo(() =>
     new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), [])
   const moduleOptions = useMemo(
-    () => MODULE_OPTIONS.filter((option) => canViewHorticulture || option.key !== 'horticulture'),
-    [canViewHorticulture]
+    () => MODULE_OPTIONS.filter((option) => {
+      if (isHorticultureManager) return option.key === 'horticulture'
+      return canViewHorticulture || option.key !== 'horticulture'
+    }),
+    [canViewHorticulture, isHorticultureManager]
   )
 
   const inStockCount = invSummary
@@ -314,14 +322,18 @@ export default function DashboardPage() {
         { label: 'Horticulture', value: trendTotals?.horticulture ?? 0, color: 'var(--green-700)', icon: '🌿' },
       ]
 
-  const visibleTrendLines = canViewHorticulture
+  const visibleTrendLines = isHorticultureManager
+    ? trendLines.filter((line) => line.key === 'horticulture')
+    : canViewHorticulture
     ? trendLines
     : trendLines.filter((line) => line.key !== 'horticulture')
-  const visibleSummaryBoxes = canViewHorticulture
+  const visibleSummaryBoxes = isHorticultureManager
+    ? summaryBoxes.filter((box) => box.label === 'Horticulture')
+    : canViewHorticulture
     ? summaryBoxes
     : summaryBoxes.filter((box) => box.label !== 'Horticulture')
 
-  const statCards = [
+  const baseStatCards = [
     { label: 'Total Inventory Items',  value: invSummary?.total_items ?? '-',           icon: '📦', color: 'var(--green-800)', sub: `${invSummary?.pending_requests ?? 0} requests pending`, to: '/inventory?tab=items' },
     { label: 'Low Stock Alerts',       value: invSummary?.low_stock_count ?? '-',        icon: '⚠️', color: 'var(--orange-600)', sub: `${invSummary?.out_of_stock_count ?? 0} out of stock`,  to: '/inventory?tab=items' },
     { label: 'HK Tasks Today',         value: hkSummary?.total_tasks ?? '-',            icon: '🧹', color: 'var(--green-700)', sub: `${hkSummary?.completion_pct ?? 0}% completed`,           to: '/housekeeping?tab=overview' },
@@ -329,9 +341,16 @@ export default function DashboardPage() {
     { label: 'Unreturned Assets',      value: invSummary?.unreturned_assets ?? '-',     icon: '🔁', color: '#f59e0b',          sub: `${invSummary?.overdue_returns ?? 0} overdue`,             to: '/inventory?tab=issues' },
     { label: 'Pending Stock Req.',     value: hkSummary?.pending_stock_requests ?? '-', icon: '📋', color: 'var(--orange-600)', sub: 'Open approval queue',                                    to: '/inventory?tab=requests' },
   ]
+  const statCards = isHorticultureManager
+    ? [
+        { label: 'Horticulture Tasks', value: hortiTotal || '-', icon: 'HT', color: 'var(--green-700)', sub: `${Number(hortiCounts.on_track || 0)} on track`, to: '/horticulture' },
+        { label: 'Due Soon', value: Number(hortiCounts.due_soon || 0), icon: 'DS', color: 'var(--orange-600)', sub: `${Number(hortiCounts.overdue || 0)} overdue`, to: '/horticulture' },
+        { label: 'Active Areas', value: hortiSummary?.total_areas ?? '-', icon: 'AR', color: '#3b82f6', sub: 'Horticulture coverage', to: '/horticulture' },
+      ]
+    : baseStatCards
 
   return (
-    <AdminLayout title="Admin Dashboard" subtitle={`Welcome back — ${todayLabel}`}>
+    <AdminLayout title={isHorticultureManager ? 'Horticulture Home' : 'Admin Dashboard'} subtitle={`Welcome back — ${todayLabel}`}>
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner size={36} /></div>
       ) : (
@@ -348,8 +367,8 @@ export default function DashboardPage() {
           {/* ── Donut cards ── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 24 }}>
             {[
-              { title: 'Inventory', subtitle: 'Stock overview', data: invDonut, total: invSummary?.total_items, label: 'Items', palette: DONUT_PALETTE, to: '/inventory' },
-              { title: 'Housekeeping', subtitle: 'Today tasks', data: hkDonutData, total: hkSummary?.total_tasks, label: hkHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/housekeeping' },
+              canViewInventory ? { title: 'Inventory', subtitle: 'Stock overview', data: invDonut, total: invSummary?.total_items, label: 'Items', palette: DONUT_PALETTE, to: '/inventory' } : null,
+              canViewHousekeeping ? { title: 'Housekeeping', subtitle: 'Today tasks', data: hkDonutData, total: hkSummary?.total_tasks, label: hkHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/housekeeping' } : null,
               canViewHorticulture ? { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTotal, label: hortiTotal > 0 ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' } : null,
             ].filter(Boolean).map(card => (
               <Card key={card.title}>

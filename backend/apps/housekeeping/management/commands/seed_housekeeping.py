@@ -62,6 +62,8 @@ Existing account passwords are preserved.
             'Aibaan', 'Beuaki', 'Chimair', 'Duven', 'Emiet',
             'Firpeal', 'Griwiksh', 'Hiqom', 'Ijokha', 'Jurqia',
             'Kyzeel', 'Lekhaag',
+            'Jeet Hostel Block A', 'Jeet Hostel Block B',
+            'Jeet Hostel Block C', 'Jeet Hostel Block D',
         ]
         for name in hostel_names:
             HKArea.objects.get_or_create(name=name, defaults={'area_type': 'hostel'})
@@ -111,6 +113,7 @@ Existing account passwords are preserved.
             ('Sports Complex', 'sports'),
             ('Roads & Outdoor', 'roads'),
             ('Solid Waste Management', 'swm'),
+            ('Deep Cleaning', 'other'),
             ('Guest House New', 'guesthouse'),
             ('Old Guest House', 'guesthouse'),
             ('Director Bungalow', 'director'),
@@ -252,14 +255,15 @@ Existing account passwords are preserved.
         caretakers = [
             # (username, first, last, pay_code, phone, email, areas)
             ('priyanka.parmar', 'Priyanka Vijaykumar', 'Parmar', '237', '6353228604', 'priyankavijayparmar27@gmail.com', ['Aibaan']),
-            ('anita.vaghela', 'Anita', 'Vaghela', '10', '9512389739', 'anitavaghela98@gmail.com', ['Beuaki', 'Chimair'], ['manisha.thapa', 'anita']),
+            ('anita.vaghela', 'Anita', 'Vaghela', '10', '9512389739', 'anitavaghela98@gmail.com', ['Beuaki', 'Chimair'], ['anita']),
             ('rhushita.chavda', 'Rhushita Chetankumar', 'Chavda', '294', '7083740424', '', ['Ijokha']),
             ('pankaj.bihola', 'Pankajsinh Amarsinh', 'Bihola', '293', '9904883975', 'pankajsingh2753@gmail.com', ['Duven', 'Emiet']),
             ('anil.solanki', 'Anil', 'Solanki', '300', '8155037413', 'anil8155037413@gmail.com', ['Firpeal', 'Griwiksh']),
             ('nikul.bihola', 'Nikulsinh Ashoksinh', 'Bihola', '427', '9714730290', 'nikulsinghbhola862@gmail.com', ['Hiqom']),
             ('jaimin.parmar', 'Jaimin', 'Parmar', '318', '7600738945', 'hostel.caretaker@iitgn.ac.in', ['Jurqia', 'Lekhaag']),
             ('ramprakash.parmar', 'Ramprakash Lembabhai', 'Parmar', '317', '9687460280', 'ramairy1198@gmail.com', ['Kyzeel']),
-            ('vishvajeet.kumar', 'Vishvajeet', 'Kumar', '316', '9898037530', 'mishra.vishwajeet@iitgn.ac.in', ['Hostel Common Area']),
+            ('vishwajeet.mishra', 'Vishwajeet', 'Mishra', '08', '9898037530', 'mishra.vishwajeet@iitgn.ac.in', ['Hostel Common Area'], ['vishvajeet.kumar', 'vishwajeet']),
+            ('manisha.thapa', 'Manisha', 'Thapa', '424', '9942523410', '', ['Jeet Hostel Block B', 'Jeet Hostel Block D']),
         ]
         for caretaker in caretakers:
             username, first, last, pc, phone, email, areas, *rest = caretaker
@@ -288,6 +292,9 @@ Existing account passwords are preserved.
             ('bipin.vaghela', 'Bipinchandra Dineshkumar', 'Vaghela', '350', '9979627312', 'bipin.vaghela4u@gmail.com', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Old Academic Common Area']),
             ('narendra.shreemali', 'Narendrakumar Natvarbhai', 'Shrimali', '328', '9898661986', 'narendrashrimali36262@gmail.com', ['Roads & Outdoor', 'Old Guest House']),
             ('pradip.chauhan', 'Pradip', 'Chauhan', '460', '8200560889', 'pradipchauhan783@gmail.com', ['Solid Waste Management']),
+            ('ganesh.jayesh', 'Ganesh', 'Jayesh', '404', '9537558820', 'Ganeshjayesh820@gmail.com', ['Deep Cleaning']),
+            ('shailesh.vaghela', 'Shailesh', 'Vaghela', '422', '7990375262', '', ['Jeet Hostel Block A', 'Jeet Hostel Block C']),
+            ('kailash.vaghela', 'Kailash', 'Vaghela', '', '', '', ['Jeet Hostel Block A', 'Jeet Hostel Block B', 'Jeet Hostel Block C', 'Jeet Hostel Block D']),
         ]
         for username, first, last, pc, phone, email, areas in supervisors:
             self.make_user(
@@ -529,6 +536,60 @@ Existing account passwords are preserved.
 
         return synced_count, deactivated_count
 
+    def _sync_area_roster_by_supervisor(self, roster_specs):
+        supervisors = {
+            username: User.objects.filter(username=username).first()
+            for username in {spec.get('supervisor_username') for spec in roster_specs if spec.get('supervisor_username')}
+        }
+        managed_areas = {}
+        managed_area_ids = set()
+        for spec in roster_specs:
+            area = self.area(spec['area'])
+            if area:
+                managed_areas[spec['area']] = area
+                managed_area_ids.add(area.id)
+
+        all_workers = list(HKWorker.objects.select_related('area').all())
+        keep_ids = set()
+        synced_count = 0
+
+        for spec in roster_specs:
+            area = managed_areas.get(spec['area'])
+            if area is None:
+                continue
+
+            worker = self._find_roster_worker(spec, area, managed_area_ids, all_workers, keep_ids)
+            created = False
+            if worker is None:
+                worker = HKWorker(area=area)
+                created = True
+
+            pay_code = spec.get('pay_code', '')
+            phone = spec.get('phone') or self._existing_worker_phone(spec['name'], pay_code, worker)
+            worker.name = spec['name']
+            worker.pay_code = pay_code
+            worker.worker_type = spec.get('worker_type', 'general')
+            worker.shift = spec.get('shift', 'day')
+            worker.area = area
+            worker.supervisor = supervisors.get(spec.get('supervisor_username'))
+            worker.is_reliever = spec.get('is_reliever', False)
+            worker.is_active = True
+            if phone or not worker.phone:
+                worker.phone = phone
+            worker.save()
+
+            if created:
+                all_workers.append(worker)
+            keep_ids.add(worker.id)
+            synced_count += 1
+
+        deactivated_count = HKWorker.objects.filter(
+            area__name__in=sorted(managed_areas),
+            is_active=True,
+        ).exclude(id__in=keep_ids).update(is_active=False)
+
+        return synced_count, deactivated_count
+
     def _cleanup_unused_inactive_workers(self, area_names):
         deleted_ids = []
         kept_with_history = 0
@@ -627,6 +688,20 @@ Existing account passwords are preserved.
             ('Mehul Rathod',     '256', '6353451489', 'Kyzeel',   'floor',    False),
             ('Rajesh',           '104', '7046510026', 'Kyzeel',   'washroom', False),
             ('Mehul Jadeja',     '106', '7096229284', 'Kyzeel',   'washroom', False),
+
+            # -- JEET HOSTEL -------------------------------------------------
+            ('Rajesh Parmar',     '416', '', 'Jeet Hostel Block A', 'room',     False),
+            ('Rahul Rathod',      '417', '', 'Jeet Hostel Block A', 'floor',    False),
+            ('Darshan',           '450', '', 'Jeet Hostel Block A', 'washroom', False),
+            ('Manisha Ben',       '129', '', 'Jeet Hostel Block B', 'room',     False),
+            ('Sugna Ben',         '134', '', 'Jeet Hostel Block B', 'floor',    False),
+            ('Leela Ben',         '150', '', 'Jeet Hostel Block B', 'washroom', False),
+            ('Himmat',            '456', '', 'Jeet Hostel Block C', 'room',     False),
+            ('Hasmukh',           '77',  '', 'Jeet Hostel Block C', 'floor',    False),
+            ('Suresh',            '454', '', 'Jeet Hostel Block C', 'washroom', False),
+            ('Urvashi',           '459', '', 'Jeet Hostel Block D', 'room',     False),
+            ('Hetal',             '458', '', 'Jeet Hostel Block D', 'floor',    False),
+            ('Bhavika',           '457', '', 'Jeet Hostel Block D', 'washroom', False),
 
             # -- COMMON AREA -------------------------------------------------
             ('Yogesh Vaghela',   '80',  '9998100804', 'Hostel Common Area', 'room',    False),
@@ -857,13 +932,95 @@ Existing account passwords are preserved.
                     is_active=True,
                 ).exclude(pk=target.pk).update(is_active=False)
 
+        hostel_roster = [
+            {'area': 'Aibaan', 'name': 'Reeta Ben', 'pay_code': '357', 'phone': '9574379477', 'worker_type': 'floor', 'supervisor_username': 'priyanka.parmar', 'legacy_names': ['Reeta Ben', 'Reeta ben']},
+            {'area': 'Aibaan', 'name': 'Sangeeta Ben', 'pay_code': '219', 'phone': '8866941201', 'worker_type': 'washroom', 'supervisor_username': 'priyanka.parmar', 'legacy_names': ['Sangeeta Ben', 'Sangeeta  ben']},
+            {'area': 'Aibaan', 'name': 'Shilpa Ben', 'pay_code': '419', 'phone': '6356046585', 'worker_type': 'room', 'supervisor_username': 'priyanka.parmar', 'legacy_names': ['Shilpa Ben', 'shilpa ben']},
+            {'area': 'Beuaki', 'name': 'Kailashben M', 'pay_code': '98', 'phone': '9909679865', 'worker_type': 'room', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Kailashben M', 'kailashben m', 'Meena Ben']},
+            {'area': 'Beuaki', 'name': 'Meena Ben', 'pay_code': '76', 'phone': '8490053837', 'worker_type': 'washroom', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Meena Ben', 'Kailashben M']},
+            {'area': 'Beuaki', 'name': 'Sonal Ben', 'pay_code': '415', 'phone': '7359834672', 'worker_type': 'floor', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Sonal Ben', 'sonal ben']},
+            {'area': 'Beuaki', 'name': 'Manisha Ben', 'pay_code': '356', 'phone': '9157691322', 'worker_type': 'general', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Manisha Ben', 'manisha ben']},
+            {'area': 'Chimair', 'name': 'Bhanu Ben', 'pay_code': '332', 'phone': '7567371788', 'worker_type': 'room', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Bhanu Ben', 'bhanu ben']},
+            {'area': 'Chimair', 'name': 'Champa Ben', 'pay_code': '249', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Champa Ben']},
+            {'area': 'Chimair', 'name': 'Deepika Ben', 'pay_code': '418', 'phone': '7383512108', 'worker_type': 'washroom', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Deepika Ben']},
+            {'area': 'Chimair', 'name': 'Surya Ben', 'pay_code': '233', 'phone': '9725963299', 'worker_type': 'floor', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Surya Ben']},
+            {'area': 'Duven', 'name': 'Jignesh', 'pay_code': '115', 'phone': '8401617156', 'worker_type': 'washroom', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Jignesh']},
+            {'area': 'Duven', 'name': 'Karan', 'pay_code': '260', 'phone': '7016522113', 'worker_type': 'room', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Karan']},
+            {'area': 'Duven', 'name': 'Sailesh Vaghela', 'pay_code': '109', 'phone': '8734987012', 'worker_type': 'floor', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Sailesh Vaghela', 'Sailesh vaghala']},
+            {'area': 'Duven', 'name': 'Umesh Babariya', 'pay_code': '435', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Umesh Babariya']},
+            {'area': 'Emiet', 'name': 'Shailesh Rathod', 'pay_code': '239', 'phone': '9081107066', 'worker_type': 'room', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Shailesh Rathod']},
+            {'area': 'Emiet', 'name': 'Dhiraj', 'pay_code': '131', 'phone': '', 'worker_type': 'washroom', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Dhiraj']},
+            {'area': 'Emiet', 'name': 'Jaydeep Solanki', 'pay_code': '259', 'phone': '9727981188', 'worker_type': 'floor', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Jaydeep Solanki', 'jaydeep Solanki']},
+            {'area': 'Emiet', 'name': 'Rajendra', 'pay_code': '121', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Rajendra']},
+            {'area': 'Firpeal', 'name': 'Rajesh Talvadi', 'pay_code': '104', 'phone': '7046510026', 'worker_type': 'floor', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Rajesh Talvadi']},
+            {'area': 'Firpeal', 'name': 'Mayur Solanki', 'pay_code': '258', 'phone': '', 'worker_type': 'room', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Mayur Solanki', 'Mayur  Solanki']},
+            {'area': 'Firpeal', 'name': 'Jagdish Chavda', 'pay_code': '157', 'phone': '9662312505', 'worker_type': 'washroom', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Jagdish', 'Jagdish chavda']},
+            {'area': 'Griwiksh', 'name': 'Nikul Solanki', 'pay_code': '446', 'phone': '8238759843', 'worker_type': 'floor', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Nikul Solanki']},
+            {'area': 'Griwiksh', 'name': 'Jitendra Piwal', 'pay_code': '95', 'phone': '9723216455', 'worker_type': 'washroom', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Jitendra', 'jitendra piwal']},
+            {'area': 'Griwiksh', 'name': 'Nitin Makwana', 'pay_code': '261', 'phone': '9157708871', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'anil.solanki', 'legacy_names': ['Nitin Makwana']},
+            {'area': 'Griwiksh', 'name': 'Suresh Solanki', 'pay_code': '73', 'phone': '9687317660', 'worker_type': 'room', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Suresh Solanki']},
+            {'area': 'Hiqom', 'name': 'Mahendra Makwana', 'pay_code': '148', 'phone': '7041143190', 'worker_type': 'floor', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Mahendra Makwana']},
+            {'area': 'Hiqom', 'name': 'Hasmukhbhai', 'pay_code': '75', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Hasmukhbhai']},
+            {'area': 'Hiqom', 'name': 'Amit', 'pay_code': '110', 'phone': '7779004437', 'worker_type': 'washroom', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Amit']},
+            {'area': 'Hiqom', 'name': 'Rajnikant', 'pay_code': '153', 'phone': '6355825476', 'worker_type': 'washroom', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Rajnikant']},
+            {'area': 'Hiqom', 'name': 'Mehul Rathod', 'pay_code': '256', 'phone': '6353451489', 'worker_type': 'room', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Mehul Rathod']},
+            {'area': 'Hiqom', 'name': 'Prahlad Parmar', 'pay_code': '242', 'phone': '8734949909', 'worker_type': 'floor', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Prahlad Parmar']},
+            {'area': 'Ijokha', 'name': 'Mittal Ben Vaghela', 'pay_code': '386', 'phone': '7383619204', 'worker_type': 'room', 'supervisor_username': 'rhushita.chavda', 'legacy_names': ['Mital Ben', 'Mittal ben Vaghela']},
+            {'area': 'Ijokha', 'name': 'Geeta Ben Parmar', 'pay_code': '230', 'phone': '7041016942', 'worker_type': 'washroom', 'supervisor_username': 'rhushita.chavda', 'legacy_names': ['Geeta Ben', 'Geeta ben parmar']},
+            {'area': 'Ijokha', 'name': 'Kailash B Parmar', 'pay_code': '143', 'phone': '7265921026', 'worker_type': 'floor', 'supervisor_username': 'rhushita.chavda', 'legacy_names': ['Kailash B', 'kailash b parmar']},
+            {'area': 'Jurqia', 'name': 'Jaykesh', 'pay_code': '449', 'phone': '8401531547', 'worker_type': 'floor', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Jaykesh']},
+            {'area': 'Jurqia', 'name': 'Naresh', 'pay_code': '89', 'phone': '7284086230', 'worker_type': 'washroom', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Naresh']},
+            {'area': 'Jurqia', 'name': 'Mehul Jadeja', 'pay_code': '106', 'phone': '7096229284', 'worker_type': 'room', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Mehul Jadeja']},
+            {'area': 'Jurqia', 'name': 'Vinay', 'pay_code': '136', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Vinay']},
+            {'area': 'Jurqia', 'name': 'Harish', 'pay_code': '122', 'phone': '7698462575', 'worker_type': 'washroom', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Harish']},
+            {'area': 'Kyzeel', 'name': 'Pravinbhai Mahida', 'pay_code': '91', 'phone': '9265530235', 'worker_type': 'washroom', 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Pravin Maida', 'pravinbhai mahida']},
+            {'area': 'Kyzeel', 'name': 'Lala', 'pay_code': '154', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Lala']},
+            {'area': 'Kyzeel', 'name': 'Solanki Chandrakant', 'pay_code': '283', 'phone': '7201863872', 'worker_type': 'floor', 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Chandrakant', 'Solanki Chandrakant']},
+            {'area': 'Kyzeel', 'name': 'Satishbhai', 'pay_code': '113', 'phone': '9558903676', 'worker_type': 'floor', 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Satish', 'Satishbhi']},
+            {'area': 'Kyzeel', 'name': 'Shailesh Talvadi', 'pay_code': '97', 'phone': '8866886040', 'worker_type': 'washroom', 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Shailesh Talvadi']},
+            {'area': 'Kyzeel', 'name': 'Anandkumar Parmar', 'pay_code': '310', 'phone': '9023393753', 'worker_type': 'room', 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Anand', 'Anandkumar parmar']},
+            {'area': 'Lekhaag', 'name': 'Mukesh', 'pay_code': '88', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Mukesh']},
+            {'area': 'Lekhaag', 'name': 'Ravi', 'pay_code': '245', 'phone': '7383342914', 'worker_type': 'floor', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Ravi']},
+            {'area': 'Lekhaag', 'name': 'Banshi', 'pay_code': '149', 'phone': '9023507559', 'worker_type': 'washroom', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Banshi']},
+            {'area': 'Lekhaag', 'name': 'Pravin Vaghela', 'pay_code': '246', 'phone': '8511376344', 'worker_type': 'washroom', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Pravin Vaghela', 'pravin Vaghela']},
+            {'area': 'Lekhaag', 'name': 'Rakesh', 'pay_code': '438', 'phone': '9316531354', 'worker_type': 'room', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Rakesh']},
+            {'area': 'Jeet Hostel Block A', 'name': 'Rajesh Bhai Parmar', 'pay_code': '416', 'phone': '', 'worker_type': 'room', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Rajesh Parmar', 'Rajesh bhai parmar']},
+            {'area': 'Jeet Hostel Block A', 'name': 'Rathod Rahul', 'pay_code': '417', 'phone': '', 'worker_type': 'washroom', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Rahul Rathod', 'Rathod Rahul']},
+            {'area': 'Jeet Hostel Block A', 'name': 'Darshan Brahmaniya', 'pay_code': '450', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Darshan', 'Darshan Brahmaniya']},
+            {'area': 'Jeet Hostel Block B', 'name': 'Manisha Ben K Vaghela', 'pay_code': '129', 'phone': '', 'worker_type': 'room', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Manisha Ben']},
+            {'area': 'Jeet Hostel Block B', 'name': 'Sugna Ben J Vaghela', 'pay_code': '134', 'phone': '', 'worker_type': 'washroom', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Sugna Ben']},
+            {'area': 'Jeet Hostel Block B', 'name': 'Leela Ben Dipak Kumar Parmar', 'pay_code': '150', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Leela Ben']},
+            {'area': 'Jeet Hostel Block C', 'name': 'Suresh Bhai', 'pay_code': '454', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Suresh Bhai', 'Suresh']},
+            {'area': 'Jeet Hostel Block C', 'name': 'Himmat Bhai', 'pay_code': '456', 'phone': '', 'worker_type': 'room', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Himmat', 'Himmat bhai']},
+            {'area': 'Jeet Hostel Block C', 'name': 'Hashmukh Bhai', 'pay_code': '77', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Hasmukh', 'Hashmukh bhai']},
+            {'area': 'Jeet Hostel Block D', 'name': 'Bhavika Ben Solanki', 'pay_code': '457', 'phone': '', 'worker_type': 'room', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Bhavika', 'Bhavika ben solnki']},
+            {'area': 'Jeet Hostel Block D', 'name': 'Mehariya Hetal Ben Ashok Bhai', 'pay_code': '458', 'phone': '', 'worker_type': 'washroom', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Hetal', 'Mehariya Hetal ben Ashok bhai']},
+            {'area': 'Jeet Hostel Block D', 'name': 'Urvashi Ben Nayan Bhai Vaghela', 'pay_code': '459', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Urvashi', 'Urvashi ben Nayan bhai Vaghela']},
+            {'area': 'Hostel Common Area', 'name': 'Yogesh Vaghela', 'pay_code': '80', 'phone': '9998100804', 'worker_type': 'room', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Yogesh Vaghela']},
+            {'area': 'Hostel Common Area', 'name': 'Vinayak Solanki', 'pay_code': '240', 'phone': '9023271834', 'worker_type': 'washroom', 'shift': 'night', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Vinayak Solanki']},
+            {'area': 'Hostel Common Area', 'name': 'Ketan Gujjar', 'pay_code': '100', 'phone': '8347139138', 'worker_type': 'floor', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Ketan Gujjar']},
+            {'area': 'Hostel Common Area', 'name': 'Krunal Parmar', 'pay_code': '471', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Krunal', 'Krunal Parmar']},
+            {'area': 'Hostel Common Area', 'name': 'Suresh Solanki', 'pay_code': '472', 'phone': '', 'worker_type': 'general', 'shift': 'evening', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Suresh', 'Suresh Solanki']},
+            {'area': 'Hostel Common Area', 'name': 'Anil Thakur', 'pay_code': '542', 'phone': '9265665289', 'worker_type': 'floor', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Anil Thakur']},
+        ]
+        hostel_synced, hostel_deactivated = self._sync_area_roster_by_supervisor(hostel_roster)
+        hostel_deleted, hostel_kept = self._cleanup_unused_inactive_workers(
+            sorted({spec['area'] for spec in hostel_roster})
+        )
+        HKWorker.objects.filter(area__name='Hostels Reliever', is_active=True).update(is_active=False)
+        self.stdout.write(
+            '  [OK] Hostel roster synced from full list: '
+            f'{hostel_synced} workers, {hostel_deactivated} extra deactivated, '
+            f'{hostel_deleted} unused removed, {hostel_kept} history rows kept inactive'
+        )
+
         # Common Area staffing details
-        common_supervisor = User.objects.filter(username='vishvajeet.kumar').first()
+        common_supervisor = User.objects.filter(username='vishwajeet.mishra').first()
         common_shift_map = {
             'Vinayak Solanki': 'night',
             'Anil Thakur': 'day',
-            'Suresh': 'day',
-            'Krunal': 'day',
+            'Suresh Solanki': 'evening',
+            'Krunal Parmar': 'day',
             'Yogesh Vaghela': 'day',
             'Ketan Gujjar': 'day',
         }
@@ -974,6 +1131,21 @@ Existing account passwords are preserved.
                 worker.supervisor = roads_supervisor
                 worker.save(update_fields=['shift', 'supervisor'])
 
+        deep_cleaning_roster = [
+            {'area': 'Deep Cleaning', 'name': 'Vaghela Chirag M', 'pay_code': '303', 'phone': '7698612890', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Vaghela Chirag M']},
+            {'area': 'Deep Cleaning', 'name': 'Parmar Vijay Kumar Chhaganbhai', 'pay_code': '329', 'phone': '9824347940', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Parmar Vijay Kumar Chhaganbhai']},
+            {'area': 'Deep Cleaning', 'name': 'Sunil R. Vaghela', 'pay_code': '455', 'phone': '9023986019', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Sunil R. Vaghela', 'Sunil R Vaghela']},
+            {'area': 'Deep Cleaning', 'name': 'Bhangi Sikandar D.', 'pay_code': '389', 'phone': '9723116238', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Bhangi Sikandar D.', 'Bhangi Sikandar D']},
+            {'area': 'Deep Cleaning', 'name': 'Makvana Nikhil Girishbhai', 'pay_code': '364', 'phone': '7572829754', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Makvana Nikhil Girishbhai']},
+        ]
+        deep_synced, deep_deactivated = self._sync_area_roster(deep_cleaning_roster, 'ganesh.jayesh')
+        deep_deleted, deep_kept = self._cleanup_unused_inactive_workers(['Deep Cleaning'])
+        self.stdout.write(
+            '  [OK] Deep Cleaning roster synced: '
+            f'{deep_synced} workers, {deep_deactivated} extra deactivated, '
+            f'{deep_deleted} unused removed, {deep_kept} history rows kept inactive'
+        )
+
         swm_roster = [
             {'area': 'Solid Waste Management', 'name': 'Jitendrakumar Kantiji Thakor', 'pay_code': '238', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Jitendra bhai Thakur']},
             {'area': 'Solid Waste Management', 'name': 'Kantiji Varvaji Thakor', 'pay_code': '140', 'phone': '', 'worker_type': 'swm', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Kanti bhai Thakur', 'Kanti bhai Thakor']},
@@ -1027,6 +1199,21 @@ Existing account passwords are preserved.
                     supervisor=supervisor,
                 )
 
+        jeet_supervisor_by_area = {
+            'Jeet Hostel Block A': 'manisha.thapa',
+            'Jeet Hostel Block B': 'manisha.thapa',
+            'Jeet Hostel Block C': 'manisha.thapa',
+            'Jeet Hostel Block D': 'manisha.thapa',
+        }
+        for area_name, supervisor_username in jeet_supervisor_by_area.items():
+            supervisor = User.objects.filter(username=supervisor_username).first()
+            area_obj = self.area(area_name)
+            if supervisor and area_obj:
+                HKWorker.objects.filter(area=area_obj, is_active=True).update(
+                    shift='day',
+                    supervisor=supervisor,
+                )
+
         self.stdout.write(f'  [OK] Workers: {HKWorker.objects.count()} ({created_count} new)')
 
     # ─────────────────────────────────────────────────────────────────
@@ -1034,7 +1221,7 @@ Existing account passwords are preserved.
     def seed_schedules(self):
         """
         Build schedule templates.
-        - Same 15-task daily schedule for all 12 caretaker hostels.
+        - Same compact 12-task daily schedule for all caretaker hostels.
         - Dedicated daily Hostel Common Area schedule for Vishwajeet and team.
         Three parallel staff groups: room/common, floor, washroom.
         """
@@ -1053,34 +1240,31 @@ Existing account passwords are preserved.
         # ─── ROOM STAFF SCHEDULE ─────────────────────────────────────────
         room_tasks = [
             # (order, start, end, task_name, requires_photo, description)
-            (1, '08:10', '09:15', 'Room Cleaning - Morning Round', True, 'Student rooms and assigned room-side area'),
-            (2, '09:15', '10:15', 'Room Corridor and Door Dusting', True, 'Room-side corridor, doors, handles and notice boards'),
-            (3, '10:15', '11:30', 'Pantry and Common Utility Cleaning', True, 'Pantry slab, sink, fridge outside and utility points'),
-            (4, '13:45', '15:15', 'Room Cleaning - Afternoon Round', True, 'Pending rooms and caretaker-assigned room work'),
-            (5, '15:15', '16:50', 'Room Area Final Touch Up', True, 'Final round for room-side common area and pending work'),
+            (1, '08:10', '09:30', 'Rooms and Pantry Cleaning', True, 'Assigned rooms, pantry, room-side dustbins and visible dusting'),
+            (2, '09:30', '10:45', 'Common Room and Room-Side Dusting', True, 'Common room, doors, windows, ledges and room-side common points'),
+            (3, '13:45', '15:00', 'Afternoon Room Touch Up', True, 'Pending rooms, pantry touch up and complaint points'),
+            (4, '15:00', '16:50', 'Room Area Final Round', True, 'Final room-side check, dustbins and caretaker-assigned work'),
         ]
 
         # ─── FLOOR STAFF SCHEDULE ────────────────────────────────────────
         floor_tasks = [
-            (1, '08:10', '09:15', 'Ground Floor Sweeping and Mopping', True, 'Entrance, lobby and ground floor passage'),
-            (2, '09:15', '10:30', 'Upper Floor Passage Cleaning', True, 'All assigned upper-floor passages'),
-            (3, '10:30', '11:45', 'Staircase and Railing Cleaning', True, 'Staircases, railings and landing areas'),
-            (4, '13:45', '15:15', 'Common Area Floor Cleaning', True, 'Common room, lift lobby and shared floor area'),
-            (5, '15:15', '16:50', 'Floor Final Round and Touch Up', True, 'Final mopping, dustbin check and pending floor work'),
+            (1, '08:10', '09:30', 'Floor Sweeping and Mopping', True, 'Assigned floor passages, lobby and ground-floor route'),
+            (2, '09:30', '10:45', 'Staircase and Railing Cleaning', True, 'Staircase, railing, landing and balcony/common corridor dusting'),
+            (3, '13:45', '15:00', 'Common Area and Dustbin Round', True, 'Common area cleaning, dustbin collection and replacement'),
+            (4, '15:00', '16:50', 'Floor Final Round', True, 'Final mopping, dusting and pending floor work'),
         ]
 
         # ─── WASHROOM STAFF SCHEDULE ─────────────────────────────────────
         washroom_tasks = [
-            (1, '08:10', '09:15', 'Washroom Cleaning - Morning Round', True, 'All assigned washrooms, fittings and mirrors'),
-            (2, '09:15', '10:30', 'Washroom Deep Cleaning', True, 'Commode, urinal, basin, partition and floor scrubbing'),
-            (3, '10:30', '11:45', 'Washroom Refill and Dry Check', True, 'Soap, tissue, odour check and dry floor check'),
-            (4, '13:45', '15:15', 'Washroom Cleaning - Afternoon Round', True, 'Second full washroom round'),
-            (5, '15:15', '16:50', 'Washroom Final Touch Up', True, 'Final touch up, dustbin check and pending washroom work'),
+            (1, '08:10', '09:30', 'Washroom Cleaning - Morning Round', True, 'Assigned washrooms, basins, mirrors, fittings and floors'),
+            (2, '09:30', '10:45', 'Washroom Deep Cleaning and Dusting', True, 'Commode, urinal, partitions, tiles, exhaust and dry dusting'),
+            (3, '13:45', '15:00', 'Afternoon Washroom Touch Up', True, 'Second washroom round, odour check and refill check'),
+            (4, '15:00', '16:50', 'Washroom Final Round', True, 'Final touch up, washroom dustbin and dry-floor check'),
         ]
 
-        # Sunday stays on the same 15-task roster; extra ad-hoc work can be
-        # assigned through the extra/special task flow.
-        sunday_tasks = []
+        sunday_tasks = [
+            (1, '10:45', '11:45', 'Sunday Weekly Cleaning', True, 'Terrace, balcony, cobweb/web cleaning, garden/basement or other weekly work as assigned'),
+        ]
 
         total = 0
         for area in hostel_areas:
@@ -1121,42 +1305,92 @@ Existing account passwords are preserved.
                 )
                 total += 1
 
+        jeet_areas = [
+            self.area('Jeet Hostel Block A'),
+            self.area('Jeet Hostel Block B'),
+            self.area('Jeet Hostel Block C'),
+            self.area('Jeet Hostel Block D'),
+        ]
+        jeet_areas = [area for area in jeet_areas if area]
+        if jeet_areas:
+            HKScheduleTemplate.objects.filter(area__in=jeet_areas).delete()
+
+            jeet_room_tasks = [
+                (1, '08:10', '09:30', 'Scheduled Flats Room Cleaning', True, 'Mon/Wed/Fri: floors 1-3. Tue/Thu/Sat: floors 4-7. Rooms, flat common dusting and room-side dustbins.'),
+                (2, '09:30', '10:45', 'Pantry and Common Room Cleaning', True, 'Flat pantry, common room, lounge and office touch points.'),
+                (3, '13:45', '15:00', 'Afternoon Room Touch Up', True, 'Pending rooms, pantry touch up and complaint points.'),
+                (4, '15:00', '16:50', 'Room Area Final Round', True, 'Final room-side round, fridge check twice per month as assigned.'),
+            ]
+            jeet_floor_tasks = [
+                (1, '08:10', '09:30', 'Scheduled Floor Passage Cleaning', True, 'Mon/Wed/Fri: floors 1-3. Tue/Thu/Sat: floors 4-7.'),
+                (2, '09:30', '10:45', 'Staircase, Lift and Railing Cleaning', True, 'Daily staircase, lift/common lift, railing and landing wipe.'),
+                (3, '13:45', '15:00', 'Ground Floor and Dustbin Round', True, 'Ground floor, road/common approach, dustbin collection and replacement.'),
+                (4, '15:00', '16:50', 'Floor Final Round', True, 'Final mopping, dusting, issue reporting and pending floor work.'),
+            ]
+            jeet_washroom_tasks = [
+                (1, '08:10', '09:30', 'Washroom Cleaning - Morning Round', True, 'Scheduled flats washrooms, basins, mirrors, fittings and floors.'),
+                (2, '09:30', '10:45', 'Washroom Deep Cleaning and Dusting', True, 'Commode, partitions, tile scrubbing and dry dusting.'),
+                (3, '13:45', '15:00', 'Afternoon Washroom Touch Up', True, 'Second round, refill, odour and dry floor check.'),
+                (4, '15:00', '16:50', 'Washroom Final Round', True, 'Final washroom touch up, dustbin check and pending work.'),
+            ]
+            jeet_sunday_extra = [
+                (1, '10:45', '11:45', 'Sunday Weekly and Monthly Cleaning', True, 'Web/cobweb, dustbin deep cleaning, garden, ground floor deep clean, basement or terrace as assigned.'),
+            ]
+
+            for area in jeet_areas:
+                for order, start, end, name, req_photo, desc in jeet_room_tasks:
+                    HKScheduleTemplate.objects.create(
+                        area=area, order=order, start_time=t(start), end_time=t(end),
+                        task_name=name, task_description=desc, worker_tag='room',
+                        requires_photo=req_photo, frequency='daily', is_active=True,
+                    )
+                    total += 1
+                for order, start, end, name, req_photo, desc in jeet_floor_tasks:
+                    HKScheduleTemplate.objects.create(
+                        area=area, order=order, start_time=t(start), end_time=t(end),
+                        task_name=name, task_description=desc, worker_tag='floor',
+                        requires_photo=req_photo, frequency='daily', is_active=True,
+                    )
+                    total += 1
+                for order, start, end, name, req_photo, desc in jeet_washroom_tasks:
+                    HKScheduleTemplate.objects.create(
+                        area=area, order=order, start_time=t(start), end_time=t(end),
+                        task_name=name, task_description=desc, worker_tag='washroom',
+                        requires_photo=req_photo, frequency='daily', is_active=True,
+                    )
+                    total += 1
+                for order, start, end, name, req_photo, desc in jeet_sunday_extra:
+                    HKScheduleTemplate.objects.create(
+                        area=area, order=order, start_time=t(start), end_time=t(end),
+                        task_name=name, task_description=desc, worker_tag='all',
+                        requires_photo=req_photo, frequency='sunday_extra', is_active=True,
+                    )
+                    total += 1
+
         # Hostel Common Area: same schedule for all 7 days (no separate Sunday-only plan)
         common_area = self.area('Hostel Common Area')
         if common_area:
             HKScheduleTemplate.objects.filter(area=common_area).delete()
 
             common_floor_tasks = [
-                (1, '08:00', '09:00', 'New Mess Common Area Front and Back Cleaning', True, 'Assigned: Anil + Suresh'),
-                (2, '09:00', '10:00', 'Chimair and Duven Common Pockets Cleaning', True, 'Assigned: Anil'),
-                (3, '10:00', '11:00', 'Kyzeel, Lekhaag and Ijokha Common Pockets', True, 'Assigned: Anil'),
-                (4, '11:00', '11:15', 'Tea Break', False, ''),
-                (5, '11:15', '12:30', 'Hiqom Front and Back + New PC Perimeter', True, 'Assigned: Suresh'),
-                (6, '12:30', '13:00', 'Tool Refill and Waste Transfer', False, ''),
-                (7, '13:00', '13:45', 'Lunch Break', False, ''),
-                (8, '13:45', '15:00', 'Ijokha, Lekhaag and Jurqia Backside Route', True, 'Assigned: Suresh'),
-                (9, '15:00', '16:00', 'New Mess to Old Mess Corridor Cleaning', True, 'Assigned: Krunal'),
-                (10, '16:00', '16:50', 'Final Route Sweep and Spot Touch Up', True, 'Assigned: Anil + Krunal'),
+                (1, '08:00', '09:30', 'New Mess and Old Mess Common Route', True, 'New/old mess common area, corridor and front/back route cleaning'),
+                (2, '09:30', '10:45', 'Hostel Backside and Frontside Route', True, 'Aibaan, Beuaki, Chimair, Duven, Kyzeel, Jurqia, Lekhaag and Ijokha common route'),
+                (3, '13:45', '15:00', 'Common Area Dustbin and Tool Round', True, 'Dustbins, tool refill, waste transfer and route touch up'),
+                (4, '15:00', '16:50', 'Common Area Final Round', True, 'Final sweep, spot cleaning and pending common route work'),
             ]
 
             common_room_tasks = [
-                (1, '08:00', '08:45', 'New Mess Common Lobby and Entry Touch Up', True, 'Assigned: Yogesh'),
-                (2, '08:45', '09:30', 'Common Area Benches, Railings and Corners', True, 'Assigned: Yogesh'),
-                (3, '09:30', '09:45', 'Tea Break', False, ''),
-                (4, '09:45', '10:45', 'Common Passage Dusting and Dry Mop', True, 'Assigned: Yogesh'),
-                (5, '10:45', '12:00', 'Approach Roads and Side Walk Touch Up', True, 'Assigned: Yogesh'),
-                (6, '12:00', '13:00', 'Common Storage and Tool Bay Cleaning', False, ''),
-                (7, '13:00', '13:45', 'Lunch Break', False, ''),
-                (8, '13:45', '15:30', 'Hostel Common Entry Points Touch Up', True, 'Assigned: Yogesh'),
-                (9, '15:30', '16:50', 'Final Round and Issue Reporting', False, 'Record any damage in extra work'),
+                (1, '08:00', '09:30', 'Hostel Office and Lounge Cleaning', True, 'Hostel office, student lounge, mini library and common room cleaning'),
+                (2, '09:30', '10:45', 'Common Passage Dusting', True, 'Benches, railing, corners, passage dusting and dry mop'),
+                (3, '13:45', '15:00', 'Conference and Hall Cleaning', True, 'New PC student conference hall, second floor hall or assigned room area'),
+                (4, '15:00', '16:50', 'Common Room Final Round', True, 'Final common room touch up and issue reporting'),
             ]
 
             common_washroom_tasks = [
-                (1, '20:00', '21:00', 'All Hostel Touch Up Cleanup Round', True, 'Assigned: Vinayak (Night Shift)'),
-                (2, '21:00', '21:45', 'Catwalk Bridge Touch Up Cleaning', True, 'Assigned: Vinayak'),
-                (3, '21:45', '22:30', 'New Mess Second Floor Touch Up', True, 'Assigned: Vinayak'),
-                (4, '22:30', '23:15', 'Old Mess Terrace Cleaning', True, 'Assigned: Vinayak'),
-                (5, '23:15', '23:59', 'New Mess Terrace Final Round', True, 'Assigned: Vinayak'),
+                (1, '18:00', '19:00', 'Boys Hostel Washroom Touch Up', True, 'Evening touch up round for boys hostel washrooms'),
+                (2, '19:00', '20:00', 'Common Washroom Cleaning', True, 'Hostel office/common washrooms, old mess and new mess washrooms'),
+                (3, '20:00', '21:00', 'Bridge and Second Floor Touch Up', True, 'Mess-to-hostel bridge, new mess second floor and assigned washroom points'),
+                (4, '21:00', '22:00', 'Terrace and Night Final Round', True, 'New/old mess terrace weekly work and final night round'),
             ]
 
             for order, start, end, name, req_photo, desc in common_floor_tasks:
@@ -1812,6 +2046,56 @@ Existing account passwords are preserved.
                     task_name=name, task_description=desc,
                     worker_tag='all', requires_photo=req_photo,
                     frequency='sunday_extra', is_active=True,
+                )
+                total += 1
+
+        # Deep Cleaning: Ganesh Jayesh team, all tasks support multi-worker assignment.
+        deep_cleaning = self.area('Deep Cleaning')
+        if deep_cleaning:
+            HKScheduleTemplate.objects.filter(area=deep_cleaning).delete()
+
+            deep_daily_tasks = [
+                (1, '08:00', '09:30', 'Solar Panel Cleaning', True, 'Days: Monday to Friday | Daily solar panel cleaning with assigned team'),
+                (2, '09:30', '11:00', 'Fire Area Deep Cleaning', True, 'Days: Monday to Friday | Fire area deep cleaning route'),
+                (3, '11:00', '12:30', 'G1 and G2 Deep Cleaning', True, 'Days: Monday to Friday | G1 and G2 deep cleaning work only'),
+                (4, '14:00', '15:30', 'G3 Deep Cleaning and Permanent Work', True, 'Days: Monday to Friday | G3 deep cleaning plus all permanent work'),
+                (5, '15:30', '16:50', 'Housing Demand Cleaning Work', True, 'Days: Monday to Friday | Room cleaning and related work as requested'),
+            ]
+            deep_saturday_tasks = [
+                (1, '08:00', '10:00', 'U Shape Weekly Deep Cleaning', True, 'Weekly U Shape deep cleaning'),
+                (2, '10:00', '12:00', 'Rang Manch Weekly Deep Cleaning', True, 'Weekly Rang Manch deep cleaning'),
+            ]
+            deep_fortnightly_tasks = [
+                (1, '14:00', '16:00', 'Greenhouse Cleaning - 15 Day Cycle', True, 'Days: Monday | Cycle: Fortnightly | Once every 15 days'),
+            ]
+
+            for order, start, end, name, req_photo, desc in deep_daily_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=deep_cleaning, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='all', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in deep_saturday_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=deep_cleaning, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='all', requires_photo=req_photo,
+                    frequency='saturday_special', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in deep_fortnightly_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=deep_cleaning, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='all', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
                 )
                 total += 1
 

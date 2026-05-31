@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-import { asList } from '../../shared/utils'
+import { asList, exportCsv, todayISO } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import {
@@ -39,6 +39,22 @@ const EMPTY_ITEM = {
   unit_cost: 0,
   description: '',
 }
+
+const UNIT_OPTIONS = [
+  { value: 'pieces', label: 'Pieces' },
+  { value: 'Each', label: 'Each' },
+  { value: 'litres', label: 'Litres' },
+  { value: 'Ltr', label: 'Ltr' },
+  { value: 'kg', label: 'Kilograms' },
+  { value: 'Kg', label: 'Kg' },
+  { value: 'metres', label: 'Metres' },
+  { value: 'packets', label: 'Packets' },
+  { value: 'Packet', label: 'Packet' },
+  { value: 'bottles', label: 'Bottles' },
+  { value: 'boxes', label: 'Boxes' },
+  { value: 'Pair', label: 'Pair' },
+  { value: 'Roll', label: 'Roll' },
+]
 
 export default function ItemsTab({ userRole }) {
   const { run: runAction, saving, error: actionError, clearError } = useAsyncAction()
@@ -142,6 +158,32 @@ export default function ItemsTab({ userRole }) {
       }
     })
   }, [filtered])
+
+  const csvRows = useMemo(
+    () =>
+      filtered.map((it) => {
+        const status = itemStatus(it)
+        return {
+          'Item Code': it.item_code || '',
+          Name: it.name || '',
+          Category: it.category_name || '',
+          Type: String(it.item_type || '').toUpperCase(),
+          Unit: it.unit || '',
+          'Total Quantity': it.total_quantity ?? 0,
+          'Available Quantity': it.available_quantity ?? 0,
+          'Threshold Quantity': it.threshold_quantity ?? 0,
+          'Unit Price INR': Number(it.unit_cost || 0).toFixed(2),
+          'Total Value INR': Number(it.total_value || 0).toFixed(2),
+          Status: status.replace(/_/g, ' ').toUpperCase(),
+        }
+      }),
+    [filtered]
+  )
+
+  const downloadItemsCsv = () => {
+    const filterName = typeFilter === 'all' ? 'all_items' : typeFilter
+    exportCsv(csvRows, `inventory_items_${filterName}_${todayISO()}.csv`)
+  }
 
   const openHistory = async (item) => {
     setHistoryModal(item)
@@ -332,20 +374,28 @@ export default function ItemsTab({ userRole }) {
           >
             Assets
           </Btn>
-          {canAdmin && (
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Btn
-              style={{ marginLeft: 'auto' }}
-              onClick={() => {
-                clearError()
-                setFormErrors({})
-                setNewItem(EMPTY_ITEM)
-                setEditItem(null)
-                setAddModal(true)
-              }}
+              variant="secondary"
+              onClick={downloadItemsCsv}
+              disabled={loading || csvRows.length === 0}
             >
-              + Add Item
+              CSV Report
             </Btn>
-          )}
+            {canAdmin && (
+              <Btn
+                onClick={() => {
+                  clearError()
+                  setFormErrors({})
+                  setNewItem(EMPTY_ITEM)
+                  setEditItem(null)
+                  setAddModal(true)
+                }}
+              >
+                + Add Item
+              </Btn>
+            )}
+          </div>
         </div>
 
         <DataTable
@@ -421,6 +471,7 @@ export default function ItemsTab({ userRole }) {
           </div>
         }
       >
+        <Alert message={actionError} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <Field label="Item Code">
             <Input
@@ -480,13 +531,11 @@ export default function ItemsTab({ userRole }) {
               value={newItem.unit}
               onChange={(e) => setNewItem((p) => ({ ...p, unit: e.target.value }))}
             >
-              <option value="pieces">Pieces</option>
-              <option value="litres">Litres</option>
-              <option value="kg">Kilograms</option>
-              <option value="metres">Metres</option>
-              <option value="packets">Packets</option>
-              <option value="bottles">Bottles</option>
-              <option value="boxes">Boxes</option>
+              {UNIT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </SelectField>
           </Field>
           <Field label="Total Quantity">

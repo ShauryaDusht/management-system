@@ -47,7 +47,9 @@ export default function Sidebar() {
 
   const navItems = user?.role === 'horticulture_manager'
     ? [
+      { to: '/dashboard', icon: 'HM', label: 'Home' },
       { to: '/horticulture', icon: 'HT', label: 'Horticulture' },
+      { to: '/insights', icon: 'AN', label: 'Insights' },
       { to: '/profile', icon: 'PR', label: 'Profile' },
     ]
     : user?.role === 'hk_inventory_manager'

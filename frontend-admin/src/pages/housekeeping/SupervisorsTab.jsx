@@ -3,12 +3,19 @@ import { useEffect, useMemo, useState } from 'react'
 import { hkAPI } from '../../api/housekeeping'
 import { inventoryAPI } from '../../api/inventory'
 import { usersAPI } from '../../api/users'
-import { Alert, Badge, Btn, Card, DataTable, Modal, Spinner } from '../../components/ui'
-import { triggerDownload } from '../../shared/utils'
+import { Alert, Badge, Btn, Card, DataTable, Modal, SelectField, Spinner } from '../../components/ui'
+import { getAreaGroup, triggerDownload } from '../../shared/utils'
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
 import { useMonthYear } from '../../shared/hooks/useMonthYear'
 
 const HIDDEN_STAFF_AREA_NAMES = new Set(['hostels reliever', 'old academic reliever', 'new academic reliever'])
+
+const AREA_GROUP_LABELS = {
+  hostels: 'Hostels',
+  academic: 'Academic Blocks',
+  others: 'Others',
+  all: 'All',
+}
 
 function normalizeUsers(payload) {
   if (Array.isArray(payload)) return payload
@@ -484,6 +491,8 @@ export default function SupervisorsTab() {
   const [error, setError] = useState('')
   const [areas, setAreas] = useState([])
   const [users, setUsers] = useState([])
+  const [areaClassFilter, setAreaClassFilter] = useState('all')
+  const [areaFilter, setAreaFilter] = useState('all')
   const [reportUser, setReportUser] = useState(null)
   const [inventoryReportUser, setInventoryReportUser] = useState(null)
 
@@ -534,12 +543,107 @@ export default function SupervisorsTab() {
     return mapping
   }, [areas])
 
+  const areaDetailsByUser = useMemo(() => {
+    const mapping = {}
+    areas.forEach((area) => {
+      const ids = area.caretaker_ids || []
+      ids.forEach((uid) => {
+        if (!mapping[uid]) mapping[uid] = []
+        mapping[uid].push(area)
+      })
+    })
+    return mapping
+  }, [areas])
+
+  const areaOptions = useMemo(() => {
+    const filtered = areaClassFilter === 'all'
+      ? areas
+      : areas.filter((area) => getAreaGroup(area.name, area.area_type) === areaClassFilter)
+
+    return [...filtered].sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+  }, [areaClassFilter, areas])
+
+  const visibleUsers = useMemo(() => {
+    return users.filter((user) => {
+      const assignedAreas = areaDetailsByUser[user.id] || []
+      if (areaFilter !== 'all') {
+        return assignedAreas.some((area) => String(area.id) === String(areaFilter))
+      }
+      if (areaClassFilter !== 'all') {
+        return assignedAreas.some((area) => getAreaGroup(area.name, area.area_type) === areaClassFilter)
+      }
+      return true
+    })
+  }, [areaClassFilter, areaDetailsByUser, areaFilter, users])
+
+  const selectAreaClass = (value) => {
+    setAreaClassFilter(value)
+    setAreaFilter('all')
+  }
+
   return (
     <div>
       <Alert message={error} />
       <Card noPad>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 700 }}>
-          Supervisor / Caretaker List
+        <div
+          style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 700 }}>Supervisor / Caretaker List</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+              Showing {visibleUsers.length} of {users.length}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <Btn
+              size="sm"
+              variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'}
+              onClick={() => selectAreaClass('hostels')}
+            >
+              Hostels
+            </Btn>
+            <Btn
+              size="sm"
+              variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'}
+              onClick={() => selectAreaClass('academic')}
+            >
+              Academic Blocks
+            </Btn>
+            <Btn
+              size="sm"
+              variant={areaClassFilter === 'others' ? 'primary' : 'secondary'}
+              onClick={() => selectAreaClass('others')}
+            >
+              Others
+            </Btn>
+            <Btn
+              size="sm"
+              variant={areaClassFilter === 'all' ? 'primary' : 'secondary'}
+              onClick={() => selectAreaClass('all')}
+            >
+              All
+            </Btn>
+            <SelectField
+              value={areaFilter}
+              onChange={(e) => setAreaFilter(e.target.value)}
+              style={{ width: 220, minHeight: 34, padding: '6px 10px' }}
+            >
+              <option value="all">{AREA_GROUP_LABELS[areaClassFilter]} Areas</option>
+              {areaOptions.map((area) => (
+                <option key={area.id} value={area.id}>
+                  {area.name}
+                </option>
+              ))}
+            </SelectField>
+          </div>
         </div>
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
@@ -548,7 +652,7 @@ export default function SupervisorsTab() {
         ) : (
           <DataTable
             headers={['Role', 'Name', 'Pay Code', 'Email', 'Username', 'Phone', 'Assigned Areas', 'Status', 'Report']}
-            rows={users.map((u) => {
+            rows={visibleUsers.map((u) => {
               const areasForUser = areaMap[u.id] || []
               return [
                 <Badge key={`role-${u.id}`} value={u.role} />,
@@ -580,7 +684,7 @@ export default function SupervisorsTab() {
                 </div>,
               ]
             })}
-            emptyMsg="No supervisor/caretaker users found."
+            emptyMsg="No supervisor/caretaker users found for this filter."
           />
         )}
       </Card>

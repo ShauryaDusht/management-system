@@ -1021,7 +1021,14 @@ class HKStaffAttendanceListView(ListAPIView):
         date_str = self.request.query_params.get('date', str(timezone.localdate()))
         parsed_date = _parse_iso_date(date_str) or timezone.localdate()
         User = get_user_model()
-        staff_qs = User.objects.filter(is_active=True, role__in=['supervisor', 'caretaker'])
+        try:
+            from apps.horticulture.services import get_horticulture_supervisors
+            horticulture_staff_ids = list(get_horticulture_supervisors().values_list('id', flat=True))
+        except Exception:
+            horticulture_staff_ids = []
+        staff_qs = User.objects.filter(is_active=True, role__in=['supervisor', 'caretaker']).exclude(
+            id__in=horticulture_staff_ids
+        )
         existing_ids = set(
             HKStaffAttendanceRecord.objects.filter(
                 date=parsed_date,
@@ -1046,7 +1053,7 @@ class HKStaffAttendanceListView(ListAPIView):
             HKStaffAttendanceRecord.objects
             .select_related('staff', 'leave_request')
             .prefetch_related('staff__hk_areas__area')
-            .filter(date=parsed_date)
+            .filter(date=parsed_date, staff__in=staff_qs)
             .order_by('staff__first_name', 'staff__username', 'id')
         )
 

@@ -31,7 +31,7 @@ export default function HorticulturePage() {
         { key: 'overview', label: 'Overview' },
         { key: 'zones', label: 'Sections + Staff' },
         { key: 'supervisors', label: 'Supervisors' },
-        { key: 'attendance', label: 'Worker Attendance' },
+        { key: 'attendance', label: 'Attendance' },
         { key: 'workers', label: 'Workers' },
         { key: 'worker_selection', label: 'Task Assign' },
         { key: 'schedule', label: 'Schedule' },

@@ -234,23 +234,33 @@ SWM_WEEKDAY_NAMES = {
 }
 
 
-def _swm_template_matches_day(template, day_idx):
-    if getattr(template.area, "name", "") != "Solid Waste Management":
-        return True
-
+def _template_matches_day(template, day_idx, target_date=None):
     desc = (template.task_description or "").lower()
-    if "days:" not in desc:
-        return True
-
-    day_text = desc.split("days:", 1)[1].split("|", 1)[0]
-    if "daily" in day_text or "every day" in day_text:
-        return True
-
     today = SWM_WEEKDAY_NAMES.get(day_idx)
-    return bool(today and today in day_text)
+
+    if "days:" in desc:
+        day_text = desc.split("days:", 1)[1].split("|", 1)[0]
+        if "daily" not in day_text and "every day" not in day_text:
+            weekday_match = bool(today and today in day_text)
+            if "monday to friday" in day_text:
+                weekday_match = day_idx in {0, 1, 2, 3, 4}
+            if not weekday_match:
+                return False
+
+    if "cycle:" in desc and "fortnightly" in desc:
+        if target_date is None:
+            return day_idx == 0
+        anchor = datetime.date(2026, 1, 5)
+        return ((target_date - anchor).days % 15) == 0
+
+    return True
 
 
-def _schedule_templates_for_day(area, day_idx):
+def _swm_template_matches_day(template, day_idx):
+    return _template_matches_day(template, day_idx)
+
+
+def _schedule_templates_for_day(area, day_idx, target_date=None):
     base_qs = HKScheduleTemplate.objects.filter(area=area, is_active=True)
     if day_idx == 6 and _uses_sunday_special_only(area):
         return base_qs.filter(frequency="sunday_extra")
@@ -260,14 +270,12 @@ def _schedule_templates_for_day(area, day_idx):
         templates = (templates | base_qs.filter(frequency="saturday_special")).distinct()
     if day_idx == 6:
         templates = (templates | base_qs.filter(frequency="sunday_extra")).distinct()
-    if getattr(area, "name", "") == "Solid Waste Management":
-        template_ids = [
-            template.pk
-            for template in templates.select_related("area")
-            if _swm_template_matches_day(template, day_idx)
-        ]
-        return base_qs.filter(pk__in=template_ids)
-    return templates
+    template_ids = [
+        template.pk
+        for template in templates.select_related("area")
+        if _template_matches_day(template, day_idx, target_date)
+    ]
+    return base_qs.filter(pk__in=template_ids)
 
 
 def _dashboard_section_labels(area):
@@ -649,7 +657,7 @@ def get_today_records(area, date):
     from django.db import IntegrityError, transaction
 
     dow = date.weekday()  # 0=Mon, 6=Sun
-    templates = _schedule_templates_for_day(area, dow)
+    templates = _schedule_templates_for_day(area, dow, date)
 
     template_list = list(templates.order_by("worker_tag", "order", "start_time"))
 

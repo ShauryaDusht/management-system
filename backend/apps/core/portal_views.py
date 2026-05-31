@@ -22,10 +22,8 @@ def get_react_admin_url(request):
 
 def get_portal_redirect(user):
     role = getattr(user, 'role', '')
-    if role in ['inventory_manager', 'housekeeping_manager', 'hk_inventory_manager']:
+    if role in ['inventory_manager', 'housekeeping_manager', 'hk_inventory_manager', 'horticulture_manager']:
         return '/admin/login/'
-    if role == 'horticulture_manager':
-        return '/horticulture/dashboard/'
     if role == 'supervisor':
         has_horticulture_zone = user.horticulture_supervised_zones.exists()
         has_housekeeping_area = user.hk_areas.exists()
@@ -75,7 +73,7 @@ def portal_login(request):
             password=request.POST.get('password', ''),
         )
         if user and user.is_active:
-            if user.role in ['admin', 'inventory_manager', 'housekeeping_manager', 'hk_inventory_manager']:
+            if user.role in ['admin', 'inventory_manager', 'housekeeping_manager', 'hk_inventory_manager', 'horticulture_manager']:
                 return redirect(get_react_admin_url(request))
             auth_login(request, user)
             return redirect(get_portal_redirect(user))

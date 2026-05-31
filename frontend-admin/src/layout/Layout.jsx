@@ -24,8 +24,10 @@ const NAV = {
     { to: '/items',        label: 'Inventory',      icon: 'box'       },
   ],
   horticulture_manager: [
-    { to: '/requests',     label: 'Requests',       icon: 'clipboard' },
-    { to: '/reports',      label: 'Reports',        icon: 'report'    },
+    { to: '/dashboard',    label: 'Dashboard',      icon: 'chart'     },
+    { to: '/horticulture', label: 'Horticulture',   icon: 'leaf'      },
+    { to: '/insights',     label: 'Insights',       icon: 'report'    },
+    { to: '/profile',      label: 'Profile',        icon: 'users'     },
   ],
   supervisor: [
     { to: '/requests',     label: 'My Requests',    icon: 'clipboard' },
@@ -75,6 +77,12 @@ const ICONS = {
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
         d="M9 17v-2m3 2v-4m3 4v-6m2 10H5a2 2 0 01-2-2V7a2 2 0 012-2h4.586A2 2 0 0111 5.586l1.414 1.414A2 2 0 0013.828 8H19a2 2 0 012 2v9a2 2 0 01-2 2z" />
+    </svg>
+  ),
+  leaf: (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M5 21c8 0 14-6 14-14V4h-3C8 4 4 8 4 15c0 2 1 4 1 6zm0 0c0-5 3-9 8-11" />
     </svg>
   ),
   logout: (

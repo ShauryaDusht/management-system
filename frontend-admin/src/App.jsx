@@ -14,14 +14,16 @@ import UnauthorizedPage from './pages/UnauthorizedPage'
 import UsersPage from './pages/users/UsersPage'
 
 const ADMIN_ONLY = ['admin']
-const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager']
+const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager']
+const HK_INVENTORY_ALLOWED = ['admin', 'hk_inventory_manager']
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
+const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager']
 const ROUTER_BASENAME = '/admin'
 
 function getLandingRoute(user) {
   if (user?.role === 'admin') return '/dashboard'
   if (user?.role === 'hk_inventory_manager') return '/dashboard'
-  if (user?.role === 'horticulture_manager') return '/horticulture'
+  if (user?.role === 'horticulture_manager') return '/dashboard'
   return '/unauthorized'
 }
 
@@ -71,7 +73,7 @@ export default function App() {
           <Route
             path="/inventory/*"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_DASHBOARD_ALLOWED}>
+              <ProtectedRoute allowedRoles={HK_INVENTORY_ALLOWED}>
                 <InventoryPage />
               </ProtectedRoute>
             }
@@ -79,7 +81,7 @@ export default function App() {
           <Route
             path="/housekeeping/*"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_DASHBOARD_ALLOWED}>
+              <ProtectedRoute allowedRoles={HK_INVENTORY_ALLOWED}>
                 <HousekeepingPage />
               </ProtectedRoute>
             }
@@ -95,9 +97,9 @@ export default function App() {
           <Route
             path="/insights"
             element={
-              <AdminOnlyRedirectRoute>
+              <ProtectedRoute allowedRoles={INSIGHTS_ALLOWED}>
                 <InsightsPage />
-              </AdminOnlyRedirectRoute>
+              </ProtectedRoute>
             }
           />
           <Route

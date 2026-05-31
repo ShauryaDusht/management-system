@@ -140,6 +140,8 @@ class AdminAttendanceWorkerSerializer(serializers.Serializer):
 class AdminAttendanceSupervisorSerializer(serializers.Serializer):
     supervisor_id = serializers.IntegerField()
     supervisor_name = serializers.CharField()
+    pay_code = serializers.CharField(allow_blank=True)
+    role = serializers.CharField(allow_blank=True)
     zone_names = serializers.ListField(child=serializers.CharField(), allow_empty=True)
     submitted = serializers.BooleanField()
     submitted_at = serializers.DateTimeField(allow_null=True)

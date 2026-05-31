@@ -3,7 +3,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { hkAPI } from '../../api/housekeeping'
 import { Alert, Btn, Card, DataTable, Input, Spinner, StatCard } from '../../components/ui'
 import { BarGroupChart } from '../../components/ui/Charts'
-import { todayISO } from '../../shared/utils'
+import { exportCsv, todayISO } from '../../shared/utils'
+
+const AREA_GROUP_LABELS = {
+  hostels: 'Hostels',
+  academic: 'Academic Blocks',
+  others: 'Others',
+  all: 'All',
+}
 
 export default function AttendanceTab() {
   const [date, setDate] = useState(todayISO())
@@ -90,6 +97,32 @@ export default function AttendanceTab() {
     [visibleRows],
   )
 
+  const csvRows = useMemo(
+    () =>
+      visibleRows.map((r) => {
+        const group = areaGroup(r.area_name, areaTypeById.get(r.area_id))
+        const total = r.total_workers || 0
+        const present = r.present || 0
+        const absent = r.absent || 0
+        const pct = total ? Math.round((present / total) * 100) : 0
+        return {
+          Date: date,
+          'Area Group': AREA_GROUP_LABELS[group] || group,
+          Area: r.area_name || '',
+          'Total Workers': total,
+          Present: present,
+          Absent: absent,
+          'Attendance Percent': `${pct}%`,
+        }
+      }),
+    [areaTypeById, date, visibleRows],
+  )
+
+  const downloadCsv = () => {
+    const filterName = areaClassFilter === 'all' ? 'all_areas' : areaClassFilter
+    exportCsv(csvRows, `housekeeping_worker_attendance_${filterName}_${date}.csv`)
+  }
+
   return (
     <div>
       <Alert message={error} />
@@ -125,7 +158,7 @@ export default function AttendanceTab() {
             }}
           >
             <div style={{ fontWeight: 700 }}>Worker Attendance by Area</div>
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <Btn
                 size="sm"
                 variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'}
@@ -153,6 +186,14 @@ export default function AttendanceTab() {
                 onClick={() => setAreaClassFilter('all')}
               >
                 All
+              </Btn>
+              <Btn
+                size="sm"
+                variant="secondary"
+                onClick={downloadCsv}
+                disabled={loading || csvRows.length === 0}
+              >
+                CSV Report
               </Btn>
             </div>
           </div>

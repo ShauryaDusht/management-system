@@ -30,6 +30,12 @@ class Item(models.Model):
         PACKETS = 'packets', 'Packets'
         BOTTLES = 'bottles', 'Bottles'
         BOXES = 'boxes', 'Boxes'
+        EACH = 'Each', 'Each'
+        LTR = 'Ltr', 'Ltr'
+        KG_LEGACY = 'Kg', 'Kg'
+        PACKET = 'Packet', 'Packet'
+        PAIR = 'Pair', 'Pair'
+        ROLL = 'Roll', 'Roll'
 
     name = models.CharField(max_length=200)
     item_code = models.CharField(max_length=50, blank=True, null=True, unique=True, help_text='Unique identifier like 3.01 or 4.11')

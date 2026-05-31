@@ -88,6 +88,17 @@ def horticulture_task_done_rank(task, completed_task_ids):
     return 1 if is_done else 0
 
 
+def stable_horticulture_area_nav_rows(area_rows):
+    return sorted(
+        area_rows or [],
+        key=lambda area: (
+            area.get('area_number') or 0,
+            area.get('name') or '',
+            area.get('id') or 0,
+        ),
+    )
+
+
 def _flatten_errors(detail):
     if isinstance(detail, dict):
         parts = []
@@ -714,6 +725,8 @@ class AdminHorticultureAttendanceAPIView(APIView):
                 {
                     'supervisor_id': supervisor.id,
                     'supervisor_name': _display_name(supervisor),
+                    'pay_code': supervisor.pay_code or '',
+                    'role': supervisor.role or '',
                     'zone_names': zone_map.get(supervisor.id, []),
                     **attendance_payload,
                 }
@@ -1641,7 +1654,7 @@ def horticulture_dashboard(request):
             'zones': dashboard_payload['zones'],
             'selected_zone': selected_zone,
             'selected_area': selected_area,
-            'areas': dashboard_payload['areas'],
+            'areas': stable_horticulture_area_nav_rows(dashboard_payload['areas']),
             'task_rows': task_rows,
             'area_task_assignments': area_task_assignments,
             'completed_assignments': completed_assignments,
@@ -2165,7 +2178,7 @@ def horticulture_mark_task(request):
             'zones': dashboard_payload['zones'],
             'selected_zone': selected_zone,
             'selected_area': selected_area,
-            'areas': dashboard_payload['areas'],
+            'areas': stable_horticulture_area_nav_rows(dashboard_payload['areas']),
             'task_rows': task_rows,
             'workers': workers,
             'completed_task_ids': completed_task_ids,
@@ -2302,7 +2315,7 @@ def horticulture_attendance(request):
             'zones': dashboard_payload['zones'],
             'selected_zone': selected_zone,
             'selected_area': selected_area,
-            'areas': dashboard_payload['areas'],
+            'areas': stable_horticulture_area_nav_rows(dashboard_payload['areas']),
             'workers': workers,
             'worker_rows': worker_rows,
             'present_first': sum(1 for row in worker_rows if row['first_att'] and row['first_att'].status in ['present', 'late']),
@@ -2348,7 +2361,7 @@ def horticulture_schedule(request):
             'zones': dashboard_payload['zones'],
             'selected_zone': selected_zone,
             'selected_area': selected_area,
-            'areas': dashboard_payload['areas'],
+            'areas': stable_horticulture_area_nav_rows(dashboard_payload['areas']),
             'task_types': task_types,
             'area_task_assignments': area_task_assignments,
             'assignments': assignments,
@@ -2586,7 +2599,7 @@ def horticulture_stock(request):
             'zones': dashboard_payload['zones'],
             'selected_zone': selected_zone,
             'selected_area': selected_area,
-            'areas': dashboard_payload['areas'],
+            'areas': stable_horticulture_area_nav_rows(dashboard_payload['areas']),
             'area_stocks': area_stocks,
             'low_stocks': [stock for stock in area_stocks if stock.is_low],
             'issued_items': _horticulture_usage_issues(request.user),
@@ -2638,7 +2651,7 @@ def horticulture_stock_request(request):
                         'zones': dashboard_payload['zones'],
                         'selected_zone': selected_zone,
                         'selected_area': selected_area,
-                        'areas': dashboard_payload['areas'],
+                        'areas': stable_horticulture_area_nav_rows(dashboard_payload['areas']),
                         'pre_item': request.GET.get('item', ''),
                         'zone_count': len(zones),
                     },
@@ -2653,7 +2666,7 @@ def horticulture_stock_request(request):
                         'zones': dashboard_payload['zones'],
                         'selected_zone': selected_zone,
                         'selected_area': selected_area,
-                        'areas': dashboard_payload['areas'],
+                        'areas': stable_horticulture_area_nav_rows(dashboard_payload['areas']),
                         'pre_item': request.GET.get('item', ''),
                         'zone_count': len(zones),
                     },
@@ -2690,7 +2703,7 @@ def horticulture_stock_request(request):
             'zones': dashboard_payload['zones'],
             'selected_zone': selected_zone,
             'selected_area': selected_area,
-            'areas': dashboard_payload['areas'],
+            'areas': stable_horticulture_area_nav_rows(dashboard_payload['areas']),
             'pre_item': request.GET.get('item', ''),
             'zone_count': len(zones),
         },

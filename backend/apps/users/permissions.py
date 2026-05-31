@@ -30,6 +30,15 @@ class IsAdminOrHKInventoryManager(BasePermission):
         )
 
 
+class IsAdminOrHKInventoryOrHorticultureManager(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and (
+            request.user.is_admin
+            or getattr(request.user, 'is_hk_inventory_manager', False)
+            or getattr(request.user, 'is_horticulture_manager', False)
+        )
+
+
 class IsAdminOrManagerOrSupervisor(BasePermission):
     """Essentially any logged-in user."""
     def has_permission(self, request, view):

@@ -273,7 +273,7 @@ export default function ManagerTab() {
               >
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 800 }}>
-                    {item.leave_staff_name} -> {item.assigned_staff_name}
+                    {item.leave_staff_name} {'->'} {item.assigned_staff_name}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>
                     {item.zone_name} | {formatDate(item.leave_date)}{item.reason ? ` | ${item.reason}` : ''}

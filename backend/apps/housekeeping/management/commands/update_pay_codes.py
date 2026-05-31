@@ -59,7 +59,7 @@ CARETAKER_BY_USERNAME = {
     'pankaj.bihola':    '293',
     'rhushita.chavda':  '294',
     'anil.solanki':     '300',
-    'vishvajeet.kumar': '316',
+    'vishwajeet.mishra': '08',
     'ramprakash.parmar': '317',
     'jaimin.parmar':    '318',
     'anita.vaghela':    '10',

@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.users.permissions import IsAdminOrHKInventoryManager as IsAdminUser
+from apps.users.permissions import IsAdminOrHKInventoryOrHorticultureManager
 from apps.inventory.models import Item, StockEntry
 from .exporters import (
     export_consumption_item_csv,
@@ -68,7 +69,7 @@ class ActivityTrendView(APIView):
     GET /api/reports/activity-trend/?range=today|weekly|monthly
     Returns cross-module activity trend rows for admin dashboard charts.
     """
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
 
     @staticmethod
     def _resolve_range(range_key):
@@ -92,11 +93,16 @@ class ActivityTrendView(APIView):
 
     def get(self, request):
         range_key, start_date, end_date, dates = self._resolve_range(request.query_params.get('range'))
+        is_horticulture_manager = getattr(request.user, 'is_horticulture_manager', False)
+        include_inventory = not is_horticulture_manager
+        include_housekeeping = not is_horticulture_manager
+        include_horticulture = not getattr(request.user, 'is_hk_inventory_manager', False)
 
         from apps.inventory.models import ItemIssue, ItemRequest, PurchaseRequest, StockEntry
         from apps.housekeeping.models import HKArea, HKDailyRecord
+        from apps.horticulture.models import HorticultureAreaTaskAssignment, HorticultureDailyAssignment
 
-        if end_date == timezone.localdate():
+        if include_housekeeping and end_date == timezone.localdate():
             from apps.housekeeping.htmx_views import get_today_records
 
             for area in HKArea.objects.filter(is_active=True):
@@ -105,19 +111,19 @@ class ActivityTrendView(APIView):
         inv_requests_map = self._annotated_day_map(
             ItemRequest.objects.filter(requested_at__date__range=(start_date, end_date)),
             'requested_at',
-        )
+        ) if include_inventory else {}
         inv_issues_map = self._annotated_day_map(
             ItemIssue.objects.filter(issued_at__date__range=(start_date, end_date)),
             'issued_at',
-        )
+        ) if include_inventory else {}
         inv_stock_map = self._annotated_day_map(
             StockEntry.objects.filter(added_at__date__range=(start_date, end_date)),
             'added_at',
-        )
+        ) if include_inventory else {}
         inv_purchase_map = self._annotated_day_map(
             PurchaseRequest.objects.filter(created_at__date__range=(start_date, end_date)),
             'created_at',
-        )
+        ) if include_inventory else {}
 
         hk_rows = (
             HKDailyRecord.objects.filter(date__range=(start_date, end_date))
@@ -129,7 +135,7 @@ class ActivityTrendView(APIView):
                 in_progress=Count('id', filter=Q(status='in_progress')),
                 skipped=Count('id', filter=Q(status='skipped')),
             )
-        )
+        ) if include_housekeeping else []
         hk_map = {
             row['date']: {
                 'total': row['total'],
@@ -140,6 +146,18 @@ class ActivityTrendView(APIView):
             }
             for row in hk_rows
         }
+        horti_done_map = dict(
+            HorticultureDailyAssignment.objects.filter(date__range=(start_date, end_date))
+            .values('date')
+            .annotate(c=Count('id'))
+            .values_list('date', 'c')
+        ) if include_horticulture else {}
+        horti_pending_map = dict(
+            HorticultureAreaTaskAssignment.objects.filter(date__range=(start_date, end_date), is_active=True)
+            .values('date')
+            .annotate(c=Count('id'))
+            .values_list('date', 'c')
+        ) if include_horticulture else {}
 
         series = []
         totals = {
@@ -170,7 +188,9 @@ class ActivityTrendView(APIView):
             hk_in_progress = int(hk.get('in_progress', 0) or 0)
             hk_skipped = int(hk.get('skipped', 0) or 0)
 
-            horticulture_total = 0
+            horticulture_done = int(horti_done_map.get(dt, 0) or 0)
+            horticulture_pending = int(horti_pending_map.get(dt, 0) or 0)
+            horticulture_total = horticulture_done + horticulture_pending
             total = inventory_total + hk_total + horticulture_total
             label = 'Today' if range_key == 'today' else dt.strftime('%d %b')
 
@@ -189,6 +209,8 @@ class ActivityTrendView(APIView):
                 'hk_pending': hk_pending,
                 'hk_in_progress': hk_in_progress,
                 'hk_skipped': hk_skipped,
+                'horticulture_done': horticulture_done,
+                'horticulture_pending': horticulture_pending,
             }
             series.append(row)
 
@@ -203,6 +225,8 @@ class ActivityTrendView(APIView):
             totals['hk_pending'] += hk_pending
             totals['hk_in_progress'] += hk_in_progress
             totals['hk_skipped'] += hk_skipped
+            totals['horticulture_done'] = totals.get('horticulture_done', 0) + horticulture_done
+            totals['horticulture_pending'] = totals.get('horticulture_pending', 0) + horticulture_pending
 
         return Response(
             {
@@ -227,7 +251,7 @@ class DashboardInsightsView(APIView):
       - housekeeping worker-wise performance
       - inventory area-wise consumption + top consumed items
     """
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
 
     @staticmethod
     def _resolve_range(range_key):
@@ -301,6 +325,9 @@ class DashboardInsightsView(APIView):
     def get(self, request):
         range_key, start_date, end_date, dates = self._resolve_range(request.query_params.get('range'))
         area_class = self._normalize_area_class(request.query_params.get('area_class'))
+        is_horticulture_manager = getattr(request.user, 'is_horticulture_manager', False)
+        include_inventory = not is_horticulture_manager
+        include_housekeeping = not is_horticulture_manager
         include_horticulture = not getattr(request.user, 'is_hk_inventory_manager', False)
 
         from apps.inventory.models import ItemIssue, ItemRequest, PurchaseRequest, StockEntry
@@ -317,7 +344,7 @@ class DashboardInsightsView(APIView):
         )
 
         # Ensure same-day records exist before analytics.
-        if end_date == timezone.localdate():
+        if include_housekeeping and end_date == timezone.localdate():
             for area in HKArea.objects.filter(is_active=True):
                 get_today_records(area, end_date)
 
@@ -325,19 +352,19 @@ class DashboardInsightsView(APIView):
         inv_requests_map = ActivityTrendView._annotated_day_map(
             ItemRequest.objects.filter(requested_at__date__range=(start_date, end_date)),
             'requested_at',
-        )
+        ) if include_inventory else {}
         inv_issues_map = ActivityTrendView._annotated_day_map(
             ItemIssue.objects.filter(issued_at__date__range=(start_date, end_date)),
             'issued_at',
-        )
+        ) if include_inventory else {}
         inv_stock_map = ActivityTrendView._annotated_day_map(
             StockEntry.objects.filter(added_at__date__range=(start_date, end_date)),
             'added_at',
-        )
+        ) if include_inventory else {}
         inv_purchase_map = ActivityTrendView._annotated_day_map(
             PurchaseRequest.objects.filter(created_at__date__range=(start_date, end_date)),
             'created_at',
-        )
+        ) if include_inventory else {}
 
         hk_rows = (
             HKDailyRecord.objects.filter(date__range=(start_date, end_date))
@@ -349,7 +376,7 @@ class DashboardInsightsView(APIView):
                 in_progress=Count('id', filter=Q(status='in_progress')),
                 skipped=Count('id', filter=Q(status='skipped')),
             )
-        )
+        ) if include_housekeeping else []
         hk_map = {
             row['date']: {
                 'total': row['total'],
@@ -1095,6 +1122,12 @@ class DashboardInsightsView(APIView):
                 area_row['department'] = 'horticulture'
 
         area_consumption_rows = list(area_consumption.values())
+        if is_horticulture_manager:
+            area_rows = [row for row in area_rows if row.get('department') == 'horticulture']
+            caretaker_rows = [row for row in caretaker_rows if row.get('department') == 'horticulture']
+            worker_rows = [row for row in worker_rows if row.get('department') == 'horticulture']
+            area_consumption_rows = []
+            top_items = {}
         if not include_horticulture:
             area_rows = [row for row in area_rows if row.get('department') != 'horticulture']
             caretaker_rows = [row for row in caretaker_rows if row.get('department') != 'horticulture']
@@ -1110,6 +1143,9 @@ class DashboardInsightsView(APIView):
                 str(r.get('area_name', '')),
             )
         )
+        area_winner = next((row for row in area_rows if row.get('total', 0) > 0), None)
+        caretaker_winner = next((row for row in caretaker_rows if row.get('total', 0) > 0), None)
+        worker_winner = next((row for row in worker_rows if row.get('total', 0) > 0), None)
 
         top_item_rows = []
         for row in top_items.values():

@@ -5,6 +5,7 @@ import {
 } from 'recharts'
 import { reportsAPI } from '../../api/inventory'
 import { Btn, Card, Spinner } from '../../components/ui'
+import { useAuth } from '../../context/AuthContext'
 import AdminLayout from '../../layout/AdminLayout'
 import { exportCsv, todayISO } from '../../shared/utils'
 
@@ -441,12 +442,37 @@ function TopItemsPanel({ rows }) {
 }
 
 export default function InsightsPage() {
+  const { user } = useAuth()
+  const isHorticultureManager = user?.role === 'horticulture_manager'
   const [range, setRange] = useState('weekly')
   const [areaClass, setAreaClass] = useState('all')
   const [activeView, setActiveView] = useState('caretaker')
   const [insights, setInsights] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const visibleViewOptions = useMemo(
+    () => VIEW_OPTIONS.filter((option) => (
+      isHorticultureManager
+        ? ['caretaker', 'workers', 'area_hk'].includes(option.key)
+        : true
+    )),
+    [isHorticultureManager]
+  )
+  const visibleAreaOptions = useMemo(
+    () => isHorticultureManager
+      ? AREA_CLASS_OPTIONS.filter((option) => option.key === 'all' || option.key === 'others')
+      : AREA_CLASS_OPTIONS,
+    [isHorticultureManager]
+  )
+
+  useEffect(() => {
+    if (isHorticultureManager && !visibleViewOptions.some((option) => option.key === activeView)) {
+      setActiveView('caretaker')
+    }
+    if (isHorticultureManager && !visibleAreaOptions.some((option) => option.key === areaClass)) {
+      setAreaClass('all')
+    }
+  }, [activeView, areaClass, isHorticultureManager, visibleAreaOptions, visibleViewOptions])
 
   useEffect(() => {
     let alive = true
@@ -496,12 +522,15 @@ export default function InsightsPage() {
   }
 
   return (
-    <AdminLayout title="Insights" subtitle="Fair, multi-chart performance analysis — staff, workers, areas and inventory">
+    <AdminLayout
+      title="Insights"
+      subtitle={isHorticultureManager ? 'Horticulture performance analysis' : 'Fair, multi-chart performance analysis - staff, workers, areas and inventory'}
+    >
       <Card style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-          {VIEW_OPTIONS.map(opt => (
+          {visibleViewOptions.map(opt => (
             <Btn key={opt.key} size="sm" variant={activeView === opt.key ? 'primary' : 'secondary'} onClick={() => setActiveView(opt.key)}>
-              {opt.key === 'area_hk' ? 'Area-wise Comparison' : opt.label}
+              {opt.key === 'area_hk' ? (isHorticultureManager ? 'Area-wise Horticulture' : 'Area-wise Comparison') : opt.label}
             </Btn>
           ))}
         </div>
@@ -514,8 +543,10 @@ export default function InsightsPage() {
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2 }}>Area:</span>
-            {AREA_CLASS_OPTIONS.map(opt => (
-              <Btn key={opt.key} size="sm" variant={areaClass === opt.key ? 'primary' : 'secondary'} onClick={() => setAreaClass(opt.key)}>{opt.label}</Btn>
+            {visibleAreaOptions.map(opt => (
+              <Btn key={opt.key} size="sm" variant={areaClass === opt.key ? 'primary' : 'secondary'} onClick={() => setAreaClass(opt.key)}>
+                {isHorticultureManager && opt.key === 'others' ? 'Horticulture' : opt.label}
+              </Btn>
             ))}
           </div>
         </div>

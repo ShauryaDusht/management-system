@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
 import { usersAPI } from '../../api/users'
-import { getAreaGroup } from '../../shared/utils'
+import { exportCsv, getAreaGroup, todayISO } from '../../shared/utils'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import {
   Alert,
@@ -56,6 +56,15 @@ function splitName(name = '') {
 function fullName(u) {
   const n = `${u.first_name || ''} ${u.last_name || ''}`.trim()
   return n || u.username || '-'
+}
+
+function safeFilePart(value, fallback = 'all') {
+  const cleaned = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return cleaned || fallback
 }
 
 export default function WorkersTab() {
@@ -153,6 +162,28 @@ export default function WorkersTab() {
       return (a.name || '').localeCompare(b.name || '')
     })
   }, [areaById, areaClassFilter, selectedArea, workers])
+
+  const csvRows = useMemo(
+    () =>
+      visibleWorkers.map((worker) => ({
+        Area: worker.area_name || '',
+        'Worker Name': worker.name || '',
+        Type: String(worker.worker_type || '').replace(/_/g, ' '),
+        Shift: worker.shift || '',
+        Supervisor: worker.supervisor_name || '',
+        Phone: worker.phone || '',
+        'Pay Code': worker.pay_code || '',
+        Reliever: worker.is_reliever ? 'Yes' : 'No',
+        Status: worker.is_active === false ? 'Inactive' : 'Active',
+      })),
+    [visibleWorkers]
+  )
+
+  const downloadCsv = () => {
+    const selectedAreaName = selectedArea ? areaById.get(Number(selectedArea))?.name : ''
+    const scope = selectedAreaName || `${areaClassFilter === 'all' ? 'all_areas' : areaClassFilter}_areas`
+    exportCsv(csvRows, `housekeeping_workers_${safeFilePart(scope)}_${todayISO()}.csv`)
+  }
 
   const openCreate = () => {
     setForm({
@@ -271,6 +302,9 @@ export default function WorkersTab() {
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </SelectField>
+            <Btn size="sm" variant="secondary" onClick={downloadCsv} disabled={loading || csvRows.length === 0}>
+              Download CSV
+            </Btn>
             <Btn size="sm" onClick={openCreate}>+ Add Worker</Btn>
           </div>
         </div>
