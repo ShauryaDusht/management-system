@@ -60,7 +60,7 @@
           <option value="">— Choose reliever —</option>
           {% for rel in all_relievers %}
           <option value="{{ rel.id }}">
-            {{ rel.name }}{% if rel.phone %} · {{ rel.phone }}{% endif %}{% if rel.pay_code %} #{{ rel.pay_code }}{% endif %}
+            {{ rel.name }}{% if rel.area %} · {{ rel.area.name }}{% endif %}{% if rel.phone %} · {{ rel.phone }}{% endif %}{% if rel.pay_code %} #{{ rel.pay_code }}{% endif %}
           </option>
           {% endfor %}
         </select>
@@ -196,3 +196,4 @@
   </div>
 
 </div>
+

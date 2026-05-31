@@ -2,7 +2,7 @@
   {% if record.status == 'done' %}border-left:4px solid #16a34a;
   {% elif record.status == 'in_progress' %}border-left:4px solid #2563eb;
   {% else %}border-left:4px solid #e5e7eb;{% endif %}">
-  {% if 'break' in record.schedule.task_name|lower or 'lunch' in record.schedule.task_name|lower %}
+  {% if record.is_break_task %}
   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
     <div style="font-weight:700;font-size:13px;{% if record.status == 'done' %}text-decoration:line-through;color:#9ca3af{% endif %}">
       {{ record.schedule.task_name }}

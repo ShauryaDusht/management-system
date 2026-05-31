@@ -323,6 +323,44 @@ def _assign_horti_incharge_for_leave(leave_req, assigned_staff, acted_by_user, n
     return assignment
 
 
+def _decide_horti_incharge_assignment(assignment, decision, acted_by_user, note=''):
+    if decision not in {'approve', 'reject'}:
+        raise ValueError('decision must be approve or reject.')
+
+    if decision == 'approve':
+        assignment.status = HorticultureInchargeAssignment.Status.APPROVED
+        assignment.arrival_notified = False
+        assignment.leave_request.status = HorticultureLeaveRequest.Status.APPROVED
+        level = 'success'
+        msg = (
+            f'Horticulture manager approved temporary incharge: '
+            f'{assignment.assigned_staff_name} for {assignment.zone.name} on {assignment.leave_date}.'
+        )
+    else:
+        assignment.status = HorticultureInchargeAssignment.Status.ADMIN_REJECTED
+        assignment.leave_request.status = HorticultureLeaveRequest.Status.REASSIGN_REQUIRED
+        level = 'error'
+        msg = (
+            f'Horticulture manager rejected temporary incharge: '
+            f'{assignment.assigned_staff_name} for {assignment.zone.name} on {assignment.leave_date}. Please select another.'
+        )
+
+    assignment.admin_action_by = acted_by_user
+    assignment.admin_action_at = timezone.now()
+    assignment.admin_action_note = note
+    assignment.leave_request.save(update_fields=['status', 'updated_at'])
+    assignment.save(update_fields=[
+        'status',
+        'arrival_notified',
+        'admin_action_by',
+        'admin_action_at',
+        'admin_action_note',
+        'updated_at',
+    ])
+    _create_horti_incharge_notice(assignment.leave_staff, assignment, msg, level=level)
+    _create_horti_incharge_notice(assignment.assigned_staff, assignment, msg, level=level)
+
+
 class IsAdminOrHorticultureManager(BasePermission):
     def has_permission(self, request, view):
         user = request.user
@@ -1516,6 +1554,15 @@ def horticulture_dashboard(request):
             .select_related('zone', 'leave_staff')
             .order_by('leave_date', '-created_at')[:10]
         )
+        pending_leave_approvals = list(
+            HorticultureInchargeAssignment.objects
+            .filter(
+                status=HorticultureInchargeAssignment.Status.PENDING_ADMIN_APPROVAL,
+                leave_date__gte=today,
+            )
+            .select_related('zone', 'leave_request', 'leave_staff', 'assigned_staff')
+            .order_by('leave_date', '-created_at')[:20]
+        )
         return render(
             request,
             'horticulture/mobile/manager_dashboard.html',
@@ -1528,6 +1575,7 @@ def horticulture_dashboard(request):
                 'incharge_notice': incharge_notice,
                 'incoming_incharge_requests': incoming_incharge_requests,
                 'incoming_waiting_admin': incoming_waiting_admin,
+                'pending_leave_approvals': pending_leave_approvals,
                 'is_horti_manager': True,
             },
         )
@@ -1879,6 +1927,43 @@ def horticulture_incharge_respond(request):
     return redirect(f'/horticulture/dashboard/?{query}&ic_err=invalid_decision')
 
 
+@login_required
+def horticulture_incharge_admin_decision(request):
+    if not request.user.is_active:
+        return redirect('/portal/login/')
+    if request.user.role not in [User.Role.ADMIN, User.Role.HORTICULTURE_MANAGER]:
+        return HttpResponseForbidden()
+    if request.method != 'POST':
+        return HttpResponseForbidden()
+
+    assignment = (
+        HorticultureInchargeAssignment.objects
+        .select_related('leave_request', 'zone', 'leave_staff', 'assigned_staff')
+        .filter(
+            pk=request.POST.get('assignment_id'),
+            status=HorticultureInchargeAssignment.Status.PENDING_ADMIN_APPROVAL,
+        )
+        .first()
+    )
+    if not assignment:
+        messages.error(request, 'Leave approval is not pending or was already processed.')
+        return redirect('/horticulture/dashboard/')
+
+    decision = (request.POST.get('decision') or '').strip().lower()
+    note = (request.POST.get('note') or '').strip()
+    try:
+        with transaction.atomic():
+            _decide_horti_incharge_assignment(assignment, decision, request.user, note=note)
+    except ValueError:
+        messages.error(request, 'Invalid leave approval decision.')
+    else:
+        messages.success(
+            request,
+            'Temporary incharge approved.' if decision == 'approve' else 'Temporary incharge rejected.',
+        )
+    return redirect('/horticulture/dashboard/')
+
+
 class AdminHorticultureLeaveApprovalAPIView(APIView):
     permission_classes = [IsAdminOrHorticultureManager]
 
@@ -1914,23 +1999,7 @@ class AdminHorticultureLeaveApprovalAPIView(APIView):
         note = (request.data.get('note') or '').strip()
         if decision not in {'approve', 'reject'}:
             return Response({'detail': 'decision must be approve or reject.'}, status=status.HTTP_400_BAD_REQUEST)
-        if decision == 'approve':
-            assignment.status = HorticultureInchargeAssignment.Status.APPROVED
-            assignment.leave_request.status = HorticultureLeaveRequest.Status.APPROVED
-            level = 'success'
-            msg = f'Admin approved temporary incharge: {assignment.assigned_staff_name} for {assignment.zone.name} on {assignment.leave_date}.'
-        else:
-            assignment.status = HorticultureInchargeAssignment.Status.ADMIN_REJECTED
-            assignment.leave_request.status = HorticultureLeaveRequest.Status.REASSIGN_REQUIRED
-            level = 'error'
-            msg = f'Admin rejected temporary incharge: {assignment.assigned_staff_name} for {assignment.zone.name} on {assignment.leave_date}. Please select another.'
-        assignment.admin_action_by = request.user
-        assignment.admin_action_at = timezone.now()
-        assignment.admin_action_note = note
-        assignment.save(update_fields=['status', 'admin_action_by', 'admin_action_at', 'admin_action_note', 'updated_at'])
-        assignment.leave_request.save(update_fields=['status', 'updated_at'])
-        _create_horti_incharge_notice(assignment.leave_staff, assignment, msg, level=level)
-        _create_horti_incharge_notice(assignment.assigned_staff, assignment, msg, level=level)
+        _decide_horti_incharge_assignment(assignment, decision, request.user, note=note)
         return Response({'detail': 'Decision saved.'})
 
 

@@ -1,7 +1,7 @@
 """
 Complete housekeeping seed with all real IITGN staff data.
-Workers: 57 permanent + 9 relievers
-Caretakers: 9 (Priyanka, Anita, Rushita, Pankaj, Anil, Nikul, Jaimin x2, Ram Singh, Vishwajeet)
+Hostel/JRHA/Common roster: 54 HK staff + 11 relievers
+Caretakers: Priyanka, Anita, Rushita, Pankaj, Anil, Nikul, Jaimin, Ram Singh, Vishwajeet, Manisha Thapa
 Schedule: Same daily Mon-Sun for all caretaker hostels (3 staff groups: room/floor/washroom)
 Sunday extra: dustbin + terrace + fridge cleaning
 """
@@ -62,11 +62,26 @@ Existing account passwords are preserved.
             'Aibaan', 'Beuaki', 'Chimair', 'Duven', 'Emiet',
             'Firpeal', 'Griwiksh', 'Hiqom', 'Ijokha', 'Jurqia',
             'Kyzeel', 'Lekhaag',
-            'Jeet Hostel Block A', 'Jeet Hostel Block B',
-            'Jeet Hostel Block C', 'Jeet Hostel Block D',
+            'Block-A JRHA', 'Block-B JRHA',
+            'Block-C JRHA', 'Block-D JRHA',
         ]
         for name in hostel_names:
             HKArea.objects.get_or_create(name=name, defaults={'area_type': 'hostel'})
+
+        jrha_renames = {
+            'Jeet Hostel Block A': 'Block-A JRHA',
+            'Jeet Hostel Block B': 'Block-B JRHA',
+            'Jeet Hostel Block C': 'Block-C JRHA',
+            'Jeet Hostel Block D': 'Block-D JRHA',
+        }
+        for old_name, new_name in jrha_renames.items():
+            legacy_area = HKArea.objects.filter(name=old_name).first()
+            if legacy_area and not HKArea.objects.filter(name=new_name).exists():
+                legacy_area.name = new_name
+                legacy_area.area_type = 'hostel'
+                legacy_area.is_active = True
+                legacy_area.save(update_fields=['name', 'area_type', 'is_active'])
+            HKArea.objects.filter(name=new_name).update(area_type='hostel', is_active=True)
 
         # Data migration-on-seed:
         # Rename legacy "Common Area" to "Hostel Common Area" so existing DBs
@@ -263,7 +278,9 @@ Existing account passwords are preserved.
             ('jaimin.parmar', 'Jaimin', 'Parmar', '318', '7600738945', 'hostel.caretaker@iitgn.ac.in', ['Jurqia', 'Lekhaag']),
             ('ramprakash.parmar', 'Ramprakash Lembabhai', 'Parmar', '317', '9687460280', 'ramairy1198@gmail.com', ['Kyzeel']),
             ('vishwajeet.mishra', 'Vishwajeet', 'Mishra', '08', '9898037530', 'mishra.vishwajeet@iitgn.ac.in', ['Hostel Common Area'], ['vishvajeet.kumar', 'vishwajeet']),
-            ('manisha.thapa', 'Manisha', 'Thapa', '424', '9942523410', '', ['Jeet Hostel Block B', 'Jeet Hostel Block D']),
+            ('manisha.thapa', 'Manisha', 'Thapa', '424', '9942523410', '', ['Block-A JRHA', 'Block-B JRHA', 'Block-C JRHA', 'Block-D JRHA']),
+            ('shailesh.vaghela', 'Shailesh', 'Vaghela', '422', '7990375262', '', ['Block-A JRHA', 'Block-C JRHA']),
+            ('kailash.vaghela', 'Kailash', 'Vaghela', '', '', '', ['Block-A JRHA', 'Block-B JRHA', 'Block-C JRHA', 'Block-D JRHA']),
         ]
         for caretaker in caretakers:
             username, first, last, pc, phone, email, areas, *rest = caretaker
@@ -293,8 +310,6 @@ Existing account passwords are preserved.
             ('narendra.shreemali', 'Narendrakumar Natvarbhai', 'Shrimali', '328', '9898661986', 'narendrashrimali36262@gmail.com', ['Roads & Outdoor', 'Old Guest House']),
             ('pradip.chauhan', 'Pradip', 'Chauhan', '460', '8200560889', 'pradipchauhan783@gmail.com', ['Solid Waste Management']),
             ('ganesh.jayesh', 'Ganesh', 'Jayesh', '404', '9537558820', 'Ganeshjayesh820@gmail.com', ['Deep Cleaning']),
-            ('shailesh.vaghela', 'Shailesh', 'Vaghela', '422', '7990375262', '', ['Jeet Hostel Block A', 'Jeet Hostel Block C']),
-            ('kailash.vaghela', 'Kailash', 'Vaghela', '', '', '', ['Jeet Hostel Block A', 'Jeet Hostel Block B', 'Jeet Hostel Block C', 'Jeet Hostel Block D']),
         ]
         for username, first, last, pc, phone, email, areas in supervisors:
             self.make_user(
@@ -628,12 +643,13 @@ Existing account passwords are preserved.
             ('Shilpa Ben',       '419', '6356046585', 'Aibaan',   'washroom', False),
 
             # -- BEUAKI ------------------------------------------------------
-            ('Meena Ben',        '98',  '9909679865', 'Beuaki',   'room',     False),
-            ('Kailashben M',     '76',  '8490053837', 'Beuaki',   'floor',    False),
+            ('Kailashben M',     '98',  '9909679865', 'Beuaki',   'room',     False),
+            ('Meena Ben',        '76',  '8490053837', 'Beuaki',   'floor',    False),
             ('Sonal Ben',        '415', '7359834672', 'Beuaki',   'washroom', False),
 
             # -- CHIMAIR -----------------------------------------------------
             ('Bhanu Ben',        '332', '7567371788', 'Chimair',  'room',     False),
+            ('Champa Ben',       '249', '',           'Chimair',  'general',  False),
             ('Surya Ben',        '233', '9725963299', 'Chimair',  'floor',    False),
             ('Deepika Ben',      '418', '7383512108', 'Chimair',  'washroom', False),
 
@@ -690,18 +706,18 @@ Existing account passwords are preserved.
             ('Mehul Jadeja',     '106', '7096229284', 'Kyzeel',   'washroom', False),
 
             # -- JEET HOSTEL -------------------------------------------------
-            ('Rajesh Parmar',     '416', '', 'Jeet Hostel Block A', 'room',     False),
-            ('Rahul Rathod',      '417', '', 'Jeet Hostel Block A', 'floor',    False),
-            ('Darshan',           '450', '', 'Jeet Hostel Block A', 'washroom', False),
-            ('Manisha Ben',       '129', '', 'Jeet Hostel Block B', 'room',     False),
-            ('Sugna Ben',         '134', '', 'Jeet Hostel Block B', 'floor',    False),
-            ('Leela Ben',         '150', '', 'Jeet Hostel Block B', 'washroom', False),
-            ('Himmat',            '456', '', 'Jeet Hostel Block C', 'room',     False),
-            ('Hasmukh',           '77',  '', 'Jeet Hostel Block C', 'floor',    False),
-            ('Suresh',            '454', '', 'Jeet Hostel Block C', 'washroom', False),
-            ('Urvashi',           '459', '', 'Jeet Hostel Block D', 'room',     False),
-            ('Hetal',             '458', '', 'Jeet Hostel Block D', 'floor',    False),
-            ('Bhavika',           '457', '', 'Jeet Hostel Block D', 'washroom', False),
+            ('Rajesh Parmar',     '416', '', 'Block-A JRHA', 'room',     False),
+            ('Rahul Rathod',      '417', '', 'Block-A JRHA', 'floor',    False),
+            ('Darshan',           '450', '', 'Block-A JRHA', 'washroom', False),
+            ('Manisha Ben',       '129', '', 'Block-B JRHA', 'room',     False),
+            ('Sugna Ben',         '134', '', 'Block-B JRHA', 'floor',    False),
+            ('Leela Ben',         '150', '', 'Block-B JRHA', 'washroom', False),
+            ('Himmat',            '456', '', 'Block-C JRHA', 'room',     False),
+            ('Hasmukh',           '77',  '', 'Block-C JRHA', 'reliever', True),
+            ('Suresh',            '454', '', 'Block-C JRHA', 'washroom', False),
+            ('Urvashi',           '459', '', 'Block-D JRHA', 'room',     False),
+            ('Hetal',             '458', '', 'Block-D JRHA', 'floor',    False),
+            ('Bhavika',           '457', '', 'Block-D JRHA', 'washroom', False),
 
             # -- COMMON AREA -------------------------------------------------
             ('Yogesh Vaghela',   '80',  '9998100804', 'Hostel Common Area', 'room',    False),
@@ -822,10 +838,6 @@ Existing account passwords are preserved.
             ('Gurjar Niruben',                     '111', '', 'New Academic Reliever', 'reliever', True),
             ('Sonara Hitendrakumar Punjabhai',     '448', '', 'New Academic Reliever', 'reliever', True),
 
-            # Relievers substitute for permanent workers when they take leave.
-            # They are managed in a dedicated hostel reliever pool area.
-            ('Anju Ben',         '',    '',           'Hostels Reliever', 'reliever', True),
-            ('Manisha Ben',      '356', '9157691322', 'Hostels Reliever', 'reliever', True),
         ]
 
         # Backward-compatibility: move reshuffled hostel workers instead of
@@ -834,18 +846,38 @@ Existing account passwords are preserved.
             ('357', 'Reeta Ben', 'Aibaan'),
             ('219', 'Sangeeta Ben', 'Aibaan'),
             ('419', 'Shilpa Ben', 'Aibaan'),
-            ('98', 'Meena Ben', 'Beuaki'),
-            ('76', 'Kailashben M', 'Beuaki'),
+            ('98', 'Kailashben M', 'Beuaki'),
+            ('76', 'Meena Ben', 'Beuaki'),
             ('415', 'Sonal Ben', 'Beuaki'),
             ('332', 'Bhanu Ben', 'Chimair'),
+            ('249', 'Champa Ben', 'Chimair'),
             ('233', 'Surya Ben', 'Chimair'),
             ('418', 'Deepika Ben', 'Chimair'),
             ('143', 'Kailash B', 'Ijokha'),
             ('386', 'Mital Ben', 'Ijokha'),
             ('230', 'Geeta Ben', 'Ijokha'),
-            ('356', 'Manisha Ben', 'Hostels Reliever'),
+            ('356', 'Manisha Ben', 'Beuaki'),
+            ('416', 'Rajesh Parmar', 'Block-A JRHA'),
+            ('417', 'Rathod Rahul', 'Block-A JRHA'),
+            ('450', 'Darshan Brahmaniya', 'Block-A JRHA'),
+            ('129', 'Manisha Ben K Vaghela', 'Block-B JRHA'),
+            ('134', 'Sugna Ben J Vaghela', 'Block-B JRHA'),
+            ('150', 'Leela Ben Dipak Kumar Parmar', 'Block-B JRHA'),
+            ('454', 'Suresh Bhai', 'Block-C JRHA'),
+            ('456', 'Himmat Bhai', 'Block-C JRHA'),
+            ('77', 'Hashmukh Bhai', 'Block-C JRHA'),
+            ('457', 'Bhavika Ben Solanki', 'Block-D JRHA'),
+            ('458', 'Hetal Ben Ashokbhai', 'Block-D JRHA'),
+            ('459', 'Urvashi Ben Nayanbhai Vaghela', 'Block-D JRHA'),
         ]
-        managed_hostel_area_names = ['Aibaan', 'Beuaki', 'Chimair', 'Ijokha', 'Hostels Reliever']
+        managed_hostel_area_names = [
+            'Aibaan', 'Beuaki', 'Chimair', 'Duven', 'Emiet', 'Firpeal',
+            'Griwiksh', 'Hiqom', 'Ijokha', 'Jurqia', 'Kyzeel', 'Lekhaag',
+            'Block-A JRHA', 'Block-B JRHA', 'Block-C JRHA', 'Block-D JRHA',
+            'Jeet Hostel Block A', 'Jeet Hostel Block B',
+            'Jeet Hostel Block C', 'Jeet Hostel Block D',
+            'Hostel Common Area', 'Hostels Reliever',
+        ]
         for pay_code, name, area_name in hostel_area_moves:
             target_area = self.area(area_name)
             if not target_area:
@@ -862,16 +894,7 @@ Existing account passwords are preserved.
                 is_reliever=(area_name == 'Hostels Reliever'),
             )
 
-        HKWorker.objects.filter(pay_code='249', area__name__in=managed_hostel_area_names).update(is_active=False)
-
-        reliever_names = ['Anju Ben', 'Manisha Ben']
-        HKWorker.objects.filter(
-            name__in=reliever_names,
-            is_reliever=True,
-        ).update(area=self.area('Hostels Reliever'))
-        HKWorker.objects.filter(area=self.area('Hostels Reliever'), is_reliever=True).exclude(
-            name__in=reliever_names,
-        ).update(is_active=False)
+        HKWorker.objects.filter(area=self.area('Hostels Reliever'), is_reliever=True).update(is_active=False)
 
         created_count = 0
         for name, pay_code, phone, area_name, wtype, is_reliever in workers:
@@ -984,18 +1007,18 @@ Existing account passwords are preserved.
             {'area': 'Lekhaag', 'name': 'Banshi', 'pay_code': '149', 'phone': '9023507559', 'worker_type': 'washroom', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Banshi']},
             {'area': 'Lekhaag', 'name': 'Pravin Vaghela', 'pay_code': '246', 'phone': '8511376344', 'worker_type': 'washroom', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Pravin Vaghela', 'pravin Vaghela']},
             {'area': 'Lekhaag', 'name': 'Rakesh', 'pay_code': '438', 'phone': '9316531354', 'worker_type': 'room', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Rakesh']},
-            {'area': 'Jeet Hostel Block A', 'name': 'Rajesh Bhai Parmar', 'pay_code': '416', 'phone': '', 'worker_type': 'room', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Rajesh Parmar', 'Rajesh bhai parmar']},
-            {'area': 'Jeet Hostel Block A', 'name': 'Rathod Rahul', 'pay_code': '417', 'phone': '', 'worker_type': 'washroom', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Rahul Rathod', 'Rathod Rahul']},
-            {'area': 'Jeet Hostel Block A', 'name': 'Darshan Brahmaniya', 'pay_code': '450', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Darshan', 'Darshan Brahmaniya']},
-            {'area': 'Jeet Hostel Block B', 'name': 'Manisha Ben K Vaghela', 'pay_code': '129', 'phone': '', 'worker_type': 'room', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Manisha Ben']},
-            {'area': 'Jeet Hostel Block B', 'name': 'Sugna Ben J Vaghela', 'pay_code': '134', 'phone': '', 'worker_type': 'washroom', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Sugna Ben']},
-            {'area': 'Jeet Hostel Block B', 'name': 'Leela Ben Dipak Kumar Parmar', 'pay_code': '150', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Leela Ben']},
-            {'area': 'Jeet Hostel Block C', 'name': 'Suresh Bhai', 'pay_code': '454', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Suresh Bhai', 'Suresh']},
-            {'area': 'Jeet Hostel Block C', 'name': 'Himmat Bhai', 'pay_code': '456', 'phone': '', 'worker_type': 'room', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Himmat', 'Himmat bhai']},
-            {'area': 'Jeet Hostel Block C', 'name': 'Hashmukh Bhai', 'pay_code': '77', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Hasmukh', 'Hashmukh bhai']},
-            {'area': 'Jeet Hostel Block D', 'name': 'Bhavika Ben Solanki', 'pay_code': '457', 'phone': '', 'worker_type': 'room', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Bhavika', 'Bhavika ben solnki']},
-            {'area': 'Jeet Hostel Block D', 'name': 'Mehariya Hetal Ben Ashok Bhai', 'pay_code': '458', 'phone': '', 'worker_type': 'washroom', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Hetal', 'Mehariya Hetal ben Ashok bhai']},
-            {'area': 'Jeet Hostel Block D', 'name': 'Urvashi Ben Nayan Bhai Vaghela', 'pay_code': '459', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Urvashi', 'Urvashi ben Nayan bhai Vaghela']},
+            {'area': 'Block-A JRHA', 'name': 'Rajesh Parmar', 'pay_code': '416', 'phone': '', 'worker_type': 'room', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Rajesh Parmar', 'Rajesh Bhai Parmar', 'Rajesh bhai parmar']},
+            {'area': 'Block-A JRHA', 'name': 'Rathod Rahul', 'pay_code': '417', 'phone': '', 'worker_type': 'washroom', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Rahul Rathod', 'Rathod Rahul']},
+            {'area': 'Block-A JRHA', 'name': 'Darshan Brahmaniya', 'pay_code': '450', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Darshan', 'Darshan Brahmaniya']},
+            {'area': 'Block-B JRHA', 'name': 'Manisha Ben K Vaghela', 'pay_code': '129', 'phone': '', 'worker_type': 'room', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Manisha Ben', 'Manisha Vaghela']},
+            {'area': 'Block-B JRHA', 'name': 'Sugna Ben J Vaghela', 'pay_code': '134', 'phone': '', 'worker_type': 'washroom', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Sugna Ben', 'Sugna Vaghela']},
+            {'area': 'Block-B JRHA', 'name': 'Leela Ben Dipak Kumar Parmar', 'pay_code': '150', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Leela Ben']},
+            {'area': 'Block-C JRHA', 'name': 'Suresh Bhai', 'pay_code': '454', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Suresh Bhai', 'Suresh']},
+            {'area': 'Block-C JRHA', 'name': 'Himmat Bhai', 'pay_code': '456', 'phone': '', 'worker_type': 'room', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Himmat', 'Himmat bhai']},
+            {'area': 'Block-C JRHA', 'name': 'Hashmukh Bhai', 'pay_code': '77', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Hasmukh', 'Hashmukh bhai']},
+            {'area': 'Block-D JRHA', 'name': 'Bhavika Ben Solanki', 'pay_code': '457', 'phone': '', 'worker_type': 'room', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Bhavika', 'Bhavika ben Solanki', 'Bhavika ben solnki']},
+            {'area': 'Block-D JRHA', 'name': 'Hetal Ben Ashokbhai', 'pay_code': '458', 'phone': '', 'worker_type': 'washroom', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Hetal', 'Hetal ben Ashokbhai', 'Mehariya Hetal ben Ashok bhai']},
+            {'area': 'Block-D JRHA', 'name': 'Urvashi Ben Nayanbhai Vaghela', 'pay_code': '459', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Urvashi', 'Urvashi ben Nayanbhai Vaghela', 'Urvashi ben Nayan bhai Vaghela']},
             {'area': 'Hostel Common Area', 'name': 'Yogesh Vaghela', 'pay_code': '80', 'phone': '9998100804', 'worker_type': 'room', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Yogesh Vaghela']},
             {'area': 'Hostel Common Area', 'name': 'Vinayak Solanki', 'pay_code': '240', 'phone': '9023271834', 'worker_type': 'washroom', 'shift': 'night', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Vinayak Solanki']},
             {'area': 'Hostel Common Area', 'name': 'Ketan Gujjar', 'pay_code': '100', 'phone': '8347139138', 'worker_type': 'floor', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Ketan Gujjar']},
@@ -1200,10 +1223,10 @@ Existing account passwords are preserved.
                 )
 
         jeet_supervisor_by_area = {
-            'Jeet Hostel Block A': 'manisha.thapa',
-            'Jeet Hostel Block B': 'manisha.thapa',
-            'Jeet Hostel Block C': 'manisha.thapa',
-            'Jeet Hostel Block D': 'manisha.thapa',
+            'Block-A JRHA': 'manisha.thapa',
+            'Block-B JRHA': 'manisha.thapa',
+            'Block-C JRHA': 'manisha.thapa',
+            'Block-D JRHA': 'manisha.thapa',
         }
         for area_name, supervisor_username in jeet_supervisor_by_area.items():
             supervisor = User.objects.filter(username=supervisor_username).first()
@@ -1306,10 +1329,10 @@ Existing account passwords are preserved.
                 total += 1
 
         jeet_areas = [
-            self.area('Jeet Hostel Block A'),
-            self.area('Jeet Hostel Block B'),
-            self.area('Jeet Hostel Block C'),
-            self.area('Jeet Hostel Block D'),
+            self.area('Block-A JRHA'),
+            self.area('Block-B JRHA'),
+            self.area('Block-C JRHA'),
+            self.area('Block-D JRHA'),
         ]
         jeet_areas = [area for area in jeet_areas if area]
         if jeet_areas:
