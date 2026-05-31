@@ -73,6 +73,7 @@ export default function WorkersTab() {
   const [supervisors, setSupervisors] = useState([])
   const [selectedArea, setSelectedArea] = useState('')
   const [areaClassFilter, setAreaClassFilter] = useState('all')
+  const [search, setSearch] = useState('')
 
   const [modal, setModal] = useState(null) // null | { mode: 'create' | 'edit', worker? }
   const [form, setForm] = useState(EMPTY_FORM)
@@ -154,6 +155,14 @@ export default function WorkersTab() {
     if (selectedArea) {
       list = list.filter((w) => String(w.area) === String(selectedArea))
     }
+    const query = search.trim().toLowerCase()
+    if (query) {
+      list = list.filter((w) =>
+        [w.name, w.pay_code, w.area_name, w.supervisor_name].some((value) =>
+          String(value || '').toLowerCase().includes(query)
+        )
+      )
+    }
     return [...list].sort((a, b) => {
       const areaA = a.area_name || ''
       const areaB = b.area_name || ''
@@ -161,7 +170,7 @@ export default function WorkersTab() {
       if (byArea !== 0) return byArea
       return (a.name || '').localeCompare(b.name || '')
     })
-  }, [areaById, areaClassFilter, selectedArea, workers])
+  }, [areaById, areaClassFilter, search, selectedArea, workers])
 
   const csvRows = useMemo(
     () =>
@@ -292,6 +301,12 @@ export default function WorkersTab() {
         >
           <div style={{ fontWeight: 700 }}>Workers</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <Input
+              placeholder="Search name, pay code, area, supervisor..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ width: 280 }}
+            />
             <Btn size="sm" variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('hostels')}>Hostels</Btn>
             <Btn size="sm" variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('academic')}>Academic Blocks</Btn>
             <Btn size="sm" variant={areaClassFilter === 'others' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('others')}>Others</Btn>
