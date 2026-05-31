@@ -343,9 +343,9 @@ export default function DashboardPage() {
   ]
   const statCards = isHorticultureManager
     ? [
-        { label: 'Horticulture Tasks', value: hortiTotal || '-', icon: 'HT', color: 'var(--green-700)', sub: `${Number(hortiCounts.on_track || 0)} on track`, to: '/horticulture' },
-        { label: 'Due Soon', value: Number(hortiCounts.due_soon || 0), icon: 'DS', color: 'var(--orange-600)', sub: `${Number(hortiCounts.overdue || 0)} overdue`, to: '/horticulture' },
-        { label: 'Active Areas', value: hortiSummary?.total_areas ?? '-', icon: 'AR', color: '#3b82f6', sub: 'Horticulture coverage', to: '/horticulture' },
+        { label: 'Horticulture Tasks', value: hortiTotal || '-', icon: 'HT', color: 'var(--green-700)', sub: `${Number(hortiCounts.on_track || 0)} on track` },
+        { label: 'Due Soon', value: Number(hortiCounts.due_soon || 0), icon: 'DS', color: 'var(--orange-600)', sub: `${Number(hortiCounts.overdue || 0)} overdue` },
+        { label: 'Active Areas', value: hortiSummary?.total_areas ?? '-', icon: 'AR', color: '#3b82f6', sub: 'Horticulture coverage' },
       ]
     : baseStatCards
 
@@ -358,9 +358,21 @@ export default function DashboardPage() {
           {/* ── Stat Cards ── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
             {statCards.map(card => (
-              <a key={card.label} href={card.to} className="ui-interactive-card-link" style={{ height: '100%', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
-                <StatCard label={card.label} value={card.value} icon={card.icon} color={card.color} sub={card.sub} style={{ height: '100%', cursor: 'pointer', userSelect: 'none' }} />
-              </a>
+              isHorticultureManager ? (
+                <StatCard
+                  key={card.label}
+                  label={card.label}
+                  value={card.value}
+                  icon={card.icon}
+                  color={card.color}
+                  sub={card.sub}
+                  style={{ height: '100%', cursor: 'default' }}
+                />
+              ) : (
+                <a key={card.label} href={card.to} className="ui-interactive-card-link" style={{ height: '100%', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
+                  <StatCard label={card.label} value={card.value} icon={card.icon} color={card.color} sub={card.sub} style={{ height: '100%', cursor: 'pointer', userSelect: 'none' }} />
+                </a>
+              )
             ))}
           </div>
 

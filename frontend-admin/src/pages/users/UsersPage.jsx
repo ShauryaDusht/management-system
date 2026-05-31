@@ -244,9 +244,6 @@ export default function UsersPage() {
       subtitle={`${users.length} total users across all roles`}
       actions={(
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Btn variant="secondary" onClick={downloadCsv} disabled={loading || csvRows.length === 0}>
-            Download CSV
-          </Btn>
           <Btn onClick={openCreate}>+ Add User</Btn>
         </div>
       )}
@@ -338,6 +335,9 @@ export default function UsersPage() {
             ))}
           </SelectField>
           <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--text-3)' }}>{filtered.length} users</span>
+          <Btn variant="secondary" onClick={downloadCsv} disabled={loading || csvRows.length === 0}>
+            Download CSV
+          </Btn>
         </div>
 
         {loading ? (
