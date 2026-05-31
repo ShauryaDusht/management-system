@@ -65,5 +65,9 @@ urlpatterns = [
     path('portal/', portal_root),
     path('portal/login/', portal_login, name='portal_login'),
     path('portal/logout/', portal_logout, name='portal_logout'),
-    re_path(r'^media/(?P<path>.*)$', serve_media_file, name='media-file-fallback'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve_media_file, name='media-file-fallback'),
+    ]
