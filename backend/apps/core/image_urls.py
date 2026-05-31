@@ -40,19 +40,6 @@ def generate_image_url(request, raw_url):
     if not raw_url:
         return ""
 
-    def asset_path(parsed):
-        if parsed.path.startswith(settings.MEDIA_URL) or parsed.path.startswith(settings.STATIC_URL):
-            return urlunparse(("", "", parsed.path, "", parsed.query, parsed.fragment))
-        api_media = f"/api{settings.MEDIA_URL}"
-        api_static = f"/api{settings.STATIC_URL}"
-        if parsed.path.startswith(api_media):
-            path = parsed.path[len("/api"):]
-            return urlunparse(("", "", path, "", parsed.query, parsed.fragment))
-        if parsed.path.startswith(api_static):
-            path = parsed.path[len("/api"):]
-            return urlunparse(("", "", path, "", parsed.query, parsed.fragment))
-        return ""
-
     origin = public_origin(request)
     try:
         absolute = request.build_absolute_uri(raw_url) if request is not None else raw_url
@@ -61,23 +48,28 @@ def generate_image_url(request, raw_url):
 
     try:
         parsed = urlparse(absolute)
-        normalized_asset = asset_path(parsed)
-        if normalized_asset:
-            return normalized_asset
 
-        is_asset = parsed.path.startswith(settings.MEDIA_URL) or parsed.path.startswith(settings.STATIC_URL)
-        hostname = (parsed.hostname or "").lower()
-        origin_hostname = (urlparse(origin).hostname or "").lower()
-        missing_public_port = hostname in LOCAL_HOSTS and not parsed.port
-        local_backend_on_public_origin = hostname in LOCAL_HOSTS and origin_hostname not in LOCAL_HOSTS
-        is_mixed_content = origin.startswith("https://") and parsed.scheme == "http"
-        should_rewrite = is_asset and (
-            hostname in INTERNAL_HOSTS or missing_public_port or local_backend_on_public_origin or is_mixed_content
+        api_media = f"/api{settings.MEDIA_URL}"
+        api_static = f"/api{settings.STATIC_URL}"
+        if parsed.path.startswith(api_media):
+            parsed = parsed._replace(path=parsed.path[len("/api"):])
+        elif parsed.path.startswith(api_static):
+            parsed = parsed._replace(path=parsed.path[len("/api"):])
+
+        is_asset = (
+            parsed.path.startswith(settings.MEDIA_URL)
+            or parsed.path.startswith(settings.STATIC_URL)
         )
-        if should_rewrite and origin:
+
+        if not is_asset:
+            return urlunparse(parsed)
+
+        if origin:
             public = urlparse(origin)
             parsed = parsed._replace(scheme=public.scheme, netloc=public.netloc)
-        return urlunparse(parsed)
+            return urlunparse(parsed)
+
+        return urlunparse(("", "", parsed.path, "", parsed.query, parsed.fragment))
     except Exception:
         return absolute
 
