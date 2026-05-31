@@ -91,12 +91,12 @@
 
     {% if not task.assignment and task.task_type_id not in completed_task_ids %}
     <button type="button"
-            id="horti-assign-open-{{ selected_area.id }}-{{ task.task_type_id }}"
-            onclick="document.getElementById('horti-assign-panel-{{ selected_area.id }}-{{ task.task_type_id }}').style.display='block'; this.style.display='none';"
+            class="js-horti-assign-open"
+            data-panel-id="horti-assign-panel-{{ selected_area.id }}-{{ task.task_type_id }}"
             style="margin-top:8px;border:none;background:#2d4a3e;color:#fff;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
       Assign workers
     </button>
-    <div id="horti-assign-panel-{{ selected_area.id }}-{{ task.task_type_id }}" data-task-id="{{ task.task_type_id }}" style="display:none;margin-top:8px">
+    <div id="horti-assign-panel-{{ selected_area.id }}-{{ task.task_type_id }}" class="js-horti-assign-panel" data-task-id="{{ task.task_type_id }}" style="display:none;margin-top:8px">
     <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="margin-top:8px">
     {% csrf_token %}
     <input type="hidden" name="action" value="assign">
@@ -128,7 +128,7 @@
     </div>
     </form>
     <button type="button"
-            onclick="document.getElementById('horti-assign-panel-{{ selected_area.id }}-{{ task.task_type_id }}').style.display='none'; document.getElementById('horti-assign-open-{{ selected_area.id }}-{{ task.task_type_id }}').style.display='inline-block';"
+            class="js-horti-assign-cancel"
             style="margin-top:6px;border:none;background:#e5e7eb;color:#374151;padding:8px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">
       Cancel
     </button>
@@ -342,6 +342,25 @@ document.addEventListener('submit', function(event) {
 });
 
 document.addEventListener('click', function(event) {
+  var assignOpenButton = event.target.closest('.js-horti-assign-open');
+  if (assignOpenButton) {
+    event.preventDefault();
+    var panel = document.getElementById(assignOpenButton.getAttribute('data-panel-id') || '');
+    if (!panel) return;
+    panel.style.display = 'block';
+    assignOpenButton.style.display = 'none';
+    return;
+  }
+  var assignCancelButton = event.target.closest('.js-horti-assign-cancel');
+  if (assignCancelButton) {
+    event.preventDefault();
+    var assignPanel = assignCancelButton.closest('.js-horti-assign-panel');
+    if (!assignPanel) return;
+    assignPanel.style.display = 'none';
+    var openButton = document.querySelector('.js-horti-assign-open[data-panel-id="' + assignPanel.id + '"]');
+    if (openButton) openButton.style.display = 'inline-block';
+    return;
+  }
   var cameraButton = event.target.closest('.js-horti-open-camera');
   if (cameraButton) {
     event.preventDefault();

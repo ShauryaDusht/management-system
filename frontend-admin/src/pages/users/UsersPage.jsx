@@ -334,10 +334,12 @@ export default function UsersPage() {
               <option key={r.key} value={r.key}>{r.label}</option>
             ))}
           </SelectField>
-          <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--text-3)' }}>{filtered.length} users</span>
-          <Btn variant="secondary" onClick={downloadCsv} disabled={loading || csvRows.length === 0}>
-            Download CSV
-          </Btn>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, color: 'var(--text-3)' }}>{filtered.length} users</span>
+            <Btn variant="secondary" onClick={downloadCsv} disabled={loading || csvRows.length === 0}>
+              Download CSV
+            </Btn>
+          </div>
         </div>
 
         {loading ? (

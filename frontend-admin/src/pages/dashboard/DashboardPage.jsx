@@ -366,7 +366,7 @@ export default function DashboardPage() {
                   icon={card.icon}
                   color={card.color}
                   sub={card.sub}
-                  style={{ height: '100%', cursor: 'default' }}
+                  style={{ height: '100%', cursor: 'default', userSelect: 'none', transition: 'none' }}
                 />
               ) : (
                 <a key={card.label} href={card.to} className="ui-interactive-card-link" style={{ height: '100%', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
