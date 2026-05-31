@@ -10,11 +10,24 @@
   {% endfor %}
 {% endif %}
 
+{% if all_area_tabs %}
+<div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:5px;margin-bottom:10px;-webkit-overflow-scrolling:touch">
+  {% for area in all_area_tabs %}
+  <a href="/horticulture/dashboard/?zone={{ area.zone_id }}&area={{ area.id }}" class="atab {% if area.is_selected %}on{% endif %}" style="{% if area.is_selected %}box-shadow:0 6px 16px rgba(45,74,62,.18){% endif %}">
+    <span style="white-space:nowrap">{{ area.name }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% if selected_area %}
 <div class="card" style="background:#111827;color:#fff;border:none;border-top:4px solid {% if selected_zone.color_code == 'red' %}#dc2626{% elif selected_zone.color_code == 'blue' %}#2563eb{% elif selected_zone.color_code == 'black' %}#020617{% else %}{{ selected_zone.color_code|default:'#2563eb' }}{% endif %};box-shadow:0 8px 22px rgba(17,24,39,.22)">
   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
     <div style="min-width:0">
-      <div style="font-size:11px;font-weight:900;text-transform:uppercase;color:#93c5fd">Today's Progress</div>
+      <div style="font-size:16px;font-weight:900;line-height:1.2">
+        {% now "H" as h %}{% if h < "12" %}Good Morning{% elif h < "17" %}Good Afternoon{% else %}Good Evening{% endif %}, {{ request.user.first_name|default:request.user.username }}
+      </div>
+      <div style="font-size:11px;font-weight:900;text-transform:uppercase;color:#93c5fd;margin-top:8px">Today's Progress</div>
       <div style="font-size:15px;font-weight:900;margin-top:2px;line-height:1.25">{{ selected_area.name }}</div>
       <div style="font-size:11px;color:#d1d5db;margin-top:2px">{{ selected_zone.name }} | {{ today|date:"D, d M Y" }}</div>
     </div>
@@ -30,26 +43,6 @@
     <span>Pending {{ pending_tasks }}</span>
     <span>Completed tasks</span>
   </div>
-</div>
-{% endif %}
-
-{% if zone_count > 1 %}
-<div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;-webkit-overflow-scrolling:touch">
-  {% for zone in zones %}
-  <a href="/horticulture/dashboard/?zone={{ zone.id }}" class="atab {% if selected_zone and selected_zone.id == zone.id %}on{% endif %}">
-    {{ zone.name }}
-  </a>
-  {% endfor %}
-</div>
-{% endif %}
-
-{% if selected_zone and areas %}
-<div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;-webkit-overflow-scrolling:touch">
-  {% for area in areas %}
-  <a href="/horticulture/dashboard/?zone={{ selected_zone.id }}&area={{ area.id }}" class="atab {% if selected_area and selected_area.id == area.id %}on{% endif %}">
-    {{ area.name }}
-  </a>
-  {% endfor %}
 </div>
 {% endif %}
 
@@ -129,15 +122,6 @@
   {% endfor %}
 </div>
 {% endif %}
-
-<div class="card hero">
-  <div style="font-size:16px;font-weight:800">
-    {% now "H" as h %}{% if h < "12" %}Good Morning{% elif h < "17" %}Good Afternoon{% else %}Good Evening{% endif %}, {{ request.user.first_name|default:request.user.username }}
-  </div>
-  <div style="font-size:12px;opacity:.85;margin:3px 0 10px">
-    {{ selected_area.name }} | {{ today|date:"D, d M Y" }} | {{ selected_zone.name }}
-  </div>
-</div>
 
 <div class="wtag">Today's Area Tasks</div>
 {% for task in task_rows %}

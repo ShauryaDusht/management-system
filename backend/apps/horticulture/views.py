@@ -1591,6 +1591,19 @@ def horticulture_dashboard(request):
     requested_area_id = request.GET.get('area')
     if requested_area_id:
         selected_area = _selected_area_for_zone(selected_zone, requested_area_id)
+    all_area_tabs = []
+    for zone in zones:
+        zone_payload = dashboard_payload if selected_zone and zone.id == selected_zone.id else build_zone_dashboard_payload(zone)
+        for area in stable_horticulture_area_nav_rows(zone_payload['areas']):
+            all_area_tabs.append({
+                'id': area['id'],
+                'name': area['name'],
+                'zone_id': zone.id,
+                'zone_name': zone.name,
+                'zone_color': zone.color_code,
+                'urgency': area.get('urgency'),
+                'is_selected': bool(selected_area and selected_area.id == area['id']),
+            })
 
     today = timezone.localdate()
     selected_area_payload = None
@@ -1703,6 +1716,7 @@ def horticulture_dashboard(request):
             'selected_zone': selected_zone,
             'selected_area': selected_area,
             'areas': stable_horticulture_area_nav_rows(dashboard_payload['areas']),
+            'all_area_tabs': all_area_tabs,
             'task_rows': task_rows,
             'area_task_assignments': area_task_assignments,
             'completed_assignments': completed_assignments,

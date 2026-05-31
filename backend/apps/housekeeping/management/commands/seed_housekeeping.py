@@ -182,11 +182,12 @@ Existing account passwords are preserved.
         pay_code='',
         match_pay_code=True,
         legacy_usernames=(),
+        preserve_username=False,
     ):
         is_superuser = role == 'admin'
         is_staff = role in {'admin', 'inventory_manager', 'housekeeping_manager', 'hk_inventory_manager', 'horticulture_manager'}
         base_username = build_username_from_names(first_name, last_name)
-        username_candidates = [base_username, username, *legacy_usernames]
+        username_candidates = [username, base_username, *legacy_usernames] if preserve_username else [base_username, username, *legacy_usernames]
         if pay_code and match_pay_code:
             username_candidates.append(
                 User.objects.filter(role=role, pay_code=pay_code).values_list('username', flat=True).first()
@@ -196,7 +197,7 @@ Existing account passwords are preserved.
             user = User.objects.filter(username=candidate).first()
             if user:
                 break
-        canonical_username = unique_standard_username(
+        canonical_username = username if preserve_username else unique_standard_username(
             first_name,
             last_name,
             model=User,
@@ -220,12 +221,14 @@ Existing account passwords are preserved.
         else:
             created = False
             if user.username != canonical_username:
-                user.username = unique_standard_username(
-                    first_name,
-                    last_name,
-                    model=User,
-                    exclude_pk=user.pk,
-                )
+                if preserve_username and User.objects.filter(username=canonical_username).exclude(pk=user.pk).exists():
+                    canonical_username = unique_standard_username(
+                        first_name,
+                        last_name,
+                        model=User,
+                        exclude_pk=user.pk,
+                    )
+                user.username = canonical_username
         user.first_name = first_name
         user.last_name = last_name
         if email:
@@ -278,9 +281,9 @@ Existing account passwords are preserved.
             ('jaimin.parmar', 'Jaimin', 'Parmar', '318', '7600738945', 'hostel.caretaker@iitgn.ac.in', ['Jurqia', 'Lekhaag']),
             ('ramprakash.parmar', 'Ramprakash Lembabhai', 'Parmar', '317', '9687460280', 'ramairy1198@gmail.com', ['Kyzeel']),
             ('vishwajeet.mishra', 'Vishwajeet', 'Mishra', '08', '9898037530', 'mishra.vishwajeet@iitgn.ac.in', ['Hostel Common Area'], ['vishvajeet.kumar', 'vishwajeet']),
-            ('manisha.thapa', 'Manisha', 'Thapa', '424', '9942523410', '', ['Block-A JRHA', 'Block-B JRHA', 'Block-C JRHA', 'Block-D JRHA']),
+            ('manisha.thapa', 'Manisha', 'Thapa', '424', '9942523410', '', ['Block-B JRHA', 'Block-D JRHA']),
             ('shailesh.vaghela', 'Shailesh', 'Vaghela', '422', '7990375262', '', ['Block-A JRHA', 'Block-C JRHA']),
-            ('kailash.vaghela', 'Kailash', 'Vaghela', '', '', '', ['Block-A JRHA', 'Block-B JRHA', 'Block-C JRHA', 'Block-D JRHA']),
+            ('kailash.vaghela', 'Kailash', 'Vaghela (JRHA Night)', '', '', '', ['Block-A JRHA', 'Block-B JRHA', 'Block-C JRHA', 'Block-D JRHA']),
         ]
         for caretaker in caretakers:
             username, first, last, pc, phone, email, areas, *rest = caretaker
@@ -295,6 +298,7 @@ Existing account passwords are preserved.
                 email=email,
                 pay_code=pc,
                 legacy_usernames=legacy_usernames,
+                preserve_username=True,
             )
 
         # Supervisors (campus sections)
@@ -382,6 +386,7 @@ Existing account passwords are preserved.
                 email=email,
                 pay_code=pay_code,
                 match_pay_code=False,
+                preserve_username=True,
             )
 
         for username in ['admin.user', 'hk_inventory_manager']:
@@ -706,18 +711,18 @@ Existing account passwords are preserved.
             ('Anandkumar Parmar','310', '9023393753', 'Kyzeel',   'washroom', False),
 
             # -- JEET HOSTEL -------------------------------------------------
-            ('Rajesh Parmar',     '416', '', 'Block-A JRHA', 'room',     False),
-            ('Rahul Rathod',      '417', '', 'Block-A JRHA', 'floor',    False),
-            ('Darshan',           '450', '', 'Block-A JRHA', 'washroom', False),
-            ('Manisha Ben',       '129', '', 'Block-B JRHA', 'room',     False),
-            ('Sugna Ben',         '134', '', 'Block-B JRHA', 'floor',    False),
-            ('Leela Ben',         '150', '', 'Block-B JRHA', 'washroom', False),
-            ('Himmat',            '456', '', 'Block-C JRHA', 'room',     False),
-            ('Hasmukh',           '77',  '', 'Block-C JRHA', 'reliever', True),
-            ('Suresh',            '454', '', 'Block-C JRHA', 'washroom', False),
-            ('Urvashi',           '459', '', 'Block-D JRHA', 'room',     False),
-            ('Hetal',             '458', '', 'Block-D JRHA', 'floor',    False),
-            ('Bhavika',           '457', '', 'Block-D JRHA', 'washroom', False),
+            ('Rajesh Parmar',                  '416', '', 'Block-A JRHA', 'room',     False),
+            ('Rathod Rahul',                   '417', '', 'Block-A JRHA', 'floor',    False),
+            ('Darshan Brahmaniya',             '450', '', 'Block-A JRHA', 'washroom', False),
+            ('Manisha Ben K Vaghela',          '129', '', 'Block-B JRHA', 'room',     False),
+            ('Sugna Ben J Vaghela',            '134', '', 'Block-B JRHA', 'floor',    False),
+            ('Leela Ben Dipak Kumar Parmar',   '150', '', 'Block-B JRHA', 'washroom', False),
+            ('Himmat Bhai',                    '456', '', 'Block-C JRHA', 'room',     False),
+            ('Hashmukh Bhai',                  '77',  '', 'Block-C JRHA', 'reliever', True),
+            ('Suresh Bhai',                    '454', '', 'Block-C JRHA', 'washroom', False),
+            ('Urvashi Ben Nayanbhai Vaghela',  '459', '', 'Block-D JRHA', 'room',     False),
+            ('Hetal Ben Ashokbhai',            '458', '', 'Block-D JRHA', 'floor',    False),
+            ('Bhavika Ben Solanki',            '457', '', 'Block-D JRHA', 'washroom', False),
 
             # -- COMMON AREA -------------------------------------------------
             ('Yogesh Vaghela',   '80',  '9998100804', 'Hostel Common Area', 'room',    False),
@@ -1062,10 +1067,14 @@ Existing account passwords are preserved.
         hostel_deleted, hostel_kept = self._cleanup_unused_inactive_workers(
             sorted({spec['area'] for spec in hostel_roster})
         )
+        jrha_deleted, jrha_kept = self._cleanup_unused_inactive_workers([
+            'Block-A JRHA', 'Block-B JRHA', 'Block-C JRHA', 'Block-D JRHA',
+        ])
         self.stdout.write(
             '  [OK] Hostel/Common roster synced from final list: '
             f'{hostel_synced} workers, {hostel_deactivated} extra deactivated, '
-            f'{hostel_deleted} unused removed, {hostel_kept} history rows kept inactive'
+            f'{hostel_deleted + jrha_deleted} unused removed, '
+            f'{hostel_kept + jrha_kept} history rows kept inactive'
         )
 
         # Common Area staffing details
@@ -1254,9 +1263,9 @@ Existing account passwords are preserved.
                 )
 
         jeet_supervisor_by_area = {
-            'Block-A JRHA': 'manisha.thapa',
+            'Block-A JRHA': 'shailesh.vaghela',
             'Block-B JRHA': 'manisha.thapa',
-            'Block-C JRHA': 'manisha.thapa',
+            'Block-C JRHA': 'shailesh.vaghela',
             'Block-D JRHA': 'manisha.thapa',
         }
         for area_name, supervisor_username in jeet_supervisor_by_area.items():

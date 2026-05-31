@@ -11,6 +11,7 @@ from apps.housekeeping.models import HKWorker
 PORTAL_USERS = {
     'admin.user': ('Admin', 'User', 'pragnesh@iitgn.ac.in'),
     'mahesh.prajapati': ('Maheshbhai', 'Prajapati', 'managerhort.iwd@iitgn.ac.in'),
+    'hk_inventory_manager': ('Housekeeping Inventory', 'Manager', 'manager.hk@iitgn.ac.in'),
     'housekeeping.manager': ('Housekeeping', 'Manager', 'manager.hk@iitgn.ac.in'),
     'inventory.manager': ('Inventory', 'Manager', 'manager.hk@iitgn.ac.in'),
 }
