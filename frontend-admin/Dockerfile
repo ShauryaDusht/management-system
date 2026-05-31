@@ -21,10 +21,17 @@ WORKDIR /app
 
 RUN npm install -g serve@14
 
-# Copy only the built output
+# Copy the built output at the root and under /admin.
+# The root copy is the SPA fallback used by `serve -s`; the /admin copy lets
+# direct /admin/assets/* requests resolve as real static files.
 COPY --from=builder /app/dist ./dist
+RUN mkdir -p /tmp/admin-dist \
+    && cp -r ./dist/. /tmp/admin-dist/ \
+    && mkdir -p ./dist/admin \
+    && cp -r /tmp/admin-dist/. ./dist/admin/ \
+    && rm -rf /tmp/admin-dist
 
 EXPOSE 5173
 
-# serve the dist folder; nginx strips the /admin prefix before proxying
+# serve the dist folder; nginx passes the /admin prefix through
 CMD ["serve", "-s", "dist", "-l", "5173"]
