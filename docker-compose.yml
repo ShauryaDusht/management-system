@@ -35,7 +35,10 @@ services:
     command: bash /app/scripts/start_backend.sh
 
   frontend-admin:
-    build: ./frontend-admin
+    build:
+      context: ./frontend-admin
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://campussanchalika.iitgn.ac.in/api}
     restart: unless-stopped
     ports:
       - "127.0.0.1:5173:5173"
