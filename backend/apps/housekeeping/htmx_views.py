@@ -16,7 +16,7 @@ from django.db.models import Prefetch, Sum, Value, DecimalField
 from django.db.models.functions import Coalesce
 from django.http import HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_date, parse_datetime
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
@@ -67,6 +67,11 @@ WORKER_TAG_LABELS = {
     "room": ("room", "Room Staff"),
     "floor": ("floor", "Floor Staff"),
     "washroom": ("washroom", "Washroom Staff"),
+    "t1": ("t1", "Team 1"),
+    "t2": ("t2", "Team 2"),
+    "t3": ("t3", "Team 3"),
+    "t4": ("t4", "Team 4"),
+    "t5": ("t5", "Team 5"),
     "all": ("all", "All Staff"),
     "general": ("general", "General"),
 }
@@ -346,12 +351,12 @@ def _dashboard_section_labels(area):
         })
     elif area_name == "Solid Waste Management":
         labels.update({
-            "tab_label_floor": "Collection",
-            "tab_label_room": "Transport",
-            "tab_label_washroom": "Segregation",
-            "heading_floor": "Primary and Secondary Collection Routes",
-            "heading_room": "Tempo and Vehicle Collection Operations",
-            "heading_washroom": "Segregation and Supervisor Operations",
+            "tab_label_floor": "T1",
+            "tab_label_room": "T2",
+            "tab_label_washroom": "T3",
+            "heading_floor": "Team 1 - HB + AB Team",
+            "heading_room": "Team 2 - CNG Vehicle Team",
+            "heading_washroom": "Team 3 - Hotel Team",
         })
     elif area and area.area_type == "academic":
         labels.update({
@@ -697,6 +702,18 @@ def get_today_records(area, date):
     return list(active_records) + list(temporary_task_records)
 
 
+def task_completion_sort_key(record):
+    """Keep active work above completed work while preserving schedule order."""
+    done_rank = 1 if getattr(record, "status", "") == "done" else 0
+    schedule = getattr(record, "schedule", None)
+    return (
+        done_rank,
+        getattr(schedule, "start_time", None),
+        getattr(schedule, "order", 0),
+        getattr(record, "id", 0),
+    )
+
+
 def current_half():
     h = timezone.localtime(timezone.now()).hour
     return "first" if h < 13 else "second"
@@ -730,16 +747,15 @@ def mark_busy_workers(area_workers, busy_worker_ids):
 def can_multi_worker_task(user, record):
     if not record or not record.area:
         return False
-    if getattr(user, "role", "") == "caretaker":
-        return False
 
     # Keep Research Park on the existing single-worker flow. Other supervisor
-    # areas can assign a team, matching the SWM/Ashok workflow.
+    # and caretaker areas can assign a team, matching the SWM/Ashok workflow.
     if record.area.area_type == "research_park":
         return False
 
     return bool(
         record.area.area_type in {
+            "hostel",
             "academic",
             "central_arcade",
             "sports",
@@ -749,7 +765,7 @@ def can_multi_worker_task(user, record):
             "director",
             "other",
         }
-        and getattr(user, "role", "") in {"supervisor", "admin", "housekeeping_manager"}
+        and getattr(user, "role", "") in {"caretaker", "supervisor", "admin", "housekeeping_manager"}
     )
 
 
@@ -836,7 +852,7 @@ def hk_dashboard(request):
     visible_areas = visible_user_areas(user, user_areas)
     sel_area = selected_area(request, visible_areas)
 
-    records = list(get_today_records(sel_area, today)) if sel_area else []
+    records = sorted(get_today_records(sel_area, today), key=task_completion_sort_key) if sel_area else []
     area_name = sel_area.name if sel_area else ""
     is_old_guest_house = area_name == "Old Guest House"
 
@@ -852,16 +868,18 @@ def hk_dashboard(request):
     grouped.setdefault("floor", [])
     grouped.setdefault("room", [])
     grouped.setdefault("washroom", [])
+    grouped.setdefault("t1", [])
+    grouped.setdefault("t2", [])
+    grouped.setdefault("t3", [])
+    grouped.setdefault("t4", [])
+    grouped.setdefault("t5", [])
     grouped.setdefault("all", [])
+    for recs in grouped.values():
+        recs.sort(key=task_completion_sort_key)
+
     if grouped["all"]:
         grouped["floor"].extend(grouped["all"])
-        grouped["floor"].sort(
-            key=lambda rec: (
-                rec.schedule.start_time,
-                rec.schedule.order,
-                rec.id,
-            )
-        )
+        grouped["floor"].sort(key=task_completion_sort_key)
         grouped["all"] = []
 
     is_common_area = area_name == "Hostel Common Area"
@@ -1111,6 +1129,7 @@ def hk_dashboard(request):
         "heading_room": heading_room,
         "heading_washroom": heading_washroom,
         "heading_special": heading_special,
+        "is_swm": is_swm,
         "has_special_tasks": bool(grouped["all"]),
         "can_assign_tasks": user.role in ["admin", "housekeeping_manager", "supervisor", "caretaker"],
         "worker_selection_cards": worker_selection_cards,
@@ -1665,12 +1684,21 @@ def hk_attendance(request):
     visible_areas = visible_user_areas(user, user_areas)
     sel_area = selected_area(request, visible_areas)
 
-    sel_date = timezone.localdate()
+    today = timezone.localdate()
+    requested_date = parse_date(request.GET.get("date") or request.POST.get("date") or "")
+    is_swm = bool(sel_area and sel_area.name == "Solid Waste Management")
+    previous_sunday = today - datetime.timedelta(days=1) if today.weekday() == 0 else None
+    can_mark_previous_swm_sunday = bool(is_swm and previous_sunday)
+    allowed_dates = {today}
+    if can_mark_previous_swm_sunday:
+        allowed_dates.add(previous_sunday)
+    sel_date = requested_date if requested_date in allowed_dates else today
 
     workers = display_workers_for_area(sel_area)
 
     cur_half = current_half()
-    is_today = sel_date == timezone.localdate()
+    is_today = sel_date == today
+    can_submit_selected_attendance = is_today or (can_mark_previous_swm_sunday and sel_date == previous_sunday)
     area_param = f"&area={sel_area.id}" if sel_area else ""
 
     if request.method == "POST":
@@ -1775,8 +1803,12 @@ def hk_attendance(request):
         "sel_date": sel_date,
         "sel_area": sel_area,
         "user_areas": visible_areas,
-        "today": timezone.localdate(),
+        "today": today,
         "is_today": is_today,
+        "is_swm": is_swm,
+        "can_mark_previous_swm_sunday": can_mark_previous_swm_sunday,
+        "can_submit_selected_attendance": can_submit_selected_attendance,
+        "previous_sunday": previous_sunday,
         "cur_half": cur_half,
         "present_first": sum(1 for r in worker_rows if r["first_att"] and r["first_att"].status in ["present", "late"]),
         "present_second": sum(1 for r in worker_rows if r["second_att"] and r["second_att"].status in ["present", "late"]),

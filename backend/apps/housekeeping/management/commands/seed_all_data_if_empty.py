@@ -1,6 +1,7 @@
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
+from apps.housekeeping.models import HKScheduleTemplate
 from apps.inventory.models import Item
 
 
@@ -18,6 +19,16 @@ class Command(BaseCommand):
         verbosity = options.get('verbosity', 1)
 
         if Item.objects.exists():
+            if not HKScheduleTemplate.objects.exists():
+                if verbosity > 0:
+                    self.stdout.write(self.style.WARNING(
+                        'Inventory data exists, but housekeeping schedules are empty. '
+                        'Running housekeeping seed...'
+                    ))
+                call_command('seed_housekeeping', verbosity=verbosity)
+                call_command('sync_guesthouse_director_staff', quiet=True)
+                return
+
             if verbosity > 0:
                 self.stdout.write(self.style.WARNING(
                     'Seed skipped: inventory data already exists.'

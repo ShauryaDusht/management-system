@@ -20,6 +20,17 @@
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
     <div style="font-weight:800;color:#2d4a3e">📅 {{ sel_date|date:"d M Y" }}</div>
   </div>
+  {% if can_mark_previous_swm_sunday %}
+  <div style="display:flex;gap:6px;margin-bottom:8px">
+    <a href="/housekeeping/attendance/?date={{ today|date:'Y-m-d' }}&area={{ sel_area.id }}" class="atab {% if is_today %}on{% endif %}" style="flex:1;text-align:center">Today</a>
+    <a href="/housekeeping/attendance/?date={{ previous_sunday|date:'Y-m-d' }}&area={{ sel_area.id }}" class="atab {% if not is_today %}on{% endif %}" style="flex:1;text-align:center">Sunday</a>
+  </div>
+  {% if not is_today %}
+  <div style="font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:7px 8px;margin-bottom:8px">
+    SWM Sunday attendance entry is open for Monday correction.
+  </div>
+  {% endif %}
+  {% endif %}
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
     <div style="text-align:center;padding:7px;background:#d1fae5;border-radius:8px">
       <div style="font-size:20px;font-weight:900;color:#065f46">{{ present_first }}</div>
@@ -68,7 +79,15 @@
 <!-- SUBMIT BUTTONS -->
 {% if worker_rows %}
 <div style="margin-top:8px">
-  {% if is_today and cur_half == 'first' and not first_submitted %}
+  {% if can_submit_selected_attendance and not first_submitted and not is_today %}
+  <form method="post" action="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="submit_half">
+    <input type="hidden" name="half" value="first">
+    <button type="submit" class="btn-s">âœ… Submit First Half Attendance</button>
+  </form>
+
+  {% elif can_submit_selected_attendance and cur_half == 'first' and not first_submitted %}
   <form method="post" action="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}">
     {% csrf_token %}
     <input type="hidden" name="action" value="submit_half">
@@ -76,7 +95,15 @@
     <button type="submit" class="btn-s">✅ Submit First Half Attendance</button>
   </form>
 
-  {% elif is_today and cur_half == 'second' and not second_submitted %}
+  {% elif can_submit_selected_attendance and not second_submitted and not is_today %}
+  <form method="post" action="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="submit_half">
+    <input type="hidden" name="half" value="second">
+    <button type="submit" class="btn-p">âœ… Submit Second Half Attendance</button>
+  </form>
+
+  {% elif can_submit_selected_attendance and cur_half == 'second' and not second_submitted %}
   <form method="post" action="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}">
     {% csrf_token %}
     <input type="hidden" name="action" value="submit_half">

@@ -79,6 +79,15 @@ from .services import (
 User = get_user_model()
 
 
+def horticulture_task_done_rank(task, completed_task_ids):
+    assignment = task.get('assignment') if isinstance(task, dict) else None
+    is_done = (
+        task.get('task_type_id') in completed_task_ids
+        or getattr(assignment, 'status', None) == HorticultureDailyAssignment.Status.DONE
+    )
+    return 1 if is_done else 0
+
+
 def _flatten_errors(detail):
     if isinstance(detail, dict):
         parts = []
@@ -1549,7 +1558,9 @@ def horticulture_dashboard(request):
     done_task_type_ids.update(completed_task_ids)
     total_tasks = len(task_rows)
     done_tasks = sum(1 for task in task_rows if task['task_type_id'] in done_task_type_ids)
+    pending_tasks = max(total_tasks - done_tasks, 0)
     percent_done = int(round((done_tasks / total_tasks) * 100)) if total_tasks else 0
+    task_rows = sorted(task_rows, key=lambda task: horticulture_task_done_rank(task, done_task_type_ids))
     incharge_notice = (
         HorticultureInchargeNotification.objects
         .filter(user=request.user, is_seen=False)
@@ -1637,6 +1648,7 @@ def horticulture_dashboard(request):
             'completed_task_ids': done_task_type_ids,
             'total_tasks': total_tasks,
             'done_tasks': done_tasks,
+            'pending_tasks': pending_tasks,
             'percent_done': percent_done,
             'season': dashboard_payload['season'],
             'zone_count': len(zones),
@@ -2136,6 +2148,7 @@ def horticulture_mark_task(request):
         enriched = dict(task)
         enriched['assignment'] = assignment_by_task.get(task['task_type_id'])
         task_rows.append(enriched)
+    task_rows = sorted(task_rows, key=lambda task: horticulture_task_done_rank(task, completed_task_ids))
     pending_task_count = sum(
         1
         for task in task_rows

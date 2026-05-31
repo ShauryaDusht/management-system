@@ -1,4 +1,4 @@
-<div class="card" id="task-{{ record.id }}" style="padding:11px;
+<div class="card js-task-card" id="task-{{ record.id }}" data-status="{{ record.status }}" data-sort-order="{{ record.schedule.order }}" data-start-time="{{ record.schedule.start_time|time:'H:i:s' }}" style="padding:11px;
   {% if record.status == 'done' %}border-left:4px solid #16a34a;
   {% elif record.status == 'in_progress' %}border-left:4px solid #2563eb;
   {% else %}border-left:4px solid #e5e7eb;{% endif %}">

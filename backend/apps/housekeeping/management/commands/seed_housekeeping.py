@@ -563,23 +563,23 @@ Existing account passwords are preserved.
         workers = [
             # -- AIBAAN ------------------------------------------------------
             ('Reeta Ben',        '357', '9574379477', 'Aibaan',   'room',     False),
-            ('Meena Ben',        '76',  '9909679865', 'Aibaan',   'floor',    False),
-            ('Kailash B',        '143', '7265921026', 'Aibaan',   'washroom', False),
+            ('Sangeeta Ben',     '219', '8866941201', 'Aibaan',   'floor',    False),
+            ('Shilpa Ben',       '419', '6356046585', 'Aibaan',   'washroom', False),
 
             # -- BEUAKI ------------------------------------------------------
-            ('Shilpa Ben',       '419', '6356046585', 'Beuaki',   'room',     False),
-            ('Bhanu Ben',        '332', '7567371788', 'Beuaki',   'floor',    False),
-            ('Surya Ben',        '233', '9725963299', 'Beuaki',   'washroom', False),
+            ('Meena Ben',        '98',  '9909679865', 'Beuaki',   'room',     False),
+            ('Kailashben M',     '76',  '8490053837', 'Beuaki',   'floor',    False),
+            ('Sonal Ben',        '415', '7359834672', 'Beuaki',   'washroom', False),
 
             # -- CHIMAIR -----------------------------------------------------
-            ('Kailashben M',     '98',  '8490053837', 'Chimair',  'room',     False),
-            ('Geeta Ben',        '230', '7041016942', 'Chimair',  'floor',    False),
-            ('Manisha Ben',      '356', '9157691322', 'Chimair',  'washroom', False),
+            ('Bhanu Ben',        '332', '7567371788', 'Chimair',  'room',     False),
+            ('Surya Ben',        '233', '9725963299', 'Chimair',  'floor',    False),
+            ('Deepika Ben',      '418', '7383512108', 'Chimair',  'washroom', False),
 
             # -- IJOKHA ------------------------------------------------------
-            ('Sangeeta Ben',     '219', '8866941201', 'Ijokha',   'room',     False),
-            ('Sonal Ben',        '415', '7359834672', 'Ijokha',   'floor',    False),
-            ('Champa Ben',       '249', '8140558882', 'Ijokha',   'washroom', False),
+            ('Kailash B',        '143', '7265921026', 'Ijokha',   'room',     False),
+            ('Mital Ben',        '386', '7383619204', 'Ijokha',   'floor',    False),
+            ('Geeta Ben',        '230', '7041016942', 'Ijokha',   'washroom', False),
 
             # -- DUVEN -------------------------------------------------------
             ('Shailesh Rathod',  '239', '9081107066', 'Duven',    'room',     False),
@@ -749,27 +749,54 @@ Existing account passwords are preserved.
 
             # Relievers substitute for permanent workers when they take leave.
             # They are managed in a dedicated hostel reliever pool area.
-            ('Deepika Ben',      '418', '7383512108', 'Hostels Reliever', 'reliever', True),
-            ('Mital Ben',        '386', '7383619204', 'Hostels Reliever', 'reliever', True),
-            ('Vinay',            '136', '8758388061', 'Hostels Reliever', 'reliever', True),
-            ('Lala',             '154', '9726303104', 'Hostels Reliever', 'reliever', True),
-            ('Hasmukhbhai',      '75',  '9714466201', 'Hostels Reliever', 'reliever', True),
-            ('Umesh Babariya',   '435', '9313230372', 'Hostels Reliever', 'reliever', True),
-            # RAHUL FIX
-            ('Rajendra',         '121', '9924301124', 'Hostels Reliever', 'reliever', True),
-            ('Dhiraj',           '131', '9979030157', 'Hostels Reliever', 'reliever', True),
-            ('Mayur',            '258', '9099743600', 'Hostels Reliever', 'reliever', True),
+            ('Anju Ben',         '',    '',           'Hostels Reliever', 'reliever', True),
+            ('Manisha Ben',      '356', '9157691322', 'Hostels Reliever', 'reliever', True),
         ]
 
-        # Backward-compatibility: move relievers to dedicated hostel reliever area.
-        reliever_names = [
-            'Deepika Ben', 'Mital Ben', 'Vinay', 'Lala', 'Hasmukhbhai',
-            'Umesh Babariya', 'Rajendra', 'Dhiraj', 'Mayur',
+        # Backward-compatibility: move reshuffled hostel workers instead of
+        # leaving stale active rows in their old hostel/reliever locations.
+        hostel_area_moves = [
+            ('357', 'Reeta Ben', 'Aibaan'),
+            ('219', 'Sangeeta Ben', 'Aibaan'),
+            ('419', 'Shilpa Ben', 'Aibaan'),
+            ('98', 'Meena Ben', 'Beuaki'),
+            ('76', 'Kailashben M', 'Beuaki'),
+            ('415', 'Sonal Ben', 'Beuaki'),
+            ('332', 'Bhanu Ben', 'Chimair'),
+            ('233', 'Surya Ben', 'Chimair'),
+            ('418', 'Deepika Ben', 'Chimair'),
+            ('143', 'Kailash B', 'Ijokha'),
+            ('386', 'Mital Ben', 'Ijokha'),
+            ('230', 'Geeta Ben', 'Ijokha'),
+            ('356', 'Manisha Ben', 'Hostels Reliever'),
         ]
+        managed_hostel_area_names = ['Aibaan', 'Beuaki', 'Chimair', 'Ijokha', 'Hostels Reliever']
+        for pay_code, name, area_name in hostel_area_moves:
+            target_area = self.area(area_name)
+            if not target_area:
+                continue
+            HKWorker.objects.filter(pay_code=pay_code, area__name__in=managed_hostel_area_names).update(
+                name=name,
+                area=target_area,
+                is_active=True,
+                is_reliever=(area_name == 'Hostels Reliever'),
+            )
+            HKWorker.objects.filter(pay_code=pay_code, name=name).exclude(area=target_area).update(
+                area=target_area,
+                is_active=True,
+                is_reliever=(area_name == 'Hostels Reliever'),
+            )
+
+        HKWorker.objects.filter(pay_code='249', area__name__in=managed_hostel_area_names).update(is_active=False)
+
+        reliever_names = ['Anju Ben', 'Manisha Ben']
         HKWorker.objects.filter(
             name__in=reliever_names,
             is_reliever=True,
         ).update(area=self.area('Hostels Reliever'))
+        HKWorker.objects.filter(area=self.area('Hostels Reliever'), is_reliever=True).exclude(
+            name__in=reliever_names,
+        ).update(is_active=False)
 
         created_count = 0
         for name, pay_code, phone, area_name, wtype, is_reliever in workers:
@@ -812,6 +839,23 @@ Existing account passwords are preserved.
                 worker.shift = worker.shift or 'day'
                 worker.is_active = True
                 worker.save(update_fields=update_fields)
+
+        for name, pay_code, phone, area_name, wtype, is_reliever in workers:
+            if not pay_code or area_name not in managed_hostel_area_names:
+                continue
+            target = HKWorker.objects.filter(
+                pay_code=pay_code,
+                area__name=area_name,
+                worker_type=wtype,
+                is_reliever=is_reliever,
+                is_active=True,
+            ).order_by('id').first()
+            if target:
+                HKWorker.objects.filter(
+                    pay_code=pay_code,
+                    area__name__in=managed_hostel_area_names,
+                    is_active=True,
+                ).exclude(pk=target.pk).update(is_active=False)
 
         # Common Area staffing details
         common_supervisor = User.objects.filter(username='vishvajeet.kumar').first()
@@ -990,10 +1034,9 @@ Existing account passwords are preserved.
     def seed_schedules(self):
         """
         Build schedule templates.
-        - Same daily schedule for all 12 caretaker hostels (room/floor/washroom).
-        - Sunday extras for hostels.
+        - Same 15-task daily schedule for all 12 caretaker hostels.
         - Dedicated daily Hostel Common Area schedule for Vishwajeet and team.
-        Three parallel staff groups: room / floor / washroom
+        Three parallel staff groups: room/common, floor, washroom.
         """
         # Wipe old hostel templates and recreate fresh
         hostel_names = [
@@ -1010,58 +1053,34 @@ Existing account passwords are preserved.
         # ─── ROOM STAFF SCHEDULE ─────────────────────────────────────────
         room_tasks = [
             # (order, start, end, task_name, requires_photo, description)
-            (1,  '08:10', '08:45', '2nd Floor Washroom Touch Up',         False, ''),
-            (2,  '08:45', '09:00', 'Staircase Cleaning',                   False, ''),
-            (3,  '09:00', '09:30', 'Room Cleaning - 5 rooms',              True,  'First round of room cleaning'),
-            (4,  '09:30', '09:45', 'Tea Break',                            False, ''),
-            (5,  '09:45', '10:00', 'Outside Round',                        False, ''),
-            (6,  '10:00', '12:00', 'Room Round - 15 rooms',                True,  'Main room cleaning round'),
-            (7,  '12:00', '13:00', 'Pantry Cleaning - 4 pantries',         True,  ''),
-            (8,  '13:00', '13:45', 'Lunch Break',                          False, ''),
-            (9,  '13:45', '14:00', 'Paper Cutting / Admin Work',           False, ''),
-            (10, '14:00', '16:00', 'Room & Extra Work - 10 rooms',         True,  'Afternoon room round'),
-            (11, '16:00', '16:50', 'Common Cleaning & Pantry Round',       False, ''),
+            (1, '08:10', '09:15', 'Room Cleaning - Morning Round', True, 'Student rooms and assigned room-side area'),
+            (2, '09:15', '10:15', 'Room Corridor and Door Dusting', True, 'Room-side corridor, doors, handles and notice boards'),
+            (3, '10:15', '11:30', 'Pantry and Common Utility Cleaning', True, 'Pantry slab, sink, fridge outside and utility points'),
+            (4, '13:45', '15:15', 'Room Cleaning - Afternoon Round', True, 'Pending rooms and caretaker-assigned room work'),
+            (5, '15:15', '16:50', 'Room Area Final Touch Up', True, 'Final round for room-side common area and pending work'),
         ]
 
         # ─── FLOOR STAFF SCHEDULE ────────────────────────────────────────
         floor_tasks = [
-            (1,  '08:10', '08:45', '3rd Floor Washroom Touch Up',          False, ''),
-            (2,  '08:45', '09:30', 'Ground Floor Dry Mop',                 False, ''),
-            (3,  '09:30', '09:45', 'Tea Break / Inside Round',             False, ''),
-            (4,  '09:45', '10:00', 'Outside Round',                        False, ''),
-            (5,  '10:00', '11:30', 'Common Room + Staircase + Ground Floor',True, ''),
-            (6,  '11:30', '13:00', '3rd Floor Cleaning',                   True,  ''),
-            (7,  '13:00', '13:45', 'Lunch Break',                          False, ''),
-            (8,  '13:45', '14:00', 'Paper Cutting',                        False, ''),
-            (9,  '14:00', '15:00', '2nd Floor Cleaning',                   True,  ''),
-            (10, '15:00', '16:30', '1st Floor Cleaning',                   True,  ''),
-            (11, '16:20', '16:50', 'Ground Floor Cleaning',                False, ''),
+            (1, '08:10', '09:15', 'Ground Floor Sweeping and Mopping', True, 'Entrance, lobby and ground floor passage'),
+            (2, '09:15', '10:30', 'Upper Floor Passage Cleaning', True, 'All assigned upper-floor passages'),
+            (3, '10:30', '11:45', 'Staircase and Railing Cleaning', True, 'Staircases, railings and landing areas'),
+            (4, '13:45', '15:15', 'Common Area Floor Cleaning', True, 'Common room, lift lobby and shared floor area'),
+            (5, '15:15', '16:50', 'Floor Final Round and Touch Up', True, 'Final mopping, dustbin check and pending floor work'),
         ]
 
         # ─── WASHROOM STAFF SCHEDULE ─────────────────────────────────────
         washroom_tasks = [
-            (1,  '08:10', '08:45', '1st Floor Washroom Touch Up',          False, ''),
-            (2,  '08:45', '09:30', 'Ground Floor Washroom Touch Up',       False, ''),
-            (3,  '09:30', '09:45', 'Tea Break',                            False, ''),
-            (4,  '09:45', '10:00', 'Staircase Cleaning',                   False, ''),
-            (5,  '10:00', '12:00', '3rd Floor - 2 Washroom Deep Cleaning', True,  ''),
-            (6,  '12:00', '13:00', '2nd Floor - 2 Washroom Cleaning',      True,  ''),
-            (7,  '13:00', '13:45', 'Lunch Break',                          False, ''),
-            (8,  '13:45', '14:00', 'Paper Cutting',                        False, ''),
-            (9,  '14:00', '15:00', '6 Washroom Rounds Touch Up',           False, ''),
-            (10, '15:00', '16:00', '1st Floor Washroom Cleaning',          True,  ''),
-            (11, '16:00', '16:50', 'All Washroom Touch Up & Final Round',  True,  ''),
+            (1, '08:10', '09:15', 'Washroom Cleaning - Morning Round', True, 'All assigned washrooms, fittings and mirrors'),
+            (2, '09:15', '10:30', 'Washroom Deep Cleaning', True, 'Commode, urinal, basin, partition and floor scrubbing'),
+            (3, '10:30', '11:45', 'Washroom Refill and Dry Check', True, 'Soap, tissue, odour check and dry floor check'),
+            (4, '13:45', '15:15', 'Washroom Cleaning - Afternoon Round', True, 'Second full washroom round'),
+            (5, '15:15', '16:50', 'Washroom Final Touch Up', True, 'Final touch up, dustbin check and pending washroom work'),
         ]
 
-        # ─── SUNDAY EXTRAS (same for all hostels) ────────────────────────
-        sunday_tasks = [
-            (1, '08:10', '09:00', 'Dustbin Cleaning - All Floors',         True,  'Every Sunday'),
-            (2, '09:00', '10:30', 'Terrace Cleaning',                      True,  'Every Sunday'),
-            (3, '10:30', '12:00', 'Fridge Cleaning (Every 15 Days)',        True,  'Check with caretaker if due today'),
-            (4, '13:00', '14:00', 'Lunch Break',                           False, ''),
-            (5, '14:00', '15:30', 'Common Area Deep Clean',                True,  ''),
-            (6, '15:30', '16:50', 'Window Cleaning + Cobweb Removal',      True,  ''),
-        ]
+        # Sunday stays on the same 15-task roster; extra ad-hoc work can be
+        # assigned through the extra/special task flow.
+        sunday_tasks = []
 
         total = 0
         for area in hostel_areas:
@@ -1801,76 +1820,58 @@ Existing account passwords are preserved.
         if swm_area:
             HKScheduleTemplate.objects.filter(area=swm_area).delete()
 
-            swm_collection_tasks = [
-                (1, '08:00', '08:45', 'HB Collection', True, 'Days: Daily | Collection route'),
-                (2, '08:45', '09:30', 'Hostel Collection', True, 'Days: Daily | Collection route'),
-                (3, '09:30', '10:15', 'AB Collection', True, 'Days: Daily | Collection route'),
-                (4, '10:15', '11:00', 'GCS Collection', True, 'Days: Monday, Wednesday, Friday, Sunday | Collection route'),
-                (5, '11:00', '11:45', 'Hostel Shops Collection', True, 'Days: Daily | Collection route'),
-                (6, '11:45', '12:30', 'AB Shops Collection', True, 'Days: Daily | Collection route'),
-            ]
+            swm_team_tasks = {
+                't1': [
+                    (1, '08:00', '08:45', 'HB Collection', True, 'Days: Daily | Team 1 - HB + AB Team'),
+                    (2, '08:45', '09:30', 'Old AB Collection', True, 'Days: Daily | Team 1 - HB + AB Team'),
+                    (3, '09:30', '10:15', 'New AB Collection', True, 'Days: Daily | Team 1 - HB + AB Team'),
+                    (4, '10:15', '11:00', 'AB Shops Collection', True, 'Days: Daily | Team 1 - HB + AB Team'),
+                    (5, '16:00', '16:30', 'Cart Parking & Bins Setup for Next Day', True, 'Days: Daily | Team 1 - HB + AB Team'),
+                ],
+                't2': [
+                    (1, '08:00', '08:45', 'All Mess Dinner + Breakfast Waste Collection', True, 'Days: Daily | Team 2 - CNG Vehicle Team'),
+                    (2, '08:45', '09:45', 'Campus Inside Route Waste Collection', True, 'Days: Daily | CA Shops, G11 Canteen, HB-1, WCP-17'),
+                    (3, '09:45', '10:30', 'Dry Waste Shifting to Scrapyard', True, 'Days: Daily | Team 2 - CNG Vehicle Team'),
+                    (4, '10:30', '11:15', 'Research Park Waste Collection', True, 'Days: Tuesday, Thursday, Saturday | Team 2 - CNG Vehicle Team'),
+                    (5, '11:15', '12:00', 'G5 Palaj Hotel Waste Collection', True, 'Days: Monday, Wednesday, Friday, Sunday | Team 2 - CNG Vehicle Team'),
+                    (6, '12:00', '13:00', 'All Mess Lunch Waste Collection', True, 'Days: Daily | Team 2 - CNG Vehicle Team'),
+                    (7, '16:00', '16:30', 'CNG Vehicle Parking & Key Handover', True, 'Days: Daily | Team 2 - CNG Vehicle Team'),
+                ],
+                't3': [
+                    (1, '08:00', '08:45', 'Old Hotel Waste Collection', True, 'Days: Daily | Team 3 - Hotel Team'),
+                    (2, '08:45', '09:30', 'Old Hotel Shops Waste Collection', True, 'Days: Daily | Team 3 - Hotel Team'),
+                    (3, '09:30', '10:15', 'Hotel Shops Waste Collection', True, 'Days: Daily | Team 3 - Hotel Team'),
+                    (4, '10:15', '11:00', 'Dry Waste Shifting to Scrapyard', True, 'Days: Daily | Team 3 - Hotel Team'),
+                    (5, '16:00', '16:30', 'Cart Parking & Bins Setup for Next Day', True, 'Days: Daily | Team 3 - Hotel Team'),
+                ],
+                't4': [
+                    (1, '08:00', '08:45', 'GCS Waste Collection', True, 'Days: Daily | Team 4 - Hotel + GCS Team'),
+                    (2, '08:45', '09:30', 'New Hotel Waste Collection', True, 'Days: Daily | Team 4 - Hotel + GCS Team'),
+                    (3, '09:30', '10:15', 'New Hotel Shops Waste Collection', True, 'Days: Daily | Team 4 - Hotel + GCS Team'),
+                    (4, '10:15', '12:00', 'Scrapyard Sorting / Segregation Work', True, 'Days: Daily | Team 4 - Hotel + GCS Team'),
+                    (5, '15:00', '16:00', 'Scrapyard Outside Area Cleaning', True, 'Days: Daily | Team 4 - Hotel + GCS Team'),
+                    (6, '16:00', '16:30', 'Cart Parking & Bins Setup for Next Day', True, 'Days: Daily | Team 4 - Hotel + GCS Team'),
+                ],
+                't5': [
+                    (1, '08:00', '08:45', 'All Rooms & Common Area Cleaning', True, 'Days: Daily | Team 5 - Bio-Gas Team'),
+                    (2, '08:45', '09:30', 'Watering Plants', True, 'Days: Daily | Team 5 - Bio-Gas Team'),
+                    (3, '09:30', '10:30', 'Feeding Wet Waste to Machine', True, 'Days: Daily | Team 5 - Bio-Gas Team'),
+                    (4, '10:30', '12:00', 'Other Regular Work', True, 'Days: Daily | Team 5 - Bio-Gas Team'),
+                    (5, '15:00', '16:00', 'Manure Shifting Work', True, 'Days: Daily | Team 5 - Bio-Gas Team'),
+                    (6, '16:00', '16:30', 'Lock All Rooms & Gate Closing', True, 'Days: Daily | Team 5 - Bio-Gas Team'),
+                ],
+            }
 
-            swm_cng_tasks = [
-                (1, '08:00', '09:00', 'All Mess Dinner & Breakfast Collection', True, 'Days: Daily | CNG route'),
-                (2, '09:00', '10:00', 'Campus Inside Route Collection', True, 'Days: Daily | CA Shops, GH Canteen, HB, NCP17'),
-                (3, '10:00', '10:45', 'Dry Waste Shifting to Scrap Room', True, 'Days: Daily | CNG route'),
-                (4, '10:45', '11:30', 'Research Park Collection', True, 'Days: Tuesday, Thursday, Saturday | CNG route'),
-                (5, '11:30', '12:15', 'Pollaji G5 Collection', True, 'Days: Monday, Wednesday, Friday, Sunday | CNG route'),
-                (6, '12:15', '13:00', 'All Mess Lunch Waste Collection', True, 'Days: Daily | CNG route'),
-                (7, '16:00', '16:30', 'CNG Park Key Handover', True, 'Days: Daily | CNG route'),
-            ]
-
-            swm_segregation_tasks = [
-                (1, '09:00', '11:00', 'Sorting/Segregation at Scrap Room', True, 'Days: Daily | Scrap room'),
-                (2, '15:00', '16:00', 'Cleaning Outside Area of Scrap Room', True, 'Days: Daily | Scrap room'),
-            ]
-
-            swm_biogas_tasks = [
-                (1, '08:00', '08:45', 'Cleaning Common Area of Rooms', True, 'Days: Daily | Bio-Gas'),
-                (2, '08:45', '09:30', 'Watering Plants', True, 'Days: Daily | Bio-Gas'),
-                (3, '09:30', '11:00', 'Wet Waste Feeding & Other Regular Work', True, 'Days: Daily | Bio-Gas'),
-                (4, '15:00', '16:00', 'Manure Shifting Work', True, 'Days: Daily | Bio-Gas'),
-            ]
-
-            for order, start, end, name, req_photo, desc in swm_collection_tasks:
-                HKScheduleTemplate.objects.create(
-                    area=swm_area, order=order,
-                    start_time=t(start), end_time=t(end),
-                    task_name=name, task_description=desc,
-                    worker_tag='floor', requires_photo=req_photo,
-                    frequency='daily', is_active=True,
-                )
-                total += 1
-
-            for order, start, end, name, req_photo, desc in swm_cng_tasks:
-                HKScheduleTemplate.objects.create(
-                    area=swm_area, order=order,
-                    start_time=t(start), end_time=t(end),
-                    task_name=name, task_description=desc,
-                    worker_tag='room', requires_photo=req_photo,
-                    frequency='daily', is_active=True,
-                )
-                total += 1
-
-            for order, start, end, name, req_photo, desc in swm_segregation_tasks:
-                HKScheduleTemplate.objects.create(
-                    area=swm_area, order=order,
-                    start_time=t(start), end_time=t(end),
-                    task_name=name, task_description=desc,
-                    worker_tag='washroom', requires_photo=req_photo,
-                    frequency='daily', is_active=True,
-                )
-                total += 1
-
-            for order, start, end, name, req_photo, desc in swm_biogas_tasks:
-                HKScheduleTemplate.objects.create(
-                    area=swm_area, order=order,
-                    start_time=t(start), end_time=t(end),
-                    task_name=name, task_description=desc,
-                    worker_tag='all', requires_photo=req_photo,
-                    frequency='daily', is_active=True,
-                )
-                total += 1
+            for tag, tasks in swm_team_tasks.items():
+                for order, start, end, name, req_photo, desc in tasks:
+                    HKScheduleTemplate.objects.create(
+                        area=swm_area, order=order,
+                        start_time=t(start), end_time=t(end),
+                        task_name=name, task_description=desc,
+                        worker_tag=tag, requires_photo=req_photo,
+                        frequency='daily', is_active=True,
+                    )
+                    total += 1
 
         # Academic Blocks 01-13 + renamed academic common areas + reliever pools
         academic_area_names = [

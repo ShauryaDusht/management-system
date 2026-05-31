@@ -239,7 +239,27 @@
 {% endif %}
 
 {% if records %}
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px" id="tab-buttons">
+<div style="display:grid;grid-template-columns:repeat({% if is_swm %}6{% else %}4{% endif %},1fr);gap:6px;margin-bottom:12px" id="tab-buttons">
+  {% if is_swm %}
+  <button onclick="showTab('t1')" id="btn-t1" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#2d4a3e;color:#fff;transition:opacity .2s">
+    T1<br><span style="font-size:10px;font-weight:400;opacity:.85">{{ grouped.t1|length|default:0 }} tasks</span>
+  </button>
+  <button onclick="showTab('t2')" id="btn-t2" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#c2622a;color:#fff;transition:opacity .2s">
+    T2<br><span style="font-size:10px;font-weight:400;opacity:.85">{{ grouped.t2|length|default:0 }} tasks</span>
+  </button>
+  <button onclick="showTab('t3')" id="btn-t3" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#1d4ed8;color:#fff;transition:opacity .2s">
+    T3<br><span style="font-size:10px;font-weight:400;opacity:.85">{{ grouped.t3|length|default:0 }} tasks</span>
+  </button>
+  <button onclick="showTab('t4')" id="btn-t4" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#7c3aed;color:#fff;transition:opacity .2s">
+    T4<br><span style="font-size:10px;font-weight:400;opacity:.85">{{ grouped.t4|length|default:0 }} tasks</span>
+  </button>
+  <button onclick="showTab('t5')" id="btn-t5" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#047857;color:#fff;transition:opacity .2s">
+    T5<br><span style="font-size:10px;font-weight:400;opacity:.85">{{ grouped.t5|length|default:0 }} tasks</span>
+  </button>
+  <button onclick="showTab('extra')" id="btn-extra" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#374151;color:#fff;transition:opacity .2s">
+    Extra<br><span style="font-size:10px;font-weight:400;opacity:.85">Work</span>
+  </button>
+  {% else %}
   <button onclick="showTab('floor')" id="btn-floor" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#2d4a3e;color:#fff;transition:opacity .2s">
     {{ tab_label_floor }}<br><span style="font-size:10px;font-weight:400;opacity:.85">{{ grouped.floor|length|default:0 }} tasks</span>
   </button>
@@ -252,9 +272,56 @@
   <button onclick="showTab('extra')" id="btn-extra" style="width:100%;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3;background:#374151;color:#fff;transition:opacity .2s">
     {{ tab_label_extra }}<br><span style="font-size:10px;font-weight:400;opacity:.85">Log and notes</span>
   </button>
+  {% endif %}
 </div>
 
-<div id="tab-floor" style="display:none">
+{% if is_swm %}
+<div id="tab-t1" class="js-task-list" style="display:none">
+  <div class="wtag">Team 1 - HB + AB Team</div>
+  {% for record in grouped.t1 %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+  {% empty %}
+    <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No Team 1 tasks today.</div>
+  {% endfor %}
+</div>
+
+<div id="tab-t2" class="js-task-list" style="display:none">
+  <div class="wtag">Team 2 - CNG Vehicle Team</div>
+  {% for record in grouped.t2 %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+  {% empty %}
+    <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No Team 2 tasks today.</div>
+  {% endfor %}
+</div>
+
+<div id="tab-t3" class="js-task-list" style="display:none">
+  <div class="wtag">Team 3 - Hotel Team</div>
+  {% for record in grouped.t3 %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+  {% empty %}
+    <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No Team 3 tasks today.</div>
+  {% endfor %}
+</div>
+
+<div id="tab-t4" class="js-task-list" style="display:none">
+  <div class="wtag">Team 4 - Hotel + GCS Team</div>
+  {% for record in grouped.t4 %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+  {% empty %}
+    <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No Team 4 tasks today.</div>
+  {% endfor %}
+</div>
+
+<div id="tab-t5" class="js-task-list" style="display:none">
+  <div class="wtag">Team 5 - Bio-Gas Team</div>
+  {% for record in grouped.t5 %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+  {% empty %}
+    <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No Team 5 tasks today.</div>
+  {% endfor %}
+</div>
+{% else %}
+<div id="tab-floor" class="js-task-list" style="display:none">
   <div class="wtag">{{ heading_floor }}</div>
   {% for record in grouped.floor %}
     {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
@@ -263,7 +330,7 @@
   {% endfor %}
 </div>
 
-<div id="tab-room" style="display:none">
+<div id="tab-room" class="js-task-list" style="display:none">
   <div class="wtag">{{ heading_room }}</div>
   {% for record in grouped.room %}
     {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
@@ -272,7 +339,7 @@
   {% endfor %}
 </div>
 
-<div id="tab-washroom" style="display:none">
+<div id="tab-washroom" class="js-task-list" style="display:none">
   <div class="wtag">{{ heading_washroom }}</div>
   {% for record in grouped.washroom %}
     {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
@@ -280,6 +347,7 @@
     <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No washroom tasks today.</div>
   {% endfor %}
 </div>
+{% endif %}
 
 <div id="tab-extra" style="display:none">
   <div class="card">
@@ -318,7 +386,8 @@
 {% endif %}
 
 <script>
-const TABS = ['floor', 'room', 'washroom', 'extra'];
+const TABS = ['floor', 'room', 'washroom', 't1', 't2', 't3', 't4', 't5', 'extra'];
+const DEFAULT_TAB = {% if is_swm %}'t1'{% else %}'floor'{% endif %};
 let hkBusy = false;
 let hkCamera = null;
 let hkLightbox = null;
@@ -353,6 +422,33 @@ function showTab(tab, skipScroll) {
     var btns = document.getElementById('tab-buttons');
     if (btns) window.scrollTo({ top: btns.offsetTop - 70, behavior: 'smooth' });
   }
+}
+
+function taskDoneRank(card) {
+  return card && card.dataset.status === 'done' ? 1 : 0;
+}
+
+function taskTimeValue(card) {
+  var raw = (card && card.dataset.startTime) || '00:00:00';
+  var parts = raw.split(':').map(function(part) { return parseInt(part, 10) || 0; });
+  return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+}
+
+function sortTaskList(list) {
+  if (!list) return;
+  var cards = Array.prototype.slice.call(list.querySelectorAll('.js-task-card'));
+  if (cards.length < 2) return;
+  cards.sort(function(a, b) {
+    return (taskDoneRank(a) - taskDoneRank(b))
+      || (taskTimeValue(a) - taskTimeValue(b))
+      || ((parseInt(a.dataset.sortOrder, 10) || 0) - (parseInt(b.dataset.sortOrder, 10) || 0))
+      || ((parseInt((a.id || '').replace('task-', ''), 10) || 0) - (parseInt((b.id || '').replace('task-', ''), 10) || 0));
+  });
+  cards.forEach(function(card) { list.appendChild(card); });
+}
+
+function sortAllTaskLists() {
+  document.querySelectorAll('.js-task-list').forEach(sortTaskList);
 }
 
 function shouldSkipAutoRefresh() {
@@ -583,6 +679,7 @@ function replaceTaskCardHtml(form, html) {
     return;
   }
   current.outerHTML = next.outerHTML;
+  sortAllTaskLists();
 }
 
 function uploadTaskCompleteRequest(form, attempt, maxAttempts) {
@@ -700,8 +797,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   var saved = null;
   try { saved = sessionStorage.getItem('hk_active_tab'); } catch (e) {}
-  var initial = (saved && TABS.indexOf(saved) !== -1) ? saved : 'floor';
+  var initial = (saved && document.getElementById('tab-' + saved)) ? saved : DEFAULT_TAB;
   showTab(initial, true);
+  sortAllTaskLists();
 
   document.body.addEventListener('click', function(e) {
     var openBtn = e.target.closest('.js-open-camera');
@@ -809,6 +907,12 @@ document.addEventListener('DOMContentLoaded', function() {
     var form = e.detail && e.detail.elt ? e.detail.elt.closest('.js-task-complete-form') : null;
     if (!form) return;
     resetProgress(form);
+  });
+
+  document.body.addEventListener('htmx:afterSwap', function(e) {
+    if (e.detail && e.detail.target && e.detail.target.classList && e.detail.target.classList.contains('js-task-card')) {
+      sortAllTaskLists();
+    }
   });
 
   document.addEventListener('visibilitychange', function() {
