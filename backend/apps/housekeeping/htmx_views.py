@@ -1873,10 +1873,14 @@ def hk_attendance(request):
     today = timezone.localdate()
     requested_date = parse_date(request.GET.get("date") or request.POST.get("date") or "")
     is_swm = bool(sel_area and sel_area.name == "Solid Waste Management")
+    sunday_on_monday_usernames = {"maulik.patel", "ashok.rathod", "ganesh.jayesh"}
     previous_sunday = today - datetime.timedelta(days=1) if today.weekday() == 0 else None
     can_mark_previous_swm_sunday = bool(is_swm and previous_sunday)
+    can_mark_previous_sunday_attendance = bool(
+        previous_sunday and (is_swm or user.username in sunday_on_monday_usernames)
+    )
     allowed_dates = {today}
-    if can_mark_previous_swm_sunday:
+    if can_mark_previous_sunday_attendance:
         allowed_dates.add(previous_sunday)
     sel_date = requested_date if requested_date in allowed_dates else today
 
@@ -1884,7 +1888,9 @@ def hk_attendance(request):
 
     cur_half = current_half()
     is_today = sel_date == today
-    can_submit_selected_attendance = is_today or (can_mark_previous_swm_sunday and sel_date == previous_sunday)
+    can_submit_selected_attendance = is_today or (
+        can_mark_previous_sunday_attendance and sel_date == previous_sunday
+    )
     area_param = f"&area={sel_area.id}" if sel_area else ""
 
     if request.method == "POST":
@@ -1997,6 +2003,7 @@ def hk_attendance(request):
         "is_today": is_today,
         "is_swm": is_swm,
         "can_mark_previous_swm_sunday": can_mark_previous_swm_sunday,
+        "can_mark_previous_sunday_attendance": can_mark_previous_sunday_attendance,
         "can_submit_selected_attendance": can_submit_selected_attendance,
         "previous_sunday": previous_sunday,
         "cur_half": cur_half,
