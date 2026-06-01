@@ -43,8 +43,44 @@
 
 {% if selected_area %}
 {% if toast_card %}
+{% if toast_card.celebration %}
+<style>
+@keyframes hkFloatPetal{0%{transform:translate3d(0,-12vh,0) rotate(0deg);opacity:0}12%{opacity:1}100%{transform:translate3d(var(--x),78vh,0) rotate(540deg);opacity:0}}
+@keyframes hkGlowPulse{0%,100%{transform:scale(1);opacity:.72}50%{transform:scale(1.08);opacity:1}}
+@keyframes hkRainDrop{0%{transform:translateY(-12vh);opacity:0}12%{opacity:.9}100%{transform:translateY(80vh);opacity:0}}
+@keyframes hkRibbonPulse{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-2px) scale(1.03)}}
+.hk-celebrate-dot{position:absolute;top:-24px;width:12px;height:18px;border-radius:10px 10px 10px 2px;background:var(--c);box-shadow:0 0 18px rgba(245,158,11,.32);animation:hkFloatPetal var(--d) linear forwards;animation-delay:var(--delay)}
+.hk-celebrate-ring{position:absolute;inset:20px;border-radius:24px;border:1px solid rgba(245,158,11,.22);animation:hkGlowPulse 1.8s ease-in-out infinite;pointer-events:none}
+.hk-rain-drop{position:absolute;top:-32px;width:4px;height:28px;border-radius:999px;background:linear-gradient(#dbeafe,#38bdf8);box-shadow:0 0 16px rgba(56,189,248,.38);animation:hkRainDrop var(--d) linear forwards;animation-delay:var(--delay)}
+.hk-ribbon{position:absolute;right:18px;top:18px;background:#f59e0b;color:#fff;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:900;animation:hkRibbonPulse 1.4s ease-in-out infinite;box-shadow:0 10px 24px rgba(245,158,11,.25)}
+</style>
+{% endif %}
 <div id="hk-greeting-overlay" style="display:none;position:fixed;inset:0;z-index:10035;background:rgba(15,23,42,.48);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;transition:opacity .35s ease">
-  <div style="width:min(430px,100%);min-height:72vh;background:linear-gradient(160deg,#fffaf3,#ffffff);border:1px solid #e6d8bf;border-radius:22px;padding:24px 20px;box-shadow:0 24px 70px rgba(0,0,0,.34);display:flex;flex-direction:column;justify-content:center;text-align:left">
+  {% if toast_card.celebration %}
+  <div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+    {% if toast_card.animation == 'rainy' %}
+    <span class="hk-rain-drop" style="left:9%;--d:1.9s;--delay:0s"></span>
+    <span class="hk-rain-drop" style="left:21%;--d:2.2s;--delay:.12s"></span>
+    <span class="hk-rain-drop" style="left:34%;--d:1.8s;--delay:.24s"></span>
+    <span class="hk-rain-drop" style="left:48%;--d:2.1s;--delay:.05s"></span>
+    <span class="hk-rain-drop" style="left:62%;--d:1.95s;--delay:.18s"></span>
+    <span class="hk-rain-drop" style="left:76%;--d:2.25s;--delay:.1s"></span>
+    <span class="hk-rain-drop" style="left:90%;--d:1.85s;--delay:.28s"></span>
+    {% else %}
+    <span class="hk-celebrate-dot" style="left:7%;--x:70px;--c:#f97316;--d:2.8s;--delay:0s"></span>
+    <span class="hk-celebrate-dot" style="left:17%;--x:-44px;--c:#facc15;--d:3.2s;--delay:.18s"></span>
+    <span class="hk-celebrate-dot" style="left:29%;--x:56px;--c:#22c55e;--d:2.9s;--delay:.08s"></span>
+    <span class="hk-celebrate-dot" style="left:42%;--x:-72px;--c:#fb7185;--d:3.4s;--delay:.28s"></span>
+    <span class="hk-celebrate-dot" style="left:56%;--x:46px;--c:#60a5fa;--d:3s;--delay:.12s"></span>
+    <span class="hk-celebrate-dot" style="left:68%;--x:-52px;--c:#f59e0b;--d:3.3s;--delay:.22s"></span>
+    <span class="hk-celebrate-dot" style="left:82%;--x:38px;--c:#a78bfa;--d:2.7s;--delay:.04s"></span>
+    <span class="hk-celebrate-dot" style="left:93%;--x:-80px;--c:#34d399;--d:3.5s;--delay:.32s"></span>
+    {% endif %}
+  </div>
+  {% endif %}
+  <div style="position:relative;width:min(430px,100%);min-height:72vh;background:{% if toast_card.animation == 'rainy' %}linear-gradient(160deg,#eff6ff,#ffffff){% elif toast_card.animation == 'festival' %}radial-gradient(circle at 50% 0%,#fde68a,#fffaf3 42%,#ffffff){% else %}linear-gradient(160deg,#fffaf3,#ffffff){% endif %};border:1px solid #e6d8bf;border-radius:22px;padding:24px 20px;box-shadow:0 24px 70px rgba(0,0,0,.34);display:flex;flex-direction:column;justify-content:center;text-align:left;overflow:hidden">
+    {% if toast_card.celebration %}<div class="hk-celebrate-ring" aria-hidden="true"></div>{% endif %}
+    {% if toast_card.animation == 'month' %}<div class="hk-ribbon" aria-hidden="true">MONTH</div>{% endif %}
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:22px">
       <div style="width:58px;height:58px;border-radius:18px;background:#2d4a3e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;flex-shrink:0">
         {{ request.user.first_name|default:request.user.username|first|upper }}
@@ -68,7 +104,7 @@
 (function(){
   var overlay = document.getElementById('hk-greeting-overlay');
   if (!overlay) return;
-  var key = 'hkGreetingSeen:{{ request.user.username|escapejs }}:{{ today|date:"Y-m-d" }}:{{ toast_card.scope|default:"start"|escapejs }}';
+  var key = '{{ toast_card.once_key|default:""|escapejs }}' || 'hkGreetingSeen:{{ request.user.username|escapejs }}:{{ today|date:"Y-m-d" }}:{{ toast_card.scope|default:"start"|escapejs }}';
   try {
     if (window.localStorage && localStorage.getItem(key) === '1') {
       overlay.parentNode.removeChild(overlay);

@@ -1,3 +1,4 @@
+import calendar
 import datetime
 import functools
 import json
@@ -1107,29 +1108,170 @@ def hk_mobile_special_card(today, total_tasks, done_tasks):
     return None
 
 
-def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_summary, monthly_best_worker, area_name):
+def hk_mobile_festival_card(today):
+    festival_days = {
+        (1, 1): "New Year's Day",
+        (1, 3): "Hazarat Ali's Birthday",
+        (1, 14): "Pongal / Makar Sankranti",
+        (1, 23): "Vasant Panchami",
+        (1, 26): "Republic Day",
+        (2, 1): "Guru Ravidas Jayanti",
+        (2, 12): "Maharishi Dayanand Saraswati Jayanti",
+        (2, 14): "Valentine's Day",
+        (2, 15): "Maha Shivaratri",
+        (2, 17): "Lunar New Year",
+        (2, 19): "Ramadan Start / Shivaji Jayanti",
+        (3, 3): "Holika Dahana",
+        (3, 4): "Holi",
+        (3, 19): "Ugadi / Gudi Padwa",
+        (3, 20): "Jamat Ul-Vida / March Equinox",
+        (3, 21): "Id-ul-Fitr",
+        (3, 26): "Rama Navami",
+        (3, 31): "Mahavir Jayanti",
+        (4, 2): "Passover / Maundy Thursday",
+        (4, 3): "Good Friday",
+        (4, 5): "Easter Day",
+        (4, 14): "Vaisakhi / Mesadi / Ambedkar Jayanti",
+        (4, 15): "Bahag Bihu",
+        (5, 1): "Buddha Purnima / International Worker's Day",
+        (5, 9): "Rabindranath Tagore Jayanti",
+        (5, 10): "Mother's Day",
+        (5, 28): "Bakrid",
+        (6, 21): "Father's Day / June Solstice",
+        (6, 26): "Muharram / Ashura",
+        (7, 16): "Rath Yatra",
+        (8, 2): "Friendship Day",
+        (8, 15): "Independence Day",
+        (8, 26): "Milad un-Nabi / Onam",
+        (8, 28): "Raksha Bandhan",
+        (9, 4): "Janmashtami",
+        (9, 14): "Ganesh Chaturthi",
+        (9, 23): "September Equinox",
+        (10, 2): "Mahatma Gandhi Jayanti",
+        (10, 11): "Sharad Navratri Begins",
+        (10, 17): "Durga Puja Festivities Begin",
+        (10, 18): "Maha Saptami",
+        (10, 19): "Maha Ashtami",
+        (10, 20): "Dussehra",
+        (10, 26): "Maharishi Valmiki Jayanti",
+        (10, 29): "Karaka Chaturthi",
+        (10, 31): "Halloween",
+        (11, 8): "Diwali / Naraka Chaturdasi",
+        (11, 9): "Govardhan Puja",
+        (11, 11): "Bhai Duj",
+        (11, 15): "Chhat Puja",
+        (11, 24): "Guru Nanak Jayanti / Guru Tegh Bahadur's Martyrdom Day",
+        (12, 5): "Hanukkah Begins",
+        (12, 12): "Hanukkah Ends",
+        (12, 22): "December Solstice",
+        (12, 23): "Hazarat Ali's Birthday",
+        (12, 24): "Christmas Eve",
+        (12, 25): "Christmas",
+        (12, 31): "New Year's Eve",
+    }
+    festival_name = festival_days.get((today.month, today.day))
+    if not festival_name:
+        return None
+    return {
+        "title": "Festival Greetings",
+        "body": "Wishing you and your family happiness and good health. Thank you for your service.",
+        "meta": festival_name,
+        "scope": "festival",
+        "celebration": True,
+        "animation": "festival",
+    }
+
+
+def hk_mobile_perfect_attendance_week_card(user, today):
+    # Show at the end of a Mon-Sat work week after attendance was submitted daily.
+    if today.weekday() != 5:
+        return None
+    week_start = today - datetime.timedelta(days=today.weekday())
+    week_days = [week_start + datetime.timedelta(days=i) for i in range(6)]
+    submitted_days = set(
+        HKAttendanceRecord.objects.filter(
+            marked_by=user,
+            is_submitted=True,
+            date__in=week_days,
+        ).values_list("date", flat=True)
+    )
+    if len(submitted_days) < len(week_days):
+        return None
+    return {
+        "title": "Great Consistency",
+        "body": "Your attendance updates were regular this week. Thank you.",
+        "meta": "Weekly",
+        "scope": "weekly-attendance",
+        "celebration": True,
+        "animation": "weekly",
+    }
+
+
+def hk_mobile_admin_extra_completed_card(records):
+    completed = next(
+        (
+            record for record in records
+            if record.status == "done"
+            and (
+                "admin assigned" in ((record.schedule.task_description or "").lower())
+                or getattr(getattr(record, "assigned_by", None), "role", "") in HOUSEKEEPING_MANAGER_ROLES
+            )
+        ),
+        None,
+    )
+    if not completed:
+        return None
+    return {
+        "title": "Extra Work Completed",
+        "body": "Thank you for completing the additional work assigned today.",
+        "meta": "Extra work",
+        "scope": "admin-task-done",
+        "celebration": True,
+        "animation": "complete",
+        "once_key": f"hkGreetingSeen:admin-task:{completed.id}:done",
+    }
+
+
+def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_summary, monthly_best_worker, area_name, user):
     admin_name = "Pragnesh Parekh Sir"
     area_label = area_name or "your area"
     first_submitted = attendance_summary.get("first_submitted", 0)
     second_submitted = attendance_summary.get("second_submitted", 0)
     worker_count = attendance_summary.get("worker_count", 0)
+    hour = timezone.localtime(timezone.now()).hour
+    pending_tasks = max(total_tasks - done_tasks, 0)
+
+    festival_card = hk_mobile_festival_card(today)
+    if festival_card:
+        return festival_card
 
     if total_tasks and done_tasks >= total_tasks:
+        if hour < 13:
+            return {
+                "title": "Great Pace Today",
+                "body": "All tasks completed early. Thank you for staying ahead.",
+                "meta": "Fast finish",
+                "scope": "work",
+                "celebration": True,
+                "animation": "complete",
+                "credits": "Thanks for using this app. Rahul Patel, Shaurya Bisht, and Sarthak Pardeshi appreciate your updates.",
+            }
         return {
             "title": "Excellent Work Today",
             "body": f"Message from {admin_name}: Thank you for completing all assigned tasks.",
             "meta": "Admin thanks",
             "scope": "work",
+            "celebration": True,
+            "animation": "complete",
             "credits": "Thanks for using this app. Rahul Patel, Shaurya Bisht, and Sarthak Pardeshi appreciate your updates.",
         }
 
-    if done_tasks > 0:
+    if pending_tasks >= 3 and hour >= 16:
         return {
-            "title": "Thanks For Using The App",
-            "body": "Your completed task update is recorded. Thank you for using Campus Sanchalika for daily work.",
-            "meta": "App thanks",
-            "scope": "work",
-            "credits": "Rahul Patel, Shaurya Bisht, and Sarthak Pardeshi thank you for using this app.",
+            "title": "Gentle Reminder",
+            "body": "Please review pending tasks before closing the shift.",
+            "meta": "Pending",
+            "scope": "reminder",
         }
 
     fixed_day_title = {
@@ -1144,6 +1286,8 @@ def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_sum
             "body": f"Message from {admin_name}: Wishing you and your family a happy and healthy day. Thank you for your service.",
             "meta": "Admin greeting",
             "scope": "start",
+            "celebration": True,
+            "animation": "festival",
         }
 
     if today.weekday() == 6:
@@ -1152,6 +1296,20 @@ def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_sum
             "body": f"Message from {admin_name}: Thank you for handling special weekly cleaning work today.",
             "meta": "Sunday duty",
             "scope": "start",
+        }
+
+    weekly_card = hk_mobile_perfect_attendance_week_card(user, today)
+    if weekly_card:
+        return weekly_card
+
+    if today.weekday() == 5:
+        return {
+            "title": "Weekly Appreciation",
+            "body": f"{admin_name} thanks the team for this week's work.",
+            "meta": "Weekly",
+            "scope": "weekly",
+            "celebration": True,
+            "animation": "weekly",
         }
 
     if worker_count and second_submitted >= worker_count:
@@ -1178,14 +1336,46 @@ def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_sum
             "body": f"Message from {admin_name}: {monthly_best_worker['name']} is appreciated for consistent attendance this month.",
             "meta": monthly_best_worker["month"],
             "scope": "start",
+            "celebration": True,
+            "animation": "month",
         }
 
-    hour = timezone.localtime(timezone.now()).hour
+    if today.day == calendar.monthrange(today.year, today.month)[1]:
+        return {
+            "title": "Month End Appreciation",
+            "body": "Thank you for completing this month's work. Your consistency helps campus operations run smoothly.",
+            "meta": today.strftime("%B"),
+            "scope": "month-end",
+            "celebration": True,
+            "animation": "month",
+        }
+
+    if today.day == 1:
+        return {
+            "title": "New Month Started",
+            "body": "Let's begin the month with clean attendance and timely task updates.",
+            "meta": today.strftime("%B"),
+            "scope": "month-start",
+            "celebration": True,
+            "animation": "month",
+        }
+
     if done_tasks > 0 and today.month in {6, 7, 8, 9} and hour >= 13:
         return {
-            "title": "Extra Effort Noted",
-            "body": f"Message from {admin_name}: Your field work during difficult conditions is appreciated.",
-            "meta": "Admin note",
+            "title": "Rainy Day Effort",
+            "body": "Thank you for your field work during difficult weather.",
+            "meta": "Rainy day",
+            "scope": "work",
+            "celebration": True,
+            "animation": "rainy",
+            "credits": "Rahul Patel, Shaurya Bisht, and Sarthak Pardeshi thank you for using this app.",
+        }
+
+    if done_tasks > 0:
+        return {
+            "title": "Thanks For Using The App",
+            "body": "Your completed task update is recorded. Thank you for using Campus Sanchalika for daily work.",
+            "meta": "App thanks",
             "scope": "work",
             "credits": "Rahul Patel, Shaurya Bisht, and Sarthak Pardeshi thank you for using this app.",
         }
@@ -1193,7 +1383,7 @@ def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_sum
     if hour < 12:
         return {
             "title": "Good Morning",
-            "body": f"Message from {admin_name}: Thank you for starting the day on time. Your work keeps the campus clean and ready.",
+            "body": f"Message from {admin_name}: Thank you for starting the day on time. Wishing good health to you and your family.",
             "meta": "Admin note",
             "scope": "start",
         }
@@ -1208,7 +1398,7 @@ def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_sum
             }
         return {
             "title": "Good Afternoon",
-            "body": f"Message from {admin_name}: Please review today's tasks for {area_label} and keep updates clear.",
+            "body": f"Message from {admin_name}: Wishing good health to you and your family. Please keep today's updates clear for {area_label}.",
             "meta": "Admin note",
             "scope": "start",
         }
@@ -1223,10 +1413,86 @@ def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_sum
             }
         return {
             "title": "Good Evening",
-            "body": f"Message from {admin_name}: Please check pending tasks and close the day with proper updates.",
+            "body": f"Message from {admin_name}: Wishing good health to you and your family. Please close the day with proper updates.",
             "meta": "Admin note",
             "scope": "start",
         }
+
+
+def hk_mobile_stock_greeting_card(user, visible_areas):
+    area_ids = [area.id for area in visible_areas if area]
+    approved_req = (
+        HKStockRequest.objects
+        .filter(requested_by=user, status__in=["issued", "approved"])
+        .filter(dm.Q(area_id__in=area_ids) | dm.Q(area__isnull=True))
+        .order_by(
+            dm.Case(
+                dm.When(status="issued", then=0),
+                default=1,
+                output_field=dm.IntegerField(),
+            ),
+            "-created_at",
+            "-id",
+        )
+        .first()
+    )
+    if not approved_req:
+        return None
+
+    qty = approved_req.quantity or 1
+    unit = f" {approved_req.unit}" if approved_req.unit else ""
+    if approved_req.status == "issued":
+        return {
+            "title": "Inventory Issued",
+            "body": f"{approved_req.item_name} ({qty}{unit}) has been issued/collected. Thank you for using the stock request system.",
+            "meta": "Stock issued",
+            "scope": "stock",
+            "celebration": True,
+            "animation": "issued",
+            "once_key": f"hkGreetingSeen:{user.username}:stock:{approved_req.id}:issued",
+        }
+
+    approved_date = timezone.localtime(approved_req.created_at).date() if approved_req.created_at else None
+    if approved_date and approved_date < timezone.localdate():
+        title = "Inventory Ready"
+        body = "Your requested item is approved. Please collect it from inventory."
+        meta = "Collection"
+    else:
+        title = "Items Approved"
+        body = f"{approved_req.item_name} ({qty}{unit}) is approved. Please collect it from inventory."
+        meta = "Stock approved"
+
+    return {
+        "title": title,
+        "body": body,
+        "meta": meta,
+        "scope": "stock",
+        "once_key": f"hkGreetingSeen:{user.username}:stock:{approved_req.id}:approved",
+    }
+
+
+def hk_mobile_admin_task_greeting_card(records):
+    admin_record = next(
+        (
+            record for record in records
+            if record.status != "done"
+            and (
+                "admin assigned" in ((record.schedule.task_description or "").lower())
+                or getattr(getattr(record, "assigned_by", None), "role", "") in HOUSEKEEPING_MANAGER_ROLES
+            )
+        ),
+        None,
+    )
+    if not admin_record:
+        return None
+
+    return {
+        "title": "Extra Work Assigned",
+        "body": f"Admin has assigned today's extra work: {admin_record.schedule.task_name}. Please review and complete it.",
+        "meta": "Admin task",
+        "scope": "admin-task",
+        "once_key": f"hkGreetingSeen:admin-task:{admin_record.id}",
+    }
 
 
 def worker_options_for_selection_request(req_obj, current_area):
@@ -1437,8 +1703,18 @@ def hk_dashboard(request):
         attendance_summary,
         monthly_best_worker,
         area_name,
+        user,
     )
-    toast_card = admin_greeting_card or special_card
+    stock_greeting_card = hk_mobile_stock_greeting_card(user, visible_areas)
+    admin_task_greeting_card = hk_mobile_admin_task_greeting_card(records)
+    extra_completed_card = hk_mobile_admin_extra_completed_card(records)
+    toast_card = (
+        stock_greeting_card
+        or extra_completed_card
+        or admin_task_greeting_card
+        or admin_greeting_card
+        or special_card
+    )
 
     extra_works = (
         HKExtraWork.objects
