@@ -100,11 +100,11 @@ export default function HousekeepingPage() {
       </div>
 
       {active === 'overview' && <OverviewTab readOnly={isHostelOffice} />}
-      {active === 'directory' && <SectionsTab />}
-      {active === 'supervisors' && <SupervisorsTab />}
+      {active === 'directory' && <SectionsTab hostelOnly={isHostelOffice} />}
+      {active === 'supervisors' && <SupervisorsTab hostelOnly={isHostelOffice} />}
       {active === 'attendance' && (
         <Suspense fallback={tabFallback}>
-          <AttendanceTab />
+          <AttendanceTab hostelOnly={isHostelOffice} />
         </Suspense>
       )}
       {active === 'staff_attendance' && (

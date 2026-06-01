@@ -5,7 +5,7 @@ const AuthContext = createContext(null)
 const ALLOWED_PORTAL_ROLES = ['admin', 'horticulture_manager', 'hk_inventory_manager', 'hostel_office']
 
 function normalizePortalUser(user) {
-  if (user?.username === 'hostel.office') {
+  if (user?.username === 'hostel.office' || user?.actual_role === 'hostel_office') {
     return { ...user, role: 'hostel_office' }
   }
   return user
@@ -77,7 +77,7 @@ export function AuthProvider({ children }) {
   const isInventoryManager = user?.role === 'inventory_manager'
   const isHousekeepingManager = user?.role === 'housekeeping_manager'
   const isHKInventoryManager = user?.role === 'hk_inventory_manager'
-  const isHostelOffice = user?.role === 'hostel_office'
+  const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
   const isHorticultureManager = user?.role === 'horticulture_manager'
   const isAnyManager = isInventoryManager || isHousekeepingManager || isHKInventoryManager || isHostelOffice || isHorticultureManager
   const isSupervisor = user?.role === 'supervisor'

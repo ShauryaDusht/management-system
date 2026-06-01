@@ -12,7 +12,7 @@ const AREA_GROUP_LABELS = {
   all: 'All',
 }
 
-export default function AttendanceTab() {
+export default function AttendanceTab({ hostelOnly = false }) {
   const [date, setDate] = useState(todayISO())
   const [rows, setRows] = useState([])
   const [areas, setAreas] = useState([])
@@ -159,34 +159,38 @@ export default function AttendanceTab() {
           >
             <div style={{ fontWeight: 700 }}>Worker Attendance by Area</div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <Btn
-                size="sm"
-                variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'}
-                onClick={() => setAreaClassFilter('hostels')}
-              >
-                Hostels
-              </Btn>
-              <Btn
-                size="sm"
-                variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'}
-                onClick={() => setAreaClassFilter('academic')}
-              >
-                Academic Blocks
-              </Btn>
-              <Btn
-                size="sm"
-                variant={areaClassFilter === 'others' ? 'primary' : 'secondary'}
-                onClick={() => setAreaClassFilter('others')}
-              >
-                Others
-              </Btn>
-              <Btn
-                size="sm"
-                variant={areaClassFilter === 'all' ? 'primary' : 'secondary'}
-                onClick={() => setAreaClassFilter('all')}
-              >
-                All
-              </Btn>
+              {!hostelOnly && (
+                <>
+                  <Btn
+                    size="sm"
+                    variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'}
+                    onClick={() => setAreaClassFilter('hostels')}
+                  >
+                    Hostels
+                  </Btn>
+                  <Btn
+                    size="sm"
+                    variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'}
+                    onClick={() => setAreaClassFilter('academic')}
+                  >
+                    Academic Blocks
+                  </Btn>
+                  <Btn
+                    size="sm"
+                    variant={areaClassFilter === 'others' ? 'primary' : 'secondary'}
+                    onClick={() => setAreaClassFilter('others')}
+                  >
+                    Others
+                  </Btn>
+                  <Btn
+                    size="sm"
+                    variant={areaClassFilter === 'all' ? 'primary' : 'secondary'}
+                    onClick={() => setAreaClassFilter('all')}
+                  >
+                    All
+                  </Btn>
+                </>
+              )}
               <Btn
                 size="sm"
                 variant="secondary"

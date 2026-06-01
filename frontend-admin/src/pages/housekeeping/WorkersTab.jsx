@@ -307,12 +307,16 @@ export default function WorkersTab({ readOnly = false }) {
               onChange={(e) => setSearch(e.target.value)}
               style={{ width: 280 }}
             />
-            <Btn size="sm" variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('hostels')}>Hostels</Btn>
-            <Btn size="sm" variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('academic')}>Academic Blocks</Btn>
-            <Btn size="sm" variant={areaClassFilter === 'others' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('others')}>Others</Btn>
-            <Btn size="sm" variant={areaClassFilter === 'all' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('all')}>All</Btn>
+            {!readOnly && (
+              <>
+                <Btn size="sm" variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('hostels')}>Hostels</Btn>
+                <Btn size="sm" variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('academic')}>Academic Blocks</Btn>
+                <Btn size="sm" variant={areaClassFilter === 'others' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('others')}>Others</Btn>
+                <Btn size="sm" variant={areaClassFilter === 'all' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('all')}>All</Btn>
+              </>
+            )}
             <SelectField value={selectedArea} onChange={(e) => setSelectedArea(e.target.value)} style={{ width: 220 }}>
-              <option value="">All filtered areas</option>
+              <option value="">{readOnly ? 'All hostel areas' : 'All filtered areas'}</option>
               {filteredAreaOptions.map((a) => (
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}

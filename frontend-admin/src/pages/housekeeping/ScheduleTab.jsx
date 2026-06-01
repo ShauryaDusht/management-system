@@ -478,18 +478,22 @@ export default function ScheduleTab({ readOnly = false }) {
             onChange={(e) => setAreaSearch(e.target.value)}
             style={{ maxWidth: 260 }}
           />
-          <Btn size="sm" variant={areaFilter === 'hostels' ? 'primary' : 'secondary'} onClick={() => setAreaFilter('hostels')}>
-            Hostels
-          </Btn>
-          <Btn size="sm" variant={areaFilter === 'academic' ? 'primary' : 'secondary'} onClick={() => setAreaFilter('academic')}>
-            Academic Areas
-          </Btn>
-          <Btn size="sm" variant={areaFilter === 'others' ? 'primary' : 'secondary'} onClick={() => setAreaFilter('others')}>
-            Other Areas
-          </Btn>
-          <Btn size="sm" variant={areaFilter === 'all' ? 'primary' : 'secondary'} onClick={() => setAreaFilter('all')}>
-            All
-          </Btn>
+          {!readOnly && (
+            <>
+              <Btn size="sm" variant={areaFilter === 'hostels' ? 'primary' : 'secondary'} onClick={() => setAreaFilter('hostels')}>
+                Hostels
+              </Btn>
+              <Btn size="sm" variant={areaFilter === 'academic' ? 'primary' : 'secondary'} onClick={() => setAreaFilter('academic')}>
+                Academic Areas
+              </Btn>
+              <Btn size="sm" variant={areaFilter === 'others' ? 'primary' : 'secondary'} onClick={() => setAreaFilter('others')}>
+                Other Areas
+              </Btn>
+              <Btn size="sm" variant={areaFilter === 'all' ? 'primary' : 'secondary'} onClick={() => setAreaFilter('all')}>
+                All
+              </Btn>
+            </>
+          )}
         </div>
       </Card>
 

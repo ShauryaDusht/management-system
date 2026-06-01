@@ -187,7 +187,7 @@ function ActivityPieChart({ data, lines }) {
 export default function DashboardPage() {
   const { user } = useAuth()
   const isHorticultureManager = user?.role === 'horticulture_manager'
-  const isHostelOffice = user?.role === 'hostel_office'
+  const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
   const canViewInventory = !isHorticultureManager && !isHostelOffice
   const canViewHousekeeping = !isHorticultureManager
   const canViewHorticulture = user?.role !== 'hk_inventory_manager' && !isHostelOffice
@@ -363,9 +363,10 @@ export default function DashboardPage() {
     : isHostelOffice
     ? [
         { label: 'Hostel Tasks Today', value: hkSummary?.total_tasks ?? '-', icon: 'HK', color: 'var(--green-700)', sub: `${hkSummary?.completion_pct ?? 0}% completed`, to: '/housekeeping?tab=overview' },
+        { label: 'Completed Tasks', value: hkSummary?.done_tasks ?? '-', icon: 'DN', color: 'var(--completed)', sub: 'Marked done today', to: '/housekeeping?tab=overview' },
+        { label: 'Pending Tasks', value: hkSummary?.pending_tasks ?? '-', icon: 'PD', color: 'var(--orange-600)', sub: 'Open hostel tasks', to: '/housekeeping?tab=overview' },
         { label: 'Hostel Workers', value: hkSummary?.total_workers ?? '-', icon: 'HW', color: '#3b82f6', sub: `${hkSummary?.present_today ?? 0} present today`, to: '/housekeeping?tab=attendance' },
         { label: 'Hostel Areas', value: hkSummary?.total_areas ?? '-', icon: 'AR', color: 'var(--green-800)', sub: 'Active hostel sections', to: '/housekeeping?tab=directory' },
-        { label: 'Pending Stock Req.', value: hkSummary?.pending_stock_requests ?? '-', icon: 'ST', color: 'var(--orange-600)', sub: 'Hostel request queue', to: '/housekeeping?tab=stock' },
       ]
     : baseStatCards
 

@@ -2,10 +2,17 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 function getLandingRoute(user) {
-  if (['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office'].includes(user?.role)) {
+  if (['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office'].includes(getEffectiveRole(user))) {
     return '/dashboard'
   }
   return '/unauthorized'
+}
+
+function getEffectiveRole(user) {
+  if (user?.username === 'hostel.office' || user?.actual_role === 'hostel_office') {
+    return 'hostel_office'
+  }
+  return user?.role
 }
 
 /**
@@ -33,7 +40,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/login" replace />
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && !allowedRoles.includes(getEffectiveRole(user))) {
     return <Navigate to={getLandingRoute(user)} replace />
   }
 

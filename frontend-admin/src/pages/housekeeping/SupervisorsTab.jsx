@@ -486,7 +486,7 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
   )
 }
 
-export default function SupervisorsTab() {
+export default function SupervisorsTab({ hostelOnly = false }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [areas, setAreas] = useState([])
@@ -603,40 +603,44 @@ export default function SupervisorsTab() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <Btn
-              size="sm"
-              variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'}
-              onClick={() => selectAreaClass('hostels')}
-            >
-              Hostels
-            </Btn>
-            <Btn
-              size="sm"
-              variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'}
-              onClick={() => selectAreaClass('academic')}
-            >
-              Academic Blocks
-            </Btn>
-            <Btn
-              size="sm"
-              variant={areaClassFilter === 'others' ? 'primary' : 'secondary'}
-              onClick={() => selectAreaClass('others')}
-            >
-              Others
-            </Btn>
-            <Btn
-              size="sm"
-              variant={areaClassFilter === 'all' ? 'primary' : 'secondary'}
-              onClick={() => selectAreaClass('all')}
-            >
-              All
-            </Btn>
+            {!hostelOnly && (
+              <>
+                <Btn
+                  size="sm"
+                  variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'}
+                  onClick={() => selectAreaClass('hostels')}
+                >
+                  Hostels
+                </Btn>
+                <Btn
+                  size="sm"
+                  variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'}
+                  onClick={() => selectAreaClass('academic')}
+                >
+                  Academic Blocks
+                </Btn>
+                <Btn
+                  size="sm"
+                  variant={areaClassFilter === 'others' ? 'primary' : 'secondary'}
+                  onClick={() => selectAreaClass('others')}
+                >
+                  Others
+                </Btn>
+                <Btn
+                  size="sm"
+                  variant={areaClassFilter === 'all' ? 'primary' : 'secondary'}
+                  onClick={() => selectAreaClass('all')}
+                >
+                  All
+                </Btn>
+              </>
+            )}
             <SelectField
               value={areaFilter}
               onChange={(e) => setAreaFilter(e.target.value)}
               style={{ width: 220, minHeight: 34, padding: '6px 10px' }}
             >
-              <option value="all">{AREA_GROUP_LABELS[areaClassFilter]} Areas</option>
+              <option value="all">{hostelOnly ? 'All hostel areas' : `${AREA_GROUP_LABELS[areaClassFilter]} Areas`}</option>
               {areaOptions.map((area) => (
                 <option key={area.id} value={area.id}>
                   {area.name}

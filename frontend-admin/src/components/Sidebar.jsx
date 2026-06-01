@@ -44,6 +44,7 @@ export default function Sidebar() {
   const { user, logout } = useAuth()
   const { badges } = useNotifications()
   const navigate = useNavigate()
+  const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
 
   const navItems = user?.role === 'horticulture_manager'
     ? [
@@ -52,7 +53,7 @@ export default function Sidebar() {
       { to: '/insights', icon: 'AN', label: 'Insights' },
       { to: '/profile', icon: 'PR', label: 'Profile' },
     ]
-    : user?.role === 'hostel_office'
+    : isHostelOffice
     ? [
       { to: '/dashboard', icon: 'HO', label: 'Home' },
       { to: '/housekeeping', icon: 'HK', label: 'Hostel Office' },

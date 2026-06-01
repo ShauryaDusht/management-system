@@ -22,10 +22,13 @@ const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager
 const ROUTER_BASENAME = '/admin'
 
 function getLandingRoute(user) {
-  if (user?.role === 'admin') return '/dashboard'
-  if (user?.role === 'hk_inventory_manager') return '/dashboard'
-  if (user?.role === 'horticulture_manager') return '/dashboard'
-  if (user?.role === 'hostel_office') return '/dashboard'
+  const role = user?.username === 'hostel.office' || user?.actual_role === 'hostel_office'
+    ? 'hostel_office'
+    : user?.role
+  if (role === 'admin') return '/dashboard'
+  if (role === 'hk_inventory_manager') return '/dashboard'
+  if (role === 'horticulture_manager') return '/dashboard'
+  if (role === 'hostel_office') return '/dashboard'
   return '/unauthorized'
 }
 
@@ -41,7 +44,10 @@ function AdminOnlyRedirectRoute({ children }) {
   }
   if (unauthorized) return <Navigate to="/unauthorized" replace />
   if (!user) return <Navigate to="/login" replace />
-  if (!ADMIN_DASHBOARD_ALLOWED.includes(user.role)) {
+  const role = user?.username === 'hostel.office' || user?.actual_role === 'hostel_office'
+    ? 'hostel_office'
+    : user?.role
+  if (!ADMIN_DASHBOARD_ALLOWED.includes(role)) {
     return <Navigate to={getLandingRoute(user)} replace />
   }
   return children

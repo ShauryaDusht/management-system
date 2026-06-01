@@ -311,36 +311,38 @@ export default function OverviewTab({ readOnly = false }) {
             }}
           >
             <div style={{ fontWeight: 700 }}>Today's Running Tasks</div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <Btn
-                size="sm"
-                variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'}
-                onClick={() => setAreaClassFilter('hostels')}
-              >
-                Hostels
-              </Btn>
-              <Btn
-                size="sm"
-                variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'}
-                onClick={() => setAreaClassFilter('academic')}
-              >
-                Academic Blocks
-              </Btn>
-              <Btn
-                size="sm"
-                variant={areaClassFilter === 'others' ? 'primary' : 'secondary'}
-                onClick={() => setAreaClassFilter('others')}
-              >
-                Others
-              </Btn>
-              <Btn
-                size="sm"
-                variant={areaClassFilter === 'all' ? 'primary' : 'secondary'}
-                onClick={() => setAreaClassFilter('all')}
-              >
-                All
-              </Btn>
-            </div>
+            {!readOnly && (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <Btn
+                  size="sm"
+                  variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'}
+                  onClick={() => setAreaClassFilter('hostels')}
+                >
+                  Hostels
+                </Btn>
+                <Btn
+                  size="sm"
+                  variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'}
+                  onClick={() => setAreaClassFilter('academic')}
+                >
+                  Academic Blocks
+                </Btn>
+                <Btn
+                  size="sm"
+                  variant={areaClassFilter === 'others' ? 'primary' : 'secondary'}
+                  onClick={() => setAreaClassFilter('others')}
+                >
+                  Others
+                </Btn>
+                <Btn
+                  size="sm"
+                  variant={areaClassFilter === 'all' ? 'primary' : 'secondary'}
+                  onClick={() => setAreaClassFilter('all')}
+                >
+                  All
+                </Btn>
+              </div>
+            )}
           </div>
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
