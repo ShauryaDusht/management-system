@@ -83,7 +83,7 @@ function daysLabel(freq) {
   return days.map((d) => DAYS[d]?.full || '').join(', ')
 }
 
-export default function ScheduleTab({ readOnly = false }) {
+export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
   const [areas, setAreas] = useState([])
   const [templates, setTemplates] = useState([])
   const [loading, setLoading] = useState(true)
@@ -464,7 +464,7 @@ export default function ScheduleTab({ readOnly = false }) {
           }}
         >
           <div style={{ fontWeight: 700 }}>Schedule Templates</div>
-          {!readOnly && (
+          {!hostelOnly && (
             <div style={{ display: 'flex', gap: 8 }}>
               <Btn size="sm" variant="secondary" onClick={openAreaCreate}>+ Add Area</Btn>
               <Btn size="sm" onClick={openCreate}>+ Add Template</Btn>

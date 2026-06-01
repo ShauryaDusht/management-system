@@ -67,7 +67,7 @@ function safeFilePart(value, fallback = 'all') {
   return cleaned || fallback
 }
 
-export default function WorkersTab({ readOnly = false }) {
+export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
   const [areas, setAreas] = useState([])
   const [workers, setWorkers] = useState([])
   const [supervisors, setSupervisors] = useState([])
@@ -307,7 +307,7 @@ export default function WorkersTab({ readOnly = false }) {
               onChange={(e) => setSearch(e.target.value)}
               style={{ width: 280 }}
             />
-            {!readOnly && (
+            {!hostelOnly && (
               <>
                 <Btn size="sm" variant={areaClassFilter === 'hostels' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('hostels')}>Hostels</Btn>
                 <Btn size="sm" variant={areaClassFilter === 'academic' ? 'primary' : 'secondary'} onClick={() => setAreaClassFilter('academic')}>Academic Blocks</Btn>
@@ -316,7 +316,7 @@ export default function WorkersTab({ readOnly = false }) {
               </>
             )}
             <SelectField value={selectedArea} onChange={(e) => setSelectedArea(e.target.value)} style={{ width: 220 }}>
-              <option value="">{readOnly ? 'All hostel areas' : 'All filtered areas'}</option>
+              <option value="">{hostelOnly ? 'All hostel areas' : 'All filtered areas'}</option>
               {filteredAreaOptions.map((a) => (
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}

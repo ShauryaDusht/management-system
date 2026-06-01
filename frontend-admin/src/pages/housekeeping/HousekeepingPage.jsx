@@ -99,7 +99,7 @@ export default function HousekeepingPage() {
         <Tabs tabs={tabs} active={active} onChange={onTabChange} />
       </div>
 
-      {active === 'overview' && <OverviewTab readOnly={isHostelOffice} />}
+      {active === 'overview' && <OverviewTab readOnly={isHostelOffice} hostelOnly={isHostelOffice} />}
       {active === 'directory' && <SectionsTab hostelOnly={isHostelOffice} />}
       {active === 'supervisors' && <SupervisorsTab hostelOnly={isHostelOffice} />}
       {active === 'attendance' && (
@@ -112,10 +112,10 @@ export default function HousekeepingPage() {
           <StaffAttendanceTab />
         </Suspense>
       )}
-      {active === 'workers' && <WorkersTab readOnly={isHostelOffice} />}
+      {active === 'workers' && <WorkersTab readOnly={isHostelOffice} hostelOnly={isHostelOffice} />}
       {active === 'schedule' && (
         <Suspense fallback={tabFallback}>
-          <ScheduleTab readOnly={isHostelOffice} />
+          <ScheduleTab readOnly={isHostelOffice} hostelOnly={isHostelOffice} />
         </Suspense>
       )}
       {active === 'stock' && <AssignInventoryTab userRole={user?.role} readOnly={isHostelOffice} />}

@@ -8,7 +8,7 @@ import { getAreaGroup, todayISO } from '../../shared/utils'
 
 const HIDDEN_STAFF_AREA_NAMES = new Set(['hostels reliever', 'old academic reliever', 'new academic reliever'])
 
-export default function OverviewTab({ readOnly = false }) {
+export default function OverviewTab({ readOnly = false, hostelOnly = false }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -311,7 +311,7 @@ export default function OverviewTab({ readOnly = false }) {
             }}
           >
             <div style={{ fontWeight: 700 }}>Today's Running Tasks</div>
-            {!readOnly && (
+            {!hostelOnly && (
               <div style={{ display: 'flex', gap: 6 }}>
                 <Btn
                   size="sm"
