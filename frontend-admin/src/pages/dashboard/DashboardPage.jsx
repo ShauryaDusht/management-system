@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -14,6 +13,12 @@ import AdminLayout from '../../layout/AdminLayout'
 
 const PALETTE = DONUT_PALETTE
 const TooltipStyle = { borderRadius: 10, border: '1px solid var(--border)', fontSize: 12, background: 'var(--surface)' }
+
+function adminHref(to = '/dashboard') {
+  if (/^https?:\/\//i.test(to)) return to
+  const path = to.startsWith('/') ? to : `/${to}`
+  return path.startsWith('/admin/') ? path : `/admin${path}`
+}
 
 const CHART_TYPES = [
   { key: 'area',  label: '📈 Area' },
@@ -343,9 +348,9 @@ export default function DashboardPage() {
   ]
   const statCards = isHorticultureManager
     ? [
-        { label: 'Horticulture Tasks', value: hortiTotal || '-', icon: 'HT', color: 'var(--green-700)', sub: `${Number(hortiCounts.on_track || 0)} on track` },
-        { label: 'Due Soon', value: Number(hortiCounts.due_soon || 0), icon: 'DS', color: 'var(--orange-600)', sub: `${Number(hortiCounts.overdue || 0)} overdue` },
-        { label: 'Active Areas', value: hortiSummary?.total_areas ?? '-', icon: 'AR', color: '#3b82f6', sub: 'Horticulture coverage' },
+        { label: 'Horticulture Tasks', value: hortiTotal || '-', icon: 'HT', color: 'var(--green-700)', sub: `${Number(hortiCounts.on_track || 0)} on track`, to: '/horticulture?tab=schedule' },
+        { label: 'Due Soon', value: Number(hortiCounts.due_soon || 0), icon: 'DS', color: 'var(--orange-600)', sub: `${Number(hortiCounts.overdue || 0)} overdue`, to: '/horticulture?tab=worker_selection' },
+        { label: 'Active Areas', value: hortiSummary?.total_areas ?? '-', icon: 'AR', color: '#3b82f6', sub: 'Horticulture coverage', to: '/horticulture?tab=zones' },
       ]
     : baseStatCards
 
@@ -358,21 +363,9 @@ export default function DashboardPage() {
           {/* ── Stat Cards ── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
             {statCards.map(card => (
-              isHorticultureManager ? (
-                <StatCard
-                  key={card.label}
-                  label={card.label}
-                  value={card.value}
-                  icon={card.icon}
-                  color={card.color}
-                  sub={card.sub}
-                  style={{ height: '100%', cursor: 'default', userSelect: 'none', transition: 'none', pointerEvents: 'none' }}
-                />
-              ) : (
-                <Link key={card.label} to={card.to || '/dashboard'} className="ui-interactive-card-link" style={{ height: '100%', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
-                  <StatCard label={card.label} value={card.value} icon={card.icon} color={card.color} sub={card.sub} style={{ height: '100%', cursor: 'pointer', userSelect: 'none' }} />
-                </Link>
-              )
+              <a key={card.label} href={adminHref(card.to || '/dashboard')} className="ui-interactive-card-link" style={{ height: '100%', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
+                <StatCard label={card.label} value={card.value} icon={card.icon} color={card.color} sub={card.sub} style={{ height: '100%', cursor: 'pointer', userSelect: 'none' }} />
+              </a>
             ))}
           </div>
 
@@ -389,7 +382,7 @@ export default function DashboardPage() {
                     <div style={{ fontWeight: 700, fontSize: 14 }}>{card.title}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{card.subtitle}</div>
                   </div>
-                  <Link to={card.to || '/dashboard'} style={{ textDecoration: 'none' }}><Btn size="sm" variant="ghost">View →</Btn></Link>
+                  <a href={adminHref(card.to || '/dashboard')} style={{ textDecoration: 'none' }}><Btn size="sm" variant="ghost">View →</Btn></a>
                 </div>
                 <DonutChart data={card.data} total={card.total} label={card.label} size={160} palette={card.palette} />
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>

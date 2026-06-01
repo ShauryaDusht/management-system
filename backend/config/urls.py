@@ -1,6 +1,7 @@
 from django.urls import include, path, re_path
 from django.conf import settings
 from django.http import JsonResponse
+from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 from config.admin import admin_site
 from apps.core.portal_views import portal_root, portal_login, portal_logout, portal_logo
@@ -37,6 +38,16 @@ def api_root(_request):
 def legacy_admin_redirect(_request):
     return redirect(f'/{settings.ADMIN_URL}')
 
+
+def admin_spa_section_redirect(section):
+    def _redirect(request):
+        query = request.META.get('QUERY_STRING', '')
+        target = f'/admin/{section}'
+        if query:
+            target = f'{target}?{query}'
+        return HttpResponseRedirect(target)
+    return _redirect
+
 urlpatterns = [
     path('', backend_root),
     path('', include('apps.core.urls')),
@@ -59,8 +70,19 @@ urlpatterns = [
     path('api/admin/gallery/photo/<int:photo_id>/flag/', hk_api_views.HKAdminGalleryPhotoFlagView.as_view(), name='api-admin-gallery-photo-flag'),
     path('api/admin/gallery/export-csv/', hk_api_views.HKAdminGalleryExportCSVView.as_view(), name='api-admin-gallery-export-csv'),
     path('api/admin/gallery/task/<int:task_id>/download-zip/', hk_api_views.HKAdminGalleryTaskZipView.as_view(), name='api-admin-gallery-task-zip'),
+    path('inventory', admin_spa_section_redirect('inventory')),
+    path('inventory/', admin_spa_section_redirect('inventory')),
     path('inventory/', include('apps.inventory.htmx_urls')),
+    path('housekeeping', admin_spa_section_redirect('housekeeping')),
+    path('housekeeping/', admin_spa_section_redirect('housekeeping')),
     path('housekeeping/', include('apps.housekeeping.htmx_urls')),
+    path('dashboard', admin_spa_section_redirect('dashboard')),
+    path('dashboard/', admin_spa_section_redirect('dashboard')),
+    path('insights', admin_spa_section_redirect('insights')),
+    path('insights/', admin_spa_section_redirect('insights')),
+    path('users', admin_spa_section_redirect('users')),
+    path('users/', admin_spa_section_redirect('users')),
+    path('horticulture', admin_spa_section_redirect('horticulture')),
     path('horticulture/', include((horticulture_mobile_urlpatterns, 'horticulture_mobile'))),
     path('portal/', portal_root),
     path('portal/login/', portal_login, name='portal_login'),

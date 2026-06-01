@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'cs-admin-v2';
+const CACHE_VERSION = 'cs-admin-v3';
 const ASSET_CACHE = `${CACHE_VERSION}-assets`;
 const PAGE_CACHE = `${CACHE_VERSION}-pages`;
 const PRECACHE = ['/', '/login', '/manifest.webmanifest', '/campus-sanchalika-logo.png'];
