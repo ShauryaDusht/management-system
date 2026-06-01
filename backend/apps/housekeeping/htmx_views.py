@@ -1190,131 +1190,6 @@ def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_sum
         }
 
 
-def hk_mobile_status_cards(today, area_name, total_tasks, done_tasks, records, attendance_summary):
-    pending_count = max(total_tasks - done_tasks, 0)
-    hour = timezone.localtime(timezone.now()).hour
-    active_half = attendance_summary.get("active_half", current_half())
-    first_submitted = attendance_summary.get("first_submitted", 0)
-    second_submitted = attendance_summary.get("second_submitted", 0)
-    worker_count = attendance_summary.get("worker_count", 0)
-
-    cards = []
-    if total_tasks == 0:
-        cards.append({
-            "tone": "success",
-            "title": "No Scheduled Tasks Today",
-            "body": "You are all clear.",
-            "meta": "No task",
-        })
-    elif pending_count == 0:
-        cards.append({
-            "tone": "success",
-            "title": "All Tasks Completed For Today",
-            "body": "Thank you for keeping the campus clean.",
-            "meta": "Complete",
-        })
-    elif done_tasks:
-        cards.append({
-            "tone": "focus",
-            "title": f"{done_tasks} of {total_tasks} Tasks Done",
-            "body": "Great pace. Keep going.",
-            "meta": "Progress",
-        })
-    else:
-        cards.append({
-            "tone": "neutral",
-            "title": area_name or "Area Work",
-            "body": f"Today's cleanliness score: {int((done_tasks / total_tasks) * 100) if total_tasks else 0}% complete.",
-            "meta": "Area pride",
-        })
-
-    cards.append({
-        "tone": "focus" if active_half == "second" else "neutral",
-        "title": "Second Half Active" if active_half == "second" else "First Half Active",
-        "body": "1PM-5PM shift is active." if active_half == "second" else "8AM-1PM shift is active.",
-        "meta": "Shift",
-    })
-
-    if pending_count and hour >= 16:
-        cards.append({
-            "tone": "warm",
-            "title": "Shift Ending Soon",
-            "body": f"{pending_count} tasks still pending. Please review before shift end.",
-            "meta": "Reminder",
-        })
-    elif pending_count:
-        cards.append({
-            "tone": "warm",
-            "title": "Pending Task Reminder",
-            "body": f"{pending_count} tasks still pending. Please complete before shift end.",
-            "meta": "Pending",
-        })
-
-    if worker_count and second_submitted >= worker_count:
-        cards.append({
-            "tone": "success",
-            "title": "Attendance Submitted",
-            "body": "Attendance submitted for both halves.",
-            "meta": "Attendance",
-        })
-    elif worker_count and first_submitted >= worker_count:
-        cards.append({
-            "tone": "success",
-            "title": "Attendance Submitted",
-            "body": "Attendance submitted for First Half. Second Half available after 1PM.",
-            "meta": "Attendance",
-        })
-
-    if any(getattr(record, "is_break_task", False) and record.status != "done" for record in records):
-        cards.append({
-            "tone": "neutral",
-            "title": "Break Task",
-            "body": "Tea/Lunch break tasks can be marked done when completed.",
-            "meta": "Break",
-        })
-
-    if any(getattr(record, "is_previous_day_task", False) for record in records):
-        cards.append({
-            "tone": "focus",
-            "title": "Previous Day Work",
-            "body": "Evening/Night tasks can be completed today.",
-            "meta": "Guest House",
-        })
-
-    if today.weekday() == 6:
-        cards.append({
-            "tone": "focus",
-            "title": "Sunday Special Work",
-            "body": "Terrace, dustbin, deep cleaning, and weekly special tasks may be active today.",
-            "meta": "Sunday",
-        })
-
-    assigned_records = [
-        record for record in records
-        if record.status != "done" and (record.assigned_worker_id or record.worker_assignments.exists())
-    ]
-    if assigned_records:
-        record = assigned_records[0]
-        names = []
-        if record.assigned_worker:
-            names.append(record.assigned_worker.name)
-        names.extend([item.worker.name for item in record.worker_assignments.all() if item.worker_id != record.assigned_worker_id])
-        cards.append({
-            "tone": "success",
-            "title": "Team Assigned",
-            "body": ", ".join(names[:4]) if names else "Workers assigned for current task.",
-            "meta": "Assignment",
-        })
-
-    cards.append({
-        "tone": "neutral",
-        "title": "Photo Optional",
-        "body": "Photos are optional. Upload only when useful.",
-        "meta": "Reminder",
-    })
-    return cards[:7]
-
-
 def worker_options_for_selection_request(req_obj, current_area):
     """
     Build eligible worker options for a pending worker-selection request.
@@ -1524,14 +1399,7 @@ def hk_dashboard(request):
         monthly_best_worker,
         area_name,
     )
-    status_cards = hk_mobile_status_cards(
-        today,
-        area_name,
-        total,
-        done,
-        records,
-        attendance_summary,
-    )
+    toast_card = admin_greeting_card or special_card
 
     extra_works = (
         HKExtraWork.objects
@@ -1762,7 +1630,7 @@ def hk_dashboard(request):
         "monthly_best_worker": monthly_best_worker,
         "special_card": special_card,
         "admin_greeting_card": admin_greeting_card,
-        "status_cards": status_cards,
+        "toast_card": toast_card,
         "extra_works": extra_works,
         "extra_error": extra_error,
         "tab_label_floor": tab_label_floor,

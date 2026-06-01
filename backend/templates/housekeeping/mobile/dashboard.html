@@ -42,76 +42,27 @@
 
 
 {% if selected_area %}
-<div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px">
-  {% if special_card %}
-  <div class="card" style="margin-bottom:0;border:1px solid {% if special_card.tone == 'success' %}#86efac{% elif special_card.tone == 'warm' %}#fbbf24{% else %}#93c5fd{% endif %};background:{% if special_card.tone == 'success' %}#ecfdf5{% elif special_card.tone == 'warm' %}#fffbeb{% else %}#eff6ff{% endif %}">
-    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div>
-        <div style="font-size:14px;font-weight:900;color:{% if special_card.tone == 'success' %}#166534{% elif special_card.tone == 'warm' %}#92400e{% else %}#1e3a8a{% endif %}">{{ special_card.title }}</div>
-        <div style="font-size:12px;color:#4b5563;margin-top:3px;line-height:1.35">{{ special_card.body }}</div>
-      </div>
-      <span class="bdg {% if special_card.tone == 'success' %}g{% elif special_card.tone == 'warm' %}y{% else %}b{% endif %}" style="white-space:nowrap">{{ special_card.meta }}</span>
+{% if toast_card %}
+<div id="hk-greeting-toast" style="position:fixed;left:12px;right:12px;top:86px;z-index:10035;max-width:480px;margin:0 auto;background:#fffaf3;border:1px solid #e6d8bf;border-radius:14px;padding:12px 13px;box-shadow:0 12px 28px rgba(0,0,0,.18);transition:opacity .35s ease, transform .35s ease">
+  <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+    <div>
+      <div style="font-size:10px;font-weight:900;color:#92400e;text-transform:uppercase">Message from Admin</div>
+      <div style="font-size:14px;font-weight:900;color:#111827;margin-top:3px">{{ toast_card.title }}</div>
+      <div style="font-size:12px;color:#4b5563;margin-top:3px;line-height:1.35">{{ toast_card.body }}</div>
     </div>
-  </div>
-  {% endif %}
-
-  {% if admin_greeting_card %}
-  <div class="card" style="margin-bottom:0;border:1px solid #e6d8bf;background:#fffaf3">
-    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div>
-        <div style="font-size:11px;font-weight:900;color:#92400e;text-transform:uppercase">Message from Admin</div>
-        <div style="font-size:14px;font-weight:900;color:#111827;margin-top:4px">{{ admin_greeting_card.title }}</div>
-        <div style="font-size:12px;color:#4b5563;margin-top:4px;line-height:1.35">{{ admin_greeting_card.body }}</div>
-      </div>
-      <span class="bdg y" style="white-space:nowrap">{{ admin_greeting_card.meta }}</span>
-    </div>
-  </div>
-  {% endif %}
-
-  {% if status_cards %}
-  <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch">
-    {% for card in status_cards %}
-    <div class="card" style="min-width:210px;margin-bottom:0;padding:12px;border:1px solid {% if card.tone == 'success' %}#bbf7d0{% elif card.tone == 'warm' %}#fde68a{% elif card.tone == 'focus' %}#bfdbfe{% else %}#e5e7eb{% endif %};background:{% if card.tone == 'success' %}#f0fdf4{% elif card.tone == 'warm' %}#fffbeb{% elif card.tone == 'focus' %}#eff6ff{% else %}#fff{% endif %}">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
-        <div style="font-size:13px;font-weight:900;color:#111827;line-height:1.25">{{ card.title }}</div>
-        <span class="bdg {% if card.tone == 'success' %}g{% elif card.tone == 'warm' %}y{% elif card.tone == 'focus' %}b{% else %}gr{% endif %}" style="white-space:nowrap">{{ card.meta }}</span>
-      </div>
-      <div style="font-size:11px;color:#4b5563;margin-top:6px;line-height:1.35">{{ card.body }}</div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-    <div class="card" style="margin-bottom:0;padding:12px;border:1px solid #e5e7eb">
-      <div style="font-size:11px;font-weight:900;color:#6b7280;text-transform:uppercase">Attendance Today</div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <div style="flex:1;background:#dcfce7;border-radius:9px;padding:8px;text-align:center">
-          <div style="font-size:18px;font-weight:900;color:#166534">{{ attendance_summary.first_present }}</div>
-          <div style="font-size:10px;color:#166534">First Half</div>
-        </div>
-        <div style="flex:1;background:#dbeafe;border-radius:9px;padding:8px;text-align:center">
-          <div style="font-size:18px;font-weight:900;color:#1d4ed8">{{ attendance_summary.second_present }}</div>
-          <div style="font-size:10px;color:#1d4ed8">Second Half</div>
-        </div>
-      </div>
-      <div style="font-size:10px;color:#6b7280;margin-top:7px">
-        Active: {% if attendance_summary.active_half == 'first' %}First Half{% else %}Second Half{% endif %} | Workers: {{ attendance_summary.worker_count }}
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:0;padding:12px;border:1px solid #e5e7eb;background:#fffaf3">
-      <div style="font-size:11px;font-weight:900;color:#6b7280;text-transform:uppercase">Monthly Best</div>
-      {% if monthly_best_worker %}
-      <div style="font-size:14px;font-weight:900;color:#111827;margin-top:9px;line-height:1.2">{{ monthly_best_worker.name }}</div>
-      <div style="font-size:11px;color:#92400e;margin-top:5px">{{ monthly_best_worker.present_halves }} present halves in {{ monthly_best_worker.month }}</div>
-      {% else %}
-      <div style="font-size:13px;font-weight:800;color:#374151;margin-top:9px">Waiting for attendance</div>
-      <div style="font-size:11px;color:#6b7280;margin-top:5px">Best worker appears after submitted attendance.</div>
-      {% endif %}
-    </div>
+    <span class="bdg y" style="white-space:nowrap">{{ toast_card.meta }}</span>
   </div>
 </div>
+<script>
+setTimeout(function(){
+  var toast = document.getElementById('hk-greeting-toast');
+  if (!toast) return;
+  toast.style.opacity = '0';
+  toast.style.transform = 'translateY(-8px)';
+  setTimeout(function(){ if (toast && toast.parentNode) toast.parentNode.removeChild(toast); }, 400);
+}, 3000);
+</script>
+{% endif %}
 
 {% if ws_ok %}
 <div class="hk-flash" style="position:fixed;top:74px;left:50%;transform:translateX(-50%);z-index:10030;background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:10px 12px;color:#065f46;font-weight:700;max-width:92vw">
