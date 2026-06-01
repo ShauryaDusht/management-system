@@ -59,10 +59,16 @@ class HKDailyRecordAdmin(admin.ModelAdmin):
 
 @admin.register(HKExtraWork, site=admin_site)
 class HKExtraWorkAdmin(admin.ModelAdmin):
-    list_display = ('task_name', 'area', 'date', 'worker_name', 'logged_by', 'is_verified')
+    list_display = ('task_name', 'area', 'date', 'display_workers', 'logged_by', 'is_verified')
     list_filter = ('area', 'date', 'is_verified')
     list_editable = ('is_verified',)
+    filter_horizontal = ('assigned_workers',)
     date_hierarchy = 'date'
+
+    def display_workers(self, obj):
+        names = [worker.name for worker in obj.assigned_workers.all()]
+        return ', '.join(names) or obj.worker_name
+    display_workers.short_description = 'Workers'
 
 
 @admin.register(HKAttendanceRecord, site=admin_site)

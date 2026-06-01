@@ -247,7 +247,12 @@ class HKExtraWork(models.Model):
     date = models.DateField()
     task_name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    worker_name = models.CharField(max_length=100, blank=True)
+    worker_name = models.CharField(max_length=255, blank=True)
+    assigned_workers = models.ManyToManyField(
+        HKWorker,
+        blank=True,
+        related_name='extra_work_logs',
+    )
     logged_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         null=True, related_name='hk_extra_works_logged',

@@ -16,7 +16,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.utils import timezone
 
 from apps.housekeeping.models import (
@@ -591,12 +591,13 @@ def generate_worker_report(worker_id: int, month: int, year: int) -> dict:
     extra_work_rows = list(
         HKExtraWork.objects
         .filter(
-            worker_name__iexact=worker.name,
+            Q(assigned_workers=worker)
+            | Q(assigned_workers__isnull=True, worker_name__iexact=worker.name),
             date__gte=period_start,
             date__lte=period_end,
         )
         .values('date')
-        .annotate(total=Count('id'))
+        .annotate(total=Count('id', distinct=True))
     )
     extra_work_by_date = {row['date']: row['total'] for row in extra_work_rows}
     extra_work_count = sum(extra_work_by_date.values())
@@ -757,6 +758,7 @@ def generate_supervisor_report(supervisor_id: int, month: int, year: int) -> dic
             date__lte=period_end,
         )
         .select_related('area')
+        .prefetch_related('assigned_workers')
         .order_by('date', 'id')
     )
     extra_work_list = [
@@ -764,6 +766,7 @@ def generate_supervisor_report(supervisor_id: int, month: int, year: int) -> dic
             'date': row.date.isoformat(),
             'task_name': row.task_name,
             'area_name': row.area.name if row.area else '',
+            'worker_names': ', '.join(worker.name for worker in row.assigned_workers.all()) or row.worker_name,
             'is_verified': row.is_verified,
         }
         for row in extra_work_qs

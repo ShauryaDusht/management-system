@@ -207,12 +207,13 @@ def export_supervisor_report_csv(snapshot: dict) -> bytes:
 
     # Section 5 - Extra Work Log
     writer.writerow(['Extra Work Log'])
-    writer.writerow(['Date', 'Task Name', 'Area', 'Verified'])
+    writer.writerow(['Date', 'Task Name', 'Area', 'Workers', 'Verified'])
     for row in extra_work_rows:
         writer.writerow([
             row.get('date', ''),
             row.get('task_name', ''),
             row.get('area_name', ''),
+            row.get('worker_names', ''),
             'Yes' if row.get('is_verified') else 'No',
         ])
     writer.writerow([])

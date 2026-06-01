@@ -62,6 +62,11 @@
   {{ ic_error }}
 </div>
 {% endif %}
+{% if extra_error %}
+<div class="hk-flash" style="position:fixed;top:74px;left:50%;transform:translateX(-50%);z-index:10030;background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:10px 12px;color:#991b1b;font-weight:700;max-width:92vw">
+  {{ extra_error }}
+</div>
+{% endif %}
 {% if incharge_notice %}
 <div class="hk-flash" style="position:fixed;top:74px;left:50%;transform:translateX(-50%);z-index:10030;
   background:{% if incharge_notice.level == 'success' %}#dcfce7{% elif incharge_notice.level == 'warning' %}#fef3c7{% elif incharge_notice.level == 'error' %}#fee2e2{% else %}#dbeafe{% endif %};
@@ -421,7 +426,26 @@
       {% csrf_token %}
       <input type="hidden" name="area_id" value="{{ selected_area.id }}">
       <div class="fg"><label>Work Done *</label><input type="text" name="task_name" required placeholder="e.g. Fridge deep clean, cobweb removal..."></div>
+      {% if is_research_park %}
       <div class="fg"><label>Worker who did it</label><input type="text" name="worker_name" placeholder="Name of worker..."></div>
+      {% else %}
+      <div class="fg">
+        <label>Assign workers *</label>
+        <div style="max-height:190px;overflow:auto;border:1px solid #d1d5db;border-radius:10px;background:#fff">
+          {% for w in area_workers %}
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last %}1px solid #eef2f7{% else %}none{% endif %};cursor:{% if w.is_busy_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if w.is_busy_for_task %}.55{% else %}1{% endif %}">
+            <input type="checkbox" name="worker_ids" value="{{ w.id }}" {% if w.is_busy_for_task %}disabled{% endif %} style="width:16px;height:16px;flex-shrink:0">
+            <span style="font-weight:700;color:#1f2937;font-size:14px">
+              {{ w.name }}{% if w.worker_type %} ({{ w.get_worker_type_display }}){% endif %}{% if w.is_busy_for_task %} - Busy{% endif %}
+            </span>
+          </label>
+          {% empty %}
+          <div style="padding:12px;font-size:12px;color:#9ca3af">No workers available for this area.</div>
+          {% endfor %}
+        </div>
+        <div style="font-size:10px;color:#6b7280;margin-top:4px">Select one or more workers. Busy workers unlock after their current task is completed.</div>
+      </div>
+      {% endif %}
       <div class="fg"><label>Details</label><textarea name="description" rows="2" placeholder="Additional info..."></textarea></div>
       <div class="fg"><label>Photo (optional)</label><input type="file" name="photo" accept="image/*" capture="environment"></div>
       <button type="submit" class="btn-g">Log Extra Work</button>
@@ -432,7 +456,13 @@
   {% for ew in extra_works %}
   <div class="card" style="padding:10px">
     <div style="font-weight:700;font-size:13px">{{ ew.task_name }}</div>
-    {% if ew.worker_name %}<div style="font-size:12px;color:#6b7280">{{ ew.worker_name }}</div>{% endif %}
+    {% if ew.assigned_workers.all %}
+    <div style="font-size:12px;color:#6b7280">
+      {% for worker in ew.assigned_workers.all %}{{ worker.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+    </div>
+    {% elif ew.worker_name %}
+    <div style="font-size:12px;color:#6b7280">{{ ew.worker_name }}</div>
+    {% endif %}
     {% if ew.description %}<div style="font-size:12px;color:#374151;margin-top:2px">{{ ew.description }}</div>{% endif %}
     <div style="font-size:11px;color:#9ca3af;margin-top:3px">{{ ew.logged_at|time:"g:i A" }}</div>
     {% if ew.is_verified %}<span class="bdg g" style="margin-top:4px;display:inline-block">Verified</span>{% endif %}

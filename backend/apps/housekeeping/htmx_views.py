@@ -1218,7 +1218,25 @@ def hk_dashboard(request):
         record.can_multi_worker_assignment = can_multi_worker_task(user, record)
         record.is_break_task = is_break_task_name(record.schedule.task_name)
 
-    extra_works = HKExtraWork.objects.filter(area=sel_area, date=today).order_by("-logged_at") if sel_area else []
+    extra_works = (
+        HKExtraWork.objects
+        .filter(area=sel_area, date=today)
+        .prefetch_related("assigned_workers")
+        .order_by("-logged_at")
+        if sel_area else []
+    )
+
+    extra_error = ""
+    extra_err_code = (request.GET.get("extra_err") or "").strip().lower()
+    if extra_err_code:
+        err_map = {
+            "task_name_required": "Please enter the extra work name.",
+            "worker_required": "Please assign at least one worker for extra work.",
+            "invalid_worker": "Please select only valid workers for this area.",
+            "worker_busy": "One or more selected workers are already assigned to an unfinished task.",
+            "no_area": "Please select a valid area.",
+        }
+        extra_error = err_map.get(extra_err_code, "Unable to log extra work.")
 
     worker_selection_cards = []
     if user.role in ["supervisor", "caretaker"]:
@@ -1426,6 +1444,7 @@ def hk_dashboard(request):
         "alerts": get_active_alerts(user, user_areas),
         "area_workers": area_workers,
         "extra_works": extra_works,
+        "extra_error": extra_error,
         "tab_label_floor": tab_label_floor,
         "tab_label_room": tab_label_room,
         "tab_label_washroom": tab_label_washroom,
@@ -1436,6 +1455,7 @@ def hk_dashboard(request):
         "heading_washroom": heading_washroom,
         "heading_special": heading_special,
         "is_swm": is_swm,
+        "is_research_park": is_research_park,
         "is_jrha": is_jrha,
         "is_simple_hostel": is_simple_hostel,
         "is_guest_house_new": is_guest_house_new,
@@ -1927,22 +1947,50 @@ def hk_log_extra_work(request):
     area = user_areas.filter(pk=area_id).first() or user_areas.first()
 
     # reject blank task_name after stripping whitespace
+    if not area:
+        return redirect("/housekeeping/dashboard/?extra_err=no_area")
+
     task_name = request.POST.get("task_name", "").strip()
     if not task_name:
-        param = f"?area={area.id}&error=task_name_required" if area else "?error=task_name_required"
+        param = f"?area={area.id}&extra_err=task_name_required"
         return redirect(f"/housekeeping/dashboard/{param}")
+
+    is_research_park = area.area_type == "research_park"
+    selected_workers = []
+    worker_name = request.POST.get("worker_name", "").strip()
+    if not is_research_park:
+        worker_ids = list(dict.fromkeys(w for w in request.POST.getlist("worker_ids") if w))
+        selected_worker_ids = {int(wid) for wid in worker_ids if str(wid).isdigit()}
+        allowed_worker_ids = display_worker_ids_for_area(area, timezone.localdate())
+        busy_ids = busy_worker_ids_for_tasks(area, timezone.localdate())
+
+        if not worker_ids:
+            return redirect(f"/housekeeping/dashboard/?area={area.id}&extra_err=worker_required")
+        if len(selected_worker_ids) != len(worker_ids) or not selected_worker_ids.issubset(allowed_worker_ids):
+            return redirect(f"/housekeeping/dashboard/?area={area.id}&extra_err=invalid_worker")
+        if selected_worker_ids & busy_ids:
+            return redirect(f"/housekeeping/dashboard/?area={area.id}&extra_err=worker_busy")
+
+        selected_workers = list(
+            HKWorker.objects.filter(pk__in=selected_worker_ids, is_active=True).order_by("name")
+        )
+        if not selected_workers:
+            return redirect(f"/housekeeping/dashboard/?area={area.id}&extra_err=worker_required")
+        worker_name = ", ".join(worker.name for worker in selected_workers)
 
     extra = HKExtraWork(
         area=area,
         date=timezone.localdate(),
         task_name=task_name,
         description=request.POST.get("description", "").strip(),
-        worker_name=request.POST.get("worker_name", "").strip(),
+        worker_name=worker_name,
         logged_by=user,
     )
     if "photo" in request.FILES:
         extra.photo = request.FILES["photo"]
     extra.save()
+    if selected_workers:
+        extra.assigned_workers.set(selected_workers)
     param = f"?area={area.id}" if area else ""
     return redirect(f"/housekeeping/dashboard/{param}")
 
