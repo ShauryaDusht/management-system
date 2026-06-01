@@ -1119,6 +1119,17 @@ def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_sum
             "title": "Excellent Work Today",
             "body": f"Message from {admin_name}: Thank you for completing all assigned tasks.",
             "meta": "Admin thanks",
+            "scope": "work",
+            "credits": "Thanks for using this app. Rahul Patel, Shaurya Bisht, and Sarthak Pardeshi appreciate your updates.",
+        }
+
+    if done_tasks > 0:
+        return {
+            "title": "Thanks For Using The App",
+            "body": "Your completed task update is recorded. Thank you for using Campus Sanchalika for daily work.",
+            "meta": "App thanks",
+            "scope": "work",
+            "credits": "Rahul Patel, Shaurya Bisht, and Sarthak Pardeshi thank you for using this app.",
         }
 
     fixed_day_title = {
@@ -1132,6 +1143,7 @@ def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_sum
             "title": "Special Day Greetings",
             "body": f"Message from {admin_name}: Wishing you and your family a happy and healthy day. Thank you for your service.",
             "meta": "Admin greeting",
+            "scope": "start",
         }
 
     if today.weekday() == 6:
@@ -1139,6 +1151,7 @@ def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_sum
             "title": "Sunday Duty Appreciation",
             "body": f"Message from {admin_name}: Thank you for handling special weekly cleaning work today.",
             "meta": "Sunday duty",
+            "scope": "start",
         }
 
     if worker_count and second_submitted >= worker_count:
@@ -1146,6 +1159,8 @@ def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_sum
             "title": "Attendance Received",
             "body": f"Message from {admin_name}: Your punctuality today is appreciated.",
             "meta": "Attendance",
+            "scope": "work",
+            "credits": "Rahul Patel, Shaurya Bisht, and Sarthak Pardeshi thank you for using this app.",
         }
 
     if worker_count and first_submitted >= worker_count:
@@ -1153,40 +1168,64 @@ def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_sum
             "title": "First Half Done",
             "body": f"Message from {admin_name}: Thank you. Please continue the same quality in second half.",
             "meta": "Attendance",
+            "scope": "work",
+            "credits": "Rahul Patel, Shaurya Bisht, and Sarthak Pardeshi thank you for using this app.",
         }
 
-    if monthly_best_worker:
+    if monthly_best_worker and today.day in {1, 10, 20}:
         return {
             "title": "Monthly Appreciation",
             "body": f"Message from {admin_name}: {monthly_best_worker['name']} is appreciated for consistent attendance this month.",
             "meta": monthly_best_worker["month"],
+            "scope": "start",
         }
 
-    if today.month in {6, 7, 8, 9}:
+    hour = timezone.localtime(timezone.now()).hour
+    if done_tasks > 0 and today.month in {6, 7, 8, 9} and hour >= 13:
         return {
             "title": "Extra Effort Noted",
             "body": f"Message from {admin_name}: Your field work during difficult conditions is appreciated.",
             "meta": "Admin note",
+            "scope": "work",
+            "credits": "Rahul Patel, Shaurya Bisht, and Sarthak Pardeshi thank you for using this app.",
         }
 
-    hour = timezone.localtime(timezone.now()).hour
     if hour < 12:
         return {
             "title": "Good Morning",
             "body": f"Message from {admin_name}: Thank you for starting the day on time. Your work keeps the campus clean and ready.",
             "meta": "Admin note",
+            "scope": "start",
         }
     elif hour < 17:
+        if done_tasks > 0:
+            return {
+                "title": "Team Work",
+                "body": f"Message from {admin_name}: Today's team effort in {area_label} is appreciated.",
+                "meta": "Admin note",
+                "scope": "work",
+                "credits": "Rahul Patel, Shaurya Bisht, and Sarthak Pardeshi thank you for using this app.",
+            }
         return {
-            "title": "Team Work",
-            "body": f"Message from {admin_name}: Today's team effort in {area_label} is appreciated.",
+            "title": "Good Afternoon",
+            "body": f"Message from {admin_name}: Please review today's tasks for {area_label} and keep updates clear.",
             "meta": "Admin note",
+            "scope": "start",
         }
     else:
+        if done_tasks > 0:
+            return {
+                "title": "Area Looks Good",
+                "body": f"Message from {admin_name}: Thank you for keeping {area_label} clean today.",
+                "meta": "Admin note",
+                "scope": "work",
+                "credits": "Rahul Patel, Shaurya Bisht, and Sarthak Pardeshi thank you for using this app.",
+            }
         return {
-            "title": "Area Looks Good",
-            "body": f"Message from {admin_name}: Thank you for keeping {area_label} clean today.",
+            "title": "Good Evening",
+            "body": f"Message from {admin_name}: Please check pending tasks and close the day with proper updates.",
             "meta": "Admin note",
+            "scope": "start",
         }
 
 

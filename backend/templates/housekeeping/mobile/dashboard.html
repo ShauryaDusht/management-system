@@ -54,6 +54,11 @@
     <div style="font-size:12px;font-weight:900;color:#92400e;text-transform:uppercase;letter-spacing:.03em">Message from Admin</div>
     <div style="font-size:28px;font-weight:900;color:#111827;margin-top:10px;line-height:1.08">{{ toast_card.title }}</div>
     <div style="font-size:18px;color:#374151;margin-top:16px;line-height:1.45">{{ toast_card.body }}</div>
+    {% if toast_card.credits %}
+    <div style="font-size:14px;color:#6b7280;margin-top:16px;line-height:1.4;font-weight:700">
+      {{ toast_card.credits }}
+    </div>
+    {% endif %}
     <div style="margin-top:28px;background:#ecfdf5;border:1px solid #bbf7d0;border-radius:14px;padding:12px;color:#166534;font-size:14px;font-weight:800">
       Today: {{ total_tasks }} tasks | {% if attendance_summary.active_half == 'first' %}First Half Active{% else %}Second Half Active{% endif %}
     </div>
@@ -63,7 +68,7 @@
 (function(){
   var overlay = document.getElementById('hk-greeting-overlay');
   if (!overlay) return;
-  var key = 'hkGreetingSeen:{{ request.user.username|escapejs }}:{{ today|date:"Y-m-d" }}';
+  var key = 'hkGreetingSeen:{{ request.user.username|escapejs }}:{{ today|date:"Y-m-d" }}:{{ toast_card.scope|default:"start"|escapejs }}';
   try {
     if (window.localStorage && localStorage.getItem(key) === '1') {
       overlay.parentNode.removeChild(overlay);
