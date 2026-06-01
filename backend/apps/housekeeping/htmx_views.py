@@ -182,7 +182,9 @@ def _attendance_relievers_for_area(area):
 
     if area_bucket(area) == "hostels":
         assigned = HOSTEL_RELIEVER_ASSIGNMENTS.get(area.name)
-        relievers = qs.filter(is_reliever=True, area__area_type="hostel")
+        relievers = qs.filter(is_reliever=True, area__name="Hostels Reliever")
+        if area.name != "Hostel Common Area":
+            return relievers.order_by("name")
         if assigned:
             reliever_filter = dm.Q()
             pay_codes = [code for code in assigned.get("pay_codes", []) if code]
@@ -392,13 +394,15 @@ def _template_matches_day(template, day_idx, target_date=None):
         anchor = datetime.date(2026, 1, 5)
         return ((target_date - anchor).days % 15) == 0
 
-    if "sundays:" in desc:
-        if day_idx != 6:
+    for rule_key, rule_day_idx in (("saturdays:", 5), ("sundays:", 6)):
+        if rule_key not in desc:
+            continue
+        if day_idx != rule_day_idx:
             return False
         if target_date is None:
             return True
-        rule_text = desc.split("sundays:", 1)[1].split("|", 1)[0]
-        sunday_index = ((target_date.day - 1) // 7) + 1
+        rule_text = desc.split(rule_key, 1)[1].split("|", 1)[0]
+        week_index = ((target_date.day - 1) // 7) + 1
         rules = {
             "first": 1,
             "1st": 1,
@@ -414,7 +418,7 @@ def _template_matches_day(template, day_idx, target_date=None):
         allowed = {index for label, index in rules.items() if label in rule_text}
         if "monthly" in rule_text and not allowed:
             allowed = {1}
-        if allowed and sunday_index not in allowed:
+        if allowed and week_index not in allowed:
             return False
 
     return True
@@ -467,12 +471,12 @@ def _dashboard_section_labels(area):
         })
     elif area_name == "Research Park":
         labels.update({
-            "tab_label_floor": "Ground Work",
-            "tab_label_room": "Office Work",
-            "tab_label_washroom": "Washroom",
-            "heading_floor": "Ground and External Operations",
-            "heading_room": "Office and Meeting Zones",
-            "heading_washroom": "Washroom and Utility Rounds",
+            "tab_label_floor": "Ground Floor",
+            "tab_label_room": "2nd Floor",
+            "tab_label_washroom": "3rd Floor",
+            "heading_floor": "Ground Floor Tasks",
+            "heading_room": "2nd Floor Tasks",
+            "heading_washroom": "3rd Floor Tasks",
             "tab_label_special": "Sunday Work",
             "heading_special": "Sunday Deep-Clean Work",
         })
@@ -497,10 +501,10 @@ def _dashboard_section_labels(area):
     elif area_name == "Guest House New":
         labels.update({
             "tab_label_floor": "Ground Floor",
-            "tab_label_room": "Room Work",
+            "tab_label_room": "Rooms",
             "tab_label_washroom": "Upper & Washroom",
             "heading_floor": "Ground Floor and Canteen Operations",
-            "heading_room": "Room and Shift Operations",
+            "heading_room": "Room Operations",
             "heading_washroom": "Upper Floor and Washroom Operations",
         })
     elif area_name == "Director Bungalow":
@@ -831,6 +835,8 @@ def get_today_records(area, date):
     templates = _schedule_templates_for_day(area, dow, date)
 
     template_list = list(templates.order_by("worker_tag", "order", "start_time"))
+    if area and area.name == "Guest House New":
+        template_list = [tmpl for tmpl in template_list if tmpl.worker_tag != "previous_day"]
 
     # Find which templates already have a record for today in one query
     existing_schedule_ids = set(
@@ -879,6 +885,58 @@ def get_today_records(area, date):
     )
 
     return list(active_records) + list(temporary_task_records)
+
+
+def get_guest_house_previous_day_records(area, today):
+    """Show yesterday's evening/night Guest House work on today's supervisor dashboard."""
+    if not area or area.name != "Guest House New":
+        return []
+
+    previous_date = today - datetime.timedelta(days=1)
+    templates = list(
+        HKScheduleTemplate.objects.filter(
+            area=area,
+            is_active=True,
+            frequency="daily",
+            worker_tag="previous_day",
+        ).order_by("order", "start_time")
+    )
+    if not templates:
+        return []
+
+    from django.db import IntegrityError, transaction
+
+    existing_schedule_ids = set(
+        HKDailyRecord.objects.filter(
+            area=area,
+            date=previous_date,
+            schedule__in=templates,
+        ).values_list("schedule_id", flat=True)
+    )
+    missing = [tmpl for tmpl in templates if tmpl.pk not in existing_schedule_ids]
+    if missing:
+        with transaction.atomic():
+            for tmpl in missing:
+                try:
+                    HKDailyRecord.objects.get_or_create(
+                        schedule=tmpl,
+                        area=area,
+                        date=previous_date,
+                        defaults={"originating_template": tmpl},
+                    )
+                except IntegrityError:
+                    pass
+
+    records = list(
+        HKDailyRecord.objects
+        .filter(area=area, date=previous_date, schedule__in=templates)
+        .select_related("schedule", "completed_by", "assigned_worker", "assigned_by", "area")
+        .prefetch_related("worker_assignments__worker")
+        .order_by("schedule__order", "schedule__start_time")
+    )
+    for record in records:
+        record.is_previous_day_task = True
+    return records
 
 
 def task_completion_sort_key(record):
@@ -1034,10 +1092,19 @@ def hk_dashboard(request):
     visible_areas = visible_user_areas(user, user_areas)
     sel_area = selected_area(request, visible_areas)
 
-    records = sorted(get_today_records(sel_area, today), key=task_completion_sort_key) if sel_area else []
     area_name = sel_area.name if sel_area else ""
     is_old_guest_house = area_name == "Old Guest House"
     is_jrha = _is_jrha_area(sel_area)
+    today_records = get_today_records(sel_area, today) if sel_area else []
+    previous_day_records = get_guest_house_previous_day_records(sel_area, today) if area_name == "Guest House New" else []
+    records = sorted([*today_records, *previous_day_records], key=task_completion_sort_key)
+    is_simple_hostel = bool(
+        sel_area
+        and (
+            (sel_area.area_type == "hostel" and area_name != "Hostels Reliever")
+            or _is_jrha_area(sel_area)
+        )
+    )
 
     grouped = {}
     for rec in records:
@@ -1047,6 +1114,8 @@ def hk_dashboard(request):
         if is_old_guest_house and tag == "all":
             if is_break_task_name(rec.schedule.task_name):
                 tag = "floor"
+        if getattr(rec, "is_previous_day_task", False):
+            tag = "previous_day"
         grouped.setdefault(tag, []).append(rec)
     # Keep worker-group keys stable so mobile tabs render consistently.
     grouped.setdefault("floor", [])
@@ -1058,10 +1127,11 @@ def hk_dashboard(request):
     grouped.setdefault("t4", [])
     grouped.setdefault("t5", [])
     grouped.setdefault("all", [])
+    grouped.setdefault("previous_day", [])
     for recs in grouped.values():
         recs.sort(key=task_completion_sort_key)
 
-    if grouped["all"] and not is_jrha:
+    if grouped["all"] and not is_jrha and not is_simple_hostel:
         grouped["floor"].extend(grouped["all"])
         grouped["floor"].sort(key=task_completion_sort_key)
         grouped["all"] = []
@@ -1316,6 +1386,8 @@ def hk_dashboard(request):
         "heading_special": heading_special,
         "is_swm": is_swm,
         "is_jrha": is_jrha,
+        "is_simple_hostel": is_simple_hostel,
+        "is_guest_house_new": is_guest_house_new,
         "has_special_tasks": bool(grouped["all"]),
         "can_assign_tasks": user.role in HOUSEKEEPING_STAFF_ROLES,
         "worker_selection_cards": worker_selection_cards,
@@ -1778,6 +1850,11 @@ def hk_mark_task(request, record_id):
     ).prefetch_related("worker_assignments__worker").get(pk=record.pk)
     record.can_multi_worker_assignment = can_multi_worker_task(user, record)
     record.is_break_task = is_break_task_name(record.schedule.task_name)
+    record.is_previous_day_task = (
+        record.area.name == "Guest House New"
+        and record.schedule.worker_tag == "previous_day"
+        and record.date < timezone.localdate()
+    )
     area_workers = effective_workers_for_area(record.area, record.date)
     mark_busy_workers(area_workers, busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id))
     return render(request, "housekeeping/mobile/partials/task_card.html", {

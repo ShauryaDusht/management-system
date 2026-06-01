@@ -56,6 +56,7 @@
 
   <div style="font-size:11px;color:#6b7280;margin-top:3px">
     Period: <b>{{ record.schedule.period_label }}</b>
+    {% if record.is_previous_day_task %} | Work date: {{ record.date|date:"d M Y" }}{% endif %}
     {% with public_desc=record.schedule.task_description|public_task_description %}
       {% if public_desc %} | {{ public_desc }}{% endif %}
     {% endwith %}

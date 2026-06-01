@@ -325,7 +325,7 @@ Existing account passwords are preserved.
             ('ashok.rathod', 'Ashokbhai Ishwarbhai', 'Rathod', '2', '7016722524', 'ashok2969798@gmail.com', ['Guest House New', 'Director Bungalow']),
             ('kaushik.parmar', 'Kaushikkumar Balvantbhai', 'Parmar', '396', '9825504802', 'kaushikparmar7673@gmail.com', ['Academic Block 12', 'Academic Block 13', 'New Academic Common Area', 'New Academic Reliever']),
             ('shailesh.prajapati', 'Shailesh Natvarbhai', 'Prajapati', '4', '9898477320', '', ['Academic Block 10', 'Academic Block 11', 'New AB U-Shape', 'New Academic Reliever']),
-            ('maulik.patel', 'Maulikkumar Dilipbhai', 'Patel', '7', '8758363879', 'moulikpatel81290@gmail.com', ['Research Park']),
+            ('maulik.patel', 'Maulikkumar Dilipbhai', 'Patel', '7', '8758363879', 'maulikpatel81290@gmail.com', ['Research Park']),
             ('bharat.solanki', 'Bharat Kumar M.', 'Solanki', '465', '8511764551', 'bharat2545007@gmail.com', ['Sports Complex', 'Central Arcade']),
             ('mukesh.vaghela', 'Mukeshkumar', 'Vaghela', '466', '9265591836', 'm.vaghela23@gmail.com', ['Academic Block 1', 'Academic Block 2', 'Academic Block 5', 'Academic Block 6', 'Academic Block 8', 'Old Academic Reliever']),
             ('bipin.vaghela', 'Bipinchandra Dineshkumar', 'Vaghela', '350', '9979627312', 'bipin.vaghela4u@gmail.com', ['Academic Block 3', 'Academic Block 4', 'Academic Block 7', 'Academic Block 9', 'Old Academic Common Area']),
@@ -937,6 +937,7 @@ Existing account passwords are preserved.
             ('332', 'Bhanu Ben', 'Chimair'),
             ('233', 'Surya Ben', 'Chimair'),
             ('418', 'Dipika Ben', 'Chimair'),
+            ('249', 'Champa Ben', 'Chimair'),
             ('143', 'Kailash B Parmar', 'Ijokha'),
             ('386', 'Mittal Ben Vaghela', 'Ijokha'),
             ('230', 'Geeta Ben Parmar', 'Ijokha'),
@@ -984,18 +985,18 @@ Existing account passwords are preserved.
             ('472', 'Suresh Solanki', 'Hostel Common Area'),
             ('542', 'Anil Thakur', 'Hostel Common Area'),
             ('471', 'Krunal Parmar', 'Hostels Reliever'),
-            ('416', 'Rajesh Parmar', 'Block-A JRHA'),
-            ('417', 'Rathod Rahul', 'Block-A JRHA'),
+            ('416', 'Rajeshbhai Parmar', 'Block-A JRHA'),
+            ('417', 'Rahul Rathod', 'Block-A JRHA'),
             ('450', 'Darshan Brahmaniya', 'Block-A JRHA'),
             ('129', 'Manisha Ben K Vaghela', 'Block-B JRHA'),
             ('134', 'Sugna Ben J Vaghela', 'Block-B JRHA'),
-            ('150', 'Leela Ben Dipak Kumar Parmar', 'Block-B JRHA'),
-            ('454', 'Suresh Bhai', 'Block-C JRHA'),
+            ('150', 'Leela Ben Parmar', 'Block-B JRHA'),
             ('456', 'Himmat Bhai', 'Block-C JRHA'),
-            ('77', 'Hashmukh Bhai', 'Block-C JRHA'),
+            ('77', 'Hasmukh Bhai', 'Block-C JRHA'),
+            ('454', 'Suresh Bhai', 'Block-C JRHA'),
             ('457', 'Bhavika Ben Solanki', 'Block-D JRHA'),
             ('458', 'Hetal Ben Ashokbhai', 'Block-D JRHA'),
-            ('459', 'Urvashi Ben Nayanbhai Vaghela', 'Block-D JRHA'),
+            ('459', 'Urvashi Ben Vaghela', 'Block-D JRHA'),
         ]
         managed_hostel_area_names = [
             'Aibaan', 'Beauki', 'Chimair', 'Duven', 'Emiet', 'Firpeal',
@@ -1098,6 +1099,7 @@ Existing account passwords are preserved.
             {'area': 'Chimair', 'name': 'Bhanu ben', 'pay_code': '332', 'phone': '7567371788', 'worker_type': 'room', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Bhanu Ben', 'Bhanu ben']},
             {'area': 'Chimair', 'name': 'Surya ben', 'pay_code': '233', 'phone': '9725963299', 'worker_type': 'floor', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Surya Ben', 'Surya ben']},
             {'area': 'Chimair', 'name': 'Dipika ben', 'pay_code': '418', 'phone': '7383512108', 'worker_type': 'washroom', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Deepika Ben', 'Dipika Ben', 'Dipika ben']},
+            {'area': 'Chimair', 'name': 'Champa ben', 'pay_code': '249', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Champa Ben', 'Champa ben', 'Champaben Vaghela']},
             {'area': 'Ijokha', 'name': 'Kailash ben B', 'pay_code': '143', 'phone': '7265921026', 'worker_type': 'room', 'supervisor_username': 'rhushita.chavda', 'legacy_names': ['Kailash B Parmar', 'Kailash B', 'Kailash ben B']},
             {'area': 'Ijokha', 'name': 'Mittal ben Vaghela', 'pay_code': '386', 'phone': '7383619204', 'worker_type': 'floor', 'supervisor_username': 'rhushita.chavda', 'legacy_names': ['Mital Ben', 'Mittal Ben Vaghela', 'Mittal ben Vaghela']},
             {'area': 'Ijokha', 'name': 'Geeta ben Parmar', 'pay_code': '230', 'phone': '7041016942', 'worker_type': 'washroom', 'supervisor_username': 'rhushita.chavda', 'legacy_names': ['Geeta Ben', 'Geeta Ben Parmar', 'Geeta ben Parmar']},
@@ -1648,6 +1650,56 @@ Existing account passwords are preserved.
                     )
                     total += 1
 
+            old_jrha_template_count = HKScheduleTemplate.objects.filter(area__in=jeet_areas).count()
+            HKScheduleTemplate.objects.filter(area__in=jeet_areas).delete()
+            total = max(0, total - old_jrha_template_count)
+
+            jrha_exact_daily_tasks = [
+                '30 Room Cleaning',
+                'Common Dusting',
+                'Flat Common Small Dustbin Regular Cleaning',
+                'Staircase Cleaning',
+                '24 Washroom Deep Cleaning',
+                'Common Lift Cleaning',
+                'Ground Floor Common Road Cleaning',
+                'Dustbin Cleaning',
+                '8 Pantry Cleaning',
+            ]
+            jrha_exact_sunday_tasks = [
+                ('Terrace Cleaning', 'Weekly / Sunday'),
+                ('Basement Cleaning', 'Weekly / Sunday'),
+                ('Fridge Cleaning', 'Sundays: first, third | Fridge cleaning 2 times in month.'),
+            ]
+
+            def jrha_task_window(order, start_hour=8, minutes=30):
+                start_dt = datetime.datetime.combine(datetime.date.today(), t(f'{start_hour:02d}:00')) + datetime.timedelta(minutes=(order - 1) * minutes)
+                end_dt = start_dt + datetime.timedelta(minutes=minutes)
+                return start_dt.time(), end_dt.time()
+
+            for area in jeet_areas:
+                for order, name in enumerate(jrha_exact_daily_tasks, start=1):
+                    start_time, end_time = jrha_task_window(order)
+                    HKScheduleTemplate.objects.create(
+                        area=area, order=order,
+                        start_time=start_time, end_time=end_time,
+                        task_name=name,
+                        task_description='Days: Daily | Rooms: 30 | Washrooms: 24 | Pantry: 8 | Lift: 1 common lift | Staircase: common staircases | Ground floor: common road area',
+                        worker_tag='all', requires_photo=True,
+                        frequency='daily', is_active=True,
+                    )
+                    total += 1
+                for order, (name, desc) in enumerate(jrha_exact_sunday_tasks, start=1):
+                    start_time, end_time = jrha_task_window(order, start_hour=9, minutes=45)
+                    HKScheduleTemplate.objects.create(
+                        area=area, order=order,
+                        start_time=start_time, end_time=end_time,
+                        task_name=name,
+                        task_description=desc,
+                        worker_tag='all', requires_photo=True,
+                        frequency='sunday_extra', is_active=True,
+                    )
+                    total += 1
+
         # Hostel Common Area: same schedule for all 7 days (no separate Sunday-only plan)
         common_area = self.area('Hostel Common Area')
         if common_area:
@@ -1701,6 +1753,92 @@ Existing account passwords are preserved.
                     task_name=name, task_description=desc,
                     worker_tag='washroom', requires_photo=req_photo,
                     frequency='daily', is_active=True,
+                )
+                total += 1
+
+        exact_hostel_schedules = {
+            'Aibaan': {
+                'daily': ['4 Floor Cleaning', 'Common Room Cleaning', '1 Staircase Cleaning', 'Dusting', '8 Washroom Cleaning', '8 Washroom Dusting', '30 Room Cleaning', 'Common Dusting', 'Pantry Small Dustbin Regular Cleaning', 'Staircase Cleaning'],
+                'sunday': [],
+            },
+            'Beauki': {
+                'daily': ['18 Room Cleaning', 'Staircase Cleaning', 'Common Room Cleaning', 'Common Area Cleaning', '12 Washroom Cleaning', '12 Washroom Dusting', 'Pantry Cleaning', '4 Floor Cleaning', 'Dusting'],
+                'sunday': [],
+            },
+            'Chimair': {
+                'daily': ['18 Room Cleaning', 'Staircase Cleaning', 'Common Room Cleaning', 'Common Area Cleaning', '12 Washroom Cleaning', '12 Washroom Dusting', 'Pantry Cleaning', '4 Floor Cleaning', 'Dusting'],
+                'sunday': [],
+            },
+            'Ijokha': {
+                'daily': ['18 Room Cleaning', 'Staircase Cleaning', 'Common Room Cleaning', 'Common Area Cleaning', '12 Washroom Cleaning', '12 Washroom Dusting', 'Pantry Cleaning', '4 Floor Cleaning', 'Dusting', 'Balcony Cleaning'],
+                'sunday': ['Common Terrace Cleaning'],
+            },
+            'Duven': {
+                'daily': ['12 Washroom Cleaning', '12 Washroom Dusting', '1 Staircase Cleaning', 'Common Cleaning', '4 Pantry Cleaning', '30 Room Cleaning', 'Dustbin Cleaning', '4 Floor Cleaning', 'Common Room Cleaning', 'Dusting'],
+                'sunday': ['Terrace Cleaning'],
+            },
+            'Emiet': {
+                'daily': ['4 Pantry Cleaning', '30 Room Cleaning', '1 Staircase Cleaning', 'Dustbin Cleaning', '12 Washroom Cleaning', '12 Washroom Dusting', 'Common Cleaning', '4 Floor Cleaning', 'Common Room Cleaning', 'Dusting'],
+                'sunday': ['Terrace Cleaning'],
+            },
+            'Firpeal': {
+                'daily': ['4 Floor Cleaning', '1 Staircase Cleaning', 'Dusting', 'Common Cleaning', '4 Pantry Cleaning', '30 Room Cleaning', 'Dustbin Cleaning', '12 Washroom Cleaning', '12 Washroom Dusting'],
+                'sunday': ['Terrace Cleaning'],
+            },
+            'Griwiksh': {
+                'daily': ['4 Floor Cleaning', '1 Staircase Cleaning', 'Dusting', 'Bridge Cleaning', '12 Washroom Cleaning', '12 Washroom Dusting', '4 Pantry Cleaning', 'Room Cleaning', 'Dustbin Cleaning', 'Common Cleaning'],
+                'sunday': ['Terrace Cleaning'],
+            },
+            'Hiqom': {
+                'daily': ['2 Floor Cleaning', '8 Balcony Cleaning', 'All Dusting', '1 Staircase Cleaning', 'Hostel Common Area Room Cleaning', '8 Washroom Cleaning', '8 Washroom Dusting', '4 Pantry Cleaning', '24 Room Cleaning', 'Dustbin Cleaning'],
+                'sunday': ['Terrace Cleaning'],
+            },
+            'Jurqia': {
+                'daily': ['4 Floor Cleaning', 'Common Room Cleaning', 'Common Terrace Cleaning', 'Common Area Cleaning', 'Dusting', '8 Washroom Cleaning', '8 Washroom Dusting', '1 Staircase Cleaning', '4 Balcony Cleaning', '18 Room Cleaning', '4 Pantry Cleaning', 'All Dustbin Cleaning'],
+                'sunday': ['Terrace Cleaning'],
+            },
+            'Kyzeel': {
+                'daily': ['10 Washroom Cleaning', '10 Washroom Dusting', '2 Floor Cleaning', '8 Balcony Cleaning', '3 Staircase Cleaning', 'Hostel Common Area Room Cleaning', 'Common Room Cleaning', '30 Room Cleaning', '4 Pantry Cleaning', 'All Dustbin Cleaning'],
+                'sunday': ['Terrace Cleaning'],
+            },
+            'Lekhaag': {
+                'daily': ['4 Floor Cleaning', 'Common Room Cleaning', 'Common Terrace Cleaning', 'Common Area Cleaning', 'Dusting', '6 Washroom Cleaning', '6 Washroom Dusting', '1 Staircase Cleaning', '4 Balcony Cleaning', '16 Room Cleaning', '4 Pantry Cleaning'],
+                'sunday': ['All Dustbin Cleaning', 'Terrace Cleaning'],
+            },
+            'Hostel Common Area': {
+                'daily': ['Hostel Office', 'All Common Washroom', 'Mini Library', 'Student Lounge', 'Old Mess Second Floor Area', 'Washroom', 'New Mess Common Area Front and Back Cleaning', 'Hiqom Front and Back Cleaning', 'New PC Perimeter', 'Ijokha Backside Route Cleaning', 'Lekhaag Backside Route Cleaning', 'Firpeal Backside Route Cleaning', 'Emiet Backside Route Cleaning', 'Aibaan Back Side Cleaning', 'Beauki Back Side Cleaning', 'Chimair Back Side Cleaning', 'Old Mess Back Side Cleaning', 'Duven Back Side Cleaning', 'Kyzeel Back Side Cleaning', 'Jurqia Back Side Cleaning', 'Lekhaag Common Front Side Cleaning', 'Kyzeel Common Front Side Cleaning', 'Jurqia Common Front Side Cleaning', 'Ijokha Common Front Side Cleaning', 'New Mess Second Floor Hall', 'Mess to Hostel Connecting Bridge', 'New PC Student Conference Hall', 'All Boys Hostel Washroom Touch Up', 'New Mess to Old Mess Corridor Cleaning', 'All Old Hostel Common Area Cleaning', 'Other Work'],
+                'sunday': ['New Mess Terrace', 'Old Mess Terrace'],
+            },
+        }
+
+        exact_hostel_areas = [area for area in [*hostel_areas, common_area] if area]
+        old_hostel_template_count = HKScheduleTemplate.objects.filter(area__in=exact_hostel_areas).count()
+        HKScheduleTemplate.objects.filter(area__in=exact_hostel_areas).delete()
+        total = max(0, total - old_hostel_template_count)
+
+        def exact_task_window(order, start_hour=8, minutes=15):
+            start_dt = datetime.datetime.combine(datetime.date.today(), t(f'{start_hour:02d}:00')) + datetime.timedelta(minutes=(order - 1) * minutes)
+            end_dt = start_dt + datetime.timedelta(minutes=minutes)
+            return start_dt.time(), end_dt.time()
+
+        for area in exact_hostel_areas:
+            schedule = exact_hostel_schedules.get(area.name)
+            if not schedule:
+                continue
+            for order, name in enumerate(schedule['daily'], start=1):
+                start_time, end_time = exact_task_window(order)
+                HKScheduleTemplate.objects.create(
+                    area=area, order=order, start_time=start_time, end_time=end_time,
+                    task_name=name, task_description='Days: Daily',
+                    worker_tag='all', requires_photo=True, frequency='daily', is_active=True,
+                )
+                total += 1
+            for order, name in enumerate(schedule['sunday'], start=1):
+                start_time, end_time = exact_task_window(order, start_hour=9, minutes=30)
+                HKScheduleTemplate.objects.create(
+                    area=area, order=order, start_time=start_time, end_time=end_time,
+                    task_name=name, task_description='Sunday / Weekly',
+                    worker_tag='all', requires_photo=True, frequency='sunday_extra', is_active=True,
                 )
                 total += 1
 
@@ -1761,9 +1899,9 @@ Existing account passwords are preserved.
                 (6, '13:00', '14:00', 'Dharmishtaben: Lunch Break', False, ''),
                 (7, '14:00', '14:30', 'Dharmishtaben: GF + 2F + 3F Ladies Washroom Touch Up', True, ''),
                 (8, '14:30', '14:45', 'Dharmishtaben: All Floor Dusting', True, ''),
-                (9, '14:45', '15:20', 'Dharmishtaben: Room 405 and 406 Cleaning', True, ''),
-                (10, '15:20', '15:55', 'Dharmishtaben: Room 407 and 408 Cleaning', True, ''),
-                (11, '15:55', '16:30', 'Dharmishtaben: Room 401 Cleaning', True, ''),
+                (9, '14:45', '15:45', 'Dharmishtaben: Room 405 and 406 Cleaning', True, 'Days: Tuesday, Friday | Tue/Fri: Room 405 and 406'),
+                (10, '14:45', '15:45', 'Dharmishtaben: Room 407 and 408 Cleaning', True, 'Days: Wednesday, Saturday | Wed/Sat: Room 407 and 408'),
+                (11, '14:45', '15:45', 'Dharmishtaben: Room 401 Cleaning', True, 'Days: Monday, Thursday | Mon/Thu: Room 401'),
                 (12, '16:30', '16:40', 'Dharmishtaben: Terrace Area', True, ''),
                 (13, '16:40', '17:00', 'Dharmishtaben: GF + 2F + 3F Ladies Washroom Touch Up', True, ''),
             ]
@@ -2047,35 +2185,30 @@ Existing account passwords are preserved.
             HKScheduleTemplate.objects.filter(area=guest_house).delete()
 
             gh_floor_tasks = [
-                (1, '07:00', '09:00', 'Raju: Ground Floor Office, Reception and Front Corridor', True, 'Dusting, sweeping and mopping'),
-                (2, '09:00', '11:00', 'Raju: Parking, Washroom and Lobby Touch Up', True, 'Ladies/Gents/Handicapped washroom, lobby and dining passage'),
-                (3, '11:00', '13:00', 'Raju: Front Glass, Lift and Ground Floor Final Round', True, ''),
-                (4, '13:00', '14:00', 'Raju: Lunch Break', False, ''),
-                (5, '14:00', '14:15', 'Raju: Washroom Touch Up', True, ''),
-                (6, '14:15', '14:45', 'Raju: Rooms Back Side Area Sweeping', True, ''),
-                (7, '14:45', '15:30', 'Raju: Gym Area and Equipment Dusting', True, ''),
-                (8, '15:30', '16:00', 'Raju: All Floor Coolers and Washroom Cleaning', True, ''),
-                (9, '07:00', '09:00', 'Gautam: Dining Hall, Front Area, Washroom and Kitchen', True, 'Canteen and Gate duty'),
-                (10, '09:00', '10:30', 'Gautam: Gate No. 01 Cleaning', True, ''),
-                (11, '10:30', '11:30', 'Gautam: Gate No. 02 Cleaning', True, ''),
-                (12, '11:30', '13:00', 'Gautam: Washroom and Kitchen Area Round 2', True, ''),
-                (13, '13:00', '14:00', 'Gautam: Lunch Break', False, ''),
-                (14, '14:00', '16:00', 'Gautam: Sewer Channel, Kitchen and Dustbin Washing', True, ''),
+                (1, '07:00', '13:00', 'Pankaj: Ground Floor Complete Cleaning', True, 'Office, reception, front corridor, parking, ladies/gents/handicapped washrooms, room-side lobby, dining hall, corridor, front glass, lift, washroom touch up, dusting, sweeping and mopping'),
+                (2, '13:00', '14:00', 'Pankaj: Lunch Break', False, ''),
+                (3, '14:00', '14:15', 'Pankaj: Washroom Touch Up', True, ''),
+                (4, '14:15', '14:45', 'Pankaj: Rooms Back Side Area Sweeping', True, ''),
+                (5, '14:45', '15:30', 'Pankaj: Gym Area Cleaning', True, 'Equipment dusting, dusting, sweeping and mopping'),
+                (6, '15:30', '16:00', 'Pankaj: All Floor Cooler and Washroom Cleaning', True, ''),
             ]
 
             gh_washroom_tasks = [
-                (1, '08:00', '09:00', 'Hitesh: 1st to 4th Floor Common Washroom Cleaning', True, ''),
-                (2, '09:00', '13:00', 'Hitesh: 1st to 4th Floor Lobby, Corridor and Railing', True, 'Dusting and sweeping'),
+                (1, '08:00', '09:00', 'Hitesh: 1st to 4th Floor Common Washroom Cleaning', True, 'Ladies, gents and handicapped common washrooms'),
+                (2, '09:00', '13:00', 'Hitesh: 1st to 4th Floor Lobby, Corridor and Railing', True, 'Lobby cleaning, corridor cleaning, railing dusting, dusting and sweeping'),
                 (3, '13:00', '14:00', 'Hitesh: Lunch Break', False, ''),
                 (4, '14:00', '16:00', 'Hitesh: 1st to 4th Floor Lobby and Corridor Sweeping', True, ''),
                 (5, '16:00', '17:00', 'Hitesh: Extra Work (Railing, Louver, Fountain Area)', True, ''),
-                (6, '13:00', '17:00', 'Shailesh + Sanjay: Staircase, Common Washroom, Dining and Open Hall', True, 'Evening washroom/staircase support'),
+                (6, '13:00', '17:00', 'Shailesh + Sanjay: Staircase, Common Washroom, Dining and Open Hall', True, '6 staircase cleaning, 1st to 4th floor ladies/gents/handicapped washrooms, dining hall and open hall'),
             ]
 
             gh_room_tasks = [
-                (1, '08:00', '17:00', 'Dhaval + Ajay + Sumit + Vishal: Checkout/Occupied/Vacant Rooms', True, 'Morning room operations'),
-                (2, '17:00', '22:00', 'Shailesh + Sanjay: Evening Room Operations', True, 'Checkout/occupied/vacant room round'),
-                (3, '22:00', '07:00', 'Anil: Night Shift All Work Coverage', True, 'Dining hall, common hall, meeting hall, conference hall, washrooms and rooms'),
+                (1, '08:00', '17:00', 'Dhaval + Ajay + Sumit: Checkout/Occupied/Vacant Rooms', True, 'Check-out room cleaning, occupied room cleaning, vacant room cleaning, dusting, sweeping, mopping and bed making'),
+            ]
+
+            gh_previous_day_tasks = [
+                (1, '17:00', '22:00', 'Shailesh + Sanjay: Evening Room Operations', True, 'Previous day task | Check-out room cleaning, occupied room cleaning, vacant room cleaning, dusting, sweeping, mopping and bed making'),
+                (2, '22:00', '07:00', 'Anil: Night Shift All Work Coverage', True, 'Previous day task | Dining hall, fourth floor common hall, meeting hall, conference hall, 1st to 4th floor ladies/gents/handicapped washrooms, check-out/occupied/vacant room cleaning, dusting, sweeping, mopping and bed making'),
             ]
 
             gh_special_tasks = []  # Weekly-off handling now lives in the profile/leave flow.
@@ -2106,6 +2239,16 @@ Existing account passwords are preserved.
                     start_time=t(start), end_time=t(end),
                     task_name=name, task_description=desc,
                     worker_tag='room', requires_photo=req_photo,
+                    frequency='daily', is_active=True,
+                )
+                total += 1
+
+            for order, start, end, name, req_photo, desc in gh_previous_day_tasks:
+                HKScheduleTemplate.objects.create(
+                    area=guest_house, order=order,
+                    start_time=t(start), end_time=t(end),
+                    task_name=name, task_description=desc,
+                    worker_tag='previous_day', requires_photo=req_photo,
                     frequency='daily', is_active=True,
                 )
                 total += 1
@@ -2585,6 +2728,7 @@ Existing account passwords are preserved.
                     (9, '16:00', '17:00', 'AB-13 2F/3F: Lab Area and Touch Up', 'room', True, ''),
                     (10, '08:00', '11:00', 'AB-13 Library: Washroom and Office Floor Cleaning', 'room', True, 'Ajay + Bharat'),
                     (11, '11:00', '13:00', 'AB-13 Library: First Floor Lab Floor Cleaning', 'room', True, ''),
+                    (12, '15:00', '16:00', 'AB-13: All Female Washroom Cleaning', 'washroom', True, 'All female washrooms'),
                 ],
                 'Old Academic Common Area': [
                     (1, '07:00', '13:00', 'Old Academic Common Area: All Blocks Common Area + Marble Cleaning', 'floor', True, 'Bhavesh + Nikhil'),
@@ -2610,6 +2754,22 @@ Existing account passwords are preserved.
                     (1, '08:00', '11:00', 'Sunday Deep Clean: Old Academic Common Area Samved Area Scrubbing and Washing', 'all', True, 'Weekly Sunday task'),
                 ],
             }
+            academic_saturday_special = {}
+            academic_block_names = [f'Academic Block {idx}' for idx in range(1, 14)]
+            for area_name in academic_block_names:
+                academic_saturday_special[area_name] = [
+                    (101, '09:00', '10:00', 'Saturday Special: Cobweb Cleaning', 'all', True, 'Saturdays: every | Every Saturday'),
+                    (102, '10:00', '11:00', 'Saturday Special: Dustbin Cleaning', 'all', True, 'Saturdays: first, third | Dustbin cleaning 2 times in month'),
+                    (103, '11:00', '12:00', 'Saturday Special: Sofa & Chair Cleaning', 'all', True, 'Saturdays: second | Sofa and chair cleaning 1 time in month'),
+                    (104, '12:00', '13:00', 'Saturday Special: Fan & Light Cleaning', 'all', True, 'Saturdays: fourth | Fan and light cleaning 1 time in month'),
+                ]
+                academic_sunday_extra[area_name] = [
+                    (101, '08:00', '09:00', 'Sunday Special: Terrace Cleaning', 'all', True, 'Sundays: first | Terrace cleaning 1 time in month'),
+                    (102, '09:00', '10:00', 'Sunday Special: Dug Area Cleaning', 'all', True, 'Sundays: first | Dug area cleaning 1 time in month'),
+                    (103, '10:00', '11:00', 'Sunday Special: Shaft Area Cleaning', 'all', True, 'Sundays: second | Shaft area cleaning 1 time in month'),
+                    (104, '11:00', '12:00', 'Sunday Special: Washroom Deep Cleaning', 'all', True, 'Sundays: every | Washroom cleaning every Sunday'),
+                    (105, '12:00', '13:00', 'Sunday Special: Window Glass Cleaning', 'all', True, 'Sundays: third | Window glass cleaning 1 time in month'),
+                ]
 
             for area_name, tasks in academic_daily_tasks.items():
                 area_obj = self.area(area_name)
@@ -2626,6 +2786,25 @@ Existing account passwords are preserved.
                         worker_tag=tag,
                         requires_photo=req_photo,
                         frequency='daily',
+                        is_active=True,
+                    )
+                    total += 1
+
+            for area_name, tasks in academic_saturday_special.items():
+                area_obj = self.area(area_name)
+                if not area_obj:
+                    continue
+                for order, start, end, name, tag, req_photo, desc in tasks:
+                    HKScheduleTemplate.objects.create(
+                        area=area_obj,
+                        order=order,
+                        start_time=t(start),
+                        end_time=t(end),
+                        task_name=name,
+                        task_description=desc,
+                        worker_tag=tag,
+                        requires_photo=req_photo,
+                        frequency='saturday_special',
                         is_active=True,
                     )
                     total += 1
@@ -2649,8 +2828,75 @@ Existing account passwords are preserved.
                     )
                     total += 1
 
+        break_total_delta = self.normalize_supervisor_break_templates()
+        total += break_total_delta
+
         self.stdout.write(
             f'  [OK] Schedule templates: {total} '
             '(hostels + common area + research park + central arcade + sports complex + guest house + director bungalow + roads + swm + academic blocks)'
         )
+
+    def normalize_supervisor_break_templates(self):
+        """
+        Keep non-hostel, non-SWM supervisor areas consistent:
+        tea break is 15 minutes and lunch break is 1 hour. Missing break rows are
+        added as simple mark-done tasks, while hostel and SWM schedules stay exact.
+        """
+        excluded_area_types = {'hostel', 'swm'}
+        areas = HKArea.objects.filter(is_active=True).exclude(area_type__in=excluded_area_types)
+        added = 0
+
+        for area in areas:
+            if 'reliever' in area.name.lower():
+                continue
+
+            templates = HKScheduleTemplate.objects.filter(area=area, frequency='daily', is_active=True)
+
+            tea_templates = templates.filter(task_name__icontains='Tea Break')
+            for template in tea_templates:
+                template.end_time = self._time_after_minutes(template.start_time, 15)
+                template.requires_photo = False
+                template.save(update_fields=['end_time', 'requires_photo'])
+
+            lunch_templates = templates.filter(task_name__icontains='Lunch Break')
+            for template in lunch_templates:
+                template.end_time = self._time_after_minutes(template.start_time, 60)
+                template.requires_photo = False
+                template.save(update_fields=['end_time', 'requires_photo'])
+
+            if not tea_templates.exists():
+                HKScheduleTemplate.objects.create(
+                    area=area,
+                    order=98,
+                    start_time=t('10:00'),
+                    end_time=t('10:15'),
+                    task_name='Tea Break',
+                    task_description='All assigned workers',
+                    worker_tag='floor',
+                    requires_photo=False,
+                    frequency='daily',
+                    is_active=True,
+                )
+                added += 1
+
+            if not lunch_templates.exists():
+                HKScheduleTemplate.objects.create(
+                    area=area,
+                    order=99,
+                    start_time=t('13:00'),
+                    end_time=t('14:00'),
+                    task_name='Lunch Break',
+                    task_description='All assigned workers',
+                    worker_tag='floor',
+                    requires_photo=False,
+                    frequency='daily',
+                    is_active=True,
+                )
+                added += 1
+
+        return added
+
+    def _time_after_minutes(self, start_time, minutes):
+        start_dt = datetime.datetime.combine(datetime.date.today(), start_time)
+        return (start_dt + datetime.timedelta(minutes=minutes)).time()
 
