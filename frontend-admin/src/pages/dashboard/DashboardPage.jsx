@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -27,6 +26,11 @@ const MODULE_OPTIONS = [
   { key: 'housekeeping', label: '🧹 Housekeeping' },
   { key: 'horticulture', label: '🌿 Horticulture' },
 ]
+
+function adminHref(path) {
+  const cleanPath = String(path || '/dashboard')
+  return cleanPath.startsWith('/admin/') ? cleanPath : `/admin${cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`}`
+}
 
 const RANGE_OPTIONS = [
   { key: 'today',   label: 'Today' },
@@ -369,9 +373,9 @@ export default function DashboardPage() {
                   style={{ height: '100%', cursor: 'default', userSelect: 'none', transition: 'none', pointerEvents: 'none' }}
                 />
               ) : (
-                <Link key={card.label} to={card.to} className="ui-interactive-card-link" style={{ height: '100%', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
+                <a key={card.label} href={adminHref(card.to)} className="ui-interactive-card-link" style={{ height: '100%', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
                   <StatCard label={card.label} value={card.value} icon={card.icon} color={card.color} sub={card.sub} style={{ height: '100%', cursor: 'pointer', userSelect: 'none' }} />
-                </Link>
+                </a>
               )
             ))}
           </div>
@@ -389,7 +393,7 @@ export default function DashboardPage() {
                     <div style={{ fontWeight: 700, fontSize: 14 }}>{card.title}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{card.subtitle}</div>
                   </div>
-                  <Link to={card.to}><Btn size="sm" variant="ghost">View →</Btn></Link>
+                  <a href={adminHref(card.to)} style={{ textDecoration: 'none' }}><Btn size="sm" variant="ghost">View →</Btn></a>
                 </div>
                 <DonutChart data={card.data} total={card.total} label={card.label} size={160} palette={card.palette} />
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
