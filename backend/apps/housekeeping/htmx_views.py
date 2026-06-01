@@ -923,7 +923,7 @@ def mark_busy_workers(area_workers, busy_worker_ids):
     return area_workers
 
 
-BREAK_TASK_RE = re.compile(r"(^|[^a-z0-9])(break|lunch)([^a-z0-9]|$)", re.IGNORECASE)
+BREAK_TASK_RE = re.compile(r"(^|[^a-z0-9])break([^a-z0-9]|$)", re.IGNORECASE)
 
 
 def is_break_task_name(task_name):
