@@ -307,14 +307,16 @@ export default function SectionsTab({ hostelOnly = false }) {
                 </Btn>
               </>
             )}
-            <Btn
-              size="sm"
-              variant="secondary"
-              onClick={downloadAreaInchargeReport}
-              disabled={downloadingReport}
-            >
-              {downloadingReport ? 'Generating Report...' : 'Area Incharge Report CSV'}
-            </Btn>
+            {!hostelOnly && (
+              <Btn
+                size="sm"
+                variant="secondary"
+                onClick={downloadAreaInchargeReport}
+                disabled={downloadingReport}
+              >
+                {downloadingReport ? 'Generating Report...' : 'Area Incharge Report CSV'}
+              </Btn>
+            )}
           </div>
         </div>
         {loading ? (
