@@ -588,6 +588,78 @@ Existing account passwords are preserved.
             is_active=True,
         ).exclude(id__in=keep_ids).update(is_active=False)
 
+    def _force_exact_hostel_roster(self, roster_specs, managed_area_names):
+        supervisors = {
+            username: User.objects.filter(username=username).first()
+            for username in {spec.get('supervisor_username') for spec in roster_specs if spec.get('supervisor_username')}
+        }
+        areas = {
+            name: self.area(name)
+            for name in {spec['area'] for spec in roster_specs}
+        }
+        managed_area_names = sorted(set(managed_area_names))
+
+        HKWorker.objects.filter(
+            area__area_type='hostel',
+            area__name__in=managed_area_names,
+            is_active=True,
+        ).update(is_active=False)
+
+        touched_ids = set()
+        synced_count = 0
+        created_count = 0
+
+        for spec in roster_specs:
+            area = areas.get(spec['area'])
+            if not area:
+                continue
+
+            pay_code = (spec.get('pay_code') or '').strip()
+            legacy_keys = {worker_key(spec['name'])}
+            legacy_keys.update(worker_key(name) for name in spec.get('legacy_names', []) if name)
+
+            worker = None
+            candidates = HKWorker.objects.select_related('area').filter(
+                area__area_type='hostel',
+                area__name__in=managed_area_names,
+            ).exclude(id__in=touched_ids)
+            if pay_code:
+                worker = candidates.filter(pay_code=pay_code).order_by('-is_active', 'id').first()
+            if worker is None:
+                for candidate in candidates.filter(area=area).order_by('-is_active', 'id'):
+                    if worker_key(candidate.name) in legacy_keys:
+                        worker = candidate
+                        break
+
+            created = worker is None
+            if worker is None:
+                worker = HKWorker(area=area)
+
+            phone = spec.get('phone') or self._existing_worker_phone(spec['name'], pay_code, worker)
+            worker.name = spec['name']
+            worker.pay_code = pay_code
+            worker.phone = phone or ''
+            worker.worker_type = spec.get('worker_type', 'general')
+            worker.shift = spec.get('shift', 'day')
+            worker.area = area
+            worker.supervisor = supervisors.get(spec.get('supervisor_username'))
+            worker.is_reliever = spec.get('is_reliever', False)
+            worker.is_active = True
+            worker.save()
+
+            touched_ids.add(worker.id)
+            synced_count += 1
+            if created:
+                created_count += 1
+
+        extra_deactivated = HKWorker.objects.filter(
+            area__area_type='hostel',
+            area__name__in=managed_area_names,
+            is_active=True,
+        ).exclude(id__in=touched_ids).update(is_active=False)
+
+        return synced_count, created_count, extra_deactivated
+
     def _sync_area_roster_by_supervisor(self, roster_specs):
         supervisors = {
             username: User.objects.filter(username=username).first()
@@ -1013,7 +1085,10 @@ Existing account passwords are preserved.
             {'area': 'Hostels Reliever', 'name': 'Mukesh', 'pay_code': '88', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Mukesh']},
             {'area': 'Hostels Reliever', 'name': 'Krunal Parmar', 'pay_code': '471', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Krunal', 'Krunal Parmar']},
         ]
-        hostel_synced, hostel_deactivated = self._sync_area_roster_by_supervisor(hostel_roster)
+        hostel_synced, hostel_created, hostel_deactivated = self._force_exact_hostel_roster(
+            hostel_roster,
+            managed_hostel_area_names,
+        )
         hostel_deleted, hostel_kept = self._cleanup_unused_inactive_workers(
             sorted({spec['area'] for spec in hostel_roster})
         )
@@ -1029,7 +1104,8 @@ Existing account passwords are preserved.
         ])
         self.stdout.write(
             '  [OK] Hostel/Common roster synced from final list: '
-            f'{hostel_synced} workers, {hostel_deactivated} extra deactivated, '
+            f'{hostel_synced} workers, {hostel_created} created, '
+            f'{hostel_deactivated} extra deactivated, '
             f'{jrha_deactivated} JRHA workers deactivated, '
             f'{hostel_deleted + jrha_deleted} unused removed, '
             f'{hostel_kept + jrha_kept} history rows kept inactive'
