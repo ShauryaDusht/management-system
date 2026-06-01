@@ -1064,6 +1064,257 @@ def can_multi_worker_task(user, record):
     )
 
 
+def hk_mobile_special_card(today, total_tasks, done_tasks):
+    if total_tasks and done_tasks >= total_tasks:
+        return {
+            "tone": "success",
+            "title": "All Tasks Completed",
+            "body": "Thank you. Today's work is fully recorded for this area.",
+            "meta": "Great finish",
+        }
+
+    fixed_days = {
+        (1, 26): ("Republic Day", "Special day. Keep campus spaces ready and clean."),
+        (5, 1): ("Labour Day", "Thank you for the work that keeps the campus running."),
+        (8, 15): ("Independence Day", "Special day. Keep key areas event-ready."),
+        (10, 2): ("Gandhi Jayanti", "Cleanliness work matters even more today."),
+    }
+    fixed = fixed_days.get((today.month, today.day))
+    if fixed:
+        return {
+            "tone": "warm",
+            "title": fixed[0],
+            "body": fixed[1],
+            "meta": "Special occasion",
+        }
+
+    if today.weekday() == 6:
+        return {
+            "tone": "focus",
+            "title": "Sunday Special Work",
+            "body": "Weekly tasks are active today. Review special and extra work before closing.",
+            "meta": "Weekly focus",
+        }
+
+    if today.day == 1:
+        return {
+            "tone": "focus",
+            "title": "New Month Started",
+            "body": "Start the month with clean attendance and task records.",
+            "meta": today.strftime("%B"),
+        }
+
+    return None
+
+
+def hk_mobile_admin_greeting_card(today, total_tasks, done_tasks, attendance_summary, monthly_best_worker, area_name):
+    admin_name = "Pragnesh Parekh Sir"
+    area_label = area_name or "your area"
+    first_submitted = attendance_summary.get("first_submitted", 0)
+    second_submitted = attendance_summary.get("second_submitted", 0)
+    worker_count = attendance_summary.get("worker_count", 0)
+
+    if total_tasks and done_tasks >= total_tasks:
+        return {
+            "title": "Excellent Work Today",
+            "body": f"Message from {admin_name}: Thank you for completing all assigned tasks.",
+            "meta": "Admin thanks",
+        }
+
+    fixed_day_title = {
+        (1, 26): "Republic Day Greetings",
+        (5, 1): "Labour Day Appreciation",
+        (8, 15): "Independence Day Greetings",
+        (10, 2): "Gandhi Jayanti Message",
+    }.get((today.month, today.day))
+    if fixed_day_title:
+        return {
+            "title": "Special Day Greetings",
+            "body": f"Message from {admin_name}: Wishing you and your family a happy and healthy day. Thank you for your service.",
+            "meta": "Admin greeting",
+        }
+
+    if today.weekday() == 6:
+        return {
+            "title": "Sunday Duty Appreciation",
+            "body": f"Message from {admin_name}: Thank you for handling special weekly cleaning work today.",
+            "meta": "Sunday duty",
+        }
+
+    if worker_count and second_submitted >= worker_count:
+        return {
+            "title": "Attendance Received",
+            "body": f"Message from {admin_name}: Your punctuality today is appreciated.",
+            "meta": "Attendance",
+        }
+
+    if worker_count and first_submitted >= worker_count:
+        return {
+            "title": "First Half Done",
+            "body": f"Message from {admin_name}: Thank you. Please continue the same quality in second half.",
+            "meta": "Attendance",
+        }
+
+    if monthly_best_worker:
+        return {
+            "title": "Monthly Appreciation",
+            "body": f"Message from {admin_name}: {monthly_best_worker['name']} is appreciated for consistent attendance this month.",
+            "meta": monthly_best_worker["month"],
+        }
+
+    if today.month in {6, 7, 8, 9}:
+        return {
+            "title": "Extra Effort Noted",
+            "body": f"Message from {admin_name}: Your field work during difficult conditions is appreciated.",
+            "meta": "Admin note",
+        }
+
+    hour = timezone.localtime(timezone.now()).hour
+    if hour < 12:
+        return {
+            "title": "Good Morning",
+            "body": f"Message from {admin_name}: Thank you for starting the day on time. Your work keeps the campus clean and ready.",
+            "meta": "Admin note",
+        }
+    elif hour < 17:
+        return {
+            "title": "Team Work",
+            "body": f"Message from {admin_name}: Today's team effort in {area_label} is appreciated.",
+            "meta": "Admin note",
+        }
+    else:
+        return {
+            "title": "Area Looks Good",
+            "body": f"Message from {admin_name}: Thank you for keeping {area_label} clean today.",
+            "meta": "Admin note",
+        }
+
+
+def hk_mobile_status_cards(today, area_name, total_tasks, done_tasks, records, attendance_summary):
+    pending_count = max(total_tasks - done_tasks, 0)
+    hour = timezone.localtime(timezone.now()).hour
+    active_half = attendance_summary.get("active_half", current_half())
+    first_submitted = attendance_summary.get("first_submitted", 0)
+    second_submitted = attendance_summary.get("second_submitted", 0)
+    worker_count = attendance_summary.get("worker_count", 0)
+
+    cards = []
+    if total_tasks == 0:
+        cards.append({
+            "tone": "success",
+            "title": "No Scheduled Tasks Today",
+            "body": "You are all clear.",
+            "meta": "No task",
+        })
+    elif pending_count == 0:
+        cards.append({
+            "tone": "success",
+            "title": "All Tasks Completed For Today",
+            "body": "Thank you for keeping the campus clean.",
+            "meta": "Complete",
+        })
+    elif done_tasks:
+        cards.append({
+            "tone": "focus",
+            "title": f"{done_tasks} of {total_tasks} Tasks Done",
+            "body": "Great pace. Keep going.",
+            "meta": "Progress",
+        })
+    else:
+        cards.append({
+            "tone": "neutral",
+            "title": area_name or "Area Work",
+            "body": f"Today's cleanliness score: {int((done_tasks / total_tasks) * 100) if total_tasks else 0}% complete.",
+            "meta": "Area pride",
+        })
+
+    cards.append({
+        "tone": "focus" if active_half == "second" else "neutral",
+        "title": "Second Half Active" if active_half == "second" else "First Half Active",
+        "body": "1PM-5PM shift is active." if active_half == "second" else "8AM-1PM shift is active.",
+        "meta": "Shift",
+    })
+
+    if pending_count and hour >= 16:
+        cards.append({
+            "tone": "warm",
+            "title": "Shift Ending Soon",
+            "body": f"{pending_count} tasks still pending. Please review before shift end.",
+            "meta": "Reminder",
+        })
+    elif pending_count:
+        cards.append({
+            "tone": "warm",
+            "title": "Pending Task Reminder",
+            "body": f"{pending_count} tasks still pending. Please complete before shift end.",
+            "meta": "Pending",
+        })
+
+    if worker_count and second_submitted >= worker_count:
+        cards.append({
+            "tone": "success",
+            "title": "Attendance Submitted",
+            "body": "Attendance submitted for both halves.",
+            "meta": "Attendance",
+        })
+    elif worker_count and first_submitted >= worker_count:
+        cards.append({
+            "tone": "success",
+            "title": "Attendance Submitted",
+            "body": "Attendance submitted for First Half. Second Half available after 1PM.",
+            "meta": "Attendance",
+        })
+
+    if any(getattr(record, "is_break_task", False) and record.status != "done" for record in records):
+        cards.append({
+            "tone": "neutral",
+            "title": "Break Task",
+            "body": "Tea/Lunch break tasks can be marked done when completed.",
+            "meta": "Break",
+        })
+
+    if any(getattr(record, "is_previous_day_task", False) for record in records):
+        cards.append({
+            "tone": "focus",
+            "title": "Previous Day Work",
+            "body": "Evening/Night tasks can be completed today.",
+            "meta": "Guest House",
+        })
+
+    if today.weekday() == 6:
+        cards.append({
+            "tone": "focus",
+            "title": "Sunday Special Work",
+            "body": "Terrace, dustbin, deep cleaning, and weekly special tasks may be active today.",
+            "meta": "Sunday",
+        })
+
+    assigned_records = [
+        record for record in records
+        if record.status != "done" and (record.assigned_worker_id or record.worker_assignments.exists())
+    ]
+    if assigned_records:
+        record = assigned_records[0]
+        names = []
+        if record.assigned_worker:
+            names.append(record.assigned_worker.name)
+        names.extend([item.worker.name for item in record.worker_assignments.all() if item.worker_id != record.assigned_worker_id])
+        cards.append({
+            "tone": "success",
+            "title": "Team Assigned",
+            "body": ", ".join(names[:4]) if names else "Workers assigned for current task.",
+            "meta": "Assignment",
+        })
+
+    cards.append({
+        "tone": "neutral",
+        "title": "Photo Optional",
+        "body": "Photos are optional. Upload only when useful.",
+        "meta": "Reminder",
+    })
+    return cards[:7]
+
+
 def worker_options_for_selection_request(req_obj, current_area):
     """
     Build eligible worker options for a pending worker-selection request.
@@ -1217,6 +1468,70 @@ def hk_dashboard(request):
     for record in records:
         record.can_multi_worker_assignment = can_multi_worker_task(user, record)
         record.is_break_task = is_break_task_name(record.schedule.task_name)
+
+    worker_ids_for_cards = [worker.id for worker in area_workers]
+    attendance_summary = {
+        "worker_count": len(worker_ids_for_cards),
+        "first_present": 0,
+        "first_submitted": 0,
+        "second_present": 0,
+        "second_submitted": 0,
+        "active_half": current_half(),
+    }
+    monthly_best_worker = None
+    if worker_ids_for_cards:
+        today_attendance = (
+            HKAttendanceRecord.objects
+            .filter(worker_id__in=worker_ids_for_cards, date=today, is_submitted=True)
+            .values("half", "status")
+            .annotate(total=dm.Count("id"))
+        )
+        for row in today_attendance:
+            half = row["half"]
+            total_count = row["total"]
+            attendance_summary[f"{half}_submitted"] += total_count
+            if row["status"] == "present":
+                attendance_summary[f"{half}_present"] += total_count
+
+        month_start = today.replace(day=1)
+        best_row = (
+            HKAttendanceRecord.objects
+            .filter(
+                worker_id__in=worker_ids_for_cards,
+                date__gte=month_start,
+                date__lte=today,
+                is_submitted=True,
+                status="present",
+            )
+            .values("worker_id", "worker__name")
+            .annotate(present_halves=dm.Count("id"))
+            .order_by("-present_halves", "worker__name")
+            .first()
+        )
+        if best_row:
+            monthly_best_worker = {
+                "name": best_row["worker__name"],
+                "present_halves": best_row["present_halves"],
+                "month": today.strftime("%B"),
+            }
+
+    special_card = hk_mobile_special_card(today, total, done)
+    admin_greeting_card = hk_mobile_admin_greeting_card(
+        today,
+        total,
+        done,
+        attendance_summary,
+        monthly_best_worker,
+        area_name,
+    )
+    status_cards = hk_mobile_status_cards(
+        today,
+        area_name,
+        total,
+        done,
+        records,
+        attendance_summary,
+    )
 
     extra_works = (
         HKExtraWork.objects
@@ -1443,6 +1758,11 @@ def hk_dashboard(request):
         "percent_done": pct,
         "alerts": get_active_alerts(user, user_areas),
         "area_workers": area_workers,
+        "attendance_summary": attendance_summary,
+        "monthly_best_worker": monthly_best_worker,
+        "special_card": special_card,
+        "admin_greeting_card": admin_greeting_card,
+        "status_cards": status_cards,
         "extra_works": extra_works,
         "extra_error": extra_error,
         "tab_label_floor": tab_label_floor,
