@@ -69,6 +69,30 @@ class Command(BaseCommand):
         user.set_password(DEFAULT_PASSWORD)
         user.save()
 
+        hostel_office, hostel_created = User.objects.get_or_create(
+            username='hostel.office',
+            defaults={
+                'first_name': 'Hostel',
+                'last_name': 'Office',
+                'email': 'hostel.office@iitgn.ac.in',
+                'phone': '',
+                'pay_code': '',
+                'role': User.Role.HOSTEL_OFFICE,
+            },
+        )
+
+        hostel_office.first_name = 'Hostel'
+        hostel_office.last_name = 'Office'
+        hostel_office.email = 'hostel.office@iitgn.ac.in'
+        hostel_office.phone = ''
+        hostel_office.pay_code = ''
+        hostel_office.role = User.Role.HOSTEL_OFFICE
+        hostel_office.is_active = True
+        hostel_office.is_staff = True
+        hostel_office.is_superuser = False
+        hostel_office.set_password(DEFAULT_PASSWORD)
+        hostel_office.save()
+
         deleted_legacy_admins = self._replace_legacy_admin_references(admin_user)
 
         disabled = User.objects.filter(
@@ -80,9 +104,11 @@ class Command(BaseCommand):
         )
 
         action = 'created' if created else 'repaired'
+        hostel_action = 'created' if hostel_created else 'repaired'
         self.stdout.write(self.style.SUCCESS(
             f'super.admin login {"created" if admin_created else "repaired"}; '
             f'hk_inventory_manager login {action}; '
+            f'hostel.office login {hostel_action}; '
             f'deleted old admin logins: {deleted_legacy_admins}; '
             f'disabled old manager logins: {disabled}'
         ))
