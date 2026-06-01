@@ -1,6 +1,13 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
+function getLandingRoute(user) {
+  if (['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office'].includes(user?.role)) {
+    return '/dashboard'
+  }
+  return '/unauthorized'
+}
+
 /**
  * Wrap any route that requires auth.
  * Optionally pass `allowedRoles` to restrict by role.
@@ -27,7 +34,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/unauthorized" replace />
+    return <Navigate to={getLandingRoute(user)} replace />
   }
 
   return children

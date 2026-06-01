@@ -16,7 +16,7 @@ export default function UnauthorizedPage() {
       <Card style={{ maxWidth: 520, width: '100%', padding: 24 }}>
         <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Access denied</div>
         <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 18 }}>
-          You are not allowed to access this page. You are not admin.
+          You are not allowed to access this page with the current login.
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Link to="/login" style={{ textDecoration: 'none' }}>

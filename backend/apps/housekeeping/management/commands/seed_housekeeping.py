@@ -1682,7 +1682,7 @@ Existing account passwords are preserved.
                 ('Basement Cleaning', 'Weekly Sunday basement cleaning.'),
                 ('Terrace Cleaning', 'Weekly Sunday terrace cleaning.'),
                 ('Deep Cleaning - Ground Floor', 'Sunday ground floor deep cleaning.'),
-                ('Fridge Cleaning', 'Sundays: first, third | Fridge cleaning 2 times in month.'),
+                ('Fridge Cleaning - All JRHA Blocks', 'Sundays: first, third | Fridge cleaning 2 times in month for all Jeet/JRHA blocks.'),
             ]
 
             def jrha_task_window(order, start_hour=8, minutes=30):

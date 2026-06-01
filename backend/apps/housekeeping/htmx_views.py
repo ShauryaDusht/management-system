@@ -326,35 +326,40 @@ def _auto_create_second_half_from_first(workers, date, marked_by):
     worker_ids = list(workers.values_list("id", flat=True) if hasattr(workers, "values_list") else [w.id for w in workers])
     if not worker_ids:
         return 0
-    first_present_ids = set(
+    first_status_by_worker = dict(
         HKAttendanceRecord.objects.filter(
             worker_id__in=worker_ids,
             date=date,
             half="first",
-            status__in=["present", "late"],
-        ).values_list("worker_id", flat=True)
+        ).values_list("worker_id", "status")
     )
-    if not first_present_ids:
+    if not first_status_by_worker:
         return 0
     existing_second_ids = set(
         HKAttendanceRecord.objects.filter(
-            worker_id__in=first_present_ids,
+            worker_id__in=first_status_by_worker.keys(),
             date=date,
             half="second",
         ).values_list("worker_id", flat=True)
     )
-    now = timezone.now()
+
+    def second_status_from_first(first_status):
+        if first_status in {"present", "late"}:
+            return "present"
+        if first_status in {"absent", "leave"}:
+            return first_status
+        return "present"
+
     records = [
         HKAttendanceRecord(
             worker_id=worker_id,
             date=date,
             half="second",
-            status="present",
+            status=second_status_from_first(first_status_by_worker.get(worker_id)),
             marked_by=marked_by,
-            submitted_at=now,
-            note="Auto-present from first half",
+            note="Auto from first half",
         )
-        for worker_id in sorted(first_present_ids - existing_second_ids)
+        for worker_id in sorted(set(first_status_by_worker) - existing_second_ids)
     ]
     HKAttendanceRecord.objects.bulk_create(records, ignore_conflicts=True)
     return len(records)
@@ -2015,6 +2020,9 @@ def hk_attendance(request):
         can_mark_previous_sunday_attendance and sel_date == previous_sunday
     )
     area_param = f"&area={sel_area.id}" if sel_area else ""
+
+    if workers and (not is_today or cur_half == "second") and can_submit_selected_attendance:
+        _auto_create_second_half_from_first(workers, sel_date, user)
 
     if request.method == "POST":
         action = request.POST.get("action")

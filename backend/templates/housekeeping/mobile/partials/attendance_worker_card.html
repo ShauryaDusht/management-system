@@ -169,7 +169,7 @@
       {% endif %}
     </div>
     {% if row.second_att and row.second_att.is_submitted %}
-    <div style="font-size:11px;color:#16a34a">✅ Submitted — locked{% if row.second_att.note == 'Auto-present from first half' %} · Auto from first half{% endif %}</div>
+    <div style="font-size:11px;color:#16a34a">✅ Submitted — locked{% if row.second_att.note == 'Auto from first half' %} · Auto from first half{% endif %}</div>
     {% elif not is_today or cur_half == 'second' %}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
       {% for sv, sl, bg, clr in attn_choices %}
