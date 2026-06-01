@@ -68,11 +68,7 @@ class MeView(APIView):
 
     def get(self, request):
         serializer = UserSerializer(request.user, context={'request': request})
-        data = dict(serializer.data)
-        if request.user.username == 'hostel.office':
-            data['actual_role'] = data.get('role')
-            data['role'] = User.Role.HK_INVENTORY_MANAGER
-        return Response(data)
+        return Response(serializer.data)
 
 
 class UserListCreateView(generics.ListCreateAPIView):

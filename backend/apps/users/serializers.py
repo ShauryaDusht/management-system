@@ -51,12 +51,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             user.save(update_fields=['role', 'is_active', 'is_staff', 'is_superuser'])
         return user
 
-    @staticmethod
-    def _frontend_role(user):
-        if user.username == 'hostel.office':
-            return User.Role.HK_INVENTORY_MANAGER
-        return user.role
-
     def validate(self, attrs):
         attrs['username'] = normalize_username_value(attrs.get('username'))
         data = super().validate(attrs)
@@ -66,8 +60,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'username': user.username,
             'email': user.email,
             'full_name': user.get_full_name(),
-            'role': self._frontend_role(user),
-            'actual_role': user.role,
+            'role': user.role,
             'phone': user.phone,
             'portal_redirect': self._get_portal_redirect(user),
         }

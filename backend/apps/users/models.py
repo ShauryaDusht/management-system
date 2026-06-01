@@ -122,6 +122,7 @@ class User(AbstractUser):
             self.Role.INVENTORY_MANAGER,
             self.Role.HOUSEKEEPING_MANAGER,
             self.Role.HK_INVENTORY_MANAGER,
+            self.Role.HOSTEL_OFFICE,
             self.Role.HORTICULTURE_MANAGER,
         )
 
