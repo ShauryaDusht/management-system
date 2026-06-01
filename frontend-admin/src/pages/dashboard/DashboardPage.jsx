@@ -187,9 +187,10 @@ function ActivityPieChart({ data, lines }) {
 export default function DashboardPage() {
   const { user } = useAuth()
   const isHorticultureManager = user?.role === 'horticulture_manager'
-  const canViewInventory = !isHorticultureManager
+  const isHostelOffice = user?.role === 'hostel_office'
+  const canViewInventory = !isHorticultureManager && !isHostelOffice
   const canViewHousekeeping = !isHorticultureManager
-  const canViewHorticulture = user?.role !== 'hk_inventory_manager'
+  const canViewHorticulture = user?.role !== 'hk_inventory_manager' && !isHostelOffice
   const [invSummary, setInvSummary]     = useState(null)
   const [hkSummary, setHkSummary]       = useState(null)
   const [hortiSummary, setHortiSummary] = useState(null)
@@ -244,21 +245,24 @@ export default function DashboardPage() {
   }, [trendRange, canViewHorticulture, canViewHousekeeping, canViewInventory])
 
   useEffect(() => {
-    if (isHorticultureManager && trendModule !== 'horticulture') {
+    if (isHostelOffice && trendModule !== 'housekeeping') {
+      setTrendModule('housekeeping')
+    } else if (isHorticultureManager && trendModule !== 'horticulture') {
       setTrendModule('horticulture')
     } else if (!canViewHorticulture && trendModule === 'horticulture') {
       setTrendModule('all')
     }
-  }, [canViewHorticulture, isHorticultureManager, trendModule])
+  }, [canViewHorticulture, isHorticultureManager, isHostelOffice, trendModule])
 
   const todayLabel = useMemo(() =>
     new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), [])
   const moduleOptions = useMemo(
     () => MODULE_OPTIONS.filter((option) => {
+      if (isHostelOffice) return option.key === 'housekeeping'
       if (isHorticultureManager) return option.key === 'horticulture'
       return canViewHorticulture || option.key !== 'horticulture'
     }),
-    [canViewHorticulture, isHorticultureManager]
+    [canViewHorticulture, isHorticultureManager, isHostelOffice]
   )
 
   const inStockCount = invSummary
@@ -329,11 +333,15 @@ export default function DashboardPage() {
 
   const visibleTrendLines = isHorticultureManager
     ? trendLines.filter((line) => line.key === 'horticulture')
+    : isHostelOffice
+    ? trendLines.filter((line) => line.key === 'housekeeping' || line.key.startsWith('hk_'))
     : canViewHorticulture
     ? trendLines
     : trendLines.filter((line) => line.key !== 'horticulture')
   const visibleSummaryBoxes = isHorticultureManager
     ? summaryBoxes.filter((box) => box.label === 'Horticulture')
+    : isHostelOffice
+    ? summaryBoxes.filter((box) => ['Total HK', 'Completed', 'Pending', 'In Progress', 'Skipped'].includes(box.label))
     : canViewHorticulture
     ? summaryBoxes
     : summaryBoxes.filter((box) => box.label !== 'Horticulture')
@@ -352,10 +360,17 @@ export default function DashboardPage() {
         { label: 'Due Soon', value: Number(hortiCounts.due_soon || 0), icon: 'DS', color: 'var(--orange-600)', sub: `${Number(hortiCounts.overdue || 0)} overdue`, to: '/horticulture?tab=worker_selection' },
         { label: 'Active Areas', value: hortiSummary?.total_areas ?? '-', icon: 'AR', color: '#3b82f6', sub: 'Horticulture coverage', to: '/horticulture?tab=zones' },
       ]
+    : isHostelOffice
+    ? [
+        { label: 'Hostel Tasks Today', value: hkSummary?.total_tasks ?? '-', icon: 'HK', color: 'var(--green-700)', sub: `${hkSummary?.completion_pct ?? 0}% completed`, to: '/housekeeping?tab=overview' },
+        { label: 'Hostel Workers', value: hkSummary?.total_workers ?? '-', icon: 'HW', color: '#3b82f6', sub: `${hkSummary?.present_today ?? 0} present today`, to: '/housekeeping?tab=attendance' },
+        { label: 'Hostel Areas', value: hkSummary?.total_areas ?? '-', icon: 'AR', color: 'var(--green-800)', sub: 'Active hostel sections', to: '/housekeeping?tab=directory' },
+        { label: 'Pending Stock Req.', value: hkSummary?.pending_stock_requests ?? '-', icon: 'ST', color: 'var(--orange-600)', sub: 'Hostel request queue', to: '/housekeeping?tab=stock' },
+      ]
     : baseStatCards
 
   return (
-    <AdminLayout title={isHorticultureManager ? 'Horticulture Home' : 'Admin Dashboard'} subtitle={`Welcome back — ${todayLabel}`}>
+    <AdminLayout title={isHorticultureManager ? 'Horticulture Home' : isHostelOffice ? 'Hostel Office Dashboard' : 'Admin Dashboard'} subtitle={`Welcome back — ${todayLabel}`}>
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner size={36} /></div>
       ) : (
@@ -373,7 +388,7 @@ export default function DashboardPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 24 }}>
             {[
               canViewInventory ? { title: 'Inventory', subtitle: 'Stock overview', data: invDonut, total: invSummary?.total_items, label: 'Items', palette: DONUT_PALETTE, to: '/inventory' } : null,
-              canViewHousekeeping ? { title: 'Housekeeping', subtitle: 'Today tasks', data: hkDonutData, total: hkSummary?.total_tasks, label: hkHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/housekeeping' } : null,
+              canViewHousekeeping ? { title: isHostelOffice ? 'Hostel Housekeeping' : 'Housekeeping', subtitle: isHostelOffice ? 'Hostel tasks today' : 'Today tasks', data: hkDonutData, total: hkSummary?.total_tasks, label: hkHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/housekeeping' } : null,
               canViewHorticulture && !isHorticultureManager ? { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTotal, label: hortiTotal > 0 ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' } : null,
             ].filter(Boolean).map(card => (
               <Card key={card.title}>
@@ -403,7 +418,7 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 10, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 15 }}>📈 Activity Trend</div>
-                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>System-wide activity over time</div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{isHostelOffice ? 'Hostel housekeeping activity over time' : 'System-wide activity over time'}</div>
               </div>
               {/* Range buttons */}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

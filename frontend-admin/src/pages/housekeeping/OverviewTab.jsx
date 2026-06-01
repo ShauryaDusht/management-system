@@ -8,7 +8,7 @@ import { getAreaGroup, todayISO } from '../../shared/utils'
 
 const HIDDEN_STAFF_AREA_NAMES = new Set(['hostels reliever', 'old academic reliever', 'new academic reliever'])
 
-export default function OverviewTab() {
+export default function OverviewTab({ readOnly = false }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -137,36 +137,48 @@ export default function OverviewTab() {
     [rows, areaClassFilter],
   )
 
-  const skeletonRows = useMemo(
-    () => Array(6).fill(null).map((_, i) =>
-      Array(7).fill(null).map((_, j) => (
-        <div
-          key={`skeleton-${i}-${j}`}
-          style={{ height: 14, background: 'var(--border)', borderRadius: 4, width: '70%' }}
-        />
-      ))),
-    [],
+  const tableHeaders = useMemo(
+    () => [
+      'Area',
+      'Assigned To',
+      'Total Work',
+      'Pending',
+      'Skipped',
+      'Completed',
+      ...(readOnly ? [] : ['Assign Task']),
+    ],
+    [readOnly],
   )
 
   const tableRows = useMemo(
-    () => (
-      loading
-        ? skeletonRows
-        : visibleRows.map((r) => [
-          r.area,
-          <span key={`sup-${r.area_id}`} style={{ fontSize: 12 }}>
-            {r.supervisor_caretaker}
-          </span>,
-          <strong key={`t-${r.area_id}`}>{r.total}</strong>,
-          <strong key={`p-${r.area_id}`}>{r.pending}</strong>,
-          <strong key={`s-${r.area_id}`}>{r.skipped}</strong>,
-          <strong key={`c-${r.area_id}`}>{r.completed}</strong>,
+    () => {
+      if (loading) {
+        const columnCount = tableHeaders.length
+        return Array(6).fill(null).map((_, i) =>
+          Array(columnCount).fill(null).map((_, j) => (
+            <div
+              key={`skeleton-${i}-${j}`}
+              style={{ height: 14, background: 'var(--border)', borderRadius: 4, width: '70%' }}
+            />
+          )))
+      }
+      return visibleRows.map((r) => [
+        r.area,
+        <span key={`sup-${r.area_id}`} style={{ fontSize: 12 }}>
+          {r.supervisor_caretaker}
+        </span>,
+        <strong key={`t-${r.area_id}`}>{r.total}</strong>,
+        <strong key={`p-${r.area_id}`}>{r.pending}</strong>,
+        <strong key={`s-${r.area_id}`}>{r.skipped}</strong>,
+        <strong key={`c-${r.area_id}`}>{r.completed}</strong>,
+        ...(readOnly ? [] : [
           <Btn key={`a-${r.area_id}`} size="sm" variant="orange" onClick={() => openAssignModal(r)}>
             + Assign
           </Btn>,
-        ])
-    ),
-    [loading, skeletonRows, visibleRows],
+        ]),
+      ])
+    },
+    [loading, readOnly, tableHeaders.length, visibleRows],
   )
 
   useEffect(() => {
@@ -336,15 +348,7 @@ export default function OverviewTab() {
             </div>
           ) : null}
           <DataTable
-            headers={[
-              'Area',
-              'Assigned To',
-              'Total Work',
-              'Pending',
-              'Skipped',
-              'Completed',
-              'Assign Task',
-            ]}
+            headers={tableHeaders}
             rows={tableRows}
           />
         </Card>

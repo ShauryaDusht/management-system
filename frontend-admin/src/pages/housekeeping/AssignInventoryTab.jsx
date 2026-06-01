@@ -5,7 +5,7 @@ import { Alert, Badge, Btn, Card, DataTable, SelectField, Spinner } from '../../
 
 const STATUS_OPTIONS = ['pending', 'approved', 'issued', 'rejected']
 
-export default function AssignInventoryTab({ userRole }) {
+export default function AssignInventoryTab({ userRole, readOnly = false }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [requests, setRequests] = useState([])
@@ -13,7 +13,7 @@ export default function AssignInventoryTab({ userRole }) {
   const [draftStatus, setDraftStatus] = useState({})
   const [savingId, setSavingId] = useState(null)
 
-  const canUpdate = userRole === 'admin'
+  const canUpdate = userRole === 'admin' && !readOnly
 
   const load = async () => {
     setLoading(true)

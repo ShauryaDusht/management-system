@@ -21,6 +21,10 @@ def _is_protected_admin_user(user):
     return bool(user and (getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False)))
 
 
+def _is_hostel_office_request(user):
+    return bool(user and getattr(user, 'is_hostel_office', False))
+
+
 def _deny_hk_inventory_admin_mutation(request_user, target_user=None, incoming_role=None):
     if not _is_hk_inventory_request(request_user):
         return
@@ -73,6 +77,8 @@ class UserListCreateView(generics.ListCreateAPIView):
     POST /api/auth/users/   — Admin: create new user
     """
     def get_permissions(self):
+        if self.request.method == 'GET' and _is_hostel_office_request(self.request.user):
+            return [IsAuthenticated()]
         return [IsAdminOrHKInventoryManager()]
 
     def get_queryset(self):
@@ -80,6 +86,19 @@ class UserListCreateView(generics.ListCreateAPIView):
             'hk_areas__area',
             'horticulture_supervised_zones',
         ).exclude(username__in=DEPRECATED_MANAGER_USERNAMES).order_by('role', 'first_name')
+        if _is_hostel_office_request(self.request.user):
+            from django.db.models import Q
+            from apps.housekeeping.models import HKArea
+
+            hostel_area_ids = list(
+                HKArea.objects.filter(is_active=True).filter(
+                    Q(area_type='hostel') | Q(name__iexact='Hostel Common Area') | Q(name__iexact='Hostels Reliever')
+                ).values_list('id', flat=True)
+            )
+            qs = qs.filter(
+                role__in=[User.Role.SUPERVISOR, User.Role.CARETAKER],
+                hk_areas__area_id__in=hostel_area_ids,
+            ).distinct()
         role = self.request.query_params.get('role')
         if role:
             qs = qs.filter(role=role)

@@ -52,6 +52,11 @@ export default function Sidebar() {
       { to: '/insights', icon: 'AN', label: 'Insights' },
       { to: '/profile', icon: 'PR', label: 'Profile' },
     ]
+    : user?.role === 'hostel_office'
+    ? [
+      { to: '/dashboard', icon: 'HO', label: 'Home' },
+      { to: '/housekeeping', icon: 'HK', label: 'Hostel Office' },
+    ]
     : user?.role === 'hk_inventory_manager'
     ? [
       { to: '/dashboard', icon: 'DB', label: 'Dashboard' },

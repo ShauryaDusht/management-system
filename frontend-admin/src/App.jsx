@@ -14,8 +14,9 @@ import UnauthorizedPage from './pages/UnauthorizedPage'
 import UsersPage from './pages/users/UsersPage'
 
 const ADMIN_OR_HK_INVENTORY = ['admin', 'hk_inventory_manager']
-const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager']
+const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
 const HK_INVENTORY_ALLOWED = ['admin', 'hk_inventory_manager']
+const HK_PORTAL_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
 const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager']
 const ROUTER_BASENAME = '/admin'
@@ -24,6 +25,7 @@ function getLandingRoute(user) {
   if (user?.role === 'admin') return '/dashboard'
   if (user?.role === 'hk_inventory_manager') return '/dashboard'
   if (user?.role === 'horticulture_manager') return '/dashboard'
+  if (user?.role === 'hostel_office') return '/dashboard'
   return '/unauthorized'
 }
 
@@ -81,7 +83,7 @@ export default function App() {
           <Route
             path="/housekeeping/*"
             element={
-              <ProtectedRoute allowedRoles={HK_INVENTORY_ALLOWED}>
+              <ProtectedRoute allowedRoles={HK_PORTAL_ALLOWED}>
                 <HousekeepingPage />
               </ProtectedRoute>
             }

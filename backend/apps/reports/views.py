@@ -94,18 +94,31 @@ class ActivityTrendView(APIView):
     def get(self, request):
         range_key, start_date, end_date, dates = self._resolve_range(request.query_params.get('range'))
         is_horticulture_manager = getattr(request.user, 'is_horticulture_manager', False)
-        include_inventory = not is_horticulture_manager
+        is_hostel_office = getattr(request.user, 'is_hostel_office', False)
+        include_inventory = not is_horticulture_manager and not is_hostel_office
         include_housekeeping = not is_horticulture_manager
-        include_horticulture = not getattr(request.user, 'is_hk_inventory_manager', False)
+        include_horticulture = not getattr(request.user, 'is_hk_inventory_manager', False) and not is_hostel_office
 
         from apps.inventory.models import ItemIssue, ItemRequest, PurchaseRequest, StockEntry
         from apps.housekeeping.models import HKArea, HKDailyRecord
         from apps.horticulture.models import HorticultureAreaTaskAssignment, HorticultureDailyAssignment
 
+        hostel_area_filter = (
+            Q(area_type='hostel')
+            | Q(name__iexact='Hostel Common Area')
+            | Q(name__iexact='Hostels Reliever')
+        )
+        hostel_area_ids = list(
+            HKArea.objects.filter(is_active=True).filter(hostel_area_filter).values_list('id', flat=True)
+        ) if is_hostel_office else None
+
         if include_housekeeping and end_date == timezone.localdate():
             from apps.housekeeping.htmx_views import get_today_records
 
-            for area in HKArea.objects.filter(is_active=True):
+            area_qs = HKArea.objects.filter(is_active=True)
+            if hostel_area_ids is not None:
+                area_qs = area_qs.filter(id__in=hostel_area_ids)
+            for area in area_qs:
                 get_today_records(area, end_date)
 
         inv_requests_map = self._annotated_day_map(
@@ -125,8 +138,12 @@ class ActivityTrendView(APIView):
             'created_at',
         ) if include_inventory else {}
 
+        hk_record_qs = HKDailyRecord.objects.filter(date__range=(start_date, end_date))
+        if hostel_area_ids is not None:
+            hk_record_qs = hk_record_qs.filter(area_id__in=hostel_area_ids)
+
         hk_rows = (
-            HKDailyRecord.objects.filter(date__range=(start_date, end_date))
+            hk_record_qs
             .values('date')
             .annotate(
                 total=Count('id'),

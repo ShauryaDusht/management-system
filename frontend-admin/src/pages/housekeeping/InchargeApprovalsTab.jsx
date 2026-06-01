@@ -191,7 +191,7 @@ function InchargeReportModal({ open, onClose }) {
   )
 }
 
-export default function InchargeApprovalsTab() {
+export default function InchargeApprovalsTab({ readOnly = false }) {
   const [rows, setRows] = useState([])
   const [statusFilter, setStatusFilter] = useState('all')
   const [loading, setLoading] = useState(true)
@@ -260,7 +260,7 @@ export default function InchargeApprovalsTab() {
         r.leave_date || '-',
         r.assigned_staff_name || r.assigned_staff_username || '-',
         <Badge key={`st-${r.id}`} value={r.status} />,
-        r.status === 'pending_admin_approval' ? (
+        !readOnly && r.status === 'pending_admin_approval' ? (
           <div key={`act-${r.id}`} style={{ display: 'flex', gap: 6 }}>
             <Btn
               size="sm"
@@ -283,7 +283,7 @@ export default function InchargeApprovalsTab() {
           '-'
         ),
       ])
-  }, [decisionLoadingId, filteredRows])
+  }, [decisionLoadingId, filteredRows, readOnly])
 
   return (
     <div>
@@ -336,7 +336,7 @@ export default function InchargeApprovalsTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Leave Staff', 'Area / Hostel', 'Leave Date', 'Assigned Incharge', 'Status', 'Actions']}
+            headers={['Leave Staff', 'Area / Hostel', 'Leave Date', 'Assigned Incharge', 'Status', readOnly ? 'Decision' : 'Actions']}
             rows={tableRows}
             emptyMsg="No incharge assignments found."
           />

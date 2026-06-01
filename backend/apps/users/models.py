@@ -70,6 +70,7 @@ class User(AbstractUser):
         INVENTORY_MANAGER = 'inventory_manager', 'Inventory Manager'
         HOUSEKEEPING_MANAGER = 'housekeeping_manager', 'Housekeeping Manager'
         HK_INVENTORY_MANAGER = 'hk_inventory_manager', 'Housekeeping / Inventory Manager'
+        HOSTEL_OFFICE = 'hostel_office', 'Hostel Office'
         HORTICULTURE_MANAGER = 'horticulture_manager', 'Horticulture Manager'
         SUPERVISOR = 'supervisor', 'Supervisor'
         CARETAKER = 'caretaker', 'Caretaker'
@@ -106,6 +107,10 @@ class User(AbstractUser):
     @property
     def is_hk_inventory_manager(self):
         return self.role == self.Role.HK_INVENTORY_MANAGER
+
+    @property
+    def is_hostel_office(self):
+        return self.role == self.Role.HOSTEL_OFFICE
 
     @property
     def is_horticulture_manager(self):

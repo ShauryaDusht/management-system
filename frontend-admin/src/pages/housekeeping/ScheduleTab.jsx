@@ -83,7 +83,7 @@ function daysLabel(freq) {
   return days.map((d) => DAYS[d]?.full || '').join(', ')
 }
 
-export default function ScheduleTab() {
+export default function ScheduleTab({ readOnly = false }) {
   const [areas, setAreas] = useState([])
   const [templates, setTemplates] = useState([])
   const [loading, setLoading] = useState(true)
@@ -464,10 +464,12 @@ export default function ScheduleTab() {
           }}
         >
           <div style={{ fontWeight: 700 }}>Schedule Templates</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn size="sm" variant="secondary" onClick={openAreaCreate}>+ Add Area</Btn>
-            <Btn size="sm" onClick={openCreate}>+ Add Template</Btn>
-          </div>
+          {!readOnly && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn size="sm" variant="secondary" onClick={openAreaCreate}>+ Add Area</Btn>
+              <Btn size="sm" onClick={openCreate}>+ Add Template</Btn>
+            </div>
+          )}
         </div>
         <div style={{ padding: '12px 16px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Input
@@ -545,7 +547,16 @@ export default function ScheduleTab() {
             </div>
             {expandedAreaId === group.areaId && (
               <DataTable
-                headers={['Task Name', 'Frequency', 'Days', 'Start Time', 'End Time', 'Special', 'Active', 'Actions']}
+                headers={[
+                  'Task Name',
+                  'Frequency',
+                  'Days',
+                  'Start Time',
+                  'End Time',
+                  'Special',
+                  'Active',
+                  ...(readOnly ? [] : ['Actions']),
+                ]}
                 rows={group.rows.map((row) => {
                   const isSpecial = row.frequency !== 'daily'
                   return [
@@ -555,19 +566,27 @@ export default function ScheduleTab() {
                     formatTime(row.start_time),
                     formatTime(row.end_time),
                     isSpecial ? 'Yes' : 'No',
-                    <Btn
-                      key={`active-${row.id}`}
-                      size="sm"
-                      variant={row.is_active !== false ? 'success' : 'ghost'}
-                      onClick={() => toggleActive(row)}
-                      disabled={saving}
-                    >
-                      {row.is_active !== false ? 'Active' : 'Inactive'}
-                    </Btn>,
-                    <div key={`act-${row.id}`} style={{ display: 'flex', gap: 6 }}>
-                      <Btn size="sm" variant="ghost" onClick={() => openEdit(row)}>Edit</Btn>
-                      <Btn size="sm" variant="danger" onClick={() => setDeleteTarget(row)}>Delete</Btn>
-                    </div>,
+                    readOnly ? (
+                      <span key={`active-${row.id}`} style={{ fontSize: 12, fontWeight: 700, color: row.is_active !== false ? '#16a34a' : 'var(--text-3)' }}>
+                        {row.is_active !== false ? 'Active' : 'Inactive'}
+                      </span>
+                    ) : (
+                      <Btn
+                        key={`active-${row.id}`}
+                        size="sm"
+                        variant={row.is_active !== false ? 'success' : 'ghost'}
+                        onClick={() => toggleActive(row)}
+                        disabled={saving}
+                      >
+                        {row.is_active !== false ? 'Active' : 'Inactive'}
+                      </Btn>
+                    ),
+                    ...(readOnly ? [] : [
+                      <div key={`act-${row.id}`} style={{ display: 'flex', gap: 6 }}>
+                        <Btn size="sm" variant="ghost" onClick={() => openEdit(row)}>Edit</Btn>
+                        <Btn size="sm" variant="danger" onClick={() => setDeleteTarget(row)}>Delete</Btn>
+                      </div>,
+                    ]),
                   ]
                 })}
                 emptyMsg="No schedule templates available for this area."

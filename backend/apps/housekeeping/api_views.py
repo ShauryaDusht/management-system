@@ -111,6 +111,51 @@ def _can_manage_housekeeping(user):
     )
 
 
+def _is_hostel_office(user):
+    return bool(user and user.is_authenticated and getattr(user, 'is_hostel_office', False))
+
+
+def _hostel_area_q():
+    return Q(area_type='hostel') | Q(name__iexact='Hostel Common Area') | Q(name__iexact='Hostels Reliever')
+
+
+def _hostel_area_ids():
+    return list(HKArea.objects.filter(is_active=True).filter(_hostel_area_q()).values_list('id', flat=True))
+
+
+def _hostel_staff_ids():
+    User = get_user_model()
+    return list(
+        User.objects.filter(
+            role__in=['supervisor', 'caretaker'],
+            hk_areas__area_id__in=_hostel_area_ids(),
+            is_active=True,
+        ).values_list('id', flat=True).distinct()
+    )
+
+
+def _is_hostel_staff_user(user):
+    return bool(user and user.id in _hostel_staff_ids())
+
+
+def _scope_areas_for_user(qs, user):
+    if _is_hostel_office(user):
+        return qs.filter(_hostel_area_q())
+    return qs
+
+
+def _scope_workers_for_user(qs, user):
+    if _is_hostel_office(user):
+        return qs.filter(area_id__in=_hostel_area_ids())
+    return qs
+
+
+def _scope_staff_attendance_for_user(qs, user):
+    if _is_hostel_office(user):
+        return qs.filter(staff_id__in=_hostel_staff_ids())
+    return qs
+
+
 def _parse_report_period(month_raw, year_raw):
     today = timezone.localdate()
 
@@ -209,7 +254,7 @@ class HKAreaListCreateView(ListCreateAPIView):
         # Phase 3 fix: prefetch assigned_users + annotate worker count to
         # eliminate N+1 queries in HKAreaSerializer.
         return (
-            HKArea.objects
+            _scope_areas_for_user(HKArea.objects, self.request.user)
             .filter(is_active=True)
             .prefetch_related(
                 Prefetch(
@@ -227,6 +272,7 @@ class HKWorkerListView(ListAPIView):
 
     def get_queryset(self):
         qs = HKWorker.objects.select_related('area', 'supervisor').filter(is_active=True)
+        qs = _scope_workers_for_user(qs, self.request.user)
         area = self.request.query_params.get('area')
         if area:
             qs = qs.filter(area_id=area)
@@ -289,6 +335,8 @@ class HKWorkerReportView(APIView):
 
     def get(self, request, pk):
         worker = get_object_or_404(HKWorker, pk=pk)
+        if _is_hostel_office(request.user) and worker.area_id not in _hostel_area_ids():
+            return Response({'detail': 'Not found.'}, status=404)
 
         month, year, err = _parse_report_period(
             request.query_params.get('month'),
@@ -333,6 +381,8 @@ class HKWorkerReportCSVView(APIView):
 
     def get(self, request, pk):
         worker = get_object_or_404(HKWorker, pk=pk)
+        if _is_hostel_office(request.user) and worker.area_id not in _hostel_area_ids():
+            return Response({'detail': 'Not found.'}, status=404)
 
         month, year, err = _parse_report_period(
             request.query_params.get('month'),
@@ -372,6 +422,8 @@ class SupervisorReportView(APIView):
 
     def get(self, request, pk):
         supervisor = _get_supervisor_or_404(pk)
+        if _is_hostel_office(request.user) and not _is_hostel_staff_user(supervisor):
+            return Response({'detail': 'Not found.'}, status=404)
 
         month, year, err = _parse_report_period(
             request.query_params.get('month'),
@@ -413,6 +465,8 @@ class SupervisorReportCSVView(APIView):
 
     def get(self, request, pk):
         supervisor = _get_supervisor_or_404(pk)
+        if _is_hostel_office(request.user) and not _is_hostel_staff_user(supervisor):
+            return Response({'detail': 'Not found.'}, status=404)
 
         month, year, err = _parse_report_period(
             request.query_params.get('month'),
@@ -519,6 +573,10 @@ class HKInchargeReportView(APIView):
             .select_related('leave_staff', 'assigned_staff', 'area', 'admin_action_by')
             .order_by('leave_date', 'leave_staff__first_name')
         )
+        if _is_hostel_office(request.user):
+            qs = qs.filter(Q(area_id__in=_hostel_area_ids()) | Q(leave_staff_id__in=_hostel_staff_ids()) | Q(assigned_staff_id__in=_hostel_staff_ids()))
+        elif not _can_manage_housekeeping(request.user):
+            qs = qs.filter(Q(leave_staff=request.user) | Q(assigned_staff=request.user))
 
         rows = []
         for a in qs:
@@ -763,7 +821,10 @@ class HKInchargeAssignmentListView(APIView):
             .order_by('-created_at')
         )
         if not _can_manage_housekeeping(request.user):
-            qs = qs.filter(Q(leave_staff=request.user) | Q(assigned_staff=request.user))
+            if _is_hostel_office(request.user):
+                qs = qs.filter(Q(area_id__in=_hostel_area_ids()) | Q(leave_staff_id__in=_hostel_staff_ids()) | Q(assigned_staff_id__in=_hostel_staff_ids()))
+            else:
+                qs = qs.filter(Q(leave_staff=request.user) | Q(assigned_staff=request.user))
         if status_filter:
             qs = qs.filter(status=status_filter)
         serializer = HKInchargeAssignmentSerializer(qs, many=True)
@@ -883,7 +944,10 @@ class HKLeaveRequestListView(APIView):
             .order_by('-leave_date', '-created_at')
         )
         if not _can_manage_housekeeping(request.user):
-            qs = qs.filter(staff=request.user)
+            if _is_hostel_office(request.user):
+                qs = qs.filter(Q(area_id__in=_hostel_area_ids()) | Q(staff_id__in=_hostel_staff_ids()))
+            else:
+                qs = qs.filter(staff=request.user)
         serializer = HKLeaveRequestSerializer(qs, many=True)
         return Response(serializer.data)
 
@@ -894,6 +958,8 @@ class HKDailyRecordListView(ListAPIView):
 
     def get_queryset(self):
         qs = HKDailyRecord.objects.select_related('schedule', 'area', 'assigned_worker', 'assigned_by')
+        if _is_hostel_office(self.request.user):
+            qs = qs.filter(area_id__in=_hostel_area_ids())
         area = self.request.query_params.get('area')
         date_str = self.request.query_params.get('date', str(timezone.localdate()))
 
@@ -919,7 +985,7 @@ class HKDailyRecordListView(ListAPIView):
             # are real (not zeros caused by missing pre-generated rows).
             if parsed_date == timezone.localdate():
                 from .htmx_views import get_today_records
-                for area_obj in HKArea.objects.filter(is_active=True):
+                for area_obj in _scope_areas_for_user(HKArea.objects, self.request.user).filter(is_active=True):
                     get_today_records(area_obj, parsed_date)
 
         return qs.filter(date=parsed_date)
@@ -927,10 +993,16 @@ class HKDailyRecordListView(ListAPIView):
 
 class HKScheduleTemplateListCreateView(ListCreateAPIView):
     serializer_class = HKScheduleTemplateSerializer
-    permission_classes = [IsAdminOrHousekeepingManager]
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        return [IsAdminOrHousekeepingManager()]
 
     def get_queryset(self):
         qs = HKScheduleTemplate.objects.select_related('area')
+        if _is_hostel_office(self.request.user):
+            qs = qs.filter(area_id__in=_hostel_area_ids())
         area = self.request.query_params.get('area')
         active = (self.request.query_params.get('is_active') or self.request.query_params.get('active') or '').strip().lower()
         if area:
@@ -953,7 +1025,7 @@ class HKAttendanceSummaryView(APIView):
 
     def get(self, request):
         date = request.query_params.get('date', str(timezone.localdate()))
-        areas = list(HKArea.objects.filter(is_active=True))
+        areas = list(_scope_areas_for_user(HKArea.objects, request.user).filter(is_active=True))
         area_ids = [a.id for a in areas]
 
         worker_totals = dict(
@@ -1015,7 +1087,11 @@ class HKAttendanceSummaryView(APIView):
 
 class HKStaffAttendanceListView(ListAPIView):
     serializer_class = HKStaffAttendanceRecordSerializer
-    permission_classes = [IsAdminOrHousekeepingManager]
+
+    def get_permissions(self):
+        if self.request.method == 'GET' and _is_hostel_office(self.request.user):
+            return [IsAuthenticated()]
+        return [IsAdminOrHousekeepingManager()]
 
     def get_queryset(self):
         date_str = self.request.query_params.get('date', str(timezone.localdate()))
@@ -1029,6 +1105,8 @@ class HKStaffAttendanceListView(ListAPIView):
         staff_qs = User.objects.filter(is_active=True, role__in=['supervisor', 'caretaker']).exclude(
             id__in=horticulture_staff_ids
         )
+        if _is_hostel_office(self.request.user):
+            staff_qs = staff_qs.filter(id__in=_hostel_staff_ids())
         existing_ids = set(
             HKStaffAttendanceRecord.objects.filter(
                 date=parsed_date,
@@ -1050,7 +1128,7 @@ class HKStaffAttendanceListView(ListAPIView):
                 ignore_conflicts=True,
             )
         return (
-            HKStaffAttendanceRecord.objects
+            _scope_staff_attendance_for_user(HKStaffAttendanceRecord.objects, self.request.user)
             .select_related('staff', 'leave_request')
             .prefetch_related('staff__hk_areas__area')
             .filter(date=parsed_date, staff__in=staff_qs)
@@ -1065,6 +1143,8 @@ class HKStockRequestListView(ListAPIView):
     def get_queryset(self):
         user = self.request.user
         qs = HKStockRequest.objects.select_related('requested_by', 'area').order_by('-created_at')
+        if _is_hostel_office(user):
+            return qs.filter(area_id__in=_hostel_area_ids())[:50]
         if not _can_manage_housekeeping(user):
             qs = qs.filter(requested_by=user)
         return qs[:50]
@@ -1217,16 +1297,23 @@ class HKDashboardSummaryView(APIView):
     def get(self, request):
         today = timezone.localdate()
 
-        counts = (
-            HKDailyRecord.objects
-            .filter(date=today)
-            .aggregate(
-                total=Count('id'),
-                done=Count('id', filter=Q(status='done')),
-                pending=Count('id', filter=Q(status='pending')),
-                ongoing=Count('id', filter=Q(status='in_progress')),
-                skipped=Count('id', filter=Q(status='skipped')),
-            )
+        area_ids = _hostel_area_ids() if _is_hostel_office(request.user) else None
+        record_qs = HKDailyRecord.objects.filter(date=today)
+        worker_qs = HKWorker.objects.filter(is_active=True)
+        stock_qs = HKStockRequest.objects.filter(status='pending')
+        area_qs = HKArea.objects.filter(is_active=True)
+        if area_ids is not None:
+            record_qs = record_qs.filter(area_id__in=area_ids)
+            worker_qs = worker_qs.filter(area_id__in=area_ids)
+            stock_qs = stock_qs.filter(area_id__in=area_ids)
+            area_qs = area_qs.filter(id__in=area_ids)
+
+        counts = record_qs.aggregate(
+            total=Count('id'),
+            done=Count('id', filter=Q(status='done')),
+            pending=Count('id', filter=Q(status='pending')),
+            ongoing=Count('id', filter=Q(status='in_progress')),
+            skipped=Count('id', filter=Q(status='skipped')),
         )
         total_records = counts['total']
         done = counts['done']
@@ -1234,10 +1321,11 @@ class HKDashboardSummaryView(APIView):
         ongoing = counts['ongoing']
         skipped = counts['skipped']
 
-        total_workers = HKWorker.objects.filter(is_active=True).count()
+        total_workers = worker_qs.count()
         first_half_workers = set(
             HKAttendanceRecord.objects.filter(
                 date=today,
+                **({'worker__area_id__in': area_ids} if area_ids is not None else {}),
                 half='first',
                 status__in=['present', 'late'],
             ).values_list('worker_id', flat=True)
@@ -1245,13 +1333,14 @@ class HKDashboardSummaryView(APIView):
         second_half_workers = set(
             HKAttendanceRecord.objects.filter(
                 date=today,
+                **({'worker__area_id__in': area_ids} if area_ids is not None else {}),
                 half='second',
                 status__in=['present', 'late'],
             ).values_list('worker_id', flat=True)
         )
         present_today = len(first_half_workers | second_half_workers)
         full_day_present = len(first_half_workers & second_half_workers)
-        pending_stock = HKStockRequest.objects.filter(status='pending').count()
+        pending_stock = stock_qs.count()
 
         return Response({
             'total_tasks': total_records,
@@ -1264,7 +1353,7 @@ class HKDashboardSummaryView(APIView):
             'present_today': present_today,
             'full_day_present': full_day_present,
             'pending_stock_requests': pending_stock,
-            'total_areas': HKArea.objects.filter(is_active=True).count(),
+            'total_areas': area_qs.count(),
         })
 
 
@@ -1276,6 +1365,26 @@ def _gallery_base_queryset():
         .exclude(photo_after='', photo_before='')
         .annotate(capture_ts=Coalesce('photo_after_captured_at', 'completed_at'))
     )
+
+
+def _scope_gallery_queryset(qs, user):
+    if _is_hostel_office(user):
+        return qs.filter(area_id__in=_hostel_area_ids())
+    return qs
+
+
+def _gallery_total_area_count(user):
+    qs = HKArea.objects.filter(is_active=True)
+    if _is_hostel_office(user):
+        qs = qs.filter(id__in=_hostel_area_ids())
+    return qs.count()
+
+
+class HKHostelGalleryReadMixin:
+    def get_permissions(self):
+        if self.request.method == 'GET' and _is_hostel_office(self.request.user):
+            return [IsAuthenticated()]
+        return [IsAdminOnly()]
 
 
 def _parse_int(value, default=0, min_value=None, max_value=None):
@@ -1398,7 +1507,7 @@ def _serialize_gallery_photo(request, record):
     }
 
 
-class HKAdminGalleryView(APIView):
+class HKAdminGalleryView(HKHostelGalleryReadMixin, APIView):
     permission_classes = [IsAdminOnly]
 
     def get(self, request):
@@ -1406,7 +1515,7 @@ class HKAdminGalleryView(APIView):
         limit = _parse_int(request.query_params.get('limit'), default=50, min_value=1, max_value=200)
         sort = (request.query_params.get('sort') or 'newest').strip().lower()
 
-        qs = _apply_gallery_filters(request, _gallery_base_queryset())
+        qs = _apply_gallery_filters(request, _scope_gallery_queryset(_gallery_base_queryset(), request.user))
 
         if sort in {'oldest', 'oldest_first'}:
             qs = qs.order_by('capture_ts', 'id')
@@ -1434,19 +1543,20 @@ class HKAdminGalleryView(APIView):
         )
 
 
-class HKAdminGalleryGroupedByAreaView(APIView):
+class HKAdminGalleryGroupedByAreaView(HKHostelGalleryReadMixin, APIView):
     permission_classes = [IsAdminOnly]
 
     def get(self, request):
         params_key = '&'.join(
             [f'{k}={v}' for k, v in sorted(request.query_params.items()) if v not in [None, '']]
         )
-        cache_key = f'hk_gallery_grouped_v3::{params_key or "all"}'
+        scope_key = 'hostel_office' if _is_hostel_office(request.user) else 'admin'
+        cache_key = f'hk_gallery_grouped_v3::{scope_key}::{params_key or "all"}'
         cached = cache.get(cache_key)
         if cached is not None:
             return Response(cached)
 
-        qs = _apply_gallery_filters(request, _gallery_base_queryset()).order_by('area__name', 'schedule__task_name', '-capture_ts', '-id')
+        qs = _apply_gallery_filters(request, _scope_gallery_queryset(_gallery_base_queryset(), request.user)).order_by('area__name', 'schedule__task_name', '-capture_ts', '-id')
         grouped = {}
         for rec in qs:
             area = rec.area
@@ -1498,11 +1608,11 @@ class HKAdminGalleryGroupedByAreaView(APIView):
         return Response(payload)
 
 
-class HKAdminGalleryStatsView(APIView):
+class HKAdminGalleryStatsView(HKHostelGalleryReadMixin, APIView):
     permission_classes = [IsAdminOnly]
 
     def get(self, request):
-        qs = _apply_gallery_filters(request, _gallery_base_queryset())
+        qs = _apply_gallery_filters(request, _scope_gallery_queryset(_gallery_base_queryset(), request.user))
         total = qs.count()
 
         today = timezone.localdate()
@@ -1510,7 +1620,7 @@ class HKAdminGalleryStatsView(APIView):
         this_week = qs.filter(capture_ts__date__gte=week_start, capture_ts__date__lte=today).count()
 
         areas_with_photos = qs.values('area_id').distinct().count()
-        total_areas = HKArea.objects.filter(is_active=True).count()
+        total_areas = _gallery_total_area_count(request.user)
         tasks_with_photos = qs.values('schedule_id').distinct().count()
         avg_photos_per_task = round((total / tasks_with_photos), 2) if tasks_with_photos else 0
         size_agg = qs.aggregate(
@@ -1543,13 +1653,13 @@ class HKAdminGalleryStatsView(APIView):
         )
 
 
-class HKAdminGalleryTaskPhotosView(APIView):
+class HKAdminGalleryTaskPhotosView(HKHostelGalleryReadMixin, APIView):
     permission_classes = [IsAdminOnly]
 
     def get(self, request, task_id):
         qs = _apply_gallery_filters(
             request,
-            _gallery_base_queryset().filter(schedule_id=task_id).order_by('-capture_ts', '-id'),
+            _scope_gallery_queryset(_gallery_base_queryset(), request.user).filter(schedule_id=task_id).order_by('-capture_ts', '-id'),
         )
         photos = [_serialize_gallery_photo(request, rec) for rec in qs]
         return Response({'taskId': task_id, 'photos': photos})
@@ -1648,11 +1758,11 @@ class HKAdminGalleryPhotoFlagView(APIView):
         return Response({'success': True, 'flagged': record.photo_after_flagged})
 
 
-class HKAdminGalleryExportCSVView(APIView):
+class HKAdminGalleryExportCSVView(HKHostelGalleryReadMixin, APIView):
     permission_classes = [IsAdminOnly]
 
     def get(self, request):
-        qs = _apply_gallery_filters(request, _gallery_base_queryset()).order_by('-capture_ts', '-id')
+        qs = _apply_gallery_filters(request, _scope_gallery_queryset(_gallery_base_queryset(), request.user)).order_by('-capture_ts', '-id')
 
         output = io.StringIO()
         writer = csv.writer(output)
@@ -1707,12 +1817,12 @@ class HKAdminGalleryExportCSVView(APIView):
         return response
 
 
-class HKAdminGalleryTaskZipView(APIView):
+class HKAdminGalleryTaskZipView(HKHostelGalleryReadMixin, APIView):
     permission_classes = [IsAdminOnly]
 
     def get(self, request, task_id):
         records = list(
-            _gallery_base_queryset()
+            _scope_gallery_queryset(_gallery_base_queryset(), request.user)
             .filter(schedule_id=task_id)
             .order_by('-capture_ts', '-id')
         )

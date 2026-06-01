@@ -47,7 +47,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'''
 [OK] SEED COMPLETE
   Areas:     {HKArea.objects.count()}
-  Users:     {User.objects.filter(role__in=["admin","inventory_manager","housekeeping_manager","horticulture_manager","caretaker","supervisor"]).count()}
+  Users:     {User.objects.filter(role__in=["admin","inventory_manager","housekeeping_manager","hk_inventory_manager","hostel_office","horticulture_manager","caretaker","supervisor"]).count()}
   Workers:   {HKWorker.objects.count()}
   Templates: {HKScheduleTemplate.objects.count()}
 
@@ -203,7 +203,7 @@ Existing account passwords are preserved.
         preserve_username=False,
     ):
         is_superuser = role == 'admin'
-        is_staff = role in {'admin', 'inventory_manager', 'housekeeping_manager', 'hk_inventory_manager', 'horticulture_manager'}
+        is_staff = role in {'admin', 'inventory_manager', 'housekeeping_manager', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office'}
         base_username = build_username_from_names(first_name, last_name)
         username_candidates = [username, base_username, *legacy_usernames] if preserve_username else [base_username, username, *legacy_usernames]
         if pay_code and match_pay_code:
@@ -392,6 +392,7 @@ Existing account passwords are preserved.
             ('super.admin', 'Super', 'Admin', '9727757096', 'admin', [], 'pragnesh@iitgn.ac.in', ''),
             ('mahesh.prajapati', 'Maheshbhai', 'Prajapati', '9723889424', 'horticulture_manager', [], 'managerhort.iwd@iitgn.ac.in', '474'),
             ('hk_inventory_manager', 'Housekeeping Inventory', 'Manager', '8758120645', 'hk_inventory_manager', [], 'manager.hk@iitgn.ac.in', '469'),
+            ('hostel.office', 'Hostel', 'Office', '', 'hostel_office', [], 'hostel.office@iitgn.ac.in', ''),
         ]
         for username, first, last, phone, role, areas, email, pay_code in accounts:
             self.make_user(
@@ -407,7 +408,7 @@ Existing account passwords are preserved.
                 preserve_username=True,
             )
 
-        for username in ['super.admin', 'hk_inventory_manager']:
+        for username in ['super.admin', 'hk_inventory_manager', 'hostel.office']:
             user = User.objects.filter(username=username).first()
             if user:
                 user.set_password(DEFAULT_PASSWORD)
@@ -427,6 +428,13 @@ Existing account passwords are preserved.
                     user.phone = '8758120645'
                     user.pay_code = '469'
                     user.role = 'hk_inventory_manager'
+                if username == 'hostel.office':
+                    user.first_name = 'Hostel'
+                    user.last_name = 'Office'
+                    user.email = 'hostel.office@iitgn.ac.in'
+                    user.phone = ''
+                    user.pay_code = ''
+                    user.role = 'hostel_office'
                 user.save()
 
         disabled = User.objects.filter(username__in=['housekeeping.manager', 'inventory.manager']).update(
@@ -436,7 +444,7 @@ Existing account passwords are preserved.
         )
 
         self.stdout.write(
-            f'  [OK] Portal users: {User.objects.filter(role__in=["admin","inventory_manager","housekeeping_manager","hk_inventory_manager","horticulture_manager"]).count()}'
+            f'  [OK] Portal users: {User.objects.filter(role__in=["admin","inventory_manager","housekeeping_manager","hk_inventory_manager","horticulture_manager","hostel_office"]).count()}'
         )
         if disabled:
             self.stdout.write(f'  [OK] Disabled old HK/inventory manager portal logins: {disabled}')
@@ -661,7 +669,6 @@ Existing account passwords are preserved.
         managed_area_names = sorted(set(managed_area_names))
 
         HKWorker.objects.filter(
-            area__area_type='hostel',
             area__name__in=managed_area_names,
             is_active=True,
         ).update(is_active=False)
@@ -681,7 +688,6 @@ Existing account passwords are preserved.
 
             worker = None
             candidates = HKWorker.objects.select_related('area').filter(
-                area__area_type='hostel',
                 area__name__in=managed_area_names,
             ).exclude(id__in=touched_ids)
             if pay_code:
@@ -714,7 +720,6 @@ Existing account passwords are preserved.
                 created_count += 1
 
         extra_deactivated = HKWorker.objects.filter(
-            area__area_type='hostel',
             area__name__in=managed_area_names,
             is_active=True,
         ).exclude(id__in=touched_ids).update(is_active=False)
@@ -985,18 +990,18 @@ Existing account passwords are preserved.
             ('472', 'Suresh Solanki', 'Hostel Common Area'),
             ('542', 'Anil Thakur', 'Hostel Common Area'),
             ('471', 'Krunal Parmar', 'Hostels Reliever'),
-            ('416', 'Rajeshbhai Parmar', 'Block-A JRHA'),
+            ('416', 'Rajesh Parmar', 'Block-A JRHA'),
             ('417', 'Rahul Rathod', 'Block-A JRHA'),
-            ('450', 'Darshan Brahmaniya', 'Block-A JRHA'),
-            ('129', 'Manisha Ben K Vaghela', 'Block-B JRHA'),
-            ('134', 'Sugna Ben J Vaghela', 'Block-B JRHA'),
-            ('150', 'Leela Ben Parmar', 'Block-B JRHA'),
-            ('456', 'Himmat Bhai', 'Block-C JRHA'),
-            ('77', 'Hasmukh Bhai', 'Block-C JRHA'),
-            ('454', 'Suresh Bhai', 'Block-C JRHA'),
-            ('457', 'Bhavika Ben Solanki', 'Block-D JRHA'),
-            ('458', 'Hetal Ben Ashokbhai', 'Block-D JRHA'),
-            ('459', 'Urvashi Ben Vaghela', 'Block-D JRHA'),
+            ('450', 'Darshan', 'Block-A JRHA'),
+            ('129', 'Manisha Ben', 'Block-B JRHA'),
+            ('134', 'Sugna Ben', 'Block-B JRHA'),
+            ('150', 'Leela Ben', 'Block-B JRHA'),
+            ('456', 'Himmat', 'Block-C JRHA'),
+            ('77', 'Hasmukh', 'Block-C JRHA'),
+            ('454', 'Suresh', 'Block-C JRHA'),
+            ('457', 'Bhavika', 'Block-D JRHA'),
+            ('458', 'Hetal', 'Block-D JRHA'),
+            ('459', 'Urvashi', 'Block-D JRHA'),
         ]
         managed_hostel_area_names = [
             'Aibaan', 'Beauki', 'Chimair', 'Duven', 'Emiet', 'Firpeal',
@@ -1148,6 +1153,18 @@ Existing account passwords are preserved.
             {'area': 'Hostels Reliever', 'name': 'Lala', 'pay_code': '154', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Lala']},
             {'area': 'Hostels Reliever', 'name': 'Mukesh', 'pay_code': '88', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Mukesh']},
             {'area': 'Hostels Reliever', 'name': 'Krunal Parmar', 'pay_code': '471', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Krunal', 'Krunal Parmar']},
+            {'area': 'Block-A JRHA', 'name': 'Rajesh Parmar', 'pay_code': '416', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'shailesh.vaghela', 'legacy_names': ['Rajeshbhai Parmar', 'Rajesh Parmar']},
+            {'area': 'Block-A JRHA', 'name': 'Rahul Rathod', 'pay_code': '417', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'shailesh.vaghela', 'legacy_names': ['Rahul Rathod']},
+            {'area': 'Block-A JRHA', 'name': 'Darshan', 'pay_code': '450', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'shailesh.vaghela', 'legacy_names': ['Darshan Brahmaniya', 'Darshan']},
+            {'area': 'Block-B JRHA', 'name': 'Manisha Ben', 'pay_code': '129', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Manisha Ben K Vaghela', 'Manisha Ben']},
+            {'area': 'Block-B JRHA', 'name': 'Sugna Ben', 'pay_code': '134', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Sugna Ben J Vaghela', 'Sugna Ben']},
+            {'area': 'Block-B JRHA', 'name': 'Leela Ben', 'pay_code': '150', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Leela Ben Parmar', 'Leela Ben']},
+            {'area': 'Block-C JRHA', 'name': 'Himmat', 'pay_code': '456', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'shailesh.vaghela', 'legacy_names': ['Himmat Bhai', 'Himmat']},
+            {'area': 'Block-C JRHA', 'name': 'Hasmukh', 'pay_code': '77', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'shailesh.vaghela', 'legacy_names': ['Hasmukh Bhai', 'Hasmukh']},
+            {'area': 'Block-C JRHA', 'name': 'Suresh', 'pay_code': '454', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'shailesh.vaghela', 'legacy_names': ['Suresh Bhai', 'Suresh']},
+            {'area': 'Block-D JRHA', 'name': 'Urvashi', 'pay_code': '459', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Urvashi Ben Vaghela', 'Urvashi']},
+            {'area': 'Block-D JRHA', 'name': 'Hetal', 'pay_code': '458', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Hetal Ben Ashokbhai', 'Hetal']},
+            {'area': 'Block-D JRHA', 'name': 'Bhavika', 'pay_code': '457', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Bhavika Ben Solanki', 'Bhavika']},
         ]
         hostel_synced, hostel_created, hostel_deactivated = self._force_exact_hostel_roster(
             hostel_roster,
@@ -1156,23 +1173,12 @@ Existing account passwords are preserved.
         hostel_deleted, hostel_kept = self._cleanup_unused_inactive_workers(
             sorted({spec['area'] for spec in hostel_roster})
         )
-        jrha_area_names = [
-            'Block-A JRHA', 'Block-B JRHA', 'Block-C JRHA', 'Block-D JRHA',
-        ]
-        jrha_deactivated = HKWorker.objects.filter(
-            area__name__in=jrha_area_names,
-            is_active=True,
-        ).update(is_active=False)
-        jrha_deleted, jrha_kept = self._cleanup_unused_inactive_workers([
-            *jrha_area_names,
-        ])
         self.stdout.write(
             '  [OK] Hostel/Common roster synced from final list: '
             f'{hostel_synced} workers, {hostel_created} created, '
             f'{hostel_deactivated} extra deactivated, '
-            f'{jrha_deactivated} JRHA workers deactivated, '
-            f'{hostel_deleted + jrha_deleted} unused removed, '
-            f'{hostel_kept + jrha_kept} history rows kept inactive'
+            f'{hostel_deleted} unused removed, '
+            f'{hostel_kept} history rows kept inactive'
         )
 
         # Common Area staffing details
@@ -1654,20 +1660,28 @@ Existing account passwords are preserved.
             HKScheduleTemplate.objects.filter(area__in=jeet_areas).delete()
             total = max(0, total - old_jrha_template_count)
 
-            jrha_exact_daily_tasks = [
-                '30 Room Cleaning',
-                'Common Dusting',
-                'Flat Common Small Dustbin Regular Cleaning',
-                'Staircase Cleaning',
-                '24 Washroom Deep Cleaning',
-                'Common Lift Cleaning',
-                'Ground Floor Common Road Cleaning',
-                'Dustbin Cleaning',
-                '8 Pantry Cleaning',
+            jrha_common_daily_tasks = [
+                ('Office Cleaning', 'Days: daily | Jeet Hostel office dusting, sweeping, mopping and touch points.'),
+                ('Lounge Cleaning', 'Days: daily | Jeet Hostel lounge seating, table, floor and visible dusting.'),
+                ('Stairs Cleaning', 'Days: daily | Block staircase, railing and landing cleaning.'),
+            ]
+            jrha_floor_rotation_tasks = [
+                (
+                    'Floors 1, 2, 3 Cleaning',
+                    'Days: monday, wednesday, friday | Floor rotation for floors 1, 2 and 3.',
+                ),
+                (
+                    'Floors 4, 5, 6, 7 Cleaning',
+                    'Days: tuesday, thursday, saturday | Floor rotation for floors 4, 5, 6 and 7.',
+                ),
             ]
             jrha_exact_sunday_tasks = [
-                ('Terrace Cleaning', 'Weekly / Sunday'),
-                ('Basement Cleaning', 'Weekly / Sunday'),
+                ('Web Cleaning', 'Weekly Sunday web/cobweb cleaning.'),
+                ('Dustbin Cleaning', 'Weekly Sunday dustbin washing and sanitizing.'),
+                ('Garden Cleaning', 'Weekly Sunday garden cleaning.'),
+                ('Basement Cleaning', 'Weekly Sunday basement cleaning.'),
+                ('Terrace Cleaning', 'Weekly Sunday terrace cleaning.'),
+                ('Deep Cleaning - Ground Floor', 'Sunday ground floor deep cleaning.'),
                 ('Fridge Cleaning', 'Sundays: first, third | Fridge cleaning 2 times in month.'),
             ]
 
@@ -1677,13 +1691,30 @@ Existing account passwords are preserved.
                 return start_dt.time(), end_dt.time()
 
             for area in jeet_areas:
-                for order, name in enumerate(jrha_exact_daily_tasks, start=1):
-                    start_time, end_time = jrha_task_window(order)
+                is_block_b = area.name == 'Block-B JRHA'
+                structure_note = (
+                    'Building: 7 floors, 3 flats per floor.'
+                    if is_block_b
+                    else 'Building: 7 floors, 4 flats per floor, 3 BHK flats with 3 rooms, 3 washrooms and 1 pantry per flat.'
+                )
+                for order, (name, desc) in enumerate(jrha_common_daily_tasks, start=1):
+                    start_time, end_time = jrha_task_window(order, start_hour=8, minutes=45)
                     HKScheduleTemplate.objects.create(
                         area=area, order=order,
                         start_time=start_time, end_time=end_time,
                         task_name=name,
-                        task_description='Days: Daily | Rooms: 30 | Washrooms: 24 | Pantry: 8 | Lift: 1 common lift | Staircase: common staircases | Ground floor: common road area',
+                        task_description=f'{desc} {structure_note}',
+                        worker_tag='all', requires_photo=True,
+                        frequency='daily', is_active=True,
+                    )
+                    total += 1
+                for order, (name, desc) in enumerate(jrha_floor_rotation_tasks, start=11):
+                    start_time, end_time = jrha_task_window(order - 10, start_hour=11, minutes=75)
+                    HKScheduleTemplate.objects.create(
+                        area=area, order=order,
+                        start_time=start_time, end_time=end_time,
+                        task_name=name,
+                        task_description=f'{desc} {structure_note}',
                         worker_tag='all', requires_photo=True,
                         frequency='daily', is_active=True,
                     )

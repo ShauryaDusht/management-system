@@ -67,7 +67,7 @@ function safeFilePart(value, fallback = 'all') {
   return cleaned || fallback
 }
 
-export default function WorkersTab() {
+export default function WorkersTab({ readOnly = false }) {
   const [areas, setAreas] = useState([])
   const [workers, setWorkers] = useState([])
   const [supervisors, setSupervisors] = useState([])
@@ -320,7 +320,7 @@ export default function WorkersTab() {
             <Btn size="sm" variant="secondary" onClick={downloadCsv} disabled={loading || csvRows.length === 0}>
               Download CSV
             </Btn>
-            <Btn size="sm" onClick={openCreate}>+ Add Worker</Btn>
+            {!readOnly && <Btn size="sm" onClick={openCreate}>+ Add Worker</Btn>}
           </div>
         </div>
 
@@ -330,7 +330,18 @@ export default function WorkersTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Area', 'Worker Name', 'Type', 'Shift', 'Supervisor', 'Phone', 'Pay Code', 'Reliever', 'Edit', 'Report']}
+            headers={[
+              'Area',
+              'Worker Name',
+              'Type',
+              'Shift',
+              'Supervisor',
+              'Phone',
+              'Pay Code',
+              'Reliever',
+              ...(readOnly ? [] : ['Edit']),
+              'Report',
+            ]}
             rows={visibleWorkers.map((w) => [
               w.area_name || '-',
               w.name,
@@ -340,7 +351,9 @@ export default function WorkersTab() {
               w.phone || '-',
               w.pay_code || '-',
               w.is_reliever ? <span key={`r-${w.id}`} style={{ display: 'inline-block', background: '#fff7ed', color: '#c2410c', padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700 }}>Reliever</span> : '-',
-              <Btn key={`a-${w.id}`} size="sm" variant="ghost" onClick={() => openEdit(w)}>Edit</Btn>,
+              ...(readOnly ? [] : [
+                <Btn key={`a-${w.id}`} size="sm" variant="ghost" onClick={() => openEdit(w)}>Edit</Btn>,
+              ]),
               <Btn key={`report-${w.id}`} size="sm" variant="secondary" onClick={() => setReportWorker(w)}>Report</Btn>,
             ])}
             emptyMsg="No workers found for selected segment/filter."

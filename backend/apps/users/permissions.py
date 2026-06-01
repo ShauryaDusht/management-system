@@ -36,6 +36,7 @@ class IsAdminOrHKInventoryOrHorticultureManager(BasePermission):
             request.user.is_admin
             or getattr(request.user, 'is_hk_inventory_manager', False)
             or getattr(request.user, 'is_horticulture_manager', False)
+            or getattr(request.user, 'is_hostel_office', False)
         )
 
 

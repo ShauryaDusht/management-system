@@ -23,6 +23,7 @@ import { useAuth } from '../../context/AuthContext'
 const ROLES = [
   'admin',
   'hk_inventory_manager',
+  'hostel_office',
   'horticulture_manager',
   'supervisor',
   'caretaker',
@@ -31,6 +32,7 @@ const HK_ROLES = ['supervisor', 'caretaker']
 const ROLE_FILTERS = [
   { key: 'admin', label: 'Admin' },
   { key: 'hk_inventory_manager', label: 'HK / Inventory Manager' },
+  { key: 'hostel_office', label: 'Hostel Office' },
   { key: 'horticulture_manager', label: 'Horticulture Manager' },
   { key: 'supervisor', label: 'Supervisor' },
   { key: 'caretaker', label: 'Caretaker' },
@@ -241,6 +243,7 @@ export default function UsersPage() {
     const counts = {
       admin: 0,
       hk_inventory_manager: 0,
+      hostel_office: 0,
       horticulture_manager: 0,
       supervisor: 0,
       caretaker: 0,

@@ -9,6 +9,7 @@ import OverviewTab from './OverviewTab'
 import SectionsTab from './SectionsTab'
 import SupervisorsTab from './SupervisorsTab'
 import WorkersTab from './WorkersTab'
+import AssignInventoryTab from './AssignInventoryTab'
 
 const AttendanceTab = lazy(() => import('./AttendanceTab'))
 const StaffAttendanceTab = lazy(() => import('./StaffAttendanceTab'))
@@ -26,6 +27,7 @@ export default function HousekeepingPage() {
   const { user } = useAuth()
   const { badges, markSeen } = useNotifications()
   const [searchParams, setSearchParams] = useSearchParams()
+  const isHostelOffice = user?.role === 'hostel_office'
 
   const tabs = useMemo(
     () => {
@@ -37,21 +39,24 @@ export default function HousekeepingPage() {
         { key: 'staff_attendance', label: 'Staff Attendance' },
         { key: 'workers', label: 'Workers' },
       ]
-      if (['admin', 'housekeeping_manager', 'hk_inventory_manager'].includes(user?.role)) {
+      if (['admin', 'housekeeping_manager', 'hk_inventory_manager', 'hostel_office'].includes(user?.role)) {
         base.push({ key: 'schedule', label: 'Schedule' })
         base.push({
           key: 'incharge_approvals',
           label: 'Incharge Approvals',
-          count: badges.housekeeping > 0 ? badges.housekeeping : null,
+          count: !isHostelOffice && badges.housekeeping > 0 ? badges.housekeeping : null,
           countTone: 'red',
         })
       }
-      if (['admin', 'hk_inventory_manager'].includes(user?.role)) {
+      if (['admin', 'hk_inventory_manager', 'hostel_office'].includes(user?.role)) {
+        base.push({ key: 'stock', label: 'Stock Requests' })
+      }
+      if (['admin', 'hk_inventory_manager', 'hostel_office'].includes(user?.role)) {
         base.push({ key: 'gallery', label: 'Gallery' })
       }
       return base
     },
-    [badges.housekeeping, user?.role]
+    [badges.housekeeping, isHostelOffice, user?.role]
   )
 
   const validTabs = useMemo(() => tabs.map((t) => t.key), [tabs])
@@ -87,14 +92,14 @@ export default function HousekeepingPage() {
 
   return (
     <AdminLayout
-      title="Housekeeping Administration"
-      subtitle="Tasks, sections, staff directory, attendance, and inventory assignment"
+      title={isHostelOffice ? 'Hostel Office' : 'Housekeeping Administration'}
+      subtitle={isHostelOffice ? 'Hostel areas, supervisors, workers, attendance, schedule, and stock requests' : 'Tasks, sections, staff directory, attendance, and inventory assignment'}
     >
       <div style={{ marginBottom: 14 }}>
         <Tabs tabs={tabs} active={active} onChange={onTabChange} />
       </div>
 
-      {active === 'overview' && <OverviewTab />}
+      {active === 'overview' && <OverviewTab readOnly={isHostelOffice} />}
       {active === 'directory' && <SectionsTab />}
       {active === 'supervisors' && <SupervisorsTab />}
       {active === 'attendance' && (
@@ -107,20 +112,21 @@ export default function HousekeepingPage() {
           <StaffAttendanceTab />
         </Suspense>
       )}
-      {active === 'workers' && <WorkersTab />}
+      {active === 'workers' && <WorkersTab readOnly={isHostelOffice} />}
       {active === 'schedule' && (
         <Suspense fallback={tabFallback}>
-          <ScheduleTab />
+          <ScheduleTab readOnly={isHostelOffice} />
         </Suspense>
       )}
+      {active === 'stock' && <AssignInventoryTab userRole={user?.role} readOnly={isHostelOffice} />}
       {active === 'incharge_approvals' && (
         <Suspense fallback={tabFallback}>
-          <InchargeApprovalsTab />
+          <InchargeApprovalsTab readOnly={isHostelOffice} />
         </Suspense>
       )}
       {active === 'gallery' && (
         <Suspense fallback={tabFallback}>
-          <GalleryTab />
+          <GalleryTab readOnly={isHostelOffice} />
         </Suspense>
       )}
     </AdminLayout>

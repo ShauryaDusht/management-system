@@ -88,7 +88,7 @@ function BeforeAfterBlock({ beforeUrl, afterUrl, height, layout = 'split', onBef
   )
 }
 
-export default function GalleryTab() {
+export default function GalleryTab({ readOnly = false }) {
   const [view, setView] = useState('area')
   const [sort, setSort] = useState('newest')
   const [filters, setFilters] = useState({
@@ -320,8 +320,8 @@ export default function GalleryTab() {
     fmt(p.capturedAt),
     <div style={{ display: 'flex', gap: 6 }}>
       <Btn size="sm" variant="ghost" onClick={() => openLightbox(p)}>View</Btn>
-      <Btn size="sm" variant={p.flagged ? 'orange' : 'secondary'} onClick={() => toggleFlag(p)}>{p.flagged ? 'Unflag' : 'Flag'}</Btn>
-      <Btn size="sm" variant="danger" onClick={() => setDeleteTarget(p)}>Delete</Btn>
+      {!readOnly && <Btn size="sm" variant={p.flagged ? 'orange' : 'secondary'} onClick={() => toggleFlag(p)}>{p.flagged ? 'Unflag' : 'Flag'}</Btn>}
+      {!readOnly && <Btn size="sm" variant="danger" onClick={() => setDeleteTarget(p)}>Delete</Btn>}
     </div>,
   ])
 

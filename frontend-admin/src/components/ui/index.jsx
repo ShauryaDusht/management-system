@@ -95,6 +95,7 @@ export function Badge({ value, style }) {
     inventory_manager: { bg: '#fef3c7', color: '#92400e', text: 'Inv. Manager' },
     housekeeping_manager: { bg: '#dbeafe', color: '#1d4ed8', text: 'HK Manager' },
     hk_inventory_manager: { bg: '#ecfeff', color: '#155e75', text: 'HK / Inv. Manager' },
+    hostel_office: { bg: '#e0f2fe', color: '#075985', text: 'Hostel Office' },
     horticulture_manager: { bg: '#dcfce7', color: '#166534', text: 'Horti Manager' },
     supervisor: { bg: '#d1fae5', color: '#065f46', text: 'Supervisor' },
     caretaker: { bg: '#fff7ed', color: '#c2410c', text: 'Caretaker' },
