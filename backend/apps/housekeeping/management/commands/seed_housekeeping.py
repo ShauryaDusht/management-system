@@ -389,7 +389,7 @@ Existing account passwords are preserved.
                 ])
 
         accounts = [
-            ('admin.user', 'Admin', 'User', '9727757096', 'admin', [], 'pragnesh@iitgn.ac.in', ''),
+            ('super.admin', 'Super', 'Admin', '9727757096', 'admin', [], 'pragnesh@iitgn.ac.in', ''),
             ('mahesh.prajapati', 'Maheshbhai', 'Prajapati', '9723889424', 'horticulture_manager', [], 'managerhort.iwd@iitgn.ac.in', '474'),
             ('hk_inventory_manager', 'Housekeeping Inventory', 'Manager', '8758120645', 'hk_inventory_manager', [], 'manager.hk@iitgn.ac.in', '469'),
         ]
@@ -407,13 +407,19 @@ Existing account passwords are preserved.
                 preserve_username=True,
             )
 
-        for username in ['admin.user', 'hk_inventory_manager']:
+        for username in ['super.admin', 'hk_inventory_manager']:
             user = User.objects.filter(username=username).first()
             if user:
                 user.set_password(DEFAULT_PASSWORD)
                 user.is_active = True
                 user.is_staff = True
-                user.is_superuser = username == 'admin.user'
+                user.is_superuser = username == 'super.admin'
+                if username == 'super.admin':
+                    user.first_name = 'Super'
+                    user.last_name = 'Admin'
+                    user.email = 'pragnesh@iitgn.ac.in'
+                    user.phone = '9727757096'
+                    user.role = 'admin'
                 if username == 'hk_inventory_manager':
                     user.first_name = 'Housekeeping Inventory'
                     user.last_name = 'Manager'
@@ -442,7 +448,7 @@ Existing account passwords are preserved.
         legacy_usernames = [
             'admin', 'priyanka', 'anita', 'rushita', 'pankaj', 'ramsingh', 'jaimin',
             'anil.hk', 'nikul.hk', 'anil.caretaker', 'nikul.caretaker', 'lab.supervisor',
-            'estate.manager', 'hostel.manager', 'horticulture.manager', 'inv.manager',
+            'admin.user', 'admin', 'estate.manager', 'hostel.manager', 'horticulture.manager', 'inv.manager',
         ]
         removed = 0
         blocked = []
@@ -475,7 +481,6 @@ Existing account passwords are preserved.
                 worker for worker in all_workers
                 if worker.id not in keep_ids
                 and (worker.pay_code or '').strip() == pay_code
-                and getattr(worker.area, 'area_type', None) == 'hostel'
             ]
             for worker in pay_code_matches:
                 if worker.area_id == area.id:
@@ -522,6 +527,62 @@ Existing account passwords are preserved.
                 return donor.phone
 
         return ''
+
+    def _enforce_active_roster_by_pay_code(self, roster_specs, supervisor_username):
+        supervisor = User.objects.filter(username=supervisor_username).first()
+        areas = {
+            spec['area']: self.area(spec['area'])
+            for spec in roster_specs
+        }
+        keep_ids = set()
+        synced_count = 0
+
+        for spec in roster_specs:
+            area = areas.get(spec['area'])
+            if not area:
+                continue
+
+            pay_code = (spec.get('pay_code') or '').strip()
+            managed_areas = [managed_area for managed_area in areas.values() if managed_area]
+            candidates = HKWorker.objects.filter(area__in=managed_areas)
+            if pay_code:
+                candidates = candidates.filter(pay_code=pay_code)
+            else:
+                candidates = candidates.filter(area=area, name__iexact=spec['name'])
+
+            worker = (
+                candidates.filter(area=area).order_by('-is_active', 'id').first()
+                or candidates.order_by('-is_active', 'id').first()
+            )
+            if worker is None:
+                worker = HKWorker(area=area)
+
+            phone = spec.get('phone') or self._existing_worker_phone(spec['name'], pay_code, worker)
+            worker.name = spec['name']
+            worker.pay_code = pay_code
+            worker.phone = phone or ''
+            worker.worker_type = spec.get('worker_type', 'general')
+            worker.shift = spec.get('shift', 'day')
+            worker.area = area
+            worker.supervisor = supervisor
+            worker.is_reliever = spec.get('is_reliever', False)
+            worker.is_active = True
+            worker.save()
+            keep_ids.add(worker.id)
+            synced_count += 1
+
+            if pay_code:
+                HKWorker.objects.filter(
+                    area__in=managed_areas,
+                    pay_code=pay_code,
+                    is_active=True,
+                ).exclude(pk=worker.pk).update(is_active=False)
+
+        deactivated_count = HKWorker.objects.filter(
+            area__in=[area for area in areas.values() if area],
+            is_active=True,
+        ).exclude(pk__in=keep_ids).update(is_active=False)
+        return synced_count, deactivated_count
 
     def _sync_area_roster(self, roster_specs, supervisor_username):
         supervisor = User.objects.filter(username=supervisor_username).first()
@@ -840,26 +901,27 @@ Existing account passwords are preserved.
             ('Pravinbhai Vaghela',                 '400', '9624126018', 'Old Academic Reliever', 'reliever', True),
             ('Jyotsanaben Vaghela',                '231', '9574720027', 'Old Academic Reliever', 'reliever', True),
             ('Jay Kumar Solanki',                  '105', '8511476360', 'Academic Block 9', 'room',     False),
-            ('Patel Sangitaben Maheshbhai',        '412', '', 'Academic Block 10', 'washroom', False),
-            ('Hiteshbhai Solanki',                 '434', '', 'Academic Block 10', 'room',     False),
-            ('Solanki Parthkumar Jagdishbhai',     '384', '', 'Academic Block 10', 'floor',    False),
-            ('Makwana Sunilbhai Amrutbhai',        '348', '', 'Academic Block 11', 'floor',    False),
-            ('Bhangi Ileshbhai Ishvarbhai',        '361', '', 'Academic Block 11', 'room',     False),
-            ('Kailashben Parmar',                  '102', '', 'Academic Block 11', 'washroom', False),
-            ('Sonala Manishaben',                  '356', '', 'Academic Block 12', 'washroom', False),
-            ('Gautambhai Vaghela',                 '333', '', 'Academic Block 12', 'floor',    False),
-            ('Parmar Devendra Dalpatbhai',         '437', '', 'Academic Block 12', 'room',     False),
-            ('Vaghela Maheshbhai Dineshbhai',      '402', '', 'Academic Block 13', 'floor',    False),
-            ('Rathod Ajaykumar',                   '93',  '', 'Academic Block 13', 'room',     False),
-            ('Jigneshkumar Babubhai Solanki',      '363', '', 'Academic Block 13', 'washroom', False),
-            ('Parmar Krunalbhai',                  '390', '', 'Academic Block 13', 'room',     False),
-            ('Vaghela Padma',                      '347', '', 'Academic Block 13', 'floor',    False),
+            ('Padmaben',                           '347', '', 'Academic Block 10', 'floor',    False),
+            ('Devendra',                           '437', '', 'Academic Block 10', 'room',     False),
+            ('Jitendra',                           '377', '', 'Academic Block 10', 'floor',    False),
+            ('Sangitaben',                         '412', '', 'Academic Block 11', 'washroom', False),
+            ('Sunil',                              '348', '', 'Academic Block 11', 'floor',    False),
+            ('Hitendra',                           '448', '', 'Academic Block 11', 'room',     False),
+            ('Mahesh',                             '402', '', 'Academic Block 12', 'floor',    False),
+            ('Akshay',                             '308', '', 'Academic Block 12', 'floor',    False),
+            ('Kailashben',                         '102', '', 'Academic Block 12', 'washroom', False),
+            ('Ajay',                               '93',  '', 'Academic Block 13', 'room',     False),
+            ('Gautam',                             '333', '', 'Academic Block 13', 'floor',    False),
+            ('Jignesh',                            '363', '', 'Academic Block 13', 'washroom', False),
+            ('Kunal',                              '390', '', 'Academic Block 13', 'room',     False),
+            ('Chandrika',                          '346', '', 'Academic Block 13', 'washroom', False),
+            ('Bharat',                             '362', '', 'Academic Block 13', 'room',     False),
+            ('Parth',                              '384', '', 'Academic Block 13', 'floor',    False),
             ('Vaghela Bhaveshbhai Narnabhai',      '315', '9974738575', 'Old Academic Common Area', 'floor', False),
             ('Vaniya Nikhilkumar Bhaveshbhai',     '314', '8849436518', 'Old Academic Common Area', 'floor', False),
-            ('Akshybhai Vaghela',                  '308', '', 'New AB U-Shape', 'floor', False),
-            ('Vasudev Jitendrakumar Baldevbhai',   '377', '', 'New Academic Common Area', 'floor', False),
-            ('Gurjar Niruben',                     '111', '', 'New Academic Reliever', 'reliever', True),
-            ('Sonara Hitendrakumar Punjabhai',     '448', '', 'New Academic Reliever', 'reliever', True),
+            ('Hitesh',                             '434', '', 'New Academic Common Area', 'floor', False),
+            ('Niruben',                            '111', '', 'New Academic Reliever', 'reliever', True),
+            ('Ilesh',                              '361', '', 'New Academic Reliever', 'reliever', True),
 
         ]
 
@@ -1232,6 +1294,29 @@ Existing account passwords are preserved.
                 worker.supervisor = ashok_supervisor
                 worker.save(update_fields=['shift', 'supervisor'])
 
+        guest_house_exact_roster = [
+            {'area': 'Guest House New', 'name': 'Raju Manabhai Makwana', 'pay_code': '263', 'phone': '9601550905', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Guest House New', 'name': 'Hiteshkumar Gafulbhai Vaghela', 'pay_code': '291', 'phone': '9265621047', 'worker_type': 'washroom', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Guest House New', 'name': 'Dhaval Kantibhai Jadeja', 'pay_code': '248', 'phone': '9099716206', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Guest House New', 'name': 'Ajay Harshadbhai Purabiya', 'pay_code': '284', 'phone': '9099483423', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Guest House New', 'name': 'Sumit Rameshbhai Solanki', 'pay_code': '451', 'phone': '8866060385', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Guest House New', 'name': 'Shailesh Ishvarbhai Raval', 'pay_code': '306', 'phone': '9157891835', 'worker_type': 'washroom', 'shift': 'evening', 'is_reliever': False},
+            {'area': 'Guest House New', 'name': 'Sanjay Babubhai Vaghela', 'pay_code': '304', 'phone': '8490012338', 'worker_type': 'washroom', 'shift': 'evening', 'is_reliever': False},
+            {'area': 'Guest House New', 'name': 'Anil Bhupatsinh Thakor', 'pay_code': '269', 'phone': '7359449665', 'worker_type': 'general', 'shift': 'night', 'is_reliever': False},
+            {'area': 'Guest House New', 'name': 'Gautam Parmar', 'pay_code': '403', 'phone': '8511406220', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Guest House New', 'name': 'Pankaj Kantibhai Chamar', 'pay_code': '393', 'phone': '7990281462', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Guest House New', 'name': 'Lalit Babubhai Parmar', 'pay_code': '319', 'phone': '8866011232', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Guest House New', 'name': 'Vishal Vaghela Karshanbhai', 'pay_code': '320', 'phone': '8154945437', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False},
+        ]
+        guest_house_synced, guest_house_deactivated = self._enforce_active_roster_by_pay_code(
+            guest_house_exact_roster,
+            'ashok.rathod',
+        )
+        self.stdout.write(
+            '  [OK] Guest House New exact roster enforced: '
+            f'{guest_house_synced} workers, {guest_house_deactivated} extra active rows deactivated'
+        )
+
         # Roads & Outdoor staffing details
         roads_supervisor = User.objects.filter(username='narendra.shreemali').first()
         roads_shift_map = {
@@ -1317,6 +1402,49 @@ Existing account passwords are preserved.
                     shift='day',
                     supervisor=supervisor,
                 )
+
+        academic_june_2026_shailesh_roster = [
+            {'area': 'Academic Block 10', 'name': 'Padmaben', 'pay_code': '347', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Academic Block 10', 'name': 'Devendra', 'pay_code': '437', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Academic Block 10', 'name': 'Jitendra', 'pay_code': '377', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Academic Block 11', 'name': 'Sangitaben', 'pay_code': '412', 'worker_type': 'washroom', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Academic Block 11', 'name': 'Sunil', 'pay_code': '348', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Academic Block 11', 'name': 'Hitendra', 'pay_code': '448', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False},
+        ]
+        academic_june_2026_kaushik_roster = [
+            {'area': 'Academic Block 12', 'name': 'Mahesh', 'pay_code': '402', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Academic Block 12', 'name': 'Akshay', 'pay_code': '308', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Academic Block 12', 'name': 'Kailashben', 'pay_code': '102', 'worker_type': 'washroom', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Academic Block 13', 'name': 'Ajay', 'pay_code': '93', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Academic Block 13', 'name': 'Gautam', 'pay_code': '333', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Academic Block 13', 'name': 'Jignesh', 'pay_code': '363', 'worker_type': 'washroom', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Academic Block 13', 'name': 'Kunal', 'pay_code': '390', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Academic Block 13', 'name': 'Chandrika', 'pay_code': '346', 'worker_type': 'washroom', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Academic Block 13', 'name': 'Bharat', 'pay_code': '362', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Academic Block 13', 'name': 'Parth', 'pay_code': '384', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False},
+            {'area': 'New Academic Common Area', 'name': 'Hitesh', 'pay_code': '434', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False},
+            {'area': 'New Academic Reliever', 'name': 'Niruben', 'pay_code': '111', 'worker_type': 'reliever', 'shift': 'day', 'is_reliever': True},
+            {'area': 'New Academic Reliever', 'name': 'Ilesh', 'pay_code': '361', 'worker_type': 'reliever', 'shift': 'day', 'is_reliever': True},
+        ]
+        shailesh_synced, shailesh_deactivated = self._enforce_active_roster_by_pay_code(
+            academic_june_2026_shailesh_roster,
+            'shailesh.prajapati',
+        )
+        kaushik_synced, kaushik_deactivated = self._enforce_active_roster_by_pay_code(
+            academic_june_2026_kaushik_roster,
+            'kaushik.parmar',
+        )
+        new_ab_area = self.area('New AB U-Shape')
+        new_ab_deactivated = 0
+        if new_ab_area:
+            new_ab_deactivated = HKWorker.objects.filter(area=new_ab_area, is_active=True).update(is_active=False)
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'June 2026 New Academic roster enforced: '
+                f'{shailesh_synced + kaushik_synced} active, '
+                f'{shailesh_deactivated + kaushik_deactivated + new_ab_deactivated} deactivated'
+            )
+        )
 
         jeet_supervisor_by_area = {
             'Block-A JRHA': 'shailesh.vaghela',
@@ -2406,7 +2534,7 @@ Existing account passwords are preserved.
                     (10, '15:00', '17:00', 'AB-9: DHD Hall, Balcony, Staircase and Railing', 'floor', True, 'Second floor'),
                 ],
                 'Academic Block 10': [
-                    (1, '08:00', '09:30', 'AB-10: Male and Female Washroom Cleaning', 'washroom', True, 'Padmaben + Hitesh + Parth'),
+                    (1, '08:00', '09:30', 'AB-10: Male and Female Washroom Cleaning', 'washroom', True, 'Padmaben + Devendra + Jitendra'),
                     (2, '09:30', '12:00', 'AB-10: Floor, Classroom and Staircase Cleaning', 'floor', True, ''),
                     (3, '12:00', '13:00', 'AB-10: Lab Area and Lift Cleaning', 'room', True, ''),
                     (4, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
@@ -2415,7 +2543,7 @@ Existing account passwords are preserved.
                     (7, '16:00', '17:00', 'AB-10: Washroom, Staircase and Pantry Cleaning', 'washroom', True, ''),
                 ],
                 'Academic Block 11': [
-                    (1, '08:00', '09:30', 'AB-11: First-Third Floor Washroom Cleaning', 'washroom', True, 'Sunil + Elesh + Sangeetaben + Bharat'),
+                    (1, '08:00', '09:30', 'AB-11: First-Third Floor Washroom Cleaning', 'washroom', True, 'Sangitaben + Sunil + Hitendra'),
                     (2, '09:30', '10:30', 'AB-11: Floor Cleaning', 'floor', True, ''),
                     (3, '10:30', '13:00', 'AB-11: Classroom, Labs and Office Cleaning', 'room', True, ''),
                     (4, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
@@ -2424,7 +2552,7 @@ Existing account passwords are preserved.
                     (7, '16:00', '17:00', 'AB-11: Washroom Touch Up, Dustbin, Corridor and Pantry', 'washroom', True, ''),
                 ],
                 'Academic Block 12': [
-                    (1, '08:00', '09:00', 'AB-12: Washroom and Staircase Cleaning', 'washroom', True, 'Kailashbhai + Gautam + Devendra'),
+                    (1, '08:00', '09:00', 'AB-12: Washroom and Staircase Cleaning', 'washroom', True, 'Mahesh + Akshay + Kailashben'),
                     (2, '09:00', '10:00', 'AB-12: Office Area Cleaning (All Floors)', 'room', True, ''),
                     (3, '10:00', '12:00', 'AB-12: Floor, Pantry and Lift Cleaning', 'floor', True, ''),
                     (4, '12:00', '13:00', 'AB-12: Extra Work', 'floor', True, 'Closed lab and office cleaning support'),
@@ -2433,16 +2561,16 @@ Existing account passwords are preserved.
                     (7, '16:00', '17:00', 'AB-12: Extra Work and Final Round', 'floor', True, ''),
                 ],
                 'Academic Block 13': [
-                    (1, '08:00', '09:00', 'AB-13 GF: Washroom Floor Cleaning', 'washroom', True, 'Jignesh Solanki'),
+                    (1, '08:00', '09:00', 'AB-13 GF: Washroom Floor Cleaning', 'washroom', True, 'Ajay + Gautam + Jignesh + Kunal + Chandrika + Bharat + Parth'),
                     (2, '09:00', '10:00', 'AB-13 GF: Classroom Staircase Cleaning', 'floor', True, ''),
                     (3, '10:00', '11:00', 'AB-13 GF: Washroom Touch Up + Lift + Room 112', 'washroom', True, 'Meeting room coverage'),
                     (4, '11:00', '12:00', 'AB-13 GF: Labs and Extra Work', 'room', True, ''),
                     (5, '12:00', '13:00', 'AB-13 GF: Final Ground Floor Touch Up', 'floor', True, ''),
                     (6, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
-                    (7, '14:00', '15:00', 'AB-13 2F/3F: Washroom Cleaning', 'washroom', True, 'Kunal + Mahesh'),
+                    (7, '14:00', '15:00', 'AB-13 2F/3F: Washroom Cleaning', 'washroom', True, 'Kunal + Chandrika'),
                     (8, '15:00', '16:00', 'AB-13 2F/3F: Floor and Office Cleaning', 'floor', True, ''),
                     (9, '16:00', '17:00', 'AB-13 2F/3F: Lab Area and Touch Up', 'room', True, ''),
-                    (10, '08:00', '11:00', 'AB-13 Library: Washroom and Office Floor Cleaning', 'room', True, 'Ajay Rathod + Bharat Solanki'),
+                    (10, '08:00', '11:00', 'AB-13 Library: Washroom and Office Floor Cleaning', 'room', True, 'Ajay + Bharat'),
                     (11, '11:00', '13:00', 'AB-13 Library: First Floor Lab Floor Cleaning', 'room', True, ''),
                 ],
                 'Old Academic Common Area': [
@@ -2451,13 +2579,13 @@ Existing account passwords are preserved.
                     (3, '15:00', '16:00', 'Old Academic Common Area: Block-07 Terrace Side Railing Dusting', 'floor', True, ''),
                 ],
                 'New AB U-Shape': [
-                    (1, '08:00', '10:00', 'New AB U-Shape: Sweeping and Mopping', 'floor', True, 'Akshay Vaghela'),
+                    (1, '08:00', '10:00', 'New AB U-Shape: Sweeping and Mopping', 'floor', True, ''),
                     (2, '10:00', '13:00', 'New AB U-Shape: Blocks 10-13 Common Area Cleaning - Round 1', 'floor', True, ''),
                     (3, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
                     (4, '14:00', '17:00', 'New AB U-Shape: Blocks 10-13 Common Area Cleaning - Round 2', 'floor', True, ''),
                 ],
                 'New Academic Common Area': [
-                    (1, '08:00', '10:00', 'New Academic Common Area: Sweeping and Mopping', 'floor', True, 'Jitendra Vasudev'),
+                    (1, '08:00', '10:00', 'New Academic Common Area: Sweeping and Mopping', 'floor', True, 'Hitesh'),
                     (2, '10:00', '13:00', 'New Academic Common Area: Blocks 10-13 Common Area Cleaning - Round 1', 'floor', True, ''),
                     (3, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
                     (4, '14:00', '17:00', 'New Academic Common Area: Blocks 10-13 Common Area Cleaning - Round 2', 'floor', True, ''),

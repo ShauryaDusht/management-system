@@ -391,9 +391,7 @@ class Command(BaseCommand):
 
     def _get_existing_admin(self):
         admin_user = (
-            User.objects.filter(username='admin.user').first()
-            or User.objects.filter(username='admin').first()
-            or User.objects.filter(role=User.Role.ADMIN).order_by('id').first()
+            User.objects.filter(username='super.admin').first()
         )
         if admin_user is None:
             raise CommandError(

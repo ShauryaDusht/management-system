@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand
+from django.apps import apps
 
 from apps.users.models import User
 
@@ -9,7 +10,41 @@ DEFAULT_PASSWORD = 'IITGN@2025'
 class Command(BaseCommand):
     help = 'Ensure required admin portal login accounts are active and usable.'
 
+    def _replace_legacy_admin_references(self, super_admin):
+        legacy_admins = list(
+            User.objects
+            .filter(username__in=['admin.user', 'admin'])
+            .exclude(pk=super_admin.pk)
+        )
+        if not legacy_admins:
+            return 0
+
+        legacy_ids = [user.pk for user in legacy_admins]
+        for model in apps.get_models():
+            for field in model._meta.get_fields():
+                if not getattr(field, 'many_to_one', False) and not getattr(field, 'one_to_one', False):
+                    continue
+                if getattr(field, 'remote_field', None) and field.remote_field.model is User:
+                    model.objects.filter(**{f'{field.name}_id__in': legacy_ids}).update(
+                        **{f'{field.name}_id': super_admin.pk}
+                    )
+        return User.objects.filter(pk__in=legacy_ids).delete()[0]
+
     def handle(self, *args, **options):
+        admin_user, admin_created = User.objects.get_or_create(username='super.admin')
+
+        admin_user.username = 'super.admin'
+        admin_user.first_name = 'Super'
+        admin_user.last_name = 'Admin'
+        admin_user.email = 'pragnesh@iitgn.ac.in'
+        admin_user.phone = '9727757096'
+        admin_user.role = User.Role.ADMIN
+        admin_user.is_active = True
+        admin_user.is_staff = True
+        admin_user.is_superuser = True
+        admin_user.set_password(DEFAULT_PASSWORD)
+        admin_user.save()
+
         user, created = User.objects.get_or_create(
             username='hk_inventory_manager',
             defaults={
@@ -34,6 +69,8 @@ class Command(BaseCommand):
         user.set_password(DEFAULT_PASSWORD)
         user.save()
 
+        deleted_legacy_admins = self._replace_legacy_admin_references(admin_user)
+
         disabled = User.objects.filter(
             username__in=['housekeeping.manager', 'inventory.manager']
         ).update(
@@ -44,5 +81,8 @@ class Command(BaseCommand):
 
         action = 'created' if created else 'repaired'
         self.stdout.write(self.style.SUCCESS(
-            f'hk_inventory_manager login {action}; disabled old manager logins: {disabled}'
+            f'super.admin login {"created" if admin_created else "repaired"}; '
+            f'hk_inventory_manager login {action}; '
+            f'deleted old admin logins: {deleted_legacy_admins}; '
+            f'disabled old manager logins: {disabled}'
         ))

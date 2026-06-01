@@ -331,21 +331,92 @@ function clearHortiPhoto(form) {
   if (selected) selected.style.display = 'none';
 }
 
+function isHortiTaskActionForm(form) {
+  if (!form || String(form.method || '').toLowerCase() !== 'post') return false;
+  var action = form.getAttribute('action') || '';
+  return action.indexOf('/horticulture/mark-task/') !== -1;
+}
+
+function setHortiFormBusy(form, busy) {
+  if (!form) return;
+  var buttons = form.querySelectorAll('button, input[type="submit"]');
+  buttons.forEach(function(button) {
+    if (busy) {
+      if (!button.dataset.originalText && button.tagName === 'BUTTON') {
+        button.dataset.originalText = button.textContent || '';
+      }
+      button.disabled = true;
+      if (button.tagName === 'BUTTON') button.textContent = 'Saving...';
+    } else {
+      button.disabled = false;
+      if (button.tagName === 'BUTTON' && button.dataset.originalText) {
+        button.textContent = button.dataset.originalText;
+      }
+    }
+  });
+  var fileInputs = form.querySelectorAll('input[type="file"]');
+  fileInputs.forEach(function(input) {
+    input.readOnly = busy;
+  });
+}
+
+function showHortiInlineError(message) {
+  var page = document.querySelector('.page');
+  if (!page) return;
+  var flash = document.createElement('div');
+  flash.className = 'flash err';
+  flash.textContent = message || 'Unable to save. Please try again.';
+  page.insertBefore(flash, page.firstChild);
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function replaceHortiPageFromResponse(html, responseUrl) {
+  var parser = new DOMParser();
+  var nextDoc = parser.parseFromString(html, 'text/html');
+  var nextPage = nextDoc.querySelector('.page');
+  var page = document.querySelector('.page');
+  if (!nextPage || !page) {
+    window.location.href = responseUrl || window.location.href;
+    return;
+  }
+  var scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+  page.innerHTML = nextPage.innerHTML;
+  if (responseUrl && responseUrl !== window.location.href) {
+    window.history.replaceState({}, '', responseUrl);
+  }
+  window.scrollTo(0, scrollTop);
+}
+
 document.addEventListener('submit', function(event) {
-  var form = event.target.closest('.js-horti-task-complete-form');
+  var form = event.target.closest('form');
+  if (!isHortiTaskActionForm(form)) return;
+  if (!window.fetch || !window.FormData || !window.DOMParser) return;
+  event.preventDefault();
   if (!form) return;
   if (form.dataset.submitting === '1') {
-    event.preventDefault();
     return;
   }
   form.dataset.submitting = '1';
-  var submitButton = form.querySelector('.js-submit-btn');
-  if (submitButton) {
-    submitButton.disabled = true;
-    submitButton.textContent = 'Submitting...';
-  }
-  var fileInput = form.querySelector('.js-photo-file-input');
-  if (fileInput) fileInput.readOnly = true;
+  setHortiFormBusy(form, true);
+  fetch(form.action, {
+    method: 'POST',
+    body: new FormData(form),
+    credentials: 'same-origin',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest'
+    }
+  }).then(function(response) {
+    return response.text().then(function(html) {
+      if (!response.ok) {
+        throw new Error('Request failed');
+      }
+      replaceHortiPageFromResponse(html, response.url);
+    });
+  }).catch(function() {
+    form.dataset.submitting = '';
+    setHortiFormBusy(form, false);
+    showHortiInlineError('Network issue while saving. Please tap once and try again.');
+  });
 });
 
 document.addEventListener('click', function(event) {
