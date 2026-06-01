@@ -150,9 +150,9 @@ def _is_jrha_area(area):
 
 
 HOSTEL_RELIEVER_ASSIGNMENTS = {
-    "Aibaan": {"names": ["Anju Ben"]},
-    "Ijokha": {"names": ["Anju Ben"]},
-    "Beuaki": {"pay_codes": ["356"]},
+    "Aibaan": {"names": ["Anju Ben", "Anju ben"]},
+    "Ijokha": {"names": ["Anju Ben", "Anju ben"]},
+    "Beauki": {"pay_codes": ["356"]},
     "Chimair": {"pay_codes": ["356"]},
     "Duven": {"pay_codes": ["435"]},
     "Emiet": {"pay_codes": ["121"]},

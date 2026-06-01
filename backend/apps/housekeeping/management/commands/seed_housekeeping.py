@@ -1,6 +1,6 @@
 """
 Complete housekeeping seed with all real IITGN staff data.
-Hostel/JRHA/Common roster: 54 HK staff + 11 relievers
+Hostel/Common roster follows the submitted all-hostel staff list.
 Caretakers: Priyanka, Anita, Rushita, Pankaj, Anil, Nikul, Jaimin, Ram Singh, Vishwajeet, Manisha Thapa
 Schedule: Same daily Mon-Sun for all caretaker hostels (3 staff groups: room/floor/washroom)
 Sunday extra: dustbin + terrace + fridge cleaning
@@ -59,7 +59,7 @@ Existing account passwords are preserved.
 
     def seed_areas(self):
         hostel_names = [
-            'Aibaan', 'Beuaki', 'Chimair', 'Duven', 'Emiet',
+            'Aibaan', 'Beauki', 'Chimair', 'Duven', 'Emiet',
             'Firpeal', 'Griwiksh', 'Hiqom', 'Ijokha', 'Jurqia',
             'Kyzeel', 'Lekhaag',
             'Block-A JRHA', 'Block-B JRHA',
@@ -67,6 +67,24 @@ Existing account passwords are preserved.
         ]
         for name in hostel_names:
             HKArea.objects.get_or_create(name=name, defaults={'area_type': 'hostel'})
+
+        legacy_beuaki = HKArea.objects.filter(name='Beuaki').first()
+        if legacy_beuaki and not HKArea.objects.filter(name='Beauki').exists():
+            legacy_beuaki.name = 'Beauki'
+            legacy_beuaki.area_type = 'hostel'
+            legacy_beuaki.is_active = True
+            legacy_beuaki.save(update_fields=['name', 'area_type', 'is_active'])
+        HKArea.objects.filter(name='Beauki').update(area_type='hostel', is_active=True)
+        beauki = HKArea.objects.filter(name='Beauki').first()
+        legacy_beuaki = HKArea.objects.filter(name='Beuaki').first()
+        if beauki and legacy_beuaki and legacy_beuaki.id != beauki.id:
+            HKWorker.objects.filter(area=legacy_beuaki).update(area=beauki)
+            HKScheduleTemplate.objects.filter(area=legacy_beuaki).update(area=beauki)
+            for assignment in HKUserArea.objects.filter(area=legacy_beuaki):
+                HKUserArea.objects.get_or_create(user=assignment.user, area=beauki)
+            HKUserArea.objects.filter(area=legacy_beuaki).delete()
+            legacy_beuaki.is_active = False
+            legacy_beuaki.save(update_fields=['is_active'])
 
         jrha_renames = {
             'Jeet Hostel Block A': 'Block-A JRHA',
@@ -273,7 +291,7 @@ Existing account passwords are preserved.
         caretakers = [
             # (username, first, last, pay_code, phone, email, areas)
             ('priyanka.parmar', 'Priyanka Vijaykumar', 'Parmar', '237', '6353228604', 'priyankavijayparmar27@gmail.com', ['Aibaan']),
-            ('anita.vaghela', 'Anita', 'Vaghela', '10', '9512389739', 'anitavaghela98@gmail.com', ['Beuaki', 'Chimair'], ['anita']),
+            ('anita.vaghela', 'Anita', 'Vaghela', '10', '9512389739', 'anitavaghela98@gmail.com', ['Beauki', 'Chimair'], ['anita']),
             ('rhushita.chavda', 'Rhushita Chetankumar', 'Chavda', '294', '7083740424', '', ['Ijokha']),
             ('pankaj.bihola', 'Pankajsinh Amarsinh', 'Bihola', '293', '9904883975', 'pankajsingh2753@gmail.com', ['Duven', 'Emiet']),
             ('anil.solanki', 'Anil', 'Solanki', '300', '8155037413', 'anil8155037413@gmail.com', ['Firpeal', 'Griwiksh']),
@@ -643,95 +661,9 @@ Existing account passwords are preserved.
         Each worker is assigned to their hostel area.
         """
         # Format: (name, punching_no, phone, area_name, worker_type, is_reliever)
+        # Hostel, hostel common area, and hostel relievers are synced below
+        # from hostel_roster only, so old hostel/JRHA rows are not recreated.
         workers = [
-            # -- AIBAAN ------------------------------------------------------
-            ('Reeta Ben',        '357', '9574379477', 'Aibaan',   'room',     False),
-            ('Sangeeta Ben',     '219', '8866941201', 'Aibaan',   'floor',    False),
-            ('Shilpa Ben',       '419', '6356046585', 'Aibaan',   'washroom', False),
-
-            # -- BEUAKI ------------------------------------------------------
-            ('Meena Ben',        '98',  '9909679865', 'Beuaki',   'room',     False),
-            ('Kailashben M',     '76',  '8490053837', 'Beuaki',   'floor',    False),
-            ('Sonal Ben',        '415', '7359834672', 'Beuaki',   'washroom', False),
-
-            # -- CHIMAIR -----------------------------------------------------
-            ('Bhanu Ben',        '332', '7567371788', 'Chimair',  'room',     False),
-            ('Surya Ben',        '233', '9725963299', 'Chimair',  'floor',    False),
-            ('Dipika Ben',       '418', '7383512108', 'Chimair',  'washroom', False),
-
-            # -- IJOKHA ------------------------------------------------------
-            ('Kailash B Parmar', '143', '7265921026', 'Ijokha',   'room',     False),
-            ('Mittal Ben Vaghela','386','7383619204', 'Ijokha',   'floor',    False),
-            ('Geeta Ben Parmar', '230', '7041016942', 'Ijokha',   'washroom', False),
-
-            # -- DUVEN -------------------------------------------------------
-            ('Jignesh',          '115', '8401617156', 'Duven',    'room',     False),
-            ('Karan',            '260', '7016522113', 'Duven',    'floor',    False),
-            ('Sailesh Vaghela',  '109', '8734987012', 'Duven',    'washroom', False),
-
-            # -- EMIET -------------------------------------------------------
-            ('Shailesh Rathod',  '239', '9081107066', 'Emiet',    'room',     False),
-            ('Dhiraj',           '131', '',           'Emiet',    'floor',    False),
-            ('Jaydeep Solanki',  '259', '9727981188', 'Emiet',    'washroom', False),
-
-            # -- FIRPEAL -----------------------------------------------------
-            ('Rajesh Talvadi',   '104', '7046510026', 'Firpeal',  'room',     False),
-            ('Mayur Solanki',    '258', '',           'Firpeal',  'floor',    False),
-            ('Jagdish Chavda',   '157', '9662312505', 'Firpeal',  'washroom', False),
-
-            # -- GRIWIKSH ----------------------------------------------------
-            ('Nikul Solanki',    '446', '8238759843', 'Griwiksh', 'room',     False),
-            ('Jitendra Piwal',   '95',  '9723216455', 'Griwiksh', 'floor',    False),
-            ('Suresh Solanki',   '73',  '9687317660', 'Griwiksh', 'washroom', False),
-
-            # -- HIQOM (5 workers) --------------------------------------------
-            ('Mahendra Makwana', '148', '7041143190', 'Hiqom',    'room',     False),
-            ('Amit',             '110', '7779004437', 'Hiqom',    'room',     False),
-            ('Rajnikant',        '153', '6355825476', 'Hiqom',    'floor',    False),
-            ('Mehul Rathod',     '256', '6353451489', 'Hiqom',    'washroom', False),
-            ('Prahlad Parmar',   '242', '8734949909', 'Hiqom',    'washroom', False),
-
-            # -- JURQIA (4 workers) -------------------------------------------
-            ('Jaykesh',          '449', '8401531547', 'Jurqia',   'room',     False),
-            ('Naresh',           '89',  '7284086230', 'Jurqia',   'floor',    False),
-            ('Mehul Jadeja',     '106', '7096229284', 'Jurqia',   'washroom', False),
-            ('Harish',           '122', '7698462575', 'Jurqia',   'washroom', False),
-
-            # -- LEKHAAG (4 workers) ------------------------------------------
-            ('Ravi',             '245', '7383342914', 'Lekhaag',  'room',     False),
-            ('Banshi',           '149', '9023507559', 'Lekhaag',  'floor',    False),
-            ('Pravin Vaghela',   '246', '8511376344', 'Lekhaag',  'washroom', False),
-            ('Rakesh',           '438', '9316531354', 'Lekhaag',  'washroom', False),
-
-            # -- KYZEEL (5 workers) -------------------------------------------
-            ('Pravinbhai Mahida','91',  '9265530235', 'Kyzeel',   'room',     False),
-            ('Solanki Chandrakant','283','7201863872','Kyzeel',   'room',     False),
-            ('Satishbhai',       '113', '9558903676', 'Kyzeel',   'floor',    False),
-            ('Shailesh Talvadi', '97',  '8866886040', 'Kyzeel',   'washroom', False),
-            ('Anandkumar Parmar','310', '9023393753', 'Kyzeel',   'washroom', False),
-
-            # -- JEET HOSTEL -------------------------------------------------
-            ('Rajesh Parmar',                  '416', '', 'Block-A JRHA', 'room',     False),
-            ('Rathod Rahul',                   '417', '', 'Block-A JRHA', 'floor',    False),
-            ('Darshan Brahmaniya',             '450', '', 'Block-A JRHA', 'washroom', False),
-            ('Manisha Ben K Vaghela',          '129', '', 'Block-B JRHA', 'room',     False),
-            ('Sugna Ben J Vaghela',            '134', '', 'Block-B JRHA', 'floor',    False),
-            ('Leela Ben Dipak Kumar Parmar',   '150', '', 'Block-B JRHA', 'washroom', False),
-            ('Himmat Bhai',                    '456', '', 'Block-C JRHA', 'room',     False),
-            ('Hashmukh Bhai',                  '77',  '', 'Block-C JRHA', 'reliever', True),
-            ('Suresh Bhai',                    '454', '', 'Block-C JRHA', 'washroom', False),
-            ('Urvashi Ben Nayanbhai Vaghela',  '459', '', 'Block-D JRHA', 'room',     False),
-            ('Hetal Ben Ashokbhai',            '458', '', 'Block-D JRHA', 'floor',    False),
-            ('Bhavika Ben Solanki',            '457', '', 'Block-D JRHA', 'washroom', False),
-
-            # -- COMMON AREA -------------------------------------------------
-            ('Yogesh Vaghela',   '80',  '9998100804', 'Hostel Common Area', 'room',    False),
-            ('Vinayak Solanki',  '240', '9023271834', 'Hostel Common Area', 'washroom', False),
-            ('Anil Thakur',      '542', '9265665289', 'Hostel Common Area', 'floor',   False),
-            ('Suresh Solanki',   '472', '',            'Hostel Common Area', 'floor',   False),
-            ('Krunal Parmar',    '471', '',            'Hostel Common Area', 'reliever', True),
-            ('Ketan Gujjar',     '100', '8347139138', 'Hostel Common Area', 'floor',    False),
-
             # -- RESEARCH PARK -----------------------------------------------
             ('Mahesh Solanki',              '267', '7046959603', 'Research Park', 'floor',    False),
             ('Dhaval S Solanki',            '484', '',           'Research Park', 'floor',    False),
@@ -851,59 +783,59 @@ Existing account passwords are preserved.
             ('357', 'Reeta Ben', 'Aibaan'),
             ('219', 'Sangeeta Ben', 'Aibaan'),
             ('419', 'Shilpa Ben', 'Aibaan'),
-            ('98', 'Meena Ben', 'Beuaki'),
-            ('76', 'Kailashben M', 'Beuaki'),
-            ('415', 'Sonal Ben', 'Beuaki'),
+            ('98', 'Meena ben', 'Beauki'),
+            ('76', 'Kailash ben M', 'Beauki'),
+            ('415', 'Sonal ben', 'Beauki'),
             ('332', 'Bhanu Ben', 'Chimair'),
             ('233', 'Surya Ben', 'Chimair'),
             ('418', 'Dipika Ben', 'Chimair'),
             ('143', 'Kailash B Parmar', 'Ijokha'),
             ('386', 'Mittal Ben Vaghela', 'Ijokha'),
             ('230', 'Geeta Ben Parmar', 'Ijokha'),
-            ('356', 'Manisha Ben', 'Beuaki'),
+            ('356', 'Manisha ben', 'Hostels Reliever'),
             ('115', 'Jignesh', 'Duven'),
             ('260', 'Karan', 'Duven'),
             ('109', 'Sailesh Vaghela', 'Duven'),
-            ('435', 'Umesh Babariya', 'Duven'),
+            ('435', 'Umesh Babariya', 'Hostels Reliever'),
             ('239', 'Shailesh Rathod', 'Emiet'),
             ('131', 'Dhiraj', 'Emiet'),
             ('259', 'Jaydeep Solanki', 'Emiet'),
-            ('121', 'Rajendra', 'Emiet'),
+            ('121', 'Rajendra', 'Hostels Reliever'),
             ('104', 'Rajesh Talvadi', 'Firpeal'),
             ('258', 'Mayur Solanki', 'Firpeal'),
             ('157', 'Jagdish Chavda', 'Firpeal'),
             ('446', 'Nikul Solanki', 'Griwiksh'),
             ('95', 'Jitendra Piwal', 'Griwiksh'),
             ('73', 'Suresh Solanki', 'Griwiksh'),
-            ('261', 'Nitin Makwana', 'Griwiksh'),
+            ('261', 'Nitin Makwana', 'Hostels Reliever'),
             ('148', 'Mahendra Makwana', 'Hiqom'),
             ('110', 'Amit', 'Hiqom'),
             ('153', 'Rajnikant', 'Hiqom'),
             ('256', 'Mehul Rathod', 'Hiqom'),
             ('242', 'Prahlad Parmar', 'Hiqom'),
-            ('75', 'Hasmukhbhai', 'Hiqom'),
+            ('75', 'Hasmukhbhai', 'Hostels Reliever'),
             ('449', 'Jaykesh', 'Jurqia'),
             ('89', 'Naresh', 'Jurqia'),
             ('106', 'Mehul Jadeja', 'Jurqia'),
             ('122', 'Harish', 'Jurqia'),
-            ('136', 'Vinay', 'Jurqia'),
+            ('136', 'Vinay', 'Hostels Reliever'),
             ('91', 'Pravinbhai Mahida', 'Kyzeel'),
             ('283', 'Solanki Chandrakant', 'Kyzeel'),
             ('113', 'Satishbhai', 'Kyzeel'),
             ('97', 'Shailesh Talvadi', 'Kyzeel'),
             ('310', 'Anandkumar Parmar', 'Kyzeel'),
-            ('154', 'Lala', 'Kyzeel'),
+            ('154', 'Lala', 'Hostels Reliever'),
             ('245', 'Ravi', 'Lekhaag'),
             ('149', 'Banshi', 'Lekhaag'),
             ('246', 'Pravin Vaghela', 'Lekhaag'),
             ('438', 'Rakesh', 'Lekhaag'),
-            ('88', 'Mukesh', 'Lekhaag'),
+            ('88', 'Mukesh', 'Hostels Reliever'),
             ('80', 'Yogesh Vaghela', 'Hostel Common Area'),
             ('240', 'Vinayak Solanki', 'Hostel Common Area'),
             ('100', 'Ketan Gujjar', 'Hostel Common Area'),
             ('472', 'Suresh Solanki', 'Hostel Common Area'),
             ('542', 'Anil Thakur', 'Hostel Common Area'),
-            ('471', 'Krunal Parmar', 'Hostel Common Area'),
+            ('471', 'Krunal Parmar', 'Hostels Reliever'),
             ('416', 'Rajesh Parmar', 'Block-A JRHA'),
             ('417', 'Rathod Rahul', 'Block-A JRHA'),
             ('450', 'Darshan Brahmaniya', 'Block-A JRHA'),
@@ -918,7 +850,7 @@ Existing account passwords are preserved.
             ('459', 'Urvashi Ben Nayanbhai Vaghela', 'Block-D JRHA'),
         ]
         managed_hostel_area_names = [
-            'Aibaan', 'Beuaki', 'Chimair', 'Duven', 'Emiet', 'Firpeal',
+            'Aibaan', 'Beauki', 'Chimair', 'Duven', 'Emiet', 'Firpeal',
             'Griwiksh', 'Hiqom', 'Ijokha', 'Jurqia', 'Kyzeel', 'Lekhaag',
             'Block-A JRHA', 'Block-B JRHA', 'Block-C JRHA', 'Block-D JRHA',
             'Jeet Hostel Block A', 'Jeet Hostel Block B',
@@ -1005,74 +937,82 @@ Existing account passwords are preserved.
                 ).exclude(pk=target.pk).update(is_active=False)
 
         hostel_roster = [
-            {'area': 'Aibaan', 'name': 'Reeta Ben', 'pay_code': '357', 'phone': '9574379477', 'worker_type': 'floor', 'supervisor_username': 'priyanka.parmar', 'legacy_names': ['Reeta Ben', 'Reeta ben']},
-            {'area': 'Aibaan', 'name': 'Sangeeta Ben', 'pay_code': '219', 'phone': '8866941201', 'worker_type': 'washroom', 'supervisor_username': 'priyanka.parmar', 'legacy_names': ['Sangeeta Ben', 'Sangeeta  ben']},
-            {'area': 'Aibaan', 'name': 'Shilpa Ben', 'pay_code': '419', 'phone': '6356046585', 'worker_type': 'room', 'supervisor_username': 'priyanka.parmar', 'legacy_names': ['Shilpa Ben', 'shilpa ben']},
-            {'area': 'Beuaki', 'name': 'Meena Ben', 'pay_code': '98', 'phone': '9909679865', 'worker_type': 'room', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Meena Ben', 'Kailashben M']},
-            {'area': 'Beuaki', 'name': 'Kailashben M', 'pay_code': '76', 'phone': '8490053837', 'worker_type': 'washroom', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Kailashben M', 'kailashben m', 'Meena Ben']},
-            {'area': 'Beuaki', 'name': 'Sonal Ben', 'pay_code': '415', 'phone': '7359834672', 'worker_type': 'floor', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Sonal Ben', 'sonal ben']},
-            {'area': 'Beuaki', 'name': 'Manisha Ben', 'pay_code': '356', 'phone': '9157691322', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Manisha Ben', 'manisha ben']},
-            {'area': 'Chimair', 'name': 'Bhanu Ben', 'pay_code': '332', 'phone': '7567371788', 'worker_type': 'room', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Bhanu Ben', 'bhanu ben']},
-            {'area': 'Chimair', 'name': 'Dipika Ben', 'pay_code': '418', 'phone': '7383512108', 'worker_type': 'washroom', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Deepika Ben', 'Dipika Ben']},
-            {'area': 'Chimair', 'name': 'Surya Ben', 'pay_code': '233', 'phone': '9725963299', 'worker_type': 'floor', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Surya Ben']},
-            {'area': 'Duven', 'name': 'Jignesh', 'pay_code': '115', 'phone': '8401617156', 'worker_type': 'washroom', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Jignesh']},
-            {'area': 'Duven', 'name': 'Karan', 'pay_code': '260', 'phone': '7016522113', 'worker_type': 'room', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Karan']},
-            {'area': 'Duven', 'name': 'Sailesh Vaghela', 'pay_code': '109', 'phone': '8734987012', 'worker_type': 'floor', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Sailesh Vaghela', 'Sailesh vaghala']},
-            {'area': 'Duven', 'name': 'Umesh Babariya', 'pay_code': '435', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Umesh Babariya']},
+            {'area': 'Aibaan', 'name': 'Reeta ben', 'pay_code': '357', 'phone': '9574379477', 'worker_type': 'room', 'supervisor_username': 'priyanka.parmar', 'legacy_names': ['Reeta Ben', 'Reeta ben']},
+            {'area': 'Aibaan', 'name': 'Sangeeta ben', 'pay_code': '219', 'phone': '8866941201', 'worker_type': 'floor', 'supervisor_username': 'priyanka.parmar', 'legacy_names': ['Sangeeta Ben', 'Sangeeta ben', 'Sangeeta  ben']},
+            {'area': 'Aibaan', 'name': 'Shilpa ben', 'pay_code': '419', 'phone': '6356046585', 'worker_type': 'washroom', 'supervisor_username': 'priyanka.parmar', 'legacy_names': ['Shilpa Ben', 'Shilpa ben']},
+            {'area': 'Beauki', 'name': 'Meena ben', 'pay_code': '98', 'phone': '9909679865', 'worker_type': 'room', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Meena Ben', 'Meena ben']},
+            {'area': 'Beauki', 'name': 'Kailash ben M', 'pay_code': '76', 'phone': '8490053837', 'worker_type': 'floor', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Kailashben M', 'Kailash ben M']},
+            {'area': 'Beauki', 'name': 'Sonal ben', 'pay_code': '415', 'phone': '7359834672', 'worker_type': 'washroom', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Sonal Ben', 'Sonal ben']},
+            {'area': 'Chimair', 'name': 'Bhanu ben', 'pay_code': '332', 'phone': '7567371788', 'worker_type': 'room', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Bhanu Ben', 'Bhanu ben']},
+            {'area': 'Chimair', 'name': 'Surya ben', 'pay_code': '233', 'phone': '9725963299', 'worker_type': 'floor', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Surya Ben', 'Surya ben']},
+            {'area': 'Chimair', 'name': 'Dipika ben', 'pay_code': '418', 'phone': '7383512108', 'worker_type': 'washroom', 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Deepika Ben', 'Dipika Ben', 'Dipika ben']},
+            {'area': 'Ijokha', 'name': 'Kailash ben B', 'pay_code': '143', 'phone': '7265921026', 'worker_type': 'room', 'supervisor_username': 'rhushita.chavda', 'legacy_names': ['Kailash B Parmar', 'Kailash B', 'Kailash ben B']},
+            {'area': 'Ijokha', 'name': 'Mittal ben Vaghela', 'pay_code': '386', 'phone': '7383619204', 'worker_type': 'floor', 'supervisor_username': 'rhushita.chavda', 'legacy_names': ['Mital Ben', 'Mittal Ben Vaghela', 'Mittal ben Vaghela']},
+            {'area': 'Ijokha', 'name': 'Geeta ben Parmar', 'pay_code': '230', 'phone': '7041016942', 'worker_type': 'washroom', 'supervisor_username': 'rhushita.chavda', 'legacy_names': ['Geeta Ben', 'Geeta Ben Parmar', 'Geeta ben Parmar']},
+            {'area': 'Duven', 'name': 'Jignesh', 'pay_code': '115', 'phone': '8401617156', 'worker_type': 'room', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Jignesh']},
+            {'area': 'Duven', 'name': 'Karan', 'pay_code': '260', 'phone': '7016522113', 'worker_type': 'floor', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Karan']},
+            {'area': 'Duven', 'name': 'Sailesh Vaghela', 'pay_code': '109', 'phone': '8734987012', 'worker_type': 'washroom', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Sailesh Vaghela', 'Sailesh vaghala']},
             {'area': 'Emiet', 'name': 'Shailesh Rathod', 'pay_code': '239', 'phone': '9081107066', 'worker_type': 'room', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Shailesh Rathod']},
-            {'area': 'Emiet', 'name': 'Dhiraj', 'pay_code': '131', 'phone': '', 'worker_type': 'washroom', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Dhiraj']},
-            {'area': 'Emiet', 'name': 'Jaydeep Solanki', 'pay_code': '259', 'phone': '9727981188', 'worker_type': 'floor', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Jaydeep Solanki', 'jaydeep Solanki']},
-            {'area': 'Emiet', 'name': 'Rajendra', 'pay_code': '121', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Rajendra']},
-            {'area': 'Firpeal', 'name': 'Rajesh Talvadi', 'pay_code': '104', 'phone': '7046510026', 'worker_type': 'floor', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Rajesh Talvadi']},
-            {'area': 'Firpeal', 'name': 'Mayur Solanki', 'pay_code': '258', 'phone': '', 'worker_type': 'room', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Mayur Solanki', 'Mayur  Solanki']},
+            {'area': 'Emiet', 'name': 'Dhiraj', 'pay_code': '131', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Dhiraj']},
+            {'area': 'Emiet', 'name': 'Jaydeep Solanki', 'pay_code': '259', 'phone': '9727981188', 'worker_type': 'washroom', 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Jaydeep Solanki', 'jaydeep Solanki']},
+            {'area': 'Firpeal', 'name': 'Rajesh Talvadi', 'pay_code': '104', 'phone': '7046510026', 'worker_type': 'room', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Rajesh Talvadi']},
+            {'area': 'Firpeal', 'name': 'Mayur Solanki', 'pay_code': '258', 'phone': '', 'worker_type': 'floor', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Mayur Solanki', 'Mayur  Solanki']},
             {'area': 'Firpeal', 'name': 'Jagdish Chavda', 'pay_code': '157', 'phone': '9662312505', 'worker_type': 'washroom', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Jagdish', 'Jagdish chavda']},
-            {'area': 'Griwiksh', 'name': 'Nikul Solanki', 'pay_code': '446', 'phone': '8238759843', 'worker_type': 'floor', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Nikul Solanki']},
-            {'area': 'Griwiksh', 'name': 'Jitendra Piwal', 'pay_code': '95', 'phone': '9723216455', 'worker_type': 'washroom', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Jitendra', 'jitendra piwal']},
-            {'area': 'Griwiksh', 'name': 'Nitin Makwana', 'pay_code': '261', 'phone': '9157708871', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'anil.solanki', 'legacy_names': ['Nitin Makwana']},
-            {'area': 'Griwiksh', 'name': 'Suresh Solanki', 'pay_code': '73', 'phone': '9687317660', 'worker_type': 'room', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Suresh Solanki']},
-            {'area': 'Hiqom', 'name': 'Mahendra Makwana', 'pay_code': '148', 'phone': '7041143190', 'worker_type': 'floor', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Mahendra Makwana']},
-            {'area': 'Hiqom', 'name': 'Hasmukhbhai', 'pay_code': '75', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Hasmukhbhai']},
-            {'area': 'Hiqom', 'name': 'Amit', 'pay_code': '110', 'phone': '7779004437', 'worker_type': 'washroom', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Amit']},
-            {'area': 'Hiqom', 'name': 'Rajnikant', 'pay_code': '153', 'phone': '6355825476', 'worker_type': 'washroom', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Rajnikant']},
-            {'area': 'Hiqom', 'name': 'Mehul Rathod', 'pay_code': '256', 'phone': '6353451489', 'worker_type': 'room', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Mehul Rathod']},
-            {'area': 'Hiqom', 'name': 'Prahlad Parmar', 'pay_code': '242', 'phone': '8734949909', 'worker_type': 'floor', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Prahlad Parmar']},
-            {'area': 'Ijokha', 'name': 'Mittal Ben Vaghela', 'pay_code': '386', 'phone': '7383619204', 'worker_type': 'room', 'supervisor_username': 'rhushita.chavda', 'legacy_names': ['Mital Ben', 'Mittal ben Vaghela']},
-            {'area': 'Ijokha', 'name': 'Geeta Ben Parmar', 'pay_code': '230', 'phone': '7041016942', 'worker_type': 'washroom', 'supervisor_username': 'rhushita.chavda', 'legacy_names': ['Geeta Ben', 'Geeta ben parmar']},
-            {'area': 'Ijokha', 'name': 'Kailash B Parmar', 'pay_code': '143', 'phone': '7265921026', 'worker_type': 'floor', 'supervisor_username': 'rhushita.chavda', 'legacy_names': ['Kailash B', 'kailash b parmar']},
-            {'area': 'Jurqia', 'name': 'Jaykesh', 'pay_code': '449', 'phone': '8401531547', 'worker_type': 'floor', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Jaykesh']},
-            {'area': 'Jurqia', 'name': 'Naresh', 'pay_code': '89', 'phone': '7284086230', 'worker_type': 'washroom', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Naresh']},
-            {'area': 'Jurqia', 'name': 'Mehul Jadeja', 'pay_code': '106', 'phone': '7096229284', 'worker_type': 'room', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Mehul Jadeja']},
-            {'area': 'Jurqia', 'name': 'Vinay', 'pay_code': '136', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Vinay']},
+            {'area': 'Griwiksh', 'name': 'Nikul Solanki', 'pay_code': '446', 'phone': '8238759843', 'worker_type': 'room', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Nikul Solanki']},
+            {'area': 'Griwiksh', 'name': 'Jitendra Piwal', 'pay_code': '95', 'phone': '9723216455', 'worker_type': 'floor', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Jitendra', 'jitendra piwal', 'Jitendra Piwal']},
+            {'area': 'Griwiksh', 'name': 'Suresh Solanki', 'pay_code': '73', 'phone': '9687317660', 'worker_type': 'washroom', 'supervisor_username': 'anil.solanki', 'legacy_names': ['Suresh Solanki']},
+            {'area': 'Hiqom', 'name': 'Mahendra Makwana', 'pay_code': '148', 'phone': '7041143190', 'worker_type': 'room', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Mahendra Makwana']},
+            {'area': 'Hiqom', 'name': 'Amit', 'pay_code': '110', 'phone': '7779004437', 'worker_type': 'room', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Amit']},
+            {'area': 'Hiqom', 'name': 'Rajnikant', 'pay_code': '153', 'phone': '6355825476', 'worker_type': 'floor', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Rajnikant']},
+            {'area': 'Hiqom', 'name': 'Mehul Rathod', 'pay_code': '256', 'phone': '6353451489', 'worker_type': 'washroom', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Mehul Rathod']},
+            {'area': 'Hiqom', 'name': 'Prahlad Parmar', 'pay_code': '242', 'phone': '8734949909', 'worker_type': 'washroom', 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Prahlad Parmar']},
+            {'area': 'Jurqia', 'name': 'Jaykesh', 'pay_code': '449', 'phone': '8401531547', 'worker_type': 'room', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Jaykesh']},
+            {'area': 'Jurqia', 'name': 'Naresh', 'pay_code': '89', 'phone': '7284086230', 'worker_type': 'floor', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Naresh']},
+            {'area': 'Jurqia', 'name': 'Mehul Jadeja', 'pay_code': '106', 'phone': '7096229284', 'worker_type': 'washroom', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Mehul Jadeja']},
             {'area': 'Jurqia', 'name': 'Harish', 'pay_code': '122', 'phone': '7698462575', 'worker_type': 'washroom', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Harish']},
-            {'area': 'Kyzeel', 'name': 'Pravinbhai Mahida', 'pay_code': '91', 'phone': '9265530235', 'worker_type': 'washroom', 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Pravin Maida', 'pravinbhai mahida']},
-            {'area': 'Kyzeel', 'name': 'Lala', 'pay_code': '154', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Lala']},
-            {'area': 'Kyzeel', 'name': 'Solanki Chandrakant', 'pay_code': '283', 'phone': '7201863872', 'worker_type': 'floor', 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Chandrakant', 'Solanki Chandrakant']},
-            {'area': 'Kyzeel', 'name': 'Satishbhai', 'pay_code': '113', 'phone': '9558903676', 'worker_type': 'floor', 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Satish', 'Satishbhi']},
+            {'area': 'Kyzeel', 'name': 'Pravinbhai Mahida', 'pay_code': '91', 'phone': '9265530235', 'worker_type': 'room', 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Pravin Maida', 'pravinbhai mahida', 'Pravinbhai Mahida']},
+            {'area': 'Kyzeel', 'name': 'Solanki Chandrakant', 'pay_code': '283', 'phone': '7201863872', 'worker_type': 'room', 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Chandrakant', 'Solanki Chandrakant']},
+            {'area': 'Kyzeel', 'name': 'Satishbhai', 'pay_code': '113', 'phone': '9558903676', 'worker_type': 'floor', 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Satish', 'Satishbhi', 'Satishbhai']},
             {'area': 'Kyzeel', 'name': 'Shailesh Talvadi', 'pay_code': '97', 'phone': '8866886040', 'worker_type': 'washroom', 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Shailesh Talvadi']},
-            {'area': 'Kyzeel', 'name': 'Anandkumar Parmar', 'pay_code': '310', 'phone': '9023393753', 'worker_type': 'room', 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Anand', 'Anandkumar parmar']},
-            {'area': 'Lekhaag', 'name': 'Mukesh', 'pay_code': '88', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Mukesh']},
-            {'area': 'Lekhaag', 'name': 'Ravi', 'pay_code': '245', 'phone': '7383342914', 'worker_type': 'floor', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Ravi']},
-            {'area': 'Lekhaag', 'name': 'Banshi', 'pay_code': '149', 'phone': '9023507559', 'worker_type': 'washroom', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Banshi']},
+            {'area': 'Kyzeel', 'name': 'Anandkumar Parmar', 'pay_code': '310', 'phone': '9023393753', 'worker_type': 'washroom', 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Anand', 'Anandkumar parmar', 'Anandkumar Parmar']},
+            {'area': 'Lekhaag', 'name': 'Ravi', 'pay_code': '245', 'phone': '7383342914', 'worker_type': 'room', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Ravi']},
+            {'area': 'Lekhaag', 'name': 'Banshi', 'pay_code': '149', 'phone': '9023507559', 'worker_type': 'floor', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Banshi']},
             {'area': 'Lekhaag', 'name': 'Pravin Vaghela', 'pay_code': '246', 'phone': '8511376344', 'worker_type': 'washroom', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Pravin Vaghela', 'pravin Vaghela']},
-            {'area': 'Lekhaag', 'name': 'Rakesh', 'pay_code': '438', 'phone': '9316531354', 'worker_type': 'room', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Rakesh']},
+            {'area': 'Lekhaag', 'name': 'Rakesh', 'pay_code': '438', 'phone': '9316531354', 'worker_type': 'washroom', 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Rakesh']},
             {'area': 'Hostel Common Area', 'name': 'Yogesh Vaghela', 'pay_code': '80', 'phone': '9998100804', 'worker_type': 'room', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Yogesh Vaghela']},
             {'area': 'Hostel Common Area', 'name': 'Vinayak Solanki', 'pay_code': '240', 'phone': '9023271834', 'worker_type': 'washroom', 'shift': 'night', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Vinayak Solanki']},
             {'area': 'Hostel Common Area', 'name': 'Ketan Gujjar', 'pay_code': '100', 'phone': '8347139138', 'worker_type': 'floor', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Ketan Gujjar']},
-            {'area': 'Hostel Common Area', 'name': 'Krunal Parmar', 'pay_code': '471', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Krunal', 'Krunal Parmar']},
             {'area': 'Hostel Common Area', 'name': 'Suresh Solanki', 'pay_code': '472', 'phone': '', 'worker_type': 'general', 'shift': 'evening', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Suresh', 'Suresh Solanki']},
             {'area': 'Hostel Common Area', 'name': 'Anil Thakur', 'pay_code': '542', 'phone': '9265665289', 'worker_type': 'floor', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Anil Thakur']},
-            {'area': 'Hostels Reliever', 'name': 'Anju Ben', 'pay_code': '', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'priyanka.parmar', 'legacy_names': ['Anju Ben', 'Anju ben']},
+            {'area': 'Hostels Reliever', 'name': 'Anju ben', 'pay_code': '', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'priyanka.parmar', 'legacy_names': ['Anju Ben', 'Anju ben']},
+            {'area': 'Hostels Reliever', 'name': 'Manisha ben', 'pay_code': '356', 'phone': '9157691322', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Manisha Ben', 'Manisha ben']},
+            {'area': 'Hostels Reliever', 'name': 'Umesh Babariya', 'pay_code': '435', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Umesh Babariya']},
+            {'area': 'Hostels Reliever', 'name': 'Rajendra', 'pay_code': '121', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Rajendra']},
+            {'area': 'Hostels Reliever', 'name': 'Nitin Makwana', 'pay_code': '261', 'phone': '9157708871', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'anil.solanki', 'legacy_names': ['Nitin Makwana']},
+            {'area': 'Hostels Reliever', 'name': 'Hasmukhbhai', 'pay_code': '75', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'nikul.bihola', 'legacy_names': ['Hasmukhbhai']},
+            {'area': 'Hostels Reliever', 'name': 'Vinay', 'pay_code': '136', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Vinay']},
+            {'area': 'Hostels Reliever', 'name': 'Lala', 'pay_code': '154', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'ramprakash.parmar', 'legacy_names': ['Lala']},
+            {'area': 'Hostels Reliever', 'name': 'Mukesh', 'pay_code': '88', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Mukesh']},
+            {'area': 'Hostels Reliever', 'name': 'Krunal Parmar', 'pay_code': '471', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Krunal', 'Krunal Parmar']},
         ]
         hostel_synced, hostel_deactivated = self._sync_area_roster_by_supervisor(hostel_roster)
         hostel_deleted, hostel_kept = self._cleanup_unused_inactive_workers(
             sorted({spec['area'] for spec in hostel_roster})
         )
-        jrha_deleted, jrha_kept = self._cleanup_unused_inactive_workers([
+        jrha_area_names = [
             'Block-A JRHA', 'Block-B JRHA', 'Block-C JRHA', 'Block-D JRHA',
+        ]
+        jrha_deactivated = HKWorker.objects.filter(
+            area__name__in=jrha_area_names,
+            is_active=True,
+        ).update(is_active=False)
+        jrha_deleted, jrha_kept = self._cleanup_unused_inactive_workers([
+            *jrha_area_names,
         ])
         self.stdout.write(
             '  [OK] Hostel/Common roster synced from final list: '
             f'{hostel_synced} workers, {hostel_deactivated} extra deactivated, '
+            f'{jrha_deactivated} JRHA workers deactivated, '
             f'{hostel_deleted + jrha_deleted} unused removed, '
             f'{hostel_kept + jrha_kept} history rows kept inactive'
         )
@@ -1290,7 +1230,7 @@ Existing account passwords are preserved.
         """
         # Wipe old hostel templates and recreate fresh
         hostel_names = [
-            'Aibaan', 'Beuaki', 'Chimair', 'Duven', 'Emiet',
+            'Aibaan', 'Beauki', 'Chimair', 'Duven', 'Emiet',
             'Firpeal', 'Griwiksh', 'Hiqom', 'Ijokha', 'Jurqia',
             'Kyzeel', 'Lekhaag',
         ]
@@ -1437,7 +1377,7 @@ Existing account passwords are preserved.
 
             common_floor_tasks = [
                 (1, '08:00', '09:30', 'New Mess and Old Mess Common Route', True, 'New/old mess common area, corridor and front/back route cleaning'),
-                (2, '09:30', '10:45', 'Hostel Backside and Frontside Route', True, 'Aibaan, Beuaki, Chimair, Duven, Kyzeel, Jurqia, Lekhaag and Ijokha common route'),
+                (2, '09:30', '10:45', 'Hostel Backside and Frontside Route', True, 'Aibaan, Beauki, Chimair, Duven, Kyzeel, Jurqia, Lekhaag and Ijokha common route'),
                 (3, '13:45', '15:00', 'Common Area Dustbin and Tool Round', True, 'Dustbins, tool refill, waste transfer and route touch up'),
                 (4, '15:00', '16:50', 'Common Area Final Round', True, 'Final sweep, spot cleaning and pending common route work'),
             ]
