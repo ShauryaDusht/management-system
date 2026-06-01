@@ -470,6 +470,20 @@ Existing account passwords are preserved.
         legacy_keys.update(worker_key(name) for name in spec.get('legacy_names', []) if name)
         pay_code = (spec.get('pay_code') or '').strip()
 
+        if pay_code:
+            pay_code_matches = [
+                worker for worker in all_workers
+                if worker.id not in keep_ids
+                and (worker.pay_code or '').strip() == pay_code
+                and getattr(worker.area, 'area_type', None) == 'hostel'
+            ]
+            for worker in pay_code_matches:
+                if worker.area_id == area.id:
+                    return worker
+            for worker in pay_code_matches:
+                if worker.area_id in managed_area_ids:
+                    return worker
+
         for worker in all_workers:
             if worker.id in keep_ids:
                 continue
@@ -481,13 +495,6 @@ Existing account passwords are preserved.
                 continue
             if worker.area_id == area.id and worker_key(worker.name) in legacy_keys:
                 return worker
-
-        if pay_code:
-            for worker in all_workers:
-                if worker.id in keep_ids:
-                    continue
-                if worker.area_id in managed_area_ids and (worker.pay_code or '').strip() == pay_code:
-                    return worker
 
         for worker in all_workers:
             if worker.id in keep_ids:
@@ -574,6 +581,13 @@ Existing account passwords are preserved.
 
         return synced_count, deactivated_count
 
+    def _deactivate_extra_hostel_workers(self, keep_ids, area_names):
+        return HKWorker.objects.filter(
+            area__area_type='hostel',
+            area__name__in=area_names,
+            is_active=True,
+        ).exclude(id__in=keep_ids).update(is_active=False)
+
     def _sync_area_roster_by_supervisor(self, roster_specs):
         supervisors = {
             username: User.objects.filter(username=username).first()
@@ -621,10 +635,10 @@ Existing account passwords are preserved.
             keep_ids.add(worker.id)
             synced_count += 1
 
-        deactivated_count = HKWorker.objects.filter(
-            area__name__in=sorted(managed_areas),
-            is_active=True,
-        ).exclude(id__in=keep_ids).update(is_active=False)
+        deactivated_count = self._deactivate_extra_hostel_workers(
+            keep_ids,
+            sorted(managed_areas),
+        )
 
         return synced_count, deactivated_count
 
@@ -855,13 +869,17 @@ Existing account passwords are preserved.
             'Block-A JRHA', 'Block-B JRHA', 'Block-C JRHA', 'Block-D JRHA',
             'Jeet Hostel Block A', 'Jeet Hostel Block B',
             'Jeet Hostel Block C', 'Jeet Hostel Block D',
-            'Hostel Common Area', 'Hostels Reliever',
+            'Hostel Common Area', 'Hostels Reliever', 'Beuaki',
         ]
         for pay_code, name, area_name in hostel_area_moves:
             target_area = self.area(area_name)
             if not target_area:
                 continue
-            HKWorker.objects.filter(pay_code=pay_code, area__name__in=managed_hostel_area_names).update(
+            HKWorker.objects.filter(
+                pay_code=pay_code,
+                area__area_type='hostel',
+                area__name__in=managed_hostel_area_names,
+            ).update(
                 name=name,
                 area=target_area,
                 is_active=True,
@@ -1033,6 +1051,28 @@ Existing account passwords are preserved.
                 worker.shift = shift
                 worker.supervisor = common_supervisor
                 worker.save(update_fields=['shift', 'supervisor'])
+
+        expected_hostel_counts = {
+            spec['area']: 0
+            for spec in hostel_roster
+        }
+        for spec in hostel_roster:
+            expected_hostel_counts[spec['area']] += 1
+        actual_hostel_counts = {
+            area_name: HKWorker.objects.filter(area__name=area_name, is_active=True).count()
+            for area_name in expected_hostel_counts
+        }
+        mismatches = [
+            f'{area_name}: expected {expected}, active {actual_hostel_counts.get(area_name, 0)}'
+            for area_name, expected in sorted(expected_hostel_counts.items())
+            if actual_hostel_counts.get(area_name, 0) != expected
+        ]
+        if mismatches:
+            self.stdout.write(
+                self.style.WARNING(
+                    '  ! Hostel roster count mismatch after sync: ' + '; '.join(mismatches)
+                )
+            )
 
         research_roster = [
             {'area': 'Research Park', 'name': 'Mahesh Solanki', 'pay_code': '267', 'phone': '7046959603', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Mahesh Solanki']},
