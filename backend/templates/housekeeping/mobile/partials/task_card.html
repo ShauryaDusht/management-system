@@ -1,3 +1,4 @@
+{% load housekeeping_extras %}
 <div class="card js-task-card" id="task-{{ record.id }}" data-status="{{ record.status }}" data-sort-order="{{ record.schedule.order }}" data-start-time="{{ record.schedule.start_time|time:'H:i:s' }}" style="padding:11px;
   {% if record.status == 'done' %}border-left:4px solid #16a34a;
   {% elif record.status == 'in_progress' %}border-left:4px solid #2563eb;
@@ -55,7 +56,9 @@
 
   <div style="font-size:11px;color:#6b7280;margin-top:3px">
     Period: <b>{{ record.schedule.period_label }}</b>
-    {% if record.schedule.task_description %} | {{ record.schedule.task_description }}{% endif %}
+    {% with public_desc=record.schedule.task_description|public_task_description %}
+      {% if public_desc %} | {{ public_desc }}{% endif %}
+    {% endwith %}
   </div>
 
   {% if record.can_multi_worker_assignment and record.worker_assignments.count %}

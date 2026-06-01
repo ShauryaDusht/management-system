@@ -1,4 +1,5 @@
 {% extends 'housekeeping/mobile/base_hk.html' %}
+{% load housekeeping_extras %}
 {% block title %}Schedule{% endblock %}
 {% block hdr_title %}SCHEDULE{% endblock %}
 {% block n2 %}on{% endblock %}
@@ -47,8 +48,6 @@
     <span>
       {{ day_data.day }}
       {% if day_data.day_idx == today_dow %}<span style="font-size:10px;opacity:.7">(Today)</span>{% endif %}
-      {% if day_data.day_idx == 5 %}<span style="font-size:11px;opacity:.7">+ Saturday Special</span>{% endif %}
-      {% if day_data.day_idx == 6 %}<span style="font-size:11px;opacity:.7">+ Sunday Work</span>{% endif %}
     </span>
     <span>{{ day_data.tasks|length }} tasks {% if day_data.day_idx == today_dow %}-{% else %}+{% endif %}</span>
   </summary>
@@ -125,7 +124,9 @@
       border-bottom:{% if not forloop.last %}1px solid #f3f4f6{% else %}none{% endif %}">
       <div style="flex:1">
         <div style="font-weight:600;font-size:13px">{{ task.task_name }}</div>
-        {% if task.task_description %}<div style="font-size:11px;color:#6b7280;margin-top:1px">{{ task.task_description }}</div>{% endif %}
+        {% with public_desc=task.task_description|public_task_description %}
+          {% if public_desc %}<div style="font-size:11px;color:#6b7280;margin-top:1px">{{ public_desc }}</div>{% endif %}
+        {% endwith %}
         {% if task.requires_photo %}<div style="font-size:11px;color:#c2622a;margin-top:1px">Photo required</div>{% endif %}
       </div>
       <div style="text-align:right;font-size:11px;color:#6b7280;flex-shrink:0;margin-left:10px;white-space:nowrap">

@@ -530,6 +530,13 @@ def _dashboard_section_labels(area):
             "heading_room": "Team 2 - CNG Vehicle Team",
             "heading_washroom": "Team 3 - Hotel Team",
         })
+    elif _is_jrha_area(area):
+        labels.update({
+            "tab_label_room": "General Work",
+            "tab_label_special": "Special Work",
+            "heading_room": "General Tasks",
+            "heading_special": "Special Tasks",
+        })
     elif area and area.area_type == "academic":
         labels.update({
             "tab_label_floor": "Block Work",
@@ -1030,10 +1037,13 @@ def hk_dashboard(request):
     records = sorted(get_today_records(sel_area, today), key=task_completion_sort_key) if sel_area else []
     area_name = sel_area.name if sel_area else ""
     is_old_guest_house = area_name == "Old Guest House"
+    is_jrha = _is_jrha_area(sel_area)
 
     grouped = {}
     for rec in records:
         tag = rec.schedule.worker_tag or "general"
+        if is_jrha and tag == "general":
+            tag = "room"
         if is_old_guest_house and tag == "all":
             if is_break_task_name(rec.schedule.task_name):
                 tag = "floor"
@@ -1051,7 +1061,7 @@ def hk_dashboard(request):
     for recs in grouped.values():
         recs.sort(key=task_completion_sort_key)
 
-    if grouped["all"]:
+    if grouped["all"] and not is_jrha:
         grouped["floor"].extend(grouped["all"])
         grouped["floor"].sort(key=task_completion_sort_key)
         grouped["all"] = []
@@ -1305,6 +1315,7 @@ def hk_dashboard(request):
         "heading_washroom": heading_washroom,
         "heading_special": heading_special,
         "is_swm": is_swm,
+        "is_jrha": is_jrha,
         "has_special_tasks": bool(grouped["all"]),
         "can_assign_tasks": user.role in HOUSEKEEPING_STAFF_ROLES,
         "worker_selection_cards": worker_selection_cards,
