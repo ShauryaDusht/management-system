@@ -444,7 +444,7 @@ function TopItemsPanel({ rows }) {
 export default function InsightsPage() {
   const { user } = useAuth()
   const isHorticultureManager = user?.role === 'horticulture_manager'
-  const isHostelOffice = user?.role === 'hostel_office' || user?.username === 'hostel.office'
+  const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
   const [range, setRange] = useState('weekly')
   const [areaClass, setAreaClass] = useState(isHostelOffice ? 'hostels' : 'all')
   const [activeView, setActiveView] = useState('caretaker')
@@ -549,14 +549,16 @@ export default function InsightsPage() {
               <Btn key={opt.key} size="sm" variant={range === opt.key ? 'primary' : 'secondary'} onClick={() => setRange(opt.key)}>{opt.label}</Btn>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2 }}>Area:</span>
-            {visibleAreaOptions.map(opt => (
-              <Btn key={opt.key} size="sm" variant={areaClass === opt.key ? 'primary' : 'secondary'} onClick={() => setAreaClass(opt.key)}>
-                {isHorticultureManager && opt.key === 'others' ? 'Horticulture' : opt.label}
-              </Btn>
-            ))}
-          </div>
+          {!isHostelOffice && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2 }}>Area:</span>
+              {visibleAreaOptions.map(opt => (
+                <Btn key={opt.key} size="sm" variant={areaClass === opt.key ? 'primary' : 'secondary'} onClick={() => setAreaClass(opt.key)}>
+                  {isHorticultureManager && opt.key === 'others' ? 'Horticulture' : opt.label}
+                </Btn>
+              ))}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
           <Btn size="sm" variant="secondary" onClick={exportCurrentCsv}>📥 Export CSV</Btn>

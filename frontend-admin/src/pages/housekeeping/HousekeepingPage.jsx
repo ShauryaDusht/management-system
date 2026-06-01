@@ -27,7 +27,7 @@ export default function HousekeepingPage() {
   const { user } = useAuth()
   const { badges, markSeen } = useNotifications()
   const [searchParams, setSearchParams] = useSearchParams()
-  const isHostelOffice = user?.role === 'hostel_office'
+  const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
 
   const tabs = useMemo(
     () => {
