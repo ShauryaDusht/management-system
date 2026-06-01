@@ -4,6 +4,13 @@ import { authAPI } from '../api/auth'
 const AuthContext = createContext(null)
 const ALLOWED_PORTAL_ROLES = ['admin', 'horticulture_manager', 'hk_inventory_manager', 'hostel_office']
 
+function normalizePortalUser(user) {
+  if (user?.username === 'hostel.office') {
+    return { ...user, role: 'hostel_office' }
+  }
+  return user
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -14,14 +21,15 @@ export function AuthProvider({ children }) {
     if (token) {
       authAPI.me()
         .then(({ data }) => {
-          if (!ALLOWED_PORTAL_ROLES.includes(data?.role)) {
+          const portalUser = normalizePortalUser(data)
+          if (!ALLOWED_PORTAL_ROLES.includes(portalUser?.role)) {
             localStorage.removeItem('access_token')
             localStorage.removeItem('refresh_token')
             setUser(null)
             setUnauthorized(true)
             return
           }
-          setUser(data)
+          setUser(portalUser)
           setUnauthorized(false)
         })
         .catch(() => {
@@ -38,7 +46,8 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (username, password) => {
     const { data } = await authAPI.login(username, password)
-    if (!ALLOWED_PORTAL_ROLES.includes(data?.user?.role)) {
+    const portalUser = normalizePortalUser(data?.user)
+    if (!ALLOWED_PORTAL_ROLES.includes(portalUser?.role)) {
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
       setUser(null)
@@ -49,9 +58,9 @@ export function AuthProvider({ children }) {
     }
     localStorage.setItem('access_token', data.access)
     localStorage.setItem('refresh_token', data.refresh)
-    setUser(data.user)
+    setUser(portalUser)
     setUnauthorized(false)
-    return data.user
+    return portalUser
   }, [])
 
   const logout = useCallback(async () => {

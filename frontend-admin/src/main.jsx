@@ -9,7 +9,9 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-if (import.meta.env.DEV && 'serviceWorker' in navigator) {
+function clearAdminServiceWorkerCache() {
+  if (!('serviceWorker' in navigator)) return
+
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .getRegistrations()
@@ -33,10 +35,4 @@ if (import.meta.env.DEV && 'serviceWorker' in navigator) {
   })
 }
 
-if (import.meta.env.PROD && 'serviceWorker' in navigator && window.location.protocol === 'https:') {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/admin/admin-sw.js', { scope: '/admin/' })
-      .catch((error) => console.warn('Admin PWA service worker registration failed:', error))
-  })
-}
+clearAdminServiceWorkerCache()

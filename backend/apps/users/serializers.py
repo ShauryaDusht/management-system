@@ -41,10 +41,20 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def _get_portal_redirect(user):
         return get_portal_redirect(user)
 
+    @staticmethod
+    def _repair_portal_user(user):
+        if user.username == 'hostel.office' and user.role != User.Role.HOSTEL_OFFICE:
+            user.role = User.Role.HOSTEL_OFFICE
+            user.is_active = True
+            user.is_staff = True
+            user.is_superuser = False
+            user.save(update_fields=['role', 'is_active', 'is_staff', 'is_superuser'])
+        return user
+
     def validate(self, attrs):
         attrs['username'] = normalize_username_value(attrs.get('username'))
         data = super().validate(attrs)
-        user = self.user
+        user = self._repair_portal_user(self.user)
         data['user'] = {
             'id': user.id,
             'username': user.username,

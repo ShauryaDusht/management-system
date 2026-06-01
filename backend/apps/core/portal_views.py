@@ -16,11 +16,27 @@ from django.views.decorators.http import require_POST
 from apps.users.models import normalize_username_value
 
 
+def _is_hostel_office_login(user):
+    return getattr(user, 'username', '') == 'hostel.office' or getattr(user, 'role', '') == 'hostel_office'
+
+
+def _repair_hostel_office_user(user):
+    if getattr(user, 'username', '') == 'hostel.office' and getattr(user, 'role', '') != 'hostel_office':
+        user.role = 'hostel_office'
+        user.is_active = True
+        user.is_staff = True
+        user.is_superuser = False
+        user.save(update_fields=['role', 'is_active', 'is_staff', 'is_superuser'])
+    return user
+
+
 def get_react_admin_url(request):
     return '/admin/'
 
 
 def get_portal_redirect(user):
+    if _is_hostel_office_login(user):
+        return '/admin/login/'
     role = getattr(user, 'role', '')
     if role == 'horticulture_manager':
         return '/horticulture/dashboard/'
@@ -75,6 +91,7 @@ def portal_login(request):
             password=request.POST.get('password', ''),
         )
         if user and user.is_active:
+            user = _repair_hostel_office_user(user)
             if user.role in ['admin', 'inventory_manager', 'housekeeping_manager', 'hk_inventory_manager', 'hostel_office']:
                 return redirect(get_react_admin_url(request))
             auth_login(request, user)
