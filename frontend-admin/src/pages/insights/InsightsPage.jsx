@@ -444,8 +444,9 @@ function TopItemsPanel({ rows }) {
 export default function InsightsPage() {
   const { user } = useAuth()
   const isHorticultureManager = user?.role === 'horticulture_manager'
+  const isHostelOffice = user?.role === 'hostel_office' || user?.username === 'hostel.office'
   const [range, setRange] = useState('weekly')
-  const [areaClass, setAreaClass] = useState('all')
+  const [areaClass, setAreaClass] = useState(isHostelOffice ? 'hostels' : 'all')
   const [activeView, setActiveView] = useState('caretaker')
   const [insights, setInsights] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -454,32 +455,39 @@ export default function InsightsPage() {
     () => VIEW_OPTIONS.filter((option) => (
       isHorticultureManager
         ? ['caretaker', 'workers', 'area_hk'].includes(option.key)
+        : isHostelOffice
+        ? ['caretaker', 'workers', 'area_hk'].includes(option.key)
         : true
     )),
-    [isHorticultureManager]
+    [isHorticultureManager, isHostelOffice]
   )
   const visibleAreaOptions = useMemo(
     () => isHorticultureManager
       ? AREA_CLASS_OPTIONS.filter((option) => option.key === 'all' || option.key === 'others')
+      : isHostelOffice
+      ? AREA_CLASS_OPTIONS.filter((option) => option.key === 'hostels')
       : AREA_CLASS_OPTIONS,
-    [isHorticultureManager]
+    [isHorticultureManager, isHostelOffice]
   )
 
   useEffect(() => {
-    if (isHorticultureManager && !visibleViewOptions.some((option) => option.key === activeView)) {
+    if ((isHorticultureManager || isHostelOffice) && !visibleViewOptions.some((option) => option.key === activeView)) {
       setActiveView('caretaker')
+    }
+    if (isHostelOffice && areaClass !== 'hostels') {
+      setAreaClass('hostels')
     }
     if (isHorticultureManager && !visibleAreaOptions.some((option) => option.key === areaClass)) {
       setAreaClass('all')
     }
-  }, [activeView, areaClass, isHorticultureManager, visibleAreaOptions, visibleViewOptions])
+  }, [activeView, areaClass, isHorticultureManager, isHostelOffice, visibleAreaOptions, visibleViewOptions])
 
   useEffect(() => {
     let alive = true
     const load = async () => {
       setLoading(true); setError('')
       try {
-        const { data } = await reportsAPI.getDashboardInsights({ range, area_class: areaClass })
+        const { data } = await reportsAPI.getDashboardInsights({ range, area_class: isHostelOffice ? 'hostels' : areaClass })
         if (!alive) return
         setInsights(data || null)
       } catch (e) {
@@ -491,7 +499,7 @@ export default function InsightsPage() {
     }
     load()
     return () => { alive = false }
-  }, [range, areaClass])
+  }, [range, areaClass, isHostelOffice])
 
   const caretakerRows = Array.isArray(insights?.caretaker_supervisor_performance?.rows) ? insights.caretaker_supervisor_performance.rows : []
   const workerRows    = Array.isArray(insights?.worker_performance?.rows)               ? insights.worker_performance.rows               : []
@@ -524,13 +532,13 @@ export default function InsightsPage() {
   return (
     <AdminLayout
       title="Insights"
-      subtitle={isHorticultureManager ? 'Horticulture performance analysis' : 'Fair, multi-chart performance analysis - staff, workers, areas and inventory'}
+      subtitle={isHorticultureManager ? 'Horticulture performance analysis' : isHostelOffice ? 'Hostel area performance analysis - staff, workers and areas' : 'Fair, multi-chart performance analysis - staff, workers, areas and inventory'}
     >
       <Card style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
           {visibleViewOptions.map(opt => (
             <Btn key={opt.key} size="sm" variant={activeView === opt.key ? 'primary' : 'secondary'} onClick={() => setActiveView(opt.key)}>
-              {opt.key === 'area_hk' ? (isHorticultureManager ? 'Area-wise Horticulture' : 'Area-wise Comparison') : opt.label}
+              {opt.key === 'area_hk' ? (isHorticultureManager ? 'Area-wise Horticulture' : isHostelOffice ? 'Area-wise Hostels' : 'Area-wise Comparison') : opt.label}
             </Btn>
           ))}
         </div>

@@ -343,9 +343,12 @@ class DashboardInsightsView(APIView):
         range_key, start_date, end_date, dates = self._resolve_range(request.query_params.get('range'))
         area_class = self._normalize_area_class(request.query_params.get('area_class'))
         is_horticulture_manager = getattr(request.user, 'is_horticulture_manager', False)
-        include_inventory = not is_horticulture_manager
+        is_hostel_office = getattr(request.user, 'is_hostel_office', False) or getattr(request.user, 'username', '') == 'hostel.office'
+        if is_hostel_office:
+            area_class = 'hostels'
+        include_inventory = not is_horticulture_manager and not is_hostel_office
         include_housekeeping = not is_horticulture_manager
-        include_horticulture = not getattr(request.user, 'is_hk_inventory_manager', False)
+        include_horticulture = not getattr(request.user, 'is_hk_inventory_manager', False) and not is_hostel_office
 
         from apps.inventory.models import ItemIssue, ItemRequest, PurchaseRequest, StockEntry
         from apps.housekeeping.htmx_views import get_today_records
@@ -360,9 +363,21 @@ class DashboardInsightsView(APIView):
             HorticultureZone,
         )
 
+        hostel_area_filter = (
+            Q(area_type='hostel')
+            | Q(name__iexact='Hostel Common Area')
+            | Q(name__iexact='Hostels Reliever')
+        )
+        hostel_area_ids = list(
+            HKArea.objects.filter(is_active=True).filter(hostel_area_filter).values_list('id', flat=True)
+        ) if is_hostel_office else None
+
         # Ensure same-day records exist before analytics.
         if include_housekeeping and end_date == timezone.localdate():
-            for area in HKArea.objects.filter(is_active=True):
+            area_qs = HKArea.objects.filter(is_active=True)
+            if hostel_area_ids is not None:
+                area_qs = area_qs.filter(id__in=hostel_area_ids)
+            for area in area_qs:
                 get_today_records(area, end_date)
 
         # 1) Cross-module activity trend.
@@ -383,8 +398,12 @@ class DashboardInsightsView(APIView):
             'created_at',
         ) if include_inventory else {}
 
+        hk_record_qs = HKDailyRecord.objects.filter(date__range=(start_date, end_date))
+        if hostel_area_ids is not None:
+            hk_record_qs = hk_record_qs.filter(area_id__in=hostel_area_ids)
+
         hk_rows = (
-            HKDailyRecord.objects.filter(date__range=(start_date, end_date))
+            hk_record_qs
             .values('date')
             .annotate(
                 total=Count('id'),
@@ -490,9 +509,10 @@ class DashboardInsightsView(APIView):
         # 2) Housekeeping area + worker performance (fair comparison + attendance aware).
         from apps.housekeeping.models import HKAttendanceRecord, HKWorker
 
-        active_workers = list(
-            HKWorker.objects.select_related('area').filter(is_active=True, is_reliever=False).order_by('name')
-        )
+        active_worker_qs = HKWorker.objects.select_related('area').filter(is_active=True, is_reliever=False)
+        if hostel_area_ids is not None:
+            active_worker_qs = active_worker_qs.filter(area_id__in=hostel_area_ids)
+        active_workers = list(active_worker_qs.order_by('name'))
         area_worker_ids_map = defaultdict(set)
         staff_worker_ids_map = defaultdict(set)
         active_worker_ids = set()
@@ -642,6 +662,8 @@ class DashboardInsightsView(APIView):
             )
             .order_by('area_id', 'user_id')
         )
+        if hostel_area_ids is not None:
+            area_links = area_links.filter(area_id__in=hostel_area_ids)
         for link in area_links:
             existing = area_owner_by_area_id.get(link.area_id)
             if existing is None:
@@ -653,7 +675,7 @@ class DashboardInsightsView(APIView):
                 staff_worker_ids_map[link.user_id].update(worker_ids)
 
         hk_records = (
-            HKDailyRecord.objects.filter(date__range=(start_date, end_date))
+            hk_record_qs
             .select_related('area', 'assigned_worker', 'completed_by', 'assigned_by')
             .order_by('area__name', 'date')
         )
@@ -1016,9 +1038,12 @@ class DashboardInsightsView(APIView):
         worker_winner = next((row for row in worker_rows if row.get('total', 0) > 0), None)
 
         # 3) Inventory consumption analytics.
+        areas_qs = HKArea.objects.filter(is_active=True)
+        if hostel_area_ids is not None:
+            areas_qs = areas_qs.filter(id__in=hostel_area_ids)
         areas_by_id = {
             area.id: area
-            for area in HKArea.objects.filter(is_active=True).only('id', 'name', 'area_type')
+            for area in areas_qs.only('id', 'name', 'area_type')
         }
         horti_areas_by_id = {
             area.id: area
@@ -1031,14 +1056,18 @@ class DashboardInsightsView(APIView):
             .filter(area__is_active=True)
             .order_by('user_id', 'id')
         ):
+            if hostel_area_ids is not None and link.area_id not in hostel_area_ids:
+                continue
             if link.user_id not in user_primary_area and link.area_id:
                 user_primary_area[link.user_id] = link.area_id
 
-        issues = list(
-            ItemIssue.objects.filter(issued_at__date__range=(start_date, end_date))
-            .select_related('request__item', 'request__requested_by')
-            .order_by('-issued_at')
-        )
+        issues = []
+        if include_inventory:
+            issues = list(
+                ItemIssue.objects.filter(issued_at__date__range=(start_date, end_date))
+                .select_related('request__item', 'request__requested_by')
+                .order_by('-issued_at')
+            )
         request_ids = [issue.request_id for issue in issues]
         hk_req_area_map = dict(
             HKStockRequest.objects.filter(inventory_request_id__in=request_ids, area_id__isnull=False)
