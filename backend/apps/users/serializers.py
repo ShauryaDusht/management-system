@@ -55,12 +55,14 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         attrs['username'] = normalize_username_value(attrs.get('username'))
         data = super().validate(attrs)
         user = self._repair_portal_user(self.user)
+        response_role = User.Role.HK_INVENTORY_MANAGER if user.username == 'hostel.office' else user.role
         data['user'] = {
             'id': user.id,
             'username': user.username,
             'email': user.email,
             'full_name': user.get_full_name(),
-            'role': user.role,
+            'role': response_role,
+            'actual_role': user.role,
             'phone': user.phone,
             'portal_redirect': self._get_portal_redirect(user),
         }
