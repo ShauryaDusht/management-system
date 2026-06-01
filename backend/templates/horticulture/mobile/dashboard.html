@@ -151,7 +151,7 @@
     {% endif %}
   </div>
   {% if task.task_type_id not in completed_task_ids %}
-  <a href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="display:block;margin-top:8px;text-decoration:none">
+  <a href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}&source=home" style="display:block;margin-top:8px;text-decoration:none">
     <button class="btn-g" style="padding:9px;font-size:12px">Start Work</button>
   </a>
   {% else %}

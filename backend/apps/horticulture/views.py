@@ -2029,6 +2029,9 @@ def horticulture_mark_task(request):
     )
     error_message = ''
     today = timezone.localdate()
+    task_source = request.GET.get('source') or request.POST.get('source') or 'schedule'
+    if task_source not in {'home', 'schedule'}:
+        task_source = 'schedule'
 
     if request.method == 'POST':
         action = request.POST.get('action') or ''
@@ -2036,6 +2039,7 @@ def horticulture_mark_task(request):
             zone=selected_zone.id if selected_zone else None,
             area=selected_area.id if selected_area else None,
             task=request.POST.get('task_type_id') or request.GET.get('task'),
+            source=task_source,
         )
         with transaction.atomic():
             if selected_area is not None:
@@ -2271,6 +2275,7 @@ def horticulture_mark_task(request):
             'season': dashboard_payload['season'],
             'error_message': error_message,
             'zone_count': len(zones),
+            'task_source': task_source,
         },
     )
 

@@ -2,8 +2,11 @@
 {% load static %}
 {% block title %}Mark Task{% endblock %}
 {% block hdr_title %}MARK TASK{% endblock %}
-{% block back_btn %}<a href="/horticulture/dashboard/{% if selected_zone %}?zone={{ selected_zone.id }}{% endif %}" class="bk">&lt;</a>{% endblock %}
-{% block n2 %}on{% endblock %}
+{% block back_btn %}
+<a href="{% if task_source == 'home' %}/horticulture/dashboard/{% if selected_zone or selected_area %}?{% if selected_zone %}zone={{ selected_zone.id }}{% endif %}{% if selected_area %}{% if selected_zone %}&{% endif %}area={{ selected_area.id }}{% endif %}{% endif %}{% else %}/horticulture/schedule/{% if selected_zone or selected_area %}?{% if selected_zone %}zone={{ selected_zone.id }}{% endif %}{% if selected_area %}{% if selected_zone %}&{% endif %}area={{ selected_area.id }}{% endif %}{% endif %}{% endif %}" class="bk">&lt;</a>
+{% endblock %}
+{% block n1 %}{% if task_source == 'home' %}on{% endif %}{% endblock %}
+{% block n2 %}{% if task_source != 'home' %}on{% endif %}{% endblock %}
 
 {% block content %}
 {% if messages %}
@@ -18,7 +21,7 @@
 {% if zone_count > 1 %}
 <div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;-webkit-overflow-scrolling:touch">
   {% for zone in zones %}
-  <a href="/horticulture/mark-task/?zone={{ zone.id }}{% if selected_area and selected_zone and selected_zone.id == zone.id %}&area={{ selected_area.id }}{% endif %}" class="atab {% if selected_zone and selected_zone.id == zone.id %}on{% endif %}">
+  <a href="/horticulture/mark-task/?zone={{ zone.id }}{% if selected_area and selected_zone and selected_zone.id == zone.id %}&area={{ selected_area.id }}{% endif %}&source={{ task_source }}" class="atab {% if selected_zone and selected_zone.id == zone.id %}on{% endif %}">
     {{ zone.name }}
   </a>
   {% endfor %}
@@ -28,7 +31,7 @@
 {% if selected_zone and areas %}
 <div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;-webkit-overflow-scrolling:touch">
   {% for area in areas %}
-  <a href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ area.id }}" class="atab {% if selected_area and selected_area.id == area.id %}on{% endif %}">
+  <a href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ area.id }}&source={{ task_source }}" class="atab {% if selected_area and selected_area.id == area.id %}on{% endif %}">
     {{ area.name }}
   </a>
   {% endfor %}
@@ -97,12 +100,13 @@
       Assign workers
     </button>
     <div id="horti-assign-panel-{{ selected_area.id }}-{{ task.task_type_id }}" class="js-horti-assign-panel" data-task-id="{{ task.task_type_id }}" style="display:none;margin-top:8px">
-    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="margin-top:8px">
+    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}&source={{ task_source }}" style="margin-top:8px">
     {% csrf_token %}
     <input type="hidden" name="action" value="assign">
     <input type="hidden" name="zone_id" value="{{ selected_zone.id }}">
     <input type="hidden" name="area_id" value="{{ selected_area.id }}">
     <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
+    <input type="hidden" name="source" value="{{ task_source }}">
     <div style="display:grid;gap:8px;margin-top:8px">
       <div style="display:flex;gap:6px;align-items:center">
         <select name="session" required style="flex:1;padding:9px 8px;font-size:13px">
@@ -139,11 +143,12 @@
     <div style="margin-top:7px;font-size:11px;color:#6b7280;background:#f3f4f6;border-radius:7px;padding:6px 8px">
       Worker selection locked for this task.
     </div>
-    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="margin-top:8px">
+    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}&source={{ task_source }}" style="margin-top:8px">
     {% csrf_token %}
     <input type="hidden" name="action" value="start">
     <input type="hidden" name="assignment_id" value="{{ task.assignment.id }}">
     <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
+    <input type="hidden" name="source" value="{{ task_source }}">
     <div style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:8px;background:#f9fafb;margin-bottom:7px">
       <div style="font-size:11px;font-weight:800;color:#374151;margin-bottom:5px">Before photo (optional)</div>
       <input type="file" name="photo_before" accept="image/*" capture="environment" style="font-size:12px;width:100%">
@@ -163,11 +168,12 @@
       </div>
     </div>
     {% endif %}
-    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" class="js-horti-task-complete-form" style="margin-top:8px">
+    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}&source={{ task_source }}" class="js-horti-task-complete-form" style="margin-top:8px">
     {% csrf_token %}
     <input type="hidden" name="action" value="done">
     <input type="hidden" name="assignment_id" value="{{ task.assignment.id }}">
     <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
+    <input type="hidden" name="source" value="{{ task_source }}">
     <input type="hidden" name="capturedAt" class="js-photo-captured-at" value="">
     <input type="hidden" name="captureMethod" class="js-photo-capture-method" value="">
     <input type="hidden" name="originalSize" class="js-photo-original-size" value="">
@@ -202,11 +208,12 @@
       </div>
       <button type="submit" class="btn-s js-submit-btn" style="margin-top:10px;padding:9px;font-size:12px">Mark Completed</button>
     </form>
-    <form method="post" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}" style="margin-top:6px">
+    <form method="post" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}&source={{ task_source }}" style="margin-top:6px">
     {% csrf_token %}
     <input type="hidden" name="action" value="undo">
     <input type="hidden" name="assignment_id" value="{{ task.assignment.id }}">
     <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
+    <input type="hidden" name="source" value="{{ task_source }}">
     <button type="submit" class="btn-g" style="padding:8px;font-size:12px">Move Back To Pending</button>
     </form>
 

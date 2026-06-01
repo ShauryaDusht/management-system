@@ -34,7 +34,7 @@
       <div class="muted">{{ assignment.get_session_display }}{% if assignment.assigned_by %} | {{ assignment.assigned_by.get_full_name|default:assignment.assigned_by.username }}{% endif %}</div>
       {% if assignment.note %}<div class="muted" style="margin-top:4px">{{ assignment.note }}</div>{% endif %}
     </div>
-    <a class="bdg b" href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ assignment.task_type.id }}&session={{ assignment.session }}">Do Task</a>
+    <a class="bdg b" href="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ assignment.task_type.id }}&session={{ assignment.session }}&source=schedule">Do Task</a>
   </div>
 </div>
 {% empty %}
