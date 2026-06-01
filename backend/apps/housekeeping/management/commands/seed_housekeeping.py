@@ -1294,6 +1294,19 @@ Existing account passwords are preserved.
                 worker.supervisor = ashok_supervisor
                 worker.save(update_fields=['shift', 'supervisor'])
 
+        director_bungalow_exact_roster = [
+            {'area': 'Director Bungalow', 'name': 'Shailesh Ugarabhai Vaghela', 'pay_code': '311', 'phone': '8128880335', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False},
+            {'area': 'Director Bungalow', 'name': 'Rakesh Ishvarbhai Parmar', 'pay_code': '305', 'phone': '8238931261', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False},
+        ]
+        director_synced, director_deactivated = self._enforce_active_roster_by_pay_code(
+            director_bungalow_exact_roster,
+            'ashok.rathod',
+        )
+        self.stdout.write(
+            '  [OK] Director Bungalow exact roster enforced: '
+            f'{director_synced} workers, {director_deactivated} extra active rows deactivated'
+        )
+
         guest_house_exact_roster = [
             {'area': 'Guest House New', 'name': 'Raju Manabhai Makwana', 'pay_code': '263', 'phone': '9601550905', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False},
             {'area': 'Guest House New', 'name': 'Hiteshkumar Gafulbhai Vaghela', 'pay_code': '291', 'phone': '9265621047', 'worker_type': 'washroom', 'shift': 'day', 'is_reliever': False},
