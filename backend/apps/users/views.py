@@ -1,4 +1,5 @@
 from rest_framework import generics, status
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -10,6 +11,23 @@ from .serializers import CustomTokenObtainPairSerializer, UserSerializer, UserCr
 from .permissions import IsAdminOrHKInventoryManager
 
 DEPRECATED_MANAGER_USERNAMES = ['housekeeping.manager', 'inventory.manager']
+
+
+def _is_hk_inventory_request(user):
+    return bool(user and getattr(user, 'is_hk_inventory_manager', False))
+
+
+def _is_protected_admin_user(user):
+    return bool(user and (getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False)))
+
+
+def _deny_hk_inventory_admin_mutation(request_user, target_user=None, incoming_role=None):
+    if not _is_hk_inventory_request(request_user):
+        return
+    if _is_protected_admin_user(target_user):
+        raise PermissionDenied('HK Inventory Manager cannot edit or delete admin users.')
+    if incoming_role == User.Role.ADMIN:
+        raise ValidationError({'role': ['HK Inventory Manager cannot create or promote admin users.']})
 
 
 class LoginView(TokenObtainPairView):
@@ -72,6 +90,13 @@ class UserListCreateView(generics.ListCreateAPIView):
             return UserCreateSerializer
         return UserSerializer
 
+    def perform_create(self, serializer):
+        _deny_hk_inventory_admin_mutation(
+            self.request.user,
+            incoming_role=serializer.validated_data.get('role'),
+        )
+        serializer.save()
+
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
@@ -82,6 +107,18 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UserSerializer
     def get_permissions(self):
         return [IsAdminOrHKInventoryManager()]
+
+    def perform_update(self, serializer):
+        _deny_hk_inventory_admin_mutation(
+            self.request.user,
+            target_user=serializer.instance,
+            incoming_role=serializer.validated_data.get('role'),
+        )
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        _deny_hk_inventory_admin_mutation(self.request.user, target_user=instance)
+        instance.delete()
 
 
 class ChangePasswordView(APIView):

@@ -18,6 +18,7 @@ import AdminLayout from '../../layout/AdminLayout'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import { exportCsv, todayISO } from '../../shared/utils'
+import { useAuth } from '../../context/AuthContext'
 
 const ROLES = [
   'admin',
@@ -83,6 +84,7 @@ function areaInchargeText(user) {
 }
 
 export default function UsersPage() {
+  const { user: currentUser } = useAuth()
   const [users, setUsers] = useState([])
   const [areas, setAreas] = useState([])
   const [search, setSearch] = useState('')
@@ -106,14 +108,21 @@ export default function UsersPage() {
   }, [], 'Failed to load users. Make sure you are logged in as Admin.')
 
   const error = actionError || loadError
+  const isHKInventoryManager = currentUser?.role === 'hk_inventory_manager'
+  const editableRoles = isHKInventoryManager ? ROLES.filter((role) => role !== 'admin') : ROLES
+  const canEditUser = (targetUser) => !isHKInventoryManager || targetUser.role !== 'admin'
 
   const openCreate = () => {
-    setForm(EMPTY)
+    setForm({ ...EMPTY, role: 'supervisor' })
     setFormError('')
     setModal({ mode: 'create' })
   }
 
   const openEdit = (u) => {
+    if (!canEditUser(u)) {
+      setFormError('HK / Inventory Manager cannot edit admin users.')
+      return
+    }
     setForm({
       username: u.username || '',
       first_name: u.first_name || '',
@@ -130,6 +139,10 @@ export default function UsersPage() {
   }
 
   const save = async () => {
+    if (isHKInventoryManager && form.role === 'admin') {
+      setFormError('HK / Inventory Manager cannot create or promote admin users.')
+      return
+    }
     const standardizedUsername = buildUsername(form.first_name, form.last_name) || String(form.username || '').trim().toLowerCase()
     if (!standardizedUsername || !form.role) {
       setFormError('First name, last name, and role are required.')
@@ -172,6 +185,11 @@ export default function UsersPage() {
 
   const doDelete = async () => {
     if (!deleteTarget) return
+    if (!canEditUser(deleteTarget)) {
+      setFormError('HK / Inventory Manager cannot delete admin users.')
+      setDeleteTarget(null)
+      return
+    }
     await runAction(async () => {
       await usersAPI.delete(deleteTarget.id)
       setDeleteTarget(null)
@@ -378,12 +396,20 @@ export default function UsersPage() {
                 {u.is_active ? 'Active' : 'Inactive'}
               </span>,
               <div key={`actions-${u.id}`} style={{ display: 'flex', gap: 6 }}>
-                <Btn size="sm" variant="ghost" onClick={() => openEdit(u)}>
-                  Edit
-                </Btn>
-                <Btn size="sm" variant="danger" onClick={() => setDeleteTarget(u)}>
-                  Delete
-                </Btn>
+                {canEditUser(u) ? (
+                  <>
+                    <Btn size="sm" variant="ghost" onClick={() => openEdit(u)}>
+                      Edit
+                    </Btn>
+                    <Btn size="sm" variant="danger" onClick={() => setDeleteTarget(u)}>
+                      Delete
+                    </Btn>
+                  </>
+                ) : (
+                  <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600 }}>
+                    Protected
+                  </span>
+                )}
               </div>,
             ])}
           />
@@ -438,7 +464,7 @@ export default function UsersPage() {
               }))
             }}
           >
-            {ROLES.map((r) => (
+            {editableRoles.map((r) => (
               <option key={r} value={r}>
                 {r.replace('_', ' ')}
               </option>
