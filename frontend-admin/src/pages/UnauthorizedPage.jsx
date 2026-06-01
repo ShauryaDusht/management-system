@@ -1,8 +1,19 @@
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 
 import { Btn, Card } from '../components/ui'
+import { useAuth } from '../context/AuthContext'
+
+const ADMIN_PORTAL_ROLES = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
 
 export default function UnauthorizedPage() {
+  const { user, loading } = useAuth()
+
+  if (loading) return null
+
+  if (ADMIN_PORTAL_ROLES.includes(user?.role)) {
+    return <Navigate to="/dashboard" replace />
+  }
+
   return (
     <div
       style={{
