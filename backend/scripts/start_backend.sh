@@ -18,6 +18,7 @@ python manage.py sync_monthly_purchase_plans --quiet
 python manage.py update_pay_codes --quiet
 python manage.py update_names --quiet
 python manage.py sync_guesthouse_director_staff --quiet
+python manage.py seed_housekeeping -v 0
 python manage.py seed_horticulture
 
 printf '%s\n' "Setting up cron job for photo cleanup..."
