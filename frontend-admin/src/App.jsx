@@ -13,7 +13,7 @@ import ProfilePage from './pages/profile/ProfilePage'
 import UnauthorizedPage from './pages/UnauthorizedPage'
 import UsersPage from './pages/users/UsersPage'
 
-const ADMIN_ONLY = ['admin']
+const ADMIN_OR_HK_INVENTORY = ['admin', 'hk_inventory_manager']
 const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager']
 const HK_INVENTORY_ALLOWED = ['admin', 'hk_inventory_manager']
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
@@ -105,7 +105,7 @@ export default function App() {
           <Route
             path="/users"
             element={
-              <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+              <ProtectedRoute allowedRoles={ADMIN_OR_HK_INVENTORY}>
                 <UsersPage />
               </ProtectedRoute>
             }

@@ -369,9 +369,9 @@ export default function DashboardPage() {
                   style={{ height: '100%', cursor: 'default', userSelect: 'none', transition: 'none', pointerEvents: 'none' }}
                 />
               ) : (
-                <a key={card.label} href={card.to} className="ui-interactive-card-link" style={{ height: '100%', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
+                <Link key={card.label} to={card.to} className="ui-interactive-card-link" style={{ height: '100%', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
                   <StatCard label={card.label} value={card.value} icon={card.icon} color={card.color} sub={card.sub} style={{ height: '100%', cursor: 'pointer', userSelect: 'none' }} />
-                </a>
+                </Link>
               )
             ))}
           </div>

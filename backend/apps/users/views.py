@@ -7,7 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User
 from .serializers import CustomTokenObtainPairSerializer, UserSerializer, UserCreateSerializer
-from .permissions import IsAdmin, IsAdminOrHKInventoryManager
+from .permissions import IsAdminOrHKInventoryManager
 
 DEPRECATED_MANAGER_USERNAMES = ['housekeeping.manager', 'inventory.manager']
 
@@ -55,9 +55,7 @@ class UserListCreateView(generics.ListCreateAPIView):
     POST /api/auth/users/   — Admin: create new user
     """
     def get_permissions(self):
-        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
-            return [IsAdminOrHKInventoryManager()]
-        return [IsAdmin()]
+        return [IsAdminOrHKInventoryManager()]
 
     def get_queryset(self):
         qs = User.objects.prefetch_related(
@@ -83,9 +81,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.prefetch_related('hk_areas__area', 'horticulture_supervised_zones').all()
     serializer_class = UserSerializer
     def get_permissions(self):
-        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
-            return [IsAdminOrHKInventoryManager()]
-        return [IsAdmin()]
+        return [IsAdminOrHKInventoryManager()]
 
 
 class ChangePasswordView(APIView):

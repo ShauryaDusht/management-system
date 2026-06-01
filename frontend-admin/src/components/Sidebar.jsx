@@ -68,6 +68,7 @@ export default function Sidebar() {
         badge: badges.housekeeping,
       },
       { to: '/insights', icon: 'AN', label: 'Insights' },
+      { to: '/users', icon: 'US', label: 'Manage Users' },
     ]
     : [
       { to: '/dashboard', icon: 'DB', label: 'Dashboard' },

@@ -164,6 +164,13 @@ HOSTEL_RELIEVER_ASSIGNMENTS = {
     "Hostel Common Area": {"pay_codes": ["471"]},
 }
 
+HOUSEKEEPING_MANAGER_ROLES = {"admin", "housekeeping_manager", "hk_inventory_manager"}
+HOUSEKEEPING_STAFF_ROLES = HOUSEKEEPING_MANAGER_ROLES | {"supervisor", "caretaker"}
+
+
+def can_manage_housekeeping_user(user):
+    return getattr(user, "role", "") in HOUSEKEEPING_MANAGER_ROLES
+
 
 def _attendance_relievers_for_area(area):
     qs = HKWorker.objects.filter(is_active=True)
@@ -384,6 +391,31 @@ def _template_matches_day(template, day_idx, target_date=None):
             return day_idx == 0
         anchor = datetime.date(2026, 1, 5)
         return ((target_date - anchor).days % 15) == 0
+
+    if "sundays:" in desc:
+        if day_idx != 6:
+            return False
+        if target_date is None:
+            return True
+        rule_text = desc.split("sundays:", 1)[1].split("|", 1)[0]
+        sunday_index = ((target_date.day - 1) // 7) + 1
+        rules = {
+            "first": 1,
+            "1st": 1,
+            "second": 2,
+            "2nd": 2,
+            "third": 3,
+            "3rd": 3,
+            "fourth": 4,
+            "4th": 4,
+            "fifth": 5,
+            "5th": 5,
+        }
+        allowed = {index for label, index in rules.items() if label in rule_text}
+        if "monthly" in rule_text and not allowed:
+            allowed = {1}
+        if allowed and sunday_index not in allowed:
+            return False
 
     return True
 
@@ -695,7 +727,7 @@ def _assign_incharge_for_leave(leave_req, assigned_staff, acted_by_user, note=""
 
 
 def get_user_areas(user):
-    if user.role in ["admin", "housekeeping_manager"]:
+    if can_manage_housekeeping_user(user):
         return HKArea.objects.filter(is_active=True)
     assigned_area_ids = set(
         HKArea.objects.filter(assigned_users__user=user, is_active=True).values_list("id", flat=True)
@@ -750,7 +782,7 @@ def get_user_areas(user):
 
 
 def visible_user_areas(user, user_areas):
-    if user.role in ["admin", "housekeeping_manager"]:
+    if can_manage_housekeeping_user(user):
         return user_areas
     return user_areas.exclude(name__in=STAFF_HIDDEN_AREA_NAMES)
 
@@ -763,7 +795,7 @@ def hk_required(fn):
         # deactivated users must not pass through even if role matches
         if not request.user.is_active:
             return redirect("/housekeeping/login/")
-        if request.user.role not in ["admin", "housekeeping_manager", "supervisor", "caretaker"]:
+        if request.user.role not in HOUSEKEEPING_STAFF_ROLES:
             return redirect("/housekeeping/login/")
         return fn(request, *args, **kwargs)
     return wrapper
@@ -912,7 +944,7 @@ def can_multi_worker_task(user, record):
             "director",
             "other",
         }
-        and getattr(user, "role", "") in {"caretaker", "supervisor", "admin", "housekeeping_manager"}
+        and getattr(user, "role", "") in HOUSEKEEPING_STAFF_ROLES
     )
 
 
@@ -948,9 +980,7 @@ def get_active_alerts(user, user_areas):
 
 
 def hk_login(request):
-    if request.user.is_authenticated and request.user.role in [
-        "supervisor", "caretaker", "admin", "housekeeping_manager"
-    ]:
+    if request.user.is_authenticated and request.user.role in HOUSEKEEPING_STAFF_ROLES:
         if request.user.role == "admin":
             return redirect("/admin-portal/")
         return redirect("/housekeeping/dashboard/")
@@ -980,9 +1010,7 @@ def hk_login(request):
             username=normalize_username_value(request.POST.get("username", "")),
             password=request.POST.get("password", ""),
         )
-        if user and user.is_active and user.role in [
-            "supervisor", "caretaker", "admin", "housekeeping_manager"
-        ]:
+        if user and user.is_active and user.role in HOUSEKEEPING_STAFF_ROLES:
             auth_login(request, user)
             if user.role == "admin":
                 return redirect("/admin-portal/")
@@ -1278,7 +1306,7 @@ def hk_dashboard(request):
         "heading_special": heading_special,
         "is_swm": is_swm,
         "has_special_tasks": bool(grouped["all"]),
-        "can_assign_tasks": user.role in ["admin", "housekeeping_manager", "supervisor", "caretaker"],
+        "can_assign_tasks": user.role in HOUSEKEEPING_STAFF_ROLES,
         "worker_selection_cards": worker_selection_cards,
         "show_ws_overlay": bool(worker_selection_cards) and user.role in ["supervisor", "caretaker"],
         "ws_ok": ws_ok,
@@ -1451,7 +1479,7 @@ def hk_incharge_respond(request):
         )
         admins = UserModel.objects.filter(
             is_active=True,
-            role__in=["admin", "housekeeping_manager"],
+            role__in=list(HOUSEKEEPING_MANAGER_ROLES),
         )
         for admin_user in admins:
             _create_incharge_notice(
@@ -1745,7 +1773,7 @@ def hk_mark_task(request, record_id):
         "record": record,
         "tag_labels": WORKER_TAG_LABELS,
         "area_workers": area_workers,
-        "can_assign_tasks": user.role in ["admin", "housekeeping_manager", "supervisor", "caretaker"],
+        "can_assign_tasks": user.role in HOUSEKEEPING_STAFF_ROLES,
         "task_error": task_error,
     })
 
@@ -2566,7 +2594,7 @@ def hk_profile(request):
 
 @hk_required
 def hk_alerts_manage(request):
-    if request.user.role not in ["admin", "housekeeping_manager"]:
+    if not can_manage_housekeeping_user(request.user):
         return redirect("/housekeeping/dashboard/")
     if request.method == "POST":
         action = request.POST.get("action")

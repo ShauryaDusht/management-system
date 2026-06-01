@@ -1434,51 +1434,72 @@ Existing account passwords are preserved.
         if jeet_areas:
             HKScheduleTemplate.objects.filter(area__in=jeet_areas).delete()
 
-            jeet_room_tasks = [
-                (1, '08:10', '09:30', 'Scheduled Flats Room Cleaning', True, 'Mon/Wed/Fri: floors 1-3. Tue/Thu/Sat: floors 4-7. Rooms, flat common dusting and room-side dustbins.'),
-                (2, '09:30', '10:45', 'Pantry and Common Room Cleaning', True, 'Flat pantry, common room, lounge and office touch points.'),
-                (3, '13:45', '15:00', 'Afternoon Room Touch Up', True, 'Pending rooms, pantry touch up and complaint points.'),
-                (4, '15:00', '16:50', 'Room Area Final Round', True, 'Final room-side round, fridge check twice per month as assigned.'),
+            jrha_daily_tasks = [
+                (1, '08:00', '08:45', 'Office Cleaning', True, 'Days: daily | Office dusting, sweeping, mopping and touch points.'),
+                (2, '08:45', '09:30', 'Lounge Cleaning', True, 'Days: daily | Lounge sweeping, mopping, dusting and seating area cleaning.'),
+                (3, '09:30', '10:15', 'Staircase Cleaning', True, 'Days: daily | Staircase, railing and landing cleaning.'),
+                (4, '10:15', '11:00', 'Common Area Cleaning', True, 'Days: daily | Common passages, common points and visible waste collection.'),
             ]
-            jeet_floor_tasks = [
-                (1, '08:10', '09:30', 'Scheduled Floor Passage Cleaning', True, 'Mon/Wed/Fri: floors 1-3. Tue/Thu/Sat: floors 4-7.'),
-                (2, '09:30', '10:45', 'Staircase, Lift and Railing Cleaning', True, 'Daily staircase, lift/common lift, railing and landing wipe.'),
-                (3, '13:45', '15:00', 'Ground Floor and Dustbin Round', True, 'Ground floor, road/common approach, dustbin collection and replacement.'),
-                (4, '15:00', '16:50', 'Floor Final Round', True, 'Final mopping, dusting, issue reporting and pending floor work.'),
+            jrha_low_floor_tasks = [
+                (11, '11:00', '12:00', 'Floor 1 Cleaning', True, 'Days: monday, wednesday, friday | Block floors 1-3 rotation.'),
+                (12, '12:00', '13:00', 'Floor 2 Cleaning', True, 'Days: monday, wednesday, friday | Block floors 1-3 rotation.'),
+                (13, '14:00', '15:00', 'Floor 3 Cleaning', True, 'Days: monday, wednesday, friday | Block floors 1-3 rotation.'),
             ]
-            jeet_washroom_tasks = [
-                (1, '08:10', '09:30', 'Washroom Cleaning - Morning Round', True, 'Scheduled flats washrooms, basins, mirrors, fittings and floors.'),
-                (2, '09:30', '10:45', 'Washroom Deep Cleaning and Dusting', True, 'Commode, partitions, tile scrubbing and dry dusting.'),
-                (3, '13:45', '15:00', 'Afternoon Washroom Touch Up', True, 'Second round, refill, odour and dry floor check.'),
-                (4, '15:00', '16:50', 'Washroom Final Round', True, 'Final washroom touch up, dustbin check and pending work.'),
+            jrha_high_floor_tasks = [
+                (21, '11:00', '12:00', 'Floor 4 Cleaning', True, 'Days: tuesday, thursday, saturday | Block floors 4-7 rotation.'),
+                (22, '12:00', '13:00', 'Floor 5 Cleaning', True, 'Days: tuesday, thursday, saturday | Block floors 4-7 rotation.'),
+                (23, '14:00', '15:00', 'Floor 6 Cleaning', True, 'Days: tuesday, thursday, saturday | Block floors 4-7 rotation.'),
+                (24, '15:00', '16:00', 'Floor 7 Cleaning', True, 'Days: tuesday, thursday, saturday | Block floors 4-7 rotation.'),
             ]
-            jeet_sunday_extra = [
-                (1, '10:45', '11:45', 'Sunday Weekly and Monthly Cleaning', True, 'Web/cobweb, dustbin deep cleaning, garden, ground floor deep clean, basement or terrace as assigned.'),
+            jrha_sunday_weekly_tasks = [
+                (31, '08:00', '09:00', 'Web Cleaning', True, 'Weekly Sunday web/cobweb cleaning.'),
+                (32, '09:00', '10:00', 'Dustbin Cleaning', True, 'Weekly Sunday dustbin washing and sanitizing.'),
+                (33, '10:00', '11:00', 'Garden Cleaning', True, 'Weekly Sunday garden and outside patch cleaning.'),
+                (34, '11:00', '12:00', 'Deep Cleaning - Ground Floor', True, 'Sunday ground floor deep cleaning.'),
+            ]
+            jrha_sunday_monthly_tasks = [
+                (41, '14:00', '15:00', 'Basement Cleaning', True, 'Sundays: first | Monthly basement cleaning.'),
+                (42, '15:00', '16:00', 'Terrace Cleaning', True, 'Sundays: first | Monthly terrace cleaning.'),
+                (43, '16:00', '17:00', 'Fridge Cleaning', True, 'Sundays: first, third | Fridge cleaning on 1st and 3rd Sunday of every month.'),
             ]
 
             for area in jeet_areas:
-                for order, start, end, name, req_photo, desc in jeet_room_tasks:
+                is_block_b = area.name == 'Block-B JRHA'
+                structure_note = (
+                    'Block B: 3 flats per floor.'
+                    if is_block_b
+                    else 'Blocks A/C/D: 4 flats per floor; each flat has 3 rooms, 3 washrooms and 1 pantry.'
+                )
+
+                for order, start, end, name, req_photo, desc in jrha_daily_tasks:
                     HKScheduleTemplate.objects.create(
                         area=area, order=order, start_time=t(start), end_time=t(end),
-                        task_name=name, task_description=desc, worker_tag='room',
+                        task_name=name, task_description=f'{desc} {structure_note}', worker_tag='general',
                         requires_photo=req_photo, frequency='daily', is_active=True,
                     )
                     total += 1
-                for order, start, end, name, req_photo, desc in jeet_floor_tasks:
+                for order, start, end, name, req_photo, desc in jrha_low_floor_tasks:
                     HKScheduleTemplate.objects.create(
                         area=area, order=order, start_time=t(start), end_time=t(end),
-                        task_name=name, task_description=desc, worker_tag='floor',
+                        task_name=name, task_description=f'{desc} {structure_note}', worker_tag='floor',
                         requires_photo=req_photo, frequency='daily', is_active=True,
                     )
                     total += 1
-                for order, start, end, name, req_photo, desc in jeet_washroom_tasks:
+                for order, start, end, name, req_photo, desc in jrha_high_floor_tasks:
                     HKScheduleTemplate.objects.create(
                         area=area, order=order, start_time=t(start), end_time=t(end),
-                        task_name=name, task_description=desc, worker_tag='washroom',
+                        task_name=name, task_description=f'{desc} {structure_note}', worker_tag='floor',
                         requires_photo=req_photo, frequency='daily', is_active=True,
                     )
                     total += 1
-                for order, start, end, name, req_photo, desc in jeet_sunday_extra:
+                for order, start, end, name, req_photo, desc in jrha_sunday_weekly_tasks:
+                    HKScheduleTemplate.objects.create(
+                        area=area, order=order, start_time=t(start), end_time=t(end),
+                        task_name=name, task_description=desc, worker_tag='all',
+                        requires_photo=req_photo, frequency='sunday_extra', is_active=True,
+                    )
+                    total += 1
+                for order, start, end, name, req_photo, desc in jrha_sunday_monthly_tasks:
                     HKScheduleTemplate.objects.create(
                         area=area, order=order, start_time=t(start), end_time=t(end),
                         task_name=name, task_description=desc, worker_tag='all',
