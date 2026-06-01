@@ -123,7 +123,11 @@ class HKScheduleTemplate(models.Model):
         Period bucket label for mobile UI.
         Requested by users to view task periods (30m/1h/2h+) over exact clock slots.
         """
+        if 'tea break' in (self.task_name or '').lower():
+            return '15 min'
         mins = self.duration_minutes
+        if mins <= 15:
+            return '15 min'
         if mins <= 30:
             return '30 min'
         if mins <= 60:

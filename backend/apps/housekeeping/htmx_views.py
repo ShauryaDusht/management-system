@@ -428,10 +428,56 @@ def _swm_template_matches_day(template, day_idx):
     return _template_matches_day(template, day_idx)
 
 
+def _normalize_break_templates_for_area(area):
+    if not area or area.area_type in {"hostel", "swm"}:
+        return
+
+    templates = HKScheduleTemplate.objects.filter(area=area, frequency="daily", is_active=True)
+    for template in templates.filter(task_name__icontains="Tea Break"):
+        fixed_end = (
+            datetime.datetime.combine(datetime.date.today(), template.start_time)
+            + datetime.timedelta(minutes=15)
+        ).time()
+        updates = []
+        if template.end_time != fixed_end:
+            template.end_time = fixed_end
+            updates.append("end_time")
+        if template.requires_photo:
+            template.requires_photo = False
+            updates.append("requires_photo")
+        if updates:
+            template.save(update_fields=updates)
+
+    for template in templates.filter(task_name__icontains="Lunch Break"):
+        fixed_end = (
+            datetime.datetime.combine(datetime.date.today(), template.start_time)
+            + datetime.timedelta(minutes=60)
+        ).time()
+        updates = []
+        if template.end_time != fixed_end:
+            template.end_time = fixed_end
+            updates.append("end_time")
+        if template.requires_photo:
+            template.requires_photo = False
+            updates.append("requires_photo")
+        if updates:
+            template.save(update_fields=updates)
+
+
 def _schedule_templates_for_day(area, day_idx, target_date=None):
+    _normalize_break_templates_for_area(area)
     base_qs = HKScheduleTemplate.objects.filter(area=area, is_active=True)
     if day_idx == 6 and _uses_sunday_special_only(area):
         return base_qs.filter(frequency="sunday_extra")
+
+    if day_idx == 6 and area and area.area_type == "academic":
+        daily_ids = list(base_qs.filter(frequency="daily").values_list("pk", flat=True))
+        sunday_ids = [
+            template.pk
+            for template in base_qs.filter(frequency="sunday_extra").select_related("area")
+            if _template_matches_day(template, day_idx, target_date)
+        ]
+        return base_qs.filter(pk__in=[*daily_ids, *sunday_ids])
 
     templates = base_qs.filter(frequency="daily")
     if day_idx == 5:
