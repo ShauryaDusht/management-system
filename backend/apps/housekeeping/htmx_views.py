@@ -67,6 +67,16 @@ JRHA_AREA_NAMES = {
     "Jeet Hostel Block C",
     "Jeet Hostel Block D",
 }
+JRHA_NIGHT_CARETAKER_USERNAME = "kailash.vaghela"
+JRHA_NIGHT_TASK_MARKER = "[JRHA_NIGHT_CARETAKER]"
+JRHA_NIGHT_TASKS = [
+    (1, "22:00", "22:30", "Hostel and Other Payments Register", "Check hostel/other payment notes and pending night entries."),
+    (2, "22:30", "23:00", "Borewell On/Off Register", "Record borewell on/off timing, status and any issue observed."),
+    (3, "23:00", "23:45", "Complaint/Suggestion Register and Resolve", "Review complaint/suggestion entries, resolve possible items and record follow-up."),
+    (4, "23:45", "00:30", "Student Entry/Exit Register", "Verify student entry/exit register and note exceptions."),
+    (5, "00:30", "01:00", "Courier/Parcel Register", "Check courier/parcel register and pending handover notes."),
+    (6, "01:00", "01:30", "Night Round and Incident Note", "Round all assigned JRHA blocks and record any incident or maintenance concern."),
+]
 
 ATTENDANCE_CHOICES = [
     ("present", "Present", "#d1fae5", "#065f46"),
@@ -150,6 +160,77 @@ def _is_jrha_area(area):
     return bool(area and area.name in JRHA_AREA_NAMES)
 
 
+def _is_jrha_night_caretaker(user):
+    return bool(
+        user
+        and (getattr(user, "username", "") or "").lower() == JRHA_NIGHT_CARETAKER_USERNAME
+        and getattr(user, "role", "") == "caretaker"
+    )
+
+
+def _jrha_night_task_description(description):
+    return f"{JRHA_NIGHT_TASK_MARKER} {description}"
+
+
+def _ensure_jrha_night_templates(area):
+    if not _is_jrha_area(area):
+        return []
+
+    templates = []
+    for order, start, end, name, description in JRHA_NIGHT_TASKS:
+        template = (
+            HKScheduleTemplate.objects
+            .filter(
+                area=area,
+                worker_tag="night_caretaker",
+                task_name=name,
+                task_description__icontains=JRHA_NIGHT_TASK_MARKER,
+            )
+            .order_by("id")
+            .first()
+        )
+        defaults = {
+            "order": order,
+            "start_time": datetime.time.fromisoformat(start),
+            "end_time": datetime.time.fromisoformat(end),
+            "task_description": _jrha_night_task_description(description),
+            "worker_tag": "night_caretaker",
+            "requires_photo": False,
+            "frequency": "daily",
+            "is_active": False,
+        }
+        if not template:
+            template = HKScheduleTemplate.objects.create(area=area, task_name=name, **defaults)
+        else:
+            updates = []
+            for field, value in defaults.items():
+                if getattr(template, field) != value:
+                    setattr(template, field, value)
+                    updates.append(field)
+            if updates:
+                template.save(update_fields=updates)
+        templates.append(template)
+    return templates
+
+
+def _mark_staff_present_from_task(user, date):
+    staff_att, created = HKStaffAttendanceRecord.objects.get_or_create(
+        staff=user,
+        date=date,
+        defaults={
+            "status": "present",
+            "source": "auto_attendance",
+            "note": "Auto-marked from JRHA night task submission.",
+        },
+    )
+    if not created and staff_att.source != "auto_leave" and staff_att.status != "present":
+        staff_att.status = "present"
+        staff_att.source = "auto_attendance"
+        staff_att.note = "Auto-marked from JRHA night task submission."
+        staff_att.save(update_fields=["status", "source", "note"])
+    return staff_att
+
+
 HOSTEL_RELIEVER_ASSIGNMENTS = {
     "Aibaan": {"names": ["Anju Ben", "Anju ben"]},
     "Ijokha": {"names": ["Anju Ben", "Anju ben"]},
@@ -207,7 +288,19 @@ def _attendance_relievers_for_area(area):
 
 
 def _shared_display_worker_qs_for_area(area):
-    if not area or area.name != "Academic Block 8":
+    if not area:
+        return HKWorker.objects.none()
+
+    if area.name == "Guest House New":
+        # Keep one worker row so attendance marked from either area stays unified.
+        return HKWorker.objects.filter(
+            is_active=True,
+            area__name="Director Bungalow",
+            pay_code="305",
+            name__iexact="Rakesh Ishvarbhai Parmar",
+        )
+
+    if area.name != "Academic Block 8":
         return HKWorker.objects.none()
 
     return HKWorker.objects.filter(
@@ -873,7 +966,7 @@ def selected_area(request, user_areas):
     return user_areas.first()
 
 
-def get_today_records(area, date):
+def get_today_records(area, date, user=None):
     """
     Generate HKDailyRecord for every applicable template for this area/date.
     daily templates run every day.
@@ -884,9 +977,13 @@ def get_today_records(area, date):
     from django.db import IntegrityError, transaction
 
     dow = date.weekday()  # 0=Mon, 6=Sun
-    templates = _schedule_templates_for_day(area, dow, date)
+    if _is_jrha_night_caretaker(user) and _is_jrha_area(area):
+        template_list = _ensure_jrha_night_templates(area)
+        templates = HKScheduleTemplate.objects.filter(pk__in=[tmpl.pk for tmpl in template_list])
+    else:
+        templates = _schedule_templates_for_day(area, dow, date)
+        template_list = list(templates.order_by("worker_tag", "order", "start_time"))
 
-    template_list = list(templates.order_by("worker_tag", "order", "start_time"))
     if area and area.name == "Guest House New":
         template_list = [tmpl for tmpl in template_list if tmpl.worker_tag != "previous_day"]
 
@@ -930,13 +1027,23 @@ def get_today_records(area, date):
             schedule__is_active=False,
             schedule__worker_tag="all",
         )
+        .exclude(schedule__task_description__icontains=JRHA_NIGHT_TASK_MARKER)
         .exclude(schedule__in=template_list)
         .select_related("schedule", "completed_by", "assigned_worker", "assigned_by", "area")
         .prefetch_related("worker_assignments__worker")
         .order_by("schedule__order", "schedule__start_time")
     )
 
-    return list(active_records) + list(temporary_task_records)
+    if _is_jrha_night_caretaker(user) and _is_jrha_area(area):
+        records = list(active_records)
+    else:
+        records = list(active_records) + list(temporary_task_records)
+    for record in records:
+        record.is_direct_staff_task = bool(
+            record.schedule.worker_tag == "night_caretaker"
+            and JRHA_NIGHT_TASK_MARKER in (record.schedule.task_description or "")
+        )
+    return records
 
 
 def get_guest_house_previous_day_records(area, today):
@@ -1042,6 +1149,11 @@ def is_break_task_name(task_name):
 
 def can_multi_worker_task(user, record):
     if not record or not record.area:
+        return False
+    if (
+        record.schedule.worker_tag == "night_caretaker"
+        and JRHA_NIGHT_TASK_MARKER in (record.schedule.task_description or "")
+    ):
         return False
 
     # Keep Research Park on the existing single-worker flow. Other supervisor
@@ -1577,7 +1689,8 @@ def hk_dashboard(request):
     area_name = sel_area.name if sel_area else ""
     is_old_guest_house = area_name == "Old Guest House"
     is_jrha = _is_jrha_area(sel_area)
-    today_records = get_today_records(sel_area, today) if sel_area else []
+    is_jrha_night_caretaker = _is_jrha_night_caretaker(user)
+    today_records = get_today_records(sel_area, today, user=user) if sel_area else []
     previous_day_records = get_guest_house_previous_day_records(sel_area, today) if area_name == "Guest House New" else []
     records = sorted([*today_records, *previous_day_records], key=task_completion_sort_key)
     is_simple_hostel = bool(
@@ -1591,6 +1704,8 @@ def hk_dashboard(request):
     grouped = {}
     for rec in records:
         tag = rec.schedule.worker_tag or "general"
+        if getattr(rec, "is_direct_staff_task", False):
+            tag = "all"
         if is_jrha and tag == "general":
             tag = "room"
         if is_old_guest_house and tag == "all":
@@ -1643,11 +1758,15 @@ def hk_dashboard(request):
     pct = int((done / total) * 100) if total else 0
 
     today_dow = today.weekday()
-    area_workers = effective_workers_for_area(sel_area, today)
+    area_workers = [] if is_jrha_night_caretaker and is_jrha else effective_workers_for_area(sel_area, today)
     mark_busy_workers(area_workers, busy_worker_ids_for_tasks(sel_area, today))
     for record in records:
         record.can_multi_worker_assignment = can_multi_worker_task(user, record)
         record.is_break_task = is_break_task_name(record.schedule.task_name)
+        record.is_direct_staff_task = bool(
+            record.schedule.worker_tag == "night_caretaker"
+            and JRHA_NIGHT_TASK_MARKER in (record.schedule.task_description or "")
+        )
 
     worker_ids_for_cards = [worker.id for worker in area_workers]
     attendance_summary = {
@@ -1960,6 +2079,7 @@ def hk_dashboard(request):
         "is_swm": is_swm,
         "is_research_park": is_research_park,
         "is_jrha": is_jrha,
+        "is_jrha_night_caretaker": is_jrha_night_caretaker,
         "is_simple_hostel": is_simple_hostel,
         "is_guest_house_new": is_guest_house_new,
         "has_special_tasks": bool(grouped["all"]),
@@ -2184,10 +2304,16 @@ def hk_mark_task(request, record_id):
     today = timezone.localdate()
     record_date = record.date
     is_break_task = is_break_task_name(record.schedule.task_name)
+    is_direct_staff_task = bool(
+        record.schedule.worker_tag == "night_caretaker"
+        and JRHA_NIGHT_TASK_MARKER in (record.schedule.task_description or "")
+    )
     can_mark_break = user.role == "supervisor"
     is_multi_worker_task = can_multi_worker_task(user, record)
 
     def has_worker_assignment():
+        if is_direct_staff_task:
+            return True
         if record.assigned_worker_id:
             return True
         if is_multi_worker_task:
@@ -2410,6 +2536,8 @@ def hk_mark_task(request, record_id):
                 except (ValueError, TypeError):
                     pass
             record.save()
+            if is_direct_staff_task and record_date:
+                _mark_staff_present_from_task(user, record_date)
             log_image_event(
                 "housekeeping_complete_saved",
                 request,
@@ -2424,6 +2552,10 @@ def hk_mark_task(request, record_id):
     ).prefetch_related("worker_assignments__worker").get(pk=record.pk)
     record.can_multi_worker_assignment = can_multi_worker_task(user, record)
     record.is_break_task = is_break_task_name(record.schedule.task_name)
+    record.is_direct_staff_task = bool(
+        record.schedule.worker_tag == "night_caretaker"
+        and JRHA_NIGHT_TASK_MARKER in (record.schedule.task_description or "")
+    )
     record.is_previous_day_task = (
         record.area.name == "Guest House New"
         and record.schedule.worker_tag == "previous_day"
@@ -2514,14 +2646,18 @@ def hk_schedule(request):
     is_roads_outdoor = area_name == "Roads & Outdoor"
     is_swm = area_name == "Solid Waste Management"
     is_academic = bool(sel_area and sel_area.area_type == "academic")
+    is_jrha_night_caretaker = _is_jrha_night_caretaker(user)
 
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     weekly = []
     if sel_area:
         for i, day in enumerate(days):
-            tasks = list(
-                _schedule_templates_for_day(sel_area, i).order_by("worker_tag", "order", "start_time")
-            )
+            if is_jrha_night_caretaker and _is_jrha_area(sel_area):
+                tasks = _ensure_jrha_night_templates(sel_area)
+            else:
+                tasks = list(
+                    _schedule_templates_for_day(sel_area, i).order_by("worker_tag", "order", "start_time")
+                )
             weekly.append({"day": day, "day_idx": i, "tasks": tasks})
 
     return render(request, "housekeeping/mobile/schedule.html", {
@@ -2536,6 +2672,7 @@ def hk_schedule(request):
         "is_roads_outdoor": is_roads_outdoor,
         "is_swm": is_swm,
         "is_academic": is_academic,
+        "is_jrha_night_caretaker": is_jrha_night_caretaker,
         "weekly": weekly,
         "today_dow": timezone.localdate().weekday(),
         "tag_labels": WORKER_TAG_LABELS,

@@ -16,7 +16,9 @@
 {% if selected_area %}
 <div style="font-size:12px;color:#6b7280;margin-bottom:10px;font-weight:600">
   {{ selected_area.name }} -
-  {% if is_common_area %}
+  {% if is_jrha_night_caretaker %}
+    JRHA night caretaker register and round checklist
+  {% elif is_common_area %}
     Route-based schedule every day
   {% elif is_research_park %}
     Worker-wise operations plan (Mon-Sat + Sunday deep clean)
@@ -110,6 +112,8 @@
         {% elif tgrp.grouper == 'washroom' %}Washroom and Common Area Operations
         {% elif tgrp.grouper == 'all' %}Special / Sunday Tasks
         {% else %}General{% endif %}
+      {% elif is_jrha_night_caretaker %}
+        Night Caretaker Register
       {% else %}
         {% if tgrp.grouper == 'room' %}Room Staff
         {% elif tgrp.grouper == 'floor' %}Floor Staff

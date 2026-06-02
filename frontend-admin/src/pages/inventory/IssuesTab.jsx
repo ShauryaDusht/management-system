@@ -30,9 +30,10 @@ const MONTHS = [
 function getAreaClass(areaType, areaName) {
   const name = String(areaName || '').trim()
   const type = String(areaType || '')
-  if (type === 'hostel') return 'hostels'
+  if (type === 'hostel' || type === 'jrha') return 'hostels'
   if (/^Academic Block/i.test(name) || ['Academic Common Area', 'New AB U-Shape', 'New Academy'].includes(name)) return 'academic'
   if (['hostel common area', 'common area', 'hostels reliever'].includes(name.toLowerCase())) return 'hostels'
+  if (/\bJRHA\b/i.test(name) || /Jeet Hostel/i.test(name)) return 'hostels'
   if (type === 'academic') return 'academic'
   return 'others'
 }

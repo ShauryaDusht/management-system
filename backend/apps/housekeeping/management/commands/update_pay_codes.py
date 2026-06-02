@@ -48,7 +48,7 @@ SUPERVISOR_BY_USERNAME = {
 # RHUSHITA CHETANKUMAR CHAVDA  → rhushita.chavda      → 294
 # SOLANKI ANIL                 → anil.solanki         → 300
 # VISHVAJEET KUMAR             → vishvajeet.kumar → 316
-# PARMAR RAMPRAKASH LEMBABHAI  → ramprakash.parmar    → 317
+# RAM SINGH                    → ram.singh             → 11
 # JAIMIN PARMAR                → jaimin.parmar        → 318
 # SHAILESHKUMAR VAGHELA        → (no DB user)    — skip
 # ANITA VAGHELA                -> anita.vaghela       -> 10
@@ -60,7 +60,7 @@ CARETAKER_BY_USERNAME = {
     'rhushita.chavda':  '294',
     'anil.solanki':     '300',
     'vishwajeet.mishra': '08',
-    'ramprakash.parmar': '317',
+    'ram.singh':         '11',
     'jaimin.parmar':    '318',
     'anita.vaghela':    '10',
     'nikul.bihola':     '427',

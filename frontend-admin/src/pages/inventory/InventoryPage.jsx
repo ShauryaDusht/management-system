@@ -11,6 +11,7 @@ import ItemsTab from './ItemsTab'
 import MonthlyReportTab from './MonthlyReportTab'
 import RequestsTab from './RequestsTab'
 import StockLogTab from './StockLogTab'
+import ReportTab from './ReportTab'
 
 const BASE_TAB_CONFIG = [
   { key: 'items', label: 'Items', icon: '📦' },
@@ -26,10 +27,15 @@ export default function InventoryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const { badges, markSeen } = useNotifications()
-  const canViewReports = user?.role === 'admin' || user?.role === 'hk_inventory_manager'
+  const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
+  const inventoryRole = isHostelOffice ? 'hostel_office' : user?.role
+  const canViewReports = user?.role === 'admin' || user?.role === 'hk_inventory_manager' || isHostelOffice
 
   const tabConfig = useMemo(() => {
-    const base = BASE_TAB_CONFIG.map((tab) => {
+    const visibleBase = isHostelOffice
+      ? BASE_TAB_CONFIG.filter((tab) => ['items', 'requests', 'issues', 'stocklog'].includes(tab.key))
+      : BASE_TAB_CONFIG
+    const base = visibleBase.map((tab) => {
       if (tab.key === 'items') {
         return {
           ...tab,
@@ -47,8 +53,8 @@ export default function InventoryPage() {
       return tab
     })
 
-    return canViewReports ? [...base, REQUEST_REPORT_TAB] : base
-  }, [badges.inventory, badges.lowStock, canViewReports])
+    return canViewReports ? [...base, { key: 'inventory-report', label: 'Inventory Report', icon: 'IR' }, REQUEST_REPORT_TAB] : base
+  }, [badges.inventory, badges.lowStock, canViewReports, isHostelOffice])
 
   const validTabs = useMemo(() => tabConfig.map((tab) => tab.key), [tabConfig])
   const initialTab = searchParams.get('tab')
@@ -85,18 +91,19 @@ export default function InventoryPage() {
 
   return (
     <AdminLayout
-      title="Inventory Management"
-      subtitle="Stock overview, requests, issued assets, replenishment logs, and reports"
+      title={isHostelOffice ? 'Inventory Reports' : 'Inventory Management'}
+      subtitle={isHostelOffice ? 'View stock, requests, issued items, and inventory reports' : 'Stock overview, requests, issued assets, replenishment logs, and reports'}
     >
       <div style={{ marginBottom: 14 }}>
         <Tabs tabs={tabConfig} active={active} onChange={onTabChange} />
       </div>
 
-      {active === 'items' && <ItemsTab userRole={user?.role} />}
-      {active === 'requests' && <RequestsTab userRole={user?.role} />}
-      {active === 'issues' && <IssuesTab userRole={user?.role} />}
-      {active === 'stocklog' && <StockLogTab userRole={user?.role} />}
-      {active === 'monthly' && canViewReports && <MonthlyReportTab />}
+      {active === 'items' && <ItemsTab userRole={inventoryRole} />}
+      {active === 'requests' && <RequestsTab userRole={inventoryRole} />}
+      {active === 'issues' && <IssuesTab userRole={inventoryRole} />}
+      {active === 'stocklog' && <StockLogTab userRole={inventoryRole} />}
+      {active === 'monthly' && !isHostelOffice && canViewReports && <MonthlyReportTab />}
+      {active === 'inventory-report' && canViewReports && <ReportTab />}
       {active === 'request-report' && canViewReports && <RequestsReportTab />}
     </AdminLayout>
   )

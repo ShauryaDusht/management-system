@@ -103,7 +103,8 @@ export function getAreaGroup(areaName, areaType) {
   if (/^Academic Block\s+([1-9]|1[0-3])$/i.test(n)) return 'academic'
   if (['Academic Common Area', 'New AB U-Shape', 'New Academy'].includes(n)) return 'academic'
   if (['hostel common area', 'common area', 'hostels reliever'].includes(n.toLowerCase())) return 'hostels'
-  if (areaType === 'hostel') return 'hostels'
+  if (/\bJRHA\b/i.test(n) || /Jeet Hostel/i.test(n)) return 'hostels'
+  if (areaType === 'hostel' || areaType === 'jrha') return 'hostels'
   if (areaType === 'academic') return 'academic'
   return 'others'
 }

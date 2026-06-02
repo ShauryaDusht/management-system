@@ -21,3 +21,14 @@ class IsAdminOrHousekeepingManager(BasePermission):
             or user.is_housekeeping_manager
             or getattr(user, 'is_hk_inventory_manager', False)
         )
+
+
+class IsHousekeepingTaskAssigner(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        return user.is_authenticated and (
+            user.is_admin
+            or user.is_housekeeping_manager
+            or getattr(user, 'is_hk_inventory_manager', False)
+            or getattr(user, 'is_hostel_office', False)
+        )

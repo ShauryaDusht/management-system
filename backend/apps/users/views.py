@@ -25,6 +25,18 @@ def _is_hostel_office_request(user):
     return bool(user and getattr(user, 'is_hostel_office', False))
 
 
+def _hostel_office_area_q():
+    from django.db.models import Q
+
+    return (
+        Q(area_type__in=['hostel', 'jrha'])
+        | Q(name__iexact='Hostel Common Area')
+        | Q(name__iexact='Hostels Reliever')
+        | Q(name__icontains='JRHA')
+        | Q(name__icontains='Jeet Hostel')
+    )
+
+
 def _deny_hk_inventory_admin_mutation(request_user, target_user=None, incoming_role=None):
     if not _is_hk_inventory_request(request_user):
         return
@@ -91,13 +103,12 @@ class UserListCreateView(generics.ListCreateAPIView):
             'horticulture_supervised_zones',
         ).exclude(username__in=DEPRECATED_MANAGER_USERNAMES).order_by('role', 'first_name')
         if _is_hostel_office_request(self.request.user):
-            from django.db.models import Q
             from apps.housekeeping.models import HKArea
 
             hostel_area_ids = list(
-                HKArea.objects.filter(is_active=True).filter(
-                    Q(area_type='hostel') | Q(name__iexact='Hostel Common Area') | Q(name__iexact='Hostels Reliever')
-                ).values_list('id', flat=True)
+                HKArea.objects.filter(is_active=True)
+                .filter(_hostel_office_area_q())
+                .values_list('id', flat=True)
             )
             qs = qs.filter(
                 role__in=[User.Role.SUPERVISOR, User.Role.CARETAKER],
@@ -129,9 +140,37 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.prefetch_related('hk_areas__area', 'horticulture_supervised_zones').all()
     serializer_class = UserSerializer
     def get_permissions(self):
+        if self.request.method == 'PATCH' and _is_hostel_office_request(self.request.user):
+            return [IsAuthenticated()]
         return [IsAdminOrHKInventoryManager()]
 
     def perform_update(self, serializer):
+        if _is_hostel_office_request(self.request.user):
+            incoming_keys = set(self.request.data.keys())
+            if incoming_keys != {'area_ids'}:
+                raise PermissionDenied('Hostel Office can update area assignments only.')
+            if serializer.instance.role not in {User.Role.SUPERVISOR, User.Role.CARETAKER}:
+                raise PermissionDenied('Hostel Office can update only supervisor/caretaker assignments.')
+
+            from apps.housekeeping.models import HKArea
+
+            area_ids = self.request.data.get('area_ids') or []
+            allowed_area_ids = set(
+                HKArea.objects.filter(is_active=True)
+                .filter(_hostel_office_area_q())
+                .values_list('id', flat=True)
+            )
+            try:
+                requested_area_ids = {int(area_id) for area_id in area_ids}
+            except (TypeError, ValueError):
+                raise PermissionDenied('Invalid area assignment.')
+            current_area_ids = set(serializer.instance.hk_areas.values_list('area_id', flat=True))
+            current_non_hostel_ids = current_area_ids - allowed_area_ids
+            requested_non_hostel_ids = requested_area_ids - allowed_area_ids
+            if requested_non_hostel_ids != current_non_hostel_ids:
+                raise PermissionDenied('Hostel Office can change hostel/JRHA area assignments only.')
+            serializer.save()
+            return
         _deny_hk_inventory_admin_mutation(
             self.request.user,
             target_user=serializer.instance,

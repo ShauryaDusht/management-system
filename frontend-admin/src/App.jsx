@@ -15,7 +15,7 @@ import UsersPage from './pages/users/UsersPage'
 
 const ADMIN_OR_HK_INVENTORY = ['admin', 'hk_inventory_manager']
 const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
-const HK_INVENTORY_ALLOWED = ['admin', 'hk_inventory_manager']
+const HK_INVENTORY_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
 const HK_PORTAL_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
 const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']

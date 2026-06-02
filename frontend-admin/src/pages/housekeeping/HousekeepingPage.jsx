@@ -99,7 +99,7 @@ export default function HousekeepingPage() {
         <Tabs tabs={tabs} active={active} onChange={onTabChange} />
       </div>
 
-      {active === 'overview' && <OverviewTab readOnly={isHostelOffice} hostelOnly={isHostelOffice} />}
+      {active === 'overview' && <OverviewTab readOnly={false} hostelOnly={isHostelOffice} />}
       {active === 'directory' && <SectionsTab hostelOnly={isHostelOffice} />}
       {active === 'supervisors' && <SupervisorsTab hostelOnly={isHostelOffice} />}
       {active === 'attendance' && (

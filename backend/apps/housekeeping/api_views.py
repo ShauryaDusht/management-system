@@ -31,7 +31,7 @@ from apps.reports.exporters import (
 )
 from apps.reports.generators import generate_supervisor_report, generate_worker_report
 from apps.reports.models import SupervisorMonthlyReport, WorkerMonthlyReport
-from apps.core.permissions import IsAdminOnly, IsAdminOrHousekeepingManager
+from apps.core.permissions import IsAdminOnly, IsAdminOrHousekeepingManager, IsHousekeepingTaskAssigner
 
 from .models import (
     HKAlert,
@@ -116,7 +116,13 @@ def _is_hostel_office(user):
 
 
 def _hostel_area_q():
-    return Q(area_type='hostel') | Q(name__iexact='Hostel Common Area') | Q(name__iexact='Hostels Reliever')
+    return (
+        Q(area_type__in=['hostel', 'jrha'])
+        | Q(name__iexact='Hostel Common Area')
+        | Q(name__iexact='Hostels Reliever')
+        | Q(name__icontains='JRHA')
+        | Q(name__icontains='Jeet Hostel')
+    )
 
 
 def _hostel_area_ids():
@@ -1172,7 +1178,7 @@ class HKAssignAreaTaskView(APIView):
     Admin/manager assigns a one-time area-level task for today.
     The task is created under worker_tag='all' and appears in mobile "Special" tab.
     """
-    permission_classes = [IsAdminOrHousekeepingManager]
+    permission_classes = [IsHousekeepingTaskAssigner]
 
     def post(self, request):
         area_id = request.data.get('area_id')
@@ -1190,6 +1196,8 @@ class HKAssignAreaTaskView(APIView):
         area = HKArea.objects.filter(pk=area_id, is_active=True).first()
         if not area:
             return Response({'detail': 'Area not found.'}, status=404)
+        if _is_hostel_office(request.user) and area.id not in _hostel_area_ids():
+            return Response({'detail': 'Hostel Office can assign tasks to hostel/JRHA areas only.'}, status=403)
 
         try:
             period_minutes = int(request.data.get('period_minutes') or 60)
@@ -1262,7 +1270,7 @@ class HKPromoteTaskToDailyView(APIView):
     Promote an existing special task record into the daily schedule.
     This makes the same task appear automatically every day going forward.
     """
-    permission_classes = [IsAdminOrHousekeepingManager]
+    permission_classes = [IsHousekeepingTaskAssigner]
 
     def post(self, request):
         record_id = request.data.get('record_id')
@@ -1272,6 +1280,8 @@ class HKPromoteTaskToDailyView(APIView):
         record = HKDailyRecord.objects.select_related('schedule', 'area').filter(pk=record_id).first()
         if not record:
             return Response({'detail': 'Task record not found.'}, status=404)
+        if _is_hostel_office(request.user) and record.area_id not in _hostel_area_ids():
+            return Response({'detail': 'Hostel Office can promote hostel/JRHA tasks only.'}, status=403)
 
         schedule = record.schedule
         if schedule.worker_tag != 'all':

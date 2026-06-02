@@ -57,6 +57,7 @@ export default function Sidebar() {
     ? [
       { to: '/dashboard', icon: 'HO', label: 'Home' },
       { to: '/housekeeping', icon: 'HK', label: 'Hostel Office' },
+      { to: '/inventory', icon: 'IR', label: 'Inventory Reports' },
       { to: '/insights', icon: 'AN', label: 'Insights' },
     ]
     : user?.role === 'hk_inventory_manager'

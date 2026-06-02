@@ -38,7 +38,7 @@ SUPERVISOR_ALIASES = {
     'mr. nikulsinh bihola': 'nikul.bihola',
     'ms. rushita chauhan': 'rhushita.chavda',
     'mr. jaimin parmar': 'jaimin.parmar',
-    'mr. ramsingh': 'ramprakash.parmar',
+    'mr. ramsingh': 'ram.singh',
 }
 
 HEADER_ALIASES = {

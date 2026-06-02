@@ -21,16 +21,16 @@ function adminHref(to = '/dashboard') {
 }
 
 const CHART_TYPES = [
-  { key: 'area',  label: '📈 Area' },
-  { key: 'bar',   label: '📊 Bar' },
-  { key: 'pie',   label: '🥧 Pie' },
+  { key: 'area',  label: 'Area' },
+  { key: 'bar',   label: 'Bar' },
+  { key: 'pie',   label: 'Pie' },
 ]
 
 const MODULE_OPTIONS = [
-  { key: 'all',          label: '🌐 All' },
-  { key: 'inventory',    label: '📦 Inventory' },
-  { key: 'housekeeping', label: '🧹 Housekeeping' },
-  { key: 'horticulture', label: '🌿 Horticulture' },
+  { key: 'all',          label: 'All' },
+  { key: 'inventory',    label: 'Inventory' },
+  { key: 'housekeeping', label: 'Housekeeping' },
+  { key: 'horticulture', label: 'Horticulture' },
 ]
 
 const RANGE_OPTIONS = [
@@ -57,8 +57,59 @@ function SummaryStatBox({ label, value, color, icon }) {
 function EmptyTrend() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200, color: 'var(--text-3)', fontSize: 13, flexDirection: 'column', gap: 8, border: '1px dashed var(--border)', borderRadius: 8 }}>
-      <div style={{ fontSize: 28 }}>📭</div>
+      <div style={{ fontSize: 28, fontWeight: 800 }}>--</div>
       <div>No activity data for this period yet.</div>
+    </div>
+  )
+}
+
+function DashboardHero({ title, subtitle, metric, quickActions }) {
+  return (
+    <div style={{
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: 18,
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 18,
+      padding: 22,
+      borderRadius: 8,
+      border: '1px solid rgba(20, 83, 69, 0.18)',
+      background: 'linear-gradient(135deg, #f7faf8 0%, #edf6f0 52%, #fff7ed 100%)',
+      boxShadow: '0 10px 24px rgba(15, 23, 42, 0.06)',
+    }}>
+      <div style={{ minWidth: 260, flex: '1 1 420px' }}>
+        <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 0, color: 'var(--green-800)', fontWeight: 800, marginBottom: 6 }}>
+          Live operations
+        </div>
+        <div style={{ fontSize: 24, lineHeight: 1.15, fontWeight: 850, color: 'var(--text)' }}>{title}</div>
+        <div style={{ marginTop: 7, color: 'var(--text-2)', fontSize: 13, maxWidth: 680 }}>{subtitle}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
+          {quickActions.map((action) => (
+            <a key={action.label} href={adminHref(action.to)} style={{ textDecoration: 'none' }}>
+              <Btn size="sm" variant={action.primary ? 'primary' : 'secondary'}>{action.label}</Btn>
+            </a>
+          ))}
+        </div>
+      </div>
+      <div style={{
+        width: 170,
+        flex: '0 0 170px',
+        minHeight: 118,
+        borderRadius: 8,
+        background: 'rgba(255,255,255,0.78)',
+        border: '1px solid var(--border)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        padding: 16,
+      }}>
+        <div style={{ fontSize: 34, fontWeight: 900, color: metric.color, lineHeight: 1 }}>{metric.value}</div>
+        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-2)', fontWeight: 700 }}>{metric.label}</div>
+        <div style={{ marginTop: 10, height: 8, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${Math.max(0, Math.min(100, Number(metric.progress || 0)))}%`, background: metric.color }} />
+        </div>
+      </div>
     </div>
   )
 }
@@ -188,7 +239,7 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const isHorticultureManager = user?.role === 'horticulture_manager'
   const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
-  const canViewInventory = !isHorticultureManager && !isHostelOffice
+  const canViewInventory = !isHorticultureManager
   const canViewHousekeeping = !isHorticultureManager
   const canViewHorticulture = user?.role !== 'hk_inventory_manager' && !isHostelOffice
   const [invSummary, setInvSummary]     = useState(null)
@@ -309,26 +360,26 @@ export default function DashboardPage() {
 
   const summaryBoxes = trendModule === 'inventory'
     ? [
-        { label: 'Total Inventory', value: trendTotals?.inventory ?? 0,                   color: 'var(--green-800)', icon: '📦' },
-        { label: 'Requests',        value: trendTotals?.inventory_requests ?? 0,          color: 'var(--ongoing)', icon: '📋' },
-        { label: 'Issues',          value: trendTotals?.inventory_issues ?? 0,            color: 'var(--orange-600)', icon: '🔁' },
-        { label: 'Stock Additions', value: trendTotals?.inventory_stock_additions ?? 0,   color: 'var(--completed)', icon: '➕' },
-        { label: 'Purchase Req.',   value: trendTotals?.inventory_purchase_requests ?? 0, color: 'var(--pending)', icon: '🛒' },
+        { label: 'Total Inventory', value: trendTotals?.inventory ?? 0,                   color: 'var(--green-800)', icon: 'IR' },
+        { label: 'Requests',        value: trendTotals?.inventory_requests ?? 0,          color: 'var(--ongoing)', icon: 'RQ' },
+        { label: 'Issues',          value: trendTotals?.inventory_issues ?? 0,            color: 'var(--orange-600)', icon: 'IS' },
+        { label: 'Stock Additions', value: trendTotals?.inventory_stock_additions ?? 0,   color: 'var(--completed)', icon: 'ST' },
+        { label: 'Purchase Req.',   value: trendTotals?.inventory_purchase_requests ?? 0, color: 'var(--pending)', icon: 'PR' },
       ]
     : trendModule === 'housekeeping'
     ? [
-        { label: 'Total HK',    value: trendTotals?.housekeeping ?? 0,  color: 'var(--green-800)', icon: '🧹' },
-        { label: 'Completed',   value: trendTotals?.hk_done ?? 0,       color: 'var(--completed)', icon: '✅' },
-        { label: 'Pending',     value: trendTotals?.hk_pending ?? 0,    color: 'var(--pending)', icon: '⏳' },
-        { label: 'In Progress', value: trendTotals?.hk_in_progress ?? 0,color: 'var(--ongoing)', icon: '🔄' },
-        { label: 'Skipped',     value: trendTotals?.hk_skipped ?? 0,    color: 'var(--text-3)', icon: '⏭️' },
+        { label: 'Total HK',    value: trendTotals?.housekeeping ?? 0,  color: 'var(--green-800)', icon: 'HK' },
+        { label: 'Completed',   value: trendTotals?.hk_done ?? 0,       color: 'var(--completed)', icon: 'DN' },
+        { label: 'Pending',     value: trendTotals?.hk_pending ?? 0,    color: 'var(--pending)', icon: 'PD' },
+        { label: 'In Progress', value: trendTotals?.hk_in_progress ?? 0,color: 'var(--ongoing)', icon: 'IP' },
+        { label: 'Skipped',     value: trendTotals?.hk_skipped ?? 0,    color: 'var(--text-3)', icon: 'SK' },
       ]
     : trendModule === 'horticulture'
-    ? [{ label: 'Horticulture', value: trendTotals?.horticulture ?? 0, color: 'var(--green-700)', icon: '🌿' }]
+    ? [{ label: 'Horticulture', value: trendTotals?.horticulture ?? 0, color: 'var(--green-700)', icon: 'HT' }]
     : [
-        { label: 'Inventory',    value: trendTotals?.inventory ?? 0,    color: 'var(--green-800)', icon: '📦' },
-        { label: 'Housekeeping', value: trendTotals?.housekeeping ?? 0, color: 'var(--orange-600)', icon: '🧹' },
-        { label: 'Horticulture', value: trendTotals?.horticulture ?? 0, color: 'var(--green-700)', icon: '🌿' },
+        { label: 'Inventory',    value: trendTotals?.inventory ?? 0,    color: 'var(--green-800)', icon: 'IR' },
+        { label: 'Housekeeping', value: trendTotals?.housekeeping ?? 0, color: 'var(--orange-600)', icon: 'HK' },
+        { label: 'Horticulture', value: trendTotals?.horticulture ?? 0, color: 'var(--green-700)', icon: 'HT' },
       ]
 
   const visibleTrendLines = isHorticultureManager
@@ -347,12 +398,12 @@ export default function DashboardPage() {
     : summaryBoxes.filter((box) => box.label !== 'Horticulture')
 
   const baseStatCards = [
-    { label: 'Total Inventory Items',  value: invSummary?.total_items ?? '-',           icon: '📦', color: 'var(--green-800)', sub: `${invSummary?.pending_requests ?? 0} requests pending`, to: '/inventory?tab=items' },
-    { label: 'Low Stock Alerts',       value: invSummary?.low_stock_count ?? '-',        icon: '⚠️', color: 'var(--orange-600)', sub: `${invSummary?.out_of_stock_count ?? 0} out of stock`,  to: '/inventory?tab=items' },
-    { label: 'HK Tasks Today',         value: hkSummary?.total_tasks ?? '-',            icon: '🧹', color: 'var(--green-700)', sub: `${hkSummary?.completion_pct ?? 0}% completed`,           to: '/housekeeping?tab=overview' },
-    { label: 'HK Workers',             value: hkSummary?.total_workers ?? '-',          icon: '👷', color: '#3b82f6',          sub: `${hkSummary?.present_today ?? 0} present today`,          to: '/housekeeping?tab=attendance' },
-    { label: 'Unreturned Assets',      value: invSummary?.unreturned_assets ?? '-',     icon: '🔁', color: '#f59e0b',          sub: `${invSummary?.overdue_returns ?? 0} overdue`,             to: '/inventory?tab=issues' },
-    { label: 'Pending Stock Req.',     value: hkSummary?.pending_stock_requests ?? '-', icon: '📋', color: 'var(--orange-600)', sub: 'Open approval queue',                                    to: '/inventory?tab=requests' },
+    { label: 'Total Inventory Items',  value: invSummary?.total_items ?? '-',           icon: 'IR', color: 'var(--green-800)', sub: `${invSummary?.pending_requests ?? 0} requests pending`, to: '/inventory?tab=items' },
+    { label: 'Low Stock Alerts',       value: invSummary?.low_stock_count ?? '-',        icon: 'LS', color: 'var(--orange-600)', sub: `${invSummary?.out_of_stock_count ?? 0} out of stock`,  to: '/inventory?tab=items' },
+    { label: 'HK Tasks Today',         value: hkSummary?.total_tasks ?? '-',            icon: 'HK', color: 'var(--green-700)', sub: `${hkSummary?.completion_pct ?? 0}% completed`,           to: '/housekeeping?tab=overview' },
+    { label: 'HK Workers',             value: hkSummary?.total_workers ?? '-',          icon: 'WK', color: '#3b82f6',          sub: `${hkSummary?.present_today ?? 0} present today`,          to: '/housekeeping?tab=attendance' },
+    { label: 'Unreturned Assets',      value: invSummary?.unreturned_assets ?? '-',     icon: 'UA', color: '#f59e0b',          sub: `${invSummary?.overdue_returns ?? 0} overdue`,             to: '/inventory?tab=issues' },
+    { label: 'Pending Stock Req.',     value: hkSummary?.pending_stock_requests ?? '-', icon: 'SR', color: 'var(--orange-600)', sub: 'Open approval queue',                                    to: '/inventory?tab=requests' },
   ]
   const statCards = isHorticultureManager
     ? [
@@ -367,16 +418,51 @@ export default function DashboardPage() {
         { label: 'Pending Tasks', value: hkSummary?.pending_tasks ?? '-', icon: 'PD', color: 'var(--orange-600)', sub: 'Open hostel tasks', to: '/housekeeping?tab=overview' },
         { label: 'Hostel Workers', value: hkSummary?.total_workers ?? '-', icon: 'HW', color: '#3b82f6', sub: `${hkSummary?.present_today ?? 0} present today`, to: '/housekeeping?tab=attendance' },
         { label: 'Hostel Areas', value: hkSummary?.total_areas ?? '-', icon: 'AR', color: 'var(--green-800)', sub: 'Active hostel sections', to: '/housekeeping?tab=directory' },
+        { label: 'Inventory Items', value: invSummary?.total_items ?? '-', icon: 'IR', color: '#7c3aed', sub: 'View-only stock report', to: '/inventory?tab=inventory-report' },
       ]
     : baseStatCards
+  const completionPct = Number(hkSummary?.completion_pct || 0)
+  const heroMetric = isHorticultureManager
+    ? { value: hortiTotal || 0, label: 'active horticulture tasks', progress: hortiTotal ? (Number(hortiCounts.on_track || 0) / hortiTotal) * 100 : 0, color: 'var(--green-700)' }
+    : isHostelOffice
+    ? { value: `${completionPct}%`, label: 'hostel task completion', progress: completionPct, color: 'var(--green-800)' }
+    : { value: invSummary?.pending_requests ?? 0, label: 'inventory requests pending', progress: Math.min(100, Number(invSummary?.pending_requests || 0) * 8), color: 'var(--orange-600)' }
+  const heroTitle = isHorticultureManager
+    ? 'Horticulture Control Room'
+    : isHostelOffice
+    ? 'Hostel Office Control Room'
+    : 'Campus Operations Control Room'
+  const heroSubtitle = isHorticultureManager
+    ? 'Track zones, due tasks, and field progress from one focused home view.'
+    : isHostelOffice
+    ? 'Assign hostel work, monitor JRHA and hostel sections, and open inventory reports without admin-only controls.'
+    : 'A cleaner snapshot of stock, housekeeping, and horticulture activity for the day.'
+  const quickActions = isHorticultureManager
+    ? [
+        { label: 'Schedule', to: '/horticulture?tab=schedule', primary: true },
+        { label: 'Zones', to: '/horticulture?tab=zones' },
+      ]
+    : isHostelOffice
+    ? [
+        { label: 'Assign Work', to: '/housekeeping?tab=overview', primary: true },
+        { label: 'Section Staff', to: '/housekeeping?tab=directory' },
+        { label: 'Inventory Report', to: '/inventory?tab=inventory-report' },
+        { label: 'Stock Requests', to: '/housekeeping?tab=stock' },
+      ]
+    : [
+        { label: 'Housekeeping', to: '/housekeeping?tab=overview', primary: true },
+        { label: 'Inventory', to: '/inventory?tab=items' },
+        { label: 'Reports', to: '/inventory?tab=inventory-report' },
+      ]
 
   return (
-    <AdminLayout title={isHorticultureManager ? 'Horticulture Home' : isHostelOffice ? 'Hostel Office Dashboard' : 'Admin Dashboard'} subtitle={`Welcome back — ${todayLabel}`}>
+    <AdminLayout title={isHorticultureManager ? 'Horticulture Home' : isHostelOffice ? 'Hostel Office Dashboard' : 'Admin Dashboard'} subtitle={`Welcome back - ${todayLabel}`}>
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner size={36} /></div>
       ) : (
         <>
-          {/* ── Stat Cards ── */}
+          <DashboardHero title={heroTitle} subtitle={heroSubtitle} metric={heroMetric} quickActions={quickActions} />
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
             {statCards.map(card => (
               <a key={card.label} href={adminHref(card.to || '/dashboard')} className="ui-interactive-card-link" style={{ height: '100%', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
@@ -385,7 +471,6 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* ── Donut cards ── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 24 }}>
             {[
               canViewInventory ? { title: 'Inventory', subtitle: 'Stock overview', data: invDonut, total: invSummary?.total_items, label: 'Items', palette: DONUT_PALETTE, to: '/inventory' } : null,
@@ -398,7 +483,7 @@ export default function DashboardPage() {
                     <div style={{ fontWeight: 700, fontSize: 14 }}>{card.title}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{card.subtitle}</div>
                   </div>
-                  <a href={adminHref(card.to || '/dashboard')} style={{ textDecoration: 'none' }}><Btn size="sm" variant="ghost">View →</Btn></a>
+                  <a href={adminHref(card.to || '/dashboard')} style={{ textDecoration: 'none' }}><Btn size="sm" variant="ghost">View</Btn></a>
                 </div>
                 <DonutChart data={card.data} total={card.total} label={card.label} size={160} palette={card.palette} />
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
@@ -413,15 +498,12 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* ── Activity Trend ── */}
           <Card>
-            {/* Header row */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 10, flexWrap: 'wrap' }}>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 15 }}>📈 Activity Trend</div>
+                <div style={{ fontWeight: 800, fontSize: 15 }}>Activity Trend</div>
                 <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{isHostelOffice ? 'Hostel housekeeping activity over time' : 'System-wide activity over time'}</div>
               </div>
-              {/* Range buttons */}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {RANGE_OPTIONS.map(opt => (
                   <Btn key={opt.key} size="sm" variant={trendRange === opt.key ? 'primary' : 'secondary'} onClick={() => setTrendRange(opt.key)}>
@@ -431,7 +513,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Module + Chart type row */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {moduleOptions.map(opt => (
@@ -449,14 +530,12 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Summary stat boxes */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
               {visibleSummaryBoxes.map(b => (
                 <SummaryStatBox key={b.label} label={b.label} value={b.value} color={b.color} icon={b.icon} />
               ))}
             </div>
 
-            {/* Chart */}
             {trendLoading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></div>
             ) : chartType === 'area' ? (
@@ -467,7 +546,6 @@ export default function DashboardPage() {
               <ActivityPieChart data={trendData} lines={visibleTrendLines} />
             )}
 
-            {/* Peak day insight */}
             {!trendLoading && trendData.length > 0 && chartType !== 'pie' && (() => {
               const primaryKey = visibleTrendLines[0]?.key
               const peak = trendData.reduce((best, row) => Number(row[primaryKey] || 0) > Number(best[primaryKey] || 0) ? row : best, trendData[0])
@@ -475,9 +553,9 @@ export default function DashboardPage() {
               const avg = total / trendData.length
               return (
                 <div style={{ marginTop: 14, display: 'flex', gap: 20, flexWrap: 'wrap', padding: '10px 14px', background: 'var(--surface-2)', borderRadius: 10, border: '1px solid var(--border)', fontSize: 12 }}>
-                  <div>📅 Peak day: <strong>{peak?.name}</strong> ({Number(peak?.[primaryKey] || 0).toLocaleString('en-IN')} events)</div>
-                  <div>📊 Daily avg: <strong>{avg.toFixed(1)}</strong></div>
-                  <div>📦 Period total: <strong>{total.toLocaleString('en-IN')}</strong></div>
+                  <div>Peak day: <strong>{peak?.name}</strong> ({Number(peak?.[primaryKey] || 0).toLocaleString('en-IN')} events)</div>
+                  <div>Daily avg: <strong>{avg.toFixed(1)}</strong></div>
+                  <div>Period total: <strong>{total.toLocaleString('en-IN')}</strong></div>
                 </div>
               )
             })()}

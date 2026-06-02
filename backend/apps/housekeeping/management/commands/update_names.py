@@ -37,7 +37,7 @@ CARETAKER_NAMES = {
     'rhushita.chavda':  ('Rhushita Chetankumar', 'Chavda', ''),
     'anil.solanki':     ('Anil', 'Solanki', 'anil8155037413@gmail.com'),
     'vishwajeet.mishra': ('Vishwajeet', 'Mishra', 'mishra.vishwajeet@iitgn.ac.in'),
-    'ramprakash.parmar': ('Ramprakash Lembabhai', 'Parmar', 'ramairi1198@gmail.com'),
+    'ram.singh':         ('Ram', 'Singh', 'ramairy1198@gmail.com'),
     'jaimin.parmar':    ('Jaimin', 'Parmar', 'hostel.caretaker@iitgn.ac.in'),
     'anita.vaghela':    ('Anita', 'Vaghela', 'anitavaghela98@gmail.com'),
     'nikul.bihola':     ('Nikulsinh Ashoksinh', 'Bihola', 'nikulsinghbhola862@gmail.com'),

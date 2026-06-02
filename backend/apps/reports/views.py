@@ -104,9 +104,11 @@ class ActivityTrendView(APIView):
         from apps.horticulture.models import HorticultureAreaTaskAssignment, HorticultureDailyAssignment
 
         hostel_area_filter = (
-            Q(area_type='hostel')
+            Q(area_type__in=['hostel', 'jrha'])
             | Q(name__iexact='Hostel Common Area')
             | Q(name__iexact='Hostels Reliever')
+            | Q(name__icontains='JRHA')
+            | Q(name__icontains='Jeet Hostel')
         )
         hostel_area_ids = list(
             HKArea.objects.filter(is_active=True).filter(hostel_area_filter).values_list('id', flat=True)
@@ -364,9 +366,11 @@ class DashboardInsightsView(APIView):
         )
 
         hostel_area_filter = (
-            Q(area_type='hostel')
+            Q(area_type__in=['hostel', 'jrha'])
             | Q(name__iexact='Hostel Common Area')
             | Q(name__iexact='Hostels Reliever')
+            | Q(name__icontains='JRHA')
+            | Q(name__icontains='Jeet Hostel')
         )
         hostel_area_ids = list(
             HKArea.objects.filter(is_active=True).filter(hostel_area_filter).values_list('id', flat=True)

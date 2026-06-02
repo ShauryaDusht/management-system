@@ -335,7 +335,7 @@ class Command(BaseCommand):
         "Hiqom": "nikul.bihola",
         "Jurqia": "jaimin.parmar",
         "Lekhaag": "jaimin.parmar",
-        "Kyzeel": "ramprakash.parmar",
+        "Kyzeel": "ram.singh",
         "Hostel Common Area": "vishwajeet.mishra",
     }
 
@@ -453,11 +453,12 @@ class Command(BaseCommand):
         {"area": "Academic Block 13", "name": "Parth", "phone": "", "pay_code": "384", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Parth Solanki", "Solanki Parthkumar Jagdishbhai"]},
         {"area": "Old Academic Common Area", "name": "Vaghela Bhaveshbhai Narnabhai", "phone": "9974738575", "pay_code": "315", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Bhavesh"]},
         {"area": "Old Academic Common Area", "name": "Vaniya Nikhilkumar Bhaveshbhai", "phone": "8849436518", "pay_code": "314", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Nikhil"]},
+        {"area": "New AB U-Shape", "name": "Hitesh", "phone": "", "pay_code": "434", "worker_type": "general", "shift": "day", "is_reliever": False, "legacy_names": ["Hitesh Solanki", "Hiteshbhai Solanki"]},
         {"area": "New Academic Common Area", "name": "Hitesh", "phone": "", "pay_code": "434", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Hitesh Solanki", "Hiteshbhai Solanki"]},
         {"area": "New Academic Reliever", "name": "Niruben", "phone": "", "pay_code": "111", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Neru ben", "Gurjar Niruben"]},
         {"area": "New Academic Reliever", "name": "Ilesh", "phone": "", "pay_code": "361", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Elesh", "Elesh Bhangi", "Bhangi Ileshbhai Ishvarbhai"]},
     ]
-    ACADEMIC_EMPTY_AREAS = ["New AB U-Shape"]
+    ACADEMIC_EMPTY_AREAS = []
 
     ACADEMIC_SCHEDULE_UPDATES = [
         ("Academic Block 2", "floor", 1, "AB-2: Main Fountain Area Cleaning", "Rajanikant"),

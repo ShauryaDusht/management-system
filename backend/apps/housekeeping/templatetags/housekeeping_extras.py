@@ -8,6 +8,7 @@ register = template.Library()
 @register.filter
 def public_task_description(value):
     text = re.sub(r"\s+", " ", str(value or "")).strip()
+    text = text.replace("[JRHA_NIGHT_CARETAKER]", "").strip()
     if not text:
         return ""
 

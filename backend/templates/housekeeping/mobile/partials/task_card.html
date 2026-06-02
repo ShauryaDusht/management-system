@@ -83,7 +83,11 @@
   </div>
   {% endif %}
 
-  {% if can_assign_tasks and record.status != 'done' and record.can_multi_worker_assignment and not record.assigned_worker and not record.worker_assignments.count %}
+  {% if record.is_direct_staff_task and record.status != 'done' %}
+  <div style="margin-top:7px;font-size:11px;color:#166534;background:#ecfdf5;border:1px solid #bbf7d0;border-radius:7px;padding:6px 8px">
+    Direct caretaker task. Attendance will be marked when any night task is completed.
+  </div>
+  {% elif can_assign_tasks and record.status != 'done' and record.can_multi_worker_assignment and not record.assigned_worker and not record.worker_assignments.count %}
   <button type="button"
           id="swm-open-{{ record.id }}"
           onclick="document.getElementById('swm-panel-{{ record.id }}').style.display='block'; this.style.display='none';"

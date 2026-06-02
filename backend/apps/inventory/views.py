@@ -27,6 +27,24 @@ from .permissions import IsAdminOrInventoryManager
 from .request_permissions import filter_requestable_items
 
 
+def _is_hostel_office(user):
+    return bool(user and getattr(user, 'is_hostel_office', False))
+
+
+class IsInventoryReportViewer(IsAuthenticated):
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(
+            super().has_permission(request, view)
+            and (
+                getattr(user, 'is_admin', False)
+                or getattr(user, 'is_inventory_manager', False)
+                or getattr(user, 'is_hk_inventory_manager', False)
+                or _is_hostel_office(user)
+            )
+        )
+
+
 def _sync_horticulture_request_status(item_request, status_value):
     try:
         from apps.housekeeping.models import HKStockRequest
@@ -108,7 +126,7 @@ class ItemDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class LowStockItemsView(APIView):
-    permission_classes = [IsAdminOrHKInventoryManager]
+    permission_classes = [IsInventoryReportViewer]
 
     def get(self, request):
         items = Item.objects.filter(
@@ -124,7 +142,7 @@ class LowStockItemsView(APIView):
 # ─────────────────────────────────────────────────
 
 class ItemHistoryView(APIView):
-    permission_classes = [IsAdminOrHKInventoryManager]
+    permission_classes = [IsInventoryReportViewer]
 
     # Max merged rows considered per request before pagination
     _MAX_MERGED_EVENTS = 400
@@ -221,8 +239,12 @@ class ItemHistoryView(APIView):
 
 class StockEntryListCreateView(generics.ListCreateAPIView):
     serializer_class = StockEntrySerializer
-    permission_classes = [IsAdminOrHKInventoryManager]
     pagination_class = StandardPagination
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAdminOrHKInventoryManager()]
+        return [IsInventoryReportViewer()]
 
     def get_queryset(self):
         qs = StockEntry.objects.select_related('item', 'added_by').all()
@@ -237,7 +259,7 @@ class StockEntryListCreateView(generics.ListCreateAPIView):
 
 class ItemStockEntriesView(generics.ListAPIView):
     serializer_class = StockEntrySerializer
-    permission_classes = [IsAdminOrHKInventoryManager]
+    permission_classes = [IsInventoryReportViewer]
 
     def get_queryset(self):
         return StockEntry.objects.filter(
@@ -313,6 +335,8 @@ class PurchaseRequestListCreateView(generics.ListCreateAPIView):
         if item_type_filter in ['asset', 'consumable']:
             qs = qs.filter(item_type=item_type_filter)
         if getattr(user, 'role', '') != 'admin':
+            if _is_hostel_office(user) or getattr(user, 'is_hk_inventory_manager', False):
+                return qs
             qs = qs.filter(requested_by=user)
         return qs
 
@@ -638,7 +662,7 @@ class IssueUsageLogView(APIView):
         if for_update:
             base_qs = base_qs.select_for_update()
 
-        if user.is_admin or user.is_inventory_manager or getattr(user, 'is_hk_inventory_manager', False):
+        if user.is_admin or user.is_inventory_manager or getattr(user, 'is_hk_inventory_manager', False) or _is_hostel_office(user):
             return base_qs.get(pk=pk)
         if user.is_supervisor or user.is_caretaker:
             return base_qs.get(pk=pk, request__requested_by=user)
@@ -875,7 +899,7 @@ class UserActivityView(APIView):
 # ─────────────────────────────────────────────────
 
 class DashboardSummaryView(APIView):
-    permission_classes = [IsAdminOrInventoryManager]
+    permission_classes = [IsInventoryReportViewer]
 
     def get(self, request):
         total_items = Item.objects.count()
