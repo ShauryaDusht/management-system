@@ -21,13 +21,21 @@ python manage.py sync_guesthouse_director_staff --quiet
 python manage.py seed_housekeeping -v 0
 python manage.py seed_horticulture
 
-printf '%s\n' "Setting up cron job for photo cleanup..."
+printf '%s\n' "Setting up cron jobs..."
+mkdir -p /app/backups
+
 chmod +x /app/scripts/cron_cleanup.sh
-# Write crontab directly to file — avoids crontab command issues
-echo "0 2 * * * /app/scripts/cron_cleanup.sh >> /var/log/photo_cleanup.log 2>&1" > /etc/cron.d/photo-cleanup
-chmod 0644 /etc/cron.d/photo-cleanup
+chmod +x /app/scripts/cron_seed_update.sh
+
+# /etc/cron.d entries require an explicit user field.
+echo "0 2 * * * root /app/scripts/cron_cleanup.sh >> /var/log/photo_cleanup.log 2>&1" \
+    > /etc/cron.d/photo-cleanup
+echo "0 3 * * 0 root /app/scripts/cron_seed_update.sh >> /var/log/seed_update.log 2>&1" \
+    > /etc/cron.d/seed-update
+
+chmod 0644 /etc/cron.d/photo-cleanup /etc/cron.d/seed-update
 cron
-printf '%s\n' "Cron started."
+printf '%s\n' "Cron started (daily cleanup @ 2 AM, weekly seed update @ Sunday 3 AM)."
 
 printf '%s\n' "Starting Gunicorn..."
 exec gunicorn config.wsgi:application \

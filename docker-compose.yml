@@ -23,6 +23,7 @@ services:
       - ./backend:/app
       - /srv/campussanchalika/media:/app/media
       - /srv/campussanchalika/staticfiles:/app/staticfiles
+      - /srv/campussanchalika/backups:/app/backups
     env_file:
       - .env
     environment:
