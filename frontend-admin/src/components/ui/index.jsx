@@ -377,7 +377,6 @@ export function Textarea(props) {
 export function StatCard({
   label,
   value,
-  icon,
   color = 'var(--green-800)',
   sub,
   onClick,
@@ -389,26 +388,10 @@ export function StatCard({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 14,
         transition: 'transform 0.15s, box-shadow 0.15s',
         ...style,
       }}
     >
-      <div
-        style={{
-          width: 46,
-          height: 46,
-          borderRadius: 12,
-          background: color + '18',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 22,
-          flexShrink: 0,
-        }}
-      >
-        {icon}
-      </div>
       <div>
         <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1 }}>
           {value}

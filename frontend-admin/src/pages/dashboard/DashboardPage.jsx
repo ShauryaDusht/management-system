@@ -39,7 +39,7 @@ const RANGE_OPTIONS = [
   { key: 'monthly', label: 'Monthly' },
 ]
 
-function SummaryStatBox({ label, value, color, icon }) {
+function SummaryStatBox({ label, value, color }) {
   return (
     <div style={{
       flex: 1, minWidth: 110,
@@ -47,7 +47,6 @@ function SummaryStatBox({ label, value, color, icon }) {
       borderRadius: 12, padding: '12px 16px', textAlign: 'center',
       borderTop: `3px solid ${color}`,
     }}>
-      <div style={{ fontSize: 11, marginBottom: 4 }}>{icon}</div>
       <div style={{ fontSize: 20, fontWeight: 800, color }}>{Number(value || 0).toLocaleString('en-IN')}</div>
       <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 3 }}>{label}</div>
     </div>
@@ -83,22 +82,6 @@ function DashboardHero({ title, subtitle, metric, quickActions, variant = 'defau
     }}>
       <div style={{ minWidth: 260, flex: '1 1 420px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          {isHostel && (
-            <div style={{
-              width: 42,
-              height: 42,
-              borderRadius: 8,
-              background: '#2d5b4d',
-              color: '#fff',
-              display: 'grid',
-              placeItems: 'center',
-              fontWeight: 900,
-              fontSize: 15,
-              boxShadow: '0 8px 18px rgba(45, 91, 77, 0.22)',
-            }}>
-              HO
-            </div>
-          )}
           <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 0, color: 'var(--green-800)', fontWeight: 800 }}>
             {isHostel ? 'Hostel operations' : 'Live operations'}
           </div>
@@ -135,7 +118,7 @@ function DashboardHero({ title, subtitle, metric, quickActions, variant = 'defau
   )
 }
 
-function HostelActionBox({ icon, title, text, to, accent = '#2d5b4d' }) {
+function HostelActionBox({ title, text, to }) {
   return (
     <a
       href={adminHref(to)}
@@ -143,10 +126,7 @@ function HostelActionBox({ icon, title, text, to, accent = '#2d5b4d' }) {
       style={{
         textDecoration: 'none',
         color: 'inherit',
-        display: 'grid',
-        gridTemplateColumns: '44px minmax(0, 1fr)',
-        gap: 12,
-        alignItems: 'center',
+        display: 'block',
         padding: 14,
         border: '1px solid var(--border)',
         borderRadius: 8,
@@ -154,19 +134,6 @@ function HostelActionBox({ icon, title, text, to, accent = '#2d5b4d' }) {
         minHeight: 88,
       }}
     >
-      <div style={{
-        width: 44,
-        height: 44,
-        borderRadius: 8,
-        background: `${accent}18`,
-        color: accent,
-        display: 'grid',
-        placeItems: 'center',
-        fontWeight: 900,
-        fontSize: 14,
-      }}>
-        {icon}
-      </div>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{title}</div>
         <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4, lineHeight: 1.35 }}>{text}</div>
