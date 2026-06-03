@@ -1301,12 +1301,18 @@ def _has_evening_or_night_workers(workers):
     return any(getattr(worker, "shift", "") in {"evening", "night"} for worker in workers or [])
 
 
+EXTENDED_SECOND_HALF_AREAS_BY_USER = {
+    "ashok.rathod": {"Guest House New", "Director Bungalow"},
+    "bharat.solanki": {"Central Arcade", "Sports Complex"},
+}
+
+
 def _has_extended_second_half_access(sel_date, user=None, area=None, workers=None):
+    allowed_areas = EXTENDED_SECOND_HALF_AREAS_BY_USER.get(getattr(user, "username", ""))
     return bool(
-        user
-        and getattr(user, "username", "") == "ashok.rathod"
+        allowed_areas
         and area
-        and area.name in {"Guest House New", "Director Bungalow"}
+        and area.name in allowed_areas
         and _has_evening_or_night_workers(workers)
     )
 
