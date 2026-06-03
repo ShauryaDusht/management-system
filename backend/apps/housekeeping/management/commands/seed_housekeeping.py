@@ -391,7 +391,7 @@ Existing account passwords are preserved.
         accounts = [
             ('super.admin', 'Super', 'Admin', '9727757096', 'admin', [], 'pragnesh@iitgn.ac.in', ''),
             ('mahesh.prajapati', 'Maheshbhai', 'Prajapati', '9723889424', 'horticulture_manager', [], 'managerhort.iwd@iitgn.ac.in', '474'),
-            ('hk_inventory_manager', 'Housekeeping Inventory', 'Manager', '8758120645', 'hk_inventory_manager', [], 'manager.hk@iitgn.ac.in', '469'),
+            ('hk_inventory_manager', 'Housekeeping Inventory', 'Manager', '9724361542', 'hk_inventory_manager', [], 'manager.hk@iitgn.ac.in', '483'),
             ('hostel.office', 'Hostel', 'Office', '07923951140', 'hostel_office', [], 'hostel.office@iitgn.ac.in', ''),
         ]
         for username, first, last, phone, role, areas, email, pay_code in accounts:
@@ -425,8 +425,8 @@ Existing account passwords are preserved.
                     user.first_name = 'Housekeeping Inventory'
                     user.last_name = 'Manager'
                     user.email = 'manager.hk@iitgn.ac.in'
-                    user.phone = '8758120645'
-                    user.pay_code = '469'
+                    user.phone = '9724361542'
+                    user.pay_code = '483'
                     user.role = 'hk_inventory_manager'
                 if username == 'hostel.office':
                     user.first_name = 'Hostel'
@@ -918,7 +918,7 @@ Existing account passwords are preserved.
             ('Ajay',                               '93',  '', 'Academic Block 13', 'room',     False),
             ('Gautam',                             '333', '', 'Academic Block 13', 'floor',    False),
             ('Jignesh',                            '363', '', 'Academic Block 13', 'washroom', False),
-            ('Kunal',                              '390', '', 'Academic Block 13', 'room',     False),
+            ('Kunal',                              '390', '', 'New Academic Reliever', 'reliever', True),
             ('Chandrika',                          '346', '', 'Academic Block 13', 'washroom', False),
             ('Bharat',                             '362', '', 'Academic Block 13', 'room',     False),
             ('Parth',                              '384', '', 'Academic Block 13', 'floor',    False),
@@ -1440,7 +1440,7 @@ Existing account passwords are preserved.
             {'area': 'Academic Block 13', 'name': 'Ajay', 'pay_code': '93', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False},
             {'area': 'Academic Block 13', 'name': 'Gautam', 'pay_code': '333', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False},
             {'area': 'Academic Block 13', 'name': 'Jignesh', 'pay_code': '363', 'worker_type': 'washroom', 'shift': 'day', 'is_reliever': False},
-            {'area': 'Academic Block 13', 'name': 'Kunal', 'pay_code': '390', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False},
+            {'area': 'New Academic Reliever', 'name': 'Kunal', 'pay_code': '390', 'worker_type': 'reliever', 'shift': 'day', 'is_reliever': True},
             {'area': 'Academic Block 13', 'name': 'Chandrika', 'pay_code': '346', 'worker_type': 'washroom', 'shift': 'day', 'is_reliever': False},
             {'area': 'Academic Block 13', 'name': 'Bharat', 'pay_code': '362', 'worker_type': 'room', 'shift': 'day', 'is_reliever': False},
             {'area': 'Academic Block 13', 'name': 'Parth', 'pay_code': '384', 'worker_type': 'floor', 'shift': 'day', 'is_reliever': False},
@@ -1786,52 +1786,52 @@ Existing account passwords are preserved.
 
         exact_hostel_schedules = {
             'Aibaan': {
-                'daily': ['4 Floor Cleaning', 'Common Room Cleaning', '1 Staircase Cleaning', 'Dusting', '8 Washroom Cleaning', '8 Washroom Dusting', '30 Room Cleaning', 'Common Dusting', 'Pantry Small Dustbin Regular Cleaning', 'Staircase Cleaning'],
-                'sunday': [],
+                'daily': ['4 Floor Cleaning', 'Common Room Cleaning', '1 Staircase Cleaning', 'Dusting', '8 Washroom Cleaning', 'Room Cleaning', 'Common Dusting', 'Pantry Small Dustbin Regular Cleaning', 'Staircase Cleaning'],
+                'sunday': ['Washroom Dusting'],
             },
             'Beauki': {
-                'daily': ['18 Room Cleaning', 'Staircase Cleaning', 'Common Room Cleaning', 'Common Area Cleaning', '12 Washroom Cleaning', '12 Washroom Dusting', 'Pantry Cleaning', '4 Floor Cleaning', 'Dusting'],
-                'sunday': [],
+                'daily': ['Room Cleaning', 'Staircase Cleaning', 'Common Room Cleaning', 'Common Area Cleaning', '12 Washroom Cleaning', 'Pantry Cleaning', '4 Floor Cleaning', 'Dusting'],
+                'sunday': ['Washroom Dusting'],
             },
             'Chimair': {
-                'daily': ['18 Room Cleaning', 'Staircase Cleaning', 'Common Room Cleaning', 'Common Area Cleaning', '12 Washroom Cleaning', '12 Washroom Dusting', 'Pantry Cleaning', '4 Floor Cleaning', 'Dusting'],
-                'sunday': [],
+                'daily': ['Room Cleaning', 'Staircase Cleaning', 'Common Room Cleaning', 'Common Area Cleaning', '12 Washroom Cleaning', 'Pantry Cleaning', '4 Floor Cleaning', 'Dusting'],
+                'sunday': ['Washroom Dusting'],
             },
             'Ijokha': {
-                'daily': ['18 Room Cleaning', 'Staircase Cleaning', 'Common Room Cleaning', 'Common Area Cleaning', '12 Washroom Cleaning', '12 Washroom Dusting', 'Pantry Cleaning', '4 Floor Cleaning', 'Dusting', 'Balcony Cleaning'],
-                'sunday': ['Common Terrace Cleaning'],
+                'daily': ['Room Cleaning', 'Staircase Cleaning', 'Common Room Cleaning', 'Common Area Cleaning', '12 Washroom Cleaning', 'Pantry Cleaning', '4 Floor Cleaning', 'Dusting', 'Balcony Cleaning'],
+                'sunday': ['Common Terrace Cleaning', 'Washroom Dusting'],
             },
             'Duven': {
-                'daily': ['12 Washroom Cleaning', '12 Washroom Dusting', '1 Staircase Cleaning', 'Common Cleaning', '4 Pantry Cleaning', '30 Room Cleaning', 'Dustbin Cleaning', '4 Floor Cleaning', 'Common Room Cleaning', 'Dusting'],
-                'sunday': ['Terrace Cleaning'],
+                'daily': ['12 Washroom Cleaning', '1 Staircase Cleaning', 'Common Cleaning', '4 Pantry Cleaning', 'Room Cleaning', 'Dustbin Cleaning', '4 Floor Cleaning', 'Common Room Cleaning', 'Dusting'],
+                'sunday': ['Terrace Cleaning', 'Washroom Dusting'],
             },
             'Emiet': {
-                'daily': ['4 Pantry Cleaning', '30 Room Cleaning', '1 Staircase Cleaning', 'Dustbin Cleaning', '12 Washroom Cleaning', '12 Washroom Dusting', 'Common Cleaning', '4 Floor Cleaning', 'Common Room Cleaning', 'Dusting'],
-                'sunday': ['Terrace Cleaning'],
+                'daily': ['4 Pantry Cleaning', 'Room Cleaning', '1 Staircase Cleaning', 'Dustbin Cleaning', '12 Washroom Cleaning', 'Common Cleaning', '4 Floor Cleaning', 'Common Room Cleaning', 'Dusting'],
+                'sunday': ['Terrace Cleaning', 'Washroom Dusting'],
             },
             'Firpeal': {
-                'daily': ['4 Floor Cleaning', '1 Staircase Cleaning', 'Dusting', 'Common Cleaning', '4 Pantry Cleaning', '30 Room Cleaning', 'Dustbin Cleaning', '12 Washroom Cleaning', '12 Washroom Dusting'],
-                'sunday': ['Terrace Cleaning'],
+                'daily': ['4 Floor Cleaning', '1 Staircase Cleaning', 'Dusting', 'Common Cleaning', '4 Pantry Cleaning', 'Room Cleaning', 'Dustbin Cleaning', '12 Washroom Cleaning'],
+                'sunday': ['Terrace Cleaning', 'Washroom Dusting'],
             },
             'Griwiksh': {
-                'daily': ['4 Floor Cleaning', '1 Staircase Cleaning', 'Dusting', 'Bridge Cleaning', '12 Washroom Cleaning', '12 Washroom Dusting', '4 Pantry Cleaning', 'Room Cleaning', 'Dustbin Cleaning', 'Common Cleaning'],
-                'sunday': ['Terrace Cleaning'],
+                'daily': ['4 Floor Cleaning', '1 Staircase Cleaning', 'Dusting', 'Bridge Cleaning', '12 Washroom Cleaning', '4 Pantry Cleaning', 'Room Cleaning', 'Dustbin Cleaning', 'Common Cleaning'],
+                'sunday': ['Terrace Cleaning', 'Washroom Dusting'],
             },
             'Hiqom': {
-                'daily': ['2 Floor Cleaning', '8 Balcony Cleaning', 'All Dusting', '1 Staircase Cleaning', 'Hostel Common Area Room Cleaning', '8 Washroom Cleaning', '8 Washroom Dusting', '4 Pantry Cleaning', '24 Room Cleaning', 'Dustbin Cleaning'],
-                'sunday': ['Terrace Cleaning'],
+                'daily': ['2 Floor Cleaning', '8 Balcony Cleaning', 'All Dusting', '1 Staircase Cleaning', 'Hostel Common Area Room Cleaning', '8 Washroom Cleaning', '4 Pantry Cleaning', 'Room Cleaning', 'Dustbin Cleaning'],
+                'sunday': ['Terrace Cleaning', 'Washroom Dusting'],
             },
             'Jurqia': {
-                'daily': ['4 Floor Cleaning', 'Common Room Cleaning', 'Common Terrace Cleaning', 'Common Area Cleaning', 'Dusting', '8 Washroom Cleaning', '8 Washroom Dusting', '1 Staircase Cleaning', '4 Balcony Cleaning', '18 Room Cleaning', '4 Pantry Cleaning', 'All Dustbin Cleaning'],
-                'sunday': ['Terrace Cleaning'],
+                'daily': ['4 Floor Cleaning', 'Common Room Cleaning', 'Common Terrace Cleaning', 'Common Area Cleaning', 'Dusting', '8 Washroom Cleaning', '1 Staircase Cleaning', '4 Balcony Cleaning', 'Room Cleaning', '4 Pantry Cleaning', 'All Dustbin Cleaning'],
+                'sunday': ['Terrace Cleaning', 'Washroom Dusting'],
             },
             'Kyzeel': {
-                'daily': ['10 Washroom Cleaning', '10 Washroom Dusting', '2 Floor Cleaning', '8 Balcony Cleaning', '3 Staircase Cleaning', 'Hostel Common Area Room Cleaning', 'Common Room Cleaning', '30 Room Cleaning', '4 Pantry Cleaning', 'All Dustbin Cleaning'],
-                'sunday': ['Terrace Cleaning'],
+                'daily': ['10 Washroom Cleaning', '2 Floor Cleaning', '8 Balcony Cleaning', '3 Staircase Cleaning', 'Hostel Common Area Room Cleaning', 'Common Room Cleaning', 'Room Cleaning', '4 Pantry Cleaning', 'All Dustbin Cleaning'],
+                'sunday': ['Terrace Cleaning', 'Washroom Dusting'],
             },
             'Lekhaag': {
-                'daily': ['4 Floor Cleaning', 'Common Room Cleaning', 'Common Terrace Cleaning', 'Common Area Cleaning', 'Dusting', '6 Washroom Cleaning', '6 Washroom Dusting', '1 Staircase Cleaning', '4 Balcony Cleaning', '16 Room Cleaning', '4 Pantry Cleaning'],
-                'sunday': ['All Dustbin Cleaning', 'Terrace Cleaning'],
+                'daily': ['4 Floor Cleaning', 'Common Room Cleaning', 'Common Terrace Cleaning', 'Common Area Cleaning', 'Dusting', '6 Washroom Cleaning', '1 Staircase Cleaning', '4 Balcony Cleaning', 'Room Cleaning', '4 Pantry Cleaning'],
+                'sunday': ['All Dustbin Cleaning', 'Terrace Cleaning', 'Washroom Dusting'],
             },
             'Hostel Common Area': {
                 'daily': ['Hostel Office', 'All Common Washroom', 'Mini Library', 'Student Lounge', 'Old Mess Second Floor Area', 'Washroom', 'New Mess Common Area Front and Back Cleaning', 'Hiqom Front and Back Cleaning', 'New PC Perimeter', 'Ijokha Backside Route Cleaning', 'Lekhaag Backside Route Cleaning', 'Firpeal Backside Route Cleaning', 'Emiet Backside Route Cleaning', 'Aibaan Back Side Cleaning', 'Beauki Back Side Cleaning', 'Chimair Back Side Cleaning', 'Old Mess Back Side Cleaning', 'Duven Back Side Cleaning', 'Kyzeel Back Side Cleaning', 'Jurqia Back Side Cleaning', 'Lekhaag Common Front Side Cleaning', 'Kyzeel Common Front Side Cleaning', 'Jurqia Common Front Side Cleaning', 'Ijokha Common Front Side Cleaning', 'New Mess Second Floor Hall', 'Mess to Hostel Connecting Bridge', 'New PC Student Conference Hall', 'All Boys Hostel Washroom Touch Up', 'New Mess to Old Mess Corridor Cleaning', 'All Old Hostel Common Area Cleaning', 'Other Work'],
@@ -1922,10 +1922,8 @@ Existing account passwords are preserved.
                 (8, '14:30', '16:30', 'Building Inside 2 Big Star Cast Cleaning And Railing Dusting', True),
                 (9, '16:30', '17:00', 'Ground Floor And Third Floor Washroom Touch Up', True),
                 (10, '09:00', '10:30', '6 Office Cleaning', True),
-                (11, '10:30', '10:45', 'Tea Break', False),
                 (12, '10:45', '12:15', 'Ground Floor Cleaning & All Dusting', True),
                 (13, '12:15', '13:00', 'Left And CCTV Room', True),
-                (14, '13:00', '14:00', 'Lunch Break', False),
                 (15, '14:00', '14:30', 'Ground Floor Touch Up', True),
                 (16, '14:30', '17:00', 'Building Inside & Outside 2 Star Cast Cleaning And Railing Dusting', True),
                 (17, '17:00', '18:00', 'All Floor Gents Washroom Touch Up And Ground Floor Touch Up', True),
@@ -1934,11 +1932,9 @@ Existing account passwords are preserved.
             rp_room_tasks = [
                 (1, '08:00', '08:30', 'Second Floor Gents And Handicap Washroom Touch Up', True),
                 (2, '08:30', '10:00', '301 To 306 Office Cleaning', True),
-                (3, '10:00', '10:15', 'Tea Break', False),
                 (4, '10:15', '11:30', '309 To 314 Office Cleaning', True),
                 (5, '11:30', '12:15', 'Second Floor Gents And Handicap Washroom Cleaning', True),
                 (6, '12:15', '13:00', 'All Floor Dry Mopping & All Floor Dusting Cleaning', True),
-                (7, '13:00', '14:00', 'Lunch Break', False),
                 (8, '14:00', '14:20', 'Second Floor Gents And Handicap Washroom Touch Up', True),
                 (9, '14:20', '15:00', 'All Floor Mopping Sweeping Cleaning', True),
                 (10, '15:00', '15:45', 'Room No 307 And 308 Cleaning Monday, Wednesday, And Friday & Gym Room Tuesday, Thursday', True),
@@ -1949,10 +1945,8 @@ Existing account passwords are preserved.
             rp_washroom_tasks = [
                 (1, '08:00', '08:45', 'Ground Floor & Second Floor And Third Floor Ladies Washroom Touch Up', True),
                 (2, '08:45', '10:00', '402 & 403 And 404 Office Cleaning', True),
-                (3, '10:00', '10:15', 'Tea Break', False),
                 (4, '10:15', '12:15', 'Ground Floor & Second Floor And Third Floor Ladies Washroom Cleaning', True),
                 (5, '12:15', '13:00', 'All Floor Cleaning', True),
-                (6, '13:00', '14:00', 'Lunch Break', False),
                 (7, '14:00', '14:30', 'Ground Floor & Second Floor And Third Floor Ladies Washroom Touch Up', True),
                 (8, '14:30', '14:45', 'All Floor Dusting', True),
                 (9, '14:45', '16:00', 'Room No 401 Cleaning Monday & Tuesday, Room No 405 & 406 Cleaning Tuesday & Friday, Room No 407 & 408 Cleaning Wednesday & Saturday', True),
@@ -2784,13 +2778,13 @@ Existing account passwords are preserved.
                     (7, '16:00', '17:00', 'AB-12: Extra Work and Final Round', 'floor', True, ''),
                 ],
                 'Academic Block 13': [
-                    (1, '08:00', '09:00', 'AB-13 GF: Washroom Floor Cleaning', 'washroom', True, 'Ajay + Gautam + Jignesh + Kunal + Chandrika + Bharat + Parth'),
+                    (1, '08:00', '09:00', 'AB-13 GF: Washroom Floor Cleaning', 'washroom', True, 'Ajay + Gautam + Jignesh + Chandrika + Bharat + Parth'),
                     (2, '09:00', '10:00', 'AB-13 GF: Classroom Staircase Cleaning', 'floor', True, ''),
                     (3, '10:00', '11:00', 'AB-13 GF: Washroom Touch Up + Lift + Room 112', 'washroom', True, 'Meeting room coverage'),
                     (4, '11:00', '12:00', 'AB-13 GF: Labs and Extra Work', 'room', True, ''),
                     (5, '12:00', '13:00', 'AB-13 GF: Final Ground Floor Touch Up', 'floor', True, ''),
                     (6, '13:00', '14:00', 'Lunch Break', 'floor', False, ''),
-                    (7, '14:00', '15:00', 'AB-13 2F/3F: Washroom Cleaning', 'washroom', True, 'Kunal + Chandrika'),
+                    (7, '14:00', '15:00', 'AB-13 2F/3F: Washroom Cleaning', 'washroom', True, 'Chandrika'),
                     (8, '15:00', '16:00', 'AB-13 2F/3F: Floor and Office Cleaning', 'floor', True, ''),
                     (9, '16:00', '17:00', 'AB-13 2F/3F: Lab Area and Touch Up', 'room', True, ''),
                     (10, '08:00', '11:00', 'AB-13 Library: Washroom and Office Floor Cleaning', 'room', True, 'Ajay + Bharat'),

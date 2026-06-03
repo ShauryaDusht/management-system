@@ -38,6 +38,50 @@ class HKUserArea(models.Model):
         return f"{self.user.get_full_name()} → {self.area.name}"
 
 
+class HKTemporaryStaffAreaAssignment(models.Model):
+    """Temporary staff-area access without changing permanent HKUserArea mappings."""
+    staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='hk_temporary_area_assignments',
+    )
+    area = models.ForeignKey(
+        HKArea,
+        on_delete=models.CASCADE,
+        related_name='temporary_staff_assignments',
+    )
+    start_date = models.DateField(default=timezone.localdate)
+    end_date = models.DateField()
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='hk_temporary_area_assignments_created',
+    )
+    note = models.CharField(max_length=300, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='hk_temporary_area_assignments_revoked',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-start_date', 'staff__first_name', 'area__name']
+
+    @property
+    def is_active_now(self):
+        today = timezone.localdate()
+        return self.revoked_at is None and self.start_date <= today <= self.end_date
+
+    def __str__(self):
+        return f"{self.staff} -> {self.area} ({self.start_date} to {self.end_date})"
+
+
 class HKWorker(models.Model):
     """Ground-level cleaning staff under a caretaker."""
     WORKER_TYPE_CHOICES = [

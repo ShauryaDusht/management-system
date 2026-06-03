@@ -108,9 +108,9 @@ export default function StaffAttendanceTab() {
     setExportingAbsent(true)
     setError('')
     try {
-      const response = await hkAPI.downloadAbsentAttendanceCSV(date)
+      const response = await hkAPI.downloadAbsentAttendanceCSV(date, 'staff')
       const blob = new Blob([response.data], { type: 'text/csv' })
-      triggerDownload(blob, `housekeeping_absent_${date}.csv`)
+      triggerDownload(blob, `housekeeping_absent_staff_${date}.csv`)
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed to export absent CSV.')
     } finally {
@@ -145,7 +145,7 @@ export default function StaffAttendanceTab() {
               Export CSV
             </Btn>
           <Btn size="sm" variant="secondary" onClick={downloadAbsentCsv} disabled={exportingAbsent}>
-            {exportingAbsent ? 'Exporting...' : 'Absent CSV'}
+            {exportingAbsent ? 'Exporting...' : 'Absent Staff CSV'}
           </Btn>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Card>

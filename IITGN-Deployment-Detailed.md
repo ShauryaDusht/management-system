@@ -437,6 +437,9 @@ docker compose restart nginx
 # Full restart (no data loss)
 docker compose down && docker compose up -d
 
+# Safer app-only update/restart
+docker compose up -d --build backend frontend-admin
+
 # Run a Django management command
 docker compose exec backend python manage.py <command>
 
@@ -446,11 +449,45 @@ docker compose exec backend bash
 # Backup the database
 docker compose exec db pg_dump -U postgres inventory_db > backup_$(date +%Y%m%d_%H%M).sql
 
+# Preferred timestamped database backup in /srv/campussanchalika/backups
+docker compose exec backend /app/scripts/backup_database.sh
+
+# Back up media separately on the host
+sudo tar -czf /srv/campussanchalika/backups/media_$(date +%Y%m%d_%H%M).tar.gz /srv/campussanchalika/media
+
 # When IITGN renews the cert (no downtime needed)
 cp new.crt nginx/certs/local.crt
 cp new.key nginx/certs/local.key
 chmod 600 nginx/certs/local.key
 docker compose restart nginx
+```
+
+---
+
+## Production Data Safety
+
+Keep these `.env` values in production unless you intentionally want seed-managed data to overwrite dashboard-managed rows:
+
+```env
+RUN_SEED_ON_STARTUP=false
+RUN_DATA_SYNC_ON_STARTUP=false
+RUN_WEEKLY_SEED_UPDATE=false
+```
+
+Normal `docker compose down` preserves the named `postgres_data` volume. Do not use `docker compose down -v`, `docker volume rm`, or `docker volume prune` during normal updates because those commands can remove database data.
+
+Weekly cron logs are written under `/app/backups/logs`, mapped to `/srv/campussanchalika/backups/logs`; database backups are stored under `/app/backups`, mapped to `/srv/campussanchalika/backups`.
+
+To apply the one-time housekeeping schedule correction after deploy:
+
+```bash
+docker compose exec backend python manage.py apply_housekeeping_schedule_fixes
+```
+
+To restore a custom-format PostgreSQL backup on a test or empty database, copy the `.dump` into a container-mounted path and run:
+
+```bash
+docker compose exec -T db pg_restore --clean --if-exists -U postgres -d inventory_db /path/to/backup.dump
 ```
 
 ---

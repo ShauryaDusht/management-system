@@ -22,6 +22,7 @@ import { useAuth } from '../../context/AuthContext'
 
 const ROLES = [
   'admin',
+  'housekeeping_manager',
   'hk_inventory_manager',
   'hostel_office',
   'horticulture_manager',
@@ -31,6 +32,7 @@ const ROLES = [
 const HK_ROLES = ['supervisor', 'caretaker']
 const ROLE_FILTERS = [
   { key: 'admin', label: 'Admin' },
+  { key: 'housekeeping_manager', label: 'Housekeeping Manager' },
   { key: 'hk_inventory_manager', label: 'HK / Inventory Manager' },
   { key: 'hostel_office', label: 'Hostel Office' },
   { key: 'horticulture_manager', label: 'Horticulture Manager' },
@@ -110,9 +112,9 @@ export default function UsersPage() {
   }, [], 'Failed to load users. Make sure you are logged in as Admin.')
 
   const error = actionError || loadError
-  const isHKInventoryManager = currentUser?.role === 'hk_inventory_manager'
-  const editableRoles = isHKInventoryManager ? ROLES.filter((role) => role !== 'admin') : ROLES
-  const canEditUser = (targetUser) => !isHKInventoryManager || targetUser.role !== 'admin'
+  const isLimitedUserManager = ['housekeeping_manager', 'hk_inventory_manager'].includes(currentUser?.role)
+  const editableRoles = isLimitedUserManager ? ROLES.filter((role) => role !== 'admin') : ROLES
+  const canEditUser = (targetUser) => !isLimitedUserManager || targetUser.role !== 'admin'
 
   const openCreate = () => {
     setForm({ ...EMPTY, role: 'supervisor' })
@@ -122,7 +124,7 @@ export default function UsersPage() {
 
   const openEdit = (u) => {
     if (!canEditUser(u)) {
-      setFormError('HK / Inventory Manager cannot edit admin users.')
+      setFormError('Managers cannot edit admin users.')
       return
     }
     setForm({
@@ -141,8 +143,8 @@ export default function UsersPage() {
   }
 
   const save = async () => {
-    if (isHKInventoryManager && form.role === 'admin') {
-      setFormError('HK / Inventory Manager cannot create or promote admin users.')
+    if (isLimitedUserManager && form.role === 'admin') {
+      setFormError('Managers cannot create or promote admin users.')
       return
     }
     const standardizedUsername = buildUsername(form.first_name, form.last_name) || String(form.username || '').trim().toLowerCase()
@@ -158,7 +160,6 @@ export default function UsersPage() {
       setFormError('')
       try {
         const payload = {
-          username: standardizedUsername,
           first_name: form.first_name,
           last_name: form.last_name,
           email: form.email,
@@ -166,6 +167,9 @@ export default function UsersPage() {
           pay_code: form.pay_code || '',
           role: form.role,
           area_ids: HK_ROLES.includes(form.role) ? form.area_ids : [],
+        }
+        if (modal.mode === 'create' || standardizedUsername !== modal.user?.username) {
+          payload.username = standardizedUsername
         }
 
         if (form.password) payload.password = form.password
@@ -188,7 +192,7 @@ export default function UsersPage() {
   const doDelete = async () => {
     if (!deleteTarget) return
     if (!canEditUser(deleteTarget)) {
-      setFormError('HK / Inventory Manager cannot delete admin users.')
+      setFormError('Managers cannot delete admin users.')
       setDeleteTarget(null)
       return
     }
@@ -242,6 +246,7 @@ export default function UsersPage() {
   const roleCounts = useMemo(() => {
     const counts = {
       admin: 0,
+      housekeeping_manager: 0,
       hk_inventory_manager: 0,
       hostel_office: 0,
       horticulture_manager: 0,

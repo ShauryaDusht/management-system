@@ -283,30 +283,6 @@ class Command(BaseCommand):
     ]
 
     SCHEDULE_UPDATES = [
-        ("Research Park", "floor", 1, "Dhaval: GF + 3F Gents and Handicap Washroom Touch Up", ""),
-        ("Research Park", "floor", 2, "Dhaval: Admin Office Cleaning", ""),
-        ("Research Park", "floor", 3, "Dhaval: Board Room Cleaning", ""),
-        ("Research Park", "floor", 4, "Dhaval: Fountain Common Area Cleaning", ""),
-        ("Research Park", "floor", 5, "Dhaval: Tea Break", ""),
-        ("Research Park", "floor", 6, "Dhaval: Classroom Cleaning", ""),
-        ("Research Park", "floor", 7, "Dhaval: GF + 3F Gents and Handicap Washroom Cleaning", ""),
-        ("Research Park", "floor", 8, "Dhaval: Conference Room Cleaning", ""),
-        ("Research Park", "floor", 9, "Dhaval: Lunch Break", ""),
-        ("Research Park", "floor", 10, "Dhaval: GF + 3F Washroom Touch Up", ""),
-        ("Research Park", "floor", 11, "Dhaval: Building Inside 2 Staircase + Railing Dusting", ""),
-        ("Research Park", "floor", 12, "Dhaval: GF + 3F Washroom Touch Up", ""),
-        ("Research Park", "floor", 13, "Mahesh: 2 Office Cleaning", "Senior shift 9:00 AM to 6:00 PM"),
-        ("Research Park", "floor", 14, "Mahesh: Ground Floor Cleaning", ""),
-        ("Research Park", "floor", 15, "Mahesh: Tea Break", ""),
-        ("Research Park", "floor", 16, "Mahesh: 1 Office Cleaning", ""),
-        ("Research Park", "floor", 17, "Mahesh: Ground Floor All Dusting", ""),
-        ("Research Park", "floor", 18, "Mahesh: Lift and CCTV Room Cleaning", ""),
-        ("Research Park", "floor", 19, "Mahesh: Lunch Break", ""),
-        ("Research Park", "floor", 20, "Mahesh: Ground Floor Touch Up", ""),
-        ("Research Park", "floor", 21, "Mahesh: 2 Office Cleaning", ""),
-        ("Research Park", "floor", 22, "Mahesh: Building Inside Staircase + Railing Dusting", ""),
-        ("Research Park", "floor", 23, "Mahesh: Building Outside 2 Staircase + Railing Dusting", ""),
-        ("Research Park", "floor", 24, "Mahesh: All Floor Gents Washroom Touch Up", ""),
         ("Guest House New", "floor", 1, "Raju: Ground Floor Office, Reception and Front Corridor", "Dusting, sweeping and mopping"),
         ("Guest House New", "floor", 2, "Raju: Parking, Washroom and Lobby Touch Up", "Ladies/Gents/Handicapped washroom, lobby and dining passage"),
         ("Guest House New", "floor", 3, "Raju: Front Glass, Lift and Ground Floor Final Round", ""),
@@ -447,7 +423,6 @@ class Command(BaseCommand):
         {"area": "Academic Block 13", "name": "Ajay", "phone": "", "pay_code": "93", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Ajay Rathod", "Rathod Ajaykumar"]},
         {"area": "Academic Block 13", "name": "Gautam", "phone": "", "pay_code": "333", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Gautam Vaghela", "Gautambhai Vaghela"]},
         {"area": "Academic Block 13", "name": "Jignesh", "phone": "", "pay_code": "363", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Jignesh Solanki", "Jigneshkumar Babubhai Solanki", "Gignesh"]},
-        {"area": "Academic Block 13", "name": "Kunal", "phone": "", "pay_code": "390", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Krunal Parmar", "Kunal Parmar", "Parmar Krunalbhai"]},
         {"area": "Academic Block 13", "name": "Chandrika", "phone": "", "pay_code": "346", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Chandrikaben", "Chandrika ben"]},
         {"area": "Academic Block 13", "name": "Bharat", "phone": "", "pay_code": "362", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Bharat"]},
         {"area": "Academic Block 13", "name": "Parth", "phone": "", "pay_code": "384", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Parth Solanki", "Solanki Parthkumar Jagdishbhai"]},
@@ -457,6 +432,7 @@ class Command(BaseCommand):
         {"area": "New Academic Common Area", "name": "Hitesh", "phone": "", "pay_code": "434", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Hitesh Solanki", "Hiteshbhai Solanki"]},
         {"area": "New Academic Reliever", "name": "Niruben", "phone": "", "pay_code": "111", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Neru ben", "Gurjar Niruben"]},
         {"area": "New Academic Reliever", "name": "Ilesh", "phone": "", "pay_code": "361", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Elesh", "Elesh Bhangi", "Bhangi Ileshbhai Ishvarbhai"]},
+        {"area": "New Academic Reliever", "name": "Kunal", "phone": "", "pay_code": "390", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Krunal Parmar", "Kunal Parmar", "Parmar Krunalbhai"]},
     ]
     ACADEMIC_EMPTY_AREAS = []
 

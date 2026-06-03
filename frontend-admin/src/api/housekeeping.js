@@ -53,11 +53,17 @@ export const hkAPI = {
     api.get('/housekeeping/attendance-summary/', { params: { date } }),
   getStaffAttendance: (date) =>
     api.get('/housekeeping/staff-attendance/', { params: { date } }),
-  downloadAbsentAttendanceCSV: (date) =>
+  downloadAbsentAttendanceCSV: (date, type = 'all') =>
     api.get('/housekeeping/attendance/absent-csv/', {
-      params: { date },
+      params: { date, type },
       responseType: 'blob',
     }),
+  getTemporaryAreaAssignments: (status = 'active') =>
+    api.get('/housekeeping/temporary-area-assignments/', { params: { status } }),
+  createTemporaryAreaAssignment: (payload) =>
+    api.post('/housekeeping/temporary-area-assignments/', payload),
+  revokeTemporaryAreaAssignment: (id) =>
+    api.post(`/housekeeping/temporary-area-assignments/${id}/revoke/`),
   getDailyRecords: (areaOrParams, date) => {
     const params = {}
     if (areaOrParams && typeof areaOrParams === 'object' && !Array.isArray(areaOrParams)) {

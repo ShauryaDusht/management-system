@@ -6,6 +6,7 @@ from .models import (
     HKAreaStock, HKStockRequest, HKAlert, HKRelieverSubstitution,
     HKTaskWorkerAssignment, HKWorkerSelectionRequest,
     HKLeaveRequest, HKInchargeAssignment, HKInchargeNotification,
+    HKTemporaryStaffAreaAssignment,
 )
 
 
@@ -21,6 +22,14 @@ class HKUserAreaAdmin(admin.ModelAdmin):
     list_display = ('user', 'area')
     list_filter = ('area',)
     search_fields = ('user__username', 'user__first_name', 'area__name')
+
+
+@admin.register(HKTemporaryStaffAreaAssignment, site=admin_site)
+class HKTemporaryStaffAreaAssignmentAdmin(admin.ModelAdmin):
+    list_display = ('staff', 'area', 'start_date', 'end_date', 'assigned_by', 'revoked_at')
+    list_filter = ('area', 'start_date', 'end_date', 'revoked_at')
+    search_fields = ('staff__username', 'staff__first_name', 'staff__last_name', 'area__name')
+    date_hierarchy = 'start_date'
 
 
 @admin.register(HKWorker, site=admin_site)

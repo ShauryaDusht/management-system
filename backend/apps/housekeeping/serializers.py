@@ -12,6 +12,7 @@ from .models import (
     HKScheduleTemplate,
     HKStaffAttendanceRecord,
     HKStockRequest,
+    HKTemporaryStaffAreaAssignment,
     HKUserArea,
     HKWorkerSelectionRequest,
     HKWorker,
@@ -418,3 +419,37 @@ class HKInchargeNotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = HKInchargeNotification
         fields = ['id', 'assignment_id', 'message', 'level', 'is_seen', 'created_at']
+
+
+class HKTemporaryStaffAreaAssignmentSerializer(serializers.ModelSerializer):
+    staff_name = serializers.SerializerMethodField()
+    area_name = serializers.CharField(source='area.name', read_only=True, default='')
+    assigned_by_name = serializers.SerializerMethodField()
+    is_active = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HKTemporaryStaffAreaAssignment
+        fields = [
+            'id',
+            'staff',
+            'staff_name',
+            'area',
+            'area_name',
+            'start_date',
+            'end_date',
+            'note',
+            'assigned_by',
+            'assigned_by_name',
+            'revoked_at',
+            'created_at',
+            'is_active',
+        ]
+
+    def get_staff_name(self, obj):
+        return obj.staff.get_full_name() or obj.staff.username if obj.staff else ''
+
+    def get_assigned_by_name(self, obj):
+        return obj.assigned_by.get_full_name() or obj.assigned_by.username if obj.assigned_by else ''
+
+    def get_is_active(self, obj):
+        return obj.is_active_now

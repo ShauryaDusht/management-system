@@ -16,6 +16,7 @@ const StaffAttendanceTab = lazy(() => import('./StaffAttendanceTab'))
 const InchargeApprovalsTab = lazy(() => import('./InchargeApprovalsTab'))
 const GalleryTab = lazy(() => import('./GalleryTab'))
 const ScheduleTab = lazy(() => import('./ScheduleTab'))
+const TemporaryAreaAssignmentsTab = lazy(() => import('./TemporaryAreaAssignmentsTab'))
 
 const tabFallback = (
   <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
@@ -40,6 +41,7 @@ export default function HousekeepingPage() {
         { key: 'workers', label: 'Workers' },
       ]
       if (['admin', 'housekeeping_manager', 'hk_inventory_manager', 'hostel_office'].includes(user?.role)) {
+        base.push({ key: 'temporary_areas', label: 'Temporary Areas' })
         base.push({ key: 'schedule', label: 'Schedule' })
         base.push({
           key: 'incharge_approvals',
@@ -113,6 +115,11 @@ export default function HousekeepingPage() {
         </Suspense>
       )}
       {active === 'workers' && <WorkersTab readOnly={isHostelOffice} hostelOnly={isHostelOffice} />}
+      {active === 'temporary_areas' && (
+        <Suspense fallback={tabFallback}>
+          <TemporaryAreaAssignmentsTab hostelOnly={isHostelOffice} />
+        </Suspense>
+      )}
       {active === 'schedule' && (
         <Suspense fallback={tabFallback}>
           <ScheduleTab readOnly={isHostelOffice} hostelOnly={isHostelOffice} />

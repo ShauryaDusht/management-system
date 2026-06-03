@@ -39,15 +39,19 @@ echo "${LOG_PREFIX} Pruning done."
 echo "${LOG_PREFIX} Running migrations..."
 python manage.py migrate --noinput -v 0
 
-echo "${LOG_PREFIX} Syncing seed-managed data..."
-python manage.py update_inventory_items -v 0
-python manage.py sync_real_inventory_stock --quiet
-python manage.py sync_monthly_purchase_plans --quiet
-python manage.py update_pay_codes --quiet
-python manage.py update_names --quiet
-python manage.py sync_guesthouse_director_staff --quiet
-python manage.py seed_housekeeping -v 0
-python manage.py seed_horticulture
+if [ "${RUN_WEEKLY_SEED_UPDATE:-false}" = "true" ]; then
+    echo "${LOG_PREFIX} Syncing seed-managed data (RUN_WEEKLY_SEED_UPDATE=true)..."
+    python manage.py update_inventory_items -v 0
+    python manage.py sync_real_inventory_stock --quiet
+    python manage.py sync_monthly_purchase_plans --quiet
+    python manage.py update_pay_codes --quiet
+    python manage.py update_names --quiet
+    python manage.py sync_guesthouse_director_staff --quiet
+    python manage.py seed_housekeeping -v 0
+    python manage.py seed_horticulture
+else
+    echo "${LOG_PREFIX} Skipping seed-managed data sync (RUN_WEEKLY_SEED_UPDATE is not true)."
+fi
 
 echo "${LOG_PREFIX} ============================================"
 echo "${LOG_PREFIX} Weekly seed update complete."

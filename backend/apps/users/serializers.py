@@ -34,6 +34,18 @@ def _canonical_username(attrs, instance=None):
     return username
 
 
+def _update_username(attrs, instance):
+    supplied = normalize_username_value(attrs.get('username', ''))
+    current = normalize_username_value(getattr(instance, 'username', ''))
+    if not supplied or supplied == current:
+        return current
+    if not is_standard_username(supplied):
+        raise serializers.ValidationError({'username': 'Username must be lowercase firstname.lastname.'})
+    if User.objects.filter(username=supplied).exclude(pk=instance.pk).exists():
+        raise serializers.ValidationError({'username': 'A user with this standardized username already exists.'})
+    return supplied
+
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Add user info into the JWT token response."""
 
@@ -146,7 +158,8 @@ class UserSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         area_ids = validated_data.pop('area_ids', None)
         password = validated_data.pop('password', None)
-        validated_data['username'] = _canonical_username(validated_data, instance)
+        if 'username' in validated_data:
+            validated_data['username'] = _update_username(validated_data, instance)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

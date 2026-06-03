@@ -35,6 +35,12 @@ from apps.inventory.models import Item, ItemIssue, ItemRequest, StockEntry
 
 # ── Inventory report ──────────────────────────────────────────────────────────
 
+def _exclude_break_tasks(qs):
+    return qs.exclude(schedule__task_name__icontains='Tea Break').exclude(
+        schedule__task_name__icontains='Lunch Break'
+    )
+
+
 def generate_inventory_report(status_filter=None, item_type_filter=None):
     qs = Item.objects.all().select_related('category')
 
@@ -534,8 +540,7 @@ def generate_worker_report(worker_id: int, month: int, year: int) -> dict:
     all_task_ids = direct_task_ids | multi_task_ids
 
     task_records = list(
-        HKDailyRecord.objects
-        .filter(id__in=all_task_ids)
+        _exclude_break_tasks(HKDailyRecord.objects.filter(id__in=all_task_ids))
         .select_related('schedule', 'area', 'assigned_by', 'completed_by')
         .order_by('date', 'schedule__start_time', 'id')
     )
@@ -585,7 +590,7 @@ def generate_worker_report(worker_id: int, month: int, year: int) -> dict:
             'photo_submitted': bool(record.photo_after),
         })
 
-    total_assigned = len(all_task_ids)
+    total_assigned = len(task_records)
     completion_pct = round((total_completed / total_assigned * 100), 2) if total_assigned else 0.0
 
     extra_work_rows = list(
@@ -693,16 +698,16 @@ def generate_supervisor_report(supervisor_id: int, month: int, year: int) -> dic
     )
     workers_under = HKWorker.objects.filter(supervisor=supervisor, is_active=True).count()
 
-    area_tasks_qs = HKDailyRecord.objects.filter(
+    area_tasks_qs = _exclude_break_tasks(HKDailyRecord.objects.filter(
         area_id__in=supervisor_area_ids,
         date__gte=period_start,
         date__lte=period_end,
-    )
-    assigned_qs = HKDailyRecord.objects.filter(
+    ))
+    assigned_qs = _exclude_break_tasks(HKDailyRecord.objects.filter(
         assigned_by=supervisor,
         date__gte=period_start,
         date__lte=period_end,
-    )
+    ))
     total_tasks_assigned = area_tasks_qs.count()
     tasks_completed = area_tasks_qs.filter(status='done').count()
     tasks_skipped = area_tasks_qs.filter(status='skipped').count()
@@ -723,12 +728,12 @@ def generate_supervisor_report(supervisor_id: int, month: int, year: int) -> dic
         2,
     ) if completion_minutes else 0.0
 
-    marking_qs = HKDailyRecord.objects.filter(
+    marking_qs = _exclude_break_tasks(HKDailyRecord.objects.filter(
         completed_by=supervisor,
         status='done',
         date__gte=period_start,
         date__lte=period_end,
-    )
+    ))
     total_tasks_personally_marked_done = marking_qs.count()
     unique_workers_covered = (
         marking_qs

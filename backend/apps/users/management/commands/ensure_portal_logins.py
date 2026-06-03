@@ -33,16 +33,17 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         admin_user, admin_created = User.objects.get_or_create(username='super.admin')
 
+        if admin_created:
+            admin_user.first_name = 'Super'
+            admin_user.last_name = 'Admin'
+            admin_user.email = 'pragnesh@iitgn.ac.in'
+            admin_user.phone = '9727757096'
+            admin_user.set_password(DEFAULT_PASSWORD)
         admin_user.username = 'super.admin'
-        admin_user.first_name = 'Super'
-        admin_user.last_name = 'Admin'
-        admin_user.email = 'pragnesh@iitgn.ac.in'
-        admin_user.phone = '9727757096'
         admin_user.role = User.Role.ADMIN
         admin_user.is_active = True
         admin_user.is_staff = True
         admin_user.is_superuser = True
-        admin_user.set_password(DEFAULT_PASSWORD)
         admin_user.save()
 
         user, created = User.objects.get_or_create(
@@ -51,22 +52,26 @@ class Command(BaseCommand):
                 'first_name': 'Housekeeping Inventory',
                 'last_name': 'Manager',
                 'email': 'manager.hk@iitgn.ac.in',
-                'phone': '8758120645',
-                'pay_code': '469',
+                'phone': '9724361542',
+                'pay_code': '483',
                 'role': User.Role.HK_INVENTORY_MANAGER,
             },
         )
 
-        user.first_name = 'Housekeeping Inventory'
-        user.last_name = 'Manager'
-        user.email = 'manager.hk@iitgn.ac.in'
-        user.phone = '8758120645'
-        user.pay_code = '469'
+        if created:
+            user.first_name = 'Housekeeping Inventory'
+            user.last_name = 'Manager'
+            user.email = 'manager.hk@iitgn.ac.in'
+            user.phone = '9724361542'
+            user.pay_code = '483'
+            user.set_password(DEFAULT_PASSWORD)
+        elif user.phone in {'', '8758120645'} and user.pay_code in {'', '469'}:
+            user.phone = '9724361542'
+            user.pay_code = '483'
         user.role = User.Role.HK_INVENTORY_MANAGER
         user.is_active = True
         user.is_staff = True
         user.is_superuser = False
-        user.set_password(DEFAULT_PASSWORD)
         user.save()
 
         hostel_office, hostel_created = User.objects.get_or_create(
@@ -81,16 +86,17 @@ class Command(BaseCommand):
             },
         )
 
-        hostel_office.first_name = 'Hostel'
-        hostel_office.last_name = 'Office'
-        hostel_office.email = 'hostel.office@iitgn.ac.in'
-        hostel_office.phone = '07923951140'
-        hostel_office.pay_code = ''
+        if hostel_created:
+            hostel_office.first_name = 'Hostel'
+            hostel_office.last_name = 'Office'
+            hostel_office.email = 'hostel.office@iitgn.ac.in'
+            hostel_office.phone = '07923951140'
+            hostel_office.pay_code = ''
+            hostel_office.set_password(DEFAULT_PASSWORD)
         hostel_office.role = User.Role.HOSTEL_OFFICE
         hostel_office.is_active = True
         hostel_office.is_staff = True
         hostel_office.is_superuser = False
-        hostel_office.set_password(DEFAULT_PASSWORD)
         hostel_office.save()
 
         deleted_legacy_admins = self._replace_legacy_admin_references(admin_user)

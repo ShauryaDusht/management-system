@@ -39,6 +39,7 @@ from .models import (
     HKLeaveRequest,
     HKStockRequest,
     HKTaskWorkerAssignment,
+    HKTemporaryStaffAreaAssignment,
     HKUserArea,
     HKWorker,
     HKWorkerSelectionRequest,
@@ -598,6 +599,47 @@ def _normalize_break_templates_for_area(area):
         return
 
     templates = HKScheduleTemplate.objects.filter(area=area, frequency="daily", is_active=True)
+    if area.name == "Research Park":
+        for label, minutes, start_time in (
+            ("Tea Break", 15, datetime.time(10, 30)),
+            ("Lunch Break", 60, datetime.time(13, 0)),
+        ):
+            break_templates = list(
+                templates
+                .filter(task_name__icontains=label)
+                .order_by("start_time", "order", "id")
+            )
+            for index, template in enumerate(break_templates):
+                if index == 0:
+                    fixed_end = (
+                        datetime.datetime.combine(datetime.date.today(), start_time)
+                        + datetime.timedelta(minutes=minutes)
+                    ).time()
+                    updates = []
+                    if template.task_name != label:
+                        template.task_name = label
+                        updates.append("task_name")
+                    if template.start_time != start_time:
+                        template.start_time = start_time
+                        updates.append("start_time")
+                    if template.end_time != fixed_end:
+                        template.end_time = fixed_end
+                        updates.append("end_time")
+                    if template.worker_tag != "all":
+                        template.worker_tag = "all"
+                        updates.append("worker_tag")
+                    if template.requires_photo:
+                        template.requires_photo = False
+                        updates.append("requires_photo")
+                    if updates:
+                        template.save(update_fields=updates)
+                    continue
+
+                template.is_active = False
+                template.requires_photo = False
+                template.save(update_fields=["is_active", "requires_photo"])
+        templates = HKScheduleTemplate.objects.filter(area=area, frequency="daily", is_active=True)
+
     for template in templates.filter(task_name__icontains="Tea Break"):
         fixed_end = (
             datetime.datetime.combine(datetime.date.today(), template.start_time)
@@ -982,7 +1024,17 @@ def get_user_areas(user):
             ).values_list("area_id", flat=True)
         )
 
-    all_ids = assigned_area_ids | temp_incharge_area_ids
+    temporary_area_ids = set(
+        HKTemporaryStaffAreaAssignment.objects.filter(
+            staff=user,
+            revoked_at__isnull=True,
+            start_date__lte=today,
+            end_date__gte=today,
+            area__is_active=True,
+        ).values_list("area_id", flat=True)
+    )
+
+    all_ids = assigned_area_ids | temp_incharge_area_ids | temporary_area_ids
     if not all_ids:
         return HKArea.objects.none()
 
@@ -1132,6 +1184,9 @@ def optional_weekend_record_is_selected(record):
 
 
 def record_counts_for_progress(record):
+    schedule = getattr(record, "schedule", None)
+    if schedule and is_break_task_name(getattr(schedule, "task_name", "")):
+        return False
     return (not is_optional_weekend_record(record)) or optional_weekend_record_is_selected(record)
 
 
@@ -1242,7 +1297,21 @@ def current_half():
     return "first" if h < 13 else "second"
 
 
-def attendance_half_is_open(sel_date, half):
+def _has_evening_or_night_workers(workers):
+    return any(getattr(worker, "shift", "") in {"evening", "night"} for worker in workers or [])
+
+
+def _has_extended_second_half_access(sel_date, user=None, area=None, workers=None):
+    return bool(
+        user
+        and getattr(user, "username", "") == "ashok.rathod"
+        and area
+        and area.name in {"Guest House New", "Director Bungalow"}
+        and _has_evening_or_night_workers(workers)
+    )
+
+
+def attendance_half_is_open(sel_date, half, user=None, area=None, workers=None):
     """Today attendance is editable only during the matching half window."""
     if sel_date != timezone.localdate():
         return True
@@ -1250,6 +1319,8 @@ def attendance_half_is_open(sel_date, half):
     if half == "first":
         return datetime.time(8, 0) <= now_time < datetime.time(13, 0)
     if half == "second":
+        if _has_extended_second_half_access(sel_date, user=user, area=area, workers=workers):
+            return now_time >= datetime.time(13, 0)
         return datetime.time(13, 0) <= now_time < datetime.time(17, 0)
     return False
 
@@ -2869,8 +2940,8 @@ def hk_attendance(request):
 
     cur_half = current_half()
     is_today = sel_date == today
-    first_half_open = attendance_half_is_open(sel_date, "first")
-    second_half_open = attendance_half_is_open(sel_date, "second")
+    first_half_open = attendance_half_is_open(sel_date, "first", user=user, area=sel_area, workers=workers)
+    second_half_open = attendance_half_is_open(sel_date, "second", user=user, area=sel_area, workers=workers)
     can_submit_selected_attendance = is_today or (
         can_mark_previous_sunday_attendance and sel_date == previous_sunday
     )
@@ -2884,7 +2955,7 @@ def hk_attendance(request):
 
         if action == "submit_half":
             half = request.POST.get("half", cur_half)
-            if half not in {"first", "second"} or not attendance_half_is_open(sel_date, half):
+            if half not in {"first", "second"} or not attendance_half_is_open(sel_date, half, user=user, area=sel_area, workers=workers):
                 return redirect(f"/housekeeping/attendance/?date={sel_date}{area_param}&att_err=half_closed")
             if half == "second":
                 _auto_create_second_half_from_first(workers, sel_date, user)
@@ -2904,7 +2975,7 @@ def hk_attendance(request):
 
         elif action == "mark":
             half = request.POST.get("half", cur_half)
-            if half not in {"first", "second"} or not attendance_half_is_open(sel_date, half):
+            if half not in {"first", "second"} or not attendance_half_is_open(sel_date, half, user=user, area=sel_area, workers=workers):
                 if request.headers.get("HX-Request"):
                     return HttpResponseBadRequest("Attendance for this half is not open.")
                 return redirect(f"/housekeeping/attendance/?date={sel_date}{area_param}&att_err=half_closed")

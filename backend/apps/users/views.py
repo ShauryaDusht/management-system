@@ -8,13 +8,19 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User
 from .serializers import CustomTokenObtainPairSerializer, UserSerializer, UserCreateSerializer
-from .permissions import IsAdminOrHKInventoryManager
+from .permissions import IsAdminOrHousekeepingUserManager
 
 DEPRECATED_MANAGER_USERNAMES = ['housekeeping.manager', 'inventory.manager']
 
 
 def _is_hk_inventory_request(user):
-    return bool(user and getattr(user, 'is_hk_inventory_manager', False))
+    return bool(
+        user
+        and (
+            getattr(user, 'is_hk_inventory_manager', False)
+            or getattr(user, 'is_housekeeping_manager', False)
+        )
+    )
 
 
 def _is_protected_admin_user(user):
@@ -41,9 +47,9 @@ def _deny_hk_inventory_admin_mutation(request_user, target_user=None, incoming_r
     if not _is_hk_inventory_request(request_user):
         return
     if _is_protected_admin_user(target_user):
-        raise PermissionDenied('HK Inventory Manager cannot edit or delete admin users.')
+        raise PermissionDenied('Managers cannot edit or delete admin users.')
     if incoming_role == User.Role.ADMIN:
-        raise ValidationError({'role': ['HK Inventory Manager cannot create or promote admin users.']})
+        raise ValidationError({'role': ['Managers cannot create or promote admin users.']})
 
 
 class LoginView(TokenObtainPairView):
@@ -95,7 +101,7 @@ class UserListCreateView(generics.ListCreateAPIView):
     def get_permissions(self):
         if self.request.method == 'GET' and _is_hostel_office_request(self.request.user):
             return [IsAuthenticated()]
-        return [IsAdminOrHKInventoryManager()]
+        return [IsAdminOrHousekeepingUserManager()]
 
     def get_queryset(self):
         qs = User.objects.prefetch_related(
@@ -142,7 +148,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_permissions(self):
         if self.request.method == 'PATCH' and _is_hostel_office_request(self.request.user):
             return [IsAuthenticated()]
-        return [IsAdminOrHKInventoryManager()]
+        return [IsAdminOrHousekeepingUserManager()]
 
     def perform_update(self, serializer):
         if _is_hostel_office_request(self.request.user):

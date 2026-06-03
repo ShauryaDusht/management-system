@@ -44,6 +44,7 @@ from .models import (
     HKLeaveRequest,
     HKScheduleTemplate,
     HKStockRequest,
+    HKTemporaryStaffAreaAssignment,
     HKUserArea,
     HKWorker,
     HKWorkerSelectionRequest,
@@ -59,6 +60,7 @@ from .serializers import (
     HKStaffAttendanceRecordSerializer,
     HKStockRequestSerializer,
     HKStockRequestStatusSerializer,
+    HKTemporaryStaffAreaAssignmentSerializer,
     HKWorkerSerializer,
     HKWorkerSelectionRequestSerializer,
 )
@@ -751,12 +753,19 @@ class HKAbsentAttendanceCSVView(APIView):
             return Response({'detail': 'Permission denied.'}, status=403)
 
         target_date = _parse_iso_date(request.query_params.get('date')) or timezone.localdate()
-        worker_qs = (
-            HKAttendanceRecord.objects
-            .select_related('worker__area')
-            .filter(date=target_date, status='absent')
-            .order_by('worker__area__name', 'worker__name')
-        )
+        export_type = (request.query_params.get('type') or 'all').strip().lower()
+        if export_type not in {'all', 'workers', 'staff'}:
+            return Response({'detail': 'type must be all, workers, or staff.'}, status=400)
+
+        workers = _scope_workers_for_user(
+            HKWorker.objects.select_related('area', 'supervisor').filter(is_active=True),
+            request.user,
+        ).order_by('area__name', 'name')
+        worker_ids = list(workers.values_list('id', flat=True))
+        attendance_by_worker = {}
+        for record in HKAttendanceRecord.objects.filter(worker_id__in=worker_ids, date=target_date):
+            attendance_by_worker[(record.worker_id, record.half)] = record
+
         staff_qs = (
             HKStaffAttendanceRecord.objects
             .select_related('staff')
@@ -764,49 +773,198 @@ class HKAbsentAttendanceCSVView(APIView):
             .filter(date=target_date, status='absent')
             .order_by('staff__first_name', 'staff__last_name', 'staff__username')
         )
-        if _is_hostel_office(request.user):
-            worker_qs = worker_qs.filter(worker__area_id__in=_hostel_area_ids())
-            staff_qs = _scope_staff_attendance_for_user(staff_qs, request.user)
+        staff_qs = _scope_staff_attendance_for_user(staff_qs, request.user)
 
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = f'attachment; filename="housekeeping_absent_{target_date}.csv"'
+        scope = 'hostel' if _is_hostel_office(request.user) else 'all'
+        response['Content-Disposition'] = f'attachment; filename="housekeeping_absent_{export_type}_{scope}_{target_date}.csv"'
         writer = csv.writer(response)
-        writer.writerow(['Name', 'Role/Type', 'Phone', 'Pay Code', 'Area/Section', 'Status', 'Half/Session', 'Date'])
-
-        for record in worker_qs:
-            worker = record.worker
-            area_name = worker.area.name if worker and worker.area else ''
+        if export_type in {'all', 'workers'}:
             writer.writerow([
-                worker.name if worker else '',
-                worker.get_worker_type_display() if worker else 'Worker',
-                getattr(worker, 'phone', '') or '',
-                getattr(worker, 'pay_code', '') or '',
-                area_name,
-                record.status,
-                getattr(record, 'half', '') or '',
-                record.date,
+                'Record Type', 'Date', 'Area', 'Worker Name', 'Pay Code', 'Phone',
+                'Worker Type', 'Shift', 'Supervisor', 'First Half Status',
+                'Second Half Status', 'Absent Reason/Status',
             ])
+            present_statuses = {'present', 'late'}
+            for worker in workers:
+                first = attendance_by_worker.get((worker.id, 'first'))
+                second = attendance_by_worker.get((worker.id, 'second'))
+                first_status = first.status if first else 'not_marked'
+                second_status = second.status if second else 'not_marked'
+                if first_status in present_statuses and second_status in present_statuses:
+                    continue
+                reason = 'missing attendance'
+                if first_status in {'absent', 'leave'} or second_status in {'absent', 'leave'}:
+                    reason = 'explicit absent/leave'
+                writer.writerow([
+                    'Worker',
+                    target_date,
+                    worker.area.name if worker.area else '',
+                    worker.name,
+                    worker.pay_code or '',
+                    worker.phone or '',
+                    worker.get_worker_type_display(),
+                    worker.get_shift_display(),
+                    worker.supervisor.get_full_name() or worker.supervisor.username if worker.supervisor else '',
+                    first_status,
+                    second_status,
+                    reason,
+                ])
 
-        hostel_area_ids = set(_hostel_area_ids()) if _is_hostel_office(request.user) else None
-        for record in staff_qs:
-            staff = record.staff
-            links = [
-                link.area.name
-                for link in staff.hk_areas.all()
-                if link.area and (hostel_area_ids is None or link.area_id in hostel_area_ids)
-            ] if staff else []
-            writer.writerow([
-                staff.get_full_name() or staff.username if staff else '',
-                staff.get_role_display() if staff else 'Staff',
-                getattr(staff, 'phone', '') or '',
-                getattr(staff, 'pay_code', '') or '',
-                '; '.join(links),
-                record.status,
-                getattr(record, 'half', '') or '',
-                record.date,
-            ])
+        if export_type == 'all':
+            writer.writerow([])
+
+        if export_type in {'all', 'staff'}:
+            writer.writerow(['Record Type', 'Date', 'Staff Name', 'Pay Code', 'Role', 'Assigned Areas', 'Status', 'Source', 'Note'])
+            hostel_area_ids = set(_hostel_area_ids()) if _is_hostel_office(request.user) else None
+            for record in staff_qs:
+                staff = record.staff
+                links = [
+                    link.area.name
+                    for link in staff.hk_areas.all()
+                    if link.area and (hostel_area_ids is None or link.area_id in hostel_area_ids)
+                ] if staff else []
+                writer.writerow([
+                    'Staff',
+                    record.date,
+                    staff.get_full_name() or staff.username if staff else '',
+                    getattr(staff, 'pay_code', '') or '',
+                    staff.get_role_display() if staff else 'Staff',
+                    '; '.join(links),
+                    record.status,
+                    record.source,
+                    record.note or '',
+                ])
 
         return response
+
+
+class HKTemporaryStaffAreaAssignmentListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _base_qs(self, user):
+        qs = (
+            HKTemporaryStaffAreaAssignment.objects
+            .select_related('staff', 'area', 'assigned_by')
+            .order_by('-start_date', 'staff__first_name', 'area__name')
+        )
+        if _is_hostel_office(user):
+            return qs.filter(area_id__in=_hostel_area_ids(), staff_id__in=_hostel_staff_ids())
+        return qs
+
+    def get(self, request):
+        if not (_can_manage_housekeeping(request.user) or _is_hostel_office(request.user)):
+            return Response({'detail': 'Permission denied.'}, status=403)
+        qs = self._base_qs(request.user)
+        status_filter = (request.query_params.get('status') or 'active').strip().lower()
+        today = timezone.localdate()
+        if status_filter == 'active':
+            qs = qs.filter(revoked_at__isnull=True, start_date__lte=today, end_date__gte=today)
+        elif status_filter == 'upcoming':
+            qs = qs.filter(revoked_at__isnull=True, start_date__gt=today)
+        elif status_filter == 'all':
+            pass
+        else:
+            return Response({'detail': 'status must be active, upcoming, or all.'}, status=400)
+        return Response(HKTemporaryStaffAreaAssignmentSerializer(qs, many=True).data)
+
+    def post(self, request):
+        if not (_can_manage_housekeeping(request.user) or _is_hostel_office(request.user)):
+            return Response({'detail': 'Permission denied.'}, status=403)
+
+        User = get_user_model()
+        staff_id = request.data.get('staff') or request.data.get('staff_id')
+        try:
+            staff_id = int(staff_id)
+        except (TypeError, ValueError):
+            return Response({'detail': 'Target staff is required.'}, status=400)
+        staff = User.objects.filter(
+            pk=staff_id,
+            is_active=True,
+            role__in=['supervisor', 'caretaker'],
+        ).first()
+        if not staff:
+            return Response({'detail': 'Target staff not found.'}, status=404)
+
+        start_date = _parse_iso_date(request.data.get('start_date')) or timezone.localdate()
+        try:
+            duration_days = int(request.data.get('duration_days') or 1)
+        except (TypeError, ValueError):
+            return Response({'detail': 'duration_days must be a number.'}, status=400)
+        if duration_days < 1 or duration_days > 31:
+            return Response({'detail': 'duration_days must be between 1 and 31.'}, status=400)
+        end_date = start_date + timedelta(days=duration_days - 1)
+
+        area_ids = set()
+        raw_area_ids = request.data.get('area_ids') or []
+        if isinstance(raw_area_ids, (str, int)):
+            raw_area_ids = [raw_area_ids]
+        else:
+            raw_area_ids = list(raw_area_ids)
+        if request.data.get('area') or request.data.get('area_id'):
+            raw_area_ids.append(request.data.get('area') or request.data.get('area_id'))
+        source_staff_id = request.data.get('source_staff') or request.data.get('source_staff_id')
+        if source_staff_id:
+            try:
+                source_staff_id = int(source_staff_id)
+            except (TypeError, ValueError):
+                return Response({'detail': 'source_staff must be a number.'}, status=400)
+            area_ids.update(
+                HKUserArea.objects.filter(user_id=source_staff_id, area__is_active=True)
+                .values_list('area_id', flat=True)
+            )
+        try:
+            area_ids.update(int(area_id) for area_id in raw_area_ids if area_id not in (None, ''))
+        except (TypeError, ValueError):
+            return Response({'detail': 'area_ids must contain numeric ids.'}, status=400)
+        if not area_ids:
+            return Response({'detail': 'Select at least one area or source staff member.'}, status=400)
+
+        areas = list(HKArea.objects.filter(id__in=area_ids, is_active=True).order_by('name'))
+        found_ids = {area.id for area in areas}
+        missing = sorted(area_ids - found_ids)
+        if missing:
+            return Response({'detail': f'Invalid area ids: {missing}'}, status=400)
+
+        if _is_hostel_office(request.user):
+            hostel_area_ids = set(_hostel_area_ids())
+            if staff.id not in set(_hostel_staff_ids()):
+                return Response({'detail': 'Hostel Office can assign only hostel/JRHA staff.'}, status=403)
+            if any(area.id not in hostel_area_ids for area in areas):
+                return Response({'detail': 'Hostel Office can assign only hostel/JRHA areas.'}, status=403)
+
+        note = (request.data.get('note') or '').strip()
+        created = []
+        with transaction.atomic():
+            for area in areas:
+                assignment = HKTemporaryStaffAreaAssignment.objects.create(
+                    staff=staff,
+                    area=area,
+                    start_date=start_date,
+                    end_date=end_date,
+                    assigned_by=request.user,
+                    note=note,
+                )
+                created.append(assignment)
+        serializer = HKTemporaryStaffAreaAssignmentSerializer(created, many=True)
+        return Response(serializer.data, status=201)
+
+
+class HKTemporaryStaffAreaAssignmentRevokeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        if not (_can_manage_housekeeping(request.user) or _is_hostel_office(request.user)):
+            return Response({'detail': 'Permission denied.'}, status=403)
+        qs = HKTemporaryStaffAreaAssignment.objects.select_related('staff', 'area')
+        if _is_hostel_office(request.user):
+            qs = qs.filter(area_id__in=_hostel_area_ids(), staff_id__in=_hostel_staff_ids())
+        assignment = get_object_or_404(qs, pk=pk)
+        if not assignment.revoked_at:
+            assignment.revoked_at = timezone.now()
+            assignment.revoked_by = request.user
+            assignment.save(update_fields=['revoked_at', 'revoked_by'])
+        return Response(HKTemporaryStaffAreaAssignmentSerializer(assignment).data)
 
 
 class HKInchargeReportView(APIView):
@@ -1577,6 +1735,8 @@ class HKDashboardSummaryView(APIView):
             | Q(status__in=['in_progress', 'done'])
             | Q(worker_assignments__isnull=False)
         )
+        countable_q &= ~Q(schedule__task_name__icontains='Tea Break')
+        countable_q &= ~Q(schedule__task_name__icontains='Lunch Break')
         counts = record_qs.aggregate(
             total=Count('id', filter=countable_q, distinct=True),
             done=Count('id', filter=countable_q & Q(status='done'), distinct=True),

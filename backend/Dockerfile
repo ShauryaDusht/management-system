@@ -8,6 +8,7 @@ WORKDIR /app
 # Install system dependencies + cron
 RUN apt-get update && apt-get install -y \
     libpq-dev \
+    postgresql-client \
     gcc \
     cron \
     && rm -rf /var/lib/apt/lists/*

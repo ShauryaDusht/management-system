@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { hkAPI } from '../../api/housekeeping'
 import { Alert, Btn, Card, DataTable, Input, Spinner, StatCard } from '../../components/ui'
 import { BarGroupChart } from '../../components/ui/Charts'
-import { exportCsv, todayISO } from '../../shared/utils'
+import { exportCsv, todayISO, triggerDownload } from '../../shared/utils'
 
 const AREA_GROUP_LABELS = {
   hostels: 'Hostels',
@@ -19,6 +19,7 @@ export default function AttendanceTab({ hostelOnly = false }) {
   const [areaClassFilter, setAreaClassFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [exportingAbsent, setExportingAbsent] = useState(false)
 
   const areaGroup = (areaName, areaType) => {
     const n = String(areaName || '').trim()
@@ -123,6 +124,20 @@ export default function AttendanceTab({ hostelOnly = false }) {
     exportCsv(csvRows, `housekeeping_worker_attendance_${filterName}_${date}.csv`)
   }
 
+  const downloadAbsentCsv = async () => {
+    setExportingAbsent(true)
+    setError('')
+    try {
+      const response = await hkAPI.downloadAbsentAttendanceCSV(date, 'workers')
+      const blob = new Blob([response.data], { type: 'text/csv' })
+      triggerDownload(blob, `housekeeping_absent_workers_${date}.csv`)
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Failed to export absent workers CSV.')
+    } finally {
+      setExportingAbsent(false)
+    }
+  }
+
   return (
     <div>
       <Alert message={error} />
@@ -198,6 +213,14 @@ export default function AttendanceTab({ hostelOnly = false }) {
                 disabled={loading || csvRows.length === 0}
               >
                 CSV Report
+              </Btn>
+              <Btn
+                size="sm"
+                variant="secondary"
+                onClick={downloadAbsentCsv}
+                disabled={loading || exportingAbsent}
+              >
+                {exportingAbsent ? 'Exporting...' : 'Absent Workers CSV'}
               </Btn>
             </div>
           </div>
