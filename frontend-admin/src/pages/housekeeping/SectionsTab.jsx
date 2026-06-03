@@ -4,7 +4,7 @@ import { hkAPI } from '../../api/housekeeping'
 import { usersAPI } from '../../api/users'
 import { Alert, Btn, Card, DataTable, Modal, SelectField, Spinner } from '../../components/ui'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
-import { getAreaGroup, triggerDownload } from '../../shared/utils'
+import { getAreaGroup, todayISO, triggerDownload } from '../../shared/utils'
 
 const HIDDEN_STAFF_AREA_NAMES = new Set(['hostels reliever', 'old academic reliever', 'new academic reliever'])
 
@@ -16,6 +16,9 @@ export default function SectionsTab({ hostelOnly = false }) {
 
   const [assignModal, setAssignModal] = useState(null)
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [changeMode, setChangeMode] = useState('one_day')
+  const [changeDays, setChangeDays] = useState('1')
+  const [changeDate, setChangeDate] = useState(todayISO())
   const [downloadingReport, setDownloadingReport] = useState(false)
 
   const extractBlockNo = (name) => {
@@ -143,6 +146,9 @@ export default function SectionsTab({ hostelOnly = false }) {
       currentUserLabel: row.assignedTo,
     })
     setSelectedUserId(row.userId ? String(row.userId) : '')
+    setChangeMode('one_day')
+    setChangeDays('1')
+    setChangeDate(todayISO())
     clearError()
     setSuccess('')
   }
@@ -175,6 +181,27 @@ export default function SectionsTab({ hostelOnly = false }) {
     try {
       await runAction(async () => {
         const areaId = assignModal.areaId
+        if (assignModal.currentUserId && changeMode !== 'permanent') {
+          const durationDays = changeMode === 'one_day' ? 1 : Number(changeDays || 0)
+          if (!Number.isInteger(durationDays) || durationDays < 1) {
+            throw new Error('Please enter valid duration days.')
+          }
+          await hkAPI.switchSupervisor(assignModal.currentUserId, {
+            target_staff: newUser.id,
+            mode: 'temporary',
+            date: changeDate,
+            duration_days: durationDays,
+          })
+          setAssignModal(null)
+          setSuccess(`Temporary switch updated for ${assignModal.areaName}.`)
+          await reload()
+          return
+        }
+
+        if (!assignModal.currentUserId && changeMode !== 'permanent') {
+          throw new Error('Temporary switch needs an existing supervisor/caretaker to replace.')
+        }
+
         const updates = []
 
         if (assignModal.currentUserId) {
@@ -190,7 +217,7 @@ export default function SectionsTab({ hostelOnly = false }) {
 
         await Promise.all(updates)
         setAssignModal(null)
-        setSuccess(`Updated assignment for ${assignModal.areaName}.`)
+        setSuccess(`Permanent assignment updated for ${assignModal.areaName}.`)
         await reload()
       }, 'Failed to update assignment.')
     } catch {
@@ -410,6 +437,33 @@ export default function SectionsTab({ hostelOnly = false }) {
             </option>
           ))}
         </SelectField>
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 6 }}>Duration</div>
+          <SelectField value={changeMode} onChange={(e) => setChangeMode(e.target.value)}>
+            <option value="one_day">1 day</option>
+            <option value="custom">Custom days</option>
+            <option value="permanent">Permanent</option>
+          </SelectField>
+        </div>
+        {changeMode !== 'permanent' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 6 }}>Start date</div>
+              <Input type="date" value={changeDate} onChange={(e) => setChangeDate(e.target.value)} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 6 }}>Days</div>
+              <Input
+                type="number"
+                min="1"
+                max="60"
+                value={changeMode === 'one_day' ? '1' : changeDays}
+                disabled={changeMode === 'one_day'}
+                onChange={(e) => setChangeDays(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   )

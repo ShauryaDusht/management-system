@@ -1,4 +1,5 @@
 import calendar
+import copy
 import datetime
 import functools
 import json
@@ -360,6 +361,54 @@ def display_worker_ids_for_area(area, date=None):
     return {worker.id for worker in effective_workers_for_area(area, date)}
 
 
+UNASSIGNABLE_ATTENDANCE_STATUSES = {"absent", "leave"}
+
+
+def attendance_half_for_time(task_time=None):
+    if task_time is None:
+        return current_half()
+    return "first" if task_time.hour < 13 else "second"
+
+
+def attendance_half_for_record(record):
+    schedule = getattr(record, "schedule", None)
+    return attendance_half_for_time(getattr(schedule, "start_time", None))
+
+
+def unavailable_worker_statuses(worker_ids, date, half):
+    if not worker_ids or not date or half not in {"first", "second"}:
+        return {}
+    return dict(
+        HKAttendanceRecord.objects.filter(
+            worker_id__in=worker_ids,
+            date=date,
+            half=half,
+            status__in=UNASSIGNABLE_ATTENDANCE_STATUSES,
+        ).values_list("worker_id", "status")
+    )
+
+
+def mark_unavailable_workers(area_workers, date, half):
+    status_by_worker = unavailable_worker_statuses([worker.id for worker in area_workers], date, half)
+    for worker in area_workers:
+        status = status_by_worker.get(worker.id, "")
+        worker.is_unavailable_for_task = bool(status)
+        worker.is_absent_for_task = status == "absent"
+        worker.unavailable_reason = "Leave" if status == "leave" else ("Absent" if status else "")
+    return area_workers
+
+
+def assignment_workers_for_record(area_workers, record):
+    workers = [copy.copy(worker) for worker in area_workers]
+    mark_busy_workers(workers, busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id))
+    mark_unavailable_workers(workers, record.date, attendance_half_for_record(record))
+    return workers
+
+
+def unavailable_selection_ids(worker_ids, date, half):
+    return set(unavailable_worker_statuses(worker_ids, date, half))
+
+
 def _substitution_for_reliever(worker, area, date):
     if not worker or not area or not date:
         return None
@@ -620,13 +669,13 @@ def _dashboard_section_labels(area):
     elif area_name == "Research Park":
         labels.update({
             "tab_label_floor": "Ground Floor",
-            "tab_label_room": "2nd Floor",
-            "tab_label_washroom": "3rd Floor",
+            "tab_label_room": "Second Floor",
+            "tab_label_washroom": "Third Floor",
             "heading_floor": "Ground Floor Tasks",
-            "heading_room": "2nd Floor Tasks",
-            "heading_washroom": "3rd Floor Tasks",
-            "tab_label_special": "Sunday Work",
-            "heading_special": "Sunday Deep-Clean Work",
+            "heading_room": "Second Floor Tasks",
+            "heading_washroom": "Third Floor Tasks",
+            "tab_label_special": "Weekend Work",
+            "heading_special": "Weekend Tasks",
         })
     elif area_name == "Central Arcade":
         labels.update({
@@ -1799,6 +1848,7 @@ def hk_dashboard(request):
 
     is_common_area = area_name == "Hostel Common Area"
     is_research_park = area_name == "Research Park"
+    extra_worker_name_mode = is_research_park or user.username == "pradip.chauhan"
     is_central_arcade = area_name == "Central Arcade"
     is_sports_complex = area_name == "Sports Complex"
     is_guest_house_new = area_name == "Guest House New"
@@ -1825,8 +1875,10 @@ def hk_dashboard(request):
     today_dow = today.weekday()
     area_workers = [] if is_jrha_night_caretaker and is_jrha else effective_workers_for_area(sel_area, today)
     mark_busy_workers(area_workers, busy_worker_ids_for_tasks(sel_area, today))
+    mark_unavailable_workers(area_workers, today, current_half())
     for record in records:
         record.can_multi_worker_assignment = can_multi_worker_task(user, record)
+        record.area_workers_for_assignment = assignment_workers_for_record(area_workers, record)
         record.is_break_task = is_break_task_name(record.schedule.task_name)
         record.is_direct_staff_task = bool(
             record.schedule.worker_tag == "night_caretaker"
@@ -1916,6 +1968,8 @@ def hk_dashboard(request):
             "worker_required": "Please assign at least one worker for extra work.",
             "invalid_worker": "Please select only valid workers for this area.",
             "worker_busy": "One or more selected workers are already assigned to an unfinished task.",
+            "worker_absent": "One or more selected workers are absent or on leave for this session.",
+            "worker_name_required": "Please enter the worker name.",
             "no_area": "Please select a valid area.",
         }
         extra_error = err_map.get(extra_err_code, "Unable to log extra work.")
@@ -1965,6 +2019,7 @@ def hk_dashboard(request):
                     staff_area = candidate_areas[0]
 
                 options = worker_options_for_selection_request(req, staff_area)
+                mark_unavailable_workers(options, today, current_half())
                 worker_selection_cards.append({
                     "request": req,
                     "selected_workers": [],
@@ -1985,6 +2040,7 @@ def hk_dashboard(request):
             "admin_only": "Only admin can create worker selection requests.",
             "invalid_request": "Worker selection request is invalid for this area.",
             "request_locked": "Workers already submitted for this request.",
+            "worker_absent": "One or more selected workers are absent or on leave for this session.",
         }
         ws_error = err_map.get(ws_err_code, "Unable to submit worker request.")
 
@@ -2143,6 +2199,7 @@ def hk_dashboard(request):
         "heading_special": heading_special,
         "is_swm": is_swm,
         "is_research_park": is_research_park,
+        "extra_worker_name_mode": extra_worker_name_mode,
         "is_jrha": is_jrha,
         "is_jrha_night_caretaker": is_jrha_night_caretaker,
         "is_simple_hostel": is_simple_hostel,
@@ -2229,6 +2286,8 @@ def hk_worker_selection_submit(request):
     final_ids = sorted(selected_ids & eligible_ids)
     if not final_ids:
         return redirect(f"/housekeeping/dashboard/?area={area.id}&ws_err=no_workers")
+    if unavailable_selection_ids(final_ids, timezone.localdate(), current_half()):
+        return redirect(f"/housekeeping/dashboard/?area={area.id}&ws_err=worker_absent")
 
     req_obj.workers.set(final_ids)
 
@@ -2401,12 +2460,19 @@ def hk_mark_task(request, record_id):
                 allowed_worker_ids = display_worker_ids_for_area(record.area, record.date)
                 busy_ids = busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id)
                 selected_worker_ids = {int(wid) for wid in worker_ids if str(wid).isdigit()}
+                unavailable_ids = unavailable_selection_ids(
+                    selected_worker_ids,
+                    record.date,
+                    attendance_half_for_record(record),
+                )
                 selected_busy_ids = selected_worker_ids & busy_ids
 
                 if len(selected_worker_ids) != len(worker_ids):
                     task_error = "Please select only valid workers for this area."
                 elif selected_busy_ids:
                     task_error = "One or more selected workers are already assigned to an unfinished task."
+                elif unavailable_ids:
+                    task_error = "One or more selected workers are absent or on leave for this task session."
                 elif not selected_worker_ids.issubset(allowed_worker_ids):
                     task_error = "Please select only valid workers for this area."
                 else:
@@ -2444,6 +2510,8 @@ def hk_mark_task(request, record_id):
                 worker = None
             if worker and worker.id in busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id):
                 task_error = "This worker is already assigned to an unfinished task."
+            elif worker and unavailable_selection_ids([worker.id], record.date, attendance_half_for_record(record)):
+                task_error = "This worker is absent or on leave for this task session."
             elif worker:
                 record.assigned_worker = worker
                 record.assigned_by = user
@@ -2628,6 +2696,7 @@ def hk_mark_task(request, record_id):
     )
     area_workers = effective_workers_for_area(record.area, record.date)
     mark_busy_workers(area_workers, busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id))
+    mark_unavailable_workers(area_workers, record.date, attendance_half_for_record(record))
     return render(request, "housekeeping/mobile/partials/task_card.html", {
         "record": record,
         "tag_labels": WORKER_TAG_LABELS,
@@ -2656,9 +2725,12 @@ def hk_log_extra_work(request):
         return redirect(f"/housekeeping/dashboard/{param}")
 
     is_research_park = area.area_type == "research_park"
+    extra_worker_name_mode = is_research_park or user.username == "pradip.chauhan"
     selected_workers = []
     worker_name = request.POST.get("worker_name", "").strip()
-    if not is_research_park:
+    if extra_worker_name_mode and not is_research_park and not worker_name:
+        return redirect(f"/housekeeping/dashboard/?area={area.id}&extra_err=worker_name_required")
+    if not extra_worker_name_mode:
         worker_ids = list(dict.fromkeys(w for w in request.POST.getlist("worker_ids") if w))
         selected_worker_ids = {int(wid) for wid in worker_ids if str(wid).isdigit()}
         allowed_worker_ids = display_worker_ids_for_area(area, timezone.localdate())
@@ -2670,6 +2742,8 @@ def hk_log_extra_work(request):
             return redirect(f"/housekeeping/dashboard/?area={area.id}&extra_err=invalid_worker")
         if selected_worker_ids & busy_ids:
             return redirect(f"/housekeeping/dashboard/?area={area.id}&extra_err=worker_busy")
+        if unavailable_selection_ids(selected_worker_ids, timezone.localdate(), current_half()):
+            return redirect(f"/housekeeping/dashboard/?area={area.id}&extra_err=worker_absent")
 
         selected_workers = list(
             HKWorker.objects.filter(pk__in=selected_worker_ids, is_active=True).order_by("name")

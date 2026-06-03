@@ -75,6 +75,32 @@ def _hostel_office_staff_area_names(user):
     return names
 
 
+def _hostel_office_staff_ids():
+    try:
+        from apps.housekeeping.models import HKArea, HKUserArea
+    except Exception:
+        return []
+
+    area_ids = (
+        HKArea.objects
+        .filter(is_active=True)
+        .filter(
+            dm.Q(area_type__in=['hostel', 'jrha'])
+            | dm.Q(name__iexact='Hostel Common Area')
+            | dm.Q(name__iexact='Hostels Reliever')
+            | dm.Q(name__icontains='JRHA')
+            | dm.Q(name__icontains='Jeet Hostel')
+        )
+        .values_list('id', flat=True)
+    )
+    return list(
+        HKUserArea.objects
+        .filter(area_id__in=area_ids, user__role__in=['supervisor', 'caretaker'])
+        .values_list('user_id', flat=True)
+        .distinct()
+    )
+
+
 def _sync_horticulture_request_status(item_request, status_value):
     try:
         from apps.housekeeping.models import HKStockRequest
@@ -310,6 +336,8 @@ class ItemRequestListCreateView(generics.ListCreateAPIView):
         qs = ItemRequest.objects.select_related('item', 'requested_by', 'approved_by').prefetch_related('requisition_items__inventory_item')
         if getattr(user, 'role', '') in ['supervisor', 'caretaker']:
             return qs.filter(requested_by=user)
+        if _is_hostel_office(user):
+            return qs.filter(requested_by_id__in=_hostel_office_staff_ids())
         return qs
 
     def get_permissions(self):
@@ -343,6 +371,8 @@ class ItemRequestDetailView(generics.RetrieveAPIView):
         qs = super().get_queryset()
         if getattr(user, 'role', '') in ['supervisor', 'caretaker']:
             return qs.filter(requested_by=user)
+        if _is_hostel_office(user):
+            return qs.filter(requested_by_id__in=_hostel_office_staff_ids())
         return qs
 
 
@@ -570,6 +600,8 @@ class ItemIssueListView(generics.ListAPIView):
         )
         if getattr(user, 'role', '') in ['supervisor', 'caretaker']:
             return qs.filter(request__requested_by=user)
+        if _is_hostel_office(user):
+            return qs.filter(request__requested_by_id__in=_hostel_office_staff_ids())
         return qs
 
 
@@ -692,7 +724,9 @@ class IssueUsageLogView(APIView):
         if for_update:
             base_qs = base_qs.select_for_update()
 
-        if user.is_admin or user.is_inventory_manager or getattr(user, 'is_hk_inventory_manager', False) or _is_hostel_office(user):
+        if _is_hostel_office(user):
+            return base_qs.get(pk=pk, request__requested_by_id__in=_hostel_office_staff_ids())
+        if user.is_admin or user.is_inventory_manager or getattr(user, 'is_hk_inventory_manager', False):
             return base_qs.get(pk=pk)
         if user.is_supervisor or user.is_caretaker:
             return base_qs.get(pk=pk, request__requested_by=user)

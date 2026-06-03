@@ -109,7 +109,7 @@
     <input type="hidden" name="source" value="{{ task_source }}">
     <div style="display:grid;gap:8px;margin-top:8px">
       <div style="display:flex;gap:6px;align-items:center">
-        <select name="session" required style="flex:1;padding:9px 8px;font-size:13px">
+        <select name="session" required class="js-horti-session-select" style="flex:1;padding:9px 8px;font-size:13px">
           <option value="morning">Morning</option>
           <option value="afternoon">Afternoon</option>
         </select>
@@ -118,10 +118,15 @@
       <div style="font-size:11px;font-weight:800;color:#374151">Select workers</div>
       <div style="max-height:180px;overflow:auto;border:1px solid #d1d5db;border-radius:8px;background:#fff">
         {% for worker in workers %}
-        <label style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last %}1px solid #eef2f7{% else %}none{% endif %};cursor:{% if worker.is_busy_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if worker.is_busy_for_task %}.55{% else %}1{% endif %}">
-          <input type="checkbox" name="worker_ids" value="{{ worker.id }}" {% if worker.is_busy_for_task %}disabled{% endif %} style="width:16px;height:16px;flex-shrink:0">
+        <label class="js-horti-worker-option"
+               data-busy="{% if worker.is_busy_for_task %}1{% else %}0{% endif %}"
+               data-unavailable-morning="{{ worker.unavailable_first_reason|default:'' }}"
+               data-unavailable-afternoon="{{ worker.unavailable_second_reason|default:'' }}"
+               style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last %}1px solid #eef2f7{% else %}none{% endif %};cursor:{% if worker.is_busy_for_task or worker.unavailable_first_reason %}not-allowed{% else %}pointer{% endif %};opacity:{% if worker.is_busy_for_task or worker.unavailable_first_reason %}.55{% else %}1{% endif %}">
+          <input type="checkbox" name="worker_ids" value="{{ worker.id }}" {% if worker.is_busy_for_task or worker.unavailable_first_reason %}disabled{% endif %} style="width:16px;height:16px;flex-shrink:0">
           <span style="font-weight:700;color:#1f2937;font-size:14px">
-            {{ worker.name }}{% if worker.pay_code %} ({{ worker.pay_code }}){% endif %}{% if worker.is_busy_for_task %} - Busy{% endif %}
+            {{ worker.name }}{% if worker.pay_code %} ({{ worker.pay_code }}){% endif %}
+            <span class="js-horti-worker-status">{% if worker.is_busy_for_task %} - Busy{% elif worker.unavailable_first_reason %} - {{ worker.unavailable_first_reason }}{% endif %}</span>
           </span>
         </label>
         {% empty %}
@@ -370,6 +375,28 @@ function showHortiInlineError(message) {
   window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
+function updateHortiWorkerAvailability(panel) {
+  if (!panel) return;
+  var sessionSelect = panel.querySelector('.js-horti-session-select');
+  var session = sessionSelect ? sessionSelect.value : 'morning';
+  panel.querySelectorAll('.js-horti-worker-option').forEach(function(row) {
+    var checkbox = row.querySelector('input[name="worker_ids"]');
+    var status = row.querySelector('.js-horti-worker-status');
+    var busy = row.getAttribute('data-busy') === '1';
+    var unavailable = row.getAttribute('data-unavailable-' + session) || '';
+    var disabled = busy || Boolean(unavailable);
+    if (checkbox) {
+      checkbox.disabled = disabled;
+      if (disabled) checkbox.checked = false;
+    }
+    row.style.cursor = disabled ? 'not-allowed' : 'pointer';
+    row.style.opacity = disabled ? '.55' : '1';
+    if (status) {
+      status.textContent = busy ? ' - Busy' : (unavailable ? ' - ' + unavailable : '');
+    }
+  });
+}
+
 function replaceHortiPageFromResponse(html, responseUrl) {
   var parser = new DOMParser();
   var nextDoc = parser.parseFromString(html, 'text/html');
@@ -427,6 +454,7 @@ document.addEventListener('click', function(event) {
     if (!panel) return;
     panel.style.display = 'block';
     assignOpenButton.style.display = 'none';
+    updateHortiWorkerAvailability(panel);
     return;
   }
   var assignCancelButton = event.target.closest('.js-horti-assign-cancel');
@@ -467,6 +495,12 @@ document.addEventListener('click', function(event) {
     event.preventDefault();
     clearHortiPhoto(clearButton.closest('.js-horti-task-complete-form'));
   }
+});
+
+document.addEventListener('change', function(event) {
+  var select = event.target.closest('.js-horti-session-select');
+  if (!select) return;
+  updateHortiWorkerAvailability(select.closest('.js-horti-assign-panel'));
 });
 
 </script>

@@ -204,10 +204,11 @@
 
         <div style="max-height:210px;overflow:auto;border:1px solid #e5e7eb;border-radius:8px;padding:8px;background:#fff">
           {% for w in item.options %}
-          <label style="display:flex;align-items:center;gap:8px;padding:7px 6px;border-bottom:1px solid #f3f4f6;font-size:13px">
-            <input type="checkbox" name="worker_ids" value="{{ w.id }}" style="width:16px;height:16px">
+          <label style="display:flex;align-items:center;gap:8px;padding:7px 6px;border-bottom:1px solid #f3f4f6;font-size:13px;cursor:{% if w.is_unavailable_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if w.is_unavailable_for_task %}.55{% else %}1{% endif %}">
+            <input type="checkbox" name="worker_ids" value="{{ w.id }}" {% if w.is_unavailable_for_task %}disabled{% endif %} style="width:16px;height:16px">
             <span style="font-weight:700">{{ w.name }}</span>
             {% if w.area %}<span style="color:#6b7280;font-size:11px">({{ w.area.name }})</span>{% endif %}
+            {% if w.is_unavailable_for_task %}<span style="color:#b91c1c;font-size:11px;font-weight:700">{{ w.unavailable_reason|default:"Absent" }}</span>{% endif %}
           </label>
           {% empty %}
           <div style="font-size:12px;color:#9ca3af">No workers available for this request.</div>
@@ -400,7 +401,7 @@
 <div id="tab-all" class="js-task-list" style="display:none">
   <div class="wtag">Tasks</div>
   {% for record in grouped.all %}
-    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=record.area_workers_for_assignment can_assign_tasks=can_assign_tasks %}
   {% empty %}
     <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No tasks today.</div>
   {% endfor %}
@@ -409,7 +410,7 @@
 <div id="tab-t1" class="js-task-list" style="display:none">
   <div class="wtag">Team 1 - HB + AB Team</div>
   {% for record in grouped.t1 %}
-    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=record.area_workers_for_assignment can_assign_tasks=can_assign_tasks %}
   {% empty %}
     <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No Team 1 tasks today.</div>
   {% endfor %}
@@ -418,7 +419,7 @@
 <div id="tab-t2" class="js-task-list" style="display:none">
   <div class="wtag">Team 2 - CNG Vehicle Team</div>
   {% for record in grouped.t2 %}
-    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=record.area_workers_for_assignment can_assign_tasks=can_assign_tasks %}
   {% empty %}
     <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No Team 2 tasks today.</div>
   {% endfor %}
@@ -427,7 +428,7 @@
 <div id="tab-t3" class="js-task-list" style="display:none">
   <div class="wtag">Team 3 - Hotel Team</div>
   {% for record in grouped.t3 %}
-    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=record.area_workers_for_assignment can_assign_tasks=can_assign_tasks %}
   {% empty %}
     <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No Team 3 tasks today.</div>
   {% endfor %}
@@ -436,7 +437,7 @@
 <div id="tab-t4" class="js-task-list" style="display:none">
   <div class="wtag">Team 4 - Hotel + GCS Team</div>
   {% for record in grouped.t4 %}
-    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=record.area_workers_for_assignment can_assign_tasks=can_assign_tasks %}
   {% empty %}
     <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No Team 4 tasks today.</div>
   {% endfor %}
@@ -445,7 +446,7 @@
 <div id="tab-t5" class="js-task-list" style="display:none">
   <div class="wtag">Team 5 - Bio-Gas Team</div>
   {% for record in grouped.t5 %}
-    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=record.area_workers_for_assignment can_assign_tasks=can_assign_tasks %}
   {% empty %}
     <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No Team 5 tasks today.</div>
   {% endfor %}
@@ -454,7 +455,7 @@
 <div id="tab-floor" class="js-task-list" style="display:none">
   <div class="wtag">{{ heading_floor }}</div>
   {% for record in grouped.floor %}
-    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=record.area_workers_for_assignment can_assign_tasks=can_assign_tasks %}
   {% empty %}
     <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No floor tasks today.</div>
   {% endfor %}
@@ -463,7 +464,7 @@
 <div id="tab-room" class="js-task-list" style="display:none">
   <div class="wtag">{{ heading_room }}</div>
   {% for record in grouped.room %}
-    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=record.area_workers_for_assignment can_assign_tasks=can_assign_tasks %}
   {% empty %}
     <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No room tasks today.</div>
   {% endfor %}
@@ -473,7 +474,7 @@
 <div id="tab-all" class="js-task-list" style="display:none">
   <div class="wtag">{{ heading_special }}</div>
   {% for record in grouped.all %}
-    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=record.area_workers_for_assignment can_assign_tasks=can_assign_tasks %}
   {% empty %}
     <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No special tasks today.</div>
   {% endfor %}
@@ -482,7 +483,7 @@
 <div id="tab-washroom" class="js-task-list" style="display:none">
   <div class="wtag">{{ heading_washroom }}</div>
   {% for record in grouped.washroom %}
-    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=record.area_workers_for_assignment can_assign_tasks=can_assign_tasks %}
   {% empty %}
     <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No washroom tasks today.</div>
   {% endfor %}
@@ -492,7 +493,7 @@
 <div id="tab-previous_day" class="js-task-list" style="display:none">
   <div class="wtag">Previous Day Task</div>
   {% for record in grouped.previous_day %}
-    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=area_workers can_assign_tasks=can_assign_tasks %}
+    {% include 'housekeeping/mobile/partials/task_card.html' with record=record area_workers=record.area_workers_for_assignment can_assign_tasks=can_assign_tasks %}
   {% empty %}
     <div class="card" style="text-align:center;color:#9ca3af;padding:20px">No previous day tasks pending.</div>
   {% endfor %}
@@ -506,17 +507,20 @@
       {% csrf_token %}
       <input type="hidden" name="area_id" value="{{ selected_area.id }}">
       <div class="fg"><label>Work Done *</label><input type="text" name="task_name" required placeholder="e.g. Fridge deep clean, cobweb removal..."></div>
-      {% if is_research_park %}
-      <div class="fg"><label>Worker who did it</label><input type="text" name="worker_name" placeholder="Name of worker..."></div>
+      {% if extra_worker_name_mode %}
+      <div class="fg">
+        <label>{% if is_research_park %}Worker who did it{% else %}Worker Name *{% endif %}</label>
+        <input type="text" name="worker_name" {% if not is_research_park %}required{% endif %} placeholder="Name of worker...">
+      </div>
       {% else %}
       <div class="fg">
         <label>Assign workers *</label>
         <div style="max-height:190px;overflow:auto;border:1px solid #d1d5db;border-radius:10px;background:#fff">
           {% for w in area_workers %}
-          <label style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last %}1px solid #eef2f7{% else %}none{% endif %};cursor:{% if w.is_busy_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if w.is_busy_for_task %}.55{% else %}1{% endif %}">
-            <input type="checkbox" name="worker_ids" value="{{ w.id }}" {% if w.is_busy_for_task %}disabled{% endif %} style="width:16px;height:16px;flex-shrink:0">
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last %}1px solid #eef2f7{% else %}none{% endif %};cursor:{% if w.is_busy_for_task or w.is_unavailable_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if w.is_busy_for_task or w.is_unavailable_for_task %}.55{% else %}1{% endif %}">
+            <input type="checkbox" name="worker_ids" value="{{ w.id }}" {% if w.is_busy_for_task or w.is_unavailable_for_task %}disabled{% endif %} style="width:16px;height:16px;flex-shrink:0">
             <span style="font-weight:700;color:#1f2937;font-size:14px">
-              {{ w.name }}{% if w.worker_type %} ({{ w.get_worker_type_display }}){% endif %}{% if w.is_busy_for_task %} - Busy{% endif %}
+              {{ w.name }}{% if w.worker_type %} ({{ w.get_worker_type_display }}){% endif %}{% if w.is_busy_for_task %} - Busy{% elif w.is_unavailable_for_task %} - {{ w.unavailable_reason|default:"Absent" }}{% endif %}
             </span>
           </label>
           {% empty %}

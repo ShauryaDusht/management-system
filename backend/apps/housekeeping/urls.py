@@ -61,6 +61,7 @@ api_urlpatterns = [
     path('schedule-templates/<int:pk>/', api_views.HKScheduleTemplateDetailView.as_view(), name='hk-api-templates-detail'),
     path('attendance-summary/', api_views.HKAttendanceSummaryView.as_view(), name='hk-api-attendance'),
     path('staff-attendance/', api_views.HKStaffAttendanceListView.as_view(), name='hk-api-staff-attendance'),
+    path('attendance/absent-csv/', api_views.HKAbsentAttendanceCSVView.as_view(), name='hk-api-absent-attendance-csv'),
     path('stock-requests/', api_views.HKStockRequestListView.as_view(), name='hk-api-stock'),
     path('stock-requests/<int:pk>/status/', api_views.HKStockRequestStatusUpdateView.as_view(), name='hk-api-stock-status'),
     path('assign-area-task/', api_views.HKAssignAreaTaskView.as_view(), name='hk-api-assign-area-task'),

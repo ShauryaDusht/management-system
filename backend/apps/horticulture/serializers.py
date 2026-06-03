@@ -30,6 +30,31 @@ def _request_has_param(request, name):
     return bool(params.get(name))
 
 
+def _assignment_half_for_session(session):
+    if session == HorticultureDailyAssignment.Session.AFTERNOON:
+        return HorticultureAttendanceRecord.Half.SECOND
+    return HorticultureAttendanceRecord.Half.FIRST
+
+
+def _worker_unavailable_for_assignment(worker, assignment_date, session):
+    if not worker or not assignment_date:
+        return None
+    return (
+        HorticultureAttendanceRecord.objects
+        .filter(
+            worker=worker,
+            date=assignment_date,
+            half=_assignment_half_for_session(session),
+            status__in=[
+                HorticultureAttendanceRecord.Status.ABSENT,
+                HorticultureAttendanceRecord.Status.LEAVE,
+            ],
+        )
+        .values_list('status', flat=True)
+        .first()
+    )
+
+
 class SupervisorZoneOptionSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
@@ -424,12 +449,18 @@ class AdminDailyAssignmentSerializer(serializers.ModelSerializer):
         worker = attrs.get('worker') or getattr(self.instance, 'worker', None)
         area = attrs.get('area') or getattr(self.instance, 'area', None)
         task_type = attrs.get('task_type') or getattr(self.instance, 'task_type', None)
+        assignment_date = attrs.get('date') or getattr(self.instance, 'date', None)
+        session = attrs.get('session') or getattr(self.instance, 'session', HorticultureDailyAssignment.Session.MORNING)
         if worker and area and not HorticultureWorkerArea.objects.filter(
             worker=worker,
             area__zone=area.zone,
             is_active=True,
         ).exists():
             raise serializers.ValidationError({'area': 'Selected worker is not assigned to this zone.'})
+        unavailable_status = _worker_unavailable_for_assignment(worker, assignment_date, session)
+        if unavailable_status:
+            label = 'on leave' if unavailable_status == HorticultureAttendanceRecord.Status.LEAVE else 'absent'
+            raise serializers.ValidationError({'worker': f'Selected worker is {label} for this assignment session.'})
         if task_type and not task_type.is_active:
             raise serializers.ValidationError({'task_type': 'Selected task is inactive.'})
         return attrs

@@ -181,6 +181,52 @@ def _mark_horticulture_busy_workers(workers, busy_ids):
     return workers
 
 
+HORTICULTURE_UNASSIGNABLE_ATTENDANCE_STATUSES = {
+    HorticultureAttendanceRecord.Status.ABSENT,
+    HorticultureAttendanceRecord.Status.LEAVE,
+}
+
+
+def _half_for_horticulture_session(session):
+    if session == HorticultureDailyAssignment.Session.AFTERNOON:
+        return HorticultureAttendanceRecord.Half.SECOND
+    return HorticultureAttendanceRecord.Half.FIRST
+
+
+def _unavailable_horticulture_worker_statuses(worker_ids, date, half):
+    if not worker_ids or not date or half not in {
+        HorticultureAttendanceRecord.Half.FIRST,
+        HorticultureAttendanceRecord.Half.SECOND,
+    }:
+        return {}
+    return dict(
+        HorticultureAttendanceRecord.objects.filter(
+            worker_id__in=worker_ids,
+            date=date,
+            half=half,
+            status__in=HORTICULTURE_UNASSIGNABLE_ATTENDANCE_STATUSES,
+        ).values_list('worker_id', 'status')
+    )
+
+
+def _mark_horticulture_unavailable_workers(workers, date):
+    worker_ids = [worker.id for worker in workers]
+    first_statuses = _unavailable_horticulture_worker_statuses(
+        worker_ids,
+        date,
+        HorticultureAttendanceRecord.Half.FIRST,
+    )
+    second_statuses = _unavailable_horticulture_worker_statuses(
+        worker_ids,
+        date,
+        HorticultureAttendanceRecord.Half.SECOND,
+    )
+    for worker in workers:
+        worker.unavailable_first_reason = 'Leave' if first_statuses.get(worker.id) == HorticultureAttendanceRecord.Status.LEAVE else ('Absent' if first_statuses.get(worker.id) else '')
+        worker.unavailable_second_reason = 'Leave' if second_statuses.get(worker.id) == HorticultureAttendanceRecord.Status.LEAVE else ('Absent' if second_statuses.get(worker.id) else '')
+    return workers
+
+
 def _horticulture_attendance_choices():
     return [
         ('present', 'Present', '#d1fae5', '#065f46'),
@@ -2114,6 +2160,15 @@ def horticulture_mark_task(request):
             session = request.POST.get('session') or HorticultureDailyAssignment.Session.MORNING
             task_type_id = request.POST.get('task_type_id')
             task_type = TaskType.objects.filter(pk=task_type_id, is_active=True).first()
+            unavailable_ids = set()
+            if action == 'assign' and workers:
+                unavailable_ids = set(
+                    _unavailable_horticulture_worker_statuses(
+                        [item.id for item in workers],
+                        today,
+                        _half_for_horticulture_session(session),
+                    )
+                )
             if selected_zone is None:
                 error_message = 'No horticulture zone is assigned to this supervisor.'
             elif selected_area is None:
@@ -2141,6 +2196,8 @@ def horticulture_mark_task(request):
                     error_message = 'One or more selected workers are invalid for this zone.'
                 elif set(worker.id for worker in workers) & _busy_horticulture_worker_ids(selected_zone, today):
                     error_message = 'One or more selected workers are already assigned to an unfinished task.'
+                elif unavailable_ids:
+                    error_message = 'One or more selected workers are absent or on leave for this session.'
                 else:
                     assignment = HorticultureDailyAssignment.objects.create(
                         worker=worker,
@@ -2289,6 +2346,7 @@ def horticulture_mark_task(request):
     )
     workers = list(_workers_for_zone(selected_zone))
     _mark_horticulture_busy_workers(workers, _busy_horticulture_worker_ids(selected_zone, today))
+    _mark_horticulture_unavailable_workers(workers, today)
 
     return render(
         request,

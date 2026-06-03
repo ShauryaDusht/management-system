@@ -53,6 +53,11 @@ export const hkAPI = {
     api.get('/housekeeping/attendance-summary/', { params: { date } }),
   getStaffAttendance: (date) =>
     api.get('/housekeeping/staff-attendance/', { params: { date } }),
+  downloadAbsentAttendanceCSV: (date) =>
+    api.get('/housekeeping/attendance/absent-csv/', {
+      params: { date },
+      responseType: 'blob',
+    }),
   getDailyRecords: (areaOrParams, date) => {
     const params = {}
     if (areaOrParams && typeof areaOrParams === 'object' && !Array.isArray(areaOrParams)) {

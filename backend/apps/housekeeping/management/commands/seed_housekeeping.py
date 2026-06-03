@@ -1906,132 +1906,135 @@ Existing account passwords are preserved.
                 )
                 total += 1
 
-        # Research Park: worker-wise schedule (Mon-Sat) + Sunday deep cleaning
+        # Research Park: floor-wise Monday-Friday schedule + weekend work.
         research_park = self.area('Research Park')
         if research_park:
             HKScheduleTemplate.objects.filter(area=research_park).delete()
 
             rp_floor_tasks = [
-                (1, '08:00', '08:30', 'Dhaval: GF + 3F Gents and Handicap Washroom Touch Up', True, ''),
-                (2, '08:30', '09:00', 'Dhaval: Admin Office Cleaning', True, ''),
-                (3, '09:00', '09:20', 'Dhaval: Board Room Cleaning', True, ''),
-                (4, '09:20', '10:00', 'Dhaval: Fountain Common Area Cleaning', True, ''),
-                (5, '10:00', '10:15', 'Dhaval: Tea Break', False, ''),
-                (6, '10:15', '11:00', 'Dhaval: Classroom Cleaning', True, ''),
-                (7, '11:00', '12:15', 'Dhaval: GF + 3F Gents and Handicap Washroom Cleaning', True, ''),
-                (8, '12:15', '13:00', 'Dhaval: Conference Room Cleaning', True, ''),
-                (9, '13:00', '14:00', 'Dhaval: Lunch Break', False, ''),
-                (10, '14:00', '14:30', 'Dhaval: GF + 3F Washroom Touch Up', True, ''),
-                (11, '14:30', '16:30', 'Dhaval: Building Inside 2 Staircase + Railing Dusting', True, ''),
-                (12, '16:30', '17:00', 'Dhaval: GF + 3F Washroom Touch Up', True, ''),
-
-                (13, '09:00', '09:45', 'Mahesh: 2 Office Cleaning', True, 'Senior shift 9:00 AM to 6:00 PM'),
-                (14, '09:45', '11:15', 'Mahesh: Ground Floor Cleaning', True, ''),
-                (15, '11:15', '11:30', 'Mahesh: Tea Break', False, ''),
-                (16, '11:30', '12:00', 'Mahesh: 1 Office Cleaning', True, ''),
-                (17, '12:00', '12:30', 'Mahesh: Ground Floor All Dusting', True, ''),
-                (18, '12:30', '13:00', 'Mahesh: Lift and CCTV Room Cleaning', True, ''),
-                (19, '13:00', '14:00', 'Mahesh: Lunch Break', False, ''),
-                (20, '14:00', '14:30', 'Mahesh: Ground Floor Touch Up', True, ''),
-                (21, '14:30', '15:15', 'Mahesh: 2 Office Cleaning', True, ''),
-                (22, '15:15', '16:00', 'Mahesh: Building Inside Staircase + Railing Dusting', True, ''),
-                (23, '16:00', '17:30', 'Mahesh: Building Outside 2 Staircase + Railing Dusting', True, ''),
-                (24, '17:30', '18:00', 'Mahesh: All Floor Gents Washroom Touch Up', True, ''),
+                (1, '08:00', '08:30', 'Ground Floor And 3rd Floor Gents And Handicap Washroom Touch Up', True),
+                (2, '08:30', '10:30', 'Admin Office Cleaning, Board Room Cleaning, Classroom Cleaning & Conference Room', True),
+                (3, '10:30', '10:45', 'Tea Break', False),
+                (4, '10:45', '11:15', 'Fountain Common Area', True),
+                (5, '11:15', '13:00', 'Ground Floor And 3rd Floor Washroom Cleaning', True),
+                (6, '13:00', '14:00', 'Lunch Break', False),
+                (7, '14:00', '14:30', 'Ground Floor And Third Floor Washroom Touch Up', True),
+                (8, '14:30', '16:30', 'Building Inside 2 Big Star Cast Cleaning And Railing Dusting', True),
+                (9, '16:30', '17:00', 'Ground Floor And Third Floor Washroom Touch Up', True),
+                (10, '09:00', '10:30', '6 Office Cleaning', True),
+                (11, '10:30', '10:45', 'Tea Break', False),
+                (12, '10:45', '12:15', 'Ground Floor Cleaning & All Dusting', True),
+                (13, '12:15', '13:00', 'Left And CCTV Room', True),
+                (14, '13:00', '14:00', 'Lunch Break', False),
+                (15, '14:00', '14:30', 'Ground Floor Touch Up', True),
+                (16, '14:30', '17:00', 'Building Inside & Outside 2 Star Cast Cleaning And Railing Dusting', True),
+                (17, '17:00', '18:00', 'All Floor Gents Washroom Touch Up And Ground Floor Touch Up', True),
             ]
 
             rp_room_tasks = [
-                (1, '08:00', '08:30', 'Shailesh: 2F Gents and Handicap Washroom Touch Up', True, ''),
-                (2, '08:30', '10:00', 'Shailesh: Rooms 301 to 306 Office Cleaning', True, ''),
-                (3, '10:00', '10:15', 'Shailesh: Tea Break', False, ''),
-                (4, '10:15', '11:30', 'Shailesh: Rooms 309 to 314 Office Cleaning', True, ''),
-                (5, '11:30', '12:15', 'Shailesh: 2F Gents and Handicap Washroom Cleaning', True, ''),
-                (6, '12:15', '13:00', 'Shailesh: All Floor Dry Mop + Dusting', True, ''),
-                (7, '13:00', '14:00', 'Shailesh: Lunch Break', False, ''),
-                (8, '14:00', '14:20', 'Shailesh: 2F Gents and Handicap Washroom Touch Up', True, ''),
-                (9, '14:20', '15:05', 'Shailesh: All Floor Mopping and Sweeping', True, ''),
-                (10, '15:05', '16:00', 'Shailesh: Room 307/308 or Gym Room (Day-wise)', True, 'Mon/Wed/Fri: 307-308, Tue/Thu/Sat: Gym'),
-                (11, '16:00', '16:45', 'Shailesh: Terrace and Office Duct Area', True, ''),
-                (12, '16:45', '17:00', 'Shailesh: 2F Gents and Handicap Washroom Touch Up', True, ''),
+                (1, '08:00', '08:30', 'Second Floor Gents And Handicap Washroom Touch Up', True),
+                (2, '08:30', '10:00', '301 To 306 Office Cleaning', True),
+                (3, '10:00', '10:15', 'Tea Break', False),
+                (4, '10:15', '11:30', '309 To 314 Office Cleaning', True),
+                (5, '11:30', '12:15', 'Second Floor Gents And Handicap Washroom Cleaning', True),
+                (6, '12:15', '13:00', 'All Floor Dry Mopping & All Floor Dusting Cleaning', True),
+                (7, '13:00', '14:00', 'Lunch Break', False),
+                (8, '14:00', '14:20', 'Second Floor Gents And Handicap Washroom Touch Up', True),
+                (9, '14:20', '15:00', 'All Floor Mopping Sweeping Cleaning', True),
+                (10, '15:00', '15:45', 'Room No 307 And 308 Cleaning Monday, Wednesday, And Friday & Gym Room Tuesday, Thursday', True),
+                (11, '15:45', '16:45', 'Terrace And Office Room Duck Area', True),
+                (12, '16:45', '17:00', 'Second Floor Gents And Handicap Washroom Touch Up', True),
             ]
 
             rp_washroom_tasks = [
-                (1, '08:00', '08:45', 'Dharmishtaben: GF + 2F + 3F Ladies Washroom Touch Up', True, ''),
-                (2, '08:45', '10:00', 'Dharmishtaben: Rooms 402, 403 and 404 Office Cleaning', True, ''),
-                (3, '10:00', '10:15', 'Dharmishtaben: Tea Break', False, ''),
-                (4, '10:15', '12:15', 'Dharmishtaben: GF + 2F + 3F Ladies Washroom Cleaning', True, ''),
-                (5, '12:15', '13:00', 'Dharmishtaben: All Floor Cleaning', True, ''),
-                (6, '13:00', '14:00', 'Dharmishtaben: Lunch Break', False, ''),
-                (7, '14:00', '14:30', 'Dharmishtaben: GF + 2F + 3F Ladies Washroom Touch Up', True, ''),
-                (8, '14:30', '14:45', 'Dharmishtaben: All Floor Dusting', True, ''),
-                (9, '14:45', '15:45', 'Dharmishtaben: Room 405 and 406 Cleaning', True, 'Days: Tuesday, Friday | Tue/Fri: Room 405 and 406'),
-                (10, '14:45', '15:45', 'Dharmishtaben: Room 407 and 408 Cleaning', True, 'Days: Wednesday, Saturday | Wed/Sat: Room 407 and 408'),
-                (11, '14:45', '15:45', 'Dharmishtaben: Room 401 Cleaning', True, 'Days: Monday, Thursday | Mon/Thu: Room 401'),
-                (12, '16:30', '16:40', 'Dharmishtaben: Terrace Area', True, ''),
-                (13, '16:40', '17:00', 'Dharmishtaben: GF + 2F + 3F Ladies Washroom Touch Up', True, ''),
+                (1, '08:00', '08:45', 'Ground Floor & Second Floor And Third Floor Ladies Washroom Touch Up', True),
+                (2, '08:45', '10:00', '402 & 403 And 404 Office Cleaning', True),
+                (3, '10:00', '10:15', 'Tea Break', False),
+                (4, '10:15', '12:15', 'Ground Floor & Second Floor And Third Floor Ladies Washroom Cleaning', True),
+                (5, '12:15', '13:00', 'All Floor Cleaning', True),
+                (6, '13:00', '14:00', 'Lunch Break', False),
+                (7, '14:00', '14:30', 'Ground Floor & Second Floor And Third Floor Ladies Washroom Touch Up', True),
+                (8, '14:30', '14:45', 'All Floor Dusting', True),
+                (9, '14:45', '16:00', 'Room No 401 Cleaning Monday & Tuesday, Room No 405 & 406 Cleaning Tuesday & Friday, Room No 407 & 408 Cleaning Wednesday & Saturday', True),
+                (10, '16:00', '16:30', 'Terrace Area & Balcony Area', True),
+                (11, '16:30', '17:00', 'Ground Floor & Second Floor And Third Floor Ladies Washroom Touch Up', True),
             ]
 
             rp_saturday_special = [
-                (1, '15:00', '15:45', 'Saturday Special: Outside Area Cleaning', True, ''),
-                (2, '15:45', '16:30', 'Saturday Special: Parking Area Sweeping', True, ''),
-                (3, '16:30', '17:15', 'Saturday Special: Drain Checking', True, ''),
-                (4, '17:15', '18:00', 'Saturday Special: Entry Gate Pressure Wash (If Required)', True, ''),
+                (1, '08:00', '09:45', 'All Floor Corridor Passage Area, Cobweb Sweeping Mopping Cleaning', True, False),
+                (2, '09:45', '10:15', 'All Floor Dusting Cleaning', True, False),
+                (3, '10:15', '10:30', 'Tea Break', False, False),
+                (4, '10:30', '11:45', 'All Office Area Cobweb Sweeping Mopping Cleaning', True, False),
+                (5, '11:45', '13:00', 'All Meeting Room Cobweb Sweeping Mopping Cleaning', True, False),
+                (6, '13:00', '14:00', 'Lunch Break', False, False),
+                (7, '14:00', '16:00', 'Washroom Deep Cleaning', True, False),
+                (8, '16:00', '16:30', 'All Floor Dustbin Cleaning', True, False),
+                (9, '16:30', '17:00', 'Water Cooler, Water Tank & Drainage Channel Cleaning', True, False),
+                (101, '11:00', '12:00', 'Glasses And Panels Cleaning (Monthly)', True, True),
+                (102, '11:00', '12:00', 'Fan And Tubelight Cleaning (Monthly)', True, True),
+                (103, '11:00', '12:00', 'Building Duck Cleaning (Monthly)', True, True),
+                (104, '11:00', '12:00', 'Terrace Cleaning (Monthly)', True, True),
             ]
 
             rp_sunday_extra = [
-                (1, '08:00', '10:00', 'Sunday Deep Clean: Floor Machine Cleaning (GF + 2F + 3F)', True, ''),
-                (2, '10:00', '11:00', 'Sunday Deep Clean: Lift Deep Cleaning', True, ''),
-                (3, '11:00', '12:00', 'Sunday Deep Clean: Glass Deep Cleaning', True, ''),
-                (4, '12:00', '13:00', 'Sunday Deep Clean: Fountain Area Deep Cleaning', True, ''),
-                (5, '14:00', '15:00', 'Sunday Deep Clean: Common Area Polishing', True, ''),
-                (6, '15:00', '16:00', 'Monthly Work: Terrace + Water Tank Surrounding + Lift Shaft Dusting', True, 'Monthly cycle task'),
-                (7, '16:00', '17:00', 'Monthly Work: Tile Scale Removal + Glass Full Building + Cooler Deep Clean', True, 'Monthly cycle task'),
+                (1, '08:00', '10:15', 'Ground, Second, Third Floor Cleaning', True),
+                (2, '10:15', '10:30', 'Tea Break', False),
+                (3, '10:30', '11:15', 'All Floor Dusting', True),
+                (4, '11:15', '12:15', 'All Floor Gents Washroom Cleaning', True),
+                (5, '12:15', '13:00', 'Fountain Area Cleaning', True),
+                (6, '13:00', '14:00', 'Lunch Break', False),
+                (7, '14:00', '14:45', 'Common Area Cleaning', True),
+                (8, '14:45', '16:00', 'Building Outside & Parking Area Cleaning', True),
+                (9, '16:00', '17:00', 'All Lift Deep Cleaning', True),
             ]
 
-            for order, start, end, name, req_photo, desc in rp_floor_tasks:
+            weekday_desc = 'Days: Monday to Friday'
+            for order, start, end, name, req_photo in rp_floor_tasks:
                 HKScheduleTemplate.objects.create(
                     area=research_park, order=order,
                     start_time=t(start), end_time=t(end),
-                    task_name=name, task_description=desc,
+                    task_name=name, task_description=weekday_desc,
                     worker_tag='floor', requires_photo=req_photo,
                     frequency='daily', is_active=True,
                 )
                 total += 1
 
-            for order, start, end, name, req_photo, desc in rp_room_tasks:
+            for order, start, end, name, req_photo in rp_room_tasks:
                 HKScheduleTemplate.objects.create(
                     area=research_park, order=order,
                     start_time=t(start), end_time=t(end),
-                    task_name=name, task_description=desc,
+                    task_name=name, task_description=weekday_desc,
                     worker_tag='room', requires_photo=req_photo,
                     frequency='daily', is_active=True,
                 )
                 total += 1
 
-            for order, start, end, name, req_photo, desc in rp_washroom_tasks:
+            for order, start, end, name, req_photo in rp_washroom_tasks:
                 HKScheduleTemplate.objects.create(
                     area=research_park, order=order,
                     start_time=t(start), end_time=t(end),
-                    task_name=name, task_description=desc,
+                    task_name=name, task_description=weekday_desc,
                     worker_tag='washroom', requires_photo=req_photo,
                     frequency='daily', is_active=True,
                 )
                 total += 1
 
-            for order, start, end, name, req_photo, desc in rp_saturday_special:
+            for order, start, end, name, req_photo, is_optional_weekend_task in rp_saturday_special:
                 HKScheduleTemplate.objects.create(
                     area=research_park, order=order,
                     start_time=t(start), end_time=t(end),
-                    task_name=name, task_description=desc,
+                    task_name=name, task_description='',
                     worker_tag='all', requires_photo=req_photo,
                     frequency='saturday_special', is_active=True,
+                    is_optional_weekend_task=is_optional_weekend_task,
                 )
                 total += 1
 
-            for order, start, end, name, req_photo, desc in rp_sunday_extra:
+            for order, start, end, name, req_photo in rp_sunday_extra:
                 HKScheduleTemplate.objects.create(
                     area=research_park, order=order,
                     start_time=t(start), end_time=t(end),
-                    task_name=name, task_description=desc,
+                    task_name=name, task_description='',
                     worker_tag='all', requires_photo=req_photo,
                     frequency='sunday_extra', is_active=True,
                 )

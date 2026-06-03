@@ -14,6 +14,7 @@ export default function OverviewTab({ readOnly = false, hostelOnly = false }) {
   const [success, setSuccess] = useState('')
   const [rows, setRows] = useState([])
   const [areaClassFilter, setAreaClassFilter] = useState('all')
+  const [search, setSearch] = useState('')
   const [trendRange, setTrendRange] = useState('weekly')
   const [trendData, setTrendData] = useState([])
   const [trendLoading, setTrendLoading] = useState(true)
@@ -129,12 +130,15 @@ export default function OverviewTab({ readOnly = false, hostelOnly = false }) {
   }, [trendRange])
 
   const visibleRows = useMemo(
-    () => (
-      areaClassFilter === 'all'
-        ? rows
-        : rows.filter((r) => getAreaGroup(r.area, r.area_type) === areaClassFilter)
-    ),
-    [rows, areaClassFilter],
+    () => {
+      const q = search.trim().toLowerCase()
+      return rows.filter((r) => {
+        const groupHit = areaClassFilter === 'all' || getAreaGroup(r.area, r.area_type) === areaClassFilter
+        const searchHit = !q || [r.area, r.supervisor_caretaker].some((v) => String(v || '').toLowerCase().includes(q))
+        return groupHit && searchHit
+      })
+    },
+    [rows, areaClassFilter, search],
   )
 
   const tableHeaders = useMemo(
@@ -173,12 +177,12 @@ export default function OverviewTab({ readOnly = false, hostelOnly = false }) {
         <strong key={`c-${r.area_id}`}>{r.completed}</strong>,
         ...(readOnly ? [] : [
           <Btn key={`a-${r.area_id}`} size="sm" variant="orange" onClick={() => openAssignModal(r)}>
-            + Assign
+            {hostelOnly ? 'Assign Extra Work' : '+ Assign'}
           </Btn>,
         ]),
       ])
     },
-    [loading, readOnly, tableHeaders.length, visibleRows],
+    [hostelOnly, loading, readOnly, tableHeaders.length, visibleRows],
   )
 
   useEffect(() => {
@@ -311,6 +315,12 @@ export default function OverviewTab({ readOnly = false, hostelOnly = false }) {
             }}
           >
             <div style={{ fontWeight: 700 }}>Today's Running Tasks</div>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={hostelOnly ? 'Search hostel area or staff' : 'Search area or staff'}
+              style={{ maxWidth: 260 }}
+            />
             {!hostelOnly && (
               <div style={{ display: 'flex', gap: 6 }}>
                 <Btn

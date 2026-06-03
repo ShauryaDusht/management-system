@@ -36,6 +36,7 @@ export default function StaffAttendanceTab() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [exportingAbsent, setExportingAbsent] = useState(false)
 
   const load = async (selectedDate) => {
     setLoading(true)
@@ -103,6 +104,20 @@ export default function StaffAttendanceTab() {
     triggerDownload(blob, `staff_attendance_${date}.csv`)
   }
 
+  const downloadAbsentCsv = async () => {
+    setExportingAbsent(true)
+    setError('')
+    try {
+      const response = await hkAPI.downloadAbsentAttendanceCSV(date)
+      const blob = new Blob([response.data], { type: 'text/csv' })
+      triggerDownload(blob, `housekeeping_absent_${date}.csv`)
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Failed to export absent CSV.')
+    } finally {
+      setExportingAbsent(false)
+    }
+  }
+
   return (
     <div>
       <Alert message={error} />
@@ -129,6 +144,9 @@ export default function StaffAttendanceTab() {
           <Btn size="sm" variant="secondary" onClick={downloadCsv} disabled={!rows.length}>
               Export CSV
             </Btn>
+          <Btn size="sm" variant="secondary" onClick={downloadAbsentCsv} disabled={exportingAbsent}>
+            {exportingAbsent ? 'Exporting...' : 'Absent CSV'}
+          </Btn>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Card>
       </div>

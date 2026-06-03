@@ -147,28 +147,32 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     def perform_update(self, serializer):
         if _is_hostel_office_request(self.request.user):
             incoming_keys = set(self.request.data.keys())
-            if incoming_keys != {'area_ids'}:
-                raise PermissionDenied('Hostel Office can update area assignments only.')
+            allowed_keys = {'first_name', 'last_name', 'email', 'phone', 'pay_code', 'is_active', 'area_ids'}
+            if incoming_keys - allowed_keys:
+                raise PermissionDenied('Hostel Office can update only supervisor/caretaker details and area assignments.')
             if serializer.instance.role not in {User.Role.SUPERVISOR, User.Role.CARETAKER}:
                 raise PermissionDenied('Hostel Office can update only supervisor/caretaker assignments.')
 
             from apps.housekeeping.models import HKArea
 
-            area_ids = self.request.data.get('area_ids') or []
             allowed_area_ids = set(
                 HKArea.objects.filter(is_active=True)
                 .filter(_hostel_office_area_q())
                 .values_list('id', flat=True)
             )
-            try:
-                requested_area_ids = {int(area_id) for area_id in area_ids}
-            except (TypeError, ValueError):
-                raise PermissionDenied('Invalid area assignment.')
             current_area_ids = set(serializer.instance.hk_areas.values_list('area_id', flat=True))
-            current_non_hostel_ids = current_area_ids - allowed_area_ids
-            requested_non_hostel_ids = requested_area_ids - allowed_area_ids
-            if requested_non_hostel_ids != current_non_hostel_ids:
-                raise PermissionDenied('Hostel Office can change hostel/JRHA area assignments only.')
+            if not (current_area_ids & allowed_area_ids):
+                raise PermissionDenied('Hostel Office can update only hostel/JRHA supervisor/caretaker staff.')
+            if 'area_ids' in self.request.data:
+                area_ids = self.request.data.get('area_ids') or []
+                try:
+                    requested_area_ids = {int(area_id) for area_id in area_ids}
+                except (TypeError, ValueError):
+                    raise PermissionDenied('Invalid area assignment.')
+                current_non_hostel_ids = current_area_ids - allowed_area_ids
+                requested_non_hostel_ids = requested_area_ids - allowed_area_ids
+                if requested_non_hostel_ids != current_non_hostel_ids:
+                    raise PermissionDenied('Hostel Office can change hostel/JRHA area assignments only.')
             serializer.save()
             return
         _deny_hk_inventory_admin_mutation(

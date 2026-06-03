@@ -112,10 +112,10 @@
       <div style="font-size:11px;font-weight:700;color:#374151;margin:0 0 6px 2px">Select workers</div>
       <div style="max-height:180px;overflow:auto;border:1px solid #d1d5db;border-radius:8px;background:#fff">
         {% for w in area_workers %}
-        <label style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last %}1px solid #eef2f7{% else %}none{% endif %};cursor:{% if w.is_busy_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if w.is_busy_for_task %}.55{% else %}1{% endif %}">
-          <input type="checkbox" name="worker_ids" value="{{ w.id }}" {% if w.is_busy_for_task %}disabled{% endif %} style="width:16px;height:16px;flex-shrink:0">
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last %}1px solid #eef2f7{% else %}none{% endif %};cursor:{% if w.is_busy_for_task or w.is_unavailable_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if w.is_busy_for_task or w.is_unavailable_for_task %}.55{% else %}1{% endif %}">
+          <input type="checkbox" name="worker_ids" value="{{ w.id }}" {% if w.is_busy_for_task or w.is_unavailable_for_task %}disabled{% endif %} style="width:16px;height:16px;flex-shrink:0">
           <span style="font-weight:700;color:#1f2937;font-size:14px">
-            {{ w.name }}{% if w.is_busy_for_task %} - Busy{% endif %}
+            {{ w.name }}{% if w.is_busy_for_task %} - Busy{% elif w.is_unavailable_for_task %} - {{ w.unavailable_reason|default:"Absent" }}{% endif %}
           </span>
         </label>
         {% endfor %}
@@ -146,8 +146,8 @@
     <select name="worker_id" style="flex:1;padding:7px 8px;font-size:12px">
       <option value="">Assign worker</option>
       {% for w in area_workers %}
-      <option value="{{ w.id }}" {% if record.assigned_worker_id == w.id %}selected{% endif %} {% if w.is_busy_for_task %}disabled{% endif %}>
-        {{ w.name }}{% if w.worker_type %} ({{ w.get_worker_type_display }}){% endif %}{% if w.is_busy_for_task %} - Busy{% endif %}
+      <option value="{{ w.id }}" {% if record.assigned_worker_id == w.id %}selected{% endif %} {% if w.is_busy_for_task or w.is_unavailable_for_task %}disabled{% endif %}>
+        {{ w.name }}{% if w.worker_type %} ({{ w.get_worker_type_display }}){% endif %}{% if w.is_busy_for_task %} - Busy{% elif w.is_unavailable_for_task %} - {{ w.unavailable_reason|default:"Absent" }}{% endif %}
       </option>
       {% endfor %}
     </select>

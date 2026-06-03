@@ -513,7 +513,7 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
 }
 
 function SupervisorSwitchModal({ open, supervisor, users, onClose, onDone }) {
-  const [mode, setMode] = useState('temporary')
+  const [switchType, setSwitchType] = useState('one_day')
   const [targetStaff, setTargetStaff] = useState('')
   const [date, setDate] = useState(todayIsoDate())
   const [durationDays, setDurationDays] = useState('1')
@@ -522,7 +522,7 @@ function SupervisorSwitchModal({ open, supervisor, users, onClose, onDone }) {
 
   useEffect(() => {
     if (!open) return
-    setMode('temporary')
+    setSwitchType('one_day')
     setTargetStaff('')
     setDate(todayIsoDate())
     setDurationDays('1')
@@ -539,13 +539,14 @@ function SupervisorSwitchModal({ open, supervisor, users, onClose, onDone }) {
     setSaving(true)
     setError('')
     try {
+      const isTemporary = switchType !== 'permanent'
       const payload = {
-        mode,
+        mode: isTemporary ? 'temporary' : 'permanent',
         target_staff: targetStaff,
       }
-      if (mode === 'temporary') {
+      if (isTemporary) {
         payload.date = date
-        payload.duration_days = durationDays
+        payload.duration_days = switchType === 'one_day' ? 1 : durationDays
       }
       await hkAPI.switchSupervisor(supervisor.id, payload)
       onDone()
@@ -565,16 +566,17 @@ function SupervisorSwitchModal({ open, supervisor, users, onClose, onDone }) {
       footer={(
         <>
           <Btn variant="ghost" onClick={onClose} disabled={saving}>Cancel</Btn>
-          <Btn onClick={submit} disabled={saving || !targetStaff || (mode === 'temporary' && (!date || !durationDays))}>
+          <Btn onClick={submit} disabled={saving || !targetStaff || (switchType !== 'permanent' && (!date || !durationDays))}>
             {saving ? 'Switching...' : 'Apply Switch'}
           </Btn>
         </>
       )}
     >
       <Alert message={error} />
-      <Field label="Switch Type" required>
-        <SelectField value={mode} onChange={(e) => setMode(e.target.value)}>
-          <option value="temporary">Temporary</option>
+      <Field label="Duration" required>
+        <SelectField value={switchType} onChange={(e) => setSwitchType(e.target.value)}>
+          <option value="one_day">1 day</option>
+          <option value="custom">Custom days</option>
           <option value="permanent">Permanent</option>
         </SelectField>
       </Field>
@@ -588,7 +590,7 @@ function SupervisorSwitchModal({ open, supervisor, users, onClose, onDone }) {
           ))}
         </SelectField>
       </Field>
-      {mode === 'temporary' && (
+      {switchType !== 'permanent' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 140px', gap: 10 }}>
           <Field label="Start Date" required>
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -598,14 +600,15 @@ function SupervisorSwitchModal({ open, supervisor, users, onClose, onDone }) {
               type="number"
               min="1"
               max="60"
-              value={durationDays}
+              value={switchType === 'one_day' ? '1' : durationDays}
+              disabled={switchType === 'one_day'}
               onChange={(e) => setDurationDays(e.target.value)}
             />
           </Field>
         </div>
       )}
       <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5 }}>
-        {mode === 'temporary'
+        {switchType !== 'permanent'
           ? 'Temporary switch gives the target staff access to this staff member assigned areas for the selected number of days.'
           : 'Permanent switch moves this staff member assigned areas to the target staff and updates active workers in those areas.'}
       </div>
@@ -624,6 +627,18 @@ export default function SupervisorsTab({ hostelOnly = false }) {
   const [reportUser, setReportUser] = useState(null)
   const [inventoryReportUser, setInventoryReportUser] = useState(null)
   const [switchUser, setSwitchUser] = useState(null)
+  const [editUser, setEditUser] = useState(null)
+  const [editForm, setEditForm] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    pay_code: '',
+    is_active: true,
+    area_ids: [],
+  })
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState('')
 
   const loadData = async (mounted = true) => {
     setLoading(true)
@@ -642,7 +657,11 @@ export default function SupervisorsTab({ hostelOnly = false }) {
         .filter((a) => !HIDDEN_STAFF_AREA_NAMES.has(String(a.name || '').toLowerCase()))
       const caretakers = normalizeUsers(caretakersData).map((u) => ({ ...u, role: 'caretaker' }))
       const supervisors = normalizeUsers(supervisorsData).map((u) => ({ ...u, role: 'supervisor' }))
-      const sortedUsers = [...caretakers, ...supervisors].sort((a, b) => toDisplayName(a).localeCompare(toDisplayName(b)))
+      const scopedUserIds = new Set(areaList.flatMap((area) => area.caretaker_ids || []))
+      const staffList = hostelOnly
+        ? [...caretakers, ...supervisors].filter((u) => scopedUserIds.has(u.id))
+        : [...caretakers, ...supervisors]
+      const sortedUsers = staffList.sort((a, b) => toDisplayName(a).localeCompare(toDisplayName(b)))
 
       setAreas(areaList)
       setUsers(sortedUsers)
@@ -666,6 +685,57 @@ export default function SupervisorsTab({ hostelOnly = false }) {
     setSwitchUser(null)
     setSuccess('Supervisor/caretaker change applied.')
     await loadData(true)
+  }
+
+  const openEditUser = (user) => {
+    setEditUser(user)
+    setEditError('')
+    setEditForm({
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      pay_code: user.pay_code || '',
+      is_active: user.is_active !== false,
+      area_ids: user.assigned_area_ids || [],
+    })
+  }
+
+  const toggleEditArea = (areaId) => {
+    setEditForm((prev) => {
+      const exists = prev.area_ids.some((id) => String(id) === String(areaId))
+      return {
+        ...prev,
+        area_ids: exists
+          ? prev.area_ids.filter((id) => String(id) !== String(areaId))
+          : [...prev.area_ids, areaId],
+      }
+    })
+  }
+
+  const submitEditUser = async () => {
+    if (!editUser?.id) return
+    setEditSaving(true)
+    setEditError('')
+    setSuccess('')
+    try {
+      await usersAPI.update(editUser.id, {
+        first_name: editForm.first_name,
+        last_name: editForm.last_name,
+        email: editForm.email,
+        phone: editForm.phone,
+        pay_code: editForm.pay_code,
+        is_active: editForm.is_active,
+        area_ids: editForm.area_ids,
+      })
+      setEditUser(null)
+      setSuccess('Staff details updated.')
+      await loadData(true)
+    } catch (e) {
+      setEditError(e.response?.data?.detail || 'Failed to update staff details.')
+    } finally {
+      setEditSaving(false)
+    }
   }
 
   const areaMap = useMemo(() => {
@@ -793,7 +863,7 @@ export default function SupervisorsTab({ hostelOnly = false }) {
           </div>
         ) : (
           <DataTable
-            headers={['Role', 'Name', 'Pay Code', 'Email', 'Username', 'Phone', 'Assigned Areas', 'Change', 'Report']}
+            headers={['Role', 'Name', 'Pay Code', 'Email', 'Username', 'Phone', 'Assigned Areas', 'Actions', 'Report']}
             rows={visibleUsers.map((u) => {
               const areasForUser = areaMap[u.id] || []
               return [
@@ -806,9 +876,14 @@ export default function SupervisorsTab({ hostelOnly = false }) {
                 <code key={`user-${u.id}`} style={{ fontSize: 12 }}>{u.username}</code>,
                 u.phone || '-',
                 areasForUser.length ? areasForUser.join(', ') : '-',
-                <Btn key={`switch-${u.id}`} size="sm" variant="secondary" onClick={() => setSwitchUser(u)}>
-                  Change
-                </Btn>,
+                <div key={`actions-${u.id}`} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <Btn size="sm" variant="secondary" onClick={() => setSwitchUser(u)}>
+                    Change
+                  </Btn>
+                  <Btn size="sm" variant="ghost" onClick={() => openEditUser(u)}>
+                    Edit
+                  </Btn>
+                </div>,
                 <div key={`report-actions-${u.id}`} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   <Btn size="sm" variant="secondary" onClick={() => setReportUser(u)}>
                     HK Report
@@ -843,6 +918,64 @@ export default function SupervisorsTab({ hostelOnly = false }) {
         onClose={() => setSwitchUser(null)}
         onDone={handleSwitchDone}
       />
+
+      <Modal
+        open={!!editUser}
+        onClose={editSaving ? undefined : () => setEditUser(null)}
+        title={`Edit ${toDisplayName(editUser)}`}
+        width={680}
+        footer={(
+          <>
+            <Btn variant="ghost" onClick={() => setEditUser(null)} disabled={editSaving}>Cancel</Btn>
+            <Btn onClick={submitEditUser} disabled={editSaving}>
+              {editSaving ? 'Saving...' : 'Save'}
+            </Btn>
+          </>
+        )}
+      >
+        <Alert message={editError} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <Field label="First Name">
+            <Input value={editForm.first_name} onChange={(e) => setEditForm((p) => ({ ...p, first_name: e.target.value }))} />
+          </Field>
+          <Field label="Last Name">
+            <Input value={editForm.last_name} onChange={(e) => setEditForm((p) => ({ ...p, last_name: e.target.value }))} />
+          </Field>
+          <Field label="Email">
+            <Input value={editForm.email} onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} />
+          </Field>
+          <Field label="Phone">
+            <Input value={editForm.phone} onChange={(e) => setEditForm((p) => ({ ...p, phone: e.target.value }))} />
+          </Field>
+          <Field label="Pay Code">
+            <Input value={editForm.pay_code} onChange={(e) => setEditForm((p) => ({ ...p, pay_code: e.target.value }))} />
+          </Field>
+          <Field label="Status">
+            <SelectField
+              value={editForm.is_active ? 'active' : 'inactive'}
+              onChange={(e) => setEditForm((p) => ({ ...p, is_active: e.target.value === 'active' }))}
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </SelectField>
+          </Field>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 8 }}>Areas</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 8, maxHeight: 220, overflow: 'auto' }}>
+            {areas.map((area) => (
+              <label key={area.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={editForm.area_ids.some((id) => String(id) === String(area.id))}
+                  onChange={() => toggleEditArea(area.id)}
+                />
+                <span>{area.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

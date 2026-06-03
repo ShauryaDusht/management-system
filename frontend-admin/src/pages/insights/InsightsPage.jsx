@@ -101,7 +101,7 @@ function ProgressPill({ value, label, color }) {
   )
 }
 
-function LeaderboardCard({ rank, name, fairScore, completionPct, attendancePct, total, done, workload, isWinner }) {
+function LeaderboardCard({ rank, name, fairScore, completionPct, attendancePct, total, done, isWinner }) {
   const tier = getTier(fairScore)
   const medal = MEDAL[rank] || `#${rank + 1}`
   return (
@@ -115,7 +115,6 @@ function LeaderboardCard({ rank, name, fairScore, completionPct, attendancePct, 
         <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
         <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
           Tasks: <strong>{done}/{total}</strong>
-          {workload != null && <> &nbsp;·&nbsp; Avg workload: <strong>{Number(workload).toFixed(1)}</strong></>}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -224,7 +223,7 @@ function FairnessNote() {
   )
 }
 
-function PerformanceInsights({ rows, nameField, workloadField }) {
+function PerformanceInsights({ rows, nameField }) {
   const totalPool = useMemo(() => rows.reduce((s, r) => s + Number(r.total || 1), 0) / Math.max(rows.length, 1), [rows])
   const ranked = useMemo(() =>
     [...rows].map(r => ({ ...r, _fair: computeFairScore(r, totalPool) })).sort((a, b) => b._fair - a._fair),
@@ -251,7 +250,6 @@ function PerformanceInsights({ rows, nameField, workloadField }) {
             attendancePct={r.attendance_pct}
             total={r.total || 0}
             done={r.done || 0}
-            workload={workloadField ? r[workloadField] : null}
             isWinner={i === 0}
           />
         ))}
@@ -574,9 +572,9 @@ export default function InsightsPage() {
           <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner /></div>
         ) : (
           <div key={`${activeView}-${range}-${areaClass}`}>
-            {activeView === 'caretaker'      && <PerformanceInsights rows={caretakerRows} nameField="staff_name"  workloadField="tasks_per_worker" />}
-            {activeView === 'workers'        && <PerformanceInsights rows={workerRows}    nameField="worker_name" workloadField={null} />}
-            {activeView === 'area_hk'        && <PerformanceInsights rows={areaRows}      nameField="area_name"   workloadField="tasks_per_worker" />}
+            {activeView === 'caretaker'      && <PerformanceInsights rows={caretakerRows} nameField="staff_name" />}
+            {activeView === 'workers'        && <PerformanceInsights rows={workerRows}    nameField="worker_name" />}
+            {activeView === 'area_hk'        && <PerformanceInsights rows={areaRows}      nameField="area_name" />}
             {activeView === 'area_inventory' && (invAreaRows.length  ? <InventoryAreaPanel rows={invAreaRows} totals={consumptionTotals} /> : <EmptyState />)}
             {activeView === 'top_items'      && (topItemRows.length  ? <TopItemsPanel rows={topItemRows} />                              : <EmptyState />)}
           </div>

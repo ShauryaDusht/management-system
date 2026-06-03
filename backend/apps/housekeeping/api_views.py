@@ -557,9 +557,12 @@ class SupervisorReportRegenerateView(APIView):
 
 
 class HKSupervisorSwitchView(APIView):
-    permission_classes = [IsAdminOrHousekeepingManager]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
+        if not (_can_manage_housekeeping(request.user) or _is_hostel_office(request.user)):
+            return Response({'detail': 'Permission denied.'}, status=403)
+
         User = get_user_model()
         source_staff = get_object_or_404(
             User,
@@ -588,12 +591,19 @@ class HKSupervisorSwitchView(APIView):
             is_active=True,
         )
 
-        area_links = list(
+        area_link_qs = (
             HKUserArea.objects
             .select_related('area')
             .filter(user=source_staff, area__is_active=True)
             .order_by('area__name')
         )
+        if _is_hostel_office(request.user):
+            hostel_area_ids = set(_hostel_area_ids())
+            if source_staff.id not in _hostel_staff_ids() or target_staff.id not in _hostel_staff_ids():
+                return Response({'detail': 'Hostel Office can switch only hostel supervisor/caretaker staff.'}, status=403)
+            area_link_qs = area_link_qs.filter(area_id__in=hostel_area_ids)
+
+        area_links = list(area_link_qs)
         if not area_links:
             return Response({'detail': 'Source staff has no assigned housekeeping areas.'}, status=400)
 
@@ -720,6 +730,72 @@ class HKSupervisorSwitchView(APIView):
                 'leave_request_created_count': leave_request_created_count,
                 'assignment_ids': assignment_ids,
             })
+
+
+class HKAbsentAttendanceCSVView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not (_can_manage_housekeeping(request.user) or _is_hostel_office(request.user)):
+            return Response({'detail': 'Permission denied.'}, status=403)
+
+        target_date = _parse_iso_date(request.query_params.get('date')) or timezone.localdate()
+        worker_qs = (
+            HKAttendanceRecord.objects
+            .select_related('worker__area')
+            .filter(date=target_date, status='absent')
+            .order_by('worker__area__name', 'worker__name')
+        )
+        staff_qs = (
+            HKStaffAttendanceRecord.objects
+            .select_related('staff')
+            .prefetch_related('staff__hk_areas__area')
+            .filter(date=target_date, status='absent')
+            .order_by('staff__first_name', 'staff__last_name', 'staff__username')
+        )
+        if _is_hostel_office(request.user):
+            worker_qs = worker_qs.filter(worker__area_id__in=_hostel_area_ids())
+            staff_qs = _scope_staff_attendance_for_user(staff_qs, request.user)
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="housekeeping_absent_{target_date}.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Name', 'Role/Type', 'Phone', 'Pay Code', 'Area/Section', 'Status', 'Half/Session', 'Date'])
+
+        for record in worker_qs:
+            worker = record.worker
+            area_name = worker.area.name if worker and worker.area else ''
+            writer.writerow([
+                worker.name if worker else '',
+                worker.get_worker_type_display() if worker else 'Worker',
+                getattr(worker, 'phone', '') or '',
+                getattr(worker, 'pay_code', '') or '',
+                area_name,
+                record.status,
+                getattr(record, 'half', '') or '',
+                record.date,
+            ])
+
+        hostel_area_ids = set(_hostel_area_ids()) if _is_hostel_office(request.user) else None
+        for record in staff_qs:
+            staff = record.staff
+            links = [
+                link.area.name
+                for link in staff.hk_areas.all()
+                if link.area and (hostel_area_ids is None or link.area_id in hostel_area_ids)
+            ] if staff else []
+            writer.writerow([
+                staff.get_full_name() or staff.username if staff else '',
+                staff.get_role_display() if staff else 'Staff',
+                getattr(staff, 'phone', '') or '',
+                getattr(staff, 'pay_code', '') or '',
+                '; '.join(links),
+                record.status,
+                getattr(record, 'half', '') or '',
+                record.date,
+            ])
+
+        return response
 
 
 class HKInchargeReportView(APIView):

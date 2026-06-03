@@ -21,7 +21,7 @@
   {% elif is_common_area %}
     Route-based schedule every day
   {% elif is_research_park %}
-    Worker-wise operations plan (Mon-Sat + Sunday deep clean)
+    Floor-wise operations plan (Monday-Friday + weekend tasks)
   {% elif is_central_arcade %}
     Worker-wise operations plan (daily + weekend special/deep clean)
   {% elif is_sports_complex %}
@@ -65,9 +65,9 @@
         {% elif tgrp.grouper == 'all' %}Special Tasks
         {% else %}General{% endif %}
       {% elif is_research_park %}
-        {% if tgrp.grouper == 'floor' %}Ground and External Operations
-        {% elif tgrp.grouper == 'room' %}Office and Meeting Zones
-        {% elif tgrp.grouper == 'washroom' %}Washroom and Utility Rounds
+        {% if tgrp.grouper == 'floor' %}Ground Floor
+        {% elif tgrp.grouper == 'room' %}Second Floor
+        {% elif tgrp.grouper == 'washroom' %}Third Floor
         {% elif tgrp.grouper == 'all' %}Special Tasks
         {% else %}General{% endif %}
       {% elif is_central_arcade %}
