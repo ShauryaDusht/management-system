@@ -84,7 +84,7 @@ class Command(BaseCommand):
         hostel_office.first_name = 'Hostel'
         hostel_office.last_name = 'Office'
         hostel_office.email = 'hostel.office@iitgn.ac.in'
-        hostel_office.phone = ''
+        hostel_office.phone = '07923951140'
         hostel_office.pay_code = ''
         hostel_office.role = User.Role.HOSTEL_OFFICE
         hostel_office.is_active = True

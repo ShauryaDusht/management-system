@@ -127,9 +127,9 @@
     </div>
     {% if row.first_att and row.first_att.is_submitted %}
     <div style="font-size:11px;color:#16a34a">✅ Submitted — locked</div>
-    {% elif not is_today or cur_half == 'first' %}
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
-      {% for sv, sl, bg, clr in attn_choices %}
+    {% elif first_half_open %}
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px">
+      {% for sv, sl, bg, clr in second_attn_choices %}
       <form hx-post="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}"
             hx-target="#att-{{ row.worker.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data">
         {% csrf_token %}
@@ -148,7 +148,7 @@
       {% endfor %}
     </div>
     {% else %}
-    <div style="font-size:11px;color:#9ca3af">Period ended</div>
+    <div style="font-size:11px;color:#9ca3af">{% if is_today and cur_half == 'first' %}Available after 8AM{% else %}Period ended{% endif %}</div>
     {% endif %}
   </div>
 
@@ -170,7 +170,7 @@
     </div>
     {% if row.second_att and row.second_att.is_submitted %}
     <div style="font-size:11px;color:#16a34a">✅ Submitted — locked{% if row.second_att.note == 'Auto from first half' %} · Auto from first half{% endif %}</div>
-    {% elif not is_today or cur_half == 'second' %}
+    {% elif second_half_open %}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
       {% for sv, sl, bg, clr in attn_choices %}
       <form hx-post="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}"
@@ -191,7 +191,7 @@
       {% endfor %}
     </div>
     {% else %}
-    <div style="font-size:11px;color:#9ca3af">Available after 1PM</div>
+    <div style="font-size:11px;color:#9ca3af">{% if is_today and cur_half == 'first' %}Available after 1PM{% else %}Period ended{% endif %}</div>
     {% endif %}
   </div>
 

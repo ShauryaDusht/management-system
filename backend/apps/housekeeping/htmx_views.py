@@ -85,6 +85,10 @@ ATTENDANCE_CHOICES = [
     ("late", "Late", "#fef3c7", "#92400e"),
     ("leave", "Leave", "#dbeafe", "#1d4ed8"),
 ]
+SECOND_HALF_EXCEPTION_CHOICES = [
+    ("absent", "Absent", "#fee2e2", "#991b1b"),
+    ("leave", "Leave", "#dbeafe", "#1d4ed8"),
+]
 
 WORKER_TAG_LABELS = {
     "room": ("room", "Room Staff"),
@@ -465,6 +469,14 @@ def _move_open_task_assignments_to_reliever(original, reliever, area, date, assi
     return updated_records, moved_team_rows
 
 
+def _auto_second_status_from_first(first_status):
+    if first_status in {"present", "late"}:
+        return "present"
+    if first_status in {"absent", "leave"}:
+        return first_status
+    return "present"
+
+
 def _auto_create_second_half_from_first(workers, date, marked_by):
     worker_ids = list(workers.values_list("id", flat=True) if hasattr(workers, "values_list") else [w.id for w in workers])
     if not worker_ids:
@@ -478,27 +490,29 @@ def _auto_create_second_half_from_first(workers, date, marked_by):
     )
     if not first_status_by_worker:
         return 0
-    existing_second_ids = set(
+    existing_second = list(
         HKAttendanceRecord.objects.filter(
             worker_id__in=first_status_by_worker.keys(),
             date=date,
             half="second",
-        ).values_list("worker_id", flat=True)
+        )
     )
-
-    def second_status_from_first(first_status):
-        if first_status in {"present", "late"}:
-            return "present"
-        if first_status in {"absent", "leave"}:
-            return first_status
-        return "present"
+    existing_second_ids = {att.worker_id for att in existing_second}
+    for att in existing_second:
+        if att.is_submitted or att.note != "Auto from first half":
+            continue
+        next_status = _auto_second_status_from_first(first_status_by_worker.get(att.worker_id))
+        if att.status != next_status:
+            att.status = next_status
+            att.marked_by = marked_by
+            att.save(update_fields=["status", "marked_by"])
 
     records = [
         HKAttendanceRecord(
             worker_id=worker_id,
             date=date,
             half="second",
-            status=second_status_from_first(first_status_by_worker.get(worker_id)),
+            status=_auto_second_status_from_first(first_status_by_worker.get(worker_id)),
             marked_by=marked_by,
             note="Auto from first half",
         )
@@ -1226,6 +1240,18 @@ def task_completion_sort_key(record):
 def current_half():
     h = timezone.localtime(timezone.now()).hour
     return "first" if h < 13 else "second"
+
+
+def attendance_half_is_open(sel_date, half):
+    """Today attendance is editable only during the matching half window."""
+    if sel_date != timezone.localdate():
+        return True
+    now_time = timezone.localtime(timezone.now()).time()
+    if half == "first":
+        return datetime.time(8, 0) <= now_time < datetime.time(13, 0)
+    if half == "second":
+        return datetime.time(13, 0) <= now_time < datetime.time(17, 0)
+    return False
 
 
 def busy_worker_ids_for_tasks(area, date, exclude_record_id=None):
@@ -2843,6 +2869,8 @@ def hk_attendance(request):
 
     cur_half = current_half()
     is_today = sel_date == today
+    first_half_open = attendance_half_is_open(sel_date, "first")
+    second_half_open = attendance_half_is_open(sel_date, "second")
     can_submit_selected_attendance = is_today or (
         can_mark_previous_sunday_attendance and sel_date == previous_sunday
     )
@@ -2856,6 +2884,8 @@ def hk_attendance(request):
 
         if action == "submit_half":
             half = request.POST.get("half", cur_half)
+            if half not in {"first", "second"} or not attendance_half_is_open(sel_date, half):
+                return redirect(f"/housekeeping/attendance/?date={sel_date}{area_param}&att_err=half_closed")
             if half == "second":
                 _auto_create_second_half_from_first(workers, sel_date, user)
             HKAttendanceRecord.objects.filter(
@@ -2874,8 +2904,14 @@ def hk_attendance(request):
 
         elif action == "mark":
             half = request.POST.get("half", cur_half)
+            if half not in {"first", "second"} or not attendance_half_is_open(sel_date, half):
+                if request.headers.get("HX-Request"):
+                    return HttpResponseBadRequest("Attendance for this half is not open.")
+                return redirect(f"/housekeeping/attendance/?date={sel_date}{area_param}&att_err=half_closed")
             worker_id = request.POST.get("worker_id")
             status = request.POST.get("status", "present")
+            if half == "second" and status not in {"absent", "leave"}:
+                return HttpResponseBadRequest("Second half attendance is only for absent or leave exceptions.")
             worker = get_object_or_404(HKWorker, pk=worker_id)
             if worker.id not in {w.id for w in workers}:
                 return HttpResponseBadRequest("Worker does not belong to the selected area.")
@@ -2886,8 +2922,13 @@ def hk_attendance(request):
                     defaults={"marked_by": user}
                 )
                 att.status = status
+                if half == "second":
+                    att.note = "Second half exception"
                 att.marked_by = user
-                att.save(update_fields=["status", "marked_by"])
+                update_fields = ["status", "marked_by"]
+                if half == "second":
+                    update_fields.append("note")
+                att.save(update_fields=update_fields)
 
             if request.headers.get("HX-Request"):
                 sub = HKRelieverSubstitution.objects.filter(
@@ -2908,7 +2949,10 @@ def hk_attendance(request):
                     "sel_area": sel_area,
                     "cur_half": cur_half,
                     "is_today": is_today,
+                    "first_half_open": first_half_open,
+                    "second_half_open": second_half_open,
                     "attn_choices": ATTENDANCE_CHOICES,
+                    "second_attn_choices": SECOND_HALF_EXCEPTION_CHOICES,
                     "all_relievers": all_rel,
                 })
             return redirect(f"/housekeeping/attendance/?date={sel_date}{area_param}")
@@ -2965,12 +3009,16 @@ def hk_attendance(request):
         "can_submit_selected_attendance": can_submit_selected_attendance,
         "previous_sunday": previous_sunday,
         "cur_half": cur_half,
+        "first_half_open": first_half_open,
+        "second_half_open": second_half_open,
+        "attendance_error": "Attendance can be marked only during the selected half time." if request.GET.get("att_err") == "half_closed" else "",
         "present_first": sum(1 for r in worker_rows if r["first_att"] and r["first_att"].status in ["present", "late"]),
         "present_second": sum(1 for r in worker_rows if r["second_att"] and r["second_att"].status in ["present", "late"]),
         "total_count": len(worker_rows),
         "first_submitted": all_submitted("first"),
         "second_submitted": all_submitted("second"),
         "attn_choices": ATTENDANCE_CHOICES,
+        "second_attn_choices": SECOND_HALF_EXCEPTION_CHOICES,
         "all_relievers": all_relievers,
         "subs_today": subs_today,
     })
@@ -3059,6 +3107,7 @@ def hk_assign_reliever(request):
             "cur_half": current_half(),
             "is_today": True,
             "attn_choices": ATTENDANCE_CHOICES,
+            "second_attn_choices": SECOND_HALF_EXCEPTION_CHOICES,
             "all_relievers": all_relievers,
         })
 

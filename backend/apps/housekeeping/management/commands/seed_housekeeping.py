@@ -392,7 +392,7 @@ Existing account passwords are preserved.
             ('super.admin', 'Super', 'Admin', '9727757096', 'admin', [], 'pragnesh@iitgn.ac.in', ''),
             ('mahesh.prajapati', 'Maheshbhai', 'Prajapati', '9723889424', 'horticulture_manager', [], 'managerhort.iwd@iitgn.ac.in', '474'),
             ('hk_inventory_manager', 'Housekeeping Inventory', 'Manager', '8758120645', 'hk_inventory_manager', [], 'manager.hk@iitgn.ac.in', '469'),
-            ('hostel.office', 'Hostel', 'Office', '', 'hostel_office', [], 'hostel.office@iitgn.ac.in', ''),
+            ('hostel.office', 'Hostel', 'Office', '07923951140', 'hostel_office', [], 'hostel.office@iitgn.ac.in', ''),
         ]
         for username, first, last, phone, role, areas, email, pay_code in accounts:
             self.make_user(
@@ -432,7 +432,7 @@ Existing account passwords are preserved.
                     user.first_name = 'Hostel'
                     user.last_name = 'Office'
                     user.email = 'hostel.office@iitgn.ac.in'
-                    user.phone = ''
+                    user.phone = '07923951140'
                     user.pay_code = ''
                     user.role = 'hostel_office'
                 user.save()
