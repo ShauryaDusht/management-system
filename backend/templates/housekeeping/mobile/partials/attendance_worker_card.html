@@ -128,8 +128,8 @@
     {% if row.first_att and row.first_att.is_submitted %}
     <div style="font-size:11px;color:#16a34a">✅ Submitted — locked</div>
     {% elif first_half_open %}
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px">
-      {% for sv, sl, bg, clr in second_attn_choices %}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+      {% for sv, sl, bg, clr in attn_choices %}
       <form hx-post="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}"
             hx-target="#att-{{ row.worker.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data">
         {% csrf_token %}
@@ -171,8 +171,8 @@
     {% if row.second_att and row.second_att.is_submitted %}
     <div style="font-size:11px;color:#16a34a">✅ Submitted — locked{% if row.second_att.note == 'Auto from first half' %} · Auto from first half{% endif %}</div>
     {% elif second_half_open %}
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
-      {% for sv, sl, bg, clr in attn_choices %}
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px">
+      {% for sv, sl, bg, clr in second_attn_choices %}
       <form hx-post="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}"
             hx-target="#att-{{ row.worker.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data">
         {% csrf_token %}
