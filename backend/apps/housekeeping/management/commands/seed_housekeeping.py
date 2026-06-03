@@ -2818,7 +2818,7 @@ Existing account passwords are preserved.
 
             academic_sunday_extra = {
                 'Old Academic Common Area': [
-                    (1, '08:00', '11:00', 'Sunday Deep Clean: Old Academic Common Area Samved Area Scrubbing and Washing', 'all', True, 'Weekly Sunday task'),
+                    (1, '08:00', '11:00', 'Sunday Deep Clean: Old Academic Common Area Samved Area Scrubbing and Washing', 'all', True, 'Weekly Sunday task', False),
                 ],
             }
             academic_saturday_special = {}
