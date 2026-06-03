@@ -12,6 +12,7 @@ export default function SectionsTab({ hostelOnly = false }) {
   const [success, setSuccess] = useState('')
   const [areas, setAreas] = useState([])
   const [users, setUsers] = useState([])
+  const [temporaryAssignments, setTemporaryAssignments] = useState([])
   const [areaClassFilter, setAreaClassFilter] = useState('all')
 
   const [assignModal, setAssignModal] = useState(null)
@@ -28,11 +29,12 @@ export default function SectionsTab({ hostelOnly = false }) {
 
   const { run: runAction, saving: assignSaving, error: actionError, clearError } = useAsyncAction()
   const { loading, error: loadError, reload } = useAsyncLoad(async () => {
-    const [{ data: areaData }, { data: caretakersData }, { data: supervisorsData }] =
+    const [{ data: areaData }, { data: caretakersData }, { data: supervisorsData }, { data: assignmentData }] =
       await Promise.all([
         hkAPI.getAreas(),
         usersAPI.getByRole('caretaker'),
         usersAPI.getByRole('supervisor'),
+        hkAPI.getInchargeAssignments('approved'),
       ])
 
     const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
@@ -45,6 +47,7 @@ export default function SectionsTab({ hostelOnly = false }) {
       ...caretakers.map((u) => ({ ...u, role: 'caretaker' })),
       ...supervisors.map((u) => ({ ...u, role: 'supervisor' })),
     ])
+    setTemporaryAssignments(Array.isArray(assignmentData) ? assignmentData : assignmentData?.results || [])
     return null
   }, [], 'Failed to load sections/staff data.')
 
@@ -58,10 +61,23 @@ export default function SectionsTab({ hostelOnly = false }) {
 
   const allRows = useMemo(() => {
     const rows = []
+    const today = todayISO()
+    const activeTemporaryByArea = new Map()
+
+    temporaryAssignments.forEach((assignment) => {
+      if (!assignment?.leave_date || assignment.leave_date < today) return
+      const areaId = assignment.area
+      if (!areaId) return
+      const existing = activeTemporaryByArea.get(areaId)
+      if (!existing || assignment.leave_date > existing.leave_date) {
+        activeTemporaryByArea.set(areaId, assignment)
+      }
+    })
 
     areas.forEach((a) => {
       const assignedIds = (a.caretaker_ids || []).filter((id) => userById.has(id))
       const assignedUsers = assignedIds.map((id) => userById.get(id))
+      const temporaryAssignment = activeTemporaryByArea.get(a.id)
 
       if (!assignedUsers.length) {
         rows.push({
@@ -75,6 +91,7 @@ export default function SectionsTab({ hostelOnly = false }) {
           username: '-',
           phone: '-',
           isActive: false,
+          temporaryAssignment,
         })
         return
       }
@@ -94,6 +111,7 @@ export default function SectionsTab({ hostelOnly = false }) {
           phone: u.phone || '-',
           pay_code: u.pay_code || '-',
           isActive: !!u.is_active,
+          temporaryAssignment,
         })
       })
     })
@@ -112,7 +130,7 @@ export default function SectionsTab({ hostelOnly = false }) {
       if (byArea !== 0) return byArea
       return a.assignedTo.localeCompare(b.assignedTo)
     })
-  }, [areas, userById])
+  }, [areas, temporaryAssignments, userById])
 
   const filteredRows = useMemo(
     () =>
@@ -189,6 +207,7 @@ export default function SectionsTab({ hostelOnly = false }) {
           await hkAPI.switchSupervisor(assignModal.currentUserId, {
             target_staff: newUser.id,
             mode: 'temporary',
+            area_id: areaId,
             date: changeDate,
             duration_days: durationDays,
           })
@@ -385,16 +404,22 @@ export default function SectionsTab({ hostelOnly = false }) {
                   Unassigned
                 </span>
               ) : (
-                <span
-                  key={`status-${row.areaName}-${row.username}`}
-                  style={{
-                    color: row.isActive ? '#16a34a' : '#dc2626',
-                    fontWeight: 600,
-                    fontSize: 12,
-                  }}
-                >
-                  {row.isActive ? 'Active' : 'Inactive'}
-                </span>
+                <div key={`status-${row.areaName}-${row.username}`} style={{ display: 'grid', gap: 4 }}>
+                  <span
+                    style={{
+                      color: row.isActive ? '#16a34a' : '#dc2626',
+                      fontWeight: 600,
+                      fontSize: 12,
+                    }}
+                  >
+                    {row.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                  {row.temporaryAssignment && (
+                    <span style={{ color: '#b45309', fontWeight: 700, fontSize: 11 }}>
+                      Temporary: {row.temporaryAssignment.assigned_staff_name || row.temporaryAssignment.assigned_staff_username} until {row.temporaryAssignment.leave_date}
+                    </span>
+                  )}
+                </div>
               ),
               <Btn
                 key={`change-${row.areaName}-${row.username || 'none'}`}

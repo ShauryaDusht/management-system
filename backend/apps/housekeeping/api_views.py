@@ -574,6 +574,7 @@ class HKSupervisorSwitchView(APIView):
         mode = (request.data.get('mode') or '').strip().lower()
         effective_date_raw = request.data.get('date') or request.data.get('effective_date')
         duration_days_raw = request.data.get('duration_days') or request.data.get('days') or 1
+        area_id_raw = request.data.get('area') or request.data.get('area_id')
 
         if mode not in {'permanent', 'temporary'}:
             return Response({'detail': 'mode must be permanent or temporary.'}, status=400)
@@ -597,15 +598,24 @@ class HKSupervisorSwitchView(APIView):
             .filter(user=source_staff, area__is_active=True)
             .order_by('area__name')
         )
+        selected_area_id = None
+        if area_id_raw not in (None, ''):
+            try:
+                selected_area_id = int(area_id_raw)
+            except (TypeError, ValueError):
+                return Response({'detail': 'area_id must be a number.'}, status=400)
+            area_link_qs = area_link_qs.filter(area_id=selected_area_id)
         if _is_hostel_office(request.user):
             hostel_area_ids = set(_hostel_area_ids())
             if source_staff.id not in _hostel_staff_ids() or target_staff.id not in _hostel_staff_ids():
                 return Response({'detail': 'Hostel Office can switch only hostel supervisor/caretaker staff.'}, status=403)
+            if selected_area_id is not None and selected_area_id not in hostel_area_ids:
+                return Response({'detail': 'Hostel Office can switch only hostel areas.'}, status=403)
             area_link_qs = area_link_qs.filter(area_id__in=hostel_area_ids)
 
         area_links = list(area_link_qs)
         if not area_links:
-            return Response({'detail': 'Source staff has no assigned housekeeping areas.'}, status=400)
+            return Response({'detail': 'Source staff is not assigned to the selected housekeeping area.'}, status=400)
 
         area_ids = [link.area_id for link in area_links]
         area_names = [link.area.name for link in area_links if link.area]
@@ -665,7 +675,7 @@ class HKSupervisorSwitchView(APIView):
                     defaults={
                         'area_id': area_ids[0],
                         'reason': 'Temporary supervisor switch from admin panel.',
-                        'all_areas': True,
+                        'all_areas': selected_area_id is None,
                         'status': 'approved',
                     },
                 )
@@ -675,8 +685,9 @@ class HKSupervisorSwitchView(APIView):
                 if leave_request.area_id != area_ids[0]:
                     leave_request.area_id = area_ids[0]
                     changed_fields.append('area')
-                if not leave_request.all_areas:
-                    leave_request.all_areas = True
+                should_cover_all = selected_area_id is None
+                if leave_request.all_areas != should_cover_all:
+                    leave_request.all_areas = should_cover_all
                     changed_fields.append('all_areas')
                 if leave_request.status != 'approved':
                     leave_request.status = 'approved'
@@ -692,7 +703,7 @@ class HKSupervisorSwitchView(APIView):
                     'leave_date': coverage_date,
                     'assigned_staff': target_staff,
                     'assigned_staff_name': target_name,
-                    'cover_all_areas': True,
+                    'cover_all_areas': selected_area_id is None,
                     'status': 'approved',
                     'admin_action_by': request.user,
                     'admin_action_at': timezone.now(),
