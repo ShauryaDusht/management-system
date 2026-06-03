@@ -248,8 +248,8 @@ WORKER_NAMES = {
     'Mital Ben':         'Mittalben Vaghela',
     # SIKANDARBHAI DUNGARBHAI BHANGI (uses 389)
     'Salesh bhai Thakur':'Sikandarbhai Dungarbhai Bhangi',
-    # PARMAR KRUNALBHAI
-    'Rajnibhai Parmar':  'Parmar Krunalbhai',
+    # KUNAL / PARMAR KRUNALBHAI (pay code 390)
+    'Rajnibhai Parmar':  'Kunal',
     # MUKESH KUMAR PARMAR
     'Mukesh Parmar':     'Mukesh Shakrabhai Parmar',
     'Mukesh Kumar Parmar': 'Mukesh Shakrabhai Parmar',
@@ -603,7 +603,7 @@ class Command(BaseCommand):
             '385': 'Solanki Anitaben Rameshbhai',
             '386': 'Mittalben Vaghela',
             '389': 'Sikandarbhai Dungarbhai Bhangi',
-            '390': 'Parmar Krunalbhai',
+            '390': 'Kunal',
             '392': 'Mukesh Shakrabhai Parmar',
             '393': 'Pankajkumar Kantibhai Chamar',
             '400': 'Pravinbhai Vaghela',

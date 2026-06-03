@@ -380,6 +380,16 @@
   }
 },
 {
+  "model": "housekeeping.hkarea",
+  "pk": 39,
+  "fields": {
+    "name": "New Academic Reliever",
+    "area_type": "academic",
+    "description": "",
+    "is_active": true
+  }
+},
+{
   "model": "housekeeping.hkuserarea",
   "pk": 1,
   "fields": {
@@ -2191,16 +2201,16 @@
   "model": "housekeeping.hkworker",
   "pk": 95,
   "fields": {
-    "name": "Parmar Krunalbhai",
+    "name": "Kunal",
     "phone": "8758216753",
     "pay_code": "390",
-    "worker_type": "swm",
+    "worker_type": "reliever",
     "shift": "day",
-    "area": 17,
+    "area": 39,
     "supervisor": 18,
     "photo": "",
     "is_active": true,
-    "is_reliever": false
+    "is_reliever": true
   }
 },
 {
@@ -16324,7 +16334,7 @@
     "start_time": "14:00:00",
     "end_time": "15:00:00",
     "task_name": "AB-13 2F/3F: Washroom Cleaning",
-    "task_description": "Kunal + Mahesh",
+    "task_description": "Mahesh",
     "worker_tag": "washroom",
     "requires_photo": true,
     "frequency": "daily",
