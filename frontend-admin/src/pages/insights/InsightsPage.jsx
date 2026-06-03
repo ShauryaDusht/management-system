@@ -510,8 +510,8 @@ export default function InsightsPage() {
     const day = todayISO()
     const baseName = `insights_${activeView}_${range}_${areaClass}_${day}.csv`
     if (activeView === 'caretaker') {
-      exportCsv(baseName, ['Staff','Pay Code','Role','Areas','Worker Count','Total Tasks','Completed','Pending','In Progress','Skipped','Completion %','Attendance %','Tasks/Worker','Fair Score'],
-        caretakerRows.map(r => [r.staff_name, r.pay_code||'-', r.role, (r.areas||[]).join(' | '), r.worker_count||0, r.total||0, r.done||0, r.pending||0, r.in_progress||0, r.skipped||0, Number(r.completion_pct||0).toFixed(1), Number(r.attendance_pct||0).toFixed(1), Number(r.tasks_per_worker||0).toFixed(2), Number(r.fair_score||0).toFixed(2)]))
+      exportCsv(baseName, ['Staff','Pay Code','Role','Areas','Worker Count','Total Tasks','Completed','Pending','In Progress','Skipped','Completion %','Attendance %','Fair Score'],
+        caretakerRows.map(r => [r.staff_name, r.pay_code||'-', r.role, (r.areas||[]).join(' | '), r.worker_count||0, r.total||0, r.done||0, r.pending||0, r.in_progress||0, r.skipped||0, Number(r.completion_pct||0).toFixed(1), Number(r.attendance_pct||0).toFixed(1), Number(r.fair_score||0).toFixed(2)]))
     } else if (activeView === 'workers') {
       exportCsv(baseName, ['Worker','Pay Code','Areas','Total Tasks','Completed','Pending','In Progress','Skipped','Completion %','Attendance %','Fair Score'],
         workerRows.map(r => [r.worker_name, r.pay_code||'-', (r.areas||[]).join(' | '), r.total||0, r.done||0, r.pending||0, r.in_progress||0, r.skipped||0, Number(r.completion_pct||0).toFixed(1), Number(r.attendance_pct||0).toFixed(1), Number(r.fair_score||0).toFixed(2)]))
