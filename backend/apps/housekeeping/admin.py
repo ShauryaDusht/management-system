@@ -32,9 +32,9 @@ class HKWorkerAdmin(admin.ModelAdmin):
 
 @admin.register(HKScheduleTemplate, site=admin_site)
 class HKScheduleTemplateAdmin(admin.ModelAdmin):
-    list_display = ('task_name', 'area', 'worker_tag', 'order', 'start_time', 'end_time', 'frequency', 'requires_photo', 'is_active')
-    list_filter = ('area', 'worker_tag', 'frequency', 'requires_photo', 'is_active')
-    list_editable = ('requires_photo', 'is_active', 'order')
+    list_display = ('task_name', 'area', 'worker_tag', 'order', 'start_time', 'end_time', 'frequency', 'requires_photo', 'is_optional_weekend_task', 'is_active')
+    list_filter = ('area', 'worker_tag', 'frequency', 'requires_photo', 'is_optional_weekend_task', 'is_active')
+    list_editable = ('requires_photo', 'is_optional_weekend_task', 'is_active', 'order')
     search_fields = ('task_name', 'area__name')
     ordering = ('area', 'worker_tag', 'order', 'start_time')
 

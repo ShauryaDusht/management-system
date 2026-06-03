@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { hkAPI } from '../../api/housekeeping'
 import { inventoryAPI } from '../../api/inventory'
 import { usersAPI } from '../../api/users'
-import { Alert, Badge, Btn, Card, DataTable, Modal, SelectField, Spinner } from '../../components/ui'
+import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
 import { getAreaGroup, triggerDownload } from '../../shared/utils'
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
 import { useMonthYear } from '../../shared/hooks/useMonthYear'
@@ -52,6 +52,10 @@ function formatDate(value) {
 
 function formatPct(value) {
   return `${Number(value || 0).toFixed(2)}%`
+}
+
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10)
 }
 
 function toCsvValue(value) {
@@ -306,6 +310,7 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
   const { month, year, setMonth, setYear } = useMonthYear()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [usageUser, setUsageUser] = useState(null)
   const [usageItems, setUsageItems] = useState([])
   const [hasLoaded, setHasLoaded] = useState(false)
   const [expanded, setExpanded] = useState({})
@@ -316,6 +321,7 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
     setYear(currentYear)
     setLoading(false)
     setError('')
+    setUsageUser(null)
     setUsageItems([])
     setHasLoaded(false)
     setExpanded({})
@@ -328,10 +334,12 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
 
     try {
       const { data } = await inventoryAPI.getUserUsageLogs(supervisor.id, month, year)
+      setUsageUser(data?.user || null)
       setUsageItems(Array.isArray(data?.items) ? data.items : [])
       setHasLoaded(true)
       setExpanded({})
     } catch (e) {
+      setUsageUser(null)
       setUsageItems([])
       setHasLoaded(true)
       setError(e.response?.data?.detail || 'Failed to load supervisor inventory usage report.')
@@ -467,12 +475,29 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
         <div style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: 13, padding: 24 }}>
           Select month and year, then click Load Usage.
         </div>
-      ) : usageItems.length === 0 ? (
-        <div style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: 13, padding: 24 }}>
-          No inventory usage found for this supervisor in the selected month.
-        </div>
       ) : (
         <>
+          {usageUser && (
+            <div
+              style={{
+                marginBottom: 12,
+                padding: '8px 10px',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                background: 'var(--surface-2)',
+                fontSize: 12,
+                color: 'var(--text-2)',
+              }}
+            >
+              <strong>{usageUser.name || toDisplayName(supervisor)}</strong>
+              {usageUser.area_names?.length ? ` | ${usageUser.area_names.join(', ')}` : ''}
+            </div>
+          )}
+          {usageItems.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: 13, padding: 24 }}>
+              No inventory usage found for this supervisor in the selected month.
+            </div>
+          ) : (
           <Card noPad>
             <DataTable
               headers={['Item', 'Issued', 'Used', 'Remaining']}
@@ -480,8 +505,110 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
               emptyMsg="No issued inventory items."
             />
           </Card>
+          )}
         </>
       )}
+    </Modal>
+  )
+}
+
+function SupervisorSwitchModal({ open, supervisor, users, onClose, onDone }) {
+  const [mode, setMode] = useState('temporary')
+  const [targetStaff, setTargetStaff] = useState('')
+  const [date, setDate] = useState(todayIsoDate())
+  const [durationDays, setDurationDays] = useState('1')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setMode('temporary')
+    setTargetStaff('')
+    setDate(todayIsoDate())
+    setDurationDays('1')
+    setSaving(false)
+    setError('')
+  }, [open, supervisor?.id])
+
+  const targetOptions = useMemo(() => {
+    return users.filter((u) => u.id !== supervisor?.id && u.is_active !== false)
+  }, [supervisor?.id, users])
+
+  const submit = async () => {
+    if (!supervisor?.id) return
+    setSaving(true)
+    setError('')
+    try {
+      const payload = {
+        mode,
+        target_staff: targetStaff,
+      }
+      if (mode === 'temporary') {
+        payload.date = date
+        payload.duration_days = durationDays
+      }
+      await hkAPI.switchSupervisor(supervisor.id, payload)
+      onDone()
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Failed to switch supervisor.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={saving ? undefined : onClose}
+      title={`Change ${toDisplayName(supervisor)}`}
+      width={540}
+      footer={(
+        <>
+          <Btn variant="ghost" onClick={onClose} disabled={saving}>Cancel</Btn>
+          <Btn onClick={submit} disabled={saving || !targetStaff || (mode === 'temporary' && (!date || !durationDays))}>
+            {saving ? 'Switching...' : 'Apply Switch'}
+          </Btn>
+        </>
+      )}
+    >
+      <Alert message={error} />
+      <Field label="Switch Type" required>
+        <SelectField value={mode} onChange={(e) => setMode(e.target.value)}>
+          <option value="temporary">Temporary</option>
+          <option value="permanent">Permanent</option>
+        </SelectField>
+      </Field>
+      <Field label="Target Supervisor / Caretaker" required>
+        <SelectField value={targetStaff} onChange={(e) => setTargetStaff(e.target.value)}>
+          <option value="">Select staff</option>
+          {targetOptions.map((u) => (
+            <option key={u.id} value={u.id}>
+              {toDisplayName(u)} ({u.role})
+            </option>
+          ))}
+        </SelectField>
+      </Field>
+      {mode === 'temporary' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 140px', gap: 10 }}>
+          <Field label="Start Date" required>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </Field>
+          <Field label="Days" required>
+            <Input
+              type="number"
+              min="1"
+              max="60"
+              value={durationDays}
+              onChange={(e) => setDurationDays(e.target.value)}
+            />
+          </Field>
+        </div>
+      )}
+      <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5 }}>
+        {mode === 'temporary'
+          ? 'Temporary switch gives the target staff access to this staff member assigned areas for the selected number of days.'
+          : 'Permanent switch moves this staff member assigned areas to the target staff and updates active workers in those areas.'}
+      </div>
     </Modal>
   )
 }
@@ -489,47 +616,57 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
 export default function SupervisorsTab({ hostelOnly = false }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [areas, setAreas] = useState([])
   const [users, setUsers] = useState([])
   const [areaClassFilter, setAreaClassFilter] = useState('all')
   const [areaFilter, setAreaFilter] = useState('all')
   const [reportUser, setReportUser] = useState(null)
   const [inventoryReportUser, setInventoryReportUser] = useState(null)
+  const [switchUser, setSwitchUser] = useState(null)
+
+  const loadData = async (mounted = true) => {
+    setLoading(true)
+    setError('')
+    try {
+      const [{ data: areaData }, { data: caretakersData }, { data: supervisorsData }] =
+        await Promise.all([
+          hkAPI.getAreas(),
+          usersAPI.getByRole('caretaker'),
+          usersAPI.getByRole('supervisor'),
+        ])
+
+      if (!mounted) return
+
+      const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
+        .filter((a) => !HIDDEN_STAFF_AREA_NAMES.has(String(a.name || '').toLowerCase()))
+      const caretakers = normalizeUsers(caretakersData).map((u) => ({ ...u, role: 'caretaker' }))
+      const supervisors = normalizeUsers(supervisorsData).map((u) => ({ ...u, role: 'supervisor' }))
+      const sortedUsers = [...caretakers, ...supervisors].sort((a, b) => toDisplayName(a).localeCompare(toDisplayName(b)))
+
+      setAreas(areaList)
+      setUsers(sortedUsers)
+    } catch (e) {
+      if (!mounted) return
+      setError(e.response?.data?.detail || 'Failed to load supervisor/caretaker list.')
+    } finally {
+      if (mounted) setLoading(false)
+    }
+  }
 
   useEffect(() => {
     let mounted = true
-    ;(async () => {
-      setLoading(true)
-      setError('')
-      try {
-        const [{ data: areaData }, { data: caretakersData }, { data: supervisorsData }] =
-          await Promise.all([
-            hkAPI.getAreas(),
-            usersAPI.getByRole('caretaker'),
-            usersAPI.getByRole('supervisor'),
-          ])
-
-        if (!mounted) return
-
-        const areaList = (Array.isArray(areaData) ? areaData : areaData?.results || [])
-          .filter((a) => !HIDDEN_STAFF_AREA_NAMES.has(String(a.name || '').toLowerCase()))
-        const caretakers = normalizeUsers(caretakersData).map((u) => ({ ...u, role: 'caretaker' }))
-        const supervisors = normalizeUsers(supervisorsData).map((u) => ({ ...u, role: 'supervisor' }))
-        const sortedUsers = [...caretakers, ...supervisors].sort((a, b) => toDisplayName(a).localeCompare(toDisplayName(b)))
-
-        setAreas(areaList)
-        setUsers(sortedUsers)
-      } catch (e) {
-        if (!mounted) return
-        setError(e.response?.data?.detail || 'Failed to load supervisor/caretaker list.')
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    })()
+    loadData(mounted)
     return () => {
       mounted = false
     }
   }, [])
+
+  const handleSwitchDone = async () => {
+    setSwitchUser(null)
+    setSuccess('Supervisor/caretaker change applied.')
+    await loadData(true)
+  }
 
   const areaMap = useMemo(() => {
     const mapping = {}
@@ -584,6 +721,7 @@ export default function SupervisorsTab({ hostelOnly = false }) {
   return (
     <div>
       <Alert message={error} />
+      <Alert message={success} type="success" />
       <Card noPad>
         <div
           style={{
@@ -655,7 +793,7 @@ export default function SupervisorsTab({ hostelOnly = false }) {
           </div>
         ) : (
           <DataTable
-            headers={['Role', 'Name', 'Pay Code', 'Email', 'Username', 'Phone', 'Assigned Areas', 'Status', 'Report']}
+            headers={['Role', 'Name', 'Pay Code', 'Email', 'Username', 'Phone', 'Assigned Areas', 'Change', 'Report']}
             rows={visibleUsers.map((u) => {
               const areasForUser = areaMap[u.id] || []
               return [
@@ -668,16 +806,9 @@ export default function SupervisorsTab({ hostelOnly = false }) {
                 <code key={`user-${u.id}`} style={{ fontSize: 12 }}>{u.username}</code>,
                 u.phone || '-',
                 areasForUser.length ? areasForUser.join(', ') : '-',
-                <span
-                  key={`status-${u.id}`}
-                  style={{
-                    color: u.is_active ? '#16a34a' : '#dc2626',
-                    fontWeight: 600,
-                    fontSize: 12,
-                  }}
-                >
-                  {u.is_active ? 'Active' : 'Inactive'}
-                </span>,
+                <Btn key={`switch-${u.id}`} size="sm" variant="secondary" onClick={() => setSwitchUser(u)}>
+                  Change
+                </Btn>,
                 <div key={`report-actions-${u.id}`} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   <Btn size="sm" variant="secondary" onClick={() => setReportUser(u)}>
                     HK Report
@@ -703,6 +834,14 @@ export default function SupervisorsTab({ hostelOnly = false }) {
         open={!!inventoryReportUser}
         supervisor={inventoryReportUser}
         onClose={() => setInventoryReportUser(null)}
+      />
+
+      <SupervisorSwitchModal
+        open={!!switchUser}
+        supervisor={switchUser}
+        users={users}
+        onClose={() => setSwitchUser(null)}
+        onDone={handleSwitchDone}
       />
     </div>
   )

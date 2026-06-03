@@ -103,6 +103,10 @@ class HKScheduleTemplate(models.Model):
         help_text='Admin toggle: worker must upload after-photo to mark done'
     )
     frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default='daily')
+    is_optional_weekend_task = models.BooleanField(
+        default=False,
+        help_text='Optional weekend task visible to staff but excluded from progress until selected.',
+    )
     is_active = models.BooleanField(default=True)
 
     class Meta:

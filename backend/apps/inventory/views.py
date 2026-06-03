@@ -1,7 +1,7 @@
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-from django.db import transaction
+from django.db import models as dm, transaction
 from django.db.models import Sum, F, Count, Value, DecimalField, Prefetch
 from django.db.models.functions import Coalesce
 from rest_framework import generics, status
@@ -43,6 +43,36 @@ class IsInventoryReportViewer(IsAuthenticated):
                 or _is_hostel_office(user)
             )
         )
+
+
+def _hostel_office_staff_area_names(user):
+    try:
+        from apps.housekeeping.models import HKUserArea
+    except Exception:
+        return None
+
+    links = (
+        HKUserArea.objects
+        .select_related('area')
+        .filter(
+            user=user,
+            area__is_active=True,
+        )
+        .filter(
+            dm.Q(area__area_type='hostel')
+            | dm.Q(area__name__iexact='Hostel Common Area')
+            | dm.Q(area__name__iexact='Hostels Reliever')
+        )
+        .order_by('area__name')
+    )
+    names = []
+    seen = set()
+    for link in links:
+        name = (link.area.name or '').strip()
+        if name and name not in seen:
+            seen.add(name)
+            names.append(name)
+    return names
 
 
 def _sync_horticulture_request_status(item_request, status_value):
@@ -766,7 +796,7 @@ class IssueUsageLogView(APIView):
 
 
 class UserUsageLogsView(APIView):
-    permission_classes = [IsAdminOrInventoryManager]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, user_id):
         month_raw = request.query_params.get('month')
@@ -785,6 +815,18 @@ class UserUsageLogsView(APIView):
             user = UserModel.objects.get(pk=user_id)
         except UserModel.DoesNotExist:
             return Response({'detail': 'User not found.'}, status=404)
+
+        can_manage_inventory = bool(
+            request.user.is_admin
+            or getattr(request.user, 'is_inventory_manager', False)
+            or getattr(request.user, 'is_hk_inventory_manager', False)
+        )
+        user_area_names = _hostel_office_staff_area_names(user)
+        if not can_manage_inventory:
+            if not _is_hostel_office(request.user):
+                raise PermissionDenied('You do not have permission to view this usage report.')
+            if not user_area_names:
+                return Response({'detail': 'This staff member is not assigned to hostel areas.'}, status=403)
 
         logs_prefetch = Prefetch(
             'usage_logs',
@@ -840,6 +882,7 @@ class UserUsageLogsView(APIView):
             'user': {
                 'id': user.id,
                 'name': user.get_full_name() or user.username,
+                'area_names': user_area_names or [],
             },
             'month': month,
             'year': year,

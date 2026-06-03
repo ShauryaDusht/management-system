@@ -2820,19 +2820,23 @@ Existing account passwords are preserved.
             }
             academic_saturday_special = {}
             academic_block_names = [f'Academic Block {idx}' for idx in range(1, 14)]
+            academic_optional_weekend_tasks = [
+                (201, '10:00', '11:00', 'Terrace Cleaning', 'all', True, 'Optional weekend task'),
+                (202, '11:00', '12:00', 'Dustbin Cleaning', 'all', True, 'Optional weekend task'),
+                (203, '12:00', '13:00', 'Dug Area Cleaning', 'all', True, 'Optional weekend task'),
+                (204, '14:00', '15:00', 'Shaft Area Cleaning', 'all', True, 'Optional weekend task'),
+                (205, '15:00', '16:00', 'Sofa & Chair Cleaning', 'all', True, 'Optional weekend task'),
+                (206, '16:00', '17:00', 'Fan & Light Cleaning', 'all', True, 'Optional weekend task'),
+                (207, '17:00', '18:00', 'Window Glass Cleaning', 'all', True, 'Optional weekend task'),
+            ]
             for area_name in academic_block_names:
                 academic_saturday_special[area_name] = [
-                    (101, '09:00', '10:00', 'Saturday Special: Cobweb Cleaning', 'all', True, 'Saturdays: every | Every Saturday'),
-                    (102, '10:00', '11:00', 'Saturday Special: Dustbin Cleaning', 'all', True, 'Saturdays: first, third | Dustbin cleaning 2 times in month'),
-                    (103, '11:00', '12:00', 'Saturday Special: Sofa & Chair Cleaning', 'all', True, 'Saturdays: second | Sofa and chair cleaning 1 time in month'),
-                    (104, '12:00', '13:00', 'Saturday Special: Fan & Light Cleaning', 'all', True, 'Saturdays: fourth | Fan and light cleaning 1 time in month'),
+                    (101, '09:00', '10:00', 'Cobweb Cleaning', 'all', True, 'Every Saturday', False),
+                    *[(*task, True) for task in academic_optional_weekend_tasks],
                 ]
                 academic_sunday_extra[area_name] = [
-                    (101, '08:00', '09:00', 'Sunday Special: Terrace Cleaning', 'all', True, 'Sundays: first | Terrace cleaning 1 time in month'),
-                    (102, '09:00', '10:00', 'Sunday Special: Dug Area Cleaning', 'all', True, 'Sundays: first | Dug area cleaning 1 time in month'),
-                    (103, '10:00', '11:00', 'Sunday Special: Shaft Area Cleaning', 'all', True, 'Sundays: second | Shaft area cleaning 1 time in month'),
-                    (104, '11:00', '12:00', 'Sunday Special: Washroom Deep Cleaning', 'all', True, 'Sundays: every | Washroom cleaning every Sunday'),
-                    (105, '12:00', '13:00', 'Sunday Special: Window Glass Cleaning', 'all', True, 'Sundays: third | Window glass cleaning 1 time in month'),
+                    (101, '09:00', '10:00', 'Washroom Deep Cleaning', 'all', True, 'Every Sunday', False),
+                    *[(*task, True) for task in academic_optional_weekend_tasks],
                 ]
 
             for area_name, tasks in academic_daily_tasks.items():
@@ -2858,7 +2862,7 @@ Existing account passwords are preserved.
                 area_obj = self.area(area_name)
                 if not area_obj:
                     continue
-                for order, start, end, name, tag, req_photo, desc in tasks:
+                for order, start, end, name, tag, req_photo, desc, is_optional_weekend_task in tasks:
                     HKScheduleTemplate.objects.create(
                         area=area_obj,
                         order=order,
@@ -2869,6 +2873,7 @@ Existing account passwords are preserved.
                         worker_tag=tag,
                         requires_photo=req_photo,
                         frequency='saturday_special',
+                        is_optional_weekend_task=is_optional_weekend_task,
                         is_active=True,
                     )
                     total += 1
@@ -2877,7 +2882,7 @@ Existing account passwords are preserved.
                 area_obj = self.area(area_name)
                 if not area_obj:
                     continue
-                for order, start, end, name, tag, req_photo, desc in tasks:
+                for order, start, end, name, tag, req_photo, desc, is_optional_weekend_task in tasks:
                     HKScheduleTemplate.objects.create(
                         area=area_obj,
                         order=order,
@@ -2888,6 +2893,7 @@ Existing account passwords are preserved.
                         worker_tag=tag,
                         requires_photo=req_photo,
                         frequency='sunday_extra',
+                        is_optional_weekend_task=is_optional_weekend_task,
                         is_active=True,
                     )
                     total += 1

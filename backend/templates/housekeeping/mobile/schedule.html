@@ -127,7 +127,12 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 15px;
       border-bottom:{% if not forloop.last %}1px solid #f3f4f6{% else %}none{% endif %}">
       <div style="flex:1">
-        <div style="font-weight:600;font-size:13px">{{ task.task_name }}</div>
+        <div style="font-weight:600;font-size:13px">
+          {{ task.task_name }}
+          {% if task.is_optional_weekend_task %}
+          <span style="display:inline-block;margin-left:5px;background:#fef3c7;color:#92400e;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:800">Optional</span>
+          {% endif %}
+        </div>
         {% with public_desc=task.task_description|public_task_description %}
           {% if public_desc %}<div style="font-size:11px;color:#6b7280;margin-top:1px">{{ public_desc }}</div>{% endif %}
         {% endwith %}

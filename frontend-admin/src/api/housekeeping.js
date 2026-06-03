@@ -13,6 +13,8 @@ export const hkAPI = {
     api.get(`/housekeeping/supervisors/${supervisorId}/report/`, {
       params: { month, year },
     }),
+  switchSupervisor: (supervisorId, payload) =>
+    api.post(`/housekeeping/supervisors/${supervisorId}/switch/`, payload),
   downloadWorkerReportCSV: (workerId, month, year) =>
     api.get(`/housekeeping/workers/${workerId}/report/csv/`, {
       params: { month, year },

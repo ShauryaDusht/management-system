@@ -205,6 +205,7 @@ class HKScheduleTemplateSerializer(serializers.ModelSerializer):
             'worker_tag',
             'requires_photo',
             'frequency',
+            'is_optional_weekend_task',
             'is_active',
         ]
 

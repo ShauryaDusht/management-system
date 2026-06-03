@@ -49,14 +49,23 @@
     <div style="font-weight:700;font-size:13px;{% if record.status == 'done' %}text-decoration:line-through;color:#9ca3af{% endif %}">
       {{ record.schedule.task_name }}
     </div>
-    <span class="bdg {% if record.status == 'done' %}g{% elif record.status == 'in_progress' %}b{% else %}gr{% endif %}" style="flex-shrink:0">
-      {% if record.status == 'done' %}Done{% elif record.status == 'in_progress' %}In Progress{% else %}Pending{% endif %}
-    </span>
+    <div style="display:flex;gap:5px;align-items:center;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+      {% if record.schedule.is_optional_weekend_task %}
+      <span class="bdg" style="background:#fef3c7;color:#92400e">Optional</span>
+      {% endif %}
+      <span class="bdg {% if record.status == 'done' %}g{% elif record.status == 'in_progress' %}b{% else %}gr{% endif %}">
+        {% if record.status == 'done' %}Done{% elif record.status == 'in_progress' %}In Progress{% else %}Pending{% endif %}
+      </span>
+    </div>
   </div>
 
   <div style="font-size:11px;color:#6b7280;margin-top:3px">
     Period: <b>{{ record.schedule.period_label }}</b>
     {% if record.is_previous_day_task %} | Work date: {{ record.date|date:"d M Y" }}{% endif %}
+    {% if record.schedule.is_optional_weekend_task %}
+      | Last executed:
+      {% if record.last_executed_date %}{{ record.last_executed_date|date:"d M Y" }}{% else %}Never{% endif %}
+    {% endif %}
     {% with public_desc=record.schedule.task_description|public_task_description %}
       {% if public_desc %} | {{ public_desc }}{% endif %}
     {% endwith %}

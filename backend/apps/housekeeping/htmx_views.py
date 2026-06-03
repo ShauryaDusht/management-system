@@ -14,7 +14,7 @@ from django.contrib.auth import (
 )
 from django.db import models as dm
 from django.db import transaction
-from django.db.models import Prefetch, Sum, Value, DecimalField
+from django.db.models import Max, Prefetch, Sum, Value, DecimalField
 from django.db.models.functions import Coalesce
 from django.http import HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -475,6 +475,9 @@ SWM_WEEKDAY_NAMES = {
 
 
 def _template_matches_day(template, day_idx, target_date=None):
+    if getattr(template, "is_optional_weekend_task", False):
+        return day_idx in {5, 6}
+
     desc = (template.task_description or "").lower()
     today = SWM_WEEKDAY_NAMES.get(day_idx)
 
@@ -1038,11 +1041,68 @@ def get_today_records(area, date, user=None):
         records = list(active_records)
     else:
         records = list(active_records) + list(temporary_task_records)
+    _attach_optional_weekend_metadata(records, area, date)
     for record in records:
         record.is_direct_staff_task = bool(
             record.schedule.worker_tag == "night_caretaker"
             and JRHA_NIGHT_TASK_MARKER in (record.schedule.task_description or "")
         )
+    return records
+
+
+def is_optional_weekend_record(record):
+    schedule = getattr(record, "schedule", None)
+    return bool(schedule and getattr(schedule, "is_optional_weekend_task", False))
+
+
+def optional_weekend_record_is_selected(record):
+    if not is_optional_weekend_record(record):
+        return True
+    if getattr(record, "assigned_worker_id", None):
+        return True
+    if getattr(record, "status", "") in {"in_progress", "done"}:
+        return True
+    try:
+        return record.worker_assignments.exists()
+    except Exception:
+        return False
+
+
+def record_counts_for_progress(record):
+    return (not is_optional_weekend_record(record)) or optional_weekend_record_is_selected(record)
+
+
+def progress_records(records):
+    return [record for record in records if record_counts_for_progress(record)]
+
+
+def _attach_optional_weekend_metadata(records, area, date):
+    optional_records = [
+        record
+        for record in records
+        if is_optional_weekend_record(record) and getattr(record, "schedule", None)
+    ]
+    if not optional_records:
+        return records
+
+    task_names = {record.schedule.task_name for record in optional_records}
+    last_done = {
+        row["schedule__task_name"]: row["last_completed"]
+        for row in (
+            HKDailyRecord.objects
+            .filter(
+                area=area,
+                date__lt=date,
+                status="done",
+                schedule__task_name__in=task_names,
+            )
+            .values("schedule__task_name")
+            .annotate(last_completed=Max("date"))
+        )
+    }
+    for record in optional_records:
+        record.is_optional_weekend_task = True
+        record.last_executed_date = last_done.get(record.schedule.task_name)
     return records
 
 
@@ -1101,9 +1161,13 @@ def get_guest_house_previous_day_records(area, today):
 def task_completion_sort_key(record):
     """Keep active work above completed work while preserving schedule order."""
     done_rank = 1 if getattr(record, "status", "") == "done" else 0
+    optional_rank = 1 if is_optional_weekend_record(record) else 0
+    last_executed = getattr(record, "last_executed_date", None) or datetime.date.min
     schedule = getattr(record, "schedule", None)
     return (
         done_rank,
+        optional_rank,
+        last_executed,
         getattr(schedule, "start_time", None),
         getattr(schedule, "order", 0),
         getattr(record, "id", 0),
@@ -1753,8 +1817,9 @@ def hk_dashboard(request):
     heading_washroom = section_labels["heading_washroom"]
     heading_special = section_labels["heading_special"]
 
-    total = len(records)
-    done = sum(1 for rec in records if rec.status == "done")
+    countable_records = progress_records(records)
+    total = len(countable_records)
+    done = sum(1 for rec in countable_records if rec.status == "done")
     pct = int((done / total) * 100) if total else 0
 
     today_dow = today.weekday()

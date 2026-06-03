@@ -556,6 +556,172 @@ class SupervisorReportRegenerateView(APIView):
         return Response({'success': True, 'generated_at': report.generated_at})
 
 
+class HKSupervisorSwitchView(APIView):
+    permission_classes = [IsAdminOrHousekeepingManager]
+
+    def post(self, request, pk):
+        User = get_user_model()
+        source_staff = get_object_or_404(
+            User,
+            pk=pk,
+            role__in=['supervisor', 'caretaker'],
+            is_active=True,
+        )
+        target_staff_id = request.data.get('target_staff')
+        mode = (request.data.get('mode') or '').strip().lower()
+        effective_date_raw = request.data.get('date') or request.data.get('effective_date')
+        duration_days_raw = request.data.get('duration_days') or request.data.get('days') or 1
+
+        if mode not in {'permanent', 'temporary'}:
+            return Response({'detail': 'mode must be permanent or temporary.'}, status=400)
+        try:
+            target_staff_id = int(target_staff_id)
+        except (TypeError, ValueError):
+            return Response({'detail': 'target_staff is required.'}, status=400)
+        if target_staff_id == source_staff.id:
+            return Response({'detail': 'Target staff must be different from source staff.'}, status=400)
+
+        target_staff = get_object_or_404(
+            User,
+            pk=target_staff_id,
+            role__in=['supervisor', 'caretaker'],
+            is_active=True,
+        )
+
+        area_links = list(
+            HKUserArea.objects
+            .select_related('area')
+            .filter(user=source_staff, area__is_active=True)
+            .order_by('area__name')
+        )
+        if not area_links:
+            return Response({'detail': 'Source staff has no assigned housekeeping areas.'}, status=400)
+
+        area_ids = [link.area_id for link in area_links]
+        area_names = [link.area.name for link in area_links if link.area]
+        source_name = source_staff.get_full_name() or source_staff.username
+        target_name = target_staff.get_full_name() or target_staff.username
+
+        with transaction.atomic():
+            if mode == 'permanent':
+                created_count = 0
+                for area_id in area_ids:
+                    _, created = HKUserArea.objects.get_or_create(
+                        user=target_staff,
+                        area_id=area_id,
+                    )
+                    if created:
+                        created_count += 1
+                removed_count = HKUserArea.objects.filter(
+                    user=source_staff,
+                    area_id__in=area_ids,
+                ).delete()[0]
+                worker_count = HKWorker.objects.filter(
+                    area_id__in=area_ids,
+                    is_active=True,
+                ).update(supervisor=target_staff)
+
+                return Response({
+                    'success': True,
+                    'mode': mode,
+                    'source_staff': source_name,
+                    'target_staff': target_name,
+                    'area_count': len(area_ids),
+                    'area_names': area_names,
+                    'created_assignments': created_count,
+                    'removed_assignments': removed_count,
+                    'worker_count': worker_count,
+                })
+
+            effective_date = _parse_iso_date(effective_date_raw)
+            if not effective_date:
+                return Response({'detail': 'date must be provided as YYYY-MM-DD for temporary switch.'}, status=400)
+            try:
+                duration_days = int(duration_days_raw)
+            except (TypeError, ValueError):
+                return Response({'detail': 'duration_days must be a number.'}, status=400)
+            if duration_days < 1 or duration_days > 60:
+                return Response({'detail': 'duration_days must be between 1 and 60.'}, status=400)
+
+            assignment_created_count = 0
+            leave_request_created_count = 0
+            assignment_ids = []
+            end_date = effective_date + timedelta(days=duration_days - 1)
+            for offset in range(duration_days):
+                coverage_date = effective_date + timedelta(days=offset)
+                leave_request, created = HKLeaveRequest.objects.get_or_create(
+                    staff=source_staff,
+                    leave_date=coverage_date,
+                    defaults={
+                        'area_id': area_ids[0],
+                        'reason': 'Temporary supervisor switch from admin panel.',
+                        'all_areas': True,
+                        'status': 'approved',
+                    },
+                )
+                if created:
+                    leave_request_created_count += 1
+                changed_fields = []
+                if leave_request.area_id != area_ids[0]:
+                    leave_request.area_id = area_ids[0]
+                    changed_fields.append('area')
+                if not leave_request.all_areas:
+                    leave_request.all_areas = True
+                    changed_fields.append('all_areas')
+                if leave_request.status != 'approved':
+                    leave_request.status = 'approved'
+                    changed_fields.append('status')
+                if changed_fields:
+                    leave_request.save(update_fields=changed_fields + ['updated_at'])
+
+                assignment_defaults = {
+                    'area_id': area_ids[0],
+                    'leave_staff': source_staff,
+                    'leave_staff_name': source_name,
+                    'leave_staff_area': _area_group(area_links[0].area),
+                    'leave_date': coverage_date,
+                    'assigned_staff': target_staff,
+                    'assigned_staff_name': target_name,
+                    'cover_all_areas': True,
+                    'status': 'approved',
+                    'admin_action_by': request.user,
+                    'admin_action_at': timezone.now(),
+                    'admin_action_note': 'Temporary supervisor switch from admin panel.',
+                }
+                assignment, assignment_created = HKInchargeAssignment.objects.update_or_create(
+                    leave_request=leave_request,
+                    defaults=assignment_defaults,
+                )
+                if assignment_created:
+                    assignment_created_count += 1
+                assignment_ids.append(str(assignment.id))
+
+            _push_incharge_notice(
+                target_staff,
+                assignment,
+                (
+                    f'You are temporary incharge for {source_name} areas from '
+                    f'{effective_date} to {end_date}.'
+                ),
+                level='success',
+            )
+
+            return Response({
+                'success': True,
+                'mode': mode,
+                'source_staff': source_name,
+                'target_staff': target_name,
+                'date': effective_date,
+                'end_date': end_date,
+                'duration_days': duration_days,
+                'area_count': len(area_ids),
+                'area_names': area_names,
+                'assignment_created_count': assignment_created_count,
+                'leave_request_created_count': leave_request_created_count,
+                'assignment_ids': assignment_ids,
+            })
+
+
 class HKInchargeReportView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1318,12 +1484,18 @@ class HKDashboardSummaryView(APIView):
             stock_qs = stock_qs.filter(area_id__in=area_ids)
             area_qs = area_qs.filter(id__in=area_ids)
 
+        countable_q = (
+            Q(schedule__is_optional_weekend_task=False)
+            | Q(assigned_worker__isnull=False)
+            | Q(status__in=['in_progress', 'done'])
+            | Q(worker_assignments__isnull=False)
+        )
         counts = record_qs.aggregate(
-            total=Count('id'),
-            done=Count('id', filter=Q(status='done')),
-            pending=Count('id', filter=Q(status='pending')),
-            ongoing=Count('id', filter=Q(status='in_progress')),
-            skipped=Count('id', filter=Q(status='skipped')),
+            total=Count('id', filter=countable_q, distinct=True),
+            done=Count('id', filter=countable_q & Q(status='done'), distinct=True),
+            pending=Count('id', filter=countable_q & Q(status='pending'), distinct=True),
+            ongoing=Count('id', filter=countable_q & Q(status='in_progress'), distinct=True),
+            skipped=Count('id', filter=countable_q & Q(status='skipped'), distinct=True),
         )
         total_records = counts['total']
         done = counts['done']

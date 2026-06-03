@@ -39,6 +39,7 @@ const EMPTY_FORM = {
   end_time: '09:00',
   frequency: 'daily',
   days: [0, 1, 2, 3, 4, 5, 6],
+  is_optional_weekend_task: false,
   is_active: true,
 }
 
@@ -209,6 +210,7 @@ export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
       end_time: formatTime(row.end_time),
       frequency,
       days: daysForFrequency(frequency),
+      is_optional_weekend_task: row.is_optional_weekend_task === true,
       is_active: row.is_active !== false,
     })
     setFormError('')
@@ -331,6 +333,7 @@ export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
           start_time: row.start_time,
           end_time: row.end_time,
           frequency: derivedFrequency,
+          is_optional_weekend_task: Boolean(row.is_optional_weekend_task),
           is_active: Boolean(row.is_active),
         },
       }
@@ -558,6 +561,7 @@ export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
                   'Start Time',
                   'End Time',
                   'Special',
+                  'Optional',
                   'Active',
                   ...(readOnly ? [] : ['Actions']),
                 ]}
@@ -570,6 +574,7 @@ export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
                     formatTime(row.start_time),
                     formatTime(row.end_time),
                     isSpecial ? 'Yes' : 'No',
+                    row.is_optional_weekend_task ? 'Yes' : 'No',
                     readOnly ? (
                       <span key={`active-${row.id}`} style={{ fontSize: 12, fontWeight: 700, color: row.is_active !== false ? '#16a34a' : 'var(--text-3)' }}>
                         {row.is_active !== false ? 'Active' : 'Inactive'}
@@ -686,6 +691,15 @@ export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
                       <option value="yes">Yes</option>
                     </SelectField>
                   </Field>
+                  <Field label="Optional Weekend">
+                    <SelectField
+                      value={row.is_optional_weekend_task ? 'yes' : 'no'}
+                      onChange={(e) => updateCreateField(index, { is_optional_weekend_task: e.target.value === 'yes' })}
+                    >
+                      <option value="no">No</option>
+                      <option value="yes">Yes</option>
+                    </SelectField>
+                  </Field>
                 </div>
                 <Field label="Days (auto-mapped to frequency)">
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -755,6 +769,15 @@ export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
                 <SelectField
                   value={form.frequency === 'daily' ? 'no' : 'yes'}
                   onChange={(e) => handleSpecialSelect(e.target.value)}
+                >
+                  <option value="no">No</option>
+                  <option value="yes">Yes</option>
+                </SelectField>
+              </Field>
+              <Field label="Optional Weekend">
+                <SelectField
+                  value={form.is_optional_weekend_task ? 'yes' : 'no'}
+                  onChange={(e) => setForm((p) => ({ ...p, is_optional_weekend_task: e.target.value === 'yes' }))}
                 >
                   <option value="no">No</option>
                   <option value="yes">Yes</option>
