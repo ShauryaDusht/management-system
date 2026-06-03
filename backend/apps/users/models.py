@@ -68,7 +68,6 @@ class User(AbstractUser):
     class Role(models.TextChoices):
         ADMIN = 'admin', 'Admin'
         INVENTORY_MANAGER = 'inventory_manager', 'Inventory Manager'
-        HOUSEKEEPING_MANAGER = 'housekeeping_manager', 'Housekeeping Manager'
         HK_INVENTORY_MANAGER = 'hk_inventory_manager', 'Housekeeping / Inventory Manager'
         HOSTEL_OFFICE = 'hostel_office', 'Hostel Office'
         HORTICULTURE_MANAGER = 'horticulture_manager', 'Horticulture Manager'
@@ -101,10 +100,6 @@ class User(AbstractUser):
         return self.role == self.Role.INVENTORY_MANAGER
 
     @property
-    def is_housekeeping_manager(self):
-        return self.role == self.Role.HOUSEKEEPING_MANAGER
-
-    @property
     def is_hk_inventory_manager(self):
         return self.role == self.Role.HK_INVENTORY_MANAGER
 
@@ -120,7 +115,6 @@ class User(AbstractUser):
     def is_any_manager(self):
         return self.role in (
             self.Role.INVENTORY_MANAGER,
-            self.Role.HOUSEKEEPING_MANAGER,
             self.Role.HK_INVENTORY_MANAGER,
             self.Role.HOSTEL_OFFICE,
             self.Role.HORTICULTURE_MANAGER,
@@ -132,7 +126,7 @@ class User(AbstractUser):
 
     @property
     def can_manage_housekeeping(self):
-        return self.is_admin or self.is_housekeeping_manager or self.is_hk_inventory_manager
+        return self.is_admin or self.is_hk_inventory_manager
 
     @property
     def can_view_admin_reports(self):

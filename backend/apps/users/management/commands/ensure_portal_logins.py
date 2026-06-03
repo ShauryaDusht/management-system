@@ -102,7 +102,7 @@ class Command(BaseCommand):
         deleted_legacy_admins = self._replace_legacy_admin_references(admin_user)
 
         disabled = User.objects.filter(
-            username__in=['housekeeping.manager', 'inventory.manager']
+            username__in=['housekeeping.manager', 'hostel.manager', 'inventory.manager']
         ).update(
             is_active=False,
             is_staff=False,

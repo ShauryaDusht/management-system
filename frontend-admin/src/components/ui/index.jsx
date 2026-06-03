@@ -93,7 +93,6 @@ export function Badge({ value, style }) {
     in_stock: { bg: '#d1fae5', color: '#065f46', text: 'In Stock' },
     admin: { bg: '#ede9fe', color: '#5b21b6', text: 'Admin' },
     inventory_manager: { bg: '#fef3c7', color: '#92400e', text: 'Inv. Manager' },
-    housekeeping_manager: { bg: '#dbeafe', color: '#1d4ed8', text: 'HK Manager' },
     hk_inventory_manager: { bg: '#ecfeff', color: '#155e75', text: 'HK / Inv. Manager' },
     hostel_office: { bg: '#e0f2fe', color: '#075985', text: 'Hostel Office' },
     horticulture_manager: { bg: '#dcfce7', color: '#166534', text: 'Horti Manager' },

@@ -107,7 +107,6 @@ def _can_manage_housekeeping(user):
         and user.is_authenticated
         and (
             user.is_admin
-            or user.is_housekeeping_manager
             or getattr(user, 'is_hk_inventory_manager', False)
         )
     )

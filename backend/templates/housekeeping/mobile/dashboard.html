@@ -561,7 +561,7 @@
 <div class="card" style="text-align:center;color:#9ca3af;padding:28px">No area assigned. Contact admin.</div>
 {% endif %}
 
-{% if request.user.role == 'admin' or request.user.role == 'housekeeping_manager' or request.user.role == 'hk_inventory_manager' %}
+{% if request.user.role == 'admin' or request.user.role == 'hk_inventory_manager' %}
 <a href="/housekeeping/alerts/"><button class="btn-g" style="margin-top:6px">Manage Alerts</button></a>
 {% endif %}
 

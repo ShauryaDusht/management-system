@@ -75,11 +75,11 @@ export function AuthProvider({ children }) {
 
   const isAdmin = user?.role === 'admin'
   const isInventoryManager = user?.role === 'inventory_manager'
-  const isHousekeepingManager = user?.role === 'housekeeping_manager'
+  const isHousekeepingManager = false
   const isHKInventoryManager = user?.role === 'hk_inventory_manager'
   const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
   const isHorticultureManager = user?.role === 'horticulture_manager'
-  const isAnyManager = isInventoryManager || isHousekeepingManager || isHKInventoryManager || isHostelOffice || isHorticultureManager
+  const isAnyManager = isInventoryManager || isHKInventoryManager || isHostelOffice || isHorticultureManager
   const isSupervisor = user?.role === 'supervisor'
   const isCaretaker = user?.role === 'caretaker'
 

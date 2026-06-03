@@ -10,7 +10,7 @@ from .models import User
 from .serializers import CustomTokenObtainPairSerializer, UserSerializer, UserCreateSerializer
 from .permissions import IsAdminOrHousekeepingUserManager
 
-DEPRECATED_MANAGER_USERNAMES = ['housekeeping.manager', 'inventory.manager']
+DEPRECATED_MANAGER_USERNAMES = ['housekeeping.manager', 'hostel.manager', 'inventory.manager']
 
 
 def _is_hk_inventory_request(user):
@@ -18,7 +18,6 @@ def _is_hk_inventory_request(user):
         user
         and (
             getattr(user, 'is_hk_inventory_manager', False)
-            or getattr(user, 'is_housekeeping_manager', False)
         )
     )
 
@@ -107,7 +106,7 @@ class UserListCreateView(generics.ListCreateAPIView):
         qs = User.objects.prefetch_related(
             'hk_areas__area',
             'horticulture_supervised_zones',
-        ).exclude(username__in=DEPRECATED_MANAGER_USERNAMES).order_by('role', 'first_name')
+        ).exclude(username__in=DEPRECATED_MANAGER_USERNAMES).exclude(role='housekeeping_manager').order_by('role', 'first_name')
         if _is_hostel_office_request(self.request.user):
             from apps.housekeeping.models import HKArea
 

@@ -7,6 +7,12 @@ from apps.core.portal_views import get_portal_redirect
 from .models import User, is_standard_username, normalize_username_value, unique_standard_username
 
 STAFF_HIDDEN_AREA_NAMES = {'Hostels Reliever', 'Old Academic Reliever', 'New Academic Reliever'}
+REMOVED_ROLES = {'housekeeping_manager'}
+
+
+def _validate_removed_role(attrs):
+    if attrs.get('role') in REMOVED_ROLES:
+        raise serializers.ValidationError({'role': ['Housekeeping Manager role has been removed. Use HK / Inventory Manager instead.']})
 
 
 def _canonical_username(attrs, instance=None):
@@ -156,6 +162,7 @@ class UserSerializer(serializers.ModelSerializer):
             HKUserArea.objects.get_or_create(user=user, area_id=area_id)
 
     def update(self, instance, validated_data):
+        _validate_removed_role(validated_data)
         area_ids = validated_data.pop('area_ids', None)
         password = validated_data.pop('password', None)
         if 'username' in validated_data:
@@ -185,6 +192,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         fields = ['username', 'email', 'first_name', 'last_name', 'role', 'phone', 'pay_code', 'password', 'area_ids']
 
     def create(self, validated_data):
+        _validate_removed_role(validated_data)
         area_ids = validated_data.pop('area_ids', [])
         if area_ids:
             from apps.housekeeping.models import HKArea

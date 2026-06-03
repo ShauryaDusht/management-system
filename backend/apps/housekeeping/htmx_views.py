@@ -252,7 +252,7 @@ HOSTEL_RELIEVER_ASSIGNMENTS = {
     "Hostel Common Area": {"pay_codes": ["471"]},
 }
 
-HOUSEKEEPING_MANAGER_ROLES = {"admin", "housekeeping_manager", "hk_inventory_manager"}
+HOUSEKEEPING_MANAGER_ROLES = {"admin", "hk_inventory_manager"}
 HOUSEKEEPING_STAFF_ROLES = HOUSEKEEPING_MANAGER_ROLES | {"supervisor", "caretaker"}
 
 

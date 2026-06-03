@@ -35,7 +35,6 @@ class IsAdminOrHousekeepingUserManager(BasePermission):
         return request.user.is_authenticated and (
             request.user.is_admin
             or getattr(request.user, 'is_hk_inventory_manager', False)
-            or getattr(request.user, 'is_housekeeping_manager', False)
         )
 
 

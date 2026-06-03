@@ -66,28 +66,6 @@
   },
   {
     "model": "users.user",
-    "pk": 4,
-    "fields": {
-      "password": "pbkdf2_sha256$600000$D4VA49Si0OOOioSCRfvB5b$emx7ztmOlYmNuX1IIxthqIm0SCLvWBm5iRJLaTbHkCw=",
-      "last_login": null,
-      "is_superuser": false,
-      "username": "housekeeping.manager",
-      "first_name": "Housekeeping",
-      "last_name": "Manager",
-      "email": "manager.hk@iitgn.ac.in",
-      "is_staff": false,
-      "date_joined": "2026-03-03T00:24:37.561Z",
-      "role": "housekeeping_manager",
-      "phone": "9724361542",
-      "pay_code": "483",
-      "profile_photo": "",
-      "is_active": false,
-      "groups": [],
-      "user_permissions": []
-    }
-  },
-  {
-    "model": "users.user",
     "pk": 6,
     "fields": {
       "password": "pbkdf2_sha256$600000$IaHuqZANl1fC1EysQq4Obz$ii32qgED5qXjewwVsCtZRJgNhJMDPGRSSi9N6hmkehA=",

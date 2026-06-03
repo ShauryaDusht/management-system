@@ -22,7 +22,6 @@ import { useAuth } from '../../context/AuthContext'
 
 const ROLES = [
   'admin',
-  'housekeeping_manager',
   'hk_inventory_manager',
   'hostel_office',
   'horticulture_manager',
@@ -32,14 +31,13 @@ const ROLES = [
 const HK_ROLES = ['supervisor', 'caretaker']
 const ROLE_FILTERS = [
   { key: 'admin', label: 'Admin' },
-  { key: 'housekeeping_manager', label: 'Housekeeping Manager' },
   { key: 'hk_inventory_manager', label: 'HK / Inventory Manager' },
   { key: 'hostel_office', label: 'Hostel Office' },
   { key: 'horticulture_manager', label: 'Horticulture Manager' },
   { key: 'supervisor', label: 'Supervisor' },
   { key: 'caretaker', label: 'Caretaker' },
 ]
-const DEPRECATED_MANAGER_USERNAMES = new Set(['inventory.manager', 'housekeeping.manager'])
+const DEPRECATED_MANAGER_USERNAMES = new Set(['inventory.manager', 'housekeeping.manager', 'hostel.manager'])
 const EMPTY = {
   username: '',
   first_name: '',
@@ -112,7 +110,7 @@ export default function UsersPage() {
   }, [], 'Failed to load users. Make sure you are logged in as Admin.')
 
   const error = actionError || loadError
-  const isLimitedUserManager = ['housekeeping_manager', 'hk_inventory_manager'].includes(currentUser?.role)
+  const isLimitedUserManager = ['hk_inventory_manager'].includes(currentUser?.role)
   const editableRoles = isLimitedUserManager ? ROLES.filter((role) => role !== 'admin') : ROLES
   const canEditUser = (targetUser) => !isLimitedUserManager || targetUser.role !== 'admin'
 
@@ -246,7 +244,6 @@ export default function UsersPage() {
   const roleCounts = useMemo(() => {
     const counts = {
       admin: 0,
-      housekeeping_manager: 0,
       hk_inventory_manager: 0,
       hostel_office: 0,
       horticulture_manager: 0,

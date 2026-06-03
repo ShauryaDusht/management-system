@@ -40,7 +40,7 @@ export default function HousekeepingPage() {
         { key: 'staff_attendance', label: 'Staff Attendance' },
         { key: 'workers', label: 'Workers' },
       ]
-      if (['admin', 'housekeeping_manager', 'hk_inventory_manager', 'hostel_office'].includes(user?.role)) {
+      if (['admin', 'hk_inventory_manager', 'hostel_office'].includes(user?.role)) {
         base.push({ key: 'temporary_areas', label: 'Temporary Areas' })
         base.push({ key: 'schedule', label: 'Schedule' })
         base.push({

@@ -47,7 +47,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'''
 [OK] SEED COMPLETE
   Areas:     {HKArea.objects.count()}
-  Users:     {User.objects.filter(role__in=["admin","inventory_manager","housekeeping_manager","hk_inventory_manager","hostel_office","horticulture_manager","caretaker","supervisor"]).count()}
+  Users:     {User.objects.filter(role__in=["admin","inventory_manager","hk_inventory_manager","hostel_office","horticulture_manager","caretaker","supervisor"]).count()}
   Workers:   {HKWorker.objects.count()}
   Templates: {HKScheduleTemplate.objects.count()}
 
@@ -203,7 +203,7 @@ Existing account passwords are preserved.
         preserve_username=False,
     ):
         is_superuser = role == 'admin'
-        is_staff = role in {'admin', 'inventory_manager', 'housekeeping_manager', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office'}
+        is_staff = role in {'admin', 'inventory_manager', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office'}
         base_username = build_username_from_names(first_name, last_name)
         username_candidates = [username, base_username, *legacy_usernames] if preserve_username else [base_username, username, *legacy_usernames]
         if pay_code and match_pay_code:
@@ -370,7 +370,6 @@ Existing account passwords are preserved.
         rename_map = [
             ('estate.manager', 'mahesh.prajapati', 'Maheshbhai', 'Prajapati', 'managerhort.iwd@iitgn.ac.in', 'horticulture_manager'),
             ('horticulture.manager', 'mahesh.prajapati', 'Maheshbhai', 'Prajapati', 'managerhort.iwd@iitgn.ac.in', 'horticulture_manager'),
-            ('hostel.manager', 'housekeeping.manager', 'Housekeeping', 'Manager', 'manager.hk@iitgn.ac.in', 'housekeeping_manager'),
         ]
         for old_un, new_un, first, last, email, target_role in rename_map:
             old_user = User.objects.filter(username=old_un).first()
@@ -437,14 +436,14 @@ Existing account passwords are preserved.
                     user.role = 'hostel_office'
                 user.save()
 
-        disabled = User.objects.filter(username__in=['housekeeping.manager', 'inventory.manager']).update(
+        disabled = User.objects.filter(username__in=['housekeeping.manager', 'hostel.manager', 'inventory.manager']).update(
             is_active=False,
             is_staff=False,
             is_superuser=False,
         )
 
         self.stdout.write(
-            f'  [OK] Portal users: {User.objects.filter(role__in=["admin","inventory_manager","housekeeping_manager","hk_inventory_manager","horticulture_manager","hostel_office"]).count()}'
+            f'  [OK] Portal users: {User.objects.filter(role__in=["admin","inventory_manager","hk_inventory_manager","horticulture_manager","hostel_office"]).count()}'
         )
         if disabled:
             self.stdout.write(f'  [OK] Disabled old HK/inventory manager portal logins: {disabled}')
@@ -456,7 +455,7 @@ Existing account passwords are preserved.
         legacy_usernames = [
             'admin', 'priyanka', 'anita', 'rushita', 'pankaj', 'ramsingh', 'jaimin',
             'anil.hk', 'nikul.hk', 'anil.caretaker', 'nikul.caretaker', 'lab.supervisor',
-            'admin.user', 'admin', 'estate.manager', 'hostel.manager', 'horticulture.manager', 'inv.manager',
+            'admin.user', 'admin', 'estate.manager', 'housekeeping.manager', 'hostel.manager', 'horticulture.manager', 'inv.manager',
         ]
         removed = 0
         blocked = []

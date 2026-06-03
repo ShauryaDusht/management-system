@@ -17,12 +17,6 @@ const NAV = {
     { to: '/requests',     label: 'Requests',       icon: 'clipboard' },
     { to: '/reports',      label: 'Reports',        icon: 'report'    },
   ],
-  housekeeping_manager: [
-    { to: '/requests',     label: 'Requests',       icon: 'clipboard' },
-    { to: '/reports',      label: 'Reports',        icon: 'report'    },
-    { to: '/issues',       label: 'Issued Items',   icon: 'arrows'    },
-    { to: '/items',        label: 'Inventory',      icon: 'box'       },
-  ],
   horticulture_manager: [
     { to: '/dashboard',    label: 'Dashboard',      icon: 'chart'     },
     { to: '/horticulture', label: 'Horticulture',   icon: 'leaf'      },
@@ -109,7 +103,7 @@ function getInventoryBlocks(role) {
   if (role === 'admin') {
     return ['All Categories']
   }
-  if (role === 'housekeeping_manager' || role === 'inventory_manager') {
+  if (role === 'inventory_manager') {
     return [
       'Cleaning Supplies',
       'Housekeeping Supplies',
