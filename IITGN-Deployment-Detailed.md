@@ -481,7 +481,7 @@ Weekly cron logs are written under `/app/backups/logs`, mapped to `/srv/campussa
 To apply the one-time housekeeping schedule correction after deploy:
 
 ```bash
-docker compose exec backend python manage.py apply_housekeeping_schedule_fixes
+docker compose exec backend python manage.py apply_hostel_schedule_fixes
 ```
 
 To restore a custom-format PostgreSQL backup on a test or empty database, copy the `.dump` into a container-mounted path and run:
