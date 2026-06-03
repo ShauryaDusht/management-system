@@ -63,7 +63,8 @@ function EmptyTrend() {
   )
 }
 
-function DashboardHero({ title, subtitle, metric, quickActions }) {
+function DashboardHero({ title, subtitle, metric, quickActions, variant = 'default' }) {
+  const isHostel = variant === 'hostel'
   return (
     <div style={{
       display: 'flex',
@@ -74,13 +75,33 @@ function DashboardHero({ title, subtitle, metric, quickActions }) {
       marginBottom: 18,
       padding: 22,
       borderRadius: 8,
-      border: '1px solid rgba(20, 83, 69, 0.18)',
-      background: 'linear-gradient(135deg, #f7faf8 0%, #edf6f0 52%, #fff7ed 100%)',
-      boxShadow: '0 10px 24px rgba(15, 23, 42, 0.06)',
+      border: isHostel ? '1px solid rgba(44, 83, 73, 0.24)' : '1px solid rgba(20, 83, 69, 0.18)',
+      background: isHostel
+        ? 'linear-gradient(135deg, #f8fafc 0%, #eef7f1 46%, #fff7ed 100%)'
+        : 'linear-gradient(135deg, #f7faf8 0%, #edf6f0 52%, #fff7ed 100%)',
+      boxShadow: isHostel ? '0 14px 34px rgba(20, 83, 69, 0.10)' : '0 10px 24px rgba(15, 23, 42, 0.06)',
     }}>
       <div style={{ minWidth: 260, flex: '1 1 420px' }}>
-        <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 0, color: 'var(--green-800)', fontWeight: 800, marginBottom: 6 }}>
-          Live operations
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          {isHostel && (
+            <div style={{
+              width: 42,
+              height: 42,
+              borderRadius: 8,
+              background: '#2d5b4d',
+              color: '#fff',
+              display: 'grid',
+              placeItems: 'center',
+              fontWeight: 900,
+              fontSize: 15,
+              boxShadow: '0 8px 18px rgba(45, 91, 77, 0.22)',
+            }}>
+              HO
+            </div>
+          )}
+          <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 0, color: 'var(--green-800)', fontWeight: 800 }}>
+            {isHostel ? 'Hostel operations' : 'Live operations'}
+          </div>
         </div>
         <div style={{ fontSize: 24, lineHeight: 1.15, fontWeight: 850, color: 'var(--text)' }}>{title}</div>
         <div style={{ marginTop: 7, color: 'var(--text-2)', fontSize: 13, maxWidth: 680 }}>{subtitle}</div>
@@ -108,6 +129,116 @@ function DashboardHero({ title, subtitle, metric, quickActions }) {
         <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-2)', fontWeight: 700 }}>{metric.label}</div>
         <div style={{ marginTop: 10, height: 8, borderRadius: 99, background: 'var(--surface-2)', overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${Math.max(0, Math.min(100, Number(metric.progress || 0)))}%`, background: metric.color }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function HostelActionBox({ icon, title, text, to, accent = '#2d5b4d' }) {
+  return (
+    <a
+      href={adminHref(to)}
+      className="ui-interactive-card-link"
+      style={{
+        textDecoration: 'none',
+        color: 'inherit',
+        display: 'grid',
+        gridTemplateColumns: '44px minmax(0, 1fr)',
+        gap: 12,
+        alignItems: 'center',
+        padding: 14,
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        background: 'var(--surface)',
+        minHeight: 88,
+      }}
+    >
+      <div style={{
+        width: 44,
+        height: 44,
+        borderRadius: 8,
+        background: `${accent}18`,
+        color: accent,
+        display: 'grid',
+        placeItems: 'center',
+        fontWeight: 900,
+        fontSize: 14,
+      }}>
+        {icon}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{title}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4, lineHeight: 1.35 }}>{text}</div>
+      </div>
+    </a>
+  )
+}
+
+function HostelOfficePanel({ hkSummary, invSummary }) {
+  const completion = Number(hkSummary?.completion_pct || 0)
+  const present = Number(hkSummary?.present_today || 0)
+  const workers = Number(hkSummary?.total_workers || 0)
+  const presentPct = workers ? Math.round((present / workers) * 100) : 0
+  const pendingStock = Number(hkSummary?.pending_stock_requests || 0)
+
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+      gap: 14,
+      marginBottom: 18,
+    }}>
+      <div style={{
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        background: 'var(--surface)',
+        padding: 16,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 850 }}>Hostel Office Shortcuts</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>Fast access to daily hostel workflows.</div>
+          </div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+            <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 700 }}>Live</span>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
+          <HostelActionBox icon="EW" title="Assign Extra Work" text="Create hostel-only extra work." to="/housekeeping?tab=overview" accent="#c2410c" />
+          <HostelActionBox icon="SC" title="Sections + Staff" text="Area-wise or temporary staff switch." to="/housekeeping?tab=directory" accent="#2d5b4d" />
+          <HostelActionBox icon="AT" title="Attendance Export" text="Download absent-only CSV." to="/housekeeping?tab=staff_attendance" accent="#2563eb" />
+          <HostelActionBox icon="IR" title="Inventory Usage" text="View hostel inventory reports." to="/inventory?tab=inventory-report" accent="#7c3aed" />
+        </div>
+      </div>
+
+      <div style={{
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        background: '#fbfaf7',
+        padding: 16,
+      }}>
+        <div style={{ fontSize: 15, fontWeight: 850 }}>Today Snapshot</div>
+        <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
+          {[
+            { label: 'Task Completion', value: `${completion}%`, width: completion, color: '#2d5b4d' },
+            { label: 'Worker Presence', value: `${presentPct}%`, width: presentPct, color: '#2563eb' },
+            { label: 'Stock Requests', value: pendingStock, width: Math.min(100, pendingStock * 12), color: '#c2410c' },
+          ].map((row) => (
+            <div key={row.label}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, gap: 8 }}>
+                <span>{row.label}</span>
+                <span style={{ color: row.color }}>{row.value}</span>
+              </div>
+              <div style={{ marginTop: 6, height: 8, borderRadius: 99, background: '#ede9dd', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.max(4, Math.min(100, Number(row.width || 0)))}%`, background: row.color }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 14, fontSize: 12, color: 'var(--text-3)', lineHeight: 1.45 }}>
+          {Number(invSummary?.total_items || 0).toLocaleString('en-IN')} inventory items available in view-only reporting.
         </div>
       </div>
     </div>
@@ -461,7 +592,8 @@ export default function DashboardPage() {
         <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner size={36} /></div>
       ) : (
         <>
-          <DashboardHero title={heroTitle} subtitle={heroSubtitle} metric={heroMetric} quickActions={quickActions} />
+          <DashboardHero title={heroTitle} subtitle={heroSubtitle} metric={heroMetric} quickActions={quickActions} variant={isHostelOffice ? 'hostel' : 'default'} />
+          {isHostelOffice && <HostelOfficePanel hkSummary={hkSummary} invSummary={invSummary} />}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
             {statCards.map(card => (
