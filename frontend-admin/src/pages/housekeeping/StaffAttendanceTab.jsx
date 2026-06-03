@@ -123,17 +123,27 @@ export default function StaffAttendanceTab() {
       <Alert message={error} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 12 }}>
-        <Card>
-          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Total Staff</div>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.total}</div>
+        <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Total Staff</div>
+            <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.total}</div>
+          </div>
+          <Btn size="sm" variant="secondary" onClick={downloadCsv} disabled={!rows.length}>
+            Export CSV
+          </Btn>
         </Card>
         <Card>
           <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Present</div>
           <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.present}</div>
         </Card>
-        <Card>
-          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Absent</div>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.absent}</div>
+        <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Absent</div>
+            <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.absent}</div>
+          </div>
+          <Btn size="sm" variant="secondary" onClick={downloadAbsentCsv} disabled={exportingAbsent}>
+            {exportingAbsent ? 'Exporting...' : 'Absent CSV'}
+          </Btn>
         </Card>
         <Card>
           <div style={{ fontSize: 12, color: 'var(--text-3)' }}>On Leave</div>
@@ -141,12 +151,6 @@ export default function StaffAttendanceTab() {
         </Card>
         <Card style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Date</div>
-          <Btn size="sm" variant="secondary" onClick={downloadCsv} disabled={!rows.length}>
-              Export CSV
-            </Btn>
-          <Btn size="sm" variant="secondary" onClick={downloadAbsentCsv} disabled={exportingAbsent}>
-            {exportingAbsent ? 'Exporting...' : 'Absent Staff CSV'}
-          </Btn>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Card>
       </div>
