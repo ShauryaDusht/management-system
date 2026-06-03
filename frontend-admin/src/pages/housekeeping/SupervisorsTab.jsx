@@ -512,7 +512,7 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
   )
 }
 
-function SupervisorSwitchModal({ open, supervisor, users, onClose, onDone }) {
+function SupervisorSwitchModal({ open, supervisor, users, assignedAreas = [], onClose, onDone }) {
   const [switchType, setSwitchType] = useState('one_day')
   const [targetStaff, setTargetStaff] = useState('')
   const [date, setDate] = useState(todayIsoDate())
@@ -561,7 +561,7 @@ function SupervisorSwitchModal({ open, supervisor, users, onClose, onDone }) {
     <Modal
       open={open}
       onClose={saving ? undefined : onClose}
-      title={`Change ${toDisplayName(supervisor)}`}
+      title={`Switch All Areas - ${toDisplayName(supervisor)}`}
       width={540}
       footer={(
         <>
@@ -573,6 +573,12 @@ function SupervisorSwitchModal({ open, supervisor, users, onClose, onDone }) {
       )}
     >
       <Alert message={error} />
+      <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5, marginBottom: 10 }}>
+        This will apply to all areas currently assigned to this supervisor/caretaker.
+        <div style={{ marginTop: 4, fontWeight: 700 }}>
+          Areas: {assignedAreas.length ? assignedAreas.join(', ') : '-'}
+        </div>
+      </div>
       <Field label="Duration" required>
         <SelectField value={switchType} onChange={(e) => setSwitchType(e.target.value)}>
           <option value="one_day">1 day</option>
@@ -609,8 +615,8 @@ function SupervisorSwitchModal({ open, supervisor, users, onClose, onDone }) {
       )}
       <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5 }}>
         {switchType !== 'permanent'
-          ? 'Temporary switch gives the target staff access to this staff member assigned areas for the selected number of days.'
-          : 'Permanent switch moves this staff member assigned areas to the target staff and updates active workers in those areas.'}
+          ? 'Temporary switch gives the target staff access to all assigned areas for the selected number of days.'
+          : 'Permanent switch moves all assigned areas to the target staff and updates active workers in those areas.'}
       </div>
     </Modal>
   )
@@ -878,7 +884,7 @@ export default function SupervisorsTab({ hostelOnly = false }) {
                 areasForUser.length ? areasForUser.join(', ') : '-',
                 <div key={`actions-${u.id}`} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   <Btn size="sm" variant="secondary" onClick={() => setSwitchUser(u)}>
-                    Change
+                    Switch All Areas
                   </Btn>
                   <Btn size="sm" variant="ghost" onClick={() => openEditUser(u)}>
                     Edit
@@ -915,6 +921,7 @@ export default function SupervisorsTab({ hostelOnly = false }) {
         open={!!switchUser}
         supervisor={switchUser}
         users={users}
+        assignedAreas={switchUser ? areaMap[switchUser.id] || [] : []}
         onClose={() => setSwitchUser(null)}
         onDone={handleSwitchDone}
       />
