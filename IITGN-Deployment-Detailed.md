@@ -472,11 +472,33 @@ Keep these `.env` values in production unless you intentionally want seed-manage
 RUN_SEED_ON_STARTUP=false
 RUN_DATA_SYNC_ON_STARTUP=false
 RUN_WEEKLY_SEED_UPDATE=false
+RESTORE_SQL_BACKUP_ON_STARTUP=false
+SQL_RESTORE_FORCE=false
 ```
 
 Normal `docker compose down` preserves the named `postgres_data` volume. Do not use `docker compose down -v`, `docker volume rm`, or `docker volume prune` during normal updates because those commands can remove database data.
 
 Weekly cron logs are written under `/app/backups/logs`, mapped to `/srv/campussanchalika/backups/logs`; database backups are stored under `/app/backups`, mapped to `/srv/campussanchalika/backups`.
+
+### Seed From a SQL Backup Instead of Python Seed
+
+If you have a plain `.sql` backup and want a fresh database to use that data instead of Python seed files:
+
+```bash
+# On the server, keep the SQL file in the mounted backups directory.
+sudo mkdir -p /srv/campussanchalika/backups
+sudo cp backup_20260603_2332.sql /srv/campussanchalika/backups/
+
+# In .env, enable restore for startup and point to the file inside the backend container.
+RESTORE_SQL_BACKUP_ON_STARTUP=true
+SQL_RESTORE_FILE=/app/backups/backup_20260603_2332.sql
+SQL_RESTORE_FORCE=false
+
+# Restart backend. The startup script restores before migrate/seed.
+docker compose up -d --build backend
+```
+
+After the restore succeeds, set `RESTORE_SQL_BACKUP_ON_STARTUP=false` again and restart backend. The restore script skips automatically if the database already has tables, unless `SQL_RESTORE_FORCE=true` is set for an intentional destructive restore.
 
 To apply the one-time housekeeping schedule correction after deploy:
 

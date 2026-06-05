@@ -6,6 +6,9 @@ set -u
 printf '%s\n' "Collecting static files..."
 python manage.py collectstatic --noinput -v 0
 
+printf '%s\n' "Checking optional SQL backup restore..."
+bash /app/scripts/restore_sql_backup.sh
+
 printf '%s\n' "Applying database migrations..."
 python manage.py migrate --noinput -v 0
 python manage.py ensure_portal_logins -v 0
@@ -43,6 +46,7 @@ mkdir -p /app/backups/logs
 chmod +x /app/scripts/cron_cleanup.sh
 chmod +x /app/scripts/cron_seed_update.sh
 chmod +x /app/scripts/backup_database.sh
+chmod +x /app/scripts/restore_sql_backup.sh
 
 # /etc/cron.d entries require an explicit user field.
 echo "0 2 * * * root /app/scripts/cron_cleanup.sh >> /app/backups/logs/photo_cleanup.log 2>&1" \
