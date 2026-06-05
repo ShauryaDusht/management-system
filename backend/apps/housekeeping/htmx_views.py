@@ -2987,13 +2987,25 @@ def hk_attendance(request):
                 return redirect(f"/housekeeping/attendance/?date={sel_date}{area_param}&att_err=half_closed")
             worker_id = request.POST.get("worker_id")
             status = request.POST.get("status", "present")
-            if half == "second" and status not in {"absent", "leave"}:
+            if status != "clear" and half == "second" and status not in {"absent", "leave"}:
                 return HttpResponseBadRequest("Second half attendance is only for absent or leave exceptions.")
             worker = get_object_or_404(HKWorker, pk=worker_id)
             if worker.id not in {w.id for w in workers}:
                 return HttpResponseBadRequest("Worker does not belong to the selected area.")
             existing = HKAttendanceRecord.objects.filter(worker=worker, date=sel_date, half=half).first()
-            if not (existing and existing.is_submitted):
+            if existing and existing.is_submitted:
+                pass
+            elif (
+                existing
+                and status == "clear"
+                and half == "second"
+                and existing.note == "Auto from first half"
+                and existing.status == "present"
+            ):
+                pass
+            elif existing and (status == "clear" or existing.status == status):
+                existing.delete()
+            elif status != "clear":
                 att, _ = HKAttendanceRecord.objects.get_or_create(
                     worker=worker, date=sel_date, half=half,
                     defaults={"marked_by": user}

@@ -1,6 +1,8 @@
 import datetime
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -370,6 +372,253 @@ class HousekeepingAbsentAssignmentTests(TestCase):
 
         self.assertIn(reliever.id, worker_ids)
         self.assertNotIn(self.worker.id, worker_ids)
+
+
+class HousekeepingAttendanceMarkingTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            username='attendance.supervisor',
+            password='pass',
+            role='supervisor',
+        )
+        self.area = HKArea.objects.create(name='Aibaan', area_type='hostel', is_active=True)
+        HKUserArea.objects.create(user=self.user, area=self.area)
+        self.worker = HKWorker.objects.create(
+            name='Attendance Worker',
+            area=self.area,
+            worker_type='general',
+            is_active=True,
+        )
+        self.client.force_login(self.user)
+        self.url = f'/housekeeping/attendance/?area={self.area.id}'
+
+    def post_mark(self, status='present', half='first', htmx=True):
+        headers = {'HTTP_HX_REQUEST': 'true'} if htmx else {}
+        return self.client.post(self.url, {
+            'action': 'mark',
+            'half': half,
+            'worker_id': self.worker.id,
+            'status': status,
+        }, **headers)
+
+    @patch('apps.housekeeping.htmx_views.attendance_half_is_open', return_value=True)
+    def test_tapping_same_unsubmitted_status_clears_record(self, _open):
+        today = timezone.localdate()
+
+        first = self.post_mark('present')
+        second = self.post_mark('present')
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertFalse(HKAttendanceRecord.objects.filter(
+            worker=self.worker,
+            date=today,
+            half='first',
+        ).exists())
+        self.assertContains(second, 'Not Marked')
+
+    @patch('apps.housekeeping.htmx_views.attendance_half_is_open', return_value=True)
+    def test_clear_action_removes_unsubmitted_record(self, _open):
+        today = timezone.localdate()
+        HKAttendanceRecord.objects.create(
+            worker=self.worker,
+            date=today,
+            half='first',
+            status='late',
+            marked_by=self.user,
+        )
+
+        response = self.post_mark('clear')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(HKAttendanceRecord.objects.filter(
+            worker=self.worker,
+            date=today,
+            half='first',
+        ).exists())
+        self.assertContains(response, 'Not Marked')
+
+    @patch('apps.housekeeping.htmx_views.attendance_half_is_open', return_value=True)
+    def test_submitted_record_remains_locked(self, _open):
+        today = timezone.localdate()
+        record = HKAttendanceRecord.objects.create(
+            worker=self.worker,
+            date=today,
+            half='first',
+            status='absent',
+            marked_by=self.user,
+            is_submitted=True,
+            submitted_at=timezone.now(),
+        )
+
+        response = self.post_mark('clear')
+
+        record.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(record.status, 'absent')
+        self.assertTrue(record.is_submitted)
+        self.assertContains(response, 'Submitted')
+
+    @patch('apps.housekeeping.htmx_views.attendance_half_is_open', return_value=True)
+    def test_clear_does_not_remove_auto_created_second_half_present(self, _open):
+        today = timezone.localdate()
+        record = HKAttendanceRecord.objects.create(
+            worker=self.worker,
+            date=today,
+            half='second',
+            status='present',
+            marked_by=self.user,
+            note='Auto from first half',
+        )
+
+        response = self.post_mark('clear', half='second')
+
+        record.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(record.status, 'present')
+        self.assertEqual(record.note, 'Auto from first half')
+
+    @patch('apps.housekeeping.htmx_views.attendance_half_is_open', return_value=False)
+    def test_closed_half_rejects_mark_without_changing_record(self, _closed):
+        today = timezone.localdate()
+        record = HKAttendanceRecord.objects.create(
+            worker=self.worker,
+            date=today,
+            half='first',
+            status='present',
+            marked_by=self.user,
+        )
+
+        response = self.post_mark('clear')
+
+        record.refresh_from_db()
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(record.status, 'present')
+
+
+class HostelScheduleSeedTests(TestCase):
+    hostel_names = [
+        'Aibaan', 'Beauki', 'Chimair', 'Duven', 'Emiet', 'Firpeal',
+        'Griwiksh', 'Hiqom', 'Ijokha', 'Jurqia', 'Kyzeel', 'Lekhaag',
+    ]
+
+    def setUp(self):
+        self.areas = {
+            name: HKArea.objects.create(name=name, area_type='hostel', is_active=True)
+            for name in self.hostel_names
+        }
+        SeedHousekeepingCommand().seed_schedules()
+
+    def active_templates(self):
+        return HKScheduleTemplate.objects.filter(area__name__in=self.hostel_names, is_active=True)
+
+    def test_seed_has_washroom_dusting_only_as_sunday_extra(self):
+        daily_washroom_dusting = self.active_templates().filter(
+            frequency='daily',
+            task_name__iregex=r'(^|\s)Washroom Dusting$',
+        )
+        sunday_washroom_dusting = self.active_templates().filter(
+            frequency='sunday_extra',
+            task_name='Washroom Dusting',
+        )
+
+        self.assertFalse(daily_washroom_dusting.exists())
+        self.assertEqual(sunday_washroom_dusting.count(), len(self.hostel_names))
+
+    def test_seed_has_no_numbered_room_cleaning_for_regular_hostels(self):
+        numbered_room_cleaning = self.active_templates().filter(
+            frequency='daily',
+            task_name__iregex=r'^\d+\s+Room Cleaning$',
+        )
+
+        self.assertFalse(numbered_room_cleaning.exists())
+
+    def test_mobile_schedule_day_selection_matches_hostel_requirements(self):
+        area = self.areas['Aibaan']
+
+        monday_names = {record.schedule.task_name for record in get_today_records(area, datetime.date(2026, 6, 1))}
+        sunday_names = {record.schedule.task_name for record in get_today_records(area, datetime.date(2026, 6, 7))}
+
+        self.assertNotIn('Washroom Dusting', monday_names)
+        self.assertIn('Washroom Dusting', sunday_names)
+        self.assertIn('Room Cleaning', monday_names)
+
+    def test_seed_rerun_preserves_completed_daily_records(self):
+        area = self.areas['Aibaan']
+        record = next(
+            record
+            for record in get_today_records(area, datetime.date(2026, 6, 1))
+            if record.schedule.task_name == 'Room Cleaning'
+        )
+        record.status = 'done'
+        record.save(update_fields=['status'])
+
+        SeedHousekeepingCommand().seed_schedules()
+
+        record.refresh_from_db()
+        self.assertEqual(record.status, 'done')
+        self.assertEqual(record.schedule.task_name, 'Room Cleaning')
+
+
+class HostelScheduleCleanupCommandTests(TestCase):
+    def setUp(self):
+        self.area = HKArea.objects.create(name='Aibaan', area_type='hostel', is_active=True)
+
+    def template(self, name, frequency='daily', order=1):
+        return HKScheduleTemplate.objects.create(
+            area=self.area,
+            order=order,
+            start_time=datetime.time(8, 0),
+            end_time=datetime.time(8, 30),
+            task_name=name,
+            task_description='',
+            worker_tag='all',
+            requires_photo=True,
+            frequency=frequency,
+            is_active=True,
+        )
+
+    def test_cleanup_archives_daily_washroom_dusting_and_keeps_sunday_clean(self):
+        daily = self.template('8 Washroom Dusting', order=1)
+        self.template('8 Washroom Dusting', frequency='sunday_extra', order=2)
+
+        call_command('apply_hostel_schedule_fixes')
+
+        daily.refresh_from_db()
+        self.assertFalse(daily.is_active)
+        self.assertEqual(daily.worker_tag, 'archived')
+        self.assertFalse(HKScheduleTemplate.objects.filter(
+            area=self.area,
+            is_active=True,
+            frequency='daily',
+            task_name__iregex=r'(^|\s)Washroom Dusting$',
+        ).exists())
+        self.assertEqual(HKScheduleTemplate.objects.filter(
+            area=self.area,
+            is_active=True,
+            frequency='sunday_extra',
+            task_name='Washroom Dusting',
+        ).count(), 1)
+
+    def test_cleanup_renames_numbered_room_cleaning_without_deleting_records(self):
+        numbered = self.template('30 Room Cleaning', order=1)
+        record = HKDailyRecord.objects.create(
+            schedule=numbered,
+            originating_template=numbered,
+            area=self.area,
+            date=datetime.date(2026, 6, 1),
+            status='done',
+        )
+
+        call_command('apply_hostel_schedule_fixes')
+
+        numbered.refresh_from_db()
+        record.refresh_from_db()
+        self.assertTrue(numbered.is_active)
+        self.assertEqual(numbered.task_name, 'Room Cleaning')
+        self.assertEqual(record.status, 'done')
+        self.assertEqual(record.schedule.task_name, 'Room Cleaning')
 
 
 class ResearchParkScheduleSeedTests(TestCase):

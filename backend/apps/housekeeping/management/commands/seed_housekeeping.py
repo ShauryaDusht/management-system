@@ -1498,8 +1498,8 @@ Existing account passwords are preserved.
 
         hostel_areas = [self.area(n) for n in hostel_names if self.area(n)]
 
-        # Delete existing templates for these areas
-        HKScheduleTemplate.objects.filter(area__in=hostel_areas).delete()
+        # Exact hostel templates are synced below. Avoid deleting/recreating these
+        # rows here because completed HKDailyRecord rows point at templates.
 
         # ─── ROOM STAFF SCHEDULE ─────────────────────────────────────────
         room_tasks = [
@@ -1531,7 +1531,8 @@ Existing account passwords are preserved.
         ]
 
         total = 0
-        for area in hostel_areas:
+        legacy_hostel_areas = []  # Superseded by exact_hostel_schedules sync below.
+        for area in legacy_hostel_areas:
             for order, start, end, name, req_photo, desc in room_tasks:
                 HKScheduleTemplate.objects.create(
                     area=area, order=order,
@@ -1874,36 +1875,83 @@ Existing account passwords are preserved.
             else:
                 daily_tasks.insert(staircase_index + 1, balcony_task)
 
-        exact_hostel_areas = [area for area in [*hostel_areas, common_area] if area]
-        old_hostel_template_count = HKScheduleTemplate.objects.filter(area__in=exact_hostel_areas).count()
-        HKScheduleTemplate.objects.filter(area__in=exact_hostel_areas).delete()
-        total = max(0, total - old_hostel_template_count)
-
         def exact_task_window(order, start_hour=8, minutes=15):
             start_dt = datetime.datetime.combine(datetime.date.today(), t(f'{start_hour:02d}:00')) + datetime.timedelta(minutes=(order - 1) * minutes)
             end_dt = start_dt + datetime.timedelta(minutes=minutes)
             return start_dt.time(), end_dt.time()
 
+        def sync_exact_hostel_template(area, order, name, frequency, start_time, end_time):
+            existing = list(
+                HKScheduleTemplate.objects.filter(
+                    area=area,
+                    frequency=frequency,
+                    task_name=name,
+                ).order_by('-is_active', 'id')
+            )
+            template = existing[0] if existing else None
+            defaults = {
+                'order': order,
+                'start_time': start_time,
+                'end_time': end_time,
+                'task_description': 'Days: Daily' if frequency == 'daily' else 'Sunday / Weekly',
+                'worker_tag': 'all',
+                'requires_photo': True,
+                'is_optional_weekend_task': False,
+                'is_active': True,
+            }
+            if template:
+                updates = []
+                for field, value in defaults.items():
+                    if getattr(template, field) != value:
+                        setattr(template, field, value)
+                        updates.append(field)
+                if updates:
+                    template.save(update_fields=updates)
+                for duplicate in existing[1:]:
+                    if duplicate.is_active or duplicate.worker_tag != 'archived':
+                        duplicate.is_active = False
+                        duplicate.worker_tag = 'archived'
+                        duplicate.save(update_fields=['is_active', 'worker_tag'])
+                return 0
+            HKScheduleTemplate.objects.create(
+                area=area,
+                order=order,
+                start_time=start_time,
+                end_time=end_time,
+                task_name=name,
+                frequency=frequency,
+                **defaults,
+            )
+            return 1
+
+        exact_hostel_areas = [area for area in [*hostel_areas, common_area] if area]
+        desired_exact_hostel_keys = set()
         for area in exact_hostel_areas:
             schedule = exact_hostel_schedules.get(area.name)
             if not schedule:
                 continue
             for order, name in enumerate(schedule['daily'], start=1):
                 start_time, end_time = exact_task_window(order)
-                HKScheduleTemplate.objects.create(
-                    area=area, order=order, start_time=start_time, end_time=end_time,
-                    task_name=name, task_description='Days: Daily',
-                    worker_tag='all', requires_photo=True, frequency='daily', is_active=True,
-                )
-                total += 1
+                desired_exact_hostel_keys.add((area.id, 'daily', name))
+                total += sync_exact_hostel_template(area, order, name, 'daily', start_time, end_time)
             for order, name in enumerate(schedule['sunday'], start=1):
                 start_time, end_time = exact_task_window(order, start_hour=9, minutes=30)
-                HKScheduleTemplate.objects.create(
-                    area=area, order=order, start_time=start_time, end_time=end_time,
-                    task_name=name, task_description='Sunday / Weekly',
-                    worker_tag='all', requires_photo=True, frequency='sunday_extra', is_active=True,
-                )
-                total += 1
+                desired_exact_hostel_keys.add((area.id, 'sunday_extra', name))
+                total += sync_exact_hostel_template(area, order, name, 'sunday_extra', start_time, end_time)
+
+        obsolete_exact_hostel_templates = HKScheduleTemplate.objects.filter(
+            area__in=exact_hostel_areas,
+            is_active=True,
+        ).exclude(
+            area__area_type='jrha',
+        )
+        for template in obsolete_exact_hostel_templates:
+            key = (template.area_id, template.frequency, template.task_name)
+            if key in desired_exact_hostel_keys:
+                continue
+            template.is_active = False
+            template.worker_tag = 'archived'
+            template.save(update_fields=['is_active', 'worker_tag'])
 
         # Research Park: floor-wise Monday-Friday schedule + weekend work.
         research_park = self.area('Research Park')

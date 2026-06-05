@@ -147,6 +147,22 @@
       </form>
       {% endfor %}
     </div>
+    {% if row.first_att and not row.first_att.is_submitted %}
+    <form hx-post="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}"
+          hx-target="#att-{{ row.worker.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data"
+          style="margin-top:5px">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="mark">
+      <input type="hidden" name="half" value="first">
+      <input type="hidden" name="worker_id" value="{{ row.worker.id }}">
+      <input type="hidden" name="status" value="clear">
+      <button type="submit"
+        style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:6px 2px;
+          font-size:10px;font-weight:700;cursor:pointer;background:#fff;color:#6b7280">
+        Clear
+      </button>
+    </form>
+    {% endif %}
     {% else %}
     <div style="font-size:11px;color:#9ca3af">{% if is_today and cur_half == 'first' %}Available after 8AM{% else %}Period ended{% endif %}</div>
     {% endif %}
@@ -190,6 +206,22 @@
       </form>
       {% endfor %}
     </div>
+    {% if row.second_att and not row.second_att.is_submitted and row.second_att.note != 'Auto from first half' %}
+    <form hx-post="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}"
+          hx-target="#att-{{ row.worker.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data"
+          style="margin-top:5px">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="mark">
+      <input type="hidden" name="half" value="second">
+      <input type="hidden" name="worker_id" value="{{ row.worker.id }}">
+      <input type="hidden" name="status" value="clear">
+      <button type="submit"
+        style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:6px 2px;
+          font-size:10px;font-weight:700;cursor:pointer;background:#fff;color:#6b7280">
+        Clear
+      </button>
+    </form>
+    {% endif %}
     {% else %}
     <div style="font-size:11px;color:#9ca3af">{% if is_today and cur_half == 'first' %}Available after 1PM{% else %}Period ended{% endif %}</div>
     {% endif %}

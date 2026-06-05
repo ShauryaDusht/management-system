@@ -43,7 +43,18 @@ class Command(BaseCommand):
                 task_name__iregex=r'(^|\s)Washroom Dusting$',
             )
             if washroom_daily.exists():
-                disabled_washroom += washroom_daily.update(is_active=False)
+                disabled_washroom += washroom_daily.update(is_active=False, worker_tag='archived')
+                numbered_sunday = HKScheduleTemplate.objects.filter(
+                    area=area,
+                    is_active=True,
+                    frequency='sunday_extra',
+                    task_name__iregex=r'^\d+\s+Washroom Dusting$',
+                )
+                if numbered_sunday.exists():
+                    first = numbered_sunday.order_by('order', 'start_time', 'id').first()
+                    first.task_name = 'Washroom Dusting'
+                    first.save(update_fields=['task_name'])
+                    numbered_sunday.exclude(pk=first.pk).update(is_active=False, worker_tag='archived')
                 sunday_exists = HKScheduleTemplate.objects.filter(
                     area=area,
                     is_active=True,
@@ -64,16 +75,38 @@ class Command(BaseCommand):
                         is_active=True,
                     )
                     created_sunday += 1
+                else:
+                    sunday_duplicates = list(HKScheduleTemplate.objects.filter(
+                        area=area,
+                        is_active=True,
+                        frequency='sunday_extra',
+                        task_name__iexact='Washroom Dusting',
+                    ).order_by('order', 'start_time', 'id'))[1:]
+                    for duplicate in sunday_duplicates:
+                        duplicate.is_active = False
+                        duplicate.worker_tag = 'archived'
+                        duplicate.save(update_fields=['is_active', 'worker_tag'])
 
             for template in HKScheduleTemplate.objects.filter(
                 area=area,
                 is_active=True,
                 frequency='daily',
                 task_name__iregex=r'^\d+\s+Room Cleaning$',
-            ):
+            ).order_by('order', 'start_time', 'id'):
                 template.task_name = 'Room Cleaning'
                 template.save(update_fields=['task_name'])
                 renamed_rooms += 1
+
+            room_templates = list(HKScheduleTemplate.objects.filter(
+                area=area,
+                is_active=True,
+                frequency='daily',
+                task_name='Room Cleaning',
+            ).order_by('order', 'start_time', 'id'))
+            for duplicate in room_templates[1:]:
+                duplicate.is_active = False
+                duplicate.worker_tag = 'archived'
+                duplicate.save(update_fields=['is_active', 'worker_tag'])
 
         return (
             f'hostels disabled {disabled_washroom} daily washroom-dusting templates, '

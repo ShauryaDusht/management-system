@@ -26,10 +26,28 @@
         <input type="hidden" name="half" value="{{ half_key }}">
         <input type="hidden" name="worker_id" value="{{ worker.id }}">
         <input type="hidden" name="status" value="{{ sv }}">
-        <button type="submit" style="width:100%;border:none;border-radius:6px;padding:7px 3px;font-size:10px;font-weight:700;cursor:pointer;background:{{ bg }};color:{{ clr }}">{{ sl }}</button>
+        <button type="submit"
+          style="width:100%;border:none;border-radius:6px;padding:7px 3px;font-size:10px;font-weight:700;cursor:pointer;background:{{ bg }};color:{{ clr }};{% if att_obj and att_obj.status == sv %}box-shadow:inset 0 0 0 2px #1f2937{% endif %}">
+          {{ sl }}
+        </button>
       </form>
       {% endfor %}
     </div>
+    {% if att_obj and not att_obj.is_submitted and att_obj.note != 'Auto from first half' %}
+    <form hx-post="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}"
+          hx-target="#att-{{ worker.id }}" hx-swap="outerHTML" hx-encoding="multipart/form-data"
+          style="margin-top:5px">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="mark">
+      <input type="hidden" name="half" value="{{ half_key }}">
+      <input type="hidden" name="worker_id" value="{{ worker.id }}">
+      <input type="hidden" name="status" value="clear">
+      <button type="submit"
+        style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:6px 3px;font-size:10px;font-weight:700;cursor:pointer;background:#fff;color:#6b7280">
+        Clear
+      </button>
+    </form>
+    {% endif %}
     {% endif %}
   </div>
   {% endfor %}
