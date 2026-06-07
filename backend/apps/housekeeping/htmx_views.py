@@ -628,6 +628,9 @@ def _normalize_break_templates_for_area(area):
                     if template.worker_tag != "all":
                         template.worker_tag = "all"
                         updates.append("worker_tag")
+                    if template.task_description != "Days: Monday to Friday":
+                        template.task_description = "Days: Monday to Friday"
+                        updates.append("task_description")
                     if template.requires_photo:
                         template.requires_photo = False
                         updates.append("requires_photo")
@@ -1084,6 +1087,48 @@ def selected_area(request, user_areas):
     return user_areas.first()
 
 
+VISIBLE_DASHBOARD_TAGS = {
+    "floor",
+    "room",
+    "washroom",
+    "t1",
+    "t2",
+    "t3",
+    "t4",
+    "t5",
+    "all",
+    "previous_day",
+}
+
+
+def dashboard_group_tag(record, area):
+    tag = (record.schedule.worker_tag or "general").strip().lower()
+    task_text = f"{record.schedule.task_name or ''} {record.schedule.task_description or ''}".lower()
+    area_name = (area.name or "") if area else ""
+
+    if getattr(record, "is_direct_staff_task", False):
+        return "all"
+    if getattr(record, "is_previous_day_task", False):
+        return "previous_day"
+
+    if area_name == "Research Park":
+        research_hint = f"{tag} {task_text}"
+        if any(token in research_hint for token in ["2nd", "second", "2f"]):
+            return "room"
+        if any(token in research_hint for token in ["3rd", "third", "3f"]):
+            return "washroom"
+        if any(token in research_hint for token in ["ground", "gf", "g/f"]):
+            return "floor"
+
+    if _is_jrha_area(area) and tag == "general":
+        return "room"
+    if area_name == "Old Guest House" and tag == "all" and is_break_task_name(record.schedule.task_name):
+        return "floor"
+    if tag in VISIBLE_DASHBOARD_TAGS:
+        return tag
+    return "floor"
+
+
 def get_today_records(area, date, user=None):
     """
     Generate HKDailyRecord for every applicable template for this area/date.
@@ -1302,7 +1347,7 @@ def _has_evening_or_night_workers(workers):
 
 
 EXTENDED_SECOND_HALF_AREAS_BY_USER = {
-    "ashok.rathod": {"Guest House New", "Director Bungalow"},
+    "ashok.rathod": {"Canteen, Gate-01 and Gate-02", "Guest House New", "Director Bungalow"},
     "bharat.solanki": {"Central Arcade", "Sports Complex"},
 }
 
@@ -1919,16 +1964,7 @@ def hk_dashboard(request):
 
     grouped = {}
     for rec in records:
-        tag = rec.schedule.worker_tag or "general"
-        if getattr(rec, "is_direct_staff_task", False):
-            tag = "all"
-        if is_jrha and tag == "general":
-            tag = "room"
-        if is_old_guest_house and tag == "all":
-            if is_break_task_name(rec.schedule.task_name):
-                tag = "floor"
-        if getattr(rec, "is_previous_day_task", False):
-            tag = "previous_day"
+        tag = dashboard_group_tag(rec, sel_area)
         grouped.setdefault(tag, []).append(rec)
     # Keep worker-group keys stable so mobile tabs render consistently.
     grouped.setdefault("floor", [])
@@ -2900,7 +2936,8 @@ def hk_schedule(request):
                 tasks = list(
                     _schedule_templates_for_day(sel_area, i).order_by("worker_tag", "order", "start_time")
                 )
-            weekly.append({"day": day, "day_idx": i, "tasks": tasks})
+            task_count = sum(1 for task in tasks if not is_break_task_name(task.task_name))
+            weekly.append({"day": day, "day_idx": i, "tasks": tasks, "task_count": task_count})
 
     return render(request, "housekeeping/mobile/schedule.html", {
         "user_areas": visible_areas,

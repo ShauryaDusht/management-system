@@ -51,7 +51,7 @@
       {{ day_data.day }}
       {% if day_data.day_idx == today_dow %}<span style="font-size:10px;opacity:.7">(Today)</span>{% endif %}
     </span>
-    <span>{{ day_data.tasks|length }} tasks {% if day_data.day_idx == today_dow %}-{% else %}+{% endif %}</span>
+    <span>{{ day_data.task_count }} tasks {% if day_data.day_idx == today_dow %}-{% else %}+{% endif %}</span>
   </summary>
 
   <div style="background:#fff;border-radius:0 0 12px 12px;box-shadow:0 3px 8px rgba(0,0,0,.06);margin-top:-4px">

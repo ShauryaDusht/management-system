@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useNotifications } from '../context/NotificationContext'
 import { APP_LOGO_PATH, APP_NAME, APP_TAGLINE } from '../shared/constants'
+import { IconMark } from './ui'
 
 if (typeof document !== 'undefined' && !document.getElementById('sidebar-hover-styles')) {
   const style = document.createElement('style')
@@ -48,23 +49,23 @@ export default function Sidebar() {
 
   const navItems = user?.role === 'horticulture_manager'
     ? [
-      { to: '/dashboard', icon: 'HM', label: 'Home' },
-      { to: '/horticulture', icon: 'HT', label: 'Horticulture' },
-      { to: '/insights', icon: 'AN', label: 'Insights' },
-      { to: '/profile', icon: 'PR', label: 'Profile' },
+      { to: '/dashboard', icon: 'home', label: 'Home' },
+      { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
     ]
     : isHostelOffice
     ? [
-      { to: '/dashboard', icon: 'HO', label: 'Home' },
-      { to: '/housekeeping', icon: 'HK', label: 'Hostel Office' },
-      { to: '/inventory', icon: 'IR', label: 'Inventory Reports' },
-      { to: '/insights', icon: 'AN', label: 'Insights' },
+      { to: '/dashboard', icon: 'home', label: 'Home' },
+      { to: '/housekeeping', icon: 'housekeeping', label: 'Hostel Office' },
+      { to: '/inventory', icon: 'inventory', label: 'Inventory Reports' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
     ]
     : user?.role === 'hk_inventory_manager'
     ? [
-      { to: '/dashboard', icon: 'DB', label: 'Dashboard' },
+      { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
       {
-        to: '/inventory', icon: 'IN', label: 'Inventory',
+        to: '/inventory', icon: 'inventory', label: 'Inventory',
         badge: badges.inventory,
         badgeYellow: false,
         extraBadge: badges.lowStock,
@@ -72,16 +73,16 @@ export default function Sidebar() {
         extraTitle: 'low stock items',
       },
       {
-        to: '/housekeeping', icon: 'HK', label: 'Housekeeping',
+        to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
         badge: badges.housekeeping,
       },
-      { to: '/insights', icon: 'AN', label: 'Insights' },
-      { to: '/users', icon: 'US', label: 'Manage Users' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
+      { to: '/users', icon: 'users', label: 'Manage Users' },
     ]
     : [
-      { to: '/dashboard', icon: 'DB', label: 'Dashboard' },
+      { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
       {
-        to: '/inventory', icon: 'IN', label: 'Inventory',
+        to: '/inventory', icon: 'inventory', label: 'Inventory',
         badge: badges.inventory,
         badgeYellow: false,
         extraBadge: badges.lowStock,
@@ -89,13 +90,13 @@ export default function Sidebar() {
         extraTitle: 'low stock items',
       },
       {
-        to: '/housekeeping', icon: 'HK', label: 'Housekeeping',
+        to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
         badge: badges.housekeeping,
       },
-      { to: '/horticulture', icon: 'HT', label: 'Horticulture' },
-      { to: '/insights', icon: 'AN', label: 'Insights' },
-      { to: '/users', icon: 'US', label: 'Manage Users' },
-      { to: '/profile', icon: 'PR', label: 'Profile' },
+      { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
+      { to: '/users', icon: 'users', label: 'Manage Users' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
     ]
 
   const handleLogout = async () => {
@@ -174,17 +175,17 @@ export default function Sidebar() {
               transition: 'all 0.15s',
             })}
           >
-            {/* Icon box */}
-            <span
+            <IconMark
+              icon={icon}
+              label={label}
+              color="#ffffff"
+              size={28}
               style={{
-                width: 24, height: 24, borderRadius: 7,
+                borderRadius: 8,
+                background: 'rgba(255,255,255,0.10)',
                 border: '1px solid rgba(255,255,255,0.18)',
-                display: 'grid', placeItems: 'center',
-                fontSize: 10, fontWeight: 700, flexShrink: 0,
               }}
-            >
-              {icon}
-            </span>
+            />
 
             {/* Label */}
             <span style={{ flex: 1 }}>{label}</span>

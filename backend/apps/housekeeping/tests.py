@@ -1,6 +1,8 @@
 import datetime
+import importlib
 from unittest.mock import patch
 
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import TestCase
@@ -9,7 +11,17 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from .management.commands.seed_housekeeping import Command as SeedHousekeepingCommand
-from .htmx_views import effective_workers_for_area, get_today_records, progress_records, task_completion_sort_key
+from .htmx_views import (
+    dashboard_group_tag,
+    effective_workers_for_area,
+    get_today_records,
+    progress_records,
+    task_completion_sort_key,
+)
+
+add_ashok_canteen_gate_area = importlib.import_module(
+    'apps.housekeeping.migrations.0024_add_ashok_canteen_gate_area'
+).add_ashok_canteen_gate_area
 from .models import (
     HKArea,
     HKAttendanceRecord,
@@ -636,12 +648,21 @@ class ResearchParkScheduleSeedTests(TestCase):
     def test_weekday_research_park_has_only_permanent_floor_tasks(self):
         records = self.records_for(2026, 6, 1)
 
-        self.assertEqual(len(records), 40)
+        self.assertEqual(len(records), 34)
+        self.assertEqual(len(progress_records(records)), 32)
         self.assertEqual({record.schedule.frequency for record in records}, {'daily'})
         self.assertFalse(any(record.schedule.is_optional_weekend_task for record in records))
         self.assertEqual(
             {record.schedule.worker_tag for record in records},
-            {'floor', 'room', 'washroom'},
+            {'all', 'floor', 'room', 'washroom'},
+        )
+        self.assertEqual(
+            sum(1 for record in records if record.schedule.task_name == 'Tea Break'),
+            1,
+        )
+        self.assertEqual(
+            sum(1 for record in records if record.schedule.task_name == 'Lunch Break'),
+            1,
         )
 
     def test_saturday_research_park_has_permanent_and_optional_tasks(self):
@@ -650,13 +671,13 @@ class ResearchParkScheduleSeedTests(TestCase):
 
         self.assertEqual(len(records), 13)
         self.assertEqual(len(optional_records), 4)
-        self.assertEqual(len(progress_records(records)), 9)
+        self.assertEqual(len(progress_records(records)), 7)
 
         optional_records[0].status = 'in_progress'
         optional_records[0].save(update_fields=['status'])
         records = self.records_for(2026, 6, 6)
 
-        self.assertEqual(len(progress_records(records)), 10)
+        self.assertEqual(len(progress_records(records)), 8)
 
     def test_sunday_research_park_has_exactly_nine_tasks(self):
         records = self.records_for(2026, 6, 7)
@@ -687,3 +708,76 @@ class ResearchParkScheduleSeedTests(TestCase):
         SeedHousekeepingCommand().seed_schedules()
 
         self.assertEqual(HKScheduleTemplate.objects.filter(area=self.area).count(), first_count)
+
+
+class HousekeepingDashboardGroupingTests(TestCase):
+    def create_record(self, area, task_name, worker_tag='general', description=''):
+        schedule = HKScheduleTemplate.objects.create(
+            area=area,
+            order=1,
+            start_time=datetime.time(8, 0),
+            end_time=datetime.time(9, 0),
+            task_name=task_name,
+            task_description=description,
+            worker_tag=worker_tag,
+            requires_photo=True,
+            frequency='daily',
+            is_active=True,
+        )
+        return HKDailyRecord.objects.create(
+            schedule=schedule,
+            area=area,
+            date=datetime.date(2026, 6, 1),
+        )
+
+    def test_admin_created_general_canteen_gate_tasks_show_under_floor(self):
+        area = HKArea.objects.create(
+            name='Canteen, Gate-01 and Gate-02',
+            area_type='guesthouse',
+            is_active=True,
+        )
+        record = self.create_record(area, 'Gate No. 01 Cleaning', worker_tag='general')
+
+        self.assertEqual(dashboard_group_tag(record, area), 'floor')
+
+    def test_canteen_gate_migration_moves_general_templates_to_floor(self):
+        User = get_user_model()
+        User.objects.create_user(
+            username='ashok.rathod',
+            password='pass',
+            role='supervisor',
+        )
+        area = HKArea.objects.create(
+            name='Canteen, Gate-01 and Gate-02',
+            area_type='guesthouse',
+            is_active=True,
+        )
+        template = HKScheduleTemplate.objects.create(
+            area=area,
+            order=1,
+            start_time=datetime.time(9, 30),
+            end_time=datetime.time(11, 30),
+            task_name='Gautam :Gate 01 and Gate 02 (Dusting, Sweeping, Mopping)',
+            worker_tag='general',
+            requires_photo=True,
+            frequency='daily',
+            is_active=True,
+        )
+
+        add_ashok_canteen_gate_area(apps, None)
+
+        template.refresh_from_db()
+        self.assertEqual(template.worker_tag, 'floor')
+        self.assertTrue(HKUserArea.objects.filter(user__username='ashok.rathod', area=area).exists())
+
+    def test_research_park_second_and_third_floor_tags_show_in_expected_tabs(self):
+        area = HKArea.objects.create(
+            name='Research Park',
+            area_type='research_park',
+            is_active=True,
+        )
+        second_floor = self.create_record(area, 'Second Floor Office Cleaning', worker_tag='general')
+        third_floor = self.create_record(area, 'Third Floor Washroom Cleaning', worker_tag='3rd_floor')
+
+        self.assertEqual(dashboard_group_tag(second_floor, area), 'room')
+        self.assertEqual(dashboard_group_tag(third_floor, area), 'washroom')

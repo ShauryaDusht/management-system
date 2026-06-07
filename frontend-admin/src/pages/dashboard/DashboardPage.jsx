@@ -6,7 +6,7 @@ import {
 import { horticultureAPI } from '../../api/horticulture'
 import { inventoryAPI, reportsAPI } from '../../api/inventory'
 import { hkAPI } from '../../api/housekeeping'
-import { Btn, Card, Spinner, StatCard } from '../../components/ui'
+import { Btn, Card, IconMark, Spinner, StatCard } from '../../components/ui'
 import { DonutChart, DONUT_PALETTE } from '../../components/ui/Charts'
 import { useAuth } from '../../context/AuthContext'
 import AdminLayout from '../../layout/AdminLayout'
@@ -118,7 +118,7 @@ function DashboardHero({ title, subtitle, metric, quickActions, variant = 'defau
   )
 }
 
-function HostelActionBox({ title, text, to }) {
+function HostelActionBox({ title, text, to, icon, color = 'var(--green-800)' }) {
   return (
     <a
       href={adminHref(to)}
@@ -134,9 +134,12 @@ function HostelActionBox({ title, text, to }) {
         minHeight: 88,
       }}
     >
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{title}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4, lineHeight: 1.35 }}>{text}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <IconMark icon={icon} label={title} color={color} size={40} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{title}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4, lineHeight: 1.35 }}>{text}</div>
+        </div>
       </div>
     </a>
   )
@@ -173,10 +176,10 @@ function HostelOfficePanel({ hkSummary, invSummary }) {
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
-          <HostelActionBox title="Assign Extra Work" text="Create hostel-only extra work." to="/housekeeping?tab=overview" />
-          <HostelActionBox title="Sections + Staff" text="Area-wise or temporary staff switch." to="/housekeeping?tab=directory" />
-          <HostelActionBox title="Attendance Export" text="Download absent-only CSV." to="/housekeeping?tab=staff_attendance" />
-          <HostelActionBox title="Inventory Usage" text="View hostel inventory reports." to="/inventory?tab=inventory-report" />
+          <HostelActionBox title="Assign Extra Work" text="Create hostel-only extra work." to="/housekeeping?tab=overview" icon="tasks" color="var(--orange-600)" />
+          <HostelActionBox title="Sections + Staff" text="Area-wise or temporary staff switch." to="/housekeeping?tab=directory" icon="areas" color="var(--green-800)" />
+          <HostelActionBox title="Attendance Export" text="Download absent-only CSV." to="/housekeeping?tab=staff_attendance" icon="present" color="#2563eb" />
+          <HostelActionBox title="Inventory Usage" text="View hostel inventory reports." to="/inventory?tab=inventory-report" icon="inventory" color="#7c3aed" />
         </div>
       </div>
 

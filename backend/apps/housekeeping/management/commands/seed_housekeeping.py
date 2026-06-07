@@ -148,6 +148,7 @@ Existing account passwords are preserved.
             ('Solid Waste Management', 'swm'),
             ('Deep Cleaning', 'other'),
             ('Guest House New', 'guesthouse'),
+            ('Canteen, Gate-01 and Gate-02', 'guesthouse'),
             ('Old Guest House', 'guesthouse'),
             ('Director Bungalow', 'director'),
             ('Academic Block 1', 'academic'),
@@ -322,7 +323,7 @@ Existing account passwords are preserved.
         # Supervisors (campus sections)
         supervisors = [
             # (username, first, last, pay_code, phone, email, areas)
-            ('ashok.rathod', 'Ashokbhai Ishwarbhai', 'Rathod', '2', '7016722524', 'ashok2969798@gmail.com', ['Guest House New', 'Director Bungalow']),
+            ('ashok.rathod', 'Ashokbhai Ishwarbhai', 'Rathod', '2', '7016722524', 'ashok2969798@gmail.com', ['Canteen, Gate-01 and Gate-02', 'Guest House New', 'Director Bungalow']),
             ('kaushik.parmar', 'Kaushikkumar Balvantbhai', 'Parmar', '396', '9825504802', 'kaushikparmar7673@gmail.com', ['Academic Block 12', 'Academic Block 13', 'New Academic Common Area', 'New Academic Reliever']),
             ('shailesh.prajapati', 'Shailesh Natvarbhai', 'Prajapati', '4', '9898477320', '', ['Academic Block 10', 'Academic Block 11', 'New AB U-Shape', 'New Academic Reliever']),
             ('maulik.patel', 'Maulikkumar Dilipbhai', 'Patel', '7', '8758363879', 'maulikpatel81290@gmail.com', ['Research Park']),
@@ -2965,6 +2966,9 @@ Existing account passwords are preserved.
                 continue
 
             templates = HKScheduleTemplate.objects.filter(area=area, frequency='daily', is_active=True)
+            if area.name == 'Research Park':
+                added += self.normalize_research_park_break_templates(area, templates)
+                continue
 
             tea_templates = templates.filter(task_name__icontains='Tea Break')
             for template in tea_templates:
@@ -3007,6 +3011,51 @@ Existing account passwords are preserved.
                     is_active=True,
                 )
                 added += 1
+
+        return added
+
+    def normalize_research_park_break_templates(self, area, templates=None):
+        templates = templates or HKScheduleTemplate.objects.filter(area=area, frequency='daily', is_active=True)
+        added = 0
+        for label, minutes, start_time in (
+            ('Tea Break', 15, t('10:30')),
+            ('Lunch Break', 60, t('13:00')),
+        ):
+            break_templates = list(
+                templates
+                .filter(task_name__icontains=label)
+                .order_by('start_time', 'order', 'id')
+            )
+            if not break_templates:
+                HKScheduleTemplate.objects.create(
+                    area=area,
+                    order=98 if label == 'Tea Break' else 99,
+                    start_time=start_time,
+                    end_time=self._time_after_minutes(start_time, minutes),
+                    task_name=label,
+                    task_description='Days: Monday to Friday',
+                    worker_tag='all',
+                    requires_photo=False,
+                    frequency='daily',
+                    is_active=True,
+                )
+                added += 1
+                continue
+
+            keep = break_templates[0]
+            keep.task_name = label
+            keep.start_time = start_time
+            keep.end_time = self._time_after_minutes(start_time, minutes)
+            keep.task_description = 'Days: Monday to Friday'
+            keep.worker_tag = 'all'
+            keep.requires_photo = False
+            keep.save(update_fields=['task_name', 'start_time', 'end_time', 'task_description', 'worker_tag', 'requires_photo'])
+
+            for duplicate in break_templates[1:]:
+                duplicate.is_active = False
+                duplicate.requires_photo = False
+                duplicate.worker_tag = 'archived'
+                duplicate.save(update_fields=['is_active', 'requires_photo', 'worker_tag'])
 
         return added
 

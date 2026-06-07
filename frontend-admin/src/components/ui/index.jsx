@@ -142,6 +142,125 @@ export function Spinner({ size = 24 }) {
   )
 }
 
+// -- Icon Marks ---------------------------------------------------------------
+// Visual metric icons should be semantic symbols, never exposed short-form text
+// badges like HK, DN, HW, HO, WK, or IR.
+const ICON_ALIASES = {
+  HM: 'home',
+  HO: 'home',
+  DB: 'dashboard',
+  AN: 'insights',
+  PR: 'present',
+  HT: 'horticulture',
+  HK: 'housekeeping',
+  IR: 'inventory',
+  IN: 'inventory',
+  US: 'users',
+  WK: 'workers',
+  HW: 'workers',
+  AR: 'areas',
+  TD: 'tasks',
+  TT: 'tasks',
+  OD: 'overdue',
+  DN: 'done',
+  PD: 'pending',
+  AB: 'absent',
+  LS: 'lowStock',
+  OS: 'outOfStock',
+  UA: 'assets',
+  SR: 'stockRequests',
+  IT: 'inventory',
+  VL: 'value',
+  AS: 'assets',
+  CS: 'consumables',
+  AI: 'inventory',
+  IS: 'issued',
+  SA: 'stockAdded',
+  EC: 'value',
+  UF: 'pending',
+  PH: 'photos',
+  VI: 'visible',
+  PN: 'pending',
+  AP: 'approved',
+  RJ: 'rejected',
+}
+
+function inferIconName(icon, label = '') {
+  const key = String(icon || '').trim()
+  if (key && !/^[A-Z]{2,3}$/.test(key)) return key
+  if (key && ICON_ALIASES[key]) return ICON_ALIASES[key]
+
+  const text = String(label || '').toLowerCase()
+  if (text.includes('horticulture') || text.includes('zone')) return 'horticulture'
+  if (text.includes('housekeeping') || text.includes('hostel task') || text.includes('hk task')) return 'housekeeping'
+  if (text.includes('worker')) return 'workers'
+  if (text.includes('area') || text.includes('section')) return 'areas'
+  if (text.includes('inventory') || text.includes('item')) return 'inventory'
+  if (text.includes('low stock')) return 'lowStock'
+  if (text.includes('out of stock')) return 'outOfStock'
+  if (text.includes('stock request')) return 'stockRequests'
+  if (text.includes('present') || text.includes('completed') || text.includes('done') || text.includes('approved')) return 'done'
+  if (text.includes('absent') || text.includes('rejected') || text.includes('overdue')) return 'overdue'
+  if (text.includes('pending') || text.includes('due')) return 'pending'
+  if (text.includes('asset') || text.includes('return')) return 'assets'
+  if (text.includes('photo') || text.includes('gallery')) return 'photos'
+  return 'dashboard'
+}
+
+const ICON_PATHS = {
+  home: 'M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z',
+  dashboard: 'M4 5h7v7H4V5Zm9 0h7v4h-7V5ZM4 14h7v5H4v-5Zm9-3h7v8h-7v-8Z',
+  insights: 'M4 19h18M7 16V9m5 7V5m5 11v-6',
+  horticulture: 'M12 21c0-5 2-9 7-13-5 0-9 2-11 6-1-4 1-8 6-11-7 1-11 6-10 12 1 4 4 6 8 6Z',
+  housekeeping: 'M5 20h14M8 20l1-8h6l1 8M10 12V5a2 2 0 1 1 4 0v7M7 16h10',
+  inventory: 'M4 8l8-4 8 4-8 4-8-4Zm0 0v9l8 4 8-4V8M12 12v9',
+  users: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7-1a3 3 0 1 0 0-6M3 21a6 6 0 0 1 12 0M14 18a5 5 0 0 1 7 3',
+  workers: 'M8 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8-2v10m-3-7h6M3 21a5 5 0 0 1 10 0',
+  areas: 'M4 6h16v12H4V6Zm4 0v12m8-12v12M4 12h16',
+  tasks: 'M6 6h12M6 12h12M6 18h8M3 6h.01M3 12h.01M3 18h.01',
+  pending: 'M12 6v6l4 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+  done: 'M20 6 9 17l-5-5',
+  approved: 'M20 6 9 17l-5-5',
+  present: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 16 0M17 8l2 2 4-4',
+  overdue: 'M12 8v5M12 17h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+  lowStock: 'M12 3 2 21h20L12 3Zm0 7v5m0 3h.01',
+  outOfStock: 'M6 6l12 12M18 6 6 18',
+  stockRequests: 'M7 4h10v4H7V4Zm-2 7h14v9H5v-9Zm4 4h6',
+  assets: 'M6 7h12v14H6V7Zm3-4h6v4H9V3Zm0 10h6',
+  value: 'M7 7h10M12 7v14M9 11h4a3 3 0 0 1 0 6H8M15 3H9',
+  consumables: 'M8 3h8v6a4 4 0 0 1-8 0V3Zm4 10v8M8 21h8',
+  issued: 'M4 12h12M12 8l4 4-4 4M20 4v16',
+  stockAdded: 'M12 5v14M5 12h14M4 4h16v16H4V4Z',
+  photos: 'M4 7h3l2-3h6l2 3h3v14H4V7Zm8 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z',
+  visible: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
+}
+
+export function IconMark({ icon, label, color = 'var(--green-800)', size = 52, style }) {
+  const name = inferIconName(icon, label)
+  const path = ICON_PATHS[name] || ICON_PATHS.dashboard
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 14,
+        display: 'grid',
+        placeItems: 'center',
+        flexShrink: 0,
+        color,
+        background: `color-mix(in srgb, ${color} 12%, white)`,
+        border: `1px solid color-mix(in srgb, ${color} 16%, white)`,
+        ...style,
+      }}
+    >
+      <svg width={Math.round(size * 0.5)} height={Math.round(size * 0.5)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+        <path d={path} />
+      </svg>
+    </span>
+  )
+}
+
 // -- Alert --------------------------------------------------------------------
 export function Alert({ message, type = 'error' }) {
   if (!message) return null
@@ -377,6 +496,7 @@ export function Textarea(props) {
 export function StatCard({
   label,
   value,
+  icon,
   color = 'var(--green-800)',
   sub,
   onClick,
@@ -392,7 +512,8 @@ export function StatCard({
         ...style,
       }}
     >
-      <div>
+      <IconMark icon={icon} label={label} color={color} style={{ marginRight: 16 }} />
+      <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1 }}>
           {value}
         </div>
