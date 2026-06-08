@@ -1,0 +1,22 @@
+from django.contrib import admin
+
+from .models import PlantRecord, PlantVariety
+
+
+@admin.register(PlantVariety)
+class PlantVarietyAdmin(admin.ModelAdmin):
+    list_display = ['name', 'plant_type', 'scientific_name']
+    list_filter = ['plant_type']
+    search_fields = ['name', 'scientific_name']
+
+
+@admin.register(PlantRecord)
+class PlantRecordAdmin(admin.ModelAdmin):
+    list_display = [
+        'id', 'local_name', 'plant_type', 'zone',
+        'condition', 'submitted_by', 'submitted_at',
+    ]
+    list_filter = ['plant_type', 'condition', 'zone']
+    search_fields = ['local_name', 'scientific_name', 'submitted_by', 'zone']
+    readonly_fields = ['submitted_at']
+    ordering = ['-submitted_at']

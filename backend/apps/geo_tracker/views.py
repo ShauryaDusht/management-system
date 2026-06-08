@@ -1,0 +1,207 @@
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
+from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.users.permissions import IsAdminOrHKInventoryOrHorticultureManager
+
+from .models import PlantRecord, PlantVariety
+from .serializers import (
+    PlantRecordSerializer,
+    PlantRecordCreateSerializer,
+    PlantVarietySerializer,
+    records_to_csv,
+)
+
+
+# ---------------------------------------------------------------------------
+# Public submit form (no auth required)
+# ---------------------------------------------------------------------------
+
+def geo_submit_form(request):
+    """Render the mobile-friendly data-collection form."""
+    varieties = PlantVariety.objects.all().order_by('plant_type', 'name')
+    return render(request, 'geo_tracker/submit_form.html', {
+        'varieties': varieties,
+    })
+
+
+@csrf_exempt
+def geo_submit_record(request):
+    """POST endpoint for the public form submission."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    serializer = PlantRecordCreateSerializer(
+        data=request.POST,
+        files=request.FILES if request.FILES else None,
+    )
+
+    # Handle multipart manually since we're not using DRF view here
+    data = request.POST.dict()
+    files = request.FILES
+
+    serializer = PlantRecordCreateSerializer(data={**data})
+    if not serializer.is_valid():
+        return JsonResponse({'errors': serializer.errors}, status=400)
+
+    record = serializer.save()
+
+    # Attach photo separately if provided
+    if 'photo' in files:
+        record.photo = files['photo']
+        record.save(update_fields=['photo'])
+
+    return JsonResponse({
+        'success': True,
+        'id': record.id,
+        'message': 'Record submitted successfully.',
+    }, status=201)
+
+
+# ---------------------------------------------------------------------------
+# Admin API views (JWT auth required)
+# ---------------------------------------------------------------------------
+
+class GeoTrackerRecordsView(APIView):
+    permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    def get(self, request):
+        qs = PlantRecord.objects.select_related('variety').all()
+
+        # Filters
+        plant_type = request.query_params.get('plant_type')
+        if plant_type:
+            qs = qs.filter(plant_type=plant_type)
+
+        variety_id = request.query_params.get('variety')
+        if variety_id:
+            qs = qs.filter(variety_id=variety_id)
+
+        zone = request.query_params.get('zone')
+        if zone:
+            qs = qs.filter(zone__iexact=zone)
+
+        condition = request.query_params.get('condition')
+        if condition:
+            qs = qs.filter(condition=condition)
+
+        date_from = request.query_params.get('date_from')
+        if date_from:
+            qs = qs.filter(submitted_at__date__gte=date_from)
+
+        date_to = request.query_params.get('date_to')
+        if date_to:
+            qs = qs.filter(submitted_at__date__lte=date_to)
+
+        submitted_by = request.query_params.get('submitted_by')
+        if submitted_by:
+            qs = qs.filter(submitted_by__icontains=submitted_by)
+
+        serializer = PlantRecordSerializer(qs, many=True, context={'request': request})
+        return Response(serializer.data)
+
+
+class GeoTrackerRecordDetailView(APIView):
+    permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
+
+    def get(self, request, pk):
+        try:
+            record = PlantRecord.objects.select_related('variety').get(pk=pk)
+        except PlantRecord.DoesNotExist:
+            return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = PlantRecordSerializer(record, context={'request': request})
+        return Response(serializer.data)
+
+    def delete(self, request, pk):
+        try:
+            record = PlantRecord.objects.get(pk=pk)
+        except PlantRecord.DoesNotExist:
+            return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        record.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class GeoTrackerExportCSVView(APIView):
+    permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
+
+    def get(self, request):
+        qs = PlantRecord.objects.select_related('variety').all()
+
+        plant_type = request.query_params.get('plant_type')
+        if plant_type:
+            qs = qs.filter(plant_type=plant_type)
+
+        variety_id = request.query_params.get('variety')
+        if variety_id:
+            qs = qs.filter(variety_id=variety_id)
+
+        zone = request.query_params.get('zone')
+        if zone:
+            qs = qs.filter(zone__iexact=zone)
+
+        condition = request.query_params.get('condition')
+        if condition:
+            qs = qs.filter(condition=condition)
+
+        date_from = request.query_params.get('date_from')
+        if date_from:
+            qs = qs.filter(submitted_at__date__gte=date_from)
+
+        date_to = request.query_params.get('date_to')
+        if date_to:
+            qs = qs.filter(submitted_at__date__lte=date_to)
+
+        csv_data = records_to_csv(qs)
+        response = HttpResponse(csv_data, content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="plant_records.csv"'
+        return response
+
+
+class GeoTrackerVarietiesView(APIView):
+    permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
+
+    def get(self, request):
+        varieties = PlantVariety.objects.all()
+        plant_type = request.query_params.get('plant_type')
+        if plant_type:
+            varieties = varieties.filter(plant_type=plant_type)
+        serializer = PlantVarietySerializer(varieties, many=True)
+        return Response(serializer.data)
+
+
+class GeoTrackerZonesView(APIView):
+    """Return distinct zone values present in records."""
+    permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
+
+    def get(self, request):
+        zones = (
+            PlantRecord.objects
+            .exclude(zone='')
+            .values_list('zone', flat=True)
+            .distinct()
+            .order_by('zone')
+        )
+        return Response(list(zones))
+
+
+class GeoTrackerStatsView(APIView):
+    permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
+
+    def get(self, request):
+        total = PlantRecord.objects.count()
+        trees = PlantRecord.objects.filter(plant_type='tree').count()
+        plants = PlantRecord.objects.filter(plant_type='plant').count()
+        shrubs = PlantRecord.objects.filter(plant_type='shrub').count()
+        return Response({
+            'total': total,
+            'trees': trees,
+            'plants': plants,
+            'shrubs': shrubs,
+        })
