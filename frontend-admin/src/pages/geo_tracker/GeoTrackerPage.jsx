@@ -2,6 +2,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { geoApi } from '../../api/geoTracker'
+import AdminLayout from '../../layout/AdminLayout'
 
 // Leaflet is loaded via CDN in index.html — accessed as L
 // Colors per plant type
@@ -199,6 +200,7 @@ export default function GeoTrackerPage() {
   const labelStyle = { fontSize: 11, fontWeight: 700, color: 'var(--text-2)', marginBottom: 4, display: 'block' }
 
   return (
+    <AdminLayout>
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--surface-2)' }}>
 
       {/* Header bar */}
@@ -437,5 +439,6 @@ export default function GeoTrackerPage() {
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
+    </AdminLayout>
   )
 }

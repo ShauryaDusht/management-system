@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { NotificationProvider } from './context/NotificationContext'
 import DashboardPage from './pages/dashboard/DashboardPage'
+import GeoTrackerPage from './pages/geo_tracker/GeoTrackerPage'
 import HorticulturePage from './pages/horticulture/HorticulturePage'
 import HousekeepingPage from './pages/housekeeping/HousekeepingPage'
 import InsightsPage from './pages/insights/InsightsPage'
@@ -18,6 +19,7 @@ const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_
 const HK_INVENTORY_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
 const HK_PORTAL_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
+const GEO_TRACKER_ALLOWED = ['admin', 'horticulture_manager']
 const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
 const ROUTER_BASENAME = '/admin'
 
@@ -99,6 +101,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
                 <HorticulturePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/geo-tracker"
+            element={
+              <ProtectedRoute allowedRoles={GEO_TRACKER_ALLOWED}>
+                <GeoTrackerPage />
               </ProtectedRoute>
             }
           />
