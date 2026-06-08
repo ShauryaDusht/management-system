@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'apps.reports',
     'apps.housekeeping',
     'apps.horticulture',
+    'apps.geo_tracker',
 ]
 
 MIDDLEWARE = [

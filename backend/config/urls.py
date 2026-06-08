@@ -7,6 +7,7 @@ from config.admin import admin_site
 from apps.core.portal_views import portal_root, portal_login, portal_logout, portal_logo
 from apps.core.media_views import serve_media_file
 from apps.core.pwa_views import service_worker
+from apps.geo_tracker.urls import public_urlpatterns as geo_public_urlpatterns
 from apps.horticulture.urls import mobile_urlpatterns as horticulture_mobile_urlpatterns
 from apps.housekeeping import api_views as hk_api_views
 
@@ -62,6 +63,8 @@ urlpatterns = [
     path('api/reports/', include('apps.reports.urls')),
     path('api/horticulture/', include('apps.horticulture.urls')),
     path('api/housekeeping/', include('apps.housekeeping.urls')),
+    path('geo/', include((geo_public_urlpatterns, 'geo_tracker_public'))),
+    path('api/geo-tracker/', include('apps.geo_tracker.urls')),
     path('api/admin/gallery/', hk_api_views.HKAdminGalleryView.as_view(), name='api-admin-gallery'),
     path('api/admin/gallery/grouped-by-area/', hk_api_views.HKAdminGalleryGroupedByAreaView.as_view(), name='api-admin-gallery-grouped'),
     path('api/admin/gallery/stats/', hk_api_views.HKAdminGalleryStatsView.as_view(), name='api-admin-gallery-stats'),

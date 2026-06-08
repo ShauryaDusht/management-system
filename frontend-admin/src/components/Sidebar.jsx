@@ -51,7 +51,7 @@ export default function Sidebar() {
     ? [
       { to: '/dashboard', icon: 'home', label: 'Home' },
       { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
-      { to: '/geo-tracker', icon: 'horticulture', label: 'Geotagging' },
+      { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
       { to: '/insights', icon: 'insights', label: 'Insights' },
       { to: '/profile', icon: 'users', label: 'Profile' },
     ]
@@ -95,7 +95,7 @@ export default function Sidebar() {
         badge: badges.housekeeping,
       },
       { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
-      { to: '/geo-tracker', icon: 'horticulture', label: 'Geotagging' },
+      { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
       { to: '/insights', icon: 'insights', label: 'Insights' },
       { to: '/users', icon: 'users', label: 'Manage Users' },
       { to: '/profile', icon: 'users', label: 'Profile' },
