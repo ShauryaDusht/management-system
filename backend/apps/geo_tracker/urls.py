@@ -19,9 +19,9 @@ public_urlpatterns = [
 
 # API routes (JWT auth via admin frontend)
 urlpatterns = [
+    path('records/export/', GeoTrackerExportCSVView.as_view(), name='geo-export-csv'),
     path('records/', GeoTrackerRecordsView.as_view(), name='geo-records'),
     path('records/<int:pk>/', GeoTrackerRecordDetailView.as_view(), name='geo-record-detail'),
-    path('records/export/', GeoTrackerExportCSVView.as_view(), name='geo-export-csv'),
     path('varieties/', GeoTrackerVarietiesView.as_view(), name='geo-varieties'),
     path('zones/', GeoTrackerZonesView.as_view(), name='geo-zones'),
     path('stats/', GeoTrackerStatsView.as_view(), name='geo-stats'),

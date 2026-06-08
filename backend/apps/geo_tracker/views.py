@@ -33,28 +33,21 @@ def geo_submit_form(request):
 
 @csrf_exempt
 def geo_submit_record(request):
-    """POST endpoint for the public form submission."""
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
-    serializer = PlantRecordCreateSerializer(
-        data=request.POST,
-        files=request.FILES if request.FILES else None,
-    )
-
-    # Handle multipart manually since we're not using DRF view here
     data = request.POST.dict()
-    files = request.FILES
+    # Remove empty strings so optional fields don't fail validation
+    data = {k: v for k, v in data.items() if v != ''}
 
-    serializer = PlantRecordCreateSerializer(data={**data})
+    serializer = PlantRecordCreateSerializer(data=data)
     if not serializer.is_valid():
         return JsonResponse({'errors': serializer.errors}, status=400)
 
     record = serializer.save()
 
-    # Attach photo separately if provided
-    if 'photo' in files:
-        record.photo = files['photo']
+    if 'photo' in request.FILES:
+        record.photo = request.FILES['photo']
         record.save(update_fields=['photo'])
 
     return JsonResponse({
