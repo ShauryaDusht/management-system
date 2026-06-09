@@ -273,6 +273,52 @@ class HKAreaListCreateView(ListCreateAPIView):
         )
 
 
+class HKAreaDetailView(APIView):
+    permission_classes = [IsAdminOrHousekeepingManager]
+
+    def get_object(self, pk):
+        qs = _scope_areas_for_user(HKArea.objects, self.request.user).filter(is_active=True)
+        return get_object_or_404(qs, pk=pk)
+
+    def delete(self, request, pk):
+        area = self.get_object(pk)
+        blockers = {
+            'assigned staff': area.assigned_users.count(),
+            'active workers': area.workers.filter(is_active=True).count(),
+            'schedule templates': area.schedule_templates.count(),
+            'daily records': area.daily_records.count(),
+            'extra work records': area.extra_works.count(),
+            'stock records': area.area_stocks.count(),
+            'stock requests': area.stock_requests.count(),
+            'temporary staff assignments': area.temporary_staff_assignments.count(),
+            'Sunday incharges': area.sunday_incharges.count(),
+            'reliever substitutions': area.reliever_substitutions.count(),
+            'worker movement requests': (
+                area.worker_selection_source_requests.count()
+                + area.worker_selection_target_requests.count()
+            ),
+            'leave requests': area.hk_leave_requests.count(),
+            'incharge assignments': area.incharge_assignments.count(),
+            'alerts': HKAlert.objects.filter(target_areas=area).count(),
+        }
+        active_blockers = {label: count for label, count in blockers.items() if count}
+        if active_blockers:
+            details = ', '.join(f'{count} {label}' for label, count in active_blockers.items())
+            return Response(
+                {
+                    'detail': (
+                        f'Cannot delete "{area.name}" because it is linked to {details}. '
+                        'Remove or move those records first.'
+                    ),
+                    'blockers': active_blockers,
+                },
+                status=400,
+            )
+
+        area.delete()
+        return Response(status=204)
+
+
 class HKWorkerListView(ListAPIView):
     serializer_class = HKWorkerSerializer
     permission_classes = [IsAuthenticated]

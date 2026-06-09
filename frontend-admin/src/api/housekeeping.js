@@ -3,6 +3,7 @@ import api from './client'
 export const hkAPI = {
   getAreas: () => api.get('/housekeeping/areas/'),
   createArea: (payload) => api.post('/housekeeping/areas/', payload),
+  deleteArea: (id) => api.delete(`/housekeeping/areas/${id}/`),
   getWorkers: (areaId) =>
     api.get('/housekeeping/workers/', { params: areaId ? { area: areaId } : {} }),
   getWorkerReport: (workerId, month, year) =>

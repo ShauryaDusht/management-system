@@ -98,6 +98,7 @@ export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
   const [createForms, setCreateForms] = useState([EMPTY_FORM])
   const [formError, setFormError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [areaDeleteTarget, setAreaDeleteTarget] = useState(null)
   const [areaModal, setAreaModal] = useState(false)
   const [areaForm, setAreaForm] = useState(EMPTY_AREA_FORM)
   const [areaFormError, setAreaFormError] = useState('')
@@ -451,6 +452,23 @@ export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
     }
   }
 
+  const confirmAreaDelete = async () => {
+    if (!areaDeleteTarget) return
+    setAreaSaving(true)
+    setError('')
+    try {
+      await hkAPI.deleteArea(areaDeleteTarget.areaId)
+      setAreaDeleteTarget(null)
+      setExpandedAreaId((prev) => (prev === areaDeleteTarget.areaId ? null : prev))
+      await load()
+    } catch (e) {
+      setError(getErrorMessage(e, 'Failed to delete area.'))
+      setAreaDeleteTarget(null)
+    } finally {
+      setAreaSaving(false)
+    }
+  }
+
   return (
     <div>
       <Alert message={error} />
@@ -548,8 +566,23 @@ export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
                 </span>
                 <span>{group.areaName}</span>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                {group.rows.length} template{group.rows.length === 1 ? '' : 's'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                  {group.rows.length} template{group.rows.length === 1 ? '' : 's'}
+                </span>
+                {!readOnly && !hostelOnly && (
+                  <Btn
+                    size="sm"
+                    variant="danger"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setAreaDeleteTarget(group)
+                    }}
+                    disabled={areaSaving}
+                  >
+                    Delete Area
+                  </Btn>
+                )}
               </div>
             </div>
             {expandedAreaId === group.areaId && (
@@ -822,6 +855,21 @@ export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
         onCancel={() => setDeleteTarget(null)}
         confirmDisabled={saving}
         cancelDisabled={saving}
+      />
+
+      <ConfirmModal
+        open={!!areaDeleteTarget}
+        title="Delete Area"
+        message={
+          `Warning: this will permanently delete the area "${areaDeleteTarget?.areaName || ''}". `
+          + `It is allowed only when the area has no linked staff, workers, schedule templates, records, stock, requests, or alerts. `
+          + `This area currently shows ${areaDeleteTarget?.rows?.length || 0} schedule template${areaDeleteTarget?.rows?.length === 1 ? '' : 's'} in this tab.`
+        }
+        confirmLabel={areaSaving ? 'Deleting...' : 'Delete Area'}
+        onConfirm={confirmAreaDelete}
+        onCancel={() => setAreaDeleteTarget(null)}
+        confirmDisabled={areaSaving}
+        cancelDisabled={areaSaving}
       />
 
       <Modal

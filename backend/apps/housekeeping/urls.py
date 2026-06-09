@@ -5,6 +5,7 @@ from .htmx_urls import urlpatterns as htmx_patterns
 
 api_urlpatterns = [
     path('areas/', api_views.HKAreaListCreateView.as_view(), name='hk-api-areas'),
+    path('areas/<int:pk>/', api_views.HKAreaDetailView.as_view(), name='hk-api-area-detail'),
     path('workers/', api_views.HKWorkerListView.as_view(), name='hk-api-workers'),
     path('workers/create/', api_views.HKWorkerCreateView.as_view(), name='hk-api-workers-create'),
     path('workers/<int:pk>/', api_views.HKWorkerDetailView.as_view(), name='hk-api-workers-detail'),
