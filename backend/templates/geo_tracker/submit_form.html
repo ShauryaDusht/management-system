@@ -45,7 +45,8 @@ textarea{resize:vertical;min-height:80px}
 .type-emoji{font-size:22px;line-height:1}
 .type-opt input:checked + .type-label.tree{background:#dcfce7;border-color:#16a34a;color:#166534}
 .type-opt input:checked + .type-label.plant{background:#ede9fe;border-color:#7c3aed;color:#5b21b6}
-.type-opt input:checked + .type-label.shrub{background:#fefce8;border-color:#ca8a04;color:#92400e}
+.type-opt input:checked + .type-label.creeper{background:#e0f2fe;border-color:#0284c7;color:#075985}
+@media(max-width:420px){.type-grid{grid-template-columns:repeat(2,1fr)}}
 .gps-row{display:flex;gap:8px;align-items:flex-end}
 .gps-row .fg{flex:1;margin-bottom:0}
 .gps-btn{
@@ -106,9 +107,9 @@ select option[disabled]{color:#9ca3af}
           </span>
         </label>
         <label class="type-opt">
-          <input type="radio" name="plant_type" value="shrub">
-          <span class="type-label shrub">
-            <span class="type-emoji">🌱</span>Shrub
+          <input type="radio" name="plant_type" value="creeper">
+          <span class="type-label creeper">
+            <span class="type-emoji">C</span>Creeper
           </span>
         </label>
       </div>
@@ -122,18 +123,18 @@ select option[disabled]{color:#9ca3af}
         <input type="text" id="local_name" name="local_name" required placeholder="e.g. Neem, Peepal, Bougainvillea">
       </div>
       <div class="fg">
-        <label for="scientific_name">Scientific Name</label>
-        <input type="text" id="scientific_name" name="scientific_name" placeholder="e.g. Azadirachta indica">
-      </div>
-      <div class="fg">
-        <label for="variety">Variety (if known)</label>
+        <label for="variety">Tree / Plant / Creeper from List</label>
         <select id="variety" name="variety">
-          <option value="" disabled selected>Select variety…</option>
-          <option value="">— None / Unknown —</option>
+          <option value="" disabled selected>Select from list...</option>
+          <option value="" data-type="" data-name="" data-scientific="">-- None / Unknown --</option>
           {% for v in varieties %}
-          <option value="{{ v.id }}" data-type="{{ v.plant_type }}">{{ v.name }} ({{ v.get_plant_type_display }})</option>
+          <option value="{{ v.id }}" data-type="{{ v.plant_type }}" data-name="{{ v.name }}" data-scientific="{{ v.scientific_name }}">{{ v.name }} ({{ v.get_plant_type_display }})</option>
           {% endfor %}
         </select>
+      </div>
+      <div class="fg">
+        <label for="scientific_name">Scientific Name</label>
+        <input type="text" id="scientific_name" name="scientific_name" placeholder="e.g. Azadirachta indica">
       </div>
     </div>
 
@@ -229,6 +230,50 @@ select option[disabled]{color:#9ca3af}
 </div>
 
 <script>
+var varietySelect = document.getElementById('variety');
+var plantTypeInputs = document.querySelectorAll('input[name="plant_type"]');
+
+function getSelectedPlantType() {
+  var checked = document.querySelector('input[name="plant_type"]:checked');
+  return checked ? checked.value : '';
+}
+
+function syncVarietyOptions() {
+  var selectedType = getSelectedPlantType();
+  Array.prototype.forEach.call(varietySelect.options, function(option) {
+    var optionType = option.getAttribute('data-type') || '';
+    option.hidden = Boolean(optionType && selectedType && optionType !== selectedType);
+  });
+
+  var selectedOption = varietySelect.options[varietySelect.selectedIndex];
+  if (selectedOption && selectedOption.hidden) {
+    varietySelect.value = '';
+  }
+}
+
+Array.prototype.forEach.call(plantTypeInputs, function(input) {
+  input.addEventListener('change', syncVarietyOptions);
+});
+
+varietySelect.addEventListener('change', function() {
+  var selected = this.options[this.selectedIndex];
+  if (!selected) return;
+
+  var type = selected.getAttribute('data-type');
+  var name = selected.getAttribute('data-name');
+  var scientific = selected.getAttribute('data-scientific');
+
+  if (type) {
+    var typeInput = document.querySelector('input[name="plant_type"][value="' + type + '"]');
+    if (typeInput) typeInput.checked = true;
+  }
+  if (name) document.getElementById('local_name').value = name;
+  if (scientific) document.getElementById('scientific_name').value = scientific;
+  syncVarietyOptions();
+});
+
+syncVarietyOptions();
+
 // GPS
 document.getElementById('gpsBtn').addEventListener('click', function() {
   var status = document.getElementById('gpsStatus');
@@ -288,6 +333,7 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
     if (data.success) {
       showFlash('✓ Record submitted successfully! (ID: ' + data.id + ')', 'ok');
       document.getElementById('plantForm').reset();
+      syncVarietyOptions();
       document.getElementById('photoPreview').style.display = 'none';
       document.getElementById('gpsStatus').textContent = '';
       window.scrollTo({ top: 0, behavior: 'smooth' });

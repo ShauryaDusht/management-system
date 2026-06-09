@@ -23,7 +23,7 @@ class PlantRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlantRecord
         fields = [
-            'id',
+            'id', 'tracking_id',
             'plant_type', 'plant_type_display',
             'local_name', 'scientific_name',
             'variety', 'variety_name',
@@ -35,7 +35,7 @@ class PlantRecordSerializer(serializers.ModelSerializer):
             'notes',
             'submitted_by', 'submitted_at',
         ]
-        read_only_fields = ['id', 'submitted_at']
+        read_only_fields = ['id', 'tracking_id', 'submitted_at']
 
     def get_photo_url(self, obj):
         if not obj.photo:
@@ -71,7 +71,7 @@ def records_to_csv(queryset):
     ])
     for r in queryset:
         writer.writerow([
-            r.id,
+            r.tracking_id,
             r.get_plant_type_display(),
             r.local_name,
             r.scientific_name,

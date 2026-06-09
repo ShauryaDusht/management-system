@@ -3,13 +3,14 @@ import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { geoApi } from '../../api/geoTracker'
 import AdminLayout from '../../layout/AdminLayout'
+import ConfirmModal from '../../shared/components/ConfirmModal'
 
 // Leaflet is loaded via CDN in index.html — accessed as L
 // Colors per plant type
 const TYPE_CONFIG = {
-  tree:  { color: '#16a34a', bg: '#dcfce7', label: 'Tree',  emoji: '🌳' },
-  plant: { color: '#7c3aed', bg: '#ede9fe', label: 'Plant', emoji: '🌿' },
-  shrub: { color: '#ca8a04', bg: '#fefce8', label: 'Shrub', emoji: '🌱' },
+  tree: { color: '#16a34a', bg: '#dcfce7', label: 'Tree', emoji: 'T' },
+  plant: { color: '#7c3aed', bg: '#ede9fe', label: 'Plant', emoji: 'P' },
+  creeper: { color: '#0284c7', bg: '#e0f2fe', label: 'Creeper', emoji: 'C' },
 }
 
 const CONDITION_COLORS = {
@@ -61,7 +62,10 @@ export default function GeoTrackerPage() {
   const [zones, setZones] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(null)
   const [selectedRecord, setSelectedRecord] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   const [filters, setFilters] = useState({
     plant_type: '',
@@ -148,7 +152,7 @@ export default function GeoTrackerPage() {
       marker.bindPopup(`
         <div style="min-width:180px;font-family:-apple-system,sans-serif">
           <div style="font-weight:800;font-size:14px;margin-bottom:4px">
-            ${cfg.emoji} ${r.local_name}
+            ${cfg.emoji} ${r.tracking_id || ''} ${r.local_name}
           </div>
           ${r.scientific_name ? `<div style="font-size:11px;font-style:italic;color:#6b7280;margin-bottom:6px">${r.scientific_name}</div>` : ''}
           <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
@@ -177,7 +181,11 @@ export default function GeoTrackerPage() {
   }, [records])
 
   function handleFilterChange(key, val) {
-    setFilters(prev => ({ ...prev, [key]: val }))
+    setFilters(prev => ({
+      ...prev,
+      [key]: val,
+      ...(key === 'plant_type' ? { variety: '' } : {}),
+    }))
   }
 
   function clearFilters() {
@@ -190,7 +198,31 @@ export default function GeoTrackerPage() {
     geoApi.exportCsv(params)
   }
 
+  async function handleDeleteRecord() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      await geoApi.deleteRecord(deleteTarget.id)
+      setRecords(prev => prev.filter(r => r.id !== deleteTarget.id))
+      setSelectedRecord(null)
+      setDeleteTarget(null)
+      setSuccess(`Deleted ${deleteTarget.tracking_id || deleteTarget.local_name}.`)
+      const [zRes, sRes] = await Promise.all([geoApi.getZones(), geoApi.getStats()])
+      setZones(zRes.data)
+      setStats(sRes.data)
+    } catch {
+      setError('Failed to delete record. Please try again.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const activeFilterCount = Object.values(filters).filter(Boolean).length
+  const filteredVarieties = filters.plant_type
+    ? varieties.filter(v => v.plant_type === filters.plant_type)
+    : varieties
 
   const inputStyle = {
     border: '1.5px solid var(--border)', borderRadius: 8, padding: '7px 10px',
@@ -212,7 +244,7 @@ export default function GeoTrackerPage() {
         <div style={{ flex: 1 }}>
           <h1 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>🌿 Plant GeoTracker</h1>
           <p style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
-            Interactive map of campus trees, plants & shrubs
+            Interactive map of campus trees, plants and creepers
           </p>
         </div>
 
@@ -221,7 +253,7 @@ export default function GeoTrackerPage() {
             <StatChip label="Total" value={stats.total} color="#374151" bg="#f3f4f6" />
             <StatChip label="Trees" value={stats.trees} color={TYPE_CONFIG.tree.color} bg={TYPE_CONFIG.tree.bg} />
             <StatChip label="Plants" value={stats.plants} color={TYPE_CONFIG.plant.color} bg={TYPE_CONFIG.plant.bg} />
-            <StatChip label="Shrubs" value={stats.shrubs} color={TYPE_CONFIG.shrub.color} bg={TYPE_CONFIG.shrub.bg} />
+            <StatChip label="Creepers" value={stats.creepers || 0} color={TYPE_CONFIG.creeper.color} bg={TYPE_CONFIG.creeper.bg} />
           </div>
         )}
 
@@ -262,21 +294,51 @@ export default function GeoTrackerPage() {
           borderBottom: '1px solid var(--border)',
           display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12,
         }}>
+          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {[
+              ['', 'All'],
+              ['tree', TYPE_CONFIG.tree.label],
+              ['plant', TYPE_CONFIG.plant.label],
+              ['creeper', TYPE_CONFIG.creeper.label],
+            ].map(([value, label]) => {
+              const cfg = TYPE_CONFIG[value]
+              const isActive = filters.plant_type === value
+              return (
+                <button
+                  key={value || 'all'}
+                  type="button"
+                  onClick={() => setFilters(prev => ({ ...prev, plant_type: value, variety: '' }))}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    border: `1.5px solid ${isActive ? (cfg?.color || '#374151') : 'var(--border)'}`,
+                    background: isActive ? (cfg?.bg || '#f3f4f6') : 'var(--surface)',
+                    color: isActive ? (cfg?.color || '#374151') : 'var(--text-2)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {cfg?.emoji ? `${cfg.emoji} ` : ''}{label}
+                </button>
+              )
+            })}
+          </div>
           <div>
             <label style={labelStyle}>Type</label>
             <select style={inputStyle} value={filters.plant_type} onChange={e => handleFilterChange('plant_type', e.target.value)}>
               <option value="">All types</option>
               <option value="tree">🌳 Tree</option>
               <option value="plant">🌿 Plant</option>
-              <option value="shrub">🌱 Shrub</option>
+              <option value="creeper">C Creeper</option>
             </select>
           </div>
           <div>
             <label style={labelStyle}>Variety</label>
             <select style={inputStyle} value={filters.variety} onChange={e => handleFilterChange('variety', e.target.value)}>
               <option value="">All varieties</option>
-              {varieties.map(v => (
-                <option key={v.id} value={v.id}>{v.name}</option>
+              {filteredVarieties.map(v => (
+                <option key={v.id} value={v.id}>{v.name}{v.scientific_name ? ` - ${v.scientific_name}` : ''}</option>
               ))}
             </select>
           </div>
@@ -327,6 +389,29 @@ export default function GeoTrackerPage() {
         </div>
       )}
 
+      {(success || error) && (
+        <div style={{
+          padding: '10px 20px',
+          background: success ? '#dcfce7' : '#fee2e2',
+          borderBottom: `1px solid ${success ? '#86efac' : '#fca5a5'}`,
+          color: success ? '#166534' : '#991b1b',
+          fontSize: 13,
+          fontWeight: 700,
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}>
+          <span>{success || error}</span>
+          <button
+            type="button"
+            onClick={() => { setSuccess(null); setError(null) }}
+            style={{ border: 'none', background: 'transparent', color: 'inherit', cursor: 'pointer', fontWeight: 800 }}
+          >
+            Close
+          </button>
+        </div>
+      )}
+
       {/* Map + sidebar layout */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
 
@@ -362,6 +447,11 @@ export default function GeoTrackerPage() {
                 <div style={{ fontSize: 16, fontWeight: 800 }}>
                   {TYPE_CONFIG[selectedRecord.plant_type]?.emoji} {selectedRecord.local_name}
                 </div>
+                {selectedRecord.tracking_id && (
+                  <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--green-800)', marginTop: 2 }}>
+                    {selectedRecord.tracking_id}
+                  </div>
+                )}
                 {selectedRecord.scientific_name && (
                   <div style={{ fontSize: 12, fontStyle: 'italic', color: 'var(--text-2)', marginTop: 2 }}>
                     {selectedRecord.scientific_name}
@@ -386,6 +476,7 @@ export default function GeoTrackerPage() {
             )}
 
             {[
+              ['ID', selectedRecord.tracking_id],
               ['Type', selectedRecord.plant_type_display],
               ['Variety', selectedRecord.variety_name],
               ['Zone', selectedRecord.zone],
@@ -412,6 +503,24 @@ export default function GeoTrackerPage() {
                 </div>
               </div>
             )}
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(selectedRecord)}
+              style={{
+                width: '100%',
+                marginTop: 16,
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: '1.5px solid #dc2626',
+                background: '#fee2e2',
+                color: '#991b1b',
+                fontSize: 13,
+                fontWeight: 800,
+                cursor: 'pointer',
+              }}
+            >
+              Delete entry
+            </button>
           </div>
         )}
       </div>
@@ -436,6 +545,17 @@ export default function GeoTrackerPage() {
         ))}
         {error && <span style={{ color: '#dc2626', marginLeft: 'auto' }}>{error}</span>}
       </div>
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete plant record?"
+        message={`Delete ${deleteTarget?.tracking_id || deleteTarget?.local_name || 'this record'}? This action cannot be undone.`}
+        confirmLabel={deleting ? 'Deleting...' : 'Delete'}
+        confirmDisabled={deleting}
+        cancelDisabled={deleting}
+        onConfirm={handleDeleteRecord}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

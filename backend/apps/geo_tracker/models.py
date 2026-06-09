@@ -1,11 +1,18 @@
-from django.db import models
+from django.db import IntegrityError, models
 from django.utils import timezone
 
 
 class PlantType(models.TextChoices):
     TREE = 'tree', 'Tree'
     PLANT = 'plant', 'Plant'
-    SHRUB = 'shrub', 'Shrub'
+    CREEPER = 'creeper', 'Creeper / Climber'
+
+
+PLANT_TYPE_PREFIXES = {
+    PlantType.TREE: 'T',
+    PlantType.PLANT: 'P',
+    PlantType.CREEPER: 'C',
+}
 
 
 class PlantVariety(models.Model):
@@ -23,6 +30,7 @@ class PlantVariety(models.Model):
 
 class PlantRecord(models.Model):
     # Core identification
+    tracking_id = models.CharField(max_length=7, unique=True, editable=False)
     plant_type = models.CharField(max_length=10, choices=PlantType.choices)
     local_name = models.CharField(max_length=200)
     scientific_name = models.CharField(max_length=200, blank=True)
@@ -78,7 +86,40 @@ class PlantRecord(models.Model):
         ordering = ['-submitted_at']
 
     def __str__(self):
-        return f"{self.local_name} ({self.get_plant_type_display()}) — {self.zone or 'No zone'}"
+        return f"{self.tracking_id} - {self.local_name} ({self.get_plant_type_display()})"
+
+    def save(self, *args, **kwargs):
+        if self.tracking_id:
+            return super().save(*args, **kwargs)
+
+        prefix = PLANT_TYPE_PREFIXES.get(self.plant_type)
+        if not prefix:
+            return super().save(*args, **kwargs)
+
+        for _ in range(3):
+            self.tracking_id = self._next_tracking_id(prefix)
+            try:
+                return super().save(*args, **kwargs)
+            except IntegrityError:
+                self.tracking_id = ''
+        return super().save(*args, **kwargs)
+
+    @classmethod
+    def _next_tracking_id(cls, prefix):
+        last_id = (
+            cls.objects
+            .filter(tracking_id__startswith=f'{prefix}-')
+            .order_by('-tracking_id')
+            .values_list('tracking_id', flat=True)
+            .first()
+        )
+        next_number = 1
+        if last_id:
+            try:
+                next_number = int(last_id.split('-', 1)[1]) + 1
+            except (IndexError, ValueError):
+                next_number = 1
+        return f'{prefix}-{next_number:05d}'
 
     @property
     def lat(self):

@@ -13,10 +13,10 @@ class PlantVarietyAdmin(admin.ModelAdmin):
 @admin.register(PlantRecord)
 class PlantRecordAdmin(admin.ModelAdmin):
     list_display = [
-        'id', 'local_name', 'plant_type', 'zone',
+        'tracking_id', 'local_name', 'plant_type', 'zone',
         'condition', 'submitted_by', 'submitted_at',
     ]
     list_filter = ['plant_type', 'condition', 'zone']
-    search_fields = ['local_name', 'scientific_name', 'submitted_by', 'zone']
-    readonly_fields = ['submitted_at']
+    search_fields = ['tracking_id', 'local_name', 'scientific_name', 'submitted_by', 'zone']
+    readonly_fields = ['tracking_id', 'submitted_at']
     ordering = ['-submitted_at']

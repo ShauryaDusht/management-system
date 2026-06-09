@@ -52,7 +52,8 @@ def geo_submit_record(request):
 
     return JsonResponse({
         'success': True,
-        'id': record.id,
+        'id': record.tracking_id,
+        'record_pk': record.id,
         'message': 'Record submitted successfully.',
     }, status=201)
 
@@ -151,6 +152,10 @@ class GeoTrackerExportCSVView(APIView):
         if date_to:
             qs = qs.filter(submitted_at__date__lte=date_to)
 
+        submitted_by = request.query_params.get('submitted_by')
+        if submitted_by:
+            qs = qs.filter(submitted_by__icontains=submitted_by)
+
         csv_data = records_to_csv(qs)
         response = HttpResponse(csv_data, content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="plant_records.csv"'
@@ -191,10 +196,10 @@ class GeoTrackerStatsView(APIView):
         total = PlantRecord.objects.count()
         trees = PlantRecord.objects.filter(plant_type='tree').count()
         plants = PlantRecord.objects.filter(plant_type='plant').count()
-        shrubs = PlantRecord.objects.filter(plant_type='shrub').count()
+        creepers = PlantRecord.objects.filter(plant_type='creeper').count()
         return Response({
             'total': total,
             'trees': trees,
             'plants': plants,
-            'shrubs': shrubs,
+            'creepers': creepers,
         })
