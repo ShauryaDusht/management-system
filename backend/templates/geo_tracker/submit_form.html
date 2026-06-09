@@ -91,23 +91,23 @@ select option[disabled]{color:#9ca3af}
     {% csrf_token %}
 
     <!-- Plant Type -->
-    <div class="card">
+    <div class="card" style="display:none">
       <div class="sec-title">Plant Type</div>
       <div class="type-grid">
         <label class="type-opt">
-          <input type="radio" name="plant_type" value="tree" required>
+          <input type="radio" name="plant_type_display" value="tree">
           <span class="type-label tree">
             <span class="type-emoji">🌳</span>Tree
           </span>
         </label>
         <label class="type-opt">
-          <input type="radio" name="plant_type" value="plant">
+          <input type="radio" name="plant_type_display" value="plant">
           <span class="type-label plant">
             <span class="type-emoji">🌿</span>Plant
           </span>
         </label>
         <label class="type-opt">
-          <input type="radio" name="plant_type" value="creeper">
+          <input type="radio" name="plant_type_display" value="creeper">
           <span class="type-label creeper">
             <span class="type-emoji">C</span>Creeper
           </span>
@@ -119,22 +119,19 @@ select option[disabled]{color:#9ca3af}
     <div class="card">
       <div class="sec-title">Identification</div>
       <div class="fg">
-        <label class="required" for="local_name">Local Name</label>
-        <input type="text" id="local_name" name="local_name" required placeholder="e.g. Neem, Peepal, Bougainvillea">
-      </div>
-      <div class="fg">
-        <label for="variety">Tree / Plant / Creeper from List</label>
-        <select id="variety" name="variety">
-          <option value="" disabled selected>Select from list...</option>
-          <option value="" data-type="" data-name="" data-scientific="">-- None / Unknown --</option>
+        <label class="required" for="variety">Local / Gujarati Name</label>
+        <select id="variety" name="variety" required>
+          <option value="" disabled selected>Select local name...</option>
           {% for v in varieties %}
           <option value="{{ v.id }}" data-type="{{ v.plant_type }}" data-name="{{ v.name }}" data-scientific="{{ v.scientific_name }}">{{ v.name }} ({{ v.get_plant_type_display }})</option>
           {% endfor %}
         </select>
+        <input type="hidden" id="plant_type" name="plant_type">
+        <input type="hidden" id="local_name" name="local_name">
       </div>
       <div class="fg">
-        <label for="scientific_name">Scientific Name</label>
-        <input type="text" id="scientific_name" name="scientific_name" placeholder="e.g. Azadirachta indica">
+        <label for="scientific_name">Botanical Name</label>
+        <input type="text" id="scientific_name" name="scientific_name" readonly placeholder="Select local name first">
       </div>
     </div>
 
@@ -144,24 +141,20 @@ select option[disabled]{color:#9ca3af}
       <div class="gps-row">
         <div class="fg">
           <label class="required" for="latitude">Latitude</label>
-          <input type="number" id="latitude" name="latitude" step="0.0000001" required placeholder="23.2156…">
+          <input type="number" id="latitude" name="latitude" step="0.0000001" required readonly placeholder="Use GPS">
         </div>
         <div class="fg">
           <label class="required" for="longitude">Longitude</label>
-          <input type="number" id="longitude" name="longitude" step="0.0000001" required placeholder="72.6794…">
+          <input type="number" id="longitude" name="longitude" step="0.0000001" required readonly placeholder="Use GPS">
         </div>
         <button type="button" class="gps-btn" id="gpsBtn" title="Auto-detect location">
           📍 GPS
         </button>
       </div>
       <div class="gps-status" id="gpsStatus"></div>
-      <div class="fg" style="margin-top:12px">
-        <label for="zone">Zone / Area</label>
-        <input type="text" id="zone" name="zone" placeholder="e.g. Zone A, Academic Block, Hostel-1">
-      </div>
       <div class="fg">
-        <label for="location_notes">Location Notes</label>
-        <input type="text" id="location_notes" name="location_notes" placeholder="Near main gate, behind library…">
+        <label class="required" for="location_notes">Location</label>
+        <input type="text" id="location_notes" name="location_notes" required placeholder="Near main gate, behind library...">
       </div>
     </div>
 
@@ -170,17 +163,13 @@ select option[disabled]{color:#9ca3af}
       <div class="sec-title">Measurements</div>
       <div class="row2">
         <div class="fg">
-          <label for="height_m">Height (m)</label>
-          <input type="number" id="height_m" name="height_m" step="0.01" min="0" placeholder="e.g. 4.5">
+          <label class="required" for="height_m">Height (m)</label>
+          <input type="number" id="height_m" name="height_m" step="0.01" min="0" required placeholder="e.g. 4.5">
         </div>
         <div class="fg">
-          <label for="girth_cm">Girth (cm)</label>
-          <input type="number" id="girth_cm" name="girth_cm" step="0.1" min="0" placeholder="e.g. 85">
+          <label class="required" for="girth_cm">Girth (cm)</label>
+          <input type="number" id="girth_cm" name="girth_cm" step="0.1" min="0" required placeholder="e.g. 85">
         </div>
-      </div>
-      <div class="fg">
-        <label for="canopy_spread_m">Canopy Spread (m)</label>
-        <input type="number" id="canopy_spread_m" name="canopy_spread_m" step="0.01" min="0" placeholder="e.g. 3.2">
       </div>
     </div>
 
@@ -213,15 +202,6 @@ select option[disabled]{color:#9ca3af}
       </div>
     </div>
 
-    <!-- Submitted by -->
-    <div class="card">
-      <div class="sec-title">Staff Info</div>
-      <div class="fg">
-        <label class="required" for="submitted_by">Submitted By (Name / Staff ID)</label>
-        <input type="text" id="submitted_by" name="submitted_by" required placeholder="Your name or staff ID">
-      </div>
-    </div>
-
     <button type="submit" class="submit-btn" id="submitBtn">
       <span id="submitIcon">🌿</span>
       <span id="submitText">Submit Record</span>
@@ -231,29 +211,13 @@ select option[disabled]{color:#9ca3af}
 
 <script>
 var varietySelect = document.getElementById('variety');
-var plantTypeInputs = document.querySelectorAll('input[name="plant_type"]');
-
-function getSelectedPlantType() {
-  var checked = document.querySelector('input[name="plant_type"]:checked');
-  return checked ? checked.value : '';
-}
+var plantTypeInput = document.getElementById('plant_type');
 
 function syncVarietyOptions() {
-  var selectedType = getSelectedPlantType();
   Array.prototype.forEach.call(varietySelect.options, function(option) {
-    var optionType = option.getAttribute('data-type') || '';
-    option.hidden = Boolean(optionType && selectedType && optionType !== selectedType);
+    option.hidden = false;
   });
-
-  var selectedOption = varietySelect.options[varietySelect.selectedIndex];
-  if (selectedOption && selectedOption.hidden) {
-    varietySelect.value = '';
-  }
 }
-
-Array.prototype.forEach.call(plantTypeInputs, function(input) {
-  input.addEventListener('change', syncVarietyOptions);
-});
 
 varietySelect.addEventListener('change', function() {
   var selected = this.options[this.selectedIndex];
@@ -264,7 +228,8 @@ varietySelect.addEventListener('change', function() {
   var scientific = selected.getAttribute('data-scientific');
 
   if (type) {
-    var typeInput = document.querySelector('input[name="plant_type"][value="' + type + '"]');
+    plantTypeInput.value = type;
+    var typeInput = document.querySelector('input[type="radio"][name="plant_type_display"][value="' + type + '"]');
     if (typeInput) typeInput.checked = true;
   }
   if (name) document.getElementById('local_name').value = name;
@@ -298,6 +263,7 @@ document.getElementById('gpsBtn').addEventListener('click', function() {
     { enableHighAccuracy: true, timeout: 10000 }
   );
 });
+document.getElementById('gpsBtn').click();
 
 // Photo preview
 document.getElementById('photo').addEventListener('change', function(e) {
@@ -333,6 +299,7 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
     if (data.success) {
       showFlash('✓ Record submitted successfully! (ID: ' + data.id + ')', 'ok');
       document.getElementById('plantForm').reset();
+      plantTypeInput.value = '';
       syncVarietyOptions();
       document.getElementById('photoPreview').style.display = 'none';
       document.getElementById('gpsStatus').textContent = '';

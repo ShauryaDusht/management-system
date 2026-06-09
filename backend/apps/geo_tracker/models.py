@@ -57,11 +57,6 @@ class PlantRecord(models.Model):
         max_digits=7, decimal_places=2, null=True, blank=True,
         help_text='Girth/circumference at breast height in centimetres'
     )
-    canopy_spread_m = models.DecimalField(
-        max_digits=6, decimal_places=2, null=True, blank=True,
-        help_text='Canopy spread in metres'
-    )
-
     # Condition / status
     CONDITION_CHOICES = [
         ('excellent', 'Excellent'),
@@ -79,7 +74,12 @@ class PlantRecord(models.Model):
 
     # Metadata
     notes = models.TextField(blank=True)
-    submitted_by = models.CharField(max_length=200, help_text='Staff name or ID')
+    submitted_by = models.CharField(
+        max_length=200,
+        blank=True,
+        default='Geo tracker form',
+        help_text='Submission source or staff name',
+    )
     submitted_at = models.DateTimeField(default=timezone.now)
 
     class Meta:

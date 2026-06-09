@@ -29,11 +29,11 @@ class PlantRecordSerializer(serializers.ModelSerializer):
             'variety', 'variety_name',
             'latitude', 'longitude', 'lat', 'lng',
             'zone', 'location_notes',
-            'height_m', 'girth_cm', 'canopy_spread_m',
+            'height_m', 'girth_cm',
             'condition', 'condition_display',
             'photo_url',
             'notes',
-            'submitted_by', 'submitted_at',
+            'submitted_at',
         ]
         read_only_fields = ['id', 'tracking_id', 'submitted_at']
 
@@ -54,9 +54,20 @@ class PlantRecordCreateSerializer(serializers.ModelSerializer):
         fields = [
             'plant_type', 'local_name', 'scientific_name', 'variety',
             'latitude', 'longitude', 'zone', 'location_notes',
-            'height_m', 'girth_cm', 'canopy_spread_m',
-            'condition', 'photo', 'notes', 'submitted_by',
+            'height_m', 'girth_cm',
+            'condition', 'photo', 'notes',
         ]
+        read_only_fields = ['plant_type', 'local_name', 'scientific_name']
+        extra_kwargs = {'variety': {'required': True, 'allow_null': False}}
+
+    def create(self, validated_data):
+        variety = validated_data['variety']
+        validated_data.update({
+            'plant_type': variety.plant_type,
+            'local_name': variety.name,
+            'scientific_name': variety.scientific_name,
+        })
+        return super().create(validated_data)
 
 
 def records_to_csv(queryset):
@@ -66,8 +77,8 @@ def records_to_csv(queryset):
     writer.writerow([
         'ID', 'Type', 'Local Name', 'Scientific Name', 'Variety',
         'Latitude', 'Longitude', 'Zone', 'Location Notes',
-        'Height (m)', 'Girth (cm)', 'Canopy Spread (m)',
-        'Condition', 'Notes', 'Submitted By', 'Submitted At',
+        'Height (m)', 'Girth (cm)',
+        'Condition', 'Notes', 'Submitted At',
     ])
     for r in queryset:
         writer.writerow([
@@ -82,10 +93,8 @@ def records_to_csv(queryset):
             r.location_notes,
             r.height_m or '',
             r.girth_cm or '',
-            r.canopy_spread_m or '',
             r.get_condition_display(),
             r.notes,
-            r.submitted_by,
             r.submitted_at.strftime('%Y-%m-%d %H:%M') if r.submitted_at else '',
         ])
     return output.getvalue()

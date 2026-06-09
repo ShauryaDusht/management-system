@@ -1,4 +1,5 @@
 from django.http import HttpResponse, JsonResponse
+from django.db.models import Q
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -86,17 +87,16 @@ class GeoTrackerRecordsView(APIView):
         if condition:
             qs = qs.filter(condition=condition)
 
-        date_from = request.query_params.get('date_from')
-        if date_from:
-            qs = qs.filter(submitted_at__date__gte=date_from)
-
-        date_to = request.query_params.get('date_to')
-        if date_to:
-            qs = qs.filter(submitted_at__date__lte=date_to)
-
-        submitted_by = request.query_params.get('submitted_by')
-        if submitted_by:
-            qs = qs.filter(submitted_by__icontains=submitted_by)
+        query = request.query_params.get('q')
+        if query:
+            qs = qs.filter(
+                Q(tracking_id__icontains=query)
+                | Q(local_name__icontains=query)
+                | Q(scientific_name__icontains=query)
+                | Q(variety__name__icontains=query)
+                | Q(zone__icontains=query)
+                | Q(location_notes__icontains=query)
+            )
 
         serializer = PlantRecordSerializer(qs, many=True, context={'request': request})
         return Response(serializer.data)
@@ -144,17 +144,16 @@ class GeoTrackerExportCSVView(APIView):
         if condition:
             qs = qs.filter(condition=condition)
 
-        date_from = request.query_params.get('date_from')
-        if date_from:
-            qs = qs.filter(submitted_at__date__gte=date_from)
-
-        date_to = request.query_params.get('date_to')
-        if date_to:
-            qs = qs.filter(submitted_at__date__lte=date_to)
-
-        submitted_by = request.query_params.get('submitted_by')
-        if submitted_by:
-            qs = qs.filter(submitted_by__icontains=submitted_by)
+        query = request.query_params.get('q')
+        if query:
+            qs = qs.filter(
+                Q(tracking_id__icontains=query)
+                | Q(local_name__icontains=query)
+                | Q(scientific_name__icontains=query)
+                | Q(variety__name__icontains=query)
+                | Q(zone__icontains=query)
+                | Q(location_notes__icontains=query)
+            )
 
         csv_data = records_to_csv(qs)
         response = HttpResponse(csv_data, content_type='text/csv')

@@ -68,13 +68,11 @@ export default function GeoTrackerPage() {
   const [deleting, setDeleting] = useState(false)
 
   const [filters, setFilters] = useState({
+    q: '',
     plant_type: '',
     variety: '',
     zone: '',
     condition: '',
-    date_from: '',
-    date_to: '',
-    submitted_by: '',
   })
   const [filtersOpen, setFiltersOpen] = useState(false)
 
@@ -163,8 +161,6 @@ export default function GeoTrackerPage() {
           <table style="font-size:12px;width:100%;border-collapse:collapse">
             ${r.height_m ? `<tr><td style="color:#6b7280;padding:2px 0">Height</td><td style="font-weight:600;padding:2px 0 2px 8px">${r.height_m} m</td></tr>` : ''}
             ${r.girth_cm ? `<tr><td style="color:#6b7280;padding:2px 0">Girth</td><td style="font-weight:600;padding:2px 0 2px 8px">${r.girth_cm} cm</td></tr>` : ''}
-            ${r.canopy_spread_m ? `<tr><td style="color:#6b7280;padding:2px 0">Canopy</td><td style="font-weight:600;padding:2px 0 2px 8px">${r.canopy_spread_m} m</td></tr>` : ''}
-            <tr><td style="color:#6b7280;padding:2px 0">By</td><td style="font-weight:600;padding:2px 0 2px 8px">${r.submitted_by}</td></tr>
           </table>
           ${r.photo_url ? `<img src="${r.photo_url}" style="width:100%;border-radius:6px;margin-top:8px;max-height:120px;object-fit:cover">` : ''}
         </div>
@@ -189,7 +185,7 @@ export default function GeoTrackerPage() {
   }
 
   function clearFilters() {
-    setFilters({ plant_type: '', variety: '', zone: '', condition: '', date_from: '', date_to: '', submitted_by: '' })
+    setFilters({ q: '', plant_type: '', variety: '', zone: '', condition: '' })
   }
 
   function handleExport() {
@@ -256,6 +252,15 @@ export default function GeoTrackerPage() {
             <StatChip label="Creepers" value={stats.creepers || 0} color={TYPE_CONFIG.creeper.color} bg={TYPE_CONFIG.creeper.bg} />
           </div>
         )}
+
+        <input
+          type="search"
+          aria-label="Search plant records"
+          placeholder="Search ID, name, botanical name, location..."
+          value={filters.q}
+          onChange={e => handleFilterChange('q', e.target.value)}
+          style={{ ...inputStyle, width: 'min(320px, 100%)' }}
+        />
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button
@@ -361,18 +366,6 @@ export default function GeoTrackerPage() {
               <option value="poor">Poor</option>
               <option value="dead">Dead</option>
             </select>
-          </div>
-          <div>
-            <label style={labelStyle}>From Date</label>
-            <input type="date" style={inputStyle} value={filters.date_from} onChange={e => handleFilterChange('date_from', e.target.value)} />
-          </div>
-          <div>
-            <label style={labelStyle}>To Date</label>
-            <input type="date" style={inputStyle} value={filters.date_to} onChange={e => handleFilterChange('date_to', e.target.value)} />
-          </div>
-          <div>
-            <label style={labelStyle}>Submitted By</label>
-            <input type="text" style={inputStyle} placeholder="Name / staff ID" value={filters.submitted_by} onChange={e => handleFilterChange('submitted_by', e.target.value)} />
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end' }}>
             <button
@@ -483,10 +476,7 @@ export default function GeoTrackerPage() {
               ['Condition', selectedRecord.condition_display],
               ['Height', selectedRecord.height_m ? `${selectedRecord.height_m} m` : null],
               ['Girth', selectedRecord.girth_cm ? `${selectedRecord.girth_cm} cm` : null],
-              ['Canopy', selectedRecord.canopy_spread_m ? `${selectedRecord.canopy_spread_m} m` : null],
               ['Location', selectedRecord.location_notes],
-              ['Submitted by', selectedRecord.submitted_by],
-              ['Date', selectedRecord.submitted_at ? new Date(selectedRecord.submitted_at).toLocaleDateString('en-IN') : null],
               ['Lat / Lng', `${selectedRecord.lat?.toFixed(5)}, ${selectedRecord.lng?.toFixed(5)}`],
             ].map(([k, v]) => v ? (
               <div key={k} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>

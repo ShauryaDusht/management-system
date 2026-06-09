@@ -14,9 +14,9 @@ class PlantVarietyAdmin(admin.ModelAdmin):
 class PlantRecordAdmin(admin.ModelAdmin):
     list_display = [
         'tracking_id', 'local_name', 'plant_type', 'zone',
-        'condition', 'submitted_by', 'submitted_at',
+        'condition', 'submitted_at',
     ]
     list_filter = ['plant_type', 'condition', 'zone']
-    search_fields = ['tracking_id', 'local_name', 'scientific_name', 'submitted_by', 'zone']
+    search_fields = ['tracking_id', 'local_name', 'scientific_name', 'zone']
     readonly_fields = ['tracking_id', 'submitted_at']
     ordering = ['-submitted_at']
