@@ -20,6 +20,8 @@ export default function OverviewTab({ readOnly = false, hostelOnly = false }) {
   const [trendLoading, setTrendLoading] = useState(true)
 
   const [assignArea, setAssignArea] = useState(null)
+  const [assignWorkers, setAssignWorkers] = useState([])
+  const [assignWorkersLoading, setAssignWorkersLoading] = useState(false)
   const [assignSaving, setAssignSaving] = useState(false)
   const [promoteSaving, setPromoteSaving] = useState(false)
   const [pendingPromotion, setPendingPromotion] = useState(null)
@@ -31,6 +33,7 @@ export default function OverviewTab({ readOnly = false, hostelOnly = false }) {
     add_to_daily: false,
     requires_photo: false,
     note: '',
+    worker_ids: [],
   })
 
   const load = useCallback(async ({ silent = false } = {}) => {
@@ -202,7 +205,21 @@ export default function OverviewTab({ readOnly = false, hostelOnly = false }) {
       add_to_daily: false,
       requires_photo: false,
       note: '',
+      worker_ids: [],
     })
+    setAssignWorkers([])
+    setAssignWorkersLoading(true)
+    hkAPI.getWorkers(row.area_id)
+      .then(({ data }) => {
+        const list = Array.isArray(data) ? data : data?.results || []
+        setAssignWorkers(list)
+      })
+      .catch(() => {
+        setAssignWorkers([])
+      })
+      .finally(() => {
+        setAssignWorkersLoading(false)
+      })
   }
 
   const submitAssignTask = async () => {
@@ -224,6 +241,7 @@ export default function OverviewTab({ readOnly = false, hostelOnly = false }) {
         add_to_daily: !!assignForm.add_to_daily,
         requires_photo: !!assignForm.requires_photo,
         note: assignForm.note.trim(),
+        worker_ids: assignForm.task_mode === 'temporary' ? assignForm.worker_ids : [],
       })
       setAssignArea(null)
       const rec = data?.record || null
@@ -491,6 +509,7 @@ export default function OverviewTab({ readOnly = false, hostelOnly = false }) {
                 ...p,
                 task_mode: e.target.value,
                 add_to_daily: e.target.value === 'temporary' ? false : p.add_to_daily,
+                worker_ids: e.target.value === 'temporary' ? p.worker_ids : [],
               }))
             }
           >
@@ -519,6 +538,63 @@ export default function OverviewTab({ readOnly = false, hostelOnly = false }) {
             />
             Add to Daily Schedule now
           </label>
+        ) : null}
+
+        {assignForm.task_mode === 'temporary' ? (
+          <Field label="Workers">
+            {assignWorkersLoading ? (
+              <div style={{ padding: '10px 0' }}><Spinner /></div>
+            ) : assignWorkers.length ? (
+              <div
+                style={{
+                  maxHeight: 180,
+                  overflow: 'auto',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  background: '#fff',
+                }}
+              >
+                {assignWorkers.map((worker) => {
+                  const checked = assignForm.worker_ids.includes(worker.id)
+                  return (
+                    <label
+                      key={worker.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '9px 10px',
+                        borderBottom: '1px solid var(--border)',
+                        fontSize: 13,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          setAssignForm((p) => ({
+                            ...p,
+                            worker_ids: e.target.checked
+                              ? [...p.worker_ids, worker.id]
+                              : p.worker_ids.filter((id) => id !== worker.id),
+                          }))
+                        }}
+                      />
+                      <span style={{ fontWeight: 700 }}>{worker.name}</span>
+                      <span style={{ color: 'var(--text-3)', fontSize: 12, textTransform: 'capitalize' }}>
+                        {String(worker.worker_type || '').replace(/_/g, ' ')}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                No active workers found for this area.
+              </div>
+            )}
+          </Field>
         ) : null}
 
         <Field label="Notes (Optional)">

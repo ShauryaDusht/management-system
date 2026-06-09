@@ -45,6 +45,7 @@ from .models import (
     HKScheduleTemplate,
     HKStockRequest,
     HKTemporaryStaffAreaAssignment,
+    HKTaskWorkerAssignment,
     HKUserArea,
     HKWorker,
     HKWorkerSelectionRequest,
@@ -274,7 +275,7 @@ class HKAreaListCreateView(ListCreateAPIView):
 
 
 class HKAreaDetailView(APIView):
-    permission_classes = [IsAdminOrHousekeepingManager]
+    permission_classes = [IsAdminOnly]
 
     def get_object(self, pk):
         qs = _scope_areas_for_user(HKArea.objects, self.request.user).filter(is_active=True)
@@ -282,10 +283,7 @@ class HKAreaDetailView(APIView):
 
     def delete(self, request, pk):
         area = self.get_object(pk)
-        blockers = {
-            'assigned staff': area.assigned_users.count(),
-            'active workers': area.workers.filter(is_active=True).count(),
-            'schedule templates': area.schedule_templates.count(),
+        hard_blockers = {
             'daily records': area.daily_records.count(),
             'extra work records': area.extra_works.count(),
             'stock records': area.area_stocks.count(),
@@ -301,7 +299,11 @@ class HKAreaDetailView(APIView):
             'incharge assignments': area.incharge_assignments.count(),
             'alerts': HKAlert.objects.filter(target_areas=area).count(),
         }
-        active_blockers = {label: count for label, count in blockers.items() if count}
+        active_workers = area.workers.filter(is_active=True).count()
+        if active_workers:
+            hard_blockers['active workers'] = active_workers
+
+        active_blockers = {label: count for label, count in hard_blockers.items() if count}
         if active_blockers:
             details = ', '.join(f'{count} {label}' for label, count in active_blockers.items())
             return Response(
@@ -315,7 +317,10 @@ class HKAreaDetailView(APIView):
                 status=400,
             )
 
-        area.delete()
+        with transaction.atomic():
+            area.assigned_users.all().delete()
+            area.schedule_templates.all().delete()
+            area.delete()
         return Response(status=204)
 
 
@@ -1419,7 +1424,11 @@ class HKDailyRecordListView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = HKDailyRecord.objects.select_related('schedule', 'area', 'assigned_worker', 'assigned_by')
+        qs = (
+            HKDailyRecord.objects
+            .select_related('schedule', 'area', 'assigned_worker', 'assigned_by')
+            .prefetch_related('worker_assignments__worker')
+        )
         if _is_hostel_office(self.request.user):
             qs = qs.filter(area_id__in=_hostel_area_ids())
         area = self.request.query_params.get('area')
@@ -1665,6 +1674,24 @@ class HKAssignAreaTaskView(APIView):
         requires_photo = requires_photo_raw in {'1', 'true', 'yes', 'on'}
         add_to_daily_raw = str(request.data.get('add_to_daily', '')).strip().lower()
         add_to_daily = add_to_daily_raw in {'1', 'true', 'yes', 'on'}
+        raw_worker_ids = request.data.get('worker_ids') or []
+        if raw_worker_ids and not isinstance(raw_worker_ids, (list, tuple)):
+            return Response({'detail': 'worker_ids must be a list.'}, status=400)
+
+        selected_workers = []
+        if task_mode == 'temporary' and raw_worker_ids:
+            try:
+                worker_ids = [int(wid) for wid in raw_worker_ids]
+            except (TypeError, ValueError):
+                return Response({'detail': 'worker_ids must contain numeric ids only.'}, status=400)
+            unique_worker_ids = list(dict.fromkeys(worker_ids))
+            selected_workers = list(
+                HKWorker.objects
+                .filter(pk__in=unique_worker_ids, area=area, is_active=True)
+                .order_by('name')
+            )
+            if len(selected_workers) != len(unique_worker_ids):
+                return Response({'detail': 'Please select only active workers from this area.'}, status=400)
 
         now = timezone.localtime()
         start_dt = now.replace(second=0, microsecond=0)
@@ -1697,6 +1724,7 @@ class HKAssignAreaTaskView(APIView):
             requires_photo=requires_photo,
             frequency='daily',
             is_active=is_active,
+            is_optional_weekend_task=bool(task_mode == 'temporary'),
         )
 
         record = HKDailyRecord.objects.create(
@@ -1705,10 +1733,23 @@ class HKAssignAreaTaskView(APIView):
             area=area,
             date=timezone.localdate(),
             status='pending',
+            assigned_worker=selected_workers[0] if selected_workers else None,
             assigned_by=request.user,
             assigned_at=timezone.now(),
             note=note,
         )
+        if selected_workers:
+            HKTaskWorkerAssignment.objects.bulk_create(
+                [
+                    HKTaskWorkerAssignment(
+                        daily_record=record,
+                        worker=worker,
+                        assigned_by=request.user,
+                    )
+                    for worker in selected_workers
+                ],
+                ignore_conflicts=True,
+            )
 
         return Response(
             {

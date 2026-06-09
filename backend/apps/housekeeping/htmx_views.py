@@ -1417,10 +1417,13 @@ def can_multi_worker_task(user, record):
     ):
         return False
 
-    # Keep Research Park on the existing single-worker flow. Other supervisor
-    # and caretaker areas can assign a team, matching the SWM/Ashok workflow.
     if record.area.area_type == "research_park":
-        return False
+        desc = record.schedule.task_description or ""
+        return bool(
+            getattr(record.schedule, "is_optional_weekend_task", False)
+            or not getattr(record.schedule, "is_active", True)
+            or "mode=temporary" in desc
+        )
 
     return bool(
         record.area.area_type in {
@@ -1987,7 +1990,7 @@ def hk_dashboard(request):
 
     is_common_area = area_name == "Hostel Common Area"
     is_research_park = area_name == "Research Park"
-    extra_worker_name_mode = is_research_park or user.username == "pradip.chauhan"
+    extra_worker_name_mode = user.username == "pradip.chauhan"
     is_central_arcade = area_name == "Central Arcade"
     is_sports_complex = area_name == "Sports Complex"
     is_guest_house_new = area_name == "Guest House New"
@@ -2864,7 +2867,7 @@ def hk_log_extra_work(request):
         return redirect(f"/housekeeping/dashboard/{param}")
 
     is_research_park = area.area_type == "research_park"
-    extra_worker_name_mode = is_research_park or user.username == "pradip.chauhan"
+    extra_worker_name_mode = user.username == "pradip.chauhan"
     selected_workers = []
     worker_name = request.POST.get("worker_name", "").strip()
     if extra_worker_name_mode and not is_research_park and not worker_name:

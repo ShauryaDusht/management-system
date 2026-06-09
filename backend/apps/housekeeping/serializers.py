@@ -84,6 +84,7 @@ class HKDailyRecordSerializer(serializers.ModelSerializer):
     worker_tag = serializers.CharField(source='schedule.worker_tag', read_only=True)
     area_name = serializers.CharField(source='area.name', read_only=True)
     assigned_worker_name = serializers.CharField(source='assigned_worker.name', read_only=True, default='')
+    assigned_worker_names = serializers.SerializerMethodField()
     assigned_by_name = serializers.SerializerMethodField()
     photo_before_url = serializers.SerializerMethodField()
     photo_after_url = serializers.SerializerMethodField()
@@ -101,6 +102,7 @@ class HKDailyRecordSerializer(serializers.ModelSerializer):
             'worker_tag',
             'assigned_worker',
             'assigned_worker_name',
+            'assigned_worker_names',
             'assigned_by_name',
             'assigned_at',
             'started_at',
@@ -122,6 +124,20 @@ class HKDailyRecordSerializer(serializers.ModelSerializer):
         if obj.assigned_by:
             return obj.assigned_by.get_full_name() or obj.assigned_by.username
         return ''
+
+    def get_assigned_worker_names(self, obj):
+        assignments = getattr(obj, 'worker_assignments', None)
+        if assignments is not None:
+            names = [
+                assignment.worker.name
+                for assignment in assignments.all()
+                if getattr(assignment, 'worker', None)
+            ]
+            if names:
+                return names
+        if obj.assigned_worker:
+            return [obj.assigned_worker.name]
+        return []
 
     def get_photo_before_url(self, obj):
         return image_field_url(self.context.get('request'), obj.photo_before)

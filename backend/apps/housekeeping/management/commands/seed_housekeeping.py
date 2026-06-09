@@ -2072,6 +2072,24 @@ Existing account passwords are preserved.
                 )
                 total += 1
 
+            for order, start, end, name, req_photo, is_optional_weekend_task in rp_saturday_special:
+                if is_optional_weekend_task or 'Break' in name:
+                    continue
+                for offset, worker_tag, floor_label in (
+                    (100, 'room', '2nd Floor'),
+                    (200, 'washroom', '3rd Floor'),
+                ):
+                    HKScheduleTemplate.objects.create(
+                        area=research_park, order=order + offset,
+                        start_time=t(start), end_time=t(end),
+                        task_name=f'{floor_label}: {name}',
+                        task_description='Saturday permanent coverage copied from ground-floor Saturday plan.',
+                        worker_tag=worker_tag, requires_photo=req_photo,
+                        frequency='saturday_special', is_active=True,
+                        is_optional_weekend_task=False,
+                    )
+                    total += 1
+
             for order, start, end, name, req_photo in rp_sunday_extra:
                 HKScheduleTemplate.objects.create(
                     area=research_park, order=order,

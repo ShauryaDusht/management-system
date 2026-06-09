@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
+import { useAuth } from '../../context/AuthContext'
 import { getAreaGroup, getErrorMessage } from '../../shared/utils'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 import {
@@ -85,6 +86,7 @@ function daysLabel(freq) {
 }
 
 export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
+  const { user } = useAuth()
   const [areas, setAreas] = useState([])
   const [templates, setTemplates] = useState([])
   const [loading, setLoading] = useState(true)
@@ -103,6 +105,7 @@ export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
   const [areaForm, setAreaForm] = useState(EMPTY_AREA_FORM)
   const [areaFormError, setAreaFormError] = useState('')
   const [areaSaving, setAreaSaving] = useState(false)
+  const canDeleteAreas = user?.role === 'admin' && !readOnly && !hostelOnly
 
   const load = async () => {
     setLoading(true)
@@ -570,7 +573,7 @@ export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
                 <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
                   {group.rows.length} template{group.rows.length === 1 ? '' : 's'}
                 </span>
-                {!readOnly && !hostelOnly && (
+                {canDeleteAreas && (
                   <Btn
                     size="sm"
                     variant="danger"
@@ -861,8 +864,9 @@ export default function ScheduleTab({ readOnly = false, hostelOnly = false }) {
         open={!!areaDeleteTarget}
         title="Delete Area"
         message={
-          `Warning: this will permanently delete the area "${areaDeleteTarget?.areaName || ''}". `
-          + `It is allowed only when the area has no linked staff, workers, schedule templates, records, stock, requests, or alerts. `
+          `ADMIN WARNING: this will permanently delete "${areaDeleteTarget?.areaName || ''}". `
+          + `Staff links and schedule templates for this area will also be removed. `
+          + `Deletion is blocked if the area has workers, daily records, stock, reports, leave/incharge records, alerts, or other history. `
           + `This area currently shows ${areaDeleteTarget?.rows?.length || 0} schedule template${areaDeleteTarget?.rows?.length === 1 ? '' : 's'} in this tab.`
         }
         confirmLabel={areaSaving ? 'Deleting...' : 'Delete Area'}
