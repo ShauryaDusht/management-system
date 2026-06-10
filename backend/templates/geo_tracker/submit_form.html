@@ -153,7 +153,7 @@ select option[disabled]{color:#9ca3af}
     {% csrf_token %}
 
     <!-- Plant Type (hidden, set by variety select) -->
-    <div class="card" style="display:none">
+    <div class="card">
       <div class="sec-title">Plant Type</div>
       <div class="type-grid">
         <label class="type-opt">
@@ -166,7 +166,7 @@ select option[disabled]{color:#9ca3af}
         </label>
         <label class="type-opt">
           <input type="radio" name="plant_type_display" value="creeper">
-          <span class="type-label creeper"><span class="type-emoji">C</span>Creeper</span>
+          <span class="type-label creeper"><span class="type-emoji">🌱</span>Creeper</span>
         </label>
       </div>
     </div>
@@ -241,11 +241,6 @@ select option[disabled]{color:#9ca3af}
           {% endfor %}
         </select>
       </div>
-
-      <div class="fg">
-        <label class="required" for="location_notes">Location description</label>
-        <input type="text" id="location_notes" name="location_notes" required placeholder="Near main gate, behind library...">
-      </div>
     </div>
 
     <!-- Measurements -->
@@ -287,7 +282,7 @@ select option[disabled]{color:#9ca3af}
       <div class="sec-title">Photo</div>
       <div class="fg">
         <label for="photo">Capture / Upload Photo</label>
-        <input type="file" id="photo" name="photo" accept="image/*" capture="environment">
+        <input type="file" id="photo" name="photo" accept="image/*" capture="environment" required>
         <img id="photoPreview" class="photo-preview" alt="Preview">
       </div>
     </div>
@@ -306,7 +301,21 @@ var varietySelect = document.getElementById('variety');
 var plantTypeInput = document.getElementById('plant_type');
 
 function syncVarietyOptions() {
-  Array.prototype.forEach.call(varietySelect.options, function(o){ o.hidden = false; });
+  var selectedRadio = document.querySelector(
+    'input[name="plant_type_display"]:checked'
+  );
+
+  var selectedType = selectedRadio ? selectedRadio.value : '';
+
+  Array.prototype.forEach.call(varietySelect.options, function(o) {
+    if (!o.value) return;
+
+    var optionType = o.getAttribute('data-type');
+
+    o.hidden = selectedType
+      ? optionType !== selectedType
+      : false;
+  });
 }
 varietySelect.addEventListener('change', function() {
   var sel = this.options[this.selectedIndex];
@@ -317,12 +326,29 @@ varietySelect.addEventListener('change', function() {
   if (type) {
     plantTypeInput.value = type;
     var r = document.querySelector('input[type="radio"][name="plant_type_display"][value="'+type+'"]');
-    if (r) r.checked = true;
+    if (r) {
+      r.checked = true;
+      syncVarietyOptions();
+    }
   }
   if (name) document.getElementById('local_name').value = name;
   if (sci)  document.getElementById('scientific_name').value = sci;
   syncVarietyOptions();
 });
+document.querySelectorAll('input[name="plant_type_display"]')
+  .forEach(function(radio) {
+    radio.addEventListener('change', function() {
+
+      plantTypeInput.value = this.value;
+
+      varietySelect.selectedIndex = 0;
+
+      document.getElementById('scientific_name').value = '';
+      document.getElementById('local_name').value = '';
+
+      syncVarietyOptions();
+    });
+  });
 syncVarietyOptions();
 
 // ── GPS Averaging Engine ──────────────────────────────────────────────────

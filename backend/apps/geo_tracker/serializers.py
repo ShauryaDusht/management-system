@@ -17,7 +17,7 @@ class PlantRecordSerializer(serializers.ModelSerializer):
     plant_type_display = serializers.CharField(source='get_plant_type_display', read_only=True)
     condition_display = serializers.CharField(source='get_condition_display', read_only=True)
     # Human-readable campus area label exposed as a dedicated display field.
-    zone_display = serializers.CharField(source='get_zone_display', read_only=True)
+    zone_display = serializers.CharField(source='get_zone_display',read_only=True)
     photo_url = serializers.SerializerMethodField()
     lat = serializers.FloatField(read_only=True)
     lng = serializers.FloatField(read_only=True)
@@ -55,7 +55,7 @@ class PlantRecordCreateSerializer(serializers.ModelSerializer):
         model = PlantRecord
         fields = [
             'plant_type', 'local_name', 'scientific_name', 'variety',
-            'latitude', 'longitude', 'zone', 'location_notes',
+            'latitude', 'longitude', 'zone',
             'height_m', 'girth_cm', 'canopy_area_m',
             'condition', 'photo', 'notes', 'gps_accuracy_m',
         ]

@@ -154,7 +154,7 @@ export default function GeoTrackerPage() {
           ${r.scientific_name ? `<div style="font-size:11px;font-style:italic;color:#6b7280;margin-bottom:6px">${r.scientific_name}</div>` : ''}
           <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
             <span style="background:${cfg.bg};color:${cfg.color};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">${cfg.label}</span>
-            ${r.zone ? `<span style="background:#f3f4f6;color:#374151;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">${r.zone}</span>` : ''}
+            ${r.zone ? `<span style="background:#f3f4f6;color:#374151;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">${r.zone_display || r.zone}</span>` : ''}
             <span style="background:${CONDITION_COLORS[r.condition]}22;color:${CONDITION_COLORS[r.condition]};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">${r.condition_display}</span>
           </div>
           <table style="font-size:12px;width:100%;border-collapse:collapse">
@@ -351,7 +351,9 @@ export default function GeoTrackerPage() {
             <select style={inputStyle} value={filters.zone} onChange={e => handleFilterChange('zone', e.target.value)}>
               <option value="">All zones</option>
               {zones.map(z => (
-                <option key={z} value={z}>{z}</option>
+                <option key={z.value} value={z.value}>
+                  {z.label}
+                </option>
               ))}
             </select>
           </div>
@@ -471,7 +473,7 @@ export default function GeoTrackerPage() {
               ['ID', selectedRecord.tracking_id],
               ['Type', selectedRecord.plant_type_display],
               ['Variety', selectedRecord.variety_name],
-              ['Zone', selectedRecord.zone],
+              ['Zone', selectedRecord.zone_display || selectedRecord.zone],
               ['Condition', selectedRecord.condition_display],
               ['Height', selectedRecord.height_m ? `${selectedRecord.height_m} m` : null],
               ['Girth', selectedRecord.girth_cm ? `${selectedRecord.girth_cm} cm` : null],

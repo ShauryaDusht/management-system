@@ -64,7 +64,6 @@ class PlantRecord(models.Model):
         blank=True,
         help_text='Campus area / zone',
     )
-    location_notes = models.CharField(max_length=300, blank=True)
 
     # Physical measurements
     height_m = models.DecimalField(
