@@ -29,7 +29,7 @@ class PlantRecordSerializer(serializers.ModelSerializer):
             'variety', 'variety_name',
             'latitude', 'longitude', 'lat', 'lng',
             'zone', 'location_notes',
-            'height_m', 'girth_cm',
+            'height_m', 'girth_cm', 'canopy_area_m',
             'condition', 'condition_display',
             'photo_url',
             'notes', 'gps_accuracy_m',
@@ -54,7 +54,7 @@ class PlantRecordCreateSerializer(serializers.ModelSerializer):
         fields = [
             'plant_type', 'local_name', 'scientific_name', 'variety',
             'latitude', 'longitude', 'zone', 'location_notes',
-            'height_m', 'girth_cm',
+            'height_m', 'girth_cm', 'canopy_area_m',
             'condition', 'photo', 'notes', 'gps_accuracy_m',
         ]
         read_only_fields = ['plant_type', 'local_name', 'scientific_name']
@@ -77,7 +77,7 @@ def records_to_csv(queryset):
     writer.writerow([
         'ID', 'Type', 'Local Name', 'Scientific Name', 'Variety',
         'Latitude', 'Longitude', 'Zone', 'Location Notes',
-        'Height (m)', 'Girth (cm)',
+        'Height (m)', 'Girth (cm)', 'Canopy Span (m)',
         'Condition', 'Notes', 'GPS Accuracy (m)', 'Submitted At',
     ])
     for r in queryset:
@@ -93,6 +93,7 @@ def records_to_csv(queryset):
             r.location_notes,
             r.height_m or '',
             r.girth_cm or '',
+            r.canopy_area_m or '',
             r.get_condition_display(),
             r.notes,
             r.gps_accuracy_m or '',
