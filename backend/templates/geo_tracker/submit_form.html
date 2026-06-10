@@ -91,7 +91,7 @@ select option[disabled]{color:#9ca3af}
     {% csrf_token %}
 
     <!-- Plant Type -->
-    <div class="card" style="display:none">
+    <div class="card">
       <div class="sec-title">Plant Type</div>
       <div class="type-grid">
         <label class="type-opt">
@@ -109,7 +109,7 @@ select option[disabled]{color:#9ca3af}
         <label class="type-opt">
           <input type="radio" name="plant_type_display" value="creeper">
           <span class="type-label creeper">
-            <span class="type-emoji">C</span>Creeper
+            <span class="type-emoji">🌱</span>Creeper
           </span>
         </label>
       </div>
@@ -214,9 +214,24 @@ var varietySelect = document.getElementById('variety');
 var plantTypeInput = document.getElementById('plant_type');
 
 function syncVarietyOptions() {
+  var selectedType = '';
+  var radios = document.querySelectorAll('input[name="plant_type_display"]');
+  radios.forEach(function(r) { if (r.checked) selectedType = r.value; });
+
   Array.prototype.forEach.call(varietySelect.options, function(option) {
-    option.hidden = false;
+    if (!option.value) return; // keep the placeholder
+    var optType = option.getAttribute('data-type');
+    option.hidden = selectedType ? (optType !== selectedType) : false;
   });
+
+  // If current selection is hidden, reset it
+  var current = varietySelect.options[varietySelect.selectedIndex];
+  if (current && current.hidden) {
+    varietySelect.value = '';
+    plantTypeInput.value = selectedType;
+    document.getElementById('local_name').value = '';
+    document.getElementById('scientific_name').value = '';
+  }
 }
 
 varietySelect.addEventListener('change', function() {
@@ -237,10 +252,21 @@ varietySelect.addEventListener('change', function() {
   syncVarietyOptions();
 });
 
+// Filter varieties when a plant type radio is selected
+document.querySelectorAll('input[name="plant_type_display"]').forEach(function(radio) {
+  radio.addEventListener('change', function() {
+    plantTypeInput.value = this.value;
+    varietySelect.value = '';
+    document.getElementById('local_name').value = '';
+    document.getElementById('scientific_name').value = '';
+    syncVarietyOptions();
+  });
+});
+
 syncVarietyOptions();
 
-// GPS
-document.getElementById('gpsBtn').addEventListener('click', function() {
+// GPS — request permission on load with clear messaging
+function requestGPS(isUserTriggered) {
   var status = document.getElementById('gpsStatus');
   status.textContent = 'Getting location…';
   status.className = 'gps-status';
@@ -257,13 +283,29 @@ document.getElementById('gpsBtn').addEventListener('click', function() {
       status.className = 'gps-status ok';
     },
     function(err) {
-      status.textContent = 'Could not get location: ' + err.message;
+      if (err.code === 1) {
+        // PERMISSION_DENIED
+        status.textContent = '⚠ Location access denied. Tap GPS to try again or enter coordinates manually.';
+      } else if (err.code === 2) {
+        status.textContent = '⚠ Location unavailable. Please check your GPS signal.';
+      } else {
+        status.textContent = '⚠ Location timed out. Tap GPS to retry.';
+      }
       status.className = 'gps-status err';
     },
-    { enableHighAccuracy: true, timeout: 10000 }
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
   );
-});
-document.getElementById('gpsBtn').click();
+}
+
+document.getElementById('gpsBtn').addEventListener('click', function() { requestGPS(true); });
+
+// Auto-request on page load
+if (navigator.geolocation) {
+  var status = document.getElementById('gpsStatus');
+  status.textContent = '📍 Requesting location permission…';
+  status.className = 'gps-status';
+  requestGPS(false);
+}
 
 // Photo preview
 document.getElementById('photo').addEventListener('change', function(e) {

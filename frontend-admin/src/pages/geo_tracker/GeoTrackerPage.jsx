@@ -5,12 +5,11 @@ import { geoApi } from '../../api/geoTracker'
 import AdminLayout from '../../layout/AdminLayout'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 
-// Leaflet is loaded via CDN in index.html — accessed as L
 // Colors per plant type
 const TYPE_CONFIG = {
-  tree: { color: '#16a34a', bg: '#dcfce7', label: 'Tree', emoji: 'T' },
-  plant: { color: '#7c3aed', bg: '#ede9fe', label: 'Plant', emoji: 'P' },
-  creeper: { color: '#0284c7', bg: '#e0f2fe', label: 'Creeper', emoji: 'C' },
+  tree: { color: '#16a34a', bg: '#dcfce7', label: 'Tree', emoji: '🌳' },
+  plant: { color: '#7c3aed', bg: '#ede9fe', label: 'Plant', emoji: '🌿' },
+  creeper: { color: '#0284c7', bg: '#e0f2fe', label: 'Creeper', emoji: '🌱' },
 }
 
 const CONDITION_COLORS = {
@@ -335,7 +334,7 @@ export default function GeoTrackerPage() {
               <option value="">All types</option>
               <option value="tree">🌳 Tree</option>
               <option value="plant">🌿 Plant</option>
-              <option value="creeper">C Creeper</option>
+              <option value="creeper">🌱 Creeper</option>
             </select>
           </div>
           <div>
