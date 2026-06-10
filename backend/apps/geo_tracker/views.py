@@ -11,11 +11,12 @@ from rest_framework.views import APIView
 
 from apps.users.permissions import IsAdminOrHKInventoryOrHorticultureManager
 
-from .models import PlantRecord, PlantVariety
+from .models import CampusArea, PlantRecord, PlantVariety
 from .serializers import (
     PlantRecordSerializer,
     PlantRecordCreateSerializer,
     PlantVarietySerializer,
+    campus_area_choices,
     records_to_csv,
 )
 
@@ -29,6 +30,7 @@ def geo_submit_form(request):
     varieties = PlantVariety.objects.all().order_by('plant_type', 'name')
     return render(request, 'geo_tracker/submit_form.html', {
         'varieties': varieties,
+        'campus_areas': campus_area_choices(),
     })
 
 
@@ -81,7 +83,7 @@ class GeoTrackerRecordsView(APIView):
 
         zone = request.query_params.get('zone')
         if zone:
-            qs = qs.filter(zone__iexact=zone)
+            qs = qs.filter(zone=zone)
 
         condition = request.query_params.get('condition')
         if condition:
@@ -94,7 +96,6 @@ class GeoTrackerRecordsView(APIView):
                 | Q(local_name__icontains=query)
                 | Q(scientific_name__icontains=query)
                 | Q(variety__name__icontains=query)
-                | Q(zone__icontains=query)
                 | Q(location_notes__icontains=query)
             )
 
@@ -138,7 +139,7 @@ class GeoTrackerExportCSVView(APIView):
 
         zone = request.query_params.get('zone')
         if zone:
-            qs = qs.filter(zone__iexact=zone)
+            qs = qs.filter(zone=zone)
 
         condition = request.query_params.get('condition')
         if condition:
@@ -151,7 +152,6 @@ class GeoTrackerExportCSVView(APIView):
                 | Q(local_name__icontains=query)
                 | Q(scientific_name__icontains=query)
                 | Q(variety__name__icontains=query)
-                | Q(zone__icontains=query)
                 | Q(location_notes__icontains=query)
             )
 
@@ -174,18 +174,19 @@ class GeoTrackerVarietiesView(APIView):
 
 
 class GeoTrackerZonesView(APIView):
-    """Return distinct zone values present in records."""
+    """Return the full CampusArea choice list as {value, label} objects.
+
+    The response is now the *canonical* fixed list rather than whatever
+    distinct strings happen to exist in the database.  This lets the frontend
+    populate a dropdown without needing to fetch records first.
+    """
     permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
 
     def get(self, request):
-        zones = (
-            PlantRecord.objects
-            .exclude(zone='')
-            .values_list('zone', flat=True)
-            .distinct()
-            .order_by('zone')
-        )
-        return Response(list(zones))
+        return Response([
+            {'value': value, 'label': label}
+            for value, label in campus_area_choices()
+        ])
 
 
 class GeoTrackerStatsView(APIView):

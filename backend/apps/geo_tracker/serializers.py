@@ -3,7 +3,7 @@ import io
 
 from rest_framework import serializers
 
-from .models import PlantRecord, PlantVariety
+from .models import CampusArea, PlantRecord, PlantVariety
 
 
 class PlantVarietySerializer(serializers.ModelSerializer):
@@ -16,6 +16,8 @@ class PlantRecordSerializer(serializers.ModelSerializer):
     variety_name = serializers.CharField(source='variety.name', read_only=True)
     plant_type_display = serializers.CharField(source='get_plant_type_display', read_only=True)
     condition_display = serializers.CharField(source='get_condition_display', read_only=True)
+    # Human-readable campus area label exposed as a dedicated display field.
+    zone_display = serializers.CharField(source='get_zone_display', read_only=True)
     photo_url = serializers.SerializerMethodField()
     lat = serializers.FloatField(read_only=True)
     lng = serializers.FloatField(read_only=True)
@@ -28,7 +30,7 @@ class PlantRecordSerializer(serializers.ModelSerializer):
             'local_name', 'scientific_name',
             'variety', 'variety_name',
             'latitude', 'longitude', 'lat', 'lng',
-            'zone', 'location_notes',
+            'zone', 'zone_display', 'location_notes',
             'height_m', 'girth_cm', 'canopy_area_m',
             'condition', 'condition_display',
             'photo_url',
@@ -58,7 +60,11 @@ class PlantRecordCreateSerializer(serializers.ModelSerializer):
             'condition', 'photo', 'notes', 'gps_accuracy_m',
         ]
         read_only_fields = ['plant_type', 'local_name', 'scientific_name']
-        extra_kwargs = {'variety': {'required': True, 'allow_null': False}}
+        extra_kwargs = {
+            'variety': {'required': True, 'allow_null': False},
+            # zone is required from the mobile form
+            'zone': {'required': True, 'allow_blank': False},
+        }
 
     def create(self, validated_data):
         variety = validated_data['variety']
@@ -70,13 +76,30 @@ class PlantRecordCreateSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+# ---------------------------------------------------------------------------
+# Campus-area choices helper (used by views / templates)
+# ---------------------------------------------------------------------------
+
+def campus_area_choices():
+    """Return list of (value, label) tuples for all CampusArea values."""
+    return CampusArea.choices
+
+
+# ---------------------------------------------------------------------------
+# CSV export
+# ---------------------------------------------------------------------------
+
 def records_to_csv(queryset):
-    """Return a CSV string for the given PlantRecord queryset."""
+    """Return a CSV string for the given PlantRecord queryset.
+
+    The human-readable campus area label (e.g. "Housing Zone") is exported
+    rather than the internal key (e.g. "housing_zone").
+    """
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow([
         'ID', 'Type', 'Local Name', 'Scientific Name', 'Variety',
-        'Latitude', 'Longitude', 'Zone', 'Location Notes',
+        'Latitude', 'Longitude', 'Campus Area', 'Location Notes',
         'Height (m)', 'Girth (cm)', 'Canopy Span (m)',
         'Condition', 'Notes', 'GPS Accuracy (m)', 'Submitted At',
     ])
@@ -89,7 +112,8 @@ def records_to_csv(queryset):
             r.variety.name if r.variety else '',
             r.latitude,
             r.longitude,
-            r.zone,
+            # Use the human-readable label; fall back to raw value for legacy rows
+            r.get_zone_display() if r.zone else '',
             r.location_notes,
             r.height_m or '',
             r.girth_cm or '',

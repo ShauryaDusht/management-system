@@ -8,6 +8,19 @@ class PlantType(models.TextChoices):
     CREEPER = 'creeper', 'Creeper / Climber'
 
 
+class CampusArea(models.TextChoices):
+    HOUSING_ZONE      = 'housing_zone',      'Housing Zone'
+    HOSTELS           = 'hostels',           'Hostels'
+    ACADEMIC_BLOCK    = 'academic_block',    'Academic Block'
+    GROUND_SPORTS     = 'ground_sports',     'Ground Area / Sports Complex'
+    RESEARCH_PARK     = 'research_park',     'Research Park'
+    RANG_MANCH        = 'rang_manch',        'Rang Manch'
+    CENTRAL_ARCADE    = 'central_arcade',    'Central Arcade'
+    ROAD_AREA         = 'road_area',         'Road Area'
+    GATE_1            = 'gate_1',            'Gate 1'
+    WATER_TREATMENT   = 'water_treatment',   'Water Treatment Plant'
+
+
 PLANT_TYPE_PREFIXES = {
     PlantType.TREE: 'T',
     PlantType.PLANT: 'P',
@@ -45,7 +58,12 @@ class PlantRecord(models.Model):
     # Location
     latitude = models.DecimalField(max_digits=10, decimal_places=7)
     longitude = models.DecimalField(max_digits=10, decimal_places=7)
-    zone = models.CharField(max_length=100, blank=True, help_text='Zone name or code')
+    zone = models.CharField(
+        max_length=50,
+        choices=CampusArea.choices,
+        blank=True,
+        help_text='Campus area / zone',
+    )
     location_notes = models.CharField(max_length=300, blank=True)
 
     # Physical measurements

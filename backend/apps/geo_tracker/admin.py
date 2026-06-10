@@ -13,10 +13,16 @@ class PlantVarietyAdmin(admin.ModelAdmin):
 @admin.register(PlantRecord)
 class PlantRecordAdmin(admin.ModelAdmin):
     list_display = [
-        'tracking_id', 'local_name', 'plant_type', 'zone',
-        'condition', 'submitted_at',
+        'tracking_id', 'local_name', 'plant_type',
+        'zone_display', 'condition', 'submitted_at',
     ]
+    # zone now has a fixed choice set, so Django renders a proper select filter.
     list_filter = ['plant_type', 'condition', 'zone']
-    search_fields = ['tracking_id', 'local_name', 'scientific_name', 'zone']
+    search_fields = ['tracking_id', 'local_name', 'scientific_name', 'location_notes']
     readonly_fields = ['tracking_id', 'submitted_at']
     ordering = ['-submitted_at']
+
+    @admin.display(description='Campus Area')
+    def zone_display(self, obj):
+        """Show the human-readable campus area label in list view."""
+        return obj.get_zone_display() if obj.zone else '—'

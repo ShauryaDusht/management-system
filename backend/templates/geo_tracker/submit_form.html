@@ -248,6 +248,16 @@ select option[disabled]{color:#9ca3af}
       <div class="campus-note" id="campusNote" style="display:none">Map locked to IITGN campus · zoom in to place pin precisely</div>
 
       <div class="fg" style="margin-top:10px">
+        <label class="required" for="zone">Campus Area</label>
+        <select id="zone" name="zone" required>
+          <option value="" selected disabled>Select Campus Area</option>
+          {% for value, label in campus_areas %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="fg">
         <label class="required" for="location_notes">Location description</label>
         <input type="text" id="location_notes" name="location_notes" required placeholder="Near main gate, behind library...">
       </div>
