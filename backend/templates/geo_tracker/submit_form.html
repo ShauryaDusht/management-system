@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1a3a2a">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#edeae4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;color:#1f2937;padding-bottom:40px}
@@ -47,21 +48,26 @@ textarea{resize:vertical;min-height:80px}
 .type-opt input:checked + .type-label.plant{background:#ede9fe;border-color:#7c3aed;color:#5b21b6}
 .type-opt input:checked + .type-label.creeper{background:#e0f2fe;border-color:#0284c7;color:#075985}
 @media(max-width:420px){.type-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* ── GPS row ── */
 .gps-row{display:flex;gap:8px;align-items:flex-end}
 .gps-row .fg{flex:1;margin-bottom:0}
-.gps-btn{
-  flex-shrink:0;padding:11px 13px;border-radius:9px;
-  background:#1a3a2a;color:#fff;border:none;font-size:13px;font-weight:700;
-  cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px
+.btn-group{display:flex;gap:6px;flex-shrink:0}
+.gps-btn,.map-btn{
+  padding:11px 13px;border-radius:9px;border:none;
+  font-size:13px;font-weight:700;cursor:pointer;
+  white-space:nowrap;display:flex;align-items:center;gap:5px
 }
-.gps-btn:active{opacity:.85}
-.gps-btn:disabled{opacity:.55;cursor:not-allowed}
+.gps-btn{background:#1a3a2a;color:#fff}
+.map-btn{background:#0e6b94;color:#fff}
+.gps-btn:active,.map-btn:active{opacity:.85}
+.gps-btn:disabled,.map-btn:disabled{opacity:.55;cursor:not-allowed}
 .gps-status{font-size:11px;font-weight:600;margin-top:4px;min-height:16px}
 .gps-status.ok{color:#16a34a}
 .gps-status.err{color:#dc2626}
 .gps-status.warn{color:#d97706}
 
-/* Accuracy progress bar */
+/* Accuracy bar */
 .acc-bar-wrap{margin-top:8px;display:none}
 .acc-bar-label{font-size:11px;font-weight:700;color:#374151;margin-bottom:4px;display:flex;justify-content:space-between}
 .acc-bar-track{height:7px;background:#e5e7eb;border-radius:4px;overflow:hidden}
@@ -69,9 +75,8 @@ textarea{resize:vertical;min-height:80px}
 .acc-bar-fill.poor{background:#ef4444}
 .acc-bar-fill.ok{background:#f59e0b}
 .acc-bar-fill.great{background:#16a34a}
+.acc-bar-fill.map{background:#0e6b94}
 .acc-samples{font-size:10px;color:#6b7280;margin-top:3px}
-
-/* Accuracy badge on coord fields */
 .acc-badge{
   display:inline-block;margin-top:3px;padding:2px 7px;border-radius:20px;
   font-size:10px;font-weight:800;display:none
@@ -79,6 +84,42 @@ textarea{resize:vertical;min-height:80px}
 .acc-badge.poor{background:#fee2e2;color:#991b1b}
 .acc-badge.ok{background:#fef3c7;color:#92400e}
 .acc-badge.great{background:#dcfce7;color:#166534}
+.acc-badge.map{background:#e0f2fe;color:#075985}
+
+/* ── Map picker ── */
+.map-picker{display:none;margin-top:12px;border-radius:12px;overflow:hidden;border:2px solid #0e6b94;position:relative}
+.map-picker.open{display:block}
+#pinMap{width:100%;height:280px}
+.map-instructions{
+  background:#0e6b94;color:#fff;
+  font-size:11px;font-weight:700;
+  padding:7px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px
+}
+.map-instructions span{flex:1}
+.map-confirm-btn{
+  background:#fff;color:#0e6b94;border:none;
+  border-radius:7px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer
+}
+.map-confirm-btn:active{opacity:.8}
+/* crosshair overlay — sits on top of map, pointer-events:none so map still works */
+.map-crosshair{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:32px;height:32px;pointer-events:none;z-index:1000
+}
+.map-crosshair::before,.map-crosshair::after{
+  content:'';position:absolute;background:#dc2626
+}
+.map-crosshair::before{width:2px;height:100%;left:50%;transform:translateX(-50%)}
+.map-crosshair::after{height:2px;width:100%;top:50%;transform:translateY(-50%)}
+.map-crosshair-dot{
+  position:absolute;top:50%;left:50%;
+  width:6px;height:6px;background:#dc2626;border-radius:50%;
+  transform:translate(-50%,-50%);pointer-events:none;z-index:1001
+}
+/* campus boundary indicator */
+.campus-note{font-size:10px;color:#6b7280;margin-top:4px;text-align:center}
+
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .submit-btn{
   width:100%;padding:15px;border-radius:12px;
@@ -111,27 +152,21 @@ select option[disabled]{color:#9ca3af}
   <form id="plantForm" enctype="multipart/form-data">
     {% csrf_token %}
 
-    <!-- Plant Type -->
-    <div class="card">
+    <!-- Plant Type (hidden, set by variety select) -->
+    <div class="card" style="display:none">
       <div class="sec-title">Plant Type</div>
       <div class="type-grid">
         <label class="type-opt">
           <input type="radio" name="plant_type_display" value="tree">
-          <span class="type-label tree">
-            <span class="type-emoji">🌳</span>Tree
-          </span>
+          <span class="type-label tree"><span class="type-emoji">🌳</span>Tree</span>
         </label>
         <label class="type-opt">
           <input type="radio" name="plant_type_display" value="plant">
-          <span class="type-label plant">
-            <span class="type-emoji">🌿</span>Plant
-          </span>
+          <span class="type-label plant"><span class="type-emoji">🌿</span>Plant</span>
         </label>
         <label class="type-opt">
           <input type="radio" name="plant_type_display" value="creeper">
-          <span class="type-label creeper">
-            <span class="type-emoji">🌱</span>Creeper
-          </span>
+          <span class="type-label creeper"><span class="type-emoji">C</span>Creeper</span>
         </label>
       </div>
     </div>
@@ -163,28 +198,42 @@ select option[disabled]{color:#9ca3af}
       <div class="gps-row">
         <div class="fg">
           <label class="required" for="latitude">Latitude</label>
-          <input type="number" id="latitude" name="latitude" step="0.0000001" required readonly placeholder="Use GPS">
+          <input type="number" id="latitude" name="latitude" step="0.0000001" required readonly placeholder="Use GPS or Map">
         </div>
         <div class="fg">
           <label class="required" for="longitude">Longitude</label>
-          <input type="number" id="longitude" name="longitude" step="0.0000001" required readonly placeholder="Use GPS">
+          <input type="number" id="longitude" name="longitude" step="0.0000001" required readonly placeholder="Use GPS or Map">
         </div>
-        <button type="button" class="gps-btn" id="gpsBtn" title="Auto-detect location">
-          📍 GPS
-        </button>
+        <div class="btn-group">
+          <button type="button" class="gps-btn" id="gpsBtn" title="Auto-detect location">📍 GPS</button>
+          <button type="button" class="map-btn" id="mapBtn" title="Place pin on campus map">🗺 Map</button>
+        </div>
       </div>
       <div class="gps-status" id="gpsStatus"></div>
       <span class="acc-badge" id="accBadge"></span>
       <div class="acc-bar-wrap" id="accBarWrap">
         <div class="acc-bar-label">
-          <span>Accuracy</span>
+          <span id="accBarLabel">Accuracy</span>
           <span id="accBarText">–</span>
         </div>
         <div class="acc-bar-track"><div class="acc-bar-fill" id="accBarFill"></div></div>
         <div class="acc-samples" id="accSamples"></div>
       </div>
+
+      <!-- Map picker — hidden until Map button tapped -->
+      <div class="map-picker" id="mapPicker">
+        <div class="map-instructions">
+          <span>Pan &amp; zoom to the tree, then tap Confirm</span>
+          <button type="button" class="map-confirm-btn" id="mapConfirmBtn">✓ Confirm pin</button>
+        </div>
+        <div id="pinMap"></div>
+        <div class="map-crosshair"></div>
+        <div class="map-crosshair-dot"></div>
+      </div>
+      <div class="campus-note" id="campusNote" style="display:none">Map locked to IITGN campus · zoom in to place pin precisely</div>
+
       <div class="fg" style="margin-top:10px">
-        <label class="required" for="location_notes">Location Description</label>
+        <label class="required" for="location_notes">Location description</label>
         <input type="text" id="location_notes" name="location_notes" required placeholder="Near main gate, behind library...">
       </div>
     </div>
@@ -240,176 +289,115 @@ select option[disabled]{color:#9ca3af}
   </form>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ─── Variety / Plant-type sync ────────────────────────────────────────────────
-var varietySelect  = document.getElementById('variety');
+// ── Variety select ────────────────────────────────────────────────────────
+var varietySelect = document.getElementById('variety');
 var plantTypeInput = document.getElementById('plant_type');
 
 function syncVarietyOptions() {
-  var selectedType = '';
-  document.querySelectorAll('input[name="plant_type_display"]').forEach(function(r) {
-    if (r.checked) selectedType = r.value;
-  });
-
-  Array.prototype.forEach.call(varietySelect.options, function(opt) {
-    if (!opt.value) return; // keep placeholder
-    opt.hidden = selectedType ? (opt.getAttribute('data-type') !== selectedType) : false;
-  });
-
-  // If currently selected option became hidden, reset
-  var current = varietySelect.options[varietySelect.selectedIndex];
-  if (current && current.hidden) {
-    varietySelect.value = '';
-    plantTypeInput.value = selectedType;
-    document.getElementById('local_name').value = '';
-    document.getElementById('scientific_name').value = '';
-  }
+  Array.prototype.forEach.call(varietySelect.options, function(o){ o.hidden = false; });
 }
-
 varietySelect.addEventListener('change', function() {
   var sel = this.options[this.selectedIndex];
   if (!sel) return;
-  var type       = sel.getAttribute('data-type');
-  var name       = sel.getAttribute('data-name');
-  var scientific = sel.getAttribute('data-scientific');
-
+  var type = sel.getAttribute('data-type');
+  var name = sel.getAttribute('data-name');
+  var sci  = sel.getAttribute('data-scientific');
   if (type) {
     plantTypeInput.value = type;
-    var radio = document.querySelector('input[name="plant_type_display"][value="' + type + '"]');
-    if (radio) radio.checked = true;
+    var r = document.querySelector('input[type="radio"][name="plant_type_display"][value="'+type+'"]');
+    if (r) r.checked = true;
   }
-  if (name)       document.getElementById('local_name').value = name;
-  if (scientific) document.getElementById('scientific_name').value = scientific;
+  if (name) document.getElementById('local_name').value = name;
+  if (sci)  document.getElementById('scientific_name').value = sci;
   syncVarietyOptions();
 });
-
-document.querySelectorAll('input[name="plant_type_display"]').forEach(function(radio) {
-  radio.addEventListener('change', function() {
-    plantTypeInput.value = this.value;
-    varietySelect.value  = '';
-    document.getElementById('local_name').value      = '';
-    document.getElementById('scientific_name').value = '';
-    syncVarietyOptions();
-  });
-});
-
 syncVarietyOptions();
 
-// ─── GPS Averaging Engine ─────────────────────────────────────────────────────
-var GPS_TARGET_M    = 5;     // stop once avg accuracy reaches this
-var GPS_REJECT_M    = 20;    // ignore readings worse than this
-var GPS_MIN_SAMPLES = 5;     // need at least this many good readings
-var GPS_MAX_SAMPLES = 15;    // never collect more than this
-var GPS_TIMEOUT_MS  = 40000; // hard timeout (ms)
+// ── GPS Averaging Engine ──────────────────────────────────────────────────
+var GPS_TARGET_M    = 5;
+var GPS_REJECT_M    = 20;
+var GPS_MIN_SAMPLES = 5;
+var GPS_MAX_SAMPLES = 15;
+var GPS_TIMEOUT_MS  = 40000;
 
-var gpsWatcher  = null;
-var gpsSamples  = [];
-var gpsTimer    = null;
-var gpsActive   = false;
+var gpsWatcher = null, gpsSamples = [], gpsTimer = null, gpsActive = false;
 
 function gpsAccClass(m) {
-  if (m <= GPS_TARGET_M) return 'great';
-  if (m <= 12)           return 'ok';
-  return 'poor';
+  return m <= GPS_TARGET_M ? 'great' : m <= 12 ? 'ok' : 'poor';
 }
-
 function gpsBarPct(m) {
   return Math.max(0, Math.min(100, ((GPS_REJECT_M - m) / GPS_REJECT_M) * 100));
 }
-
-function updateAccUI(accuracyM, sampleCount, totalSeen) {
-  var barWrap = document.getElementById('accBarWrap');
-  var barFill = document.getElementById('accBarFill');
-  var barText = document.getElementById('accBarText');
-  var samples = document.getElementById('accSamples');
-  var badge   = document.getElementById('accBadge');
-  var cls     = gpsAccClass(accuracyM);
-
-  barWrap.style.display = 'block';
-  badge.style.display   = 'inline-block';
-
-  barFill.style.width = gpsBarPct(accuracyM) + '%';
-  barFill.className   = 'acc-bar-fill ' + cls;
-  barText.textContent = '±' + accuracyM.toFixed(1) + ' m';
-
-  badge.className   = 'acc-badge ' + cls;
-  badge.textContent = '±' + accuracyM.toFixed(1) + ' m';
-
-  samples.textContent = sampleCount + ' good readings' +
-    (totalSeen > sampleCount ? ' (' + (totalSeen - sampleCount) + ' rejected)' : '');
-}
-
-function computeAvg(samples) {
-  var n = samples.length, lat = 0, lng = 0, acc = 0;
-  for (var i = 0; i < n; i++) {
-    lat += samples[i].lat;
-    lng += samples[i].lng;
-    acc += samples[i].accuracy;
+function updateAccUI(accuracyM, sampleCount, totalSeen, method) {
+  var cls = method === 'map' ? 'map' : gpsAccClass(accuracyM);
+  document.getElementById('accBarWrap').style.display = 'block';
+  document.getElementById('accBadge').style.display   = 'inline-block';
+  document.getElementById('accBarFill').style.width   = (method === 'map' ? 92 : gpsBarPct(accuracyM)) + '%';
+  document.getElementById('accBarFill').className     = 'acc-bar-fill ' + cls;
+  document.getElementById('accBarText').textContent   = method === 'map' ? 'Pin placed' : '±' + accuracyM.toFixed(1) + ' m';
+  document.getElementById('accBarLabel').textContent  = method === 'map' ? 'Map pin' : 'Accuracy';
+  document.getElementById('accBadge').className       = 'acc-badge ' + cls;
+  document.getElementById('accBadge').textContent     = method === 'map' ? '📍 Map pin' : '±' + accuracyM.toFixed(1) + ' m';
+  if (sampleCount !== null) {
+    document.getElementById('accSamples').textContent = sampleCount + ' good readings' +
+      (totalSeen > sampleCount ? ' (' + (totalSeen - sampleCount) + ' rejected)' : '');
+  } else {
+    document.getElementById('accSamples').textContent = 'Position set by map pin';
   }
-  return { lat: lat / n, lng: lng / n, accuracy: acc / n };
 }
-
-function commitFix(avg) {
+function computeAvg(samples) {
+  var totalW = 0, lat = 0, lng = 0, acc = 0;
+  for (var i = 0; i < samples.length; i++) {
+    var w = 1 / (samples[i].accuracy * samples[i].accuracy);
+    lat += samples[i].lat * w;
+    lng += samples[i].lng * w;
+    acc += samples[i].accuracy * w;
+    totalW += w;
+  }
+  return { lat: lat/totalW, lng: lng/totalW, accuracy: acc/totalW };
+}
+function commitFix(avg, method) {
   document.getElementById('latitude').value  = avg.lat.toFixed(7);
   document.getElementById('longitude').value = avg.lng.toFixed(7);
-  var hiddenAcc = document.getElementById('gps_accuracy_m');
-  if (hiddenAcc) hiddenAcc.value = avg.accuracy.toFixed(2);
+  var h = document.getElementById('gps_accuracy_m');
+  if (h) h.value = method === 'map' ? 'map_pin' : avg.accuracy.toFixed(2);
 }
-
 function stopGps() {
-  if (gpsWatcher !== null) {
-    navigator.geolocation.clearWatch(gpsWatcher);
-    gpsWatcher = null;
-  }
-  if (gpsTimer) { clearTimeout(gpsTimer); gpsTimer = null; }
+  if (gpsWatcher !== null) { navigator.geolocation.clearWatch(gpsWatcher); gpsWatcher = null; }
+  if (gpsTimer)            { clearTimeout(gpsTimer); gpsTimer = null; }
   gpsActive = false;
   var btn = document.getElementById('gpsBtn');
-  btn.disabled    = false;
-  btn.textContent = '📍 GPS';
+  btn.disabled = false; btn.textContent = '📍 GPS';
 }
-
 function startGps() {
   var status = document.getElementById('gpsStatus');
-
   if (!navigator.geolocation) {
-    status.textContent = '✗ Geolocation not supported on this device.';
-    status.className   = 'gps-status err';
-    return;
+    status.textContent = 'Geolocation not supported.'; status.className = 'gps-status err'; return;
   }
-
   if (gpsActive) stopGps();
-
-  gpsActive  = true;
-  gpsSamples = [];
+  gpsActive = true; gpsSamples = [];
   var totalSeen = 0;
-
   var btn = document.getElementById('gpsBtn');
-  btn.disabled    = true;
-  btn.textContent = '⏳ …';
-
-  status.textContent = 'Acquiring GPS fix — hold phone flat under open sky…';
-  status.className   = 'gps-status';
-
+  btn.disabled = true; btn.textContent = '⏳ …';
+  status.textContent = 'Acquiring GPS fix — hold phone flat under open sky…'; status.className = 'gps-status';
   document.getElementById('accBarWrap').style.display = 'none';
   document.getElementById('accBadge').style.display   = 'none';
 
-  // Hard timeout
   gpsTimer = setTimeout(function() {
     if (gpsSamples.length >= GPS_MIN_SAMPLES) {
       var avg = computeAvg(gpsSamples);
-      commitFix(avg);
-      updateAccUI(avg.accuracy, gpsSamples.length, totalSeen);
+      commitFix(avg, 'gps');
+      updateAccUI(avg.accuracy, gpsSamples.length, totalSeen, 'gps');
       var cls = gpsAccClass(avg.accuracy);
-      if (cls === 'great') {
-        status.textContent = '✓ Location locked (±' + avg.accuracy.toFixed(1) + ' m) from ' + gpsSamples.length + ' readings';
-        status.className   = 'gps-status ok';
-      } else {
-        status.textContent = '⚠ Timed out — best accuracy ±' + avg.accuracy.toFixed(1) + ' m. Try again outdoors.';
-        status.className   = 'gps-status warn';
-      }
+      status.textContent = cls === 'great'
+        ? '✓ Location locked (±' + avg.accuracy.toFixed(1) + ' m) from ' + gpsSamples.length + ' readings'
+        : '⚠ Timed out — ±' + avg.accuracy.toFixed(1) + ' m. Use Map pin for better accuracy.';
+      status.className = cls === 'great' ? 'gps-status ok' : 'gps-status warn';
     } else {
-      status.textContent = '✗ Could not get a good fix. Move to open sky and try again.';
-      status.className   = 'gps-status err';
+      status.textContent = '✗ Could not get a fix. Try the Map pin instead.';
+      status.className = 'gps-status err';
     }
     stopGps();
   }, GPS_TIMEOUT_MS);
@@ -418,90 +406,178 @@ function startGps() {
     function(pos) {
       totalSeen++;
       var acc = pos.coords.accuracy;
-
       if (acc > GPS_REJECT_M) {
-        status.textContent = 'Waiting for clear signal… (current ±' + Math.round(acc) + ' m — move to open sky)';
-        status.className   = 'gps-status warn';
-        return;
+        status.textContent = 'Waiting for clear signal… (±' + Math.round(acc) + ' m — move to open sky)';
+        status.className = 'gps-status warn'; return;
       }
-
       gpsSamples.push({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: acc });
 
-      var avg = computeAvg(gpsSamples);
-      updateAccUI(avg.accuracy, gpsSamples.length, totalSeen);
+      // Dynamic outlier rejection once we have a rough centre
+      if (gpsSamples.length >= 3) {
+        var rough = computeAvg(gpsSamples);
+        var dist = Math.sqrt(
+          Math.pow((pos.coords.latitude  - rough.lat) * 111320, 2) +
+          Math.pow((pos.coords.longitude - rough.lng) * 111320 * Math.cos(rough.lat * Math.PI/180), 2)
+        );
+        if (dist > 8) { gpsSamples.pop(); return; }
+      }
 
-      // Update coords live
+      var avg = computeAvg(gpsSamples);
+      updateAccUI(avg.accuracy, gpsSamples.length, totalSeen, 'gps');
       document.getElementById('latitude').value  = avg.lat.toFixed(7);
       document.getElementById('longitude').value = avg.lng.toFixed(7);
 
       if (gpsSamples.length < GPS_MIN_SAMPLES) {
-        status.textContent = 'Collecting readings… (' + gpsSamples.length + '/' + GPS_MIN_SAMPLES + ' needed, ±' + avg.accuracy.toFixed(1) + ' m)';
-        status.className   = 'gps-status';
-        return;
+        status.textContent = 'Collecting… (' + gpsSamples.length + '/' + GPS_MIN_SAMPLES + ', ±' + avg.accuracy.toFixed(1) + ' m)';
+        status.className = 'gps-status'; return;
       }
-
       status.textContent = 'Refining… (' + gpsSamples.length + ' readings, ±' + avg.accuracy.toFixed(1) + ' m)';
-      status.className   = 'gps-status ok';
-
+      status.className = 'gps-status ok';
       if (avg.accuracy <= GPS_TARGET_M || gpsSamples.length >= GPS_MAX_SAMPLES) {
-        commitFix(avg);
+        commitFix(avg, 'gps');
         var cls = gpsAccClass(avg.accuracy);
-        if (cls === 'great') {
-          status.textContent = '✓ Location locked — ±' + avg.accuracy.toFixed(1) + ' m (' + gpsSamples.length + ' readings)';
-          status.className   = 'gps-status ok';
-        } else {
-          status.textContent = '⚠ Best accuracy: ±' + avg.accuracy.toFixed(1) + ' m. Tap GPS again outdoors for better fix.';
-          status.className   = 'gps-status warn';
-        }
+        status.textContent = cls === 'great'
+          ? '✓ Location locked — ±' + avg.accuracy.toFixed(1) + ' m (' + gpsSamples.length + ' readings)'
+          : '⚠ Best: ±' + avg.accuracy.toFixed(1) + ' m. Use Map pin for better accuracy.';
+        status.className = cls === 'great' ? 'gps-status ok' : 'gps-status warn';
         stopGps();
       }
     },
     function(err) {
-      var msg = err.code === 1 ? 'Location permission denied. Enable in browser settings.' :
-                err.code === 2 ? 'GPS signal unavailable.' :
-                                 'GPS timed out.';
-      status.textContent = '✗ ' + msg;
-      status.className   = 'gps-status err';
+      var msg = err.code===1 ? 'Location permission denied.' : err.code===2 ? 'GPS unavailable.' : 'GPS timed out.';
+      document.getElementById('gpsStatus').textContent = '✗ ' + msg;
+      document.getElementById('gpsStatus').className = 'gps-status err';
       stopGps();
     },
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 }
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
   );
 }
-
-// Single click listener + single auto-start
 document.getElementById('gpsBtn').addEventListener('click', startGps);
 startGps();
 
-// ─── Photo preview ────────────────────────────────────────────────────────────
-document.getElementById('photo').addEventListener('change', function(e) {
-  var file    = e.target.files[0];
-  var preview = document.getElementById('photoPreview');
-  if (file) {
-    preview.src          = URL.createObjectURL(file);
-    preview.style.display = 'block';
+// ── Map Pin Picker ────────────────────────────────────────────────────────
+// IITGN campus bounding box (slightly padded so user can't scroll away)
+var CAMPUS_BOUNDS = L.latLngBounds(
+  L.latLng(23.2082, 72.6812),   // SW corner
+  L.latLng(23.2188, 72.6928)    // NE corner
+);
+var CAMPUS_CENTER = [23.2135, 72.6870];
+
+var leafletMap  = null;
+var mapOpen     = false;
+var mapPinLat   = null;
+var mapPinLng   = null;
+
+function initMap() {
+  if (leafletMap) return;  // already initialised
+
+  leafletMap = L.map('pinMap', {
+    center:         CAMPUS_CENTER,
+    zoom:           18,
+    minZoom:        17,       // prevent zooming out beyond campus
+    maxZoom:        19,
+    maxBounds:      CAMPUS_BOUNDS,
+    maxBoundsViscosity: 1.0,  // hard wall — can't pan outside
+    zoomControl:    true,
+    attributionControl: true
+  });
+
+  // OpenStreetMap standard tiles — free, no API key
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19
+  }).addTo(leafletMap);
+
+  // Faint campus boundary rectangle so user knows the allowed area
+  L.rectangle(CAMPUS_BOUNDS, {
+    color: '#0e6b94', weight: 2, fill: false, dashArray: '6 4', opacity: 0.5
+  }).addTo(leafletMap);
+
+  // The map uses a crosshair overlay (CSS) — centre of map = pin position.
+  // No draggable marker needed; user pans the map instead (easier on mobile).
+  leafletMap.on('moveend', function() {
+    var c = leafletMap.getCenter();
+    mapPinLat = c.lat;
+    mapPinLng = c.lng;
+    // Live-update fields so user can see coordinates changing
+    document.getElementById('latitude').value  = c.lat.toFixed(7);
+    document.getElementById('longitude').value = c.lng.toFixed(7);
+  });
+
+  // If GPS already got a fix, centre the map there; else use campus centre
+  var existingLat = parseFloat(document.getElementById('latitude').value);
+  var existingLng = parseFloat(document.getElementById('longitude').value);
+  if (!isNaN(existingLat) && !isNaN(existingLng)
+      && CAMPUS_BOUNDS.contains([existingLat, existingLng])) {
+    leafletMap.setView([existingLat, existingLng], 19);
+  }
+}
+
+document.getElementById('mapBtn').addEventListener('click', function() {
+  var picker = document.getElementById('mapPicker');
+  var note   = document.getElementById('campusNote');
+  if (mapOpen) {
+    picker.classList.remove('open');
+    note.style.display = 'none';
+    mapOpen = false;
+    this.textContent = '🗺 Map';
   } else {
-    preview.style.display = 'none';
+    picker.classList.add('open');
+    note.style.display = 'block';
+    mapOpen = true;
+    this.textContent = '✕ Close map';
+    // Initialise Leaflet lazily (only when first opened)
+    setTimeout(function() {
+      initMap();
+      if (leafletMap) leafletMap.invalidateSize();
+    }, 50);
   }
 });
 
-// ─── Form submit ──────────────────────────────────────────────────────────────
+document.getElementById('mapConfirmBtn').addEventListener('click', function() {
+  if (!leafletMap) return;
+  var c = leafletMap.getCenter();
+  mapPinLat = c.lat;
+  mapPinLng = c.lng;
+
+  document.getElementById('latitude').value  = c.lat.toFixed(7);
+  document.getElementById('longitude').value = c.lng.toFixed(7);
+  document.getElementById('gps_accuracy_m').value = 'map_pin';
+
+  // Update accuracy UI to show map-pin method
+  updateAccUI(0, null, null, 'map');
+  document.getElementById('gpsStatus').textContent = '✓ Position set from map pin — pan map to adjust';
+  document.getElementById('gpsStatus').className   = 'gps-status ok';
+
+  // Close map
+  document.getElementById('mapPicker').classList.remove('open');
+  document.getElementById('campusNote').style.display = 'none';
+  document.getElementById('mapBtn').textContent = '🗺 Map';
+  mapOpen = false;
+});
+
+// ── Photo preview ─────────────────────────────────────────────────────────
+document.getElementById('photo').addEventListener('change', function(e) {
+  var file    = e.target.files[0];
+  var preview = document.getElementById('photoPreview');
+  if (file) { preview.src = URL.createObjectURL(file); preview.style.display = 'block'; }
+  else      { preview.style.display = 'none'; }
+});
+
+// ── Form submit ───────────────────────────────────────────────────────────
 document.getElementById('plantForm').addEventListener('submit', function(e) {
   e.preventDefault();
   var btn  = document.getElementById('submitBtn');
   var icon = document.getElementById('submitIcon');
   var text = document.getElementById('submitText');
-  btn.disabled     = true;
-  icon.textContent = '⏳';
-  text.textContent = 'Submitting…';
+  btn.disabled = true; icon.textContent = '⏳'; text.textContent = 'Submitting…';
 
   var formData = new FormData(this);
-
   fetch('/geo/submit/record/', {
-    method:  'POST',
-    body:    formData,
-    headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') }
+    method: 'POST', body: formData,
+    headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') },
   })
-  .then(function(res) { return res.json(); })
+  .then(function(res){ return res.json(); })
   .then(function(data) {
     if (data.success) {
       showFlash('✓ Record submitted successfully! (ID: ' + data.id + ')', 'ok');
@@ -509,9 +585,16 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
       plantTypeInput.value = '';
       syncVarietyOptions();
       document.getElementById('photoPreview').style.display = 'none';
-      document.getElementById('gpsStatus').textContent      = '';
-      document.getElementById('accBarWrap').style.display   = 'none';
-      document.getElementById('accBadge').style.display     = 'none';
+      document.getElementById('gpsStatus').textContent = '';
+      document.getElementById('accBarWrap').style.display = 'none';
+      document.getElementById('accBadge').style.display   = 'none';
+      // Close map if open
+      if (mapOpen) {
+        document.getElementById('mapPicker').classList.remove('open');
+        document.getElementById('campusNote').style.display = 'none';
+        document.getElementById('mapBtn').textContent = '🗺 Map';
+        mapOpen = false;
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       var errs = data.errors
@@ -519,15 +602,11 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
         : 'Submission failed. Please check your inputs.';
       showFlash('✗ ' + errs, 'err');
     }
-    btn.disabled     = false;
-    icon.textContent = '🌿';
-    text.textContent = 'Submit Record';
+    btn.disabled = false; icon.textContent = '🌿'; text.textContent = 'Submit Record';
   })
   .catch(function() {
     showFlash('✗ Network error. Please try again.', 'err');
-    btn.disabled     = false;
-    icon.textContent = '🌿';
-    text.textContent = 'Submit Record';
+    btn.disabled = false; icon.textContent = '🌿'; text.textContent = 'Submit Record';
   });
 });
 
@@ -535,7 +614,7 @@ function showFlash(msg, type) {
   var area = document.getElementById('flash-area');
   area.innerHTML = '<div class="flash ' + type + '">' + msg + '</div>';
   area.scrollIntoView({ behavior: 'smooth' });
-  if (type === 'ok') setTimeout(function() { area.innerHTML = ''; }, 6000);
+  if (type === 'ok') setTimeout(function(){ area.innerHTML = ''; }, 6000);
 }
 </script>
 </body>
