@@ -96,7 +96,6 @@ class GeoTrackerRecordsView(APIView):
                 | Q(local_name__icontains=query)
                 | Q(scientific_name__icontains=query)
                 | Q(variety__name__icontains=query)
-                | Q(location_notes__icontains=query)
             )
 
         serializer = PlantRecordSerializer(qs, many=True, context={'request': request})
@@ -152,7 +151,6 @@ class GeoTrackerExportCSVView(APIView):
                 | Q(local_name__icontains=query)
                 | Q(scientific_name__icontains=query)
                 | Q(variety__name__icontains=query)
-                | Q(location_notes__icontains=query)
             )
 
         csv_data = records_to_csv(qs)

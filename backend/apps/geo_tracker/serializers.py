@@ -30,7 +30,7 @@ class PlantRecordSerializer(serializers.ModelSerializer):
             'local_name', 'scientific_name',
             'variety', 'variety_name',
             'latitude', 'longitude', 'lat', 'lng',
-            'zone', 'zone_display', 'location_notes',
+            'zone', 'zone_display',
             'height_m', 'girth_cm', 'canopy_area_m',
             'condition', 'condition_display',
             'photo_url',
@@ -114,7 +114,6 @@ def records_to_csv(queryset):
             r.longitude,
             # Use the human-readable label; fall back to raw value for legacy rows
             r.get_zone_display() if r.zone else '',
-            r.location_notes,
             r.height_m or '',
             r.girth_cm or '',
             r.canopy_area_m or '',
