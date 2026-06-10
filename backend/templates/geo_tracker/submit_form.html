@@ -666,7 +666,7 @@ document.getElementById('mapConfirmBtn').addEventListener('click', function() {
 
   document.getElementById('latitude').value  = c.lat.toFixed(7);
   document.getElementById('longitude').value = c.lng.toFixed(7);
-  document.getElementById('gps_accuracy_m').value = 'map_pin';
+  document.getElementById('gps_accuracy_m').value = '';
 
   // Update accuracy UI to show map-pin method
   updateAccUI(0, null, null, 'map');
