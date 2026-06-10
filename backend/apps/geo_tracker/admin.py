@@ -18,7 +18,7 @@ class PlantRecordAdmin(admin.ModelAdmin):
     ]
     # zone now has a fixed choice set, so Django renders a proper select filter.
     list_filter = ['plant_type', 'condition', 'zone']
-    search_fields = ['tracking_id', 'local_name', 'scientific_name', 'location_notes']
+    search_fields = ['tracking_id', 'local_name', 'scientific_name']
     readonly_fields = ['tracking_id', 'submitted_at']
     ordering = ['-submitted_at']
 

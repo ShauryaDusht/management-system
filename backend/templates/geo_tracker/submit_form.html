@@ -247,15 +247,21 @@ select option[disabled]{color:#9ca3af}
     <div class="card">
       <div class="sec-title">Measurements</div>
       <div class="row2">
-        <div class="fg">
-          <label class="required" for="height_m">Height (m)</label>
-          <input type="number" id="height_m" name="height_m" step="0.01" min="0" required placeholder="e.g. 4.5">
-        </div>
-        <div class="fg">
-          <label class="required" for="girth_cm">Girth (cm)</label>
-          <input type="number" id="girth_cm" name="girth_cm" step="0.1" min="0" required placeholder="e.g. 85">
-        </div>
+      <div class="fg">
+        <label class="required" for="height_m">Height (m)</label>
+        <input type="number" id="height_m" name="height_m" step="0.01" min="0" required placeholder="e.g. 4.5">
       </div>
+
+      <div class="fg">
+        <label class="required" for="girth_cm">Girth (cm)</label>
+        <input type="number" id="girth_cm" name="girth_cm" step="0.1" min="0" required placeholder="e.g. 85">
+      </div>
+    </div>
+
+    <div class="fg" style="margin-top:10px">
+      <label class="required" for="canopy_area_m">Canopy Span (m)</label>
+      <input type="number" vid="canopy_area_m" name="canopy_area_m" step="0.01" min="0" required placeholder="e.g. 3.2">
+    </div>
     </div>
 
     <!-- Condition -->
