@@ -55,9 +55,30 @@ textarea{resize:vertical;min-height:80px}
   cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px
 }
 .gps-btn:active{opacity:.85}
+.gps-btn:disabled{opacity:.55;cursor:not-allowed}
 .gps-status{font-size:11px;font-weight:600;margin-top:4px;min-height:16px}
 .gps-status.ok{color:#16a34a}
 .gps-status.err{color:#dc2626}
+.gps-status.warn{color:#d97706}
+
+/* Accuracy progress bar */
+.acc-bar-wrap{margin-top:8px;display:none}
+.acc-bar-label{font-size:11px;font-weight:700;color:#374151;margin-bottom:4px;display:flex;justify-content:space-between}
+.acc-bar-track{height:7px;background:#e5e7eb;border-radius:4px;overflow:hidden}
+.acc-bar-fill{height:100%;border-radius:4px;transition:width .4s,background .4s;width:0%}
+.acc-bar-fill.poor{background:#ef4444}
+.acc-bar-fill.ok{background:#f59e0b}
+.acc-bar-fill.great{background:#16a34a}
+.acc-samples{font-size:10px;color:#6b7280;margin-top:3px}
+
+/* Accuracy badge on coord fields */
+.acc-badge{
+  display:inline-block;margin-top:3px;padding:2px 7px;border-radius:20px;
+  font-size:10px;font-weight:800;display:none
+}
+.acc-badge.poor{background:#fee2e2;color:#991b1b}
+.acc-badge.ok{background:#fef3c7;color:#92400e}
+.acc-badge.great{background:#dcfce7;color:#166534}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .submit-btn{
   width:100%;padding:15px;border-radius:12px;
@@ -128,6 +149,7 @@ select option[disabled]{color:#9ca3af}
         </select>
         <input type="hidden" id="plant_type" name="plant_type">
         <input type="hidden" id="local_name" name="local_name">
+        <input type="hidden" id="gps_accuracy_m" name="gps_accuracy_m">
       </div>
       <div class="fg">
         <label for="scientific_name">Botanical Name</label>
@@ -152,8 +174,17 @@ select option[disabled]{color:#9ca3af}
         </button>
       </div>
       <div class="gps-status" id="gpsStatus"></div>
-      <div class="fg">
-        <label class="required" for="location_notes">Location</label>
+      <span class="acc-badge" id="accBadge"></span>
+      <div class="acc-bar-wrap" id="accBarWrap">
+        <div class="acc-bar-label">
+          <span>Accuracy</span>
+          <span id="accBarText">–</span>
+        </div>
+        <div class="acc-bar-track"><div class="acc-bar-fill" id="accBarFill"></div></div>
+        <div class="acc-samples" id="accSamples"></div>
+      </div>
+      <div class="fg" style="margin-top:10px">
+        <label class="required" for="location_notes">Location Description</label>
         <input type="text" id="location_notes" name="location_notes" required placeholder="Near main gate, behind library...">
       </div>
     </div>
@@ -210,21 +241,22 @@ select option[disabled]{color:#9ca3af}
 </div>
 
 <script>
-var varietySelect = document.getElementById('variety');
+// ─── Variety / Plant-type sync ────────────────────────────────────────────────
+var varietySelect  = document.getElementById('variety');
 var plantTypeInput = document.getElementById('plant_type');
 
 function syncVarietyOptions() {
   var selectedType = '';
-  var radios = document.querySelectorAll('input[name="plant_type_display"]');
-  radios.forEach(function(r) { if (r.checked) selectedType = r.value; });
-
-  Array.prototype.forEach.call(varietySelect.options, function(option) {
-    if (!option.value) return; // keep the placeholder
-    var optType = option.getAttribute('data-type');
-    option.hidden = selectedType ? (optType !== selectedType) : false;
+  document.querySelectorAll('input[name="plant_type_display"]').forEach(function(r) {
+    if (r.checked) selectedType = r.value;
   });
 
-  // If current selection is hidden, reset it
+  Array.prototype.forEach.call(varietySelect.options, function(opt) {
+    if (!opt.value) return; // keep placeholder
+    opt.hidden = selectedType ? (opt.getAttribute('data-type') !== selectedType) : false;
+  });
+
+  // If currently selected option became hidden, reset
   var current = varietySelect.options[varietySelect.selectedIndex];
   if (current && current.hidden) {
     varietySelect.value = '';
@@ -235,29 +267,27 @@ function syncVarietyOptions() {
 }
 
 varietySelect.addEventListener('change', function() {
-  var selected = this.options[this.selectedIndex];
-  if (!selected) return;
-
-  var type = selected.getAttribute('data-type');
-  var name = selected.getAttribute('data-name');
-  var scientific = selected.getAttribute('data-scientific');
+  var sel = this.options[this.selectedIndex];
+  if (!sel) return;
+  var type       = sel.getAttribute('data-type');
+  var name       = sel.getAttribute('data-name');
+  var scientific = sel.getAttribute('data-scientific');
 
   if (type) {
     plantTypeInput.value = type;
-    var typeInput = document.querySelector('input[type="radio"][name="plant_type_display"][value="' + type + '"]');
-    if (typeInput) typeInput.checked = true;
+    var radio = document.querySelector('input[name="plant_type_display"][value="' + type + '"]');
+    if (radio) radio.checked = true;
   }
-  if (name) document.getElementById('local_name').value = name;
+  if (name)       document.getElementById('local_name').value = name;
   if (scientific) document.getElementById('scientific_name').value = scientific;
   syncVarietyOptions();
 });
 
-// Filter varieties when a plant type radio is selected
 document.querySelectorAll('input[name="plant_type_display"]').forEach(function(radio) {
   radio.addEventListener('change', function() {
     plantTypeInput.value = this.value;
-    varietySelect.value = '';
-    document.getElementById('local_name').value = '';
+    varietySelect.value  = '';
+    document.getElementById('local_name').value      = '';
     document.getElementById('scientific_name').value = '';
     syncVarietyOptions();
   });
@@ -265,76 +295,211 @@ document.querySelectorAll('input[name="plant_type_display"]').forEach(function(r
 
 syncVarietyOptions();
 
-// GPS — request permission on load with clear messaging
-function requestGPS(isUserTriggered) {
+// ─── GPS Averaging Engine ─────────────────────────────────────────────────────
+var GPS_TARGET_M    = 5;     // stop once avg accuracy reaches this
+var GPS_REJECT_M    = 20;    // ignore readings worse than this
+var GPS_MIN_SAMPLES = 5;     // need at least this many good readings
+var GPS_MAX_SAMPLES = 15;    // never collect more than this
+var GPS_TIMEOUT_MS  = 40000; // hard timeout (ms)
+
+var gpsWatcher  = null;
+var gpsSamples  = [];
+var gpsTimer    = null;
+var gpsActive   = false;
+
+function gpsAccClass(m) {
+  if (m <= GPS_TARGET_M) return 'great';
+  if (m <= 12)           return 'ok';
+  return 'poor';
+}
+
+function gpsBarPct(m) {
+  return Math.max(0, Math.min(100, ((GPS_REJECT_M - m) / GPS_REJECT_M) * 100));
+}
+
+function updateAccUI(accuracyM, sampleCount, totalSeen) {
+  var barWrap = document.getElementById('accBarWrap');
+  var barFill = document.getElementById('accBarFill');
+  var barText = document.getElementById('accBarText');
+  var samples = document.getElementById('accSamples');
+  var badge   = document.getElementById('accBadge');
+  var cls     = gpsAccClass(accuracyM);
+
+  barWrap.style.display = 'block';
+  badge.style.display   = 'inline-block';
+
+  barFill.style.width = gpsBarPct(accuracyM) + '%';
+  barFill.className   = 'acc-bar-fill ' + cls;
+  barText.textContent = '±' + accuracyM.toFixed(1) + ' m';
+
+  badge.className   = 'acc-badge ' + cls;
+  badge.textContent = '±' + accuracyM.toFixed(1) + ' m';
+
+  samples.textContent = sampleCount + ' good readings' +
+    (totalSeen > sampleCount ? ' (' + (totalSeen - sampleCount) + ' rejected)' : '');
+}
+
+function computeAvg(samples) {
+  var n = samples.length, lat = 0, lng = 0, acc = 0;
+  for (var i = 0; i < n; i++) {
+    lat += samples[i].lat;
+    lng += samples[i].lng;
+    acc += samples[i].accuracy;
+  }
+  return { lat: lat / n, lng: lng / n, accuracy: acc / n };
+}
+
+function commitFix(avg) {
+  document.getElementById('latitude').value  = avg.lat.toFixed(7);
+  document.getElementById('longitude').value = avg.lng.toFixed(7);
+  var hiddenAcc = document.getElementById('gps_accuracy_m');
+  if (hiddenAcc) hiddenAcc.value = avg.accuracy.toFixed(2);
+}
+
+function stopGps() {
+  if (gpsWatcher !== null) {
+    navigator.geolocation.clearWatch(gpsWatcher);
+    gpsWatcher = null;
+  }
+  if (gpsTimer) { clearTimeout(gpsTimer); gpsTimer = null; }
+  gpsActive = false;
+  var btn = document.getElementById('gpsBtn');
+  btn.disabled    = false;
+  btn.textContent = '📍 GPS';
+}
+
+function startGps() {
   var status = document.getElementById('gpsStatus');
-  status.textContent = 'Getting location…';
-  status.className = 'gps-status';
+
   if (!navigator.geolocation) {
-    status.textContent = 'Geolocation not supported on this device.';
-    status.className = 'gps-status err';
+    status.textContent = '✗ Geolocation not supported on this device.';
+    status.className   = 'gps-status err';
     return;
   }
-  navigator.geolocation.getCurrentPosition(
+
+  if (gpsActive) stopGps();
+
+  gpsActive  = true;
+  gpsSamples = [];
+  var totalSeen = 0;
+
+  var btn = document.getElementById('gpsBtn');
+  btn.disabled    = true;
+  btn.textContent = '⏳ …';
+
+  status.textContent = 'Acquiring GPS fix — hold phone flat under open sky…';
+  status.className   = 'gps-status';
+
+  document.getElementById('accBarWrap').style.display = 'none';
+  document.getElementById('accBadge').style.display   = 'none';
+
+  // Hard timeout
+  gpsTimer = setTimeout(function() {
+    if (gpsSamples.length >= GPS_MIN_SAMPLES) {
+      var avg = computeAvg(gpsSamples);
+      commitFix(avg);
+      updateAccUI(avg.accuracy, gpsSamples.length, totalSeen);
+      var cls = gpsAccClass(avg.accuracy);
+      if (cls === 'great') {
+        status.textContent = '✓ Location locked (±' + avg.accuracy.toFixed(1) + ' m) from ' + gpsSamples.length + ' readings';
+        status.className   = 'gps-status ok';
+      } else {
+        status.textContent = '⚠ Timed out — best accuracy ±' + avg.accuracy.toFixed(1) + ' m. Try again outdoors.';
+        status.className   = 'gps-status warn';
+      }
+    } else {
+      status.textContent = '✗ Could not get a good fix. Move to open sky and try again.';
+      status.className   = 'gps-status err';
+    }
+    stopGps();
+  }, GPS_TIMEOUT_MS);
+
+  gpsWatcher = navigator.geolocation.watchPosition(
     function(pos) {
-      document.getElementById('latitude').value = pos.coords.latitude.toFixed(7);
-      document.getElementById('longitude').value = pos.coords.longitude.toFixed(7);
-      status.textContent = '✓ Location captured (±' + Math.round(pos.coords.accuracy) + 'm accuracy)';
-      status.className = 'gps-status ok';
+      totalSeen++;
+      var acc = pos.coords.accuracy;
+
+      if (acc > GPS_REJECT_M) {
+        status.textContent = 'Waiting for clear signal… (current ±' + Math.round(acc) + ' m — move to open sky)';
+        status.className   = 'gps-status warn';
+        return;
+      }
+
+      gpsSamples.push({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: acc });
+
+      var avg = computeAvg(gpsSamples);
+      updateAccUI(avg.accuracy, gpsSamples.length, totalSeen);
+
+      // Update coords live
+      document.getElementById('latitude').value  = avg.lat.toFixed(7);
+      document.getElementById('longitude').value = avg.lng.toFixed(7);
+
+      if (gpsSamples.length < GPS_MIN_SAMPLES) {
+        status.textContent = 'Collecting readings… (' + gpsSamples.length + '/' + GPS_MIN_SAMPLES + ' needed, ±' + avg.accuracy.toFixed(1) + ' m)';
+        status.className   = 'gps-status';
+        return;
+      }
+
+      status.textContent = 'Refining… (' + gpsSamples.length + ' readings, ±' + avg.accuracy.toFixed(1) + ' m)';
+      status.className   = 'gps-status ok';
+
+      if (avg.accuracy <= GPS_TARGET_M || gpsSamples.length >= GPS_MAX_SAMPLES) {
+        commitFix(avg);
+        var cls = gpsAccClass(avg.accuracy);
+        if (cls === 'great') {
+          status.textContent = '✓ Location locked — ±' + avg.accuracy.toFixed(1) + ' m (' + gpsSamples.length + ' readings)';
+          status.className   = 'gps-status ok';
+        } else {
+          status.textContent = '⚠ Best accuracy: ±' + avg.accuracy.toFixed(1) + ' m. Tap GPS again outdoors for better fix.';
+          status.className   = 'gps-status warn';
+        }
+        stopGps();
+      }
     },
     function(err) {
-      if (err.code === 1) {
-        // PERMISSION_DENIED
-        status.textContent = '⚠ Location access denied. Tap GPS to try again or enter coordinates manually.';
-      } else if (err.code === 2) {
-        status.textContent = '⚠ Location unavailable. Please check your GPS signal.';
-      } else {
-        status.textContent = '⚠ Location timed out. Tap GPS to retry.';
-      }
-      status.className = 'gps-status err';
+      var msg = err.code === 1 ? 'Location permission denied. Enable in browser settings.' :
+                err.code === 2 ? 'GPS signal unavailable.' :
+                                 'GPS timed out.';
+      status.textContent = '✗ ' + msg;
+      status.className   = 'gps-status err';
+      stopGps();
     },
-    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 }
   );
 }
 
-document.getElementById('gpsBtn').addEventListener('click', function() { requestGPS(true); });
+// Single click listener + single auto-start
+document.getElementById('gpsBtn').addEventListener('click', startGps);
+startGps();
 
-// Auto-request on page load
-if (navigator.geolocation) {
-  var status = document.getElementById('gpsStatus');
-  status.textContent = '📍 Requesting location permission…';
-  status.className = 'gps-status';
-  requestGPS(false);
-}
-
-// Photo preview
+// ─── Photo preview ────────────────────────────────────────────────────────────
 document.getElementById('photo').addEventListener('change', function(e) {
-  var file = e.target.files[0];
+  var file    = e.target.files[0];
   var preview = document.getElementById('photoPreview');
   if (file) {
-    preview.src = URL.createObjectURL(file);
+    preview.src          = URL.createObjectURL(file);
     preview.style.display = 'block';
   } else {
     preview.style.display = 'none';
   }
 });
 
-// Form submit
+// ─── Form submit ──────────────────────────────────────────────────────────────
 document.getElementById('plantForm').addEventListener('submit', function(e) {
   e.preventDefault();
-  var btn = document.getElementById('submitBtn');
+  var btn  = document.getElementById('submitBtn');
   var icon = document.getElementById('submitIcon');
   var text = document.getElementById('submitText');
-  btn.disabled = true;
+  btn.disabled     = true;
   icon.textContent = '⏳';
   text.textContent = 'Submitting…';
 
   var formData = new FormData(this);
 
   fetch('/geo/submit/record/', {
-    method: 'POST',
-    body: formData,
-    headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') },
+    method:  'POST',
+    body:    formData,
+    headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') }
   })
   .then(function(res) { return res.json(); })
   .then(function(data) {
@@ -344,7 +509,9 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
       plantTypeInput.value = '';
       syncVarietyOptions();
       document.getElementById('photoPreview').style.display = 'none';
-      document.getElementById('gpsStatus').textContent = '';
+      document.getElementById('gpsStatus').textContent      = '';
+      document.getElementById('accBarWrap').style.display   = 'none';
+      document.getElementById('accBadge').style.display     = 'none';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       var errs = data.errors
@@ -352,13 +519,13 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
         : 'Submission failed. Please check your inputs.';
       showFlash('✗ ' + errs, 'err');
     }
-    btn.disabled = false;
+    btn.disabled     = false;
     icon.textContent = '🌿';
     text.textContent = 'Submit Record';
   })
   .catch(function() {
     showFlash('✗ Network error. Please try again.', 'err');
-    btn.disabled = false;
+    btn.disabled     = false;
     icon.textContent = '🌿';
     text.textContent = 'Submit Record';
   });

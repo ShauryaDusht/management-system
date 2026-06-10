@@ -32,7 +32,7 @@ class PlantRecordSerializer(serializers.ModelSerializer):
             'height_m', 'girth_cm',
             'condition', 'condition_display',
             'photo_url',
-            'notes',
+            'notes', 'gps_accuracy_m',
             'submitted_at',
         ]
         read_only_fields = ['id', 'tracking_id', 'submitted_at']
@@ -55,7 +55,7 @@ class PlantRecordCreateSerializer(serializers.ModelSerializer):
             'plant_type', 'local_name', 'scientific_name', 'variety',
             'latitude', 'longitude', 'zone', 'location_notes',
             'height_m', 'girth_cm',
-            'condition', 'photo', 'notes',
+            'condition', 'photo', 'notes', 'gps_accuracy_m',
         ]
         read_only_fields = ['plant_type', 'local_name', 'scientific_name']
         extra_kwargs = {'variety': {'required': True, 'allow_null': False}}
@@ -78,7 +78,7 @@ def records_to_csv(queryset):
         'ID', 'Type', 'Local Name', 'Scientific Name', 'Variety',
         'Latitude', 'Longitude', 'Zone', 'Location Notes',
         'Height (m)', 'Girth (cm)',
-        'Condition', 'Notes', 'Submitted At',
+        'Condition', 'Notes', 'GPS Accuracy (m)', 'Submitted At',
     ])
     for r in queryset:
         writer.writerow([
@@ -95,6 +95,7 @@ def records_to_csv(queryset):
             r.girth_cm or '',
             r.get_condition_display(),
             r.notes,
+            r.gps_accuracy_m or '',
             r.submitted_at.strftime('%Y-%m-%d %H:%M') if r.submitted_at else '',
         ])
     return output.getvalue()
