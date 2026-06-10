@@ -72,6 +72,12 @@ class PlantRecord(models.Model):
     # Photo
     photo = models.ImageField(upload_to='geo_tracker/photos/', null=True, blank=True)
 
+    # GPS quality metadata
+    gps_accuracy_m = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        help_text='GPS accuracy radius in metres at time of capture (lower = better)',
+    )
+
     # Metadata
     notes = models.TextField(blank=True)
     submitted_by = models.CharField(
