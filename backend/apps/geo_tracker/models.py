@@ -57,6 +57,13 @@ class PlantRecord(models.Model):
         max_digits=7, decimal_places=2, null=True, blank=True,
         help_text='Girth/circumference at breast height in centimetres'
     )
+    canopy_area_m = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Canopy span in metres'
+    )
     # Condition / status
     CONDITION_CHOICES = [
         ('excellent', 'Excellent'),
