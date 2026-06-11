@@ -28,6 +28,20 @@ PLANT_TYPE_PREFIXES = {
 }
 
 
+ZONE_OFFSETS = {
+    CampusArea.HOSTELS: 0,
+    CampusArea.HOUSING_ZONE: 5000,
+    CampusArea.ACADEMIC_BLOCK: 10000,
+    CampusArea.GROUND_SPORTS: 15000,
+    CampusArea.RESEARCH_PARK: 20000,
+    CampusArea.RANG_MANCH: 25000,
+    CampusArea.CENTRAL_ARCADE: 30000,
+    CampusArea.ROAD_AREA: 35000,
+    CampusArea.GATE_1: 40000,
+    CampusArea.WATER_TREATMENT: 45000,
+}
+
+
 class PlantVariety(models.Model):
     name = models.CharField(max_length=200)
     plant_type = models.CharField(max_length=10, choices=PlantType.choices)
@@ -42,11 +56,11 @@ class PlantVariety(models.Model):
 
 
 class PlantRecord(models.Model):
-    # Core identification
     tracking_id = models.CharField(max_length=7, unique=True, editable=False)
     plant_type = models.CharField(max_length=10, choices=PlantType.choices)
     local_name = models.CharField(max_length=200)
     scientific_name = models.CharField(max_length=200, blank=True)
+
     variety = models.ForeignKey(
         PlantVariety,
         on_delete=models.SET_NULL,
@@ -55,9 +69,9 @@ class PlantRecord(models.Model):
         related_name='records',
     )
 
-    # Location
     latitude = models.DecimalField(max_digits=10, decimal_places=7)
     longitude = models.DecimalField(max_digits=10, decimal_places=7)
+
     zone = models.CharField(
         max_length=50,
         choices=CampusArea.choices,
@@ -65,15 +79,22 @@ class PlantRecord(models.Model):
         help_text='Campus area / zone',
     )
 
-    # Physical measurements
     height_m = models.DecimalField(
-        max_digits=6, decimal_places=2, null=True, blank=True,
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
         help_text='Height in metres'
     )
+
     girth_cm = models.DecimalField(
-        max_digits=7, decimal_places=2, null=True, blank=True,
+        max_digits=7,
+        decimal_places=2,
+        null=True,
+        blank=True,
         help_text='Girth/circumference at breast height in centimetres'
     )
+
     canopy_area_m = models.DecimalField(
         max_digits=6,
         decimal_places=2,
@@ -81,7 +102,7 @@ class PlantRecord(models.Model):
         blank=True,
         help_text='Canopy span in metres'
     )
-    # Condition / status
+
     CONDITION_CHOICES = [
         ('excellent', 'Excellent'),
         ('good', 'Good'),
@@ -89,27 +110,36 @@ class PlantRecord(models.Model):
         ('poor', 'Poor'),
         ('dead', 'Dead'),
     ]
+
     condition = models.CharField(
-        max_length=20, choices=CONDITION_CHOICES, default='good'
+        max_length=20,
+        choices=CONDITION_CHOICES,
+        default='good'
     )
 
-    # Photo
-    photo = models.ImageField(upload_to='geo_tracker/photos/', null=True, blank=True)
+    photo = models.ImageField(
+        upload_to='geo_tracker/photos/',
+        null=True,
+        blank=True
+    )
 
-    # GPS quality metadata
     gps_accuracy_m = models.DecimalField(
-        max_digits=6, decimal_places=2, null=True, blank=True,
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
         help_text='GPS accuracy radius in metres at time of capture (lower = better)',
     )
 
-    # Metadata
     notes = models.TextField(blank=True)
+
     submitted_by = models.CharField(
         max_length=200,
         blank=True,
         default='Geo tracker form',
         help_text='Submission source or staff name',
     )
+
     submitted_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
@@ -123,32 +153,40 @@ class PlantRecord(models.Model):
             return super().save(*args, **kwargs)
 
         prefix = PLANT_TYPE_PREFIXES.get(self.plant_type)
+
         if not prefix:
             return super().save(*args, **kwargs)
 
         for _ in range(3):
-            self.tracking_id = self._next_tracking_id(prefix)
+            self.tracking_id = self._next_tracking_id(
+                prefix=prefix,
+                zone=self.zone,
+            )
+
             try:
                 return super().save(*args, **kwargs)
             except IntegrityError:
                 self.tracking_id = ''
+
         return super().save(*args, **kwargs)
 
     @classmethod
-    def _next_tracking_id(cls, prefix):
-        last_id = (
-            cls.objects
-            .filter(tracking_id__startswith=f'{prefix}-')
-            .order_by('-tracking_id')
-            .values_list('tracking_id', flat=True)
-            .first()
-        )
-        next_number = 1
-        if last_id:
-            try:
-                next_number = int(last_id.split('-', 1)[1]) + 1
-            except (IndexError, ValueError):
-                next_number = 1
+    def _next_tracking_id(cls, prefix, zone):
+        offset = ZONE_OFFSETS.get(zone, 0)
+
+        plant_type = {
+            'T': PlantType.TREE,
+            'P': PlantType.PLANT,
+            'C': PlantType.CREEPER,
+        }[prefix]
+
+        count = cls.objects.filter(
+            plant_type=plant_type,
+            zone=zone,
+        ).count()
+
+        next_number = offset + count + 1
+
         return f'{prefix}-{next_number:05d}'
 
     @property
