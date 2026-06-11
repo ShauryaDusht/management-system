@@ -157,17 +157,7 @@ class PlantRecord(models.Model):
         if not prefix:
             return super().save(*args, **kwargs)
 
-        for _ in range(3):
-            self.tracking_id = self._next_tracking_id(
-                prefix=prefix,
-                zone=self.zone,
-            )
-
-            try:
-                return super().save(*args, **kwargs)
-            except IntegrityError:
-                self.tracking_id = ''
-
+        self.tracking_id = self._next_tracking_id(prefix=prefix, zone=self.zone)
         return super().save(*args, **kwargs)
 
     @classmethod
@@ -180,13 +170,18 @@ class PlantRecord(models.Model):
             'C': PlantType.CREEPER,
         }[prefix]
 
-        count = cls.objects.filter(
+        existing = list(cls.objects.filter(
             plant_type=plant_type,
             zone=zone,
-        ).count()
+            tracking_id__regex=r'^[TPC]-\d{5}$',
+        ).values_list('tracking_id', flat=True))
 
-        next_number = offset + count + 1
+        if existing:
+            max_num = max(int(tid.split('-')[1]) for tid in existing)
+        else:
+            max_num = offset  # first entry will be offset + 1
 
+        next_number = max_num + 1
         return f'{prefix}-{next_number:05d}'
 
     @property
