@@ -1,7 +1,17 @@
+/**
+ * AdminLayout.jsx  –  patched to support `fullscreen` prop
+ *
+ * Usage:
+ *   <AdminLayout>                   // normal – padded content area (existing behaviour)
+ *   <AdminLayout fullscreen>        // new    – children fill 100% with no padding
+ *
+ * Only GeoTrackerPage needs `fullscreen`.  All other pages remain unchanged.
+ */
+
 import { APP_LOGO_PATH, APP_NAME } from '../shared/constants'
 import Sidebar from '../components/Sidebar'
 
-export default function AdminLayout({ children, title, subtitle, actions }) {
+export default function AdminLayout({ children, title, subtitle, actions, fullscreen = false }) {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar />
@@ -12,6 +22,9 @@ export default function AdminLayout({ children, title, subtitle, actions }) {
           minHeight: '100vh',
           display: 'flex',
           flexDirection: 'column',
+          // When fullscreen, remove overflow:auto so the child can manage it
+          overflow: fullscreen ? 'hidden' : undefined,
+          position: fullscreen ? 'relative' : undefined,
         }}
       >
         {title && (
@@ -64,7 +77,20 @@ export default function AdminLayout({ children, title, subtitle, actions }) {
             </div>
           </div>
         )}
-        <div style={{ flex: 1, padding: '20px 28px 40px', overflow: 'auto' }}>{children}</div>
+
+        {/* 
+          Normal mode:   padded scrollable area (existing behaviour, unchanged)
+          Fullscreen:    children fill the flex-1 parent completely, no padding
+        */}
+        {fullscreen ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+            {children}
+          </div>
+        ) : (
+          <div style={{ flex: 1, padding: '20px 28px 40px', overflow: 'auto' }}>
+            {children}
+          </div>
+        )}
       </main>
     </div>
   )
