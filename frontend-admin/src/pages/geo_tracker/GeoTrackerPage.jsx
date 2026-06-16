@@ -155,9 +155,9 @@ const TYPE_CONFIG = {
 
 const CONDITION_CONFIG = {
   excellent: { color: '#16a34a', label: 'Excellent', ring: '#bbf7d0' },
-  good:      { color: '#2563eb', label: 'Good',      ring: '#bfdbfe' },
-  fair:      { color: '#ca8a04', label: 'Fair',      ring: '#fef08a' },
-  poor:      { color: '#dc2626', label: 'Poor',      ring: '#fecaca' },
+  good:      { color: '#3b82f6', label: 'Good',      ring: '#bfdbfe' },
+  fair:      { color: '#eab308', label: 'Fair',      ring: '#fef08a' },
+  poor:      { color: '#ef4444', label: 'Poor',      ring: '#fecaca' },
   dead:      { color: '#6b7280', label: 'Dead',      ring: '#e5e7eb' },
 }
 
@@ -337,42 +337,78 @@ function applyGpsCorrection(records, strength) {
 // ---------------------------------------------------------------------------
 
 /**
- * Build a beautiful SVG-based Leaflet DivIcon.
- * The marker is a teardrop pin with an emoji core and a condition-coloured ring.
+ * Resolve marker size (px) based on current zoom level.
+ *   Zoom 13–15 → 12 px   (reduced ~25% from 16)
+ *   Zoom 16–17 → 16 px
+ *   Zoom 18+   → 22 px
+ * The "base" here is the circle diameter before applying the selected 15–20% bump.
  */
-function buildIcon(type, condition, isSelected = false) {
+function markerSizeForZoom(zoom) {
+  if (zoom >= 18) return 22
+  if (zoom >= 16) return 16
+  return 12
+}
+
+/**
+ * Build a beautiful SVG-based Leaflet DivIcon.
+ *
+ * Design (per spec):
+ *   • Thin health-coloured ring  → stroke colour from CONDITION_CONFIG
+ *   • Neutral white/light fill   → keeps the ring clearly visible
+ *   • Centred tree emoji
+ *   • No teardrop tail (cleaner in dense areas)
+ *   • Selected: 15–20% larger + soft halo matching health colour, z-index front
+ *
+ * @param {string}  type        – 'tree' | 'plant' | 'creeper'
+ * @param {string}  condition   – key in CONDITION_CONFIG
+ * @param {boolean} isSelected  – true when this marker is the active one
+ * @param {number}  zoom        – current map zoom (default 16 → medium size)
+ */
+function buildIcon(type, condition, isSelected = false, zoom = 16) {
   const tcfg = TYPE_CONFIG[type] || TYPE_CONFIG.tree
   const ccfg = CONDITION_CONFIG[condition] || CONDITION_CONFIG.good
-  const size  = isSelected ? 40 : 32
-  const ring  = isSelected ? 3  : 2
-  const glow  = isSelected
-    ? `filter:drop-shadow(0 0 8px ${tcfg.color}aa);`
-    : 'filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));'
+
+  // Dynamic base size from zoom, then bump ~18% when selected
+  const base = markerSizeForZoom(zoom)
+  const size = isSelected ? Math.round(base * 1.18) : base
+
+  // Ring stroke width: thicker when selected
+  const strokeW = isSelected ? Math.max(2, Math.round(size * 0.12)) : Math.max(1.5, Math.round(size * 0.09))
+
+  // Emoji font size scales with marker
+  const emojiSize = Math.round(size * 0.52)
+
+  // Glow halo for selected state – matches health colour
+  const halo = isSelected
+    ? `filter:drop-shadow(0 0 ${Math.round(size * 0.45)}px ${ccfg.color}bb) drop-shadow(0 1px 3px rgba(0,0,0,.35));`
+    : 'filter:drop-shadow(0 1px 3px rgba(0,0,0,.3));'
+
+  // z-index: selected markers float above all others
+  const zIndex = isSelected ? 'z-index:9999;' : ''
 
   return L.divIcon({
     className: '',
-    iconSize: [size, size + 8],
-    iconAnchor: [size / 2, size + 8],
-    popupAnchor: [0, -(size + 8)],
+    iconSize:    [size, size],
+    iconAnchor:  [size / 2, size / 2],
+    popupAnchor: [0, -(size / 2 + 4)],
     html: `
       <div style="
-        width:${size}px;height:${size + 8}px;
-        display:flex;flex-direction:column;align-items:center;
-        ${glow}
+        width:${size}px;height:${size}px;
+        display:flex;align-items:center;justify-content:center;
+        ${halo}
+        ${zIndex}
         cursor:pointer;
-        transition:transform .15s ease;
+        transition:transform .15s ease, filter .15s ease;
+        position:relative;
       ">
-        <svg width="${size}" height="${size}" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-          <!-- outer ring (condition colour) -->
-          <circle cx="20" cy="20" r="18" fill="${ccfg.ring}" stroke="${ccfg.color}" stroke-width="${ring + 1}"/>
-          <!-- inner fill (type colour) -->
-          <circle cx="20" cy="20" r="13" fill="${tcfg.color}"/>
-          <!-- emoji text -->
-          <text x="20" y="25" text-anchor="middle" font-size="14" font-family="system-ui">${tcfg.emoji}</text>
-        </svg>
-        <!-- teardrop tail -->
-        <svg width="10" height="8" viewBox="0 0 10 8" xmlns="http://www.w3.org/2000/svg" style="margin-top:-2px">
-          <path d="M5 8 L0 0 Q5 3 10 0 Z" fill="${tcfg.color}"/>
+        <svg width="${size}" height="${size}" viewBox="0 0 40 40"
+             xmlns="http://www.w3.org/2000/svg" overflow="visible">
+          <!-- white fill so ring colour reads cleanly -->
+          <circle cx="20" cy="20" r="17" fill="#ffffff" stroke="${ccfg.color}" stroke-width="${strokeW}"/>
+          <!-- emoji centred in circle -->
+          <text x="20" y="25" text-anchor="middle"
+                font-size="${emojiSize}" font-family="system-ui,sans-serif"
+                dominant-baseline="auto">${tcfg.emoji}</text>
         </svg>
       </div>
     `,
@@ -1137,6 +1173,8 @@ export default function GeoTrackerPage() {
   const [filters, setFilters]           = useState({
     q: '', plant_type: '', variety: '', zone: '', condition: '',
   })
+  // Current map zoom – drives dynamic marker sizing
+  const [mapZoom, setMapZoom]           = useState(16)
 
   // Debounce search input
   const debounceRef = useRef(null)
@@ -1174,6 +1212,9 @@ export default function GeoTrackerPage() {
     // Cluster layer (manual implementation without plugin dependency)
     // Using a plain LayerGroup; swap to L.markerClusterGroup() if the plugin is installed.
     clusterLayerRef.current = L.layerGroup().addTo(map)
+
+    // Track zoom for dynamic marker sizing
+    map.on('zoomend', () => setMapZoom(map.getZoom()))
 
     mapInstanceRef.current = map
     return () => {
@@ -1215,7 +1256,7 @@ export default function GeoTrackerPage() {
   }, [fetchRecords, filters.q])
 
   // ---------------------------------------------------------------------------
-  // Redraw markers when corrected records or selectedRecord changes
+  // Redraw markers when corrected records, selectedRecord, or zoom changes
   // ---------------------------------------------------------------------------
   useEffect(() => {
     const layer = clusterLayerRef.current
@@ -1228,6 +1269,7 @@ export default function GeoTrackerPage() {
     if (correctedRecords.length === 0) return
 
     const bounds = []
+    const currentZoom = map.getZoom()
 
     correctedRecords.forEach(r => {
       const lat = parseFloat(r.lat)
@@ -1236,8 +1278,10 @@ export default function GeoTrackerPage() {
 
       const isSelected = selectedRecord?.id === r.id
       const marker = L.marker([lat, lng], {
-        icon: buildIcon(r.plant_type, r.condition, isSelected),
+        icon: buildIcon(r.plant_type, r.condition, isSelected, currentZoom),
         riseOnHover: true,
+        // Selected marker always on top
+        zIndexOffset: isSelected ? 1000 : 0,
       })
 
       // Build compact popup
@@ -1263,7 +1307,7 @@ export default function GeoTrackerPage() {
     if (bounds.length > 0) {
       try { map.fitBounds(bounds, { padding: [60, 60], maxZoom: 18 }) } catch (_) {}
     }
-  }, [correctedRecords, selectedRecord])
+  }, [correctedRecords, selectedRecord, mapZoom])
 
   // ---------------------------------------------------------------------------
   // Popup HTML builder
@@ -1716,6 +1760,14 @@ export default function GeoTrackerPage() {
           .geo-tracker-host > main > div:last-child {
             padding: 0 !important;
             overflow: hidden !important;
+          }
+
+          /* Smooth transitions on all map markers */
+          .leaflet-marker-icon div {
+            transition: filter .2s ease, transform .2s ease !important;
+          }
+          .leaflet-marker-icon div:hover {
+            transform: scale(1.12) !important;
           }
 
           /* Leaflet popup tweaks */
