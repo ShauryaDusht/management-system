@@ -613,14 +613,70 @@ function navBtnStyle(side) {
 // ---------------------------------------------------------------------------
 
 function TreeDetailPanel({
-  record, tcfg, ccfg, photos,
-  onClose, onDelete, onOpenLightbox,
+  record, tcfg, ccfg, photos, zones,
+  onClose, onDelete, onOpenLightbox, onUpdate,
   labelStyle, inputStyle,
 }) {
   const [tab, setTab] = useState(0)           // 0=survey, 1=treeinfo
   const [animDir, setAnimDir] = useState(null) // 'left' | 'right' | null
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
   const touchStartX = useRef(null)
   const eflora = getEfloraInfo(record.scientific_name)
+
+  // Reset edit mode whenever a different record is selected
+  useEffect(() => {
+    setEditing(false)
+    setSaveError(null)
+  }, [record.id])
+
+  function startEdit() {
+    setForm({
+      zone: record.zone || '',
+      condition: record.condition || 'good',
+      height_m: record.height_m ?? '',
+      girth_cm: record.girth_cm ?? '',
+      canopy_area_m: record.canopy_area_m ?? '',
+      gps_accuracy_m: record.gps_accuracy_m ?? '',
+      notes: record.notes || '',
+    })
+    setSaveError(null)
+    setEditing(true)
+  }
+
+  function cancelEdit() {
+    setEditing(false)
+    setSaveError(null)
+  }
+
+  function setField(key, value) {
+    setForm(f => ({ ...f, [key]: value }))
+  }
+
+  async function saveEdit() {
+    setSaving(true)
+    setSaveError(null)
+    const numOrNull = v => (v === '' || v === null || v === undefined ? null : v)
+    const payload = {
+      zone: form.zone,
+      condition: form.condition,
+      height_m: numOrNull(form.height_m),
+      girth_cm: numOrNull(form.girth_cm),
+      canopy_area_m: numOrNull(form.canopy_area_m),
+      gps_accuracy_m: numOrNull(form.gps_accuracy_m),
+      notes: form.notes,
+    }
+    try {
+      await onUpdate(record.id, payload)
+      setEditing(false)
+    } catch (err) {
+      setSaveError(err?.response?.data ? 'Could not save changes. Check the values and try again.' : 'Could not save changes. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   function switchTab(newTab) {
     if (newTab === tab) return
@@ -639,8 +695,8 @@ function TreeDetailPanel({
     const dx = e.changedTouches[0].clientX - touchStartX.current
     touchStartX.current = null
     if (Math.abs(dx) < 40) return
-    if (dx < 0 && tab === 0 && eflora) switchTab(1)  // swipe left → tree info
-    if (dx > 0 && tab === 1) switchTab(0)              // swipe right → survey
+    if (dx < 0 && tab === 0 && eflora && !editing) switchTab(1)  // swipe left → tree info
+    if (dx > 0 && tab === 1) switchTab(0)              // swipe right → characteristics
   }
 
   const slideStyle = {
@@ -654,7 +710,7 @@ function TreeDetailPanel({
   return (
     <aside
       style={{
-        width: 300, background: 'var(--surface)', borderLeft: '1px solid var(--border)',
+        width: 380, background: 'var(--surface)', borderLeft: '1px solid var(--border)',
         flexShrink: 0, display: 'flex', flexDirection: 'column',
         overflow: 'hidden',
       }}
@@ -670,16 +726,16 @@ function TreeDetailPanel({
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>
               {tcfg?.emoji} {record.local_name}
             </div>
             {record.tracking_id && (
-              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--green-700)', marginTop: 1, letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--green-700)', marginTop: 2, letterSpacing: '0.05em' }}>
                 {record.tracking_id}
               </div>
             )}
             {record.scientific_name && (
-              <div style={{ fontSize: 11, fontStyle: 'italic', color: 'var(--text-2)', marginTop: 1 }}>
+              <div style={{ fontSize: 13, fontStyle: 'italic', color: 'var(--text-2)', marginTop: 2 }}>
                 {record.scientific_name}
               </div>
             )}
@@ -687,14 +743,14 @@ function TreeDetailPanel({
           <button
             onClick={onClose}
             aria-label="Close detail panel"
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text-2)', padding: '2px 6px', flexShrink: 0 }}
+            style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text-2)', padding: '2px 6px', flexShrink: 0 }}
           >×</button>
         </div>
 
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: 0, marginBottom: -1 }}>
           {[
-            { idx: 0, label: '📋 Survey' },
+            { idx: 0, label: '📋 Characteristics' },
             { idx: 1, label: '🌿 Tree Info', disabled: !eflora },
           ].map(({ idx, label, disabled }) => (
             <button
@@ -703,7 +759,7 @@ function TreeDetailPanel({
               disabled={disabled}
               title={disabled ? 'No eFlora data available for this species' : undefined}
               style={{
-                flex: 1, padding: '7px 6px', fontSize: 12, fontWeight: 700,
+                flex: 1, padding: '8px 6px', fontSize: 13, fontWeight: 700,
                 background: 'none', border: 'none',
                 borderBottom: tab === idx ? '2.5px solid var(--green-700)' : '2.5px solid transparent',
                 color: tab === idx ? 'var(--green-700)' : disabled ? 'var(--text-2)' : 'var(--text)',
@@ -714,24 +770,6 @@ function TreeDetailPanel({
             >{label}</button>
           ))}
         </div>
-
-        {/* Swipe hint – only shown when eflora available and on tab 0 */}
-        {eflora && tab === 0 && (
-          <div style={{
-            fontSize: 10, color: 'var(--text-2)', textAlign: 'center',
-            padding: '4px 0 2px', letterSpacing: '0.04em', fontWeight: 600,
-          }}>
-            ← swipe left for tree info
-          </div>
-        )}
-        {tab === 1 && (
-          <div style={{
-            fontSize: 10, color: 'var(--text-2)', textAlign: 'center',
-            padding: '4px 0 2px', letterSpacing: '0.04em', fontWeight: 600,
-          }}>
-            swipe right for survey details →
-          </div>
-        )}
       </div>
 
       {/* ── Scrollable content area ──────────────────────────────── */}
@@ -740,29 +778,43 @@ function TreeDetailPanel({
 
           {tab === 0 && (
             <>
-              {/* Condition + type badges */}
-              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                <span style={{ background: tcfg?.bg, color: tcfg?.color, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
-                  {tcfg?.emoji} {tcfg?.label}
-                </span>
-                <span style={{ background: ccfg?.ring, color: ccfg?.color, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
-                  {ccfg?.label}
-                </span>
+              {/* Condition + type badges, edit toggle */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ background: tcfg?.bg, color: tcfg?.color, borderRadius: 20, padding: '4px 12px', fontSize: 13, fontWeight: 700 }}>
+                    {tcfg?.emoji} {tcfg?.label}
+                  </span>
+                  <span style={{ background: ccfg?.ring, color: ccfg?.color, borderRadius: 20, padding: '4px 12px', fontSize: 13, fontWeight: 700 }}>
+                    {ccfg?.label}
+                  </span>
+                </div>
+                {!editing && (
+                  <button
+                    onClick={startEdit}
+                    style={{
+                      padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                      border: '1.5px solid var(--border)', background: 'var(--surface)',
+                      color: 'var(--text)', cursor: 'pointer', flexShrink: 0,
+                    }}
+                  >
+                    ✏️ Edit
+                  </button>
+                )}
               </div>
 
               {/* Photo strip */}
               {photos.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Photos ({photos.length})
                   </div>
-                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {photos.slice(0, 4).map((url, i) => (
                       <div
                         key={i}
                         onClick={() => onOpenLightbox(photos, i)}
                         style={{
-                          width: 78, height: 62, borderRadius: 8, overflow: 'hidden',
+                          width: 92, height: 74, borderRadius: 8, overflow: 'hidden',
                           cursor: 'pointer', position: 'relative', border: '1.5px solid var(--border)',
                           transition: 'transform .15s, box-shadow .15s',
                         }}
@@ -780,7 +832,7 @@ function TreeDetailPanel({
                           <div style={{
                             position: 'absolute', inset: 0, background: 'rgba(0,0,0,.55)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: '#fff', fontWeight: 800, fontSize: 14,
+                            color: '#fff', fontWeight: 800, fontSize: 15,
                           }}>+{photos.length - 4}</div>
                         )}
                       </div>
@@ -789,47 +841,153 @@ function TreeDetailPanel({
                 </div>
               )}
 
-              {/* Survey data table */}
-              <table style={{ fontSize: 12, borderCollapse: 'collapse', width: '100%' }}>
-                <tbody>
-                  {[
-                    ['Zone',     record.zone_display || record.zone],
-                    ['Height',   record.height_m ? `${record.height_m} m` : null],
-                    ['Girth',    record.girth_cm  ? `${record.girth_cm} cm` : null],
-                    ['GPS',      record.lat != null ? `${parseFloat(record.lat).toFixed(5)}, ${parseFloat(record.lng).toFixed(5)}` : null],
-                    ['Accuracy', record.gps_accuracy_m ? `±${record.gps_accuracy_m} m` : null],
-                    ['Location', record.location_notes],
-                    ['Canopy',   record.canopy_area_m ? `${record.canopy_area_m} m²` : null],
-                    ['Recorded', record.submitted_at ? new Date(record.submitted_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : null],
-                    ['By',       record.submitted_by && record.submitted_by !== 'Geo tracker form' ? record.submitted_by : null],
-                  ].filter(([, v]) => v).map(([k, v]) => (
-                    <tr key={k}>
-                      <td style={{ padding: '4px 0', color: 'var(--text-2)', fontWeight: 600, width: 72, verticalAlign: 'top', fontSize: 11 }}>{k}</td>
-                      <td style={{ padding: '4px 0 4px 8px', fontWeight: 600, color: 'var(--text)', fontSize: 12 }}>{v}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {!editing ? (
+                <>
+                  {/* Characteristics data table */}
+                  <table style={{ fontSize: 13, borderCollapse: 'collapse', width: '100%' }}>
+                    <tbody>
+                      {[
+                        ['Zone',        record.zone_display || record.zone],
+                        ['Height',      record.height_m ? `${record.height_m} m` : null],
+                        ['Girth',       record.girth_cm  ? `${record.girth_cm} cm` : null],
+                        ['GPS',         record.lat != null ? `${parseFloat(record.lat).toFixed(5)}, ${parseFloat(record.lng).toFixed(5)}` : null],
+                        ['Accuracy',    record.gps_accuracy_m ? `±${record.gps_accuracy_m} m` : null],
+                        ['Location',    record.location_notes],
+                        ['Canopy span', record.canopy_area_m ? `${record.canopy_area_m} m` : null],
+                        ['Recorded',    record.submitted_at ? new Date(record.submitted_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : null],
+                        ['By',          record.submitted_by && record.submitted_by !== 'Geo tracker form' ? record.submitted_by : null],
+                      ].filter(([, v]) => v).map(([k, v]) => (
+                        <tr key={k}>
+                          <td style={{ padding: '5px 0', color: 'var(--text-2)', fontWeight: 600, width: 88, verticalAlign: 'top', fontSize: 12 }}>{k}</td>
+                          <td style={{ padding: '5px 0 5px 8px', fontWeight: 600, color: 'var(--text)', fontSize: 13 }}>{v}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
 
-              {record.notes && (
-                <div>
-                  <div style={{ ...labelStyle, marginBottom: 4 }}>Notes</div>
-                  <div style={{ fontSize: 12, color: 'var(--text)', background: 'var(--surface-2)', borderRadius: 8, padding: '8px 10px', lineHeight: 1.5 }}>
-                    {record.notes}
+                  {record.notes && (
+                    <div>
+                      <div style={{ ...labelStyle, marginBottom: 4 }}>Notes</div>
+                      <div style={{ fontSize: 13, color: 'var(--text)', background: 'var(--surface-2)', borderRadius: 8, padding: '9px 11px', lineHeight: 1.5 }}>
+                        {record.notes}
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={onDelete}
+                    style={{
+                      marginTop: 8, padding: '10px 12px', borderRadius: 8,
+                      border: '1.5px solid #dc2626', background: '#fee2e2',
+                      color: '#991b1b', fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                    }}
+                  >
+                    Delete entry
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* Edit form – survey/characteristics fields */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div>
+                      <label style={labelStyle}>Zone</label>
+                      <select
+                        style={inputStyle}
+                        value={form.zone}
+                        onChange={e => setField('zone', e.target.value)}
+                      >
+                        <option value="">No zone</option>
+                        {(zones || []).map(z => (
+                          <option key={z.value} value={z.value}>{z.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Condition</label>
+                      <select
+                        style={inputStyle}
+                        value={form.condition}
+                        onChange={e => setField('condition', e.target.value)}
+                      >
+                        {Object.entries(CONDITION_CONFIG).map(([k, v]) => (
+                          <option key={k} value={k}>{v.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Height (m)</label>
+                      <input
+                        type="number" step="0.01" min="0" style={inputStyle}
+                        value={form.height_m}
+                        onChange={e => setField('height_m', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Girth (cm)</label>
+                      <input
+                        type="number" step="0.01" min="0" style={inputStyle}
+                        value={form.girth_cm}
+                        onChange={e => setField('girth_cm', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Canopy span (m)</label>
+                      <input
+                        type="number" step="0.01" min="0" style={inputStyle}
+                        value={form.canopy_area_m}
+                        onChange={e => setField('canopy_area_m', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>GPS accuracy (m)</label>
+                      <input
+                        type="number" step="0.01" min="0" style={inputStyle}
+                        value={form.gps_accuracy_m}
+                        onChange={e => setField('gps_accuracy_m', e.target.value)}
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
 
-              <button
-                onClick={onDelete}
-                style={{
-                  marginTop: 8, padding: '9px 12px', borderRadius: 8,
-                  border: '1.5px solid #dc2626', background: '#fee2e2',
-                  color: '#991b1b', fontSize: 12, fontWeight: 800, cursor: 'pointer',
-                }}
-              >
-                Delete entry
-              </button>
+                  <div>
+                    <label style={labelStyle}>Notes</label>
+                    <textarea
+                      style={{ ...inputStyle, minHeight: 70, resize: 'vertical', fontFamily: 'inherit' }}
+                      value={form.notes}
+                      onChange={e => setField('notes', e.target.value)}
+                    />
+                  </div>
+
+                  {saveError && (
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#991b1b' }}>{saveError}</div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={saveEdit}
+                      disabled={saving}
+                      style={{
+                        flex: 1, padding: '10px 12px', borderRadius: 8, border: 'none',
+                        background: 'var(--green-800)', color: '#fff',
+                        fontSize: 13, fontWeight: 800, cursor: saving ? 'default' : 'pointer',
+                        opacity: saving ? 0.7 : 1,
+                      }}
+                    >
+                      {saving ? 'Saving…' : 'Save changes'}
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      disabled={saving}
+                      style={{
+                        padding: '10px 14px', borderRadius: 8, border: '1.5px solid var(--border)',
+                        background: 'var(--surface)', color: 'var(--text)',
+                        fontSize: 13, fontWeight: 700, cursor: saving ? 'default' : 'pointer',
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              )}
             </>
           )}
 
@@ -839,23 +997,23 @@ function TreeDetailPanel({
               <div style={{
                 background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)',
                 border: '1.5px solid #86efac',
-                borderRadius: 10, padding: '12px 14px',
+                borderRadius: 10, padding: '13px 15px',
               }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#14532d', marginBottom: 2 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#14532d', marginBottom: 3 }}>
                   🌿 {eflora.local}
                 </div>
                 {eflora.gujarati && (
-                  <div style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>
+                  <div style={{ fontSize: 13, color: '#166534', fontWeight: 600 }}>
                     ગુજ: {eflora.gujarati}
                   </div>
                 )}
-                <div style={{ fontSize: 11, fontStyle: 'italic', color: '#4ade80', marginTop: 1 }}>
+                <div style={{ fontSize: 13, fontStyle: 'italic', color: '#4ade80', marginTop: 2 }}>
                   {record.scientific_name}
                 </div>
               </div>
 
               {/* Info rows */}
-              <table style={{ fontSize: 12, borderCollapse: 'collapse', width: '100%' }}>
+              <table style={{ fontSize: 13, borderCollapse: 'collapse', width: '100%' }}>
                 <tbody>
                   {[
                     ['Family',    eflora.family],
@@ -864,8 +1022,8 @@ function TreeDetailPanel({
                     ['Uses',      eflora.uses],
                   ].filter(([,v]) => v).map(([k, v]) => (
                     <tr key={k}>
-                      <td style={{ padding: '5px 0', color: 'var(--text-2)', fontWeight: 600, width: 72, verticalAlign: 'top', fontSize: 11 }}>{k}</td>
-                      <td style={{ padding: '5px 0 5px 8px', fontWeight: 600, color: 'var(--text)', fontSize: 12, lineHeight: 1.4 }}>{v}</td>
+                      <td style={{ padding: '6px 0', color: 'var(--text-2)', fontWeight: 600, width: 88, verticalAlign: 'top', fontSize: 12 }}>{k}</td>
+                      <td style={{ padding: '6px 0 6px 8px', fontWeight: 600, color: 'var(--text)', fontSize: 13, lineHeight: 1.4 }}>{v}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -874,12 +1032,12 @@ function TreeDetailPanel({
               {/* Description */}
               {eflora.description && (
                 <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     About this tree
                   </div>
                   <div style={{
-                    fontSize: 12, color: 'var(--text)', lineHeight: 1.65,
-                    background: 'var(--surface-2)', borderRadius: 8, padding: '10px 12px',
+                    fontSize: 13, color: 'var(--text)', lineHeight: 1.65,
+                    background: 'var(--surface-2)', borderRadius: 8, padding: '11px 13px',
                   }}>
                     {eflora.description}
                   </div>
@@ -893,9 +1051,9 @@ function TreeDetailPanel({
                 rel="noreferrer"
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  padding: '9px 12px', borderRadius: 8, marginTop: 4,
+                  padding: '10px 12px', borderRadius: 8, marginTop: 4,
                   background: '#14532d', color: '#fff',
-                  fontSize: 12, fontWeight: 700, textDecoration: 'none',
+                  fontSize: 13, fontWeight: 700, textDecoration: 'none',
                   transition: 'background .15s',
                 }}
                 onMouseEnter={e => e.currentTarget.style.background = '#166534'}
@@ -908,7 +1066,7 @@ function TreeDetailPanel({
               <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
 
               {/* Survey summary in tree info tab */}
-              <div style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 600 }}>
                 Campus Survey Summary
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -920,7 +1078,7 @@ function TreeDetailPanel({
                 ].filter(Boolean).map(({ l, v }) => (
                   <div key={l} style={{
                     background: 'var(--surface-2)', border: '1px solid var(--border)',
-                    borderRadius: 7, padding: '5px 9px', fontSize: 11,
+                    borderRadius: 7, padding: '6px 10px', fontSize: 12,
                   }}>
                     <span style={{ color: 'var(--text-2)', fontWeight: 600 }}>{l}: </span>
                     <span style={{ color: 'var(--text)', fontWeight: 700 }}>{v}</span>
@@ -1208,6 +1366,14 @@ export default function GeoTrackerPage() {
     if (images.length) setLightbox({ images, index: 0 })
   }
 
+  async function handleUpdateRecord(id, payload) {
+    const res = await geoApi.updateRecord(id, payload)
+    setRecords(prev => prev.map(r => (r.id === id ? { ...r, ...res.data } : r)))
+    setSelectedRecord(prev => (prev && prev.id === id ? { ...prev, ...res.data } : prev))
+    setSuccess(`Updated ${res.data.tracking_id || res.data.local_name}.`)
+    return res.data
+  }
+
   const activeFilterCount = Object.values(filters).filter(Boolean).length
   const filteredVarieties = filters.plant_type
     ? varieties.filter(v => v.plant_type === filters.plant_type)
@@ -1481,8 +1647,10 @@ export default function GeoTrackerPage() {
                 tcfg={tcfg}
                 ccfg={ccfg}
                 photos={photos}
+                zones={zones}
                 onClose={() => setSelectedRecord(null)}
                 onDelete={() => setDeleteTarget(selectedRecord)}
+                onUpdate={handleUpdateRecord}
                 onOpenLightbox={(imgs, idx) => setLightbox({ images: imgs, index: idx })}
                 labelStyle={labelStyle}
                 inputStyle={inputStyle}

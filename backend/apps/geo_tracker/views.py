@@ -15,6 +15,7 @@ from .models import CampusArea, PlantRecord, PlantVariety
 from .serializers import (
     PlantRecordSerializer,
     PlantRecordCreateSerializer,
+    PlantRecordUpdateSerializer,
     PlantVarietySerializer,
     campus_area_choices,
     records_to_csv,
@@ -120,6 +121,19 @@ class GeoTrackerRecordDetailView(APIView):
             return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
         record.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def patch(self, request, pk):
+        try:
+            record = PlantRecord.objects.select_related('variety').get(pk=pk)
+        except PlantRecord.DoesNotExist:
+            return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = PlantRecordUpdateSerializer(record, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+
+        return Response(PlantRecordSerializer(record, context={'request': request}).data)
 
 
 class GeoTrackerExportCSVView(APIView):

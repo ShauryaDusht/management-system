@@ -48,6 +48,29 @@ class PlantRecordSerializer(serializers.ModelSerializer):
         return obj.photo.url
 
 
+class PlantRecordUpdateSerializer(serializers.ModelSerializer):
+    """Used by the admin detail panel to edit survey/characteristics fields.
+
+    Identity fields (tracking_id, plant_type, variety, local/scientific name)
+    and the GPS pin (latitude/longitude, captured in the field) are
+    intentionally left out — this serializer only covers the data an admin
+    should be able to correct after the fact.
+    """
+
+    class Meta:
+        model = PlantRecord
+        fields = [
+            'zone', 'condition',
+            'height_m', 'girth_cm', 'canopy_area_m', 'gps_accuracy_m',
+            'notes',
+        ]
+        extra_kwargs = {
+            'zone': {'required': False, 'allow_blank': True},
+            'condition': {'required': False},
+            'notes': {'required': False, 'allow_blank': True},
+        }
+
+
 class PlantRecordCreateSerializer(serializers.ModelSerializer):
     """Used by the public submit form — accepts photo upload."""
 

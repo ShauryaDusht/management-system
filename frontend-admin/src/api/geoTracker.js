@@ -10,6 +10,9 @@ export const geoApi = {
   deleteRecord: (id) =>
     api.delete(`/geo-tracker/records/${id}/`),
 
+  updateRecord: (id, data) =>
+    api.patch(`/geo-tracker/records/${id}/`, data),
+
   getVarieties: (plantType = null) =>
     api.get('/geo-tracker/varieties/', { params: plantType ? { plant_type: plantType } : {} }),
 
