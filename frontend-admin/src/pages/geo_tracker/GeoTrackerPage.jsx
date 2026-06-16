@@ -25,6 +25,125 @@ import AdminLayout from '../../layout/AdminLayout'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 
 // ---------------------------------------------------------------------------
+// eFlora of Gandhinagar – Tree Information Database
+// Source: www.efloraofgandhinagar.in  (87 trees from campus survey)
+// Each entry: localName, scientificName, family, habit, gujaratiName,
+//             flowering, uses, description, efloraSlug
+// ---------------------------------------------------------------------------
+const EFLORA_DB = {
+  // Key = scientific name (lowercase, trimmed) → info object
+  'cassia javanica': { local:'Pink cassia', gujarati:'Gulabi Amaltas', family:'Fabaceae (Caesalpinioideae)', habit:'Medium deciduous tree, 10–25 m', flowering:'March–May', uses:'Ornamental, street tree, shade', description:'Beautiful ornamental tree bearing clusters of rose-pink flowers. Leaves paripinnate with 8–14 oblong leaflets. Pods long, cylindrical, dark brown. Widely planted along roadsides for its stunning spring bloom.', slug:'cassia-javanica' },
+  'senna siamea': { local:'Kashid', gujarati:'Kasod', family:'Fabaceae', habit:'Medium evergreen tree, 8–15 m', flowering:'Oct–Dec', uses:'Timber, fuelwood, shade, soil improvement', description:'Fast-growing, hardy tree with dense canopy. Bright yellow flowers in terminal panicles. Leaves pinnate with 6–10 pairs of leaflets. Commonly used for afforestation and as a windbreak.', slug:'senna-siamea' },
+  'cassia fistula': { local:'Garmalo', gujarati:'Garmalo', family:'Fabaceae', habit:'Medium deciduous tree, 10–20 m', flowering:'April–June', uses:'Ornamental, Ayurvedic medicine, timber', description:'National tree of Thailand. Long drooping racemes of bright yellow flowers give it the name "Golden Shower". Fruit is a long cylindrical pod. Pulp used as mild laxative in traditional medicine.', slug:'cassia-fistula' },
+  'nyctanthes arbor': { local:'Parijat', gujarati:'Parijatak', family:'Oleaceae', habit:'Small tree or shrub, 5–10 m', flowering:'Aug–Oct', uses:'Sacred, medicinal, perfumery, ornamental', description:'Fragrant white flowers with orange tube, opening at night and falling at dawn. Sacred in Hindu tradition. Leaves rough, used in Ayurveda for fevers and arthritis. Flowers yield yellow dye.', slug:'nyctanthes-arbor-tristis' },
+  'bauhinia variegata': { local:'Kachnar', gujarati:'Kanchan', family:'Fabaceae', habit:'Small to medium deciduous tree, 8–12 m', flowering:'Feb–April', uses:'Ornamental, edible buds, medicinal', description:'Strikingly beautiful tree with bilobed leaves resembling a camel\'s hoof. Large orchid-like flowers in shades of pink, purple and white. Flower buds and young pods are cooked as vegetable in India.', slug:'bauhinia-variegata' },
+  'tabebuia rosea': { local:'Tabebuia rosea', gujarati:'Tabebuia', family:'Bignoniaceae', habit:'Medium deciduous tree, 10–20 m', flowering:'Feb–April', uses:'Ornamental, street tree, timber', description:'Spectacular flowering tree from tropical America. Large clusters of pink to magenta trumpet-shaped flowers appear before leaves. Widely planted in Gandhinagar for avenue beautification.', slug:'tabebuia-rosea' },
+  'tabebuia argentea': { local:'Tabebuia argentea', gujarati:'Peela Tabebuia', family:'Bignoniaceae', habit:'Small to medium deciduous tree, 8–15 m', flowering:'Feb–April', uses:'Ornamental, avenue tree', description:'Brilliant yellow flowering tree with silver-grey foliage. Masses of trumpet-shaped bright yellow flowers smother the tree when leafless. Silver sheen on leaves gives the species its name "argentea".', slug:'tabebuia-argentea' },
+  'peltophorum': { local:'Peltro fram', gujarati:'Peltophorum', family:'Fabaceae', habit:'Large semi-evergreen tree, 15–25 m', flowering:'May–Sept', uses:'Shade, ornamental, timber, tannin', description:'Stately tree with dense ferny foliage and large golden-yellow flower clusters. Pods flat, winged and coppery. One of the best shade trees for avenues. Bark used for tanning leather.', slug:'peltophorum-pterocarpum' },
+  'delonix regia': { local:'Gulmohar', gujarati:'Gulmohar', family:'Fabaceae', habit:'Large deciduous tree, 10–20 m', flowering:'April–June', uses:'Ornamental, shade, fuelwood', description:'One of the most spectacular flowering trees in the world. Brilliant scarlet-orange flowers with one white petal cover the canopy. Bipinnate feathery leaves. Flat brown pods 30–60 cm. Planted extensively across Gandhinagar.', slug:'delonix-regia' },
+  'neolamarckia cadamba': { local:'Kadam', gujarati:'Kadamb', family:'Rubiaceae', habit:'Large deciduous tree, 20–30 m', flowering:'July–Sept', uses:'Timber, paper pulp, sacred, medicinal', description:'Fast-growing tree associated with Lord Krishna in mythology. Spherical yellow-orange flower heads with sweet fragrance. Large glossy leaves. Important for timber and paper industry.', slug:'neolamarckia-cadamba' },
+  'manilkara hexandra': { local:'Rayan', gujarati:'Rayan', family:'Sapotaceae', habit:'Medium to large evergreen tree, 15–25 m', flowering:'Feb–May', uses:'Edible fruit, timber, fodder', description:'Native Indian tree with edible sweet berries. Dense evergreen canopy provides excellent shade. Hard durable timber used for building. Small white flowers; fruits turn red-orange when ripe. Important in traditional agroforestry.', slug:'manilkara-hexandra' },
+  'madhuca longifolia': { local:'Mahua', gujarati:'Mahuda', family:'Sapotaceae', habit:'Large deciduous tree, 15–25 m', flowering:'Feb–April', uses:'Edible flowers, oil, alcohol, fodder, timber', description:'Ecologically and economically vital tree for tribal communities. Fleshy fragrant flowers consumed fresh or dried; fermented for country liquor. Seeds yield non-edible oil for soap and cosmetics. Attracts wildlife.', slug:'madhuca-longifolia' },
+  'terminalia bellirica': { local:'Baheda', gujarati:'Baheda', family:'Combretaceae', habit:'Large deciduous tree, 20–30 m', flowering:'Oct–Nov', uses:'Ayurvedic medicine (Triphala), tannin, timber', description:'One of three ingredients in Triphala, a classical Ayurvedic formulation. Fruit astringent, used for respiratory and digestive ailments. Large tree with broad crown. Bark yields tannins for leather industry.', slug:'terminalia-bellirica' },
+  'ficus virens': { local:'Pilkhan', gujarati:'Pilkhan', family:'Moraceae', habit:'Large semi-evergreen tree, 20–35 m', flowering:'Feb–May', uses:'Shade, sacred, wildlife habitat, fodder', description:'Massive fig tree with spreading aerial roots and dense canopy. Leaves turn copper-red before new growth – beautiful seasonal display. Important food source for birds. Sacred in parts of India.', slug:'ficus-virens' },
+  'ficus religiosa': { local:'Pipal', gujarati:'Pipal', family:'Moraceae', habit:'Large deciduous tree, 25–35 m', flowering:'Feb–May', uses:'Sacred, medicinal, shade, wildlife', description:'Most sacred tree in Hindu, Buddhist and Jain traditions. Heart-shaped leaves with distinctive long drip-tip. Small figs (syconia) eaten by birds. Lord Buddha attained enlightenment under this tree. Rich in medicinal compounds.', slug:'ficus-religiosa' },
+  'ficus benghalensis': { local:'Vad', gujarati:'Vad', family:'Moraceae', habit:'Very large evergreen tree, 20–35 m+', flowering:'March–June', uses:'Sacred, shade, medicinal, timber, wildlife', description:'National tree of India. Famous for its prop roots that form additional trunks, allowing single trees to cover vast areas. The tree in Auroville covers ~2 hectares. Sacred to Hindus. Small red figs attract birds and bats.', slug:'ficus-benghalensis' },
+  'ficus benghalensis': { local:'Vad', gujarati:'Vad', family:'Moraceae', habit:'Very large evergreen tree, 20–35 m+', flowering:'March–June', uses:'Sacred, shade, medicinal, timber, wildlife', description:'National tree of India. Famous for its prop roots that form additional trunks, allowing single trees to cover vast areas. Sacred to Hindus. Small red figs attract birds and bats.', slug:'ficus-benghalensis' },
+  'terminalia catappa': { local:'Badam', gujarati:'Jangli Badam', family:'Combretaceae', habit:'Large deciduous tree, 15–25 m', flowering:'March–July', uses:'Edible nuts, shade, medicinal, ornamental', description:'Distinctive tiered horizontal branches. Leaves turn crimson before falling – beautiful autumn display. Almond-like edible kernel inside fruit. Widely planted as a shade tree in coastal and urban areas.', slug:'terminalia-catappa' },
+  'mimusops elengi': { local:'Borsali', gujarati:'Borsali', family:'Sapotaceae', habit:'Medium evergreen tree, 10–20 m', flowering:'March–May', uses:'Fragrant flowers, timber, medicinal, ornamental', description:'Dense dark green canopy and highly fragrant small white flowers used in garlands and hair decoration. Timber very hard and durable. Bark and flowers used in Ayurveda. Good avenue tree tolerant of pollution.', slug:'mimusops-elengi' },
+  'butea monosperma': { local:'Kesudo', gujarati:'Khakhro', family:'Fabaceae', habit:'Medium deciduous tree, 10–15 m', flowering:'Feb–April', uses:'Sacred (Holi), dye, medicinal, fodder, lac host', description:'Flame of the Forest – brilliant orange-red flowers on leafless branches in spring. Flowers used to make Holi colour. Lac insect host. Leaves used as plates. Bark yields fibre. Important in tribal rituals.', slug:'butea-monosperma' },
+  'mangifera indica': { local:'Mango tree', gujarati:'Keri', family:'Anacardiaceae', habit:'Large evergreen tree, 15–30 m', flowering:'Dec–Feb', uses:'National fruit of India, timber, shade, sacred', description:'National fruit tree of India. Cultivated for 4000+ years. Dense mango groves provide shade and habitat. Small fragrant flowers in large panicles. Leaves used in Hindu religious ceremonies. Hundreds of cultivated varieties.', slug:'mangifera-indica' },
+  'azadirachta indica': { local:'Limbdo', gujarati:'Limdo', family:'Meliaceae', habit:'Medium semi-evergreen tree, 15–20 m', flowering:'March–May', uses:'Biopesticide, Ayurveda, timber, fuelwood', description:'The village pharmacy. Every part has medicinal or pesticidal value. Azadirachtin in seeds is a powerful natural insecticide. Leaves, bark, flowers, seeds used in traditional medicine. Excellent drought-tolerant shade tree.', slug:'azadirachta-indica' },
+  'acacia nilotica': { local:'Deshi baval', gujarati:'Baval', family:'Fabaceae', habit:'Medium deciduous tree, 5–15 m', flowering:'May–June', uses:'Timber, tannin, gum arabic, fuelwood, medicine', description:'Native thorny tree common in dry regions. Bark rich in tannins used in leather tanning. Gum from bark (gum arabic) has industrial uses. Hard heavy timber. Important for fuelwood in rural areas. Pod used as fodder.', slug:'acacia-nilotica' },
+  'prosopis juliflora': { local:'Gando baval', gujarati:'Gando Baval', family:'Fabaceae', habit:'Small thorny tree, 5–12 m', flowering:'March–May', uses:'Fuelwood, charcoal, pods as fodder, tannin', description:'Invasive exotic from South America, naturalised across arid India. Very hardy – tolerates salinity, drought. Pods nutritious fodder for cattle and goats. Fuelwood and charcoal. Spreads aggressively, displacing native vegetation.', slug:'prosopis-juliflora' },
+  'acacia latronum': { local:'Dev baval', gujarati:'Dev Baval', family:'Fabaceae', habit:'Small to medium thorny tree, 6–12 m', flowering:'Feb–May', uses:'Fuelwood, fodder, thorny hedge', description:'Hardy drought-resistant acacia native to dry tropical zones. Dense thorny branches make effective live fencing. Pods provide nutritious fodder. Useful for stabilising degraded land and arid wastelands.', slug:'acacia-latronum' },
+  'acacia auriculiformis': { local:'Australian baval', gujarati:'Vilayati Baval', family:'Fabaceae', habit:'Medium evergreen tree, 8–20 m', flowering:'June–Sept', uses:'Fast-growing timber, fuelwood, afforestation', description:'Introduced from Australia for rapid afforestation. Flat phyllodes (leaf-like petioles) instead of true leaves. Fast-growing in poor soils. Widely used for watershed management and mine reclamation. Produces excellent charcoal.', slug:'acacia-auriculiformis' },
+  'prosopis cineraria': { local:'Khijado', gujarati:'Khijado', family:'Fabaceae', habit:'Small to medium tree, 5–10 m', flowering:'Feb–April', uses:'Sacred (Dussehra), fodder, timber, medicinal', description:'State tree of Rajasthan. Associated with Dussehra festival (Shami worship). Pods and leaves excellent fodder, sustaining cattle during drought. Nitrogen-fixing roots improve soil fertility. Tolerates extreme heat and drought.', slug:'prosopis-cineraria' },
+  'senegalia catechu': { local:'Khair', gujarati:'Khair', family:'Fabaceae', habit:'Medium deciduous tree, 8–15 m', flowering:'July–Aug', uses:'Katha (mouth freshener), tannin, timber, medicine', description:'Source of katha and catechu – key ingredients in paan (betel leaf preparation). Heartwood boiled to extract extract. Rich in tannins. Hard heavy durable timber. Bark used in traditional medicine for skin diseases.', slug:'acacia-catechu' },
+  'cordia dichotoma': { local:'Gunda', gujarati:'Gunda', family:'Boraginaceae', habit:'Small to medium deciduous tree, 5–12 m', flowering:'Jan–April', uses:'Edible gluey fruit, medicinal, timber', description:'Known for its sticky edible fruits (gunda) used in Gujarati pickles and condiments. Small white flowers. Leaves rough, used as sandpaper locally. Gluey pulp of fruit has adhesive properties. Common in dry areas.', slug:'cordia-dichotoma' },
+  'cordia sebestena': { local:'Red Gunda', gujarati:'Lal Gunda', family:'Boraginaceae', habit:'Small tree or shrub, 4–8 m', flowering:'Almost year-round', uses:'Ornamental, medicinal', description:'Striking ornamental tree with brilliant scarlet-orange flowers in clusters. Rough sandpaper-like leaves. Fleshy white fragrant fruit. Planted as a decorative tree in gardens and avenues. Tolerates coastal conditions.', slug:'cordia-sebestena' },
+  'parkia biglobosa': { local:'Parkia', gujarati:'Parkia', family:'Fabaceae', habit:'Large deciduous tree, 15–25 m', flowering:'Dec–Feb', uses:'Edible seeds and pods, locust beans, timber', description:'West African locust bean tree, planted in India for its nutritious fermented seeds (dawadawa). Ball-shaped red flower heads. Long flat pods. Seeds fermented into condiment similar to miso. Important food security tree.', slug:'parkia-biglobosa' },
+  'spathodea campanulata': { local:'Spathodea', gujarati:'African Tulip', family:'Bignoniaceae', habit:'Medium to large evergreen tree, 15–25 m', flowering:'Almost year-round', uses:'Ornamental, shade, medicinal', description:'African Tulip Tree. Spectacular large scarlet-orange trumpet flowers in dense clusters at branch tips year-round. Fast-growing. Buds hold water, popular with children. Invasive in some regions. Widely planted as ornamental in India.', slug:'spathodea-campanulata' },
+  'erythrina variegata': { local:'Pangaro', gujarati:'Pangaro', family:'Fabaceae', habit:'Medium deciduous tree, 10–20 m', flowering:'Jan–March', uses:'Shade, living fence, medicine, fodder, ornamental', description:'Coral tree with spectacular scarlet flowers on bare branches. Spiny trunk and branches. Soft wood – traditionally used as living fence posts. Leaves used as fodder. Widely used in agroforestry as shade tree in plantations.', slug:'erythrina-variegata' },
+  'terminalia arjuna': { local:'Arjun', gujarati:'Arjun', family:'Combretaceae', habit:'Large deciduous tree, 20–30 m', flowering:'March–June', uses:'Ayurvedic cardiac tonic, timber, tannin', description:'Revered medicinal tree, best known for cardiac benefits. Bark extract used for treating heart conditions in Ayurveda for over 3000 years. Strong buttressed trunk. Prefers riverbanks. Excellent timber. Leaves fed to tasar silkworm.', slug:'terminalia-arjuna' },
+  'bombax ceiba': { local:'Shimalo', gujarati:'Shimlo', family:'Malvaceae', habit:'Large deciduous tree, 20–35 m', flowering:'Jan–April', uses:'Cotton (kapok), timber, medicinal, ornamental', description:'Silk Cotton Tree. Large brilliant red flowers on bare branches in winter. Massive spiny trunk with distinctive conical spines. Seed pods yield cotton-like floss (kapok) used for stuffing. Important medicinal tree in tribal medicine.', slug:'bombax-ceiba' },
+  'tectona grandis': { local:'Sagwan', gujarati:'Sagwan', family:'Lamiaceae', habit:'Large deciduous tree, 20–35 m', flowering:'June–Sept', uses:'Premium timber, teak furniture, shipbuilding', description:'Teak – one of the world\'s most valued timbers. Extremely durable, naturally resistant to rot, insects and weather. Large leaves up to 60 cm. Small white fragrant flowers. India\'s forests once dominated by teak. Extensively planted commercially.', slug:'tectona-grandis' },
+  'aegle marmelos': { local:'Bael (bili)', gujarati:'Bilipatra', family:'Rutaceae', habit:'Medium deciduous tree, 8–15 m', flowering:'May–June', uses:'Sacred (Shiva), medicinal fruit, digestive aid', description:'Sacred to Lord Shiva – trifoliate leaves offered in worship. Hard-shelled fruit with aromatic pulp rich in vitamins. Pulp used for dysentery, digestive problems. Sherbet from ripe fruit popular in summer. Thorny branches.', slug:'aegle-marmelos' },
+  'dalbergia sissoo': { local:'Shisham', gujarati:'Shisham', family:'Fabaceae', habit:'Large deciduous tree, 15–25 m', flowering:'March–April', uses:'Premier furniture timber, fuelwood, nitrogen-fixing', description:'North India\'s most valued hardwood after teak. Rosewood-like timber for furniture, flooring, musical instruments. Deeply furrowed bark. Small pink-white fragrant flowers. Nitrogen-fixing root nodules improve soil. Tolerates frost and drought.', slug:'dalbergia-sissoo' },
+  'terminalia mantaly': { local:'Terminalia mantaly', gujarati:'Umbrella Tree', family:'Combretaceae', habit:'Medium deciduous tree, 10–20 m', flowering:'March–May', uses:'Ornamental, avenue tree, shade', description:'Madagascar Almond. Distinctly tiered horizontal branches form umbrella-like shape. Very popular as a compact avenue tree in cities. Attractive red and yellow autumn colour. Small white flowers. Tolerates urban pollution well.', slug:'terminalia-mantaly' },
+  'sterculia foetida': { local:'Jangli badam', gujarati:'Jangli Badam', family:'Malvaceae', habit:'Large deciduous tree, 20–35 m', flowering:'March–April', uses:'Edible seeds, biodiesel, timber, ornamental', description:'Wild Almond or Java Olive. Attractive umbrella crown. Foul-smelling small reddish flowers. Large bright red star-shaped fruit pods containing edible seeds. Seeds used for biodiesel. Spectacular ornamental tree when fruiting.', slug:'sterculia-foetida' },
+  'albizia lebbeck': { local:'Shirish', gujarati:'Shirish', family:'Fabaceae', hint:'Medium to large deciduous tree, 15–25 m', flowering:'April–July', uses:'Ayurvedic (anti-allergy), shade, timber, fodder', description:'Woman\'s tongue tree – named for rattling pods. Important Ayurvedic medicine for respiratory allergies and asthma. Fragrant cream-white pom-pom flowers. Fast-growing shade tree. Hard timber for furniture. Widely planted along roadsides.', slug:'albizia-lebbeck' },
+  'simarouba glauca': { local:'Laxmi taru', gujarati:'Laxmi Taru', family:'Simaroubaceae', habit:'Medium evergreen tree, 10–15 m', flowering:'Jan–March', uses:'Biodiesel, edible oil, soil conservation', description:'Paradise Tree or Biodiesel Tree. Seeds yield high-quality non-edible oil (50–60%) with excellent biodiesel potential. Drought-tolerant, grows on wastelands. Evergreen canopy. Promoted by Indian government for biofuel programme.', slug:'simarouba-glauca' },
+  'millingtonia hortensis': { local:'Buch', gujarati:'Indian Cork Tree', family:'Bignoniaceae', habit:'Large deciduous tree, 15–25 m', flowering:'Oct–Jan', uses:'Ornamental, fragrant flowers, timber, medicinal', description:'Indian Cork Tree. Spectacularly fragrant pure white trumpet flowers blooming at night in cool months. Bark is corky and soft. Flowers used in garlands and religious offerings. Tall elegant tree with feathery foliage.', slug:'millingtonia-hortensis' },
+  'pongamia pinnata': { local:'Karanja', gujarati:'Karanj', family:'Fabaceae', habit:'Medium to large semi-evergreen tree, 10–20 m', flowering:'March–May', uses:'Biodiesel, medicinal oil, shade, nitrogen-fixing', description:'Karanj or Pongam. Clusters of pink-purple flowers. Seeds yield non-edible oil used as traditional lamp fuel, mosquito repellent and in Ayurveda for skin diseases. Excellent biodiesel feedstock. Tolerates coastal, saline and waterlogged soils.', slug:'pongamia-pinnata' },
+  'ptrocarpus marsupium': { local:'Kanji tree', gujarati:'Bijasal', family:'Fabaceae', habit:'Large deciduous tree, 20–30 m', flowering:'Sept–Oct', uses:'Ayurvedic (diabetes), premium timber, gum', description:'Indian Kino Tree. Heartwood yields a blood-red resin (Indian kino) with potent anti-diabetic properties. Flagship Ayurvedic diabetes remedy for centuries. Excellent timber. Leaves fed to cattle. Resin also used as mouthwash.', slug:'pterocarpus-marsupium' },
+  'millettia peguensis': { local:'Milletia', gujarati:'Milletia', family:'Fabaceae', habit:'Medium deciduous tree, 10–18 m', flowering:'March–May', uses:'Timber, ornamental', description:'Teak-like timber tree from South-East Asia. Dense feathery compound leaves. Purple-pink flowers in racemes. Planted in India as an ornamental and timber tree. Wood valued for furniture and construction.', slug:'millettia-peguensis' },
+  'bignonia megapotamica': { local:'Bignonia', gujarati:'Bignonia', family:'Bignoniaceae', habit:'Climbing shrub or small tree', flowering:'March–July', uses:'Ornamental climber', description:'Vigorous climbing bignonia with trumpet-shaped orange-red flowers. Attractive ornamental for trellises, fences and pergolas. Fast-growing. Used extensively in Gandhinagar for vertical greening and beautification.', slug:'bignonia-megapotamica' },
+  'casuarina equisetifolia': { local:'Saru', gujarati:'Saru', family:'Casuarinaceae', habit:'Large conifer-like tree, 20–35 m', flowering:'Year-round', uses:'Timber, fuelwood, windbreak, coastal afforestation', description:'Australian Pine or Beefwood. Looks like a conifer but is a flowering tree with tiny scale leaves on jointed green branchlets. Excellent windbreak. Hard dense timber. Fixes nitrogen. Widely planted on coastal dunes and as avenue tree.', slug:'casuarina-equisetifolia' },
+  'ficus racemosa': { local:'Umbaro', gujarati:'Umbaro', family:'Moraceae', habit:'Large semi-evergreen tree, 15–25 m', flowering:'March–April', uses:'Edible figs, sacred, medicinal, wildlife', description:'Cluster Fig. Figs grow directly on trunk and main branches in dense clusters (cauliflorous habit). Sacred in Hindu and Buddhist traditions. Fruits eaten by birds, bats and monkeys. Latex and bark used medicinally. Important riverbank tree.', slug:'ficus-racemosa' },
+  'tecomella undulata': { local:'Rohido', gujarati:'Rohido', family:'Bignoniaceae', habit:'Small to medium deciduous tree, 8–12 m', flowering:'Feb–April', uses:'State tree of Rajasthan, timber, medicinal', description:'State tree of Rajasthan. Brilliant orange-red tubular flowers on bare branches. Extremely hard and durable timber (Indian Teak of arid zones). Well adapted to dry conditions. Sacred in Rajasthan. Flower extract used for liver ailments.', slug:'tecomella-undulata' },
+  'jacaranda mimosifolia': { local:'Neelmohar', gujarati:'Neelmohar', family:'Bignoniaceae', habit:'Medium deciduous tree, 10–20 m', flowering:'March–May', uses:'Ornamental, shade, timber', description:'One of the world\'s most beautiful flowering trees. Spectacular display of lavender-blue trumpet flowers covering the entire canopy. Feathery fern-like bipinnate leaves. Native to Argentina. Creates a blue carpet of fallen flowers. Widely planted in Gandhinagar.', slug:'jacaranda-mimosifolia' },
+  'kigelia pinnata': { local:'Balamkhira', gujarati:'Sausage Tree', family:'Bignoniaceae', habit:'Medium to large evergreen tree, 10–20 m', flowering:'Jan–April', uses:'Ornamental, traditional medicine, fruit – not edible', description:'Sausage Tree – named for its huge sausage-shaped hanging fruits (up to 1 m long). Large dark red maroon flowers on long hanging stalks, pollinated by bats. Fruit used in African traditional medicine. Striking conversation-piece tree.', slug:'kigelia-pinnata' },
+  'polyalthia longifolia': { local:'Asopalav', gujarati:'Asopalav', family:'Annonaceae', habit:'Tall slender evergreen tree, 10–20 m', flowering:'March–April', uses:'Ornamental, shade, sacred, timber, noise barrier', description:'Mast Tree or False Ashok. Extremely tall and columnar, used as a natural pillar in avenues. Long wavy-edged dark green leaves. Small greenish flowers. Sacred in Hindu ceremonies. Excellent as a noise and dust barrier along roads.', slug:'polyalthia-longifolia' },
+  'saraca asoca': { local:'Sita Ashok', gujarati:'Ashok', family:'Fabaceae', habit:'Small to medium evergreen tree, 8–12 m', flowering:'Feb–May', uses:'Sacred, Ayurvedic medicine, ornamental', description:'Most sacred tree in Hindu mythology – associated with Sita in Ramayana. Brilliant orange-red flower clusters turn yellow with age. Important Ayurvedic medicine for gynaecological conditions. Popular ornamental tree for gardens and temple complexes.', slug:'saraca-asoca' },
+  'eucalyptus globulus': { local:'Nilgiri', gujarati:'Nilgiri', family:'Myrtaceae', habit:'Very large evergreen tree, 30–55 m', flowering:'Oct–Dec', uses:'Timber, essential oil, pulp, medicinal, bioenergy', description:'Blue Gum Eucalyptus. Very fast-growing, native to Australia. Aromatic leaves rich in eucalyptol – used in medicines (Vicks, cough syrups). Important for pulp and paper. Widely planted for timber and bioenergy. Deep taproot drains groundwater.', slug:'eucalyptus-globulus' },
+  'pterospermum acerifolium': { local:'Kanak champa', gujarati:'Kanak Champa', family:'Malvaceae', habit:'Large evergreen tree, 15–25 m', flowering:'Sept–Nov', uses:'Ornamental, fragrant flowers, timber, sacred', description:'Maple-leaved Bayur Tree. Large leaves with silvery-white undersides. Spectacular fragrant white flowers opening at night. Sacred in Hindu tradition. Hard reddish-brown timber. Flowers used in garlands.', slug:'pterospermum-acerifolium' },
+  'ceiba pentandra': { local:'Kapok tree', gujarati:'Savar', family:'Malvaceae', habit:'Very large deciduous tree, 20–40 m', flowering:'Jan–March', uses:'Kapok fibre, edible seeds, timber, shade', description:'Kapok Tree. Enormous buttressed trunk with spiny bark. Seeds enveloped in silky cotton fibre (kapok) – historically used for life jackets and pillows. Nectar-rich flowers attract bats. Considered sacred in Mayan culture.', slug:'ceiba-pentandra' },
+  'callistemon': { local:'Bottlebrush', gujarati:'Bottle brush', family:'Myrtaceae', habit:'Small evergreen tree or shrub, 3–10 m', flowering:'March–May, Oct–Nov', uses:'Ornamental, bee plant, wind break', description:'Named for its brilliant red brush-like flower spikes that resemble bottle brushes. Australian native, widely planted in Indian gardens and avenues. Attracts sunbirds and bees. Very drought-tolerant once established.', slug:'callistemon-citrinus' },
+  'artocarpus heterophyllus': { local:'Fanas (Jackfruit)', gujarati:'Fanas', family:'Moraceae', habit:'Medium to large evergreen tree, 10–20 m', flowering:'Jan–April', uses:'Largest edible fruit, timber, latex, animal feed', description:'World\'s largest tree-borne fruit (up to 35 kg). National fruit of Bangladesh. Ripe jackfruit has sweet aromatic yellow pods. Unripe fruit cooked as vegetable. Seeds boiled or roasted. Timber golden-yellow, used for furniture and musical instruments.', slug:'artocarpus-heterophyllus' },
+  'magnolia champaca': { local:'Sonchampa', gujarati:'Champo', family:'Magnoliaceae', habit:'Large evergreen tree, 15–25 m', flowering:'June–Sept', uses:'Perfumery (Joy perfume), sacred, medicinal, timber', description:'One of the most fragrant trees in the world. White-cream flowers with intoxicating scent – used in Joy by Jean Patou, one of the world\'s most expensive perfumes. Sacred in Hindu worship. Flower garlands widely used. Excellent timber.', slug:'magnolia-champaca' },
+  'tamarindus indica': { local:'Khati Ambli', gujarati:'Ambali', family:'Fabaceae', habit:'Large evergreen tree, 15–25 m', flowering:'May–June', uses:'Culinary (tamarind), medicinal, timber, shade', description:'Tamarind. Sour pulp indispensable in Indian, Thai and Mexican cuisines. Rich in tartaric acid and vitamins. Hard dark timber. Dense feathery crown. Long-lived tree (can live 300+ years). Widely used medicinally for digestive problems.', slug:'tamarindus-indica' },
+  'pithecellobium dulce': { local:'Goras Ambli', gujarati:'Vilayati Chinch', family:'Fabaceae', habit:'Medium evergreen tree, 8–15 m', flowering:'Jan–March', uses:'Edible aril, fuelwood, live hedge, fodder', description:'Manila Tamarind or Monkeypod. Edible sweet-sour white aril around seeds. Very thorny branches – used as impenetrable live fencing. Hard wood for fuelwood. Drought-tolerant, tolerates poor soils. Invasive in some regions.', slug:'pithecellobium-dulce' },
+  'ficus maclellandii': { local:'Ficus Alii', gujarati:'Banana-leaf Fig', family:'Moraceae', habit:'Medium evergreen tree, 8–15 m', flowering:'March–May', uses:'Ornamental, indoor plant, shade', description:'Banana-leaf Fig or Alii Fig. Long narrow willowy leaves. Popular as an indoor plant and as an ornamental street tree. Dense shade. Tolerates low light and dry conditions. Small inconspicuous figs produced on mature trees.', slug:'ficus-maclellandii' },
+  'phyllanthus emblica': { local:'Amla tree', gujarati:'Amla', family:'Phyllanthaceae', habit:'Small to medium deciduous tree, 8–12 m', flowering:'Feb–March', uses:'Richest natural vitamin C, Ayurveda, pickles, hair care', description:'Indian Gooseberry – one of the most important medicinal plants in Ayurveda. Extremely rich in Vitamin C (20× orange). Key ingredient in Chyawanprash and Triphala. Sour fruits used in pickles and amla oil for hair. Anti-aging properties.', slug:'phyllanthus-emblica' },
+  'syzygium cumini': { local:'Jamun tree', gujarati:'Jamun', family:'Myrtaceae', habit:'Large evergreen tree, 15–25 m', flowering:'March–April', uses:'Edible fruit, anti-diabetic, timber, dye', description:'Black Plum or Java Plum. Deep purple oblong fruits with astringent sweet taste. Seeds and bark important in Ayurveda for managing diabetes. Dense evergreen canopy. Excellent shade tree. Hard purple timber for construction. Important for riverbank stabilisation.', slug:'syzygium-cumini' },
+  'khaya senegalensis': { local:'Khaya', gujarati:'African Mahogany', family:'Meliaceae', habit:'Large deciduous tree, 20–35 m', flowering:'May–June', uses:'Premium mahogany timber, shade, ornamental', description:'African Mahogany. One of the most prized timbers globally – used for fine furniture, musical instruments, boat building. Large spreading crown. Bark peels in scales. Planted in India as a commercial timber tree and shade avenue tree.', slug:'khaya-senegalensis' },
+  'swietenia macrophylla': { local:'Mahogany', gujarati:'Mahogany', family:'Meliaceae', habit:'Large deciduous tree, 20–40 m', flowering:'May–June', uses:'World\'s premier furniture timber, ornamental, shade', description:'Big-leaf Mahogany. One of the world\'s most commercially important timbers. Reddish-brown lustrous wood for premium furniture, panelling, boat building. Compound leaves with 4–6 pairs of leaflets. Large winged seeds. CITES-protected species.', slug:'swietenia-macrophylla' },
+  'lagerstroemia speciosa': { local:'Jarul', gujarati:'Jarul', family:'Lythraceae', habit:'Medium to large deciduous tree, 10–20 m', flowering:'May–July', uses:'Ayurvedic (diabetes), timber, ornamental', description:'Pride of India or Queen Crape Myrtle. Large showy pink to lavender flowers in upright clusters. Leaves turn red-orange before falling. Important Ayurvedic remedy for diabetes (leaves contain corosolic acid). Excellent timber. Spectacular avenue tree.', slug:'lagerstroemia-speciosa' },
+  'gmelina arborea': { local:'Sevan', gujarati:'Shivan', family:'Lamiaceae', habit:'Medium to large deciduous tree, 15–30 m', flowering:'Feb–April', uses:'Pulp and paper timber, fuelwood, Ayurveda', description:'White Teak or Gamhar. Fast-growing timber tree widely planted for pulp and paper industry. Yellowish-orange tubular flowers. Leaves large and broad. Important in Ayurveda as one of the Dashamoola (ten roots) herbs. Good fuelwood.', slug:'gmelina-arborea' },
+  'samanea saman': { local:'Rain tree', gujarati:'Rain Tree', family:'Fabaceae', habit:'Very large deciduous tree, 20–35 m', flowering:'June–Sept', uses:'Shade, fodder pods, timber, ornamental', description:'Rain Tree – one of the most spectacular shade trees. Massive spreading crown can span 50+ metres. Leaves fold at night and before rain (giving the name). Sweet edible pods eaten by cattle. Important shade tree on coffee and cacao plantations.', slug:'samanea-saman' },
+  'ficus umbellata': { local:'Kath umbaro', gujarati:'Kath Umbaro', family:'Moraceae', habit:'Medium to large evergreen tree, 10–20 m', flowering:'Year-round', uses:'Ornamental, wildlife, traditional medicine', description:'Umbrella Fig. Large round shiny leaves make it attractive as an ornamental. Figs produced in clusters, eaten by birds. Sap used in traditional African and Indian medicine. Grown as ornamental in gardens and parks.', slug:'ficus-umbellata' },
+  'annona squamosa': { local:'Sitafal', gujarati:'Sitafal', family:'Annonaceae', habit:'Small deciduous tree, 4–8 m', flowering:'May–Sept', uses:'Edible sweet fruit (custard apple), medicinal seeds', description:'Custard Apple or Sugar Apple. Soft, sweet, creamy white flesh with a fragrant aroma. One of the most popular tropical fruits. Seeds are insecticidal. Bark and leaves used in traditional medicine. Popular home garden tree in Gujarat.', slug:'annona-squamosa' },
+  'psidium guajava': { local:'Jamfal', gujarati:'Jamfal', family:'Myrtaceae', habit:'Small to medium evergreen tree, 5–10 m', flowering:'Year-round', uses:'Vitamin C-rich fruit, medicinal leaves, timber', description:'Guava. Extremely rich in Vitamin C (4× orange). Fruit eaten fresh or made into jellies and juice. Leaves used for diarrhoea and dengue fever treatment. Bark smooth peeling mottled green-brown. Very common in Indian home gardens.', slug:'psidium-guajava' },
+  'manilkara zapota': { local:'Chiku', gujarati:'Chiku', family:'Sapotaceae', habit:'Medium evergreen tree, 10–20 m', flowering:'Year-round', uses:'Edible fruit (sapodilla), chicle (chewing gum base), timber', description:'Sapodilla or Chiku. Brown, sandy-textured sweet fruit beloved in Gujarat. Latex (chicle) was original base for chewing gum. Hard fine-grained timber. Dense dark green foliage. Drought-tolerant. Commercially cultivated across Gujarat.', slug:'manilkara-zapota' },
+  'ziziphus nummularia': { local:'Bordi', gujarati:'Bordi', family:'Rhamnaceae', habit:'Small thorny tree or shrub, 3–8 m', flowering:'Aug–Oct', uses:'Edible sour berries, fodder, medicinal, live fence', description:'Wild Jujube or Bordi. Small round sour edible berries. Very thorny – used as impenetrable hedge. Excellent fodder and browsing plant for goats. Leaves and bark used in Ayurveda. Tolerates drought, salinity and poor soils.', slug:'ziziphus-nummularia' },
+  'punica granatum': { local:'Dadam', gujarati:'Dadam', family:'Lythraceae', habit:'Small tree or shrub, 3–8 m', flowering:'March–July', uses:'Superfood fruit, medicinal, ornamental', description:'Pomegranate. Ancient superfood – cultivated for over 5000 years. Rich in antioxidants (punicalagins), Vitamin C and potassium. Brilliant red flowers. Leathery skin, jewel-like arils. Important in Ayurveda for digestive and heart health. Drought-tolerant.', slug:'punica-granatum' },
+  'phyllanthus acidus': { local:'Khatumda', gujarati:'Khatumda', family:'Phyllanthaceae', habit:'Small to medium deciduous tree, 5–10 m', flowering:'Feb–April', uses:'Edible sour fruit, pickles, medicinal', description:'Otaheite Gooseberry or Star Gooseberry. Very sour pale yellow or white fruit in hanging clusters. Used extensively in pickles and chutneys. Rich in Vitamin C. Bark and leaves used medicinally. Popular in South and South-East Asia.', slug:'phyllanthus-acidus' },
+  'plumeria alba': { local:'White champa', gujarati:'Safed Champa', family:'Apocynaceae', habit:'Small to medium deciduous tree, 5–10 m', flowering:'March–Nov', uses:'Sacred (temple), fragrant flowers, ornamental, lei', description:'White Frangipani. Fragrant pure white flowers with yellow centre. Widely planted in temple gardens – flowers used for offerings. Distinctive blunt-tipped leaves. Latex is toxic. Internationally used for Hawaiian leis. Very popular ornamental.', slug:'plumeria-alba' },
+  'plumeria rubra': { local:'Pink, red champa', gujarati:'Lal Champa', family:'Apocynaceae', habit:'Small to medium deciduous tree, 5–10 m', flowering:'March–Nov', uses:'Sacred, fragrant, ornamental, medicinal', description:'Red Frangipani. Flowers range from deep pink to crimson with yellow throat, extremely fragrant. Highly sacred – offered to deities in Hindu and Buddhist traditions. Bark used medicinally for skin diseases. Popular garden tree.', slug:'plumeria-rubra' },
+  'plumeria pudica': { local:'Nag champa', gujarati:'Nag Champa', family:'Apocynaceae', habit:'Small evergreen tree, 4–8 m', flowering:'Year-round', uses:'Ornamental, sacred, fragrant', description:'Bridal Bouquet or Fiddle-leaf Frangipani. Unlike other plumerias, stays evergreen. Narrow spoon-shaped leaves. Clusters of pure white fragrant flowers year-round. Compact growth, excellent for small gardens and containers.', slug:'plumeria-pudica' },
+  'santalum album': { local:'Chandan', gujarati:'Chandan', family:'Santalaceae', habit:'Small to medium evergreen tree, 5–10 m', flowering:'March–June', uses:'Sacred, perfumery, carving, incense, Ayurveda', description:'Indian Sandalwood – one of the most valuable woods in the world. Rich aromatic heartwood used for incense, perfumery, carving and Ayurvedic medicines. Semi-parasitic on roots of other trees. Highly endangered in wild, protected by Indian law.', slug:'santalum-album' },
+  'carica papaya': { local:'Papaya', gujarati:'Papaya', family:'Caricaceae', habit:'Small soft-wooded tree, 3–8 m', flowering:'Year-round', uses:'Fruit, medicinal (papain enzyme), vitamin source', description:'Papaya. Fast-growing tree producing large sweet melon-like fruits. Rich in vitamins A, C and folate. Papain enzyme from unripe fruit used as meat tenderiser and in medicines. Leaves used for dengue fever treatment. Short-lived but prolific.', slug:'carica-papaya' },
+  'moringa oleifera': { local:'Sargava', gujarati:'Sargavo', family:'Moringaceae', habit:'Small to medium deciduous tree, 5–12 m', flowering:'Jan–March', uses:'Superfood (drumstick), medicinal, water purification, oil', description:'Moringa – the Miracle Tree. Drumstick pods a staple vegetable in South Indian cooking. Leaves extremely nutritious (calcium, iron, vitamin A). Seeds can purify water. Ben oil from seeds for salad and skin care. One of the world\'s most useful trees.', slug:'moringa-oleifera' },
+  'ailanthus altissima': { local:'Arduso', gujarati:'Arduso', family:'Simaroubaceae', habit:'Medium deciduous tree, 15–25 m', flowering:'June–Aug', uses:'Ornamental, traditional Chinese medicine, invasive species', description:'Tree of Heaven. Fast-growing but invasive tree originally from China. Tolerates extreme urban conditions – pollution, compacted soil, drought. Used in traditional Chinese medicine. Widely planted but now considered a nuisance species in many countries.', slug:'ailanthus-excelsa' },
+  'caryota urens': { local:'Fishtail palm', gujarati:'Fish Tail Palm', family:'Arecaceae', habit:'Single-stemmed palm, 10–20 m', flowering:'After 15–20 years, then dies', uses:'Jaggery from sap, fibre, ornamental', description:'Fishtail Palm – named for its distinctive doubly-pinnate fishtail-shaped leaflets. Monocarpic – flowers once, fruits and dies. Sap fermented into toddy or made into jaggery. Strong black fibre from leaf sheaths. Popular ornamental palm.', slug:'caryota-urens' },
+  'ficus carica': { local:'Anjir', gujarati:'Anjir', family:'Moraceae', habit:'Small to medium deciduous tree, 5–10 m', flowering:'Year-round (figs, not true flowers)', uses:'Edible fig fruit, medicinal, dried fruit trade', description:'Common Fig. One of the oldest cultivated plants – grown for 5000+ years. Sweet pear-shaped figs eaten fresh or dried. Rich in calcium and iron. Milky latex used for warts. Mentioned in Bible, Quran and Hindu scriptures. Drops leaves in winter.', slug:'ficus-carica' },
+  'citrus limon': { local:'Limbu (Limbudi)', gujarati:'Limbu', family:'Rutaceae', habit:'Small thorny evergreen tree, 3–6 m', flowering:'Year-round', uses:'Fruit (citrus), culinary, vitamin C, medicinal', description:'Lemon. Essential citrus fruit, rich in Vitamin C and citric acid. Aromatic flowers. Thorny branches. Indispensable in Indian cooking – used in pickles, lemonade, seasoning. Oil from peel used in beverages and cosmetics.', slug:'citrus-limon' },
+  'bambusa bambos': { local:'Vaans (bamboo)', gujarati:'Vans', family:'Poaceae', habit:'Giant clumping bamboo, 15–25 m', flowering:'Once in 30–60 years, then dies', uses:'Construction, furniture, paper, edible shoots, crafts', description:'Giant Spiny Bamboo – India\'s most important bamboo. Extremely versatile – used for construction, furniture, paper, musical instruments, handicrafts. Young shoots edible. Fastest growing plant. Excellent for watershed protection and CO2 sequestration.', slug:'bambusa-bambos' },
+}
+
+// Helper: find eFlora data by scientific name (fuzzy match)
+function getEfloraInfo(scientificName) {
+  if (!scientificName) return null
+  const key = scientificName.toLowerCase().trim()
+  // Try exact match first
+  if (EFLORA_DB[key]) return EFLORA_DB[key]
+  // Try partial match (first 2 words)
+  const words = key.split(' ').slice(0, 2).join(' ')
+  for (const [dbKey, val] of Object.entries(EFLORA_DB)) {
+    if (dbKey.startsWith(words) || words.startsWith(dbKey.split(' ').slice(0,2).join(' '))) {
+      return val
+    }
+  }
+  // Try just genus match
+  const genus = key.split(' ')[0]
+  for (const [dbKey, val] of Object.entries(EFLORA_DB)) {
+    if (dbKey.startsWith(genus + ' ')) return val
+  }
+  return null
+}
+
+// ---------------------------------------------------------------------------
 // Constants & config
 // ---------------------------------------------------------------------------
 
@@ -485,6 +604,336 @@ function navBtnStyle(side) {
     justifyContent: 'center',
     transition: 'background .15s',
   }
+}
+
+// ---------------------------------------------------------------------------
+// Swipeable Tree Detail Panel
+// Tab 0 = Survey Details (existing info)   Tab 1 = Tree Info (eFlora data)
+// Swipe right → go to Tree Info tab, swipe left → Survey Details
+// ---------------------------------------------------------------------------
+
+function TreeDetailPanel({
+  record, tcfg, ccfg, photos,
+  onClose, onDelete, onOpenLightbox,
+  labelStyle, inputStyle,
+}) {
+  const [tab, setTab] = useState(0)           // 0=survey, 1=treeinfo
+  const [animDir, setAnimDir] = useState(null) // 'left' | 'right' | null
+  const touchStartX = useRef(null)
+  const eflora = getEfloraInfo(record.scientific_name)
+
+  function switchTab(newTab) {
+    if (newTab === tab) return
+    setAnimDir(newTab > tab ? 'left' : 'right')
+    setTimeout(() => {
+      setTab(newTab)
+      setAnimDir(null)
+    }, 220)
+  }
+
+  function onTouchStart(e) {
+    touchStartX.current = e.touches[0].clientX
+  }
+  function onTouchEnd(e) {
+    if (touchStartX.current == null) return
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    touchStartX.current = null
+    if (Math.abs(dx) < 40) return
+    if (dx < 0 && tab === 0 && eflora) switchTab(1)  // swipe left → tree info
+    if (dx > 0 && tab === 1) switchTab(0)              // swipe right → survey
+  }
+
+  const slideStyle = {
+    transition: animDir ? 'transform 220ms ease, opacity 220ms ease' : 'none',
+    transform: animDir === 'left'  ? 'translateX(-40px)'
+             : animDir === 'right' ? 'translateX(40px)' : 'translateX(0)',
+    opacity: animDir ? 0 : 1,
+    flex: 1, display: 'flex', flexDirection: 'column', gap: 12, overflow: 'hidden',
+  }
+
+  return (
+    <aside
+      style={{
+        width: 300, background: 'var(--surface)', borderLeft: '1px solid var(--border)',
+        flexShrink: 0, display: 'flex', flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+      aria-label="Selected plant details"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* ── Panel header ────────────────────────────────────────── */}
+      <div style={{
+        padding: '12px 16px 0',
+        borderBottom: '1px solid var(--border)',
+        flexShrink: 0,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
+              {tcfg?.emoji} {record.local_name}
+            </div>
+            {record.tracking_id && (
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--green-700)', marginTop: 1, letterSpacing: '0.05em' }}>
+                {record.tracking_id}
+              </div>
+            )}
+            {record.scientific_name && (
+              <div style={{ fontSize: 11, fontStyle: 'italic', color: 'var(--text-2)', marginTop: 1 }}>
+                {record.scientific_name}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close detail panel"
+            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text-2)', padding: '2px 6px', flexShrink: 0 }}
+          >×</button>
+        </div>
+
+        {/* Tab bar */}
+        <div style={{ display: 'flex', gap: 0, marginBottom: -1 }}>
+          {[
+            { idx: 0, label: '📋 Survey' },
+            { idx: 1, label: '🌿 Tree Info', disabled: !eflora },
+          ].map(({ idx, label, disabled }) => (
+            <button
+              key={idx}
+              onClick={() => !disabled && switchTab(idx)}
+              disabled={disabled}
+              title={disabled ? 'No eFlora data available for this species' : undefined}
+              style={{
+                flex: 1, padding: '7px 6px', fontSize: 12, fontWeight: 700,
+                background: 'none', border: 'none',
+                borderBottom: tab === idx ? '2.5px solid var(--green-700)' : '2.5px solid transparent',
+                color: tab === idx ? 'var(--green-700)' : disabled ? 'var(--text-2)' : 'var(--text)',
+                cursor: disabled ? 'default' : 'pointer',
+                opacity: disabled ? 0.45 : 1,
+                transition: 'color .15s, border-color .15s',
+              }}
+            >{label}</button>
+          ))}
+        </div>
+
+        {/* Swipe hint – only shown when eflora available and on tab 0 */}
+        {eflora && tab === 0 && (
+          <div style={{
+            fontSize: 10, color: 'var(--text-2)', textAlign: 'center',
+            padding: '4px 0 2px', letterSpacing: '0.04em', fontWeight: 600,
+          }}>
+            ← swipe left for tree info
+          </div>
+        )}
+        {tab === 1 && (
+          <div style={{
+            fontSize: 10, color: 'var(--text-2)', textAlign: 'center',
+            padding: '4px 0 2px', letterSpacing: '0.04em', fontWeight: 600,
+          }}>
+            swipe right for survey details →
+          </div>
+        )}
+      </div>
+
+      {/* ── Scrollable content area ──────────────────────────────── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
+        <div style={slideStyle}>
+
+          {tab === 0 && (
+            <>
+              {/* Condition + type badges */}
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                <span style={{ background: tcfg?.bg, color: tcfg?.color, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
+                  {tcfg?.emoji} {tcfg?.label}
+                </span>
+                <span style={{ background: ccfg?.ring, color: ccfg?.color, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
+                  {ccfg?.label}
+                </span>
+              </div>
+
+              {/* Photo strip */}
+              {photos.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Photos ({photos.length})
+                  </div>
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                    {photos.slice(0, 4).map((url, i) => (
+                      <div
+                        key={i}
+                        onClick={() => onOpenLightbox(photos, i)}
+                        style={{
+                          width: 78, height: 62, borderRadius: 8, overflow: 'hidden',
+                          cursor: 'pointer', position: 'relative', border: '1.5px solid var(--border)',
+                          transition: 'transform .15s, box-shadow .15s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                        role="button"
+                        aria-label={`Open photo ${i + 1}`}
+                      >
+                        <img
+                          src={url} loading="lazy"
+                          alt={`${record.local_name} photo ${i + 1}`}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                        {i === 3 && photos.length > 4 && (
+                          <div style={{
+                            position: 'absolute', inset: 0, background: 'rgba(0,0,0,.55)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: '#fff', fontWeight: 800, fontSize: 14,
+                          }}>+{photos.length - 4}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Survey data table */}
+              <table style={{ fontSize: 12, borderCollapse: 'collapse', width: '100%' }}>
+                <tbody>
+                  {[
+                    ['Zone',     record.zone_display || record.zone],
+                    ['Height',   record.height_m ? `${record.height_m} m` : null],
+                    ['Girth',    record.girth_cm  ? `${record.girth_cm} cm` : null],
+                    ['GPS',      record.lat != null ? `${parseFloat(record.lat).toFixed(5)}, ${parseFloat(record.lng).toFixed(5)}` : null],
+                    ['Accuracy', record.gps_accuracy_m ? `±${record.gps_accuracy_m} m` : null],
+                    ['Location', record.location_notes],
+                    ['Canopy',   record.canopy_area_m ? `${record.canopy_area_m} m²` : null],
+                    ['Recorded', record.submitted_at ? new Date(record.submitted_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : null],
+                    ['By',       record.submitted_by && record.submitted_by !== 'Geo tracker form' ? record.submitted_by : null],
+                  ].filter(([, v]) => v).map(([k, v]) => (
+                    <tr key={k}>
+                      <td style={{ padding: '4px 0', color: 'var(--text-2)', fontWeight: 600, width: 72, verticalAlign: 'top', fontSize: 11 }}>{k}</td>
+                      <td style={{ padding: '4px 0 4px 8px', fontWeight: 600, color: 'var(--text)', fontSize: 12 }}>{v}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {record.notes && (
+                <div>
+                  <div style={{ ...labelStyle, marginBottom: 4 }}>Notes</div>
+                  <div style={{ fontSize: 12, color: 'var(--text)', background: 'var(--surface-2)', borderRadius: 8, padding: '8px 10px', lineHeight: 1.5 }}>
+                    {record.notes}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={onDelete}
+                style={{
+                  marginTop: 8, padding: '9px 12px', borderRadius: 8,
+                  border: '1.5px solid #dc2626', background: '#fee2e2',
+                  color: '#991b1b', fontSize: 12, fontWeight: 800, cursor: 'pointer',
+                }}
+              >
+                Delete entry
+              </button>
+            </>
+          )}
+
+          {tab === 1 && eflora && (
+            <>
+              {/* eFlora info card */}
+              <div style={{
+                background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)',
+                border: '1.5px solid #86efac',
+                borderRadius: 10, padding: '12px 14px',
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#14532d', marginBottom: 2 }}>
+                  🌿 {eflora.local}
+                </div>
+                {eflora.gujarati && (
+                  <div style={{ fontSize: 11, color: '#166534', fontWeight: 600 }}>
+                    ગુજ: {eflora.gujarati}
+                  </div>
+                )}
+                <div style={{ fontSize: 11, fontStyle: 'italic', color: '#4ade80', marginTop: 1 }}>
+                  {record.scientific_name}
+                </div>
+              </div>
+
+              {/* Info rows */}
+              <table style={{ fontSize: 12, borderCollapse: 'collapse', width: '100%' }}>
+                <tbody>
+                  {[
+                    ['Family',    eflora.family],
+                    ['Habit',     eflora.habit],
+                    ['Flowering', eflora.flowering],
+                    ['Uses',      eflora.uses],
+                  ].filter(([,v]) => v).map(([k, v]) => (
+                    <tr key={k}>
+                      <td style={{ padding: '5px 0', color: 'var(--text-2)', fontWeight: 600, width: 72, verticalAlign: 'top', fontSize: 11 }}>{k}</td>
+                      <td style={{ padding: '5px 0 5px 8px', fontWeight: 600, color: 'var(--text)', fontSize: 12, lineHeight: 1.4 }}>{v}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Description */}
+              {eflora.description && (
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    About this tree
+                  </div>
+                  <div style={{
+                    fontSize: 12, color: 'var(--text)', lineHeight: 1.65,
+                    background: 'var(--surface-2)', borderRadius: 8, padding: '10px 12px',
+                  }}>
+                    {eflora.description}
+                  </div>
+                </div>
+              )}
+
+              {/* eFlora link */}
+              <a
+                href={`https://www.efloraofgandhinagar.in/tree/${eflora.slug}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '9px 12px', borderRadius: 8, marginTop: 4,
+                  background: '#14532d', color: '#fff',
+                  fontSize: 12, fontWeight: 700, textDecoration: 'none',
+                  transition: 'background .15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#166534'}
+                onMouseLeave={e => e.currentTarget.style.background = '#14532d'}
+              >
+                🔗 View on eFlora of Gandhinagar
+              </a>
+
+              {/* Divider */}
+              <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+
+              {/* Survey summary in tree info tab */}
+              <div style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600 }}>
+                Campus Survey Summary
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[
+                  record.height_m     ? { l: 'Height', v: `${record.height_m} m` }    : null,
+                  record.girth_cm     ? { l: 'Girth',  v: `${record.girth_cm} cm` }   : null,
+                  record.condition    ? { l: 'Health', v: CONDITION_CONFIG[record.condition]?.label } : null,
+                  record.zone_display ? { l: 'Zone',   v: record.zone_display }        : null,
+                ].filter(Boolean).map(({ l, v }) => (
+                  <div key={l} style={{
+                    background: 'var(--surface-2)', border: '1px solid var(--border)',
+                    borderRadius: 7, padding: '5px 9px', fontSize: 11,
+                  }}>
+                    <span style={{ color: 'var(--text-2)', fontWeight: 600 }}>{l}: </span>
+                    <span style={{ color: 'var(--text)', fontWeight: 700 }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+        </div>
+      </div>
+    </aside>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -1021,148 +1470,25 @@ export default function GeoTrackerPage() {
             aria-label="Plant location map"
           />
 
-          {/* ── Record detail sidebar ─────────────────────────────────── */}
-          {selectedRecord && (
-            <aside style={{
-              width: 300,
-              background: 'var(--surface)',
-              borderLeft: '1px solid var(--border)',
-              overflowY: 'auto',
-              flexShrink: 0,
-              padding: 16,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-            }}
-              aria-label="Selected plant details"
-            >
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
-                    {TYPE_CONFIG[selectedRecord.plant_type]?.emoji} {selectedRecord.local_name}
-                  </div>
-                  {selectedRecord.tracking_id && (
-                    <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--green-700)', marginTop: 2, letterSpacing: '0.05em' }}>
-                      {selectedRecord.tracking_id}
-                    </div>
-                  )}
-                  {selectedRecord.scientific_name && (
-                    <div style={{ fontSize: 11, fontStyle: 'italic', color: 'var(--text-2)', marginTop: 2 }}>
-                      {selectedRecord.scientific_name}
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => setSelectedRecord(null)}
-                  aria-label="Close detail panel"
-                  style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text-2)', padding: '2px 6px' }}
-                >×</button>
-              </div>
-
-              {/* Condition + type badges */}
-              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                {(() => {
-                  const tcfg = TYPE_CONFIG[selectedRecord.plant_type] || TYPE_CONFIG.tree
-                  const ccfg = CONDITION_CONFIG[selectedRecord.condition] || CONDITION_CONFIG.good
-                  return (
-                    <>
-                      <span style={{ background: tcfg.bg, color: tcfg.color, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
-                        {tcfg.emoji} {tcfg.label}
-                      </span>
-                      <span style={{ background: ccfg.ring, color: ccfg.color, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
-                        {ccfg.label}
-                      </span>
-                    </>
-                  )
-                })()}
-              </div>
-
-              {/* Photo strip – click opens lightbox */}
-              {(() => {
-                const photos = selectedRecord.photos || (selectedRecord.photo_url ? [selectedRecord.photo_url] : [])
-                if (photos.length === 0) return null
-                return (
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-2)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Photos ({photos.length})
-                    </div>
-                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                      {photos.slice(0, 4).map((url, i) => (
-                        <div
-                          key={i}
-                          onClick={() => setLightbox({ images: photos, index: i })}
-                          style={{
-                            width: 78, height: 62, borderRadius: 8, overflow: 'hidden',
-                            cursor: 'pointer', position: 'relative', border: '1.5px solid var(--border)',
-                            transition: 'transform .15s, box-shadow .15s',
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                          title="Click to view full-size"
-                          role="button"
-                          aria-label={`Open photo ${i + 1}`}
-                        >
-                          <img
-                            src={url} loading="lazy"
-                            alt={`${selectedRecord.local_name} photo ${i + 1}`}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                          {i === 3 && photos.length > 4 && (
-                            <div style={{
-                              position: 'absolute', inset: 0, background: 'rgba(0,0,0,.55)',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              color: '#fff', fontWeight: 800, fontSize: 14,
-                            }}>+{photos.length - 4}</div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })()}
-
-              {/* Data table */}
-              <table style={{ fontSize: 12, borderCollapse: 'collapse', width: '100%' }}>
-                <tbody>
-                  {[
-                    ['Zone',      selectedRecord.zone_display || selectedRecord.zone],
-                    ['Height',    selectedRecord.height_m ? `${selectedRecord.height_m} m` : null],
-                    ['Girth',     selectedRecord.girth_cm  ? `${selectedRecord.girth_cm} cm` : null],
-                    ['GPS',       selectedRecord.lat != null ? `${parseFloat(selectedRecord.lat).toFixed(5)}, ${parseFloat(selectedRecord.lng).toFixed(5)}` : null],
-                    ['Accuracy',  selectedRecord.gps_accuracy_m ? `±${selectedRecord.gps_accuracy_m} m` : null],
-                    ['Location',  selectedRecord.location_notes],
-                    ['Canopy',    selectedRecord.canopy_area_m ? `${selectedRecord.canopy_area_m} m²` : null],
-                  ].filter(([, v]) => v).map(([k, v]) => (
-                    <tr key={k}>
-                      <td style={{ padding: '4px 0', color: 'var(--text-2)', fontWeight: 600, width: 80, verticalAlign: 'top' }}>{k}</td>
-                      <td style={{ padding: '4px 0 4px 8px', fontWeight: 600, color: 'var(--text)' }}>{v}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {selectedRecord.notes && (
-                <div>
-                  <div style={labelStyle}>Notes</div>
-                  <div style={{ fontSize: 12, color: 'var(--text)', background: 'var(--surface-2)', borderRadius: 8, padding: '8px 10px', lineHeight: 1.5 }}>
-                    {selectedRecord.notes}
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={() => setDeleteTarget(selectedRecord)}
-                style={{
-                  marginTop: 'auto', padding: '9px 12px', borderRadius: 8,
-                  border: '1.5px solid #dc2626', background: '#fee2e2',
-                  color: '#991b1b', fontSize: 12, fontWeight: 800, cursor: 'pointer',
-                }}
-              >
-                Delete entry
-              </button>
-            </aside>
-          )}
+          {/* ── Record detail sidebar (swipeable tabs) ───────────────── */}
+          {selectedRecord && (() => {
+            const tcfg = TYPE_CONFIG[selectedRecord.plant_type] || TYPE_CONFIG.tree
+            const ccfg = CONDITION_CONFIG[selectedRecord.condition] || CONDITION_CONFIG.good
+            const photos = selectedRecord.photos || (selectedRecord.photo_url ? [selectedRecord.photo_url] : [])
+            return (
+              <TreeDetailPanel
+                record={selectedRecord}
+                tcfg={tcfg}
+                ccfg={ccfg}
+                photos={photos}
+                onClose={() => setSelectedRecord(null)}
+                onDelete={() => setDeleteTarget(selectedRecord)}
+                onOpenLightbox={(imgs, idx) => setLightbox({ images: imgs, index: idx })}
+                labelStyle={labelStyle}
+                inputStyle={inputStyle}
+              />
+            )
+          })()}
         </div>
 
         {/* ── Footer / legend ────────────────────────────────────────────── */}
@@ -1261,7 +1587,7 @@ export default function GeoTrackerPage() {
               left: 0 !important;
               right: 0 !important;
               width: 100% !important;
-              height: 55% !important;
+              height: 60% !important;
               border-left: none !important;
               border-top: 2px solid var(--border) !important;
               z-index: 400;
