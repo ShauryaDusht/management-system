@@ -350,68 +350,61 @@ function markerSizeForZoom(zoom) {
 }
 
 /**
- * Build a beautiful SVG-based Leaflet DivIcon.
+ * Build a clean SVG-based Leaflet DivIcon.
  *
- * Design (per spec):
- *   • Thin health-coloured ring  → stroke colour from CONDITION_CONFIG
- *   • Neutral white/light fill   → keeps the ring clearly visible
- *   • Centred tree emoji
- *   • No teardrop tail (cleaner in dense areas)
- *   • Selected: 15–20% larger + soft halo matching health colour, z-index front
+ * Two-layer approach:
+ *   1. SVG draws the white circle + health-coloured ring (scales via viewBox)
+ *   2. Emoji is an absolutely-positioned HTML div — sized in real px so it
+ *      is always crisp and visible regardless of marker size
  *
- * @param {string}  type        – 'tree' | 'plant' | 'creeper'
- * @param {string}  condition   – key in CONDITION_CONFIG
- * @param {boolean} isSelected  – true when this marker is the active one
- * @param {number}  zoom        – current map zoom (default 16 → medium size)
+ * This avoids the SVG <text> font-size bug where emojis rendered at
+ * 6-8px SVG units became invisible when the icon was 12-22 CSS px.
  */
 function buildIcon(type, condition, isSelected = false, zoom = 16) {
   const tcfg = TYPE_CONFIG[type] || TYPE_CONFIG.tree
   const ccfg = CONDITION_CONFIG[condition] || CONDITION_CONFIG.good
 
-  // Dynamic base size from zoom, then bump ~18% when selected
   const base = markerSizeForZoom(zoom)
   const size = isSelected ? Math.round(base * 1.18) : base
 
-  // Ring stroke width: thicker when selected
-  const strokeW = isSelected ? Math.max(2, Math.round(size * 0.12)) : Math.max(1.5, Math.round(size * 0.09))
+  // stroke-width expressed in SVG units (viewBox is always 40x40)
+  const svgStroke = isSelected ? 5 : 3.5
 
-  // Emoji font size scales with marker
-  const emojiSize = Math.round(size * 0.52)
+  // emoji font in real CSS px — always legible
+  const emojipx = Math.round(size * 0.58)
 
-  // Glow halo for selected state – matches health colour
-  const halo = isSelected
-    ? `filter:drop-shadow(0 0 ${Math.round(size * 0.45)}px ${ccfg.color}bb) drop-shadow(0 1px 3px rgba(0,0,0,.35));`
-    : 'filter:drop-shadow(0 1px 3px rgba(0,0,0,.3));'
-
-  // z-index: selected markers float above all others
-  const zIndex = isSelected ? 'z-index:9999;' : ''
+  const glowPx = Math.round(size * 0.55)
+  const filter = isSelected
+    ? `drop-shadow(0 0 ${glowPx}px ${ccfg.color}cc) drop-shadow(0 1px 3px rgba(0,0,0,.4))`
+    : 'drop-shadow(0 1px 3px rgba(0,0,0,.35))'
 
   return L.divIcon({
     className: '',
     iconSize:    [size, size],
     iconAnchor:  [size / 2, size / 2],
     popupAnchor: [0, -(size / 2 + 4)],
-    html: `
-      <div style="
-        width:${size}px;height:${size}px;
-        display:flex;align-items:center;justify-content:center;
-        ${halo}
-        ${zIndex}
-        cursor:pointer;
-        transition:transform .15s ease, filter .15s ease;
+    html: `<div style="
         position:relative;
+        width:${size}px;height:${size}px;
+        cursor:pointer;
+        filter:${filter};
+        transition:filter .18s ease,transform .15s ease;
+        ${isSelected ? 'z-index:9999;' : ''}
       ">
         <svg width="${size}" height="${size}" viewBox="0 0 40 40"
-             xmlns="http://www.w3.org/2000/svg" overflow="visible">
-          <!-- white fill so ring colour reads cleanly -->
-          <circle cx="20" cy="20" r="17" fill="#ffffff" stroke="${ccfg.color}" stroke-width="${strokeW}"/>
-          <!-- emoji centred in circle -->
-          <text x="20" y="25" text-anchor="middle"
-                font-size="${emojiSize}" font-family="system-ui,sans-serif"
-                dominant-baseline="auto">${tcfg.emoji}</text>
+             xmlns="http://www.w3.org/2000/svg"
+             style="display:block;position:absolute;top:0;left:0;">
+          <circle cx="20" cy="20" r="18" fill="#ffffff"
+                  stroke="${ccfg.color}" stroke-width="${svgStroke}"/>
         </svg>
-      </div>
-    `,
+        <div style="
+          position:absolute;top:0;left:0;
+          width:${size}px;height:${size}px;
+          display:flex;align-items:center;justify-content:center;
+          font-size:${emojipx}px;line-height:1;
+          pointer-events:none;user-select:none;
+        ">${tcfg.emoji}</div>
+      </div>`,
   })
 }
 
@@ -1131,6 +1124,47 @@ function TreeDetailPanel({
 }
 
 // ---------------------------------------------------------------------------
+// Popup HTML builder (module-level – no component state dependencies)
+// ---------------------------------------------------------------------------
+
+function buildPopupHtml(r, tcfg, ccfg, photos) {
+  const photoHtml = photos.length > 0
+    ? `<div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">
+        ${photos.slice(0, 3).map((url, i) =>
+          `<img
+             src="${url}" loading="lazy"
+             data-photos="${encodeURIComponent(JSON.stringify(photos))}"
+             data-index="${i}"
+             class="geo-popup-thumb"
+             style="width:72px;height:56px;object-fit:cover;border-radius:5px;cursor:pointer;border:1.5px solid #e5e7eb"
+           />`
+        ).join('')}
+        ${photos.length > 3 ? `<div style="width:72px;height:56px;border-radius:5px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:11px;color:#6b7280;font-weight:700">+${photos.length - 3}</div>` : ''}
+      </div>`
+    : ''
+
+  return `
+    <div style="font-family:-apple-system,sans-serif;min-width:200px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <span style="font-size:18px">${tcfg.emoji}</span>
+        <div>
+          <div style="font-weight:800;font-size:13px;color:#111">${r.local_name}</div>
+          ${r.tracking_id ? `<div style="font-size:10px;font-weight:700;color:${tcfg.color};letter-spacing:.04em">${r.tracking_id}</div>` : ''}
+        </div>
+      </div>
+      ${r.scientific_name ? `<div style="font-size:11px;font-style:italic;color:#6b7280;margin-bottom:6px">${r.scientific_name}</div>` : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
+        <span style="background:${tcfg.bg};color:${tcfg.color};border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700">${tcfg.label}</span>
+        <span style="background:${ccfg.ring};color:${ccfg.color};border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700">${ccfg.label}</span>
+        ${r.zone ? `<span style="background:#f3f4f6;color:#374151;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700">${r.zone_display || r.zone}</span>` : ''}
+      </div>
+      ${r.height_m ? `<div style="font-size:11px;color:#6b7280">↕ ${r.height_m} m ${r.girth_cm ? `&nbsp;|&nbsp; ⊙ ${r.girth_cm} cm` : ''}</div>` : ''}
+      ${photoHtml}
+    </div>
+  `
+}
+
+// ---------------------------------------------------------------------------
 // Stat chip
 // ---------------------------------------------------------------------------
 
@@ -1256,9 +1290,9 @@ export default function GeoTrackerPage() {
   }, [fetchRecords, filters.q])
 
   // ---------------------------------------------------------------------------
-  // Redraw markers when corrected records, selectedRecord, or zoom changes
+  // Helper: place all markers at the given zoom level (no fitBounds)
   // ---------------------------------------------------------------------------
-  useEffect(() => {
+  const placeMarkers = useCallback((zoom) => {
     const layer = clusterLayerRef.current
     const map   = mapInstanceRef.current
     if (!layer || !map) return
@@ -1268,9 +1302,6 @@ export default function GeoTrackerPage() {
 
     if (correctedRecords.length === 0) return
 
-    const bounds = []
-    const currentZoom = map.getZoom()
-
     correctedRecords.forEach(r => {
       const lat = parseFloat(r.lat)
       const lng = parseFloat(r.lng)
@@ -1278,15 +1309,13 @@ export default function GeoTrackerPage() {
 
       const isSelected = selectedRecord?.id === r.id
       const marker = L.marker([lat, lng], {
-        icon: buildIcon(r.plant_type, r.condition, isSelected, currentZoom),
+        icon: buildIcon(r.plant_type, r.condition, isSelected, zoom),
         riseOnHover: true,
-        // Selected marker always on top
         zIndexOffset: isSelected ? 1000 : 0,
       })
 
-      // Build compact popup
-      const tcfg = TYPE_CONFIG[r.plant_type] || TYPE_CONFIG.tree
-      const ccfg = CONDITION_CONFIG[r.condition] || CONDITION_CONFIG.good
+      const tcfg  = TYPE_CONFIG[r.plant_type] || TYPE_CONFIG.tree
+      const ccfg  = CONDITION_CONFIG[r.condition] || CONDITION_CONFIG.good
       const photos = r.photos || (r.photo_url ? [r.photo_url] : [])
 
       marker.bindPopup(buildPopupHtml(r, tcfg, ccfg, photos), {
@@ -1301,53 +1330,34 @@ export default function GeoTrackerPage() {
 
       layer.addLayer(marker)
       markerMapRef.current[r.id] = marker
-      bounds.push([lat, lng])
     })
+  }, [correctedRecords, selectedRecord])
 
+  // ---------------------------------------------------------------------------
+  // Effect 1: data or selection changed → rebuild markers AND fit bounds once.
+  // mapZoom is intentionally NOT in the dep array so user zoom is never reset.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map) return
+
+    placeMarkers(map.getZoom())
+
+    if (correctedRecords.length === 0) return
+    const bounds = correctedRecords
+      .map(r => [parseFloat(r.lat), parseFloat(r.lng)])
+      .filter(([la, ln]) => !isNaN(la) && !isNaN(ln))
     if (bounds.length > 0) {
       try { map.fitBounds(bounds, { padding: [60, 60], maxZoom: 18 }) } catch (_) {}
     }
-  }, [correctedRecords, selectedRecord, mapZoom])
+  }, [correctedRecords, selectedRecord])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------------------------------------------------------------------------
-  // Popup HTML builder
+  // Effect 2: zoom changed → only resize icons, never touch the viewport
   // ---------------------------------------------------------------------------
-  function buildPopupHtml(r, tcfg, ccfg, photos) {
-    const photoHtml = photos.length > 0
-      ? `<div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">
-          ${photos.slice(0, 3).map((url, i) =>
-            `<img
-               src="${url}" loading="lazy"
-               data-photos="${encodeURIComponent(JSON.stringify(photos))}"
-               data-index="${i}"
-               class="geo-popup-thumb"
-               style="width:72px;height:56px;object-fit:cover;border-radius:5px;cursor:pointer;border:1.5px solid #e5e7eb"
-             />`
-          ).join('')}
-          ${photos.length > 3 ? `<div style="width:72px;height:56px;border-radius:5px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:11px;color:#6b7280;font-weight:700">+${photos.length - 3}</div>` : ''}
-        </div>`
-      : ''
-
-    return `
-      <div style="font-family:-apple-system,sans-serif;min-width:200px">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-          <span style="font-size:18px">${tcfg.emoji}</span>
-          <div>
-            <div style="font-weight:800;font-size:13px;color:#111">${r.local_name}</div>
-            ${r.tracking_id ? `<div style="font-size:10px;font-weight:700;color:${tcfg.color};letter-spacing:.04em">${r.tracking_id}</div>` : ''}
-          </div>
-        </div>
-        ${r.scientific_name ? `<div style="font-size:11px;font-style:italic;color:#6b7280;margin-bottom:6px">${r.scientific_name}</div>` : ''}
-        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
-          <span style="background:${tcfg.bg};color:${tcfg.color};border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700">${tcfg.label}</span>
-          <span style="background:${ccfg.ring};color:${ccfg.color};border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700">${ccfg.label}</span>
-          ${r.zone ? `<span style="background:#f3f4f6;color:#374151;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700">${r.zone_display || r.zone}</span>` : ''}
-        </div>
-        ${r.height_m ? `<div style="font-size:11px;color:#6b7280">↕ ${r.height_m} m ${r.girth_cm ? `&nbsp;|&nbsp; ⊙ ${r.girth_cm} cm` : ''}</div>` : ''}
-        ${photoHtml}
-      </div>
-    `
-  }
+  useEffect(() => {
+    placeMarkers(mapZoom)
+  }, [mapZoom])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Delegate click on popup thumbnails to open lightbox
   useEffect(() => {
