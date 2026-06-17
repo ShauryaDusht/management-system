@@ -343,55 +343,35 @@ function applyGpsCorrection(records, strength) {
  *   Zoom 18+   → 22 px
  * The "base" here is the circle diameter before applying the selected 15–20% bump.
  */
-// Zoom → marker diameter in px.
-// Must be large enough that the emoji (≈60% of diameter) is legible.
-// Minimum useful emoji size is ~14px, so smallest marker = 24px.
-function markerSizeForZoom(zoom) {
-  if (zoom >= 18) return 38
-  if (zoom >= 16) return 30
-  return 24
-}
+// Marker diameter is fixed — consistent size at every zoom level.
+// 28px gives a 17px emoji which is always crisp and legible.
+const MARKER_BASE_SIZE = 28
 
 /**
- * Build a Leaflet DivIcon: coloured ring (health) + emoji (type).
- *
- * Layout:
- *   • Outer wrapper div — sized to `size × size` px, position:relative
- *   • SVG layer (absolute, full size) — draws white circle + health-colour ring
- *   • Emoji div (absolute, full size, flexbox centred) — rendered at ~62% of
- *     the marker diameter in real CSS px, so it is always visible
- *
- * The emoji is NOT inside SVG <text> — SVG text emoji rendering is broken in
- * most browsers at small sizes (sub-pixel font metrics collapse the glyph).
+ * Build a Leaflet DivIcon matching the target design:
+ *   • Fixed 28px white circle — consistent at every zoom level
+ *   • Very thin 1.5px health-coloured CSS border (not SVG stroke)
+ *   • Emoji at 17px — always crisp, rendered as HTML not SVG text
+ *   • Selected: 20% larger, colour-matched glow, highest z-index
  */
-function buildIcon(type, condition, isSelected = false, zoom = 16) {
-  const tcfg = TYPE_CONFIG[type] || TYPE_CONFIG.tree
+function buildIcon(type, condition, isSelected = false) {
+  const tcfg = TYPE_CONFIG[type]          || TYPE_CONFIG.tree
   const ccfg = CONDITION_CONFIG[condition] || CONDITION_CONFIG.good
 
-  const base   = markerSizeForZoom(zoom)
-  const size   = isSelected ? Math.round(base * 1.20) : base
-
-  // Ring stroke in SVG units (viewBox always 0 0 40 40)
-  const stroke = isSelected ? 4.5 : 3
-
-  // Emoji rendered in real CSS px — 62% of marker keeps it inside the ring
-  const emojipx = Math.round(size * 0.62)
+  const size      = isSelected ? Math.round(MARKER_BASE_SIZE * 1.20) : MARKER_BASE_SIZE
+  const borderPx  = isSelected ? 2 : 1.5
+  const emojipx   = Math.round(size * 0.60)
 
   const shadow = isSelected
-    ? `drop-shadow(0 0 ${Math.round(size * 0.4)}px ${ccfg.color}dd) drop-shadow(0 2px 4px rgba(0,0,0,.45))`
-    : 'drop-shadow(0 1px 3px rgba(0,0,0,.40))'
+    ? `drop-shadow(0 0 6px ${ccfg.color}cc) drop-shadow(0 1px 4px rgba(0,0,0,.5))`
+    : 'drop-shadow(0 1px 3px rgba(0,0,0,.35))'
 
   return L.divIcon({
     className:   '',
     iconSize:    [size, size],
     iconAnchor:  [size / 2, size / 2],
     popupAnchor: [0, -(size / 2 + 6)],
-    html: `<div style="position:relative;width:${size}px;height:${size}px;cursor:pointer;filter:${shadow};transition:filter .18s,transform .15s;${isSelected ? 'z-index:9999;' : ''}">
-      <svg width="${size}" height="${size}" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;display:block;">
-        <circle cx="20" cy="20" r="18" fill="#fff" stroke="${ccfg.color}" stroke-width="${stroke}"/>
-      </svg>
-      <div style="position:absolute;top:0;left:0;width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-size:${emojipx}px;line-height:1;pointer-events:none;user-select:none;">${tcfg.emoji}</div>
-    </div>`,
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#fff;border:${borderPx}px solid ${ccfg.color};box-sizing:border-box;display:flex;align-items:center;justify-content:center;filter:${shadow};transition:filter .15s,transform .15s;cursor:pointer;${isSelected ? 'z-index:9999;transform:scale(1.05);' : ''}"><span style="font-size:${emojipx}px;line-height:1;display:block;pointer-events:none;user-select:none;">${tcfg.emoji}</span></div>`,
   })
 }
 
@@ -1194,8 +1174,7 @@ export default function GeoTrackerPage() {
   const [filters, setFilters]           = useState({
     q: '', plant_type: '', variety: '', zone: '', condition: '',
   })
-  // Current map zoom – drives dynamic marker sizing
-  const [mapZoom, setMapZoom]           = useState(16)
+
 
   // Debounce search input
   const debounceRef = useRef(null)
@@ -1233,9 +1212,6 @@ export default function GeoTrackerPage() {
     // Cluster layer (manual implementation without plugin dependency)
     // Using a plain LayerGroup; swap to L.markerClusterGroup() if the plugin is installed.
     clusterLayerRef.current = L.layerGroup().addTo(map)
-
-    // Track zoom for dynamic marker sizing
-    map.on('zoomend', () => setMapZoom(map.getZoom()))
 
     mapInstanceRef.current = map
     return () => {
@@ -1277,9 +1253,10 @@ export default function GeoTrackerPage() {
   }, [fetchRecords, filters.q])
 
   // ---------------------------------------------------------------------------
-  // Helper: place all markers at the given zoom level (no fitBounds)
   // ---------------------------------------------------------------------------
-  const placeMarkers = useCallback((zoom) => {
+  // Helper: place all markers (no fitBounds, no zoom dependency)
+  // ---------------------------------------------------------------------------
+  const placeMarkers = useCallback(() => {
     const layer = clusterLayerRef.current
     const map   = mapInstanceRef.current
     if (!layer || !map) return
@@ -1296,7 +1273,7 @@ export default function GeoTrackerPage() {
 
       const isSelected = selectedRecord?.id === r.id
       const marker = L.marker([lat, lng], {
-        icon: buildIcon(r.plant_type, r.condition, isSelected, zoom),
+        icon: buildIcon(r.plant_type, r.condition, isSelected),
         riseOnHover: true,
         zIndexOffset: isSelected ? 1000 : 0,
       })
@@ -1321,14 +1298,14 @@ export default function GeoTrackerPage() {
   }, [correctedRecords, selectedRecord])
 
   // ---------------------------------------------------------------------------
-  // Effect 1: data or selection changed → rebuild markers AND fit bounds once.
-  // mapZoom is intentionally NOT in the dep array so user zoom is never reset.
+  // Redraw markers when data or selection changes; fit bounds on data load.
+  // mapZoom is NOT a dependency — user zoom is never reset.
   // ---------------------------------------------------------------------------
   useEffect(() => {
     const map = mapInstanceRef.current
     if (!map) return
 
-    placeMarkers(map.getZoom())
+    placeMarkers()
 
     if (correctedRecords.length === 0) return
     const bounds = correctedRecords
@@ -1338,13 +1315,6 @@ export default function GeoTrackerPage() {
       try { map.fitBounds(bounds, { padding: [60, 60], maxZoom: 18 }) } catch (_) {}
     }
   }, [correctedRecords, selectedRecord])  // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ---------------------------------------------------------------------------
-  // Effect 2: zoom changed → only resize icons, never touch the viewport
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    placeMarkers(mapZoom)
-  }, [mapZoom])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Delegate click on popup thumbnails to open lightbox
   useEffect(() => {
