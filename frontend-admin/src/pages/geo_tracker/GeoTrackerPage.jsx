@@ -343,68 +343,55 @@ function applyGpsCorrection(records, strength) {
  *   Zoom 18+   → 22 px
  * The "base" here is the circle diameter before applying the selected 15–20% bump.
  */
+// Zoom → marker diameter in px.
+// Must be large enough that the emoji (≈60% of diameter) is legible.
+// Minimum useful emoji size is ~14px, so smallest marker = 24px.
 function markerSizeForZoom(zoom) {
-  if (zoom >= 18) return 22
-  if (zoom >= 16) return 16
-  return 12
+  if (zoom >= 18) return 38
+  if (zoom >= 16) return 30
+  return 24
 }
 
 /**
- * Build a clean SVG-based Leaflet DivIcon.
+ * Build a Leaflet DivIcon: coloured ring (health) + emoji (type).
  *
- * Two-layer approach:
- *   1. SVG draws the white circle + health-coloured ring (scales via viewBox)
- *   2. Emoji is an absolutely-positioned HTML div — sized in real px so it
- *      is always crisp and visible regardless of marker size
+ * Layout:
+ *   • Outer wrapper div — sized to `size × size` px, position:relative
+ *   • SVG layer (absolute, full size) — draws white circle + health-colour ring
+ *   • Emoji div (absolute, full size, flexbox centred) — rendered at ~62% of
+ *     the marker diameter in real CSS px, so it is always visible
  *
- * This avoids the SVG <text> font-size bug where emojis rendered at
- * 6-8px SVG units became invisible when the icon was 12-22 CSS px.
+ * The emoji is NOT inside SVG <text> — SVG text emoji rendering is broken in
+ * most browsers at small sizes (sub-pixel font metrics collapse the glyph).
  */
 function buildIcon(type, condition, isSelected = false, zoom = 16) {
   const tcfg = TYPE_CONFIG[type] || TYPE_CONFIG.tree
   const ccfg = CONDITION_CONFIG[condition] || CONDITION_CONFIG.good
 
-  const base = markerSizeForZoom(zoom)
-  const size = isSelected ? Math.round(base * 1.18) : base
+  const base   = markerSizeForZoom(zoom)
+  const size   = isSelected ? Math.round(base * 1.20) : base
 
-  // stroke-width expressed in SVG units (viewBox is always 40x40)
-  const svgStroke = isSelected ? 5 : 3.5
+  // Ring stroke in SVG units (viewBox always 0 0 40 40)
+  const stroke = isSelected ? 4.5 : 3
 
-  // emoji font in real CSS px — always legible
-  const emojipx = Math.round(size * 0.58)
+  // Emoji rendered in real CSS px — 62% of marker keeps it inside the ring
+  const emojipx = Math.round(size * 0.62)
 
-  const glowPx = Math.round(size * 0.55)
-  const filter = isSelected
-    ? `drop-shadow(0 0 ${glowPx}px ${ccfg.color}cc) drop-shadow(0 1px 3px rgba(0,0,0,.4))`
-    : 'drop-shadow(0 1px 3px rgba(0,0,0,.35))'
+  const shadow = isSelected
+    ? `drop-shadow(0 0 ${Math.round(size * 0.4)}px ${ccfg.color}dd) drop-shadow(0 2px 4px rgba(0,0,0,.45))`
+    : 'drop-shadow(0 1px 3px rgba(0,0,0,.40))'
 
   return L.divIcon({
-    className: '',
+    className:   '',
     iconSize:    [size, size],
     iconAnchor:  [size / 2, size / 2],
-    popupAnchor: [0, -(size / 2 + 4)],
-    html: `<div style="
-        position:relative;
-        width:${size}px;height:${size}px;
-        cursor:pointer;
-        filter:${filter};
-        transition:filter .18s ease,transform .15s ease;
-        ${isSelected ? 'z-index:9999;' : ''}
-      ">
-        <svg width="${size}" height="${size}" viewBox="0 0 40 40"
-             xmlns="http://www.w3.org/2000/svg"
-             style="display:block;position:absolute;top:0;left:0;">
-          <circle cx="20" cy="20" r="18" fill="#ffffff"
-                  stroke="${ccfg.color}" stroke-width="${svgStroke}"/>
-        </svg>
-        <div style="
-          position:absolute;top:0;left:0;
-          width:${size}px;height:${size}px;
-          display:flex;align-items:center;justify-content:center;
-          font-size:${emojipx}px;line-height:1;
-          pointer-events:none;user-select:none;
-        ">${tcfg.emoji}</div>
-      </div>`,
+    popupAnchor: [0, -(size / 2 + 6)],
+    html: `<div style="position:relative;width:${size}px;height:${size}px;cursor:pointer;filter:${shadow};transition:filter .18s,transform .15s;${isSelected ? 'z-index:9999;' : ''}">
+      <svg width="${size}" height="${size}" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;display:block;">
+        <circle cx="20" cy="20" r="18" fill="#fff" stroke="${ccfg.color}" stroke-width="${stroke}"/>
+      </svg>
+      <div style="position:absolute;top:0;left:0;width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-size:${emojipx}px;line-height:1;pointer-events:none;user-select:none;">${tcfg.emoji}</div>
+    </div>`,
   })
 }
 
