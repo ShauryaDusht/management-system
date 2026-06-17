@@ -1,9 +1,3 @@
-"""
-Migration 0009 – new campus areas + wider tracking_id
-
-Dependencies: 0008_plantrecord_zone_campus_area (the current leaf node
-in this clean repo — no 0009_remove_plantrecord_location_notes exists here).
-"""
 from django.db import migrations, models
 
 
@@ -45,7 +39,7 @@ FULL_ZONE_CHOICES = [
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('geo_tracker', '0008_plantrecord_zone_campus_area'),
+        ('geo_tracker', '0009_remove_plantrecord_location_notes'),
     ]
 
     operations = [
