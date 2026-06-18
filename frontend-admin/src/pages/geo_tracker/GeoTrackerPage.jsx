@@ -1040,23 +1040,18 @@ function TreeDetailPanel({
                 </div>
               )}
 
-              {/* eFlora link */}
-              <a
-                href={`https://www.efloraofgandhinagar.in/tree/${eflora.slug}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  padding: '10px 12px', borderRadius: 8, marginTop: 4,
-                  background: '#14532d', color: '#fff',
-                  fontSize: 13, fontWeight: 700, textDecoration: 'none',
-                  transition: 'background .15s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = '#166534'}
-                onMouseLeave={e => e.currentTarget.style.background = '#14532d'}
-              >
-                🔗 View on eFlora of Gandhinagar
-              </a>
+              {/* eFlora credit */}
+              <div style={{ fontSize: 11, color: 'var(--text-2)', textAlign: 'center', marginTop: 4 }}>
+                Tree data sourced from{' '}
+                <a
+                  href={`https://www.efloraofgandhinagar.in/tree/${eflora.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: 'var(--text-2)', textDecoration: 'underline' }}
+                >
+                  eFlora of Gandhinagar
+                </a>
+              </div>
 
               {/* Divider */}
               <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
