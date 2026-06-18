@@ -1,4 +1,4 @@
-import api from './client'
+import api, { BASE_URL } from './client'
 
 export const geoApi = {
   getRecords: (params = {}) =>
@@ -22,9 +22,19 @@ export const geoApi = {
   getStats: () =>
     api.get('/geo-tracker/stats/'),
 
-  exportCsv: (params = {}) => {
+  exportCsv: async (params = {}) => {
     const query = new URLSearchParams(params).toString()
-    const url = `/api/geo-tracker/records/export/${query ? '?' + query : ''}`
-    window.open(url, '_blank')
+    const url = `${BASE_URL}/geo-tracker/records/export/${query ? '?' + query : ''}`
+    const token = localStorage.getItem('access_token')
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!response.ok) throw new Error('Export failed')
+    const blob = await response.blob()
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = 'plant_records.csv'
+    link.click()
+    URL.revokeObjectURL(link.href)
   },
 }
