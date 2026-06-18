@@ -1350,6 +1350,7 @@ EXTENDED_SECOND_HALF_AREAS_BY_USER = {
     "ashok.rathod": {"Canteen, Gate-01 and Gate-02", "Guest House New", "Director Bungalow"},
     "bharat.solanki": {"Central Arcade", "Sports Complex"},
 }
+SHOW_ALL_AREAS_USERNAMES = {"ashok.rathod"}
 
 
 def _has_extended_second_half_access(sel_date, user=None, area=None, workers=None):
@@ -2008,15 +2009,26 @@ def hk_dashboard(request):
     heading_room = section_labels["heading_room"]
     heading_washroom = section_labels["heading_washroom"]
     heading_special = section_labels["heading_special"]
-
     countable_records = progress_records(records)
     total = len(countable_records)
     done = sum(1 for rec in countable_records if rec.status == "done")
     pct = int((done / total) * 100) if total else 0
 
     today_dow = today.weekday()
-    area_workers = [] if is_jrha_night_caretaker and is_jrha else effective_workers_for_area(sel_area, today)
-    mark_busy_workers(area_workers, busy_worker_ids_for_tasks(sel_area, today))
+    if is_jrha_night_caretaker and is_jrha:
+        area_workers = []
+    elif user.username in SHOW_ALL_AREAS_USERNAMES:
+        seen_ids = set()
+        area_workers = []
+        for _area in visible_areas:
+            for w in effective_workers_for_area(_area, today):
+                if w.id not in seen_ids:
+                    seen_ids.add(w.id)
+                    area_workers.append(w)
+        mark_busy_workers(area_workers, busy_worker_ids_for_tasks(sel_area, today))
+    else:
+        area_workers = effective_workers_for_area(sel_area, today)
+        mark_busy_workers(area_workers, busy_worker_ids_for_tasks(sel_area, today))
     mark_unavailable_workers(area_workers, today, current_half())
     for record in records:
         record.can_multi_worker_assignment = can_multi_worker_task(user, record)
