@@ -1,5 +1,8 @@
+from django.core.files.uploadedfile import UploadedFile
 from django.db import models
 from django.utils import timezone
+
+from .utils import compress_image_to_max_kb
 
 
 # ===========================================================================
@@ -233,6 +236,17 @@ class PlantRecord(models.Model):
     def save(self, *args, **kwargs):
         if not self.tracking_id:
             self.tracking_id = self._generate_tracking_id()
+
+        # `self.photo.file` is only an UploadedFile (InMemoryUploadedFile /
+        # TemporaryUploadedFile) when a *new* file has just been attached —
+        # e.g. from the public submit form or the Django admin. Photos
+        # already sitting in storage are opened as a plain File, so this
+        # never re-compresses an already-saved photo on every save() call.
+        if self.photo and isinstance(self.photo.file, UploadedFile):
+            compressed = compress_image_to_max_kb(self.photo.file)
+            if compressed is not None:
+                self.photo.save(self.photo.name, compressed, save=False)
+
         return super().save(*args, **kwargs)
 
     def _generate_tracking_id(self):
