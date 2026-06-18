@@ -26,3 +26,12 @@ PGPASSWORD="${DB_PASSWORD:-}" pg_dump \
 
 sha256sum "${BACKUP_FILE}" > "${BACKUP_FILE}.sha256"
 echo "Backup complete: ${BACKUP_FILE}"
+
+echo "Pruning old SQL backups (keeping last 10)..."
+ls -1t "${BACKUP_DIR}"/postgres_${DB_NAME}_*.dump 2>/dev/null \
+    | tail -n +11 \
+    | xargs -r rm -f --
+ls -1t "${BACKUP_DIR}"/postgres_${DB_NAME}_*.dump.sha256 2>/dev/null \
+    | tail -n +11 \
+    | xargs -r rm -f --
+echo "Pruning done."
