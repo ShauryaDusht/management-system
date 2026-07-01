@@ -1,6 +1,6 @@
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
@@ -177,12 +177,36 @@ class GeoTrackerVarietiesView(APIView):
     permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
 
     def get(self, request):
-        varieties = PlantVariety.objects.all()
+        varieties = PlantVariety.objects.all().order_by('plant_type', 'name')
         plant_type = request.query_params.get('plant_type')
         if plant_type:
             varieties = varieties.filter(plant_type=plant_type)
         serializer = PlantVarietySerializer(varieties, many=True)
         return Response(serializer.data)
+
+    def post(self, request):
+        serializer = PlantVarietySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GeoTrackerVarietyDetailView(APIView):
+    permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
+
+    def put(self, request, pk):
+        variety = get_object_or_404(PlantVariety, pk=pk)
+        serializer = PlantVarietySerializer(variety, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        variety = get_object_or_404(PlantVariety, pk=pk)
+        variety.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class GeoTrackerZonesView(APIView):

@@ -1169,6 +1169,10 @@ export default function GeoTrackerPage() {
   const [filters, setFilters]           = useState({
     q: '', plant_type: '', variety: '', zone: '', condition: '',
   })
+  const [addVarietyOpen, setAddVarietyOpen] = useState(false)
+  const [varietyForm, setVarietyForm]       = useState({ name: '', scientific_name: '', plant_type: 'tree' })
+  const [varietySaving, setVarietySaving]   = useState(false)
+  const [varietyError, setVarietyError]     = useState(null)
 
 
   // Debounce search input
@@ -1380,6 +1384,28 @@ export default function GeoTrackerPage() {
     return res.data
   }
 
+  async function handleAddVariety() {
+    setVarietyError(null)
+    if (!varietyForm.name.trim()) { setVarietyError('Name is required.'); return }
+    setVarietySaving(true)
+    try {
+      await geoApi.createVariety({
+        name: varietyForm.name.trim(),
+        scientific_name: varietyForm.scientific_name.trim(),
+        plant_type: varietyForm.plant_type,
+      })
+      const res = await geoApi.getVarieties()
+      setVarieties(res.data)
+      setAddVarietyOpen(false)
+      setVarietyForm({ name: '', scientific_name: '', plant_type: 'tree' })
+      setSuccess(`Added "${varietyForm.name.trim()}" to varieties.`)
+    } catch {
+      setVarietyError('Failed to save. Please try again.')
+    } finally {
+      setVarietySaving(false)
+    }
+  }
+
   const activeFilterCount = Object.values(filters).filter(Boolean).length
   const filteredVarieties = filters.plant_type
     ? varieties.filter(v => v.plant_type === filters.plant_type)
@@ -1456,6 +1482,15 @@ export default function GeoTrackerPage() {
           />
 
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button
+              onClick={() => { setAddVarietyOpen(true); setVarietyError(null) }}
+              style={{
+                padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                border: '1.5px solid #16a34a', background: '#dcfce7', color: '#15803d', cursor: 'pointer',
+              }}
+            >
+              + Add Variety
+            </button>
             <button
               onClick={() => setFiltersOpen(o => !o)}
               aria-expanded={filtersOpen}
@@ -1713,7 +1748,62 @@ export default function GeoTrackerPage() {
             onClose={() => setLightbox(null)}
           />
         )}
+        {addVarietyOpen && (
+          <div
+            onClick={() => !varietySaving && setAddVarietyOpen(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          >
+            <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 14, padding: 24, width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,.3)', border: '1.5px solid var(--border)' }}>
+              <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 18, color: 'var(--text)' }}>🌱 Add Plant Variety</div>
 
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Plant Type *</label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {Object.entries(TYPE_CONFIG).map(([key, cfg]) => (
+                    <button key={key} onClick={() => setVarietyForm(f => ({ ...f, plant_type: key }))}
+                      style={{ flex: 1, padding: '8px 6px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                        border: `2px solid ${varietyForm.plant_type === key ? cfg.color : 'var(--border)'}`,
+                        background: varietyForm.plant_type === key ? cfg.bg : 'var(--surface)',
+                        color: varietyForm.plant_type === key ? cfg.color : 'var(--text-2)' }}>
+                      {cfg.emoji} {cfg.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Local Name *</label>
+                <input type="text" placeholder="e.g. Neem" value={varietyForm.name}
+                  onChange={e => setVarietyForm(f => ({ ...f, name: e.target.value }))}
+                  style={inputStyle} autoFocus />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={labelStyle}>Scientific Name (optional)</label>
+                <input type="text" placeholder="e.g. Azadirachta indica" value={varietyForm.scientific_name}
+                  onChange={e => setVarietyForm(f => ({ ...f, scientific_name: e.target.value }))}
+                  style={inputStyle} />
+              </div>
+
+              {varietyError && (
+                <div style={{ marginBottom: 14, padding: '9px 12px', borderRadius: 8, background: '#fee2e2', color: '#991b1b', fontSize: 13 }}>
+                  {varietyError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={handleAddVariety} disabled={varietySaving}
+                  style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: 'none', background: 'var(--green-800)', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', opacity: varietySaving ? 0.7 : 1 }}>
+                  {varietySaving ? 'Saving…' : 'Save Variety'}
+                </button>
+                <button onClick={() => setAddVarietyOpen(false)} disabled={varietySaving}
+                  style={{ padding: '10px 16px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* ── Global styles ──────────────────────────────────────────────── */}
         <style>{`
           @keyframes spin { to { transform: rotate(360deg); } }

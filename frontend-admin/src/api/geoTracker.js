@@ -21,6 +21,15 @@ export const geoApi = {
 
   getStats: () =>
     api.get('/geo-tracker/stats/'),
+  
+  createVariety: (data) =>
+    api.post('/geo-tracker/varieties/', data),
+
+  updateVariety: (id, data) =>
+    api.put(`/geo-tracker/varieties/${id}/`, data),
+
+  deleteVariety: (id) =>
+    api.delete(`/geo-tracker/varieties/${id}/`),
 
   exportCsv: async (params = {}) => {
     const query = new URLSearchParams(params).toString()
