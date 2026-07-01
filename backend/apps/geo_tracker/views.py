@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 
 from apps.users.permissions import IsAdminOrHKInventoryOrHorticultureManager
 
-from .models import CampusArea, PlantRecord, PlantVariety
+from .models import CampusArea, PlantRecord, PlantVariety, CampusAreaConfig
 from .serializers import (
     PlantRecordSerializer,
     PlantRecordCreateSerializer,
@@ -239,3 +239,30 @@ class GeoTrackerStatsView(APIView):
             'plants': plants,
             'creepers': creepers,
         })
+
+class GeoTrackerAreasView(APIView):
+    permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
+
+    def get(self, request):
+        # return hardcoded + DB areas combined
+        return Response([
+            {'value': v, 'label': l}
+            for v, l in campus_area_choices()
+        ])
+
+    def post(self, request):
+        label    = request.data.get('label', '').strip()
+        db_value = request.data.get('db_value', '').strip()
+        code     = request.data.get('code', '').strip().upper()
+
+        if not label or not db_value or not code:
+            return Response({'error': 'label, db_value and code are required.'}, status=400)
+        if len(code) != 3:
+            return Response({'error': 'code must be exactly 3 characters.'}, status=400)
+        if CampusAreaConfig.objects.filter(db_value=db_value).exists():
+            return Response({'error': 'Area with this db_value already exists.'}, status=400)
+        if CampusAreaConfig.objects.filter(code=code).exists():
+            return Response({'error': 'Area with this code already exists.'}, status=400)
+
+        area = CampusAreaConfig.objects.create(label=label, db_value=db_value, code=code)
+        return Response({'id': area.id, 'label': area.label, 'db_value': area.db_value, 'code': area.code}, status=201)

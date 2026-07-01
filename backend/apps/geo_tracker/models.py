@@ -256,7 +256,12 @@ class PlantRecord(models.Model):
         Existing records are never renumbered.
         """
         type_prefix = PLANT_TYPE_PREFIXES.get(self.plant_type, 'X')
-        area_code   = AREA_CODES.get(self.zone, 'UNK')
+        area_code = AREA_CODES.get(self.zone)
+        if not area_code:
+            try:
+                area_code = CampusAreaConfig.objects.get(db_value=self.zone).code
+            except CampusAreaConfig.DoesNotExist:
+                area_code = 'UNK'
         prefix      = f'{type_prefix}{area_code}'
 
         existing = list(
@@ -276,3 +281,14 @@ class PlantRecord(models.Model):
     @property
     def lng(self):
         return float(self.longitude)
+
+class CampusAreaConfig(models.Model):
+    db_value = models.CharField(max_length=50, unique=True)   # e.g. 'housing_zone'
+    label    = models.CharField(max_length=100)               # e.g. 'Housing Zone'
+    code     = models.CharField(max_length=3, unique=True)    # e.g. 'HZN' — used in tracking ID
+
+    class Meta:
+        ordering = ['label']
+
+    def __str__(self):
+        return f"{self.label} ({self.code})"

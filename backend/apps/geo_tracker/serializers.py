@@ -96,14 +96,15 @@ class PlantRecordCreateSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------------------
 
 def campus_area_choices():
-    """Return (value, label) tuples for all CampusArea values.
-
-    Consumed by:
-      - GeoTrackerZonesView  → admin frontend dropdown
-      - geo_submit_form view → public mobile form
-      - Django admin list_filter
-    """
-    return CampusArea.choices
+    from .models import CampusAreaConfig
+    hardcoded = list(CampusArea.choices)
+    hardcoded_values = {v for v, _ in hardcoded}
+    db_extras = [
+        (a.db_value, a.label)
+        for a in CampusAreaConfig.objects.all()
+        if a.db_value not in hardcoded_values
+    ]
+    return hardcoded + db_extras
 
 
 # ---------------------------------------------------------------------------

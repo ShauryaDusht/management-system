@@ -9,7 +9,8 @@ from .views import (
     GeoTrackerVarietiesView,
     GeoTrackerZonesView,
     GeoTrackerStatsView,
-    GeoTrackerVarietyDetailView
+    GeoTrackerVarietyDetailView,
+    GeoTrackerAreasView
 )
 
 # Public routes (no auth)
@@ -24,7 +25,9 @@ urlpatterns = [
     path('records/', GeoTrackerRecordsView.as_view(), name='geo-records'),
     path('records/<int:pk>/', GeoTrackerRecordDetailView.as_view(), name='geo-record-detail'),
     path('varieties/', GeoTrackerVarietiesView.as_view(), name='geo-varieties'),
-    path('zones/', GeoTrackerZonesView.as_view(), name='geo-zones'),
+    path('zones/', GeoTrackerAreasView.as_view(), name='geo-zones'),
     path('stats/', GeoTrackerStatsView.as_view(), name='geo-stats'),
     path('varieties/<int:pk>/', GeoTrackerVarietyDetailView.as_view(), name='geo-variety-detail'),
+    path('areas/', GeoTrackerAreasView.as_view(), name='geo-areas'),
+
 ]

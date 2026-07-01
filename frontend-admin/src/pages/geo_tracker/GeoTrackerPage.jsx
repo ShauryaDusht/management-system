@@ -1173,7 +1173,10 @@ export default function GeoTrackerPage() {
   const [varietyForm, setVarietyForm]       = useState({ name: '', scientific_name: '', plant_type: 'tree' })
   const [varietySaving, setVarietySaving]   = useState(false)
   const [varietyError, setVarietyError]     = useState(null)
-
+  const [addAreaOpen, setAddAreaOpen]   = useState(false)
+  const [areaForm, setAreaForm]         = useState({ label: '', db_value: '', code: '' })
+  const [areaSaving, setAreaSaving]     = useState(false)
+  const [areaError, setAreaError]       = useState(null)
 
   // Debounce search input
   const debounceRef = useRef(null)
@@ -1406,6 +1409,34 @@ export default function GeoTrackerPage() {
     }
   }
 
+  async function handleAddArea() {
+    setAreaError(null)
+    if (!areaForm.label.trim() || !areaForm.db_value.trim() || !areaForm.code.trim()) {
+      setAreaError('All 3 fields are required.'); return
+    }
+    if (areaForm.code.length !== 3) {
+      setAreaError('Code must be exactly 3 characters.'); return
+    }
+    setAreaSaving(true)
+    try {
+      await geoApi.createArea({
+        label:    areaForm.label.trim(),
+        db_value: areaForm.db_value.trim().toLowerCase().replace(/\s+/g, '_'),
+        code:     areaForm.code.trim().toUpperCase(),
+      })
+      const res = await geoApi.getZones()
+      setZones(res.data)
+      setAddAreaOpen(false)
+      setAreaForm({ label: '', db_value: '', code: '' })
+      setSuccess(`Added "${areaForm.label.trim()}" to campus areas.`)
+    } catch (err) {
+      setAreaError(err?.response?.data?.error || 'Failed to save. Please try again.')
+    } finally {
+      setAreaSaving(false)
+    }
+  }
+
+
   const activeFilterCount = Object.values(filters).filter(Boolean).length
   const filteredVarieties = filters.plant_type
     ? varieties.filter(v => v.plant_type === filters.plant_type)
@@ -1482,6 +1513,15 @@ export default function GeoTrackerPage() {
           />
 
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button
+              onClick={() => { setAddAreaOpen(true); setAreaError(null) }}
+              style={{
+                padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                border: '1.5px solid #0284c7', background: '#e0f2fe', color: '#0369a1', cursor: 'pointer',
+              }}
+            >
+              + Add Area
+            </button>
             <button
               onClick={() => { setAddVarietyOpen(true); setVarietyError(null) }}
               style={{
@@ -1797,6 +1837,56 @@ export default function GeoTrackerPage() {
                   {varietySaving ? 'Saving…' : 'Save Variety'}
                 </button>
                 <button onClick={() => setAddVarietyOpen(false)} disabled={varietySaving}
+                  style={{ padding: '10px 16px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {addAreaOpen && (
+          <div onClick={() => !areaSaving && setAddAreaOpen(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div onClick={e => e.stopPropagation()}
+              style={{ background: 'var(--surface)', borderRadius: 14, padding: 24, width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,.3)', border: '1.5px solid var(--border)' }}>
+              <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 18, color: 'var(--text)' }}>🗺️ Add Campus Area</div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Display Name *</label>
+                <input type="text" placeholder="e.g. Solar Car Parking"
+                  value={areaForm.label}
+                  onChange={e => setAreaForm(f => ({ ...f, label: e.target.value }))}
+                  style={inputStyle} autoFocus />
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>DB Value * <span style={{ fontWeight: 400, textTransform: 'none' }}>(lowercase, underscores)</span></label>
+                <input type="text" placeholder="e.g. solar_car_parking"
+                  value={areaForm.db_value}
+                  onChange={e => setAreaForm(f => ({ ...f, db_value: e.target.value.toLowerCase().replace(/\s+/g, '_') }))}
+                  style={inputStyle} />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={labelStyle}>3-Letter Code * <span style={{ fontWeight: 400, textTransform: 'none' }}>(used in tracking IDs)</span></label>
+                <input type="text" placeholder="e.g. SCP" maxLength={3}
+                  value={areaForm.code}
+                  onChange={e => setAreaForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
+                  style={{ ...inputStyle, letterSpacing: '0.15em', fontWeight: 700 }} />
+              </div>
+
+              {areaError && (
+                <div style={{ marginBottom: 14, padding: '9px 12px', borderRadius: 8, background: '#fee2e2', color: '#991b1b', fontSize: 13 }}>
+                  {areaError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={handleAddArea} disabled={areaSaving}
+                  style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: 'none', background: '#0284c7', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', opacity: areaSaving ? 0.7 : 1 }}>
+                  {areaSaving ? 'Saving…' : 'Save Area'}
+                </button>
+                <button onClick={() => setAddAreaOpen(false)} disabled={areaSaving}
                   style={{ padding: '10px 16px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
                   Cancel
                 </button>

@@ -31,6 +31,9 @@ export const geoApi = {
   deleteVariety: (id) =>
     api.delete(`/geo-tracker/varieties/${id}/`),
 
+  createArea: (data) =>
+    api.post('/geo-tracker/areas/', data),
+
   exportCsv: async (params = {}) => {
     const query = new URLSearchParams(params).toString()
     const url = `${BASE_URL}/geo-tracker/records/export/${query ? '?' + query : ''}`
