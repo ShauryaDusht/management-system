@@ -91,7 +91,7 @@ export default function RequestsReportTab() {
               <StatCard label="Rejected" value={report?.rejected || 0} icon="RJ" color="#dc2626" />
             </div>
             <DataTable
-              headers={['Requester', 'Item Code', 'Item', 'Qty', 'Status', 'Date', 'Reviewed By']}
+              headers={['Requester', 'Item Code', 'Item', 'Qty', 'Status', 'Date', 'Reviewed By', 'Issued At']}
               rows={(report?.requests || []).map((r) => [
                 r.requester,
                 r.item_code || '—',
@@ -100,6 +100,7 @@ export default function RequestsReportTab() {
                 String(r.status || '').toUpperCase(),
                 r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '-',
                 r.reviewed_by || '-',
+                r.issued_at ? new Date(r.issued_at).toLocaleString('en-IN') : '-',
               ])}
               emptyMsg="No requests in selected date range."
             />

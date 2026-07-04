@@ -689,7 +689,7 @@ def mobile_export_requests_report_csv(request):
     writer = csv.writer(response)
     writer.writerow([
         'ID', 'Requester', 'Item', 'Quantity', 'Status', 'Urgent',
-        'Reason', 'Created At', 'Reviewed By', 'Reviewed At',
+        'Reason', 'Created At', 'Reviewed By', 'Reviewed At', 'Issued At',
     ])
     for row in report.get('requests', []):
         writer.writerow([
@@ -703,6 +703,7 @@ def mobile_export_requests_report_csv(request):
             row.get('created_at'),
             row.get('reviewed_by') or '',
             row.get('reviewed_at') or '',
+            row.get('issued_at') or '',
         ])
 
     return response
