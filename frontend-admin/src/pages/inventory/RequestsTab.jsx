@@ -106,21 +106,15 @@ export default function RequestsTab({ userRole }) {
     return requests.filter((r) => r.status === filter)
   }, [requests, filter])
 
-  const reviewRequest = async (id, action, reason = '') => {
+  const reviewRequest = async (id, _action, reason = '') => {
     setActingId(id)
     clearError()
     setSuccess('')
     try {
       const result = await runAction(async () => {
-        if (action === 'approve') {
-          await inventoryAPI.approveRequest(id)
-        } else if (action === 'reject') {
-          await inventoryAPI.rejectRequest(id, reason)
-        }
+        await inventoryAPI.rejectRequest(id, reason)
         return true
-      }, action === 'approve'
-        ? 'Cannot approve: Requested quantity is not available in stock.'
-        : 'Review failed.')
+      }, 'Review failed.')
       if (!result) return
       await reload()
       refreshBadges()
@@ -314,10 +308,10 @@ export default function RequestsTab({ userRole }) {
                       <Btn
                         size="sm"
                         variant="success"
-                        onClick={() => reviewRequest(r.id, 'approve')}
+                        onClick={() => openIssueModal(r)}
                         disabled={actingId === r.id}
                       >
-                        {actingId === r.id ? 'Working...' : 'Approve'}
+                        Issue Item
                       </Btn>
                       <Btn
                         size="sm"
@@ -438,11 +432,11 @@ export default function RequestsTab({ userRole }) {
               <div key={`act-p-${r.id}`} style={{ display: 'flex', gap: 6 }}>
                 <Btn
                   size="sm"
-                  variant="success"
-                  onClick={() => reviewRequest(r.id, 'approve')}
+                  variant="orange"
+                  onClick={() => openIssueModal(r)}
                   disabled={actingId === r.id}
                 >
-                  Approve
+                  Issue
                 </Btn>
                 <Btn
                   size="sm"
