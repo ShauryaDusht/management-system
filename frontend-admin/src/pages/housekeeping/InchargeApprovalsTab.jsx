@@ -13,6 +13,17 @@ function normalizeList(payload) {
   return []
 }
 
+const LEAVE_REQUEST_DISPLAY_WINDOW_DAYS = 7
+
+function isWithinDisplayWindow(leaveDate) {
+  if (!leaveDate) return true
+  const d = new Date(leaveDate)
+  if (Number.isNaN(d.getTime())) return true
+  const msPerDay = 24 * 60 * 60 * 1000
+  const daysPast = (Date.now() - d.getTime()) / msPerDay
+  return daysPast <= LEAVE_REQUEST_DISPLAY_WINDOW_DAYS
+}
+
 function formatDateTime(value) {
   if (!value) return '-'
   const d = new Date(value)
@@ -206,7 +217,7 @@ export default function InchargeApprovalsTab({ readOnly = false }) {
     setError('')
     try {
       const { data } = await hkAPI.getInchargeAssignments()
-      setRows(normalizeList(data))
+      setRows(normalizeList(data).filter((r) => isWithinDisplayWindow(r.leave_date)))
     } catch (e) {
       setError(e.response?.data?.detail || 'Failed to load incharge assignments.')
     } finally {

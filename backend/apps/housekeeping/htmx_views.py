@@ -1001,12 +1001,10 @@ def get_user_areas(user):
     )
     today = timezone.localdate()
     assignment_qs = (
-        HKInchargeAssignment.objects.filter(
-            assigned_staff=user,
-            leave_date__gte=today,
-        )
+        HKInchargeAssignment.objects.filter(assigned_staff=user)
         .filter(
-            dm.Q(status__in=["pending_acceptance", "pending_admin_approval"])
+            dm.Q(status="pending_acceptance", leave_date__gte=today)
+            | dm.Q(status="pending_admin_approval")
             | dm.Q(status="approved", leave_date=today)
         )
         .select_related("leave_staff")
@@ -2273,7 +2271,6 @@ def hk_dashboard(request):
         HKInchargeAssignment.objects.filter(
             assigned_staff=user,
             status="pending_admin_approval",
-            leave_date__gte=today,
         )
         .select_related("area", "leave_staff")
         .order_by("leave_date", "-created_at")[:10]
@@ -3782,4 +3779,3 @@ def hk_alerts_manage(request):
         "alerts": HKAlert.objects.order_by("-created_at")[:20],
         "all_areas": HKArea.objects.filter(is_active=True),
     })
-
