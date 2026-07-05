@@ -48,6 +48,7 @@ from .serializers import (
     AdminAttendanceRecordSerializer,
     AdminAreaTaskAssignmentSerializer,
     AdminDailyAssignmentSerializer,
+    AdminHorticultureAreaSerializer,
     AdminSummarySerializer,
     AdminSupervisorsSerializer,
     AdminTaskTypeSerializer,
@@ -770,6 +771,33 @@ class AdminHorticultureAreasAPIView(APIView):
             }
             for area in areas
         ])
+
+    def post(self, request):
+        serializer = AdminHorticultureAreaSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        area = serializer.save()
+        area = HorticultureArea.objects.select_related('zone__supervisor').get(pk=area.pk)
+        return Response(AdminHorticultureAreaSerializer(area).data, status=status.HTTP_201_CREATED)
+
+
+class AdminHorticultureAreaDetailAPIView(APIView):
+    permission_classes = [IsAdminOrHorticultureManager]
+
+    def get_object(self, area_id):
+        return get_object_or_404(HorticultureArea.objects.select_related('zone__supervisor'), pk=area_id)
+
+    def patch(self, request, area_id):
+        area = self.get_object(area_id)
+        serializer = AdminHorticultureAreaSerializer(area, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        area = serializer.save()
+        area = HorticultureArea.objects.select_related('zone__supervisor').get(pk=area.pk)
+        return Response(AdminHorticultureAreaSerializer(area).data)
+
+    def delete(self, request, area_id):
+        area = self.get_object(area_id)
+        area.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class AdminHorticultureAttendanceAPIView(APIView):
@@ -2914,5 +2942,3 @@ def horticulture_log_usage(request, pk):
     zone_id = request.POST.get('zone')
     query = _query_string(zone=zone_id, area=area_id)
     return redirect(f'/horticulture/stock/?{query}' if query else '/horticulture/stock/')
-
-

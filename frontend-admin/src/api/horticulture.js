@@ -3,6 +3,9 @@ import api from './client'
 export const horticultureAPI = {
   getSummary: () => api.get('/horticulture/admin/summary/'),
   getAreas: () => api.get('/horticulture/admin/areas/'),
+  createArea: (data) => api.post('/horticulture/admin/areas/', data),
+  updateArea: (id, data) => api.patch(`/horticulture/admin/areas/${id}/`, data),
+  deleteArea: (id) => api.delete(`/horticulture/admin/areas/${id}/`),
   getZoneDetail: (zoneId) => api.get(`/horticulture/admin/zone/${zoneId}/`),
   getAttendance: (date) =>
     api.get('/horticulture/admin/attendance/', {

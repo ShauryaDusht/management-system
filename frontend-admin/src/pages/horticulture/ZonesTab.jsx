@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
-import { Alert, Btn, Card, SelectField, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
 import { asList, getErrorMessage, triggerDownload } from '../../shared/utils'
 import { formatDate, getZoneTone, taskChipStyle } from './helpers'
 
@@ -177,6 +177,39 @@ export default function ZonesTab() {
   const [detail, setDetail] = useState(null)
   const [frequencyFilter, setFrequencyFilter] = useState('daily')
 
+  const [allAreas, setAllAreas] = useState([])
+  const [areasLoading, setAreasLoading] = useState(true)
+  const [areaModal, setAreaModal] = useState(null)
+  const [areaForm, setAreaForm] = useState({ area_number: '', name: '', zone_id: '' })
+  const [areaFormError, setAreaFormError] = useState('')
+  const [areaSaving, setAreaSaving] = useState(false)
+
+  const loadAreas = async () => {
+    setAreasLoading(true)
+    try {
+      const { data } = await horticultureAPI.getAreas()
+      setAllAreas(asList(data))
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to load horticulture areas.'))
+    } finally {
+      setAreasLoading(false)
+    }
+  }
+
+  const reloadZoneDetail = async () => {
+    if (!selectedZoneId) return
+    try {
+      const { data } = await horticultureAPI.getZoneDetail(selectedZoneId)
+      setDetail(data)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to load zone detail.'))
+    }
+  }
+
+  useEffect(() => {
+    loadAreas()
+  }, [])
+
   useEffect(() => {
     let mounted = true
     ;(async () => {
@@ -281,9 +314,127 @@ export default function ZonesTab() {
     )
   }
 
+  const openAddArea = () => {
+    setAreaForm({ area_number: '', name: '', zone_id: zones[0]?.id || '' })
+    setAreaFormError('')
+    setAreaModal({ mode: 'create' })
+  }
+
+  const saveArea = async () => {
+    setAreaSaving(true)
+    setAreaFormError('')
+    try {
+      await horticultureAPI.createArea({
+        area_number: Number(areaForm.area_number),
+        name: String(areaForm.name || '').trim(),
+        zone_id: Number(areaForm.zone_id),
+      })
+      setAreaModal(null)
+      await loadAreas()
+      await reloadZoneDetail()
+    } catch (err) {
+      setAreaFormError(getErrorMessage(err, 'Failed to add area.'))
+    } finally {
+      setAreaSaving(false)
+    }
+  }
+
+  const removeArea = async (area) => {
+    if (!window.confirm(`Remove area "${area.name}"? This cannot be undone.`)) return
+    setError('')
+    try {
+      await horticultureAPI.deleteArea(area.id)
+      await loadAreas()
+      await reloadZoneDetail()
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to remove area.'))
+    }
+  }
+
   return (
     <div>
       <Alert message={error} />
+
+      <Card noPad style={{ marginBottom: 14 }}>
+        <div
+          style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 700 }}>Areas</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+              Add or remove horticulture areas across all zones.
+            </div>
+          </div>
+          <Btn size="sm" onClick={openAddArea} disabled={!zones.length}>+ Add Area</Btn>
+        </div>
+
+        {areasLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
+            <Spinner />
+          </div>
+        ) : (
+          <DataTable
+            headers={['Area #', 'Name', 'Zone', 'Supervisor', 'Remove']}
+            rows={allAreas.map((area) => [
+              area.area_number,
+              area.name,
+              area.zone_name || '-',
+              area.supervisor_name || '-',
+              <Btn key={`remove-${area.id}`} size="sm" variant="ghost" onClick={() => removeArea(area)}>Remove</Btn>,
+            ])}
+            emptyMsg="No horticulture areas found."
+          />
+        )}
+      </Card>
+
+      <Modal
+        open={!!areaModal}
+        onClose={() => setAreaModal(null)}
+        title="Add Area"
+        width={480}
+        footer={(
+          <>
+            <Btn variant="ghost" onClick={() => setAreaModal(null)} disabled={areaSaving}>Cancel</Btn>
+            <Btn onClick={saveArea} disabled={areaSaving}>{areaSaving ? 'Saving...' : 'Add Area'}</Btn>
+          </>
+        )}
+      >
+        <Alert message={areaFormError} />
+        <Field label="Area Number" required>
+          <Input
+            type="number"
+            min={1}
+            max={42}
+            value={areaForm.area_number}
+            onChange={(event) => setAreaForm((prev) => ({ ...prev, area_number: event.target.value }))}
+          />
+        </Field>
+        <Field label="Area Name" required>
+          <Input
+            value={areaForm.name}
+            onChange={(event) => setAreaForm((prev) => ({ ...prev, name: event.target.value }))}
+          />
+        </Field>
+        <Field label="Zone" required>
+          <SelectField
+            value={areaForm.zone_id}
+            onChange={(event) => setAreaForm((prev) => ({ ...prev, zone_id: event.target.value }))}
+          >
+            {zones.map((zone) => (
+              <option key={zone.id} value={zone.id}>{zone.name}</option>
+            ))}
+          </SelectField>
+        </Field>
+      </Modal>
+
 
       <Card style={{ marginBottom: 14 }}>
         <div

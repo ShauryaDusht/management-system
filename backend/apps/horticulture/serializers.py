@@ -347,6 +347,22 @@ class AdminWorkerReportSerializer(serializers.Serializer):
     task_details = AdminWorkerReportTaskSerializer(many=True)
 
 
+class AdminHorticultureAreaSerializer(serializers.ModelSerializer):
+    zone_id = serializers.PrimaryKeyRelatedField(source='zone', queryset=HorticultureZone.objects.all())
+    zone_name = serializers.CharField(source='zone.name', read_only=True)
+    supervisor_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HorticultureArea
+        fields = ['id', 'area_number', 'name', 'zone_id', 'zone_name', 'supervisor_name']
+
+    def get_supervisor_name(self, obj):
+        supervisor = obj.zone.supervisor if obj.zone_id else None
+        if not supervisor:
+            return ''
+        return supervisor.get_full_name() or supervisor.username
+
+
 class AdminTaskTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskType
