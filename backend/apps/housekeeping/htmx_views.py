@@ -1351,6 +1351,9 @@ EXTENDED_SECOND_HALF_AREAS_BY_USER = {
     "bharat.solanki": {"Central Arcade", "Sports Complex"},
 }
 SHOW_ALL_AREAS_USERNAMES = {"ashok.rathod"}
+# Users allowed to mark yesterday's second-half/night attendance after the
+# calendar day has rolled over (night shift ends after midnight).
+NIGHT_ATTENDANCE_CATCHUP_USERNAMES = {"ashok.rathod"}
 
 
 def _has_extended_second_half_access(sel_date, user=None, area=None, workers=None):
@@ -2989,20 +2992,32 @@ def hk_attendance(request):
     can_mark_previous_sunday_attendance = bool(
         previous_sunday and (is_swm or user.username in sunday_on_monday_usernames)
     )
+    yesterday = today - datetime.timedelta(days=1)
+    can_mark_previous_night_attendance = bool(
+        user.username in NIGHT_ATTENDANCE_CATCHUP_USERNAMES and yesterday != previous_sunday
+    )
     allowed_dates = {today}
     if can_mark_previous_sunday_attendance:
         allowed_dates.add(previous_sunday)
+    if can_mark_previous_night_attendance:
+        allowed_dates.add(yesterday)
     sel_date = requested_date if requested_date in allowed_dates else today
 
     workers = effective_workers_for_area(sel_area, sel_date)
 
     cur_half = current_half()
     is_today = sel_date == today
-    first_half_open = attendance_half_is_open(sel_date, "first", user=user, area=sel_area, workers=workers)
+    # Ashok's next-day catch-up is for the night/second-half only; morning
+    # attendance for a past date is never opened by this exception.
+    is_night_catchup_date = can_mark_previous_night_attendance and sel_date == yesterday
+    first_half_open = (
+        False if is_night_catchup_date
+        else attendance_half_is_open(sel_date, "first", user=user, area=sel_area, workers=workers)
+    )
     second_half_open = attendance_half_is_open(sel_date, "second", user=user, area=sel_area, workers=workers)
     can_submit_selected_attendance = is_today or (
         can_mark_previous_sunday_attendance and sel_date == previous_sunday
-    )
+    ) or is_night_catchup_date
     area_param = f"&area={sel_area.id}" if sel_area else ""
 
     if workers and (not is_today or cur_half == "second") and can_submit_selected_attendance:
@@ -3013,7 +3028,11 @@ def hk_attendance(request):
 
         if action == "submit_half":
             half = request.POST.get("half", cur_half)
-            if half not in {"first", "second"} or not attendance_half_is_open(sel_date, half, user=user, area=sel_area, workers=workers):
+            if (
+                half not in {"first", "second"}
+                or (is_night_catchup_date and half == "first")
+                or not attendance_half_is_open(sel_date, half, user=user, area=sel_area, workers=workers)
+            ):
                 return redirect(f"/housekeeping/attendance/?date={sel_date}{area_param}&att_err=half_closed")
             if half == "second":
                 _auto_create_second_half_from_first(workers, sel_date, user)
@@ -3033,7 +3052,11 @@ def hk_attendance(request):
 
         elif action == "mark":
             half = request.POST.get("half", cur_half)
-            if half not in {"first", "second"} or not attendance_half_is_open(sel_date, half, user=user, area=sel_area, workers=workers):
+            if (
+                half not in {"first", "second"}
+                or (is_night_catchup_date and half == "first")
+                or not attendance_half_is_open(sel_date, half, user=user, area=sel_area, workers=workers)
+            ):
                 if request.headers.get("HX-Request"):
                     return HttpResponseBadRequest("Attendance for this half is not open.")
                 return redirect(f"/housekeeping/attendance/?date={sel_date}{area_param}&att_err=half_closed")
@@ -3782,4 +3805,3 @@ def hk_alerts_manage(request):
         "alerts": HKAlert.objects.order_by("-created_at")[:20],
         "all_areas": HKArea.objects.filter(is_active=True),
     })
-

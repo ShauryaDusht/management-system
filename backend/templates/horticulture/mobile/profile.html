@@ -10,31 +10,6 @@
 {% include 'shared/mobile/profile_assignment_card.html' with assignment_title='Zones In Charge' assignment_items=zone_items assignment_empty_text='No zones assigned.' only %}
 
 {% if not is_horti_manager %}
-<div class="card" id="leave-ui-block">
-  <div style="font-weight:700;color:#2d4a3e;margin-bottom:10px">Leave Request</div>
-  <form method="post">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="submit_leave">
-    <div class="fg">
-      <label>Zone *</label>
-      <select name="leave_zone_id" required>
-        {% for zone in zones %}
-        <option value="{{ zone.id }}" {% if selected_leave_zone_id|stringformat:'s' == zone.id|stringformat:'s' or selected_zone.id == zone.id %}selected{% endif %}>{{ zone.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="fg">
-      <label>Leave Date *</label>
-      <input type="date" name="leave_date" min="{{ today|date:'Y-m-d' }}" value="{{ selected_leave_date }}" required>
-    </div>
-    <div class="fg">
-      <label>Reason (optional)</label>
-      <input type="text" name="leave_reason" value="{{ leave_reason_value }}" placeholder="Reason for leave...">
-    </div>
-    <button type="submit" class="btn-g">Submit Leave & Select Temporary Incharge</button>
-  </form>
-</div>
-
 {% if show_incharge_selector and selector_leave_request %}
 <div class="card" style="border:1.5px solid #fde68a;background:#fffbeb">
   <div style="font-weight:800;color:#92400e;margin-bottom:7px">Select Temporary Incharge for {{ selector_leave_request.leave_date|date:"d M Y" }}</div>
