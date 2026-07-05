@@ -503,10 +503,13 @@ class IssueItemView(APIView):
     def post(self, request, pk):
         try:
             item_request = ItemRequest.objects.select_for_update().get(
-                pk=pk, status=ItemRequest.Status.APPROVED
+                pk=pk,
+                status__in=[ItemRequest.Status.PENDING, ItemRequest.Status.APPROVED],
             )
         except ItemRequest.DoesNotExist:
-            return Response({'detail': 'Approved request not found.'}, status=404)
+            return Response({'detail': 'Request not found or already actioned.'}, status=404)
+
+        was_pending = item_request.status == ItemRequest.Status.PENDING
 
         issued_qty = request.data.get('issued_quantity', item_request.quantity_requested)
         try:
@@ -528,7 +531,7 @@ class IssueItemView(APIView):
             return Response({'detail': 'Item not found.'}, status=404)
 
         available_to_issue = item.available_quantity
-        if item.reserved_quantity >= item_request.quantity_requested:
+        if not was_pending and item.reserved_quantity >= item_request.quantity_requested:
             available_to_issue = min(item.available_quantity, item.reserved_quantity)
         if issued_qty > available_to_issue:
             return Response(
@@ -549,7 +552,7 @@ class IssueItemView(APIView):
                         status=400,
                     )
 
-        reserved_release = min(item.reserved_quantity, item_request.quantity_requested)
+        reserved_release = 0 if was_pending else min(item.reserved_quantity, item_request.quantity_requested)
         Item.objects.filter(pk=item.pk).update(
             available_quantity=F('available_quantity') - issued_qty,
             reserved_quantity=F('reserved_quantity') - reserved_release,
@@ -562,6 +565,13 @@ class IssueItemView(APIView):
             expected_return_date=expected_return_date,
             notes=request.data.get('notes', ''),
         )
+
+        if was_pending:
+            # Skipping the separate approval step — record the issuer as the
+            # reviewer so the audit trail still shows who actioned it.
+            item_request.approved_by = request.user
+            item_request.reviewed_at = timezone.now()
+            item_request.units_remaining = max(item.available_quantity - issued_qty, 0)
 
         item_request.status = ItemRequest.Status.ISSUED
         item_request.save()

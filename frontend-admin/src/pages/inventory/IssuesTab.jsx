@@ -431,7 +431,7 @@ export default function IssuesTab({ userRole }) {
           <div style={{ fontWeight: 700, marginBottom: 8 }}>
             Pending Actions ({pendingIssues.length})
           </div>
-          {pendingIssues.slice(0, 10).map((issue) => (
+          {pendingIssues.slice(0, 100).map((issue) => (
             <div
               key={issue.id}
               style={{

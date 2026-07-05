@@ -97,7 +97,7 @@ def generate_inventory_report(status_filter=None, item_type_filter=None):
 
 def generate_requests_report(date_from=None, date_to=None):
     from apps.inventory.models import ItemRequest
-    qs = ItemRequest.objects.all().select_related('requested_by', 'item', 'approved_by')
+    qs = ItemRequest.objects.all().select_related('requested_by', 'item', 'approved_by', 'issue')
     if date_from:
         qs = qs.filter(requested_at__date__gte=date_from)
     if date_to:
@@ -105,6 +105,7 @@ def generate_requests_report(date_from=None, date_to=None):
 
     data = []
     for req in qs:
+        issue = getattr(req, 'issue', None)
         data.append({
             'id': req.id,
             'requester': req.requested_by.get_full_name() or req.requested_by.username,
@@ -117,6 +118,7 @@ def generate_requests_report(date_from=None, date_to=None):
             'created_at': str(req.requested_at),
             'reviewed_by': req.approved_by.get_full_name() if req.approved_by else None,
             'reviewed_at': str(req.reviewed_at) if req.reviewed_at else None,
+            'issued_at': str(issue.issued_at) if issue else None,
         })
 
     return {
