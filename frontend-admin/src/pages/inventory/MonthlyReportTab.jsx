@@ -13,7 +13,7 @@ import {
   Legend,
 } from 'recharts'
 import api from '../../api/client'
-import { Alert, Badge, Btn, Card, Spinner } from '../../components/ui'
+import { Alert, Badge, Btn, Card, ExportDropdown, Spinner } from '../../components/ui'
 import {
   csvUrl,
   deleteMonthly,
@@ -24,6 +24,7 @@ import {
   listMonthly,
   pdfUrl,
 } from '../../api/inventory'
+import { exportReport } from '../../shared/exportHelper'
 import { triggerDownload } from '../../shared/utils'
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
 import { useMonthYear } from '../../shared/hooks/useMonthYear'
@@ -335,6 +336,141 @@ export default function MonthlyReportTab() {
   const totalReorderCost = reorderItems.reduce((s,i)=>s+i.estimated_cost,0)
   const totalSnapshotCost = filteredItems.reduce((s,r)=>s+(r.estimated_cost||0),0)
 
+  const handleExportStockRegister = async (format) => {
+    if (format === 'csv') {
+      await downloadStockRegister(budgetYear)
+      return
+    }
+    const rowsToExport = filteredStockRows.length ? filteredStockRows : stockRows
+    const exportData = {
+      filename: `inventory_stock_register_${budgetYear}`,
+      module: 'Inventory Procurement',
+      title: `Current Stock Register — ${budgetYear}`,
+      subtitle: `Verified Housekeeping Consumables • Baseline: ${stockSummary?.baseline_received_date || '—'} · Latest: ${stockSummary?.latest_receipt_date || '—'}`,
+      metadata: [
+        { label: 'Budget Year', value: budgetYear },
+        { label: 'Baseline Received Date', value: stockSummary?.baseline_received_date || '—' },
+        { label: 'Latest Received Date', value: stockSummary?.latest_receipt_date || '—' },
+        { label: 'Total Stock Records', value: rowsToExport.length },
+      ],
+      stats: [
+        { label: 'Current Stock Value', value: inr(trackedCurrentStockValue) },
+        { label: 'Year Received Value', value: inr(trackedReceiptValue) },
+        { label: 'Out of Stock Count', value: outOfStockCount },
+        { label: 'Low Stock Count', value: lowStockCount },
+      ],
+      headers: ['Code', 'Material', 'Category', 'Unit', 'Current Qty', 'Current Value', 'Received Qty', 'Received Value', 'Balance %', 'Last Received', 'Status'],
+      rows: rowsToExport.map((row) => [
+        row.item_code || '—',
+        row.item_name || '-',
+        row.category || '-',
+        row.unit || '-',
+        row.current_quantity ?? 0,
+        inr(row.current_value),
+        row.received_quantity_year ?? 0,
+        inr(row.received_value_year),
+        row.balance_pct_of_year_receipts != null ? `${row.balance_pct_of_year_receipts}%` : '—',
+        row.last_received_on || '—',
+        String(row.status || '').replace(/_/g, ' ').toUpperCase(),
+      ]),
+    }
+    await exportReport(format, exportData)
+  }
+
+  const handleExportSnapshot = async (format) => {
+    if (!selected) return
+    const filename = `procurement_${selected.year}_${String(selected.month).padStart(2, '0')}`
+    if (format === 'csv') {
+      await downloadWithToken(csvUrl(selected.id), `${filename}.csv`)
+      return
+    }
+    if (format === 'pdf') {
+      await downloadWithToken(pdfUrl(selected.id), `${filename}.pdf`)
+      return
+    }
+    const exportData = {
+      filename,
+      module: 'Inventory Procurement',
+      title: `Procurement Snapshot — ${MONTHS[(selected.month || 1) - 1]} ${selected.year}`,
+      subtitle: `${selected.snapshot?.total_items || 0} items • Est. Cost: ${inr(totalSnapshotCost)}`,
+      metadata: [
+        { label: 'Period', value: `${MONTHS[(selected.month || 1) - 1]} ${selected.year}` },
+        { label: 'Items Needing Reorder', value: selected.snapshot?.items_needing_reorder || 0 },
+        { label: 'Total Estimated Cost', value: inr(totalSnapshotCost) },
+      ],
+      stats: [
+        { label: 'Total Items', value: selected.snapshot?.total_items || 0 },
+        { label: 'Reorder Needed', value: selected.snapshot?.items_needing_reorder || 0 },
+        { label: 'Total Estimated Cost', value: inr(totalSnapshotCost) },
+      ],
+      headers: ['Code', 'Item Name', 'Category', 'Type', 'Stock', 'Threshold', 'Consumed', 'Rec. Order', 'Unit Cost', 'Est. Cost', 'Status'],
+      rows: filteredItems.map((r) => [
+        r.item_code || '—',
+        r.name || r.item_name || '-',
+        r.category || '-',
+        String(r.type || r.item_type || '-').toUpperCase(),
+        r.current_stock ?? r.stock ?? 0,
+        r.threshold_quantity ?? r.threshold ?? 0,
+        r.consumed_this_month ?? r.consumed ?? 0,
+        r.recommended_order_quantity ?? r.rec_order ?? 0,
+        inr(r.unit_cost || 0),
+        inr(r.estimated_cost || 0),
+        String(r.status || '').replace(/_/g, ' ').toUpperCase(),
+      ]),
+    }
+    await exportReport(format, exportData)
+  }
+
+  const handleExportHistoryItem = async (format, r) => {
+    const filename = `procurement_${r.year}_${String(r.month).padStart(2, '0')}`
+    if (format === 'csv') {
+      await downloadWithToken(csvUrl(r.id), `${filename}.csv`)
+      return
+    }
+    if (format === 'pdf') {
+      await downloadWithToken(pdfUrl(r.id), `${filename}.pdf`)
+      return
+    }
+    try {
+      const { data } = await getMonthly(r.id)
+      const itemsList = data?.snapshot?.items || []
+      const cost = data?.snapshot?.total_estimated_cost || 0
+      const exportData = {
+        filename,
+        module: 'Inventory Procurement',
+        title: `Procurement Snapshot — ${MONTHS[(data.month || 1) - 1]} ${data.year}`,
+        subtitle: `${itemsList.length} items • Est. Cost: ${inr(cost)}`,
+        metadata: [
+          { label: 'Period', value: `${MONTHS[(data.month || 1) - 1]} ${data.year}` },
+          { label: 'Items Needing Reorder', value: data?.snapshot?.items_needing_reorder || 0 },
+          { label: 'Total Estimated Cost', value: inr(cost) },
+        ],
+        stats: [
+          { label: 'Total Items', value: itemsList.length },
+          { label: 'Reorder Needed', value: data?.snapshot?.items_needing_reorder || 0 },
+          { label: 'Estimated Cost', value: inr(cost) },
+        ],
+        headers: ['Code', 'Item Name', 'Category', 'Type', 'Stock', 'Threshold', 'Consumed', 'Rec. Order', 'Unit Cost', 'Est. Cost', 'Status'],
+        rows: itemsList.map((item) => [
+          item.item_code || '—',
+          item.name || item.item_name || '-',
+          item.category || '-',
+          String(item.type || item.item_type || '-').toUpperCase(),
+          item.current_stock ?? item.stock ?? 0,
+          item.threshold_quantity ?? item.threshold ?? 0,
+          item.consumed_this_month ?? item.consumed ?? 0,
+          item.recommended_order_quantity ?? item.rec_order ?? 0,
+          inr(item.unit_cost || 0),
+          inr(item.estimated_cost || 0),
+          String(item.status || '').replace(/_/g, ' ').toUpperCase(),
+        ]),
+      }
+      await exportReport(format, exportData)
+    } catch {
+      window.alert('Failed to generate export.')
+    }
+  }
+
   const VIEWS = [
     { key:'budget',   label:'💰 Budget Overview' },
     { key:'charts',   label:'📊 Analytics' },
@@ -415,9 +551,10 @@ export default function MonthlyReportTab() {
                     &nbsp;·&nbsp; Out of stock: <strong style={{ color:'#dc2626' }}>{outOfStockCount}</strong>
                     &nbsp;·&nbsp; Low stock: <strong style={{ color:'#f59e0b' }}>{lowStockCount}</strong>
                   </div>
-                  <Btn size="sm" variant="secondary" onClick={()=>downloadStockRegister(budgetYear)}>
-                    ⬇ Stock Register CSV
-                  </Btn>
+                  <ExportDropdown
+                    label="Stock Register"
+                    onExport={handleExportStockRegister}
+                  />
                 </div>
               </Card>
 
@@ -578,9 +715,10 @@ export default function MonthlyReportTab() {
                     title={`Current Stock Register — ${budgetYear}`}
                     subtitle={`Verified housekeeping consumables. Baseline receipt date: ${stockSummary?.baseline_received_date || '—'} · Latest receipt: ${stockSummary?.latest_receipt_date || '—'}`}
                     right={
-                      <Btn size="sm" variant="secondary" onClick={()=>downloadStockRegister(budgetYear)}>
-                        ⬇ CSV
-                      </Btn>
+                      <ExportDropdown
+                        label="Stock Register"
+                        onExport={handleExportStockRegister}
+                      />
                     }
                   />
                   <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
@@ -784,16 +922,10 @@ export default function MonthlyReportTab() {
                       <strong>{inr(totalSnapshotCost)}</strong>
                     </div>
                   </div>
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                    <Btn size="sm" variant="secondary"
-                      onClick={()=>downloadWithToken(csvUrl(selected.id), `procurement_${selected.year}_${String(selected.month).padStart(2,'0')}.csv`)}>
-                      ⬇ CSV
-                    </Btn>
-                    <Btn size="sm" variant="secondary"
-                      onClick={()=>downloadWithToken(pdfUrl(selected.id), `procurement_${selected.year}_${String(selected.month).padStart(2,'0')}.pdf`)}>
-                      ⬇ PDF
-                    </Btn>
-                  </div>
+                  <ExportDropdown
+                    label="Download Snapshot"
+                    onExport={handleExportSnapshot}
+                  />
                 </div>
 
                 {/* Filter bar */}
@@ -942,10 +1074,10 @@ export default function MonthlyReportTab() {
                         <td style={{ padding:'10px 12px' }}>
                           <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                             <Btn size="sm" variant="ghost" onClick={()=>{ viewReport(r.id); setView('report') }}>View</Btn>
-                            <Btn size="sm" variant="secondary"
-                              onClick={()=>downloadWithToken(csvUrl(r.id),`procurement_${r.year}_${String(r.month).padStart(2,'0')}.csv`)}>CSV</Btn>
-                            <Btn size="sm" variant="secondary"
-                              onClick={()=>downloadWithToken(pdfUrl(r.id),`procurement_${r.year}_${String(r.month).padStart(2,'0')}.pdf`)}>PDF</Btn>
+                            <ExportDropdown
+                              label="Download"
+                              onExport={(fmt) => handleExportHistoryItem(fmt, r)}
+                            />
                             <Btn size="sm" variant="danger" onClick={()=>setConfirmDelete(r)}>Delete</Btn>
                           </div>
                         </td>

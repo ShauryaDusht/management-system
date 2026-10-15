@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
-import { Alert, Btn, Card, DataTable, Input, SelectField, Spinner, StatCard } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Input, SelectField, Spinner, StatCard } from '../../components/ui'
+import { exportReport } from '../../shared/exportHelper'
 import { generateImageUrl, handleImageError, imageDebugEnabled, imageDebugLog } from '../../shared/imageUrls'
 import { asList, getErrorMessage, todayISO, triggerDownload } from '../../shared/utils'
 
@@ -248,25 +249,39 @@ export default function GalleryTab() {
     return () => window.removeEventListener('keydown', onKey)
   }, [box.open, moveBox])
 
-  const exportPhotoLog = () => {
-    const rowsForCsv = [
-      ['Date', 'Type', 'Session', 'Worker', 'Area', 'Task', 'Assigned By', 'Photo URL', 'Uploaded At', 'Note'],
-      ...filteredPhotos.map((row) => [
-        row.date || '',
-        row.photo_type || 'after',
-        row.session || '',
-        row.worker_name || '',
-        row.area_name || '',
-        row.task_type_name || '',
-        row.assigned_by_name || '',
-        row.photo_url || '',
-        row.photo_uploaded_at ? new Date(row.photo_uploaded_at).toLocaleString('en-IN') : '',
-        row.note || '',
-      ]),
-    ]
-    const csv = rowsForCsv.map((row) => row.map((cell) => csvValue(cell)).join(',')).join('\n')
-    triggerDownload(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), `horticulture_gallery_${todayISO()}.csv`)
-    setSuccess('Horticulture gallery log exported.')
+  const handleExportPhotoLog = async (format) => {
+    const headers = ['Date', 'Type', 'Session', 'Worker', 'Area', 'Task', 'Assigned By', 'Uploaded At', 'Note']
+    const rows = filteredPhotos.map((row) => [
+      row.date || '',
+      row.photo_type || 'after',
+      row.session || '',
+      row.worker_name || '',
+      row.area_name || '',
+      row.task_type_name || '',
+      row.assigned_by_name || '',
+      row.photo_uploaded_at ? new Date(row.photo_uploaded_at).toLocaleString('en-IN') : '',
+      row.note || '',
+    ])
+    await exportReport(format, {
+      title: 'Horticulture Task Photo Log',
+      subtitle: `Visual audit log (${filteredPhotos.length} photos shown, total ${stats.totalPhotos})`,
+      filename: `horticulture_gallery_${todayISO()}`,
+      headers,
+      rows,
+      kpis: [
+        { label: 'Total Photos', value: stats.totalPhotos },
+        { label: 'Visible Photos', value: stats.visiblePhotos },
+        { label: 'This Week', value: stats.thisWeek },
+        { label: 'Coverage', value: `${stats.areasWithPhotos} / ${stats.totalAreas}` },
+      ],
+      metadata: {
+        'Search Filter': filters.search || 'None',
+        'Area Filter': filters.area || 'All Areas',
+        'Task Filter': filters.task || 'All Tasks',
+        'Export Date': new Date().toLocaleString(),
+      },
+    })
+    setSuccess(`Horticulture gallery log exported as ${format.toUpperCase()}.`)
   }
 
   const downloadPhoto = async (row) => {
@@ -321,7 +336,11 @@ export default function GalleryTab() {
               placeholder="Search area, task, worker..."
               style={{ width: 250 }}
             />
-            <Btn variant="secondary" onClick={exportPhotoLog} disabled={!filteredPhotos.length}>Export Photo Log</Btn>
+            <ExportDropdown
+              label="Export Photo Log"
+              onExport={handleExportPhotoLog}
+              disabled={!filteredPhotos.length}
+            />
           </div>
         </div>
       </Card>

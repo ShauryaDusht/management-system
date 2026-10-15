@@ -664,3 +664,5 @@ if (typeof document !== 'undefined' && !document.getElementById('ui-shared-style
   `
   document.head.appendChild(style)
 }
+
+export { default as ExportDropdown } from './ExportDropdown'

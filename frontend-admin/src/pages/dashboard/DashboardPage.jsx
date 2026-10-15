@@ -178,7 +178,7 @@ function HostelOfficePanel({ hkSummary, invSummary }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
           <HostelActionBox title="Assign Extra Work" text="Create hostel-only extra work." to="/housekeeping?tab=overview" icon="tasks" color="var(--orange-600)" />
           <HostelActionBox title="Sections + Staff" text="Area-wise or temporary staff switch." to="/housekeeping?tab=directory" icon="areas" color="var(--green-800)" />
-          <HostelActionBox title="Attendance Export" text="Download absent-only CSV." to="/housekeeping?tab=staff_attendance" icon="present" color="#2563eb" />
+          <HostelActionBox title="Attendance Export" text="Export absent records (CSV, PDF, Word)." to="/housekeeping?tab=staff_attendance" icon="present" color="#2563eb" />
           <HostelActionBox title="Inventory Usage" text="View hostel inventory reports." to="/inventory?tab=inventory-report" icon="inventory" color="#7c3aed" />
         </div>
       </div>

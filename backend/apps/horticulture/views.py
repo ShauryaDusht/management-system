@@ -2255,6 +2255,8 @@ def horticulture_mark_task(request):
                     error_message = 'Task assignment not found.'
                 elif assignment.status != HorticultureDailyAssignment.Status.PENDING:
                     error_message = 'Only pending tasks can be started.'
+                elif not request.FILES.get('photo_before') and not assignment.photo_before:
+                    error_message = 'Before photo is required. Please capture a before photo before starting work.'
                 else:
                     assignment.status = HorticultureDailyAssignment.Status.IN_PROGRESS
                     assignment.started_at = timezone.now()
@@ -2290,6 +2292,8 @@ def horticulture_mark_task(request):
                     error_message = 'Task assignment not found.'
                 elif assignment.status != HorticultureDailyAssignment.Status.IN_PROGRESS:
                     error_message = 'Start work before marking completed.'
+                elif not request.FILES.get('photo_after') and not request.FILES.get('photo') and not assignment.photo_after and not assignment.photo:
+                    error_message = 'After photo is required. Please capture an after photo before marking the task completed.'
                 elif TaskLog.objects.filter(zone=selected_zone, area=selected_area, task_type=assignment.task_type, done_date=today).exists():
                     error_message = 'This task is already submitted for today.'
                 else:

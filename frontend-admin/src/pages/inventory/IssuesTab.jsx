@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { inventoryAPI, reportsAPI } from '../../api/inventory'
-import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, SelectField } from '../../components/ui'
+import { Alert, Badge, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal, SelectField } from '../../components/ui'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
+import { exportReport } from '../../shared/exportHelper'
 import { asList, todayISO, triggerDownload } from '../../shared/utils'
 
 const AREA_CLASS_LABELS = {
@@ -266,27 +267,69 @@ export default function IssuesTab({ userRole }) {
     }
   }
 
-  const downloadMonthlyReportCsv = async () => {
+  const handleExportIssues = async (format) => {
     setDownloadingReport(true)
     clearError()
     try {
-      await runAction(async () => {
-        const params = {
-          month: reportMonth,
-          year: reportYear,
-        }
-        if (areaClass !== 'all') params.area_class = areaClass
-        if (selectedArea !== 'all') params.area_name = selectedArea
+      const params = {
+        month: reportMonth,
+        year: reportYear,
+      }
+      if (areaClass !== 'all') params.area_class = areaClass
+      if (selectedArea !== 'all') params.area_name = selectedArea
 
-        const response = await reportsAPI.downloadAreaIssuesCSV(params)
-        const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
-        const disposition = response.headers?.['content-disposition'] || ''
-        const match = disposition.match(/filename=\"?([^\"]+)\"?/)
-        const filename =
-          match?.[1] ||
-          `area_issues_${reportYear}_${String(reportMonth).padStart(2, '0')}.csv`
-        triggerDownload(blob, filename)
-      }, 'Failed to download report CSV.')
+      if (format === 'csv') {
+        await runAction(async () => {
+          const response = await reportsAPI.downloadAreaIssuesCSV(params)
+          const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
+          const disposition = response.headers?.['content-disposition'] || ''
+          const match = disposition.match(/filename=\"?([^\"]+)\"?/)
+          const filename =
+            match?.[1] ||
+            `area_issues_${reportYear}_${String(reportMonth).padStart(2, '0')}.csv`
+          triggerDownload(blob, filename)
+        }, 'Failed to download report CSV.')
+        return
+      }
+
+      await runAction(async () => {
+        let data = reportData
+        if (!data || data.month !== Number(reportMonth) || data.year !== Number(reportYear)) {
+          const res = await reportsAPI.getAreaIssuesReport(params)
+          data = res.data
+        }
+        const issuesRows = data?.rows || []
+        const exportData = {
+          filename: `area_issues_${reportYear}_${String(reportMonth).padStart(2, '0')}`,
+          module: 'Inventory Management',
+          title: 'Area-wise Issued Items Report',
+          subtitle: `Period: ${MONTHS[reportMonth - 1]} ${reportYear} • Area: ${reportFilterLabel}`,
+          metadata: [
+            { label: 'Month / Year', value: `${MONTHS[reportMonth - 1]} ${reportYear}` },
+            { label: 'Area Filter', value: reportFilterLabel },
+            { label: 'Total Issues', value: data?.total_issues ?? issuesRows.length },
+          ],
+          stats: [
+            { label: 'Total Issues', value: data?.total_issues ?? 0 },
+            { label: 'Total Records', value: issuesRows.length },
+          ],
+          headers: ['Area', 'Area Type', 'Item', 'Item Type', 'Unit', 'Requested By', 'Qty Req', 'Qty Issued', 'Issued At', 'Issued By', 'Status'],
+          rows: issuesRows.map((r) => [
+            r.area_name || '-',
+            r.area_type || '-',
+            r.item_name || '-',
+            r.item_type || '-',
+            r.item_unit || '-',
+            r.requested_by || '-',
+            r.quantity_requested ?? 0,
+            r.quantity_issued ?? 0,
+            r.issued_at ? String(r.issued_at).replace('T', ' ').slice(0, 16) : '-',
+            r.issued_by || '-',
+            r.status || '-',
+          ]),
+        }
+        await exportReport(format, exportData)
+      }, 'Failed to generate report export.')
     } finally {
       setDownloadingReport(false)
     }
@@ -396,14 +439,11 @@ export default function IssuesTab({ userRole }) {
           >
             {generatingReport ? 'Generating...' : 'View Report'}
           </Btn>
-          <Btn
-            variant="ghost"
-            onClick={downloadMonthlyReportCsv}
+          <ExportDropdown
+            label="Download Report"
+            onExport={handleExportIssues}
             disabled={generatingReport || downloadingReport}
-            style={{ flex: '0 0 auto' }}
-          >
-            {downloadingReport ? 'Downloading...' : 'Download CSV'}
-          </Btn>
+          />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 10, marginTop: 12 }}>
@@ -605,12 +645,11 @@ export default function IssuesTab({ userRole }) {
             <Btn variant="ghost" onClick={() => setReportModal(false)}>
               Close
             </Btn>
-            <Btn
-              onClick={downloadMonthlyReportCsv}
+            <ExportDropdown
+              label="Download Report"
+              onExport={handleExportIssues}
               disabled={downloadingReport}
-            >
-              {downloadingReport ? 'Downloading...' : 'Download CSV'}
-            </Btn>
+            />
           </>
         }
       >

@@ -48,20 +48,37 @@ class PlantRecordSerializer(serializers.ModelSerializer):
 
 
 class PlantRecordUpdateSerializer(serializers.ModelSerializer):
-    """Admin detail panel — edits survey/characteristics fields only."""
+    """Admin detail panel — edits survey/characteristics and plant identity fields."""
 
     class Meta:
         model = PlantRecord
         fields = [
+            'plant_type', 'variety', 'local_name', 'scientific_name',
             'zone', 'condition',
             'height_m', 'girth_cm', 'canopy_area_m', 'gps_accuracy_m',
             'notes',
         ]
         extra_kwargs = {
-            'zone':      {'required': False, 'allow_blank': True},
-            'condition': {'required': False},
-            'notes':     {'required': False, 'allow_blank': True},
+            'plant_type':      {'required': False},
+            'variety':         {'required': False, 'allow_null': True},
+            'local_name':      {'required': False, 'allow_blank': True},
+            'scientific_name': {'required': False, 'allow_blank': True},
+            'zone':            {'required': False, 'allow_blank': True},
+            'condition':       {'required': False},
+            'notes':           {'required': False, 'allow_blank': True},
         }
+
+    def update(self, instance, validated_data):
+        variety = validated_data.get('variety')
+        if 'variety' in validated_data and variety is not None:
+            if not validated_data.get('local_name'):
+                validated_data['local_name'] = variety.name
+            if 'scientific_name' not in validated_data:
+                validated_data['scientific_name'] = variety.scientific_name
+            if 'plant_type' not in validated_data:
+                validated_data['plant_type'] = variety.plant_type
+        return super().update(instance, validated_data)
+
 
 
 class PlantRecordCreateSerializer(serializers.ModelSerializer):

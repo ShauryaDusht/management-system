@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 
-import { asList, exportCsv, todayISO } from '../../shared/utils'
+import { asList, todayISO } from '../../shared/utils'
+import { exportReport } from '../../shared/exportHelper'
 import { inventoryAPI } from '../../api/inventory'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import {
@@ -9,6 +10,7 @@ import {
   Btn,
   Card,
   DataTable,
+  ExportDropdown,
   Field,
   Input,
   Modal,
@@ -180,9 +182,42 @@ export default function ItemsTab({ userRole }) {
     [filtered]
   )
 
-  const downloadItemsCsv = () => {
-    const filterName = typeFilter === 'all' ? 'all_items' : typeFilter
-    exportCsv(csvRows, `inventory_items_${filterName}_${todayISO()}.csv`)
+  const handleExportItems = async (format) => {
+    const filterName = typeFilter === 'all' ? 'All Items' : typeFilter === 'consumable' ? 'Consumables' : 'Assets'
+    const inStock = filtered.filter((i) => itemStatus(i) === 'in_stock').length
+    const totalVal = filtered.reduce((acc, it) => acc + Number(it.total_value || 0), 0)
+    const exportData = {
+      filename: `inventory_items_${typeFilter}_${todayISO()}`,
+      module: 'Inventory Management',
+      title: 'Inventory Stock Directory',
+      subtitle: `Filter: ${filterName} • Generated: ${todayISO()}`,
+      metadata: [
+        { label: 'Filter', value: filterName },
+        { label: 'Date', value: todayISO() },
+        { label: 'Total Items Listed', value: filtered.length },
+      ],
+      stats: [
+        { label: 'Total Items', value: filtered.length },
+        { label: 'In Stock', value: inStock },
+        { label: 'Low Stock', value: stockCounts.lowStock },
+        { label: 'Out of Stock', value: stockCounts.outOfStock },
+        { label: 'Total Value (INR)', value: `₹${totalVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` },
+      ],
+      headers: ['Item Code', 'Item Name', 'Category', 'Type', 'Unit', 'Available', 'Threshold', 'Unit Cost (INR)', 'Total Value (INR)', 'Status'],
+      rows: filtered.map((it) => [
+        it.item_code || '-',
+        it.name || '-',
+        it.category_name || '-',
+        String(it.item_type || '-').toUpperCase(),
+        it.unit || '-',
+        it.available_quantity ?? 0,
+        it.threshold_quantity ?? 0,
+        Number(it.unit_cost || 0).toFixed(2),
+        Number(it.total_value || 0).toFixed(2),
+        itemStatus(it).replace(/_/g, ' ').toUpperCase(),
+      ]),
+    }
+    await exportReport(format, exportData)
   }
 
   const openHistory = async (item) => {
@@ -375,13 +410,11 @@ export default function ItemsTab({ userRole }) {
             Assets
           </Btn>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Btn
-              variant="secondary"
-              onClick={downloadItemsCsv}
-              disabled={loading || csvRows.length === 0}
-            >
-              CSV Report
-            </Btn>
+            <ExportDropdown
+              label="Download Items"
+              onExport={handleExportItems}
+              disabled={loading || filtered.length === 0}
+            />
             {canAdmin && (
               <Btn
                 onClick={() => {

@@ -132,6 +132,7 @@ class GeoTrackerRecordDetailView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
+        record.refresh_from_db()
 
         return Response(PlantRecordSerializer(record, context={'request': request}).data)
 
@@ -196,10 +197,22 @@ class GeoTrackerVarietyDetailView(APIView):
     permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
 
     def put(self, request, pk):
+        return self._save(request, pk, partial=False)
+
+    def patch(self, request, pk):
+        return self._save(request, pk, partial=True)
+
+    def _save(self, request, pk, partial=False):
         variety = get_object_or_404(PlantVariety, pk=pk)
-        serializer = PlantVarietySerializer(variety, data=request.data)
+        serializer = PlantVarietySerializer(variety, data=request.data, partial=partial)
         if serializer.is_valid():
-            serializer.save()
+            saved_variety = serializer.save()
+            if request.data.get('sync_records', True):
+                PlantRecord.objects.filter(variety=saved_variety).update(
+                    local_name=saved_variety.name,
+                    scientific_name=saved_variety.scientific_name,
+                    plant_type=saved_variety.plant_type,
+                )
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

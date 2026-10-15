@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { getInventoryReport } from '../../api/inventory'
-import { Alert, Badge, Btn, Card, DataTable, Spinner, StatCard } from '../../components/ui'
-import { asList, exportCsv } from '../../shared/utils'
+import { Alert, Badge, Btn, Card, DataTable, ExportDropdown, Spinner, StatCard } from '../../components/ui'
+import { exportReport } from '../../shared/exportHelper'
+import { asList } from '../../shared/utils'
 
 const STATUS_OPTIONS = [
   { key: 'all', label: 'All' },
@@ -24,7 +25,7 @@ export default function ReportTab() {
   const [typeFilter, setTypeFilter] = useState('all')
 
   useEffect(() => {
-    ;(async () => {
+    ; (async () => {
       setLoading(true)
       setError('')
       try {
@@ -47,22 +48,42 @@ export default function ReportTab() {
     })
   }, [report, statusFilter, typeFilter])
 
-  const csvRows = useMemo(
-    () =>
-      items.map((item) => ({
-        'Item Code': item.item_code || '—',
-        Item: item.name || '',
-        Category: item.category || '',
-        Type: item.type || '',
-        Available: `${item.available_quantity ?? 0} ${item.unit || ''}`.trim(),
-        Threshold: item.threshold_quantity ?? 0,
-        UnitCost: Number(item.unit_cost || 0).toFixed(2),
-        Status: String(item.status || '').replace(/_/g, ' ').toUpperCase(),
-      })),
-    [items]
-  )
-
-  const csvFilename = `inventory_report_${statusFilter}_${typeFilter}.csv`
+  const handleExportReport = async (format) => {
+    const sLabel = STATUS_OPTIONS.find((o) => o.key === statusFilter)?.label || statusFilter
+    const tLabel = TYPE_OPTIONS.find((o) => o.key === typeFilter)?.label || typeFilter
+    const exportData = {
+      filename: `inventory_report_${statusFilter}_${typeFilter}`,
+      module: 'Inventory Management',
+      title: 'Inventory Stock Summary Report',
+      subtitle: `Status: ${sLabel} • Type: ${tLabel}`,
+      metadata: [
+        { label: 'Status Filter', value: sLabel },
+        { label: 'Type Filter', value: tLabel },
+        { label: 'Matching Items', value: items.length },
+      ],
+      stats: [
+        { label: 'Total Items', value: report?.total_items ?? items.length },
+        {
+          label: 'Total Value',
+          value: `INR ${Number(report?.total_value || 0).toLocaleString('en-IN')}`,
+        },
+        { label: 'Low Stock', value: report?.low_stock_count ?? 0 },
+        { label: 'Out of Stock', value: report?.out_of_stock_count ?? 0 },
+      ],
+      headers: ['Item Code', 'Item Name', 'Category', 'Type', 'Available', 'Threshold', 'Unit Cost (INR)', 'Status'],
+      rows: items.map((item) => [
+        item.item_code || '—',
+        item.name || '-',
+        item.category || '-',
+        String(item.type || '').toUpperCase(),
+        `${item.available_quantity ?? 0} ${item.unit || ''}`.trim(),
+        item.threshold_quantity ?? 0,
+        Number(item.unit_cost || 0).toFixed(2),
+        String(item.status || '').replace(/_/g, ' ').toUpperCase(),
+      ]),
+    }
+    await exportReport(format, exportData)
+  }
 
   return (
     <div>
@@ -126,13 +147,11 @@ export default function ReportTab() {
             </div>
           </div>
 
-          <Btn
-            variant="secondary"
-            onClick={() => exportCsv(csvRows, csvFilename)}
-            disabled={csvRows.length === 0}
-          >
-            Download CSV
-          </Btn>
+          <ExportDropdown
+            label="Download Report"
+            onExport={handleExportReport}
+            disabled={items.length === 0}
+          />
         </div>
 
         {loading ? (

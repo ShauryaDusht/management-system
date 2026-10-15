@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 
 import { getRequestsReport } from '../../api/inventory'
-import { Alert, Btn, Card, DataTable, Field, Input, Spinner, StatCard } from '../../components/ui'
-import { exportCsv } from '../../shared/utils'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Field, Input, Spinner, StatCard } from '../../components/ui'
+import { exportReport } from '../../shared/exportHelper'
 
 const todayStr = () => new Date().toISOString().split('T')[0]
 
@@ -32,6 +32,40 @@ export default function RequestsReportTab() {
   useEffect(() => {
     load()
   }, [])
+
+  const handleExportRequests = async (format) => {
+    const requests = report?.requests || []
+    const exportData = {
+      filename: `requests_report_${dateFrom}_to_${dateTo}`,
+      module: 'Inventory Management',
+      title: 'Material Requests Report',
+      subtitle: `Date Range: ${dateFrom} to ${dateTo}`,
+      metadata: [
+        { label: 'Date From', value: dateFrom },
+        { label: 'Date To', value: dateTo },
+        { label: 'Total Requests', value: report?.total || requests.length },
+      ],
+      stats: [
+        { label: 'Total Requests', value: report?.total || 0 },
+        { label: 'Pending', value: report?.pending || 0 },
+        { label: 'Approved', value: report?.approved || 0 },
+        { label: 'Issued', value: report?.issued || 0 },
+        { label: 'Rejected', value: report?.rejected || 0 },
+      ],
+      headers: ['Requester', 'Item Code', 'Item', 'Qty', 'Status', 'Date', 'Reviewed By', 'Issued At'],
+      rows: requests.map((r) => [
+        r.requester || '-',
+        r.item_code || '—',
+        r.item || '-',
+        r.quantity ?? 0,
+        String(r.status || '').toUpperCase(),
+        r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '-',
+        r.reviewed_by || '-',
+        r.issued_at ? new Date(r.issued_at).toLocaleString('en-IN') : '-',
+      ]),
+    }
+    await exportReport(format, exportData)
+  }
 
   return (
     <div>
@@ -67,13 +101,13 @@ export default function RequestsReportTab() {
             <Btn onClick={load} style={{ marginBottom: 14 }}>
               Apply
             </Btn>
-            <Btn
-              variant="secondary"
-              onClick={() => exportCsv(report?.requests || [], 'requests_report.csv')}
-              style={{ marginBottom: 14 }}
-            >
-              Export CSV
-            </Btn>
+            <div style={{ marginBottom: 14 }}>
+              <ExportDropdown
+                label="Export Requests"
+                onExport={handleExportRequests}
+                disabled={loading || (report?.requests || []).length === 0}
+              />
+            </div>
           </div>
         </div>
 
