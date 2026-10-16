@@ -249,7 +249,19 @@ HOSTEL_RELIEVER_ASSIGNMENTS = {
     "Jurqia": {"pay_codes": ["136"]},
     "Kyzeel": {"pay_codes": ["154"]},
     "Lekhaag": {"pay_codes": ["88"]},
-    "Hostel Common Area": {"pay_codes": ["471"]},
+    "Hostel Common Area": {
+        "pay_codes": ["100", "472", "80", "240", "457", "459"],
+        "names": [
+            "Gurjar Ketan Amrutbhai",
+            "Suresh Solanki",
+            "Yogeshbhai Kantibhai Vaghela",
+            "Solanki Vinayak",
+            "Bhavika ben solanki",
+            "Bhavika Ben Solanki",
+            "urvashi ben vaghela",
+            "Urvashi Ben Vaghela",
+        ],
+    },
 }
 
 HOUSEKEEPING_MANAGER_ROLES = {"admin", "hk_inventory_manager"}
@@ -271,11 +283,44 @@ def _attendance_relievers_for_area(area):
     if _is_jrha_area(area):
         return qs.filter(area__name__in=JRHA_AREA_NAMES).exclude(area=area).order_by("area__name", "name")
 
+    if getattr(area, "name", "") == "Hostel Common Area":
+        # Caretaker Vishwajeet Mishra:
+        # 1. Gurjar Ketan Amrutbhai (100)
+        # 2. Suresh Solanki (472)
+        # 3. Yogeshbhai Kantibhai Vaghela (80)
+        # 4. Solanki Vinayak (240)
+        # 5. Bhavika ben solanki (457)
+        # 6. Urvashi ben vaghela (459)
+        common_reliever_pay_codes = ["100", "472", "80", "240", "457", "459"]
+        common_reliever_names = [
+            "Gurjar Ketan Amrutbhai",
+            "Suresh Solanki",
+            "Yogeshbhai Kantibhai Vaghela",
+            "Solanki Vinayak",
+            "Bhavika ben solanki",
+            "Bhavika Ben Solanki",
+            "urvashi ben vaghela",
+            "Urvashi Ben Vaghela",
+        ]
+        return qs.filter(
+            dm.Q(pay_code__in=common_reliever_pay_codes)
+            | dm.Q(name__in=common_reliever_names)
+        ).order_by(
+            dm.Case(
+                dm.When(pay_code="100", then=1),
+                dm.When(pay_code="472", then=2),
+                dm.When(pay_code="80", then=3),
+                dm.When(pay_code="240", then=4),
+                dm.When(pay_code="457", then=5),
+                dm.When(pay_code="459", then=6),
+                default=7,
+            ),
+            "name",
+        )
+
     if area_bucket(area) == "hostels":
         assigned = HOSTEL_RELIEVER_ASSIGNMENTS.get(area.name)
         relievers = qs.filter(is_reliever=True, area__name="Hostels Reliever")
-        if area.name != "Hostel Common Area":
-            return relievers.order_by("name")
         if assigned:
             reliever_filter = dm.Q()
             pay_codes = [code for code in assigned.get("pay_codes", []) if code]

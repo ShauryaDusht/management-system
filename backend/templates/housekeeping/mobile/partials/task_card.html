@@ -75,13 +75,13 @@
   <div style="font-size:11px;color:#374151;margin-top:4px">
     Assigned Team:
     {% for asn in record.worker_assignments.all %}
-      <b>{{ asn.worker.name }}</b>{% if asn.worker.is_reliever %} <span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:700">Reliever</span>{% endif %}{% if not forloop.last %}, {% endif %}
+      <b>{{ asn.worker.name }}</b>{% if asn.worker.is_reliever or asn.worker.area_id != record.area_id %} <span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:700">Reliever</span>{% endif %}{% if not forloop.last %}, {% endif %}
     {% endfor %}
     {% if record.assigned_at %} | {{ record.assigned_at|time:"g:i A" }}{% endif %}
   </div>
   {% elif record.assigned_worker %}
   <div style="font-size:11px;color:#374151;margin-top:4px">
-    Assigned Worker: <b>{{ record.assigned_worker.name }}</b>{% if record.assigned_worker.is_reliever %} <span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:700">Reliever</span>{% endif %}
+    Assigned Worker: <b>{{ record.assigned_worker.name }}</b>{% if record.assigned_worker.is_reliever or record.assigned_worker.area_id != record.area_id %} <span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:700">Reliever</span>{% endif %}
     {% if record.assigned_at %} | {{ record.assigned_at|time:"g:i A" }}{% endif %}
   </div>
   {% endif %}
