@@ -108,7 +108,7 @@
   <!-- FIRST HALF -->
   <div style="background:#fafafa;border-radius:9px;padding:9px;margin-bottom:7px;border:1px solid #efefef">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
-      <span style="font-size:12px;font-weight:700;color:#374151">First Half (8AM–1PM)</span>
+      <span style="font-size:12px;font-weight:700;color:#374151">{{ first_half_label|default:"First Half (8AM–1PM)" }}</span>
       {% if row.first_att %}
       <span class="bdg
         {% if row.first_att.status == 'present' %}g
@@ -171,7 +171,7 @@
   <!-- SECOND HALF -->
   <div style="background:#fafafa;border-radius:9px;padding:9px;border:1px solid #efefef">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
-      <span style="font-size:12px;font-weight:700;color:#374151">Second Half (1PM–5PM)</span>
+      <span style="font-size:12px;font-weight:700;color:#374151">{{ second_half_label|default:"Second Half (1PM–5PM)" }}</span>
       {% if row.second_att %}
       <span class="bdg
         {% if row.second_att.status == 'present' %}g

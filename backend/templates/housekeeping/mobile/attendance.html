@@ -49,7 +49,7 @@
   <div style="font-size:12px;font-weight:600;
     color:{% if cur_half == 'first' %}#c2622a{% else %}#2d4a3e{% endif %}">
     🕐 Active: {{ cur_half|title }} Half
-    ({% if cur_half == 'first' %}8AM–1PM{% else %}1PM–5PM{% endif %})
+    ({{ active_half_time_range|default:"8AM–1PM" }})
   </div>
   {% if attendance_error %}
   <div style="font-size:11px;color:#991b1b;background:#fee2e2;border:1px solid #fecaca;border-radius:8px;padding:7px 8px;margin-top:8px">
@@ -83,15 +83,14 @@
 
 <!-- SUBMIT BUTTONS -->
 {% if worker_rows %}
-<div style="margin-top:8px">
+<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
   {% if can_submit_selected_attendance and not first_submitted and not is_today %}
   <form method="post" action="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}">
     {% csrf_token %}
     <input type="hidden" name="action" value="submit_half">
     <input type="hidden" name="half" value="first">
-    <button type="submit" class="btn-s">âœ… Submit First Half Attendance</button>
+    <button type="submit" class="btn-s">✅ Submit First Half Attendance</button>
   </form>
-
   {% elif can_submit_selected_attendance and first_half_open and not first_submitted %}
   <form method="post" action="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}">
     {% csrf_token %}
@@ -99,15 +98,15 @@
     <input type="hidden" name="half" value="first">
     <button type="submit" class="btn-s">✅ Submit First Half Attendance</button>
   </form>
+  {% endif %}
 
-  {% elif can_submit_selected_attendance and not second_submitted and not is_today %}
+  {% if can_submit_selected_attendance and not second_submitted and not is_today and first_submitted %}
   <form method="post" action="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}">
     {% csrf_token %}
     <input type="hidden" name="action" value="submit_half">
     <input type="hidden" name="half" value="second">
-    <button type="submit" class="btn-p">âœ… Submit Second Half Attendance</button>
+    <button type="submit" class="btn-p">✅ Submit Second Half Attendance</button>
   </form>
-
   {% elif can_submit_selected_attendance and second_half_open and not second_submitted %}
   <form method="post" action="/housekeeping/attendance/?date={{ sel_date|date:'Y-m-d' }}&area={{ sel_area.id }}">
     {% csrf_token %}
@@ -115,8 +114,9 @@
     <input type="hidden" name="half" value="second">
     <button type="submit" class="btn-p">✅ Submit Second Half Attendance</button>
   </form>
+  {% endif %}
 
-  {% elif first_submitted and second_submitted %}
+  {% if first_submitted and second_submitted %}
   <div class="card" style="text-align:center;background:#d1fae5;border:1px solid #6ee7b7;
     color:#065f46;font-weight:700;padding:14px">
     ✅ Both halves submitted for today

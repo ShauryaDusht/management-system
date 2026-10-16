@@ -1440,11 +1440,44 @@ def _has_extended_second_half_access(sel_date, user=None, area=None, workers=Non
     )
 
 
+def _is_vishwajeet_section(user=None, area=None, workers=None):
+    if user and getattr(user, "username", "") == "vishwajeet.mishra":
+        return True
+    if area:
+        if getattr(area, "name", "") == "Hostel Common Area":
+            return True
+        try:
+            if area.assigned_users.filter(user__username="vishwajeet.mishra").exists():
+                return True
+        except Exception:
+            pass
+    if workers:
+        for w in workers:
+            if getattr(getattr(w, "supervisor", None), "username", "") == "vishwajeet.mishra":
+                return True
+    return False
+
+
+def attendance_half_labels(user=None, area=None, workers=None, cur_half=None):
+    if _is_vishwajeet_section(user=user, area=area, workers=workers):
+        first_label = "First Half (8AM–5PM)"
+        second_label = "Second Half (1PM–10PM)"
+        active_range = "8AM–5PM" if cur_half == "first" else "1PM–10PM"
+        return first_label, second_label, active_range
+    return "First Half (8AM–1PM)", "Second Half (1PM–5PM)", ("8AM–1PM" if cur_half == "first" else "1PM–5PM")
+
+
 def attendance_half_is_open(sel_date, half, user=None, area=None, workers=None):
     """Today attendance is editable only during the matching half window."""
     if sel_date != timezone.localdate():
         return True
     now_time = timezone.localtime(timezone.now()).time()
+    if _is_vishwajeet_section(user=user, area=area, workers=workers):
+        if half == "first":
+            return datetime.time(8, 0) <= now_time < datetime.time(17, 0)
+        if half == "second":
+            return datetime.time(13, 0) <= now_time < datetime.time(22, 0)
+        return False
     if half == "first":
         return datetime.time(8, 0) <= now_time < datetime.time(13, 0)
     if half == "second":
@@ -3260,6 +3293,7 @@ def hk_attendance(request):
                     all_rel = []
                 else:
                     all_rel = list(_attendance_relievers_for_area(sel_area))
+                first_label, second_label, _ = attendance_half_labels(user=user, area=sel_area, workers=[worker], cur_half=cur_half)
                 return render(request, "housekeeping/mobile/partials/attendance_worker_card.html", {
                     "row": {
                         "worker": worker,
@@ -3274,6 +3308,8 @@ def hk_attendance(request):
                     "is_today": is_today,
                     "first_half_open": first_half_open,
                     "second_half_open": second_half_open,
+                    "first_half_label": first_label,
+                    "second_half_label": second_label,
                     "attn_choices": ATTENDANCE_CHOICES,
                     "second_attn_choices": SECOND_HALF_EXCEPTION_CHOICES,
                     "all_relievers": all_rel,
@@ -3321,6 +3357,7 @@ def hk_attendance(request):
             for w in workers
         )
 
+    first_label, second_label, active_half_range = attendance_half_labels(user=user, area=sel_area, workers=workers, cur_half=cur_half)
     return render(request, "housekeeping/mobile/attendance.html", {
         "worker_rows": worker_rows,
         "type_groups": type_groups,
@@ -3337,6 +3374,9 @@ def hk_attendance(request):
         "cur_half": cur_half,
         "first_half_open": first_half_open,
         "second_half_open": second_half_open,
+        "first_half_label": first_label,
+        "second_half_label": second_label,
+        "active_half_time_range": active_half_range,
         "attendance_error": "Attendance can be marked only during the selected half time." if request.GET.get("att_err") == "half_closed" else "",
         "present_first": sum(1 for r in worker_rows if r["first_att"] and r["first_att"].status in ["present", "late"]),
         "present_second": sum(1 for r in worker_rows if r["second_att"] and r["second_att"].status in ["present", "late"]),
@@ -3425,17 +3465,26 @@ def hk_assign_reliever(request):
         first_att = HKAttendanceRecord.objects.filter(worker=original, date=today, half="first").first()
         second_att = HKAttendanceRecord.objects.filter(worker=original, date=today, half="second").first()
         all_relievers = list(_attendance_relievers_for_area(area or original.area))
+        target_area = area or original.area
+        first_label, second_label, _ = attendance_half_labels(user=user, area=target_area, workers=[original], cur_half=current_half())
+        first_open = attendance_half_is_open(today, "first", user=user, area=target_area, workers=[original])
+        second_open = attendance_half_is_open(today, "second", user=user, area=target_area, workers=[original])
         return render(request, "housekeeping/mobile/partials/attendance_worker_card.html", {
             "row": {
                 "worker": original,
                 "first_att": first_att,
                 "second_att": second_att,
                 "substitution": sub,
+                "can_assign_reliever": _is_jrha_area(target_area) or not original.is_reliever,
             },
             "sel_date": today,
             "sel_area": area,
             "cur_half": current_half(),
             "is_today": True,
+            "first_half_open": first_open,
+            "second_half_open": second_open,
+            "first_half_label": first_label,
+            "second_half_label": second_label,
             "attn_choices": ATTENDANCE_CHOICES,
             "second_attn_choices": SECOND_HALF_EXCEPTION_CHOICES,
             "all_relievers": all_relievers,
