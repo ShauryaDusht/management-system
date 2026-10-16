@@ -26,7 +26,7 @@
       {% endif %}
     </div>
     <!-- RELIEVER BUTTON — only today, only if no sub yet -->
-    {% if is_today and not row.substitution and all_relievers and row.can_assign_reliever %}
+    {% if is_today and not row.substitution and all_relievers and row.can_assign_reliever and request.user.username != 'maulik.patel' and sel_area.area_type != 'research_park' %}
     <button
       onclick="document.getElementById('relpanel-{{ row.worker.id }}').style.display='block';this.style.display='none'"
       style="background:#fef3c7;color:#92400e;border:1.5px solid #fde68a;border-radius:8px;
@@ -38,7 +38,7 @@
   </div>
 
   <!-- RELIEVER ASSIGNMENT PANEL (hidden, opens on button click) -->
-  {% if is_today and not row.substitution and all_relievers and row.can_assign_reliever %}
+  {% if is_today and not row.substitution and all_relievers and row.can_assign_reliever and request.user.username != 'maulik.patel' and sel_area.area_type != 'research_park' %}
   <div id="relpanel-{{ row.worker.id }}"
     style="display:none;background:#fffbeb;border-radius:10px;padding:12px;margin-bottom:10px;border:1.5px solid #fde68a">
     <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:9px">

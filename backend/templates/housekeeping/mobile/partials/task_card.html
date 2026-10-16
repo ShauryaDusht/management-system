@@ -105,7 +105,7 @@
             style="border:none;background:#2d4a3e;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
       Assign workers
     </button>
-    {% if relievers %}
+    {% if relievers and request.user.username != 'maulik.patel' and record.area.area_type != 'research_park' %}
     <button type="button"
             id="rel-open-{{ record.id }}"
             onclick="document.getElementById('rel-panel-{{ record.id }}').style.display='block'; var sp=document.getElementById('swm-panel-{{ record.id }}'); if(sp) sp.style.display='none'; this.style.display='none'; var so=document.getElementById('swm-open-{{ record.id }}'); if(so) so.style.display='none';"
@@ -130,7 +130,7 @@
           </span>
         </label>
         {% endfor %}
-        {% if relievers %}
+        {% if relievers and request.user.username != 'maulik.patel' and record.area.area_type != 'research_park' %}
         <div style="padding:6px 11px;background:#fffbeb;font-size:11px;font-weight:800;color:#92400e;border-top:1px solid #fde68a;border-bottom:1px solid #fde68a">
           🔄 Relievers (Pool)
         </div>
@@ -158,7 +158,7 @@
     </form>
   </div>
 
-  {% if relievers %}
+  {% if relievers and request.user.username != 'maulik.patel' and record.area.area_type != 'research_park' %}
   <div id="rel-panel-{{ record.id }}" style="display:none;margin-top:8px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px">
     <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
           hx-target="#task-{{ record.id }}" hx-swap="outerHTML">
@@ -211,6 +211,7 @@
   {% elif can_assign_tasks and record.status != 'done' and record.can_multi_worker_assignment and record.worker_assignments.count %}
   <div style="margin-top:7px;font-size:11px;color:#6b7280;background:#f3f4f6;border-radius:7px;padding:6px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px">
     <span>Team assignment locked for this task.</span>
+    {% if request.user.username != 'maulik.patel' and record.area.area_type != 'research_park' %}
     <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
           hx-target="#task-{{ record.id }}" hx-swap="outerHTML"
           hx-confirm="Are you sure you want to relieve this team and re-assign?">
@@ -220,6 +221,7 @@
         <span>🔄</span> Relieve / Re-assign
       </button>
     </form>
+    {% endif %}
   </div>
   {% elif can_assign_tasks and record.status != 'done' and not record.assigned_worker %}
   {% with relievers=record.reliever_workers_for_assignment|default:reliever_workers %}
@@ -235,7 +237,7 @@
         {{ w.name }}{% if w.worker_type %} ({{ w.get_worker_type_display }}){% endif %}{% if w.is_busy_for_task %} - Busy{% elif w.is_unavailable_for_task %} - {{ w.unavailable_reason|default:"Absent" }}{% endif %}
       </option>
       {% endfor %}
-      {% if relievers %}
+      {% if relievers and request.user.username != 'maulik.patel' and record.area.area_type != 'research_park' %}
       <optgroup label="Relievers (Pool)">
         {% for r in relievers %}
         <option value="{{ r.id }}" {% if record.assigned_worker_id == r.id %}selected{% endif %} {% if r.is_busy_for_task or r.is_unavailable_for_task %}disabled{% endif %}>
@@ -251,6 +253,7 @@
   {% elif record.assigned_worker and record.status != 'done' %}
   <div style="margin-top:7px;font-size:11px;color:#6b7280;background:#f3f4f6;border-radius:7px;padding:6px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px">
     <span>Worker selection locked for this task.</span>
+    {% if request.user.username != 'maulik.patel' and record.area.area_type != 'research_park' %}
     <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
           hx-target="#task-{{ record.id }}" hx-swap="outerHTML"
           hx-confirm="Are you sure you want to relieve this worker and re-assign?">
@@ -260,6 +263,7 @@
         <span>🔄</span> Relieve / Re-assign
       </button>
     </form>
+    {% endif %}
   </div>
   {% endif %}
 

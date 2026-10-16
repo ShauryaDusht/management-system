@@ -265,6 +265,9 @@ def _attendance_relievers_for_area(area):
     if not area:
         return qs.none()
 
+    if getattr(area, "area_type", "") == "research_park" or (area.name or "").strip() == "Research Park":
+        return qs.none()
+
     if _is_jrha_area(area):
         return qs.filter(area__name__in=JRHA_AREA_NAMES).exclude(area=area).order_by("area__name", "name")
 
@@ -285,12 +288,28 @@ def _attendance_relievers_for_area(area):
         return relievers.order_by("name")
 
     if _uses_academic_reliever_pool(area):
-        return qs.filter(is_reliever=True, area__name="Old Academic Reliever").order_by("name")
+        return qs.filter(is_reliever=True).order_by(
+            dm.Case(
+                dm.When(area__name="Old Academic Reliever", then=0),
+                dm.When(area__name="New Academic Reliever", then=1),
+                default=2,
+            ),
+            "name",
+        )
 
     if _uses_new_academic_reliever_pool(area):
-        return qs.filter(is_reliever=True, area__name="New Academic Reliever").order_by("name")
+        return qs.filter(is_reliever=True).order_by(
+            dm.Case(
+                dm.When(area__name="New Academic Reliever", then=0),
+                dm.When(area__name="Old Academic Reliever", then=1),
+                default=2,
+            ),
+            "name",
+        )
 
-    return qs.none()
+    # Ashok Rathod's areas ("Guest House New", "Director Bungalow", "Canteen, Gate-01 and Gate-02")
+    # and all other supervisor sections get all active relievers
+    return qs.filter(is_reliever=True).order_by("name")
 
 
 def _shared_display_worker_qs_for_area(area):
@@ -2058,13 +2077,19 @@ def hk_dashboard(request):
         area_workers = effective_workers_for_area(sel_area, today)
         mark_busy_workers(area_workers, busy_worker_ids_for_tasks(sel_area, today))
     mark_unavailable_workers(area_workers, today, current_half())
-    reliever_workers = list(_attendance_relievers_for_area(sel_area))
-    mark_busy_workers(reliever_workers, busy_worker_ids_for_tasks(sel_area, today))
-    mark_unavailable_workers(reliever_workers, today, current_half())
+    if user.username == "maulik.patel" or (sel_area and sel_area.area_type == "research_park"):
+        reliever_workers = []
+    else:
+        reliever_workers = list(_attendance_relievers_for_area(sel_area))
+        mark_busy_workers(reliever_workers, busy_worker_ids_for_tasks(sel_area, today))
+        mark_unavailable_workers(reliever_workers, today, current_half())
     for record in records:
         record.can_multi_worker_assignment = can_multi_worker_task(user, record)
         record.area_workers_for_assignment = assignment_workers_for_record(area_workers, record)
-        record.reliever_workers_for_assignment = assignment_workers_for_record(reliever_workers, record)
+        if user.username == "maulik.patel" or (sel_area and sel_area.area_type == "research_park"):
+            record.reliever_workers_for_assignment = []
+        else:
+            record.reliever_workers_for_assignment = assignment_workers_for_record(reliever_workers, record)
         record.is_break_task = is_break_task_name(record.schedule.task_name)
         record.is_direct_staff_task = bool(
             record.schedule.worker_tag == "night_caretaker"
@@ -2659,7 +2684,10 @@ def hk_mark_task(request, record_id):
                     single_worker_id = request.POST.get("worker_id")
                     if single_worker_id:
                         worker_ids = [single_worker_id]
-                area_relievers = list(_attendance_relievers_for_area(record.area))
+                if user.username == "maulik.patel" or (record.area and record.area.area_type == "research_park"):
+                    area_relievers = []
+                else:
+                    area_relievers = list(_attendance_relievers_for_area(record.area))
                 reliever_ids = {r.id for r in area_relievers}
                 allowed_worker_ids = display_worker_ids_for_area(record.area, record.date) | reliever_ids
                 busy_ids = busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id)
@@ -2711,7 +2739,10 @@ def hk_mark_task(request, record_id):
         elif record.assigned_worker_id:
             task_error = "Worker already assigned for this task."
         else:
-            area_relievers = list(_attendance_relievers_for_area(record.area))
+            if user.username == "maulik.patel" or (record.area and record.area.area_type == "research_park"):
+                area_relievers = []
+            else:
+                area_relievers = list(_attendance_relievers_for_area(record.area))
             reliever_ids = {r.id for r in area_relievers}
             allowed_worker_ids = display_worker_ids_for_area(record.area, record.date) | reliever_ids
             worker_id = request.POST.get("worker_id")
@@ -2921,9 +2952,12 @@ def hk_mark_task(request, record_id):
     area_workers = effective_workers_for_area(record.area, record.date)
     mark_busy_workers(area_workers, busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id))
     mark_unavailable_workers(area_workers, record.date, attendance_half_for_record(record))
-    reliever_workers = list(_attendance_relievers_for_area(record.area))
-    mark_busy_workers(reliever_workers, busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id))
-    mark_unavailable_workers(reliever_workers, record.date, attendance_half_for_record(record))
+    if user.username == "maulik.patel" or (record.area and record.area.area_type == "research_park"):
+        reliever_workers = []
+    else:
+        reliever_workers = list(_attendance_relievers_for_area(record.area))
+        mark_busy_workers(reliever_workers, busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id))
+        mark_unavailable_workers(reliever_workers, record.date, attendance_half_for_record(record))
     record.reliever_workers_for_assignment = reliever_workers
     return render(request, "housekeeping/mobile/partials/task_card.html", {
         "record": record,
@@ -2962,7 +2996,12 @@ def hk_log_extra_work(request):
     if not extra_worker_name_mode:
         worker_ids = list(dict.fromkeys(w for w in request.POST.getlist("worker_ids") if w))
         selected_worker_ids = {int(wid) for wid in worker_ids if str(wid).isdigit()}
-        allowed_worker_ids = display_worker_ids_for_area(area, timezone.localdate())
+        extra_relievers = (
+            set()
+            if (user.username == "maulik.patel" or is_research_park)
+            else {r.id for r in _attendance_relievers_for_area(area)}
+        )
+        allowed_worker_ids = display_worker_ids_for_area(area, timezone.localdate()) | extra_relievers
         busy_ids = busy_worker_ids_for_tasks(area, timezone.localdate())
 
         if not worker_ids:
@@ -3172,7 +3211,10 @@ def hk_attendance(request):
                 ).select_related("reliever").first()
                 if not sub:
                     sub = _substitution_for_reliever(worker, sel_area, sel_date)
-                all_rel = list(_attendance_relievers_for_area(sel_area))
+                if user.username == "maulik.patel" or (sel_area and getattr(sel_area, "area_type", "") == "research_park"):
+                    all_rel = []
+                else:
+                    all_rel = list(_attendance_relievers_for_area(sel_area))
                 return render(request, "housekeeping/mobile/partials/attendance_worker_card.html", {
                     "row": {
                         "worker": worker,
@@ -3217,7 +3259,10 @@ def hk_attendance(request):
             row["worker"], sel_area, sel_date
         )
 
-    all_relievers = list(_attendance_relievers_for_area(sel_area))
+    if user.username == "maulik.patel" or (sel_area and getattr(sel_area, "area_type", "") == "research_park"):
+        all_relievers = []
+    else:
+        all_relievers = list(_attendance_relievers_for_area(sel_area))
 
     # Group by worker type
     type_groups = {}
@@ -3267,9 +3312,13 @@ def hk_assign_reliever(request):
         return HttpResponseForbidden()
 
     user = request.user
+    if user.username == "maulik.patel":
+        return HttpResponseForbidden("Relievers cannot be assigned for Research Park.")
     user_areas = get_user_areas(user)
     area_id = request.POST.get("area_id")
     area = user_areas.filter(pk=area_id).first()
+    if area and getattr(area, "area_type", "") == "research_park":
+        return HttpResponseForbidden("Relievers cannot be assigned for Research Park.")
     today = timezone.localdate()
 
     original = get_object_or_404(HKWorker, pk=request.POST.get("original_worker_id"))
