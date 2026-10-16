@@ -361,6 +361,7 @@ class Command(BaseCommand):
         {"area": "Hostel Common Area", "name": "Yogeshbhai Kantibhai Vaghela", "phone": "9998100804", "pay_code": "80", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Yogesh Vaghela"]},
         {"area": "Hostel Common Area", "name": "Solanki Vinayak", "phone": "9023271834", "pay_code": "240", "worker_type": "washroom", "shift": "night", "is_reliever": False, "legacy_names": ["Vinayak Solanki"]},
         {"area": "Hostel Common Area", "name": "Bhavika Ben Solanki", "phone": "", "pay_code": "457", "worker_type": "general", "shift": "day", "is_reliever": False, "legacy_names": ["Bhavika ben solnki", "Bhavika Ben Solanki"]},
+        {"area": "Hostel Common Area", "name": "Urvashi Ben Vaghela", "phone": "", "pay_code": "459", "worker_type": "general", "shift": "day", "is_reliever": False, "legacy_names": ["Urvashi ben Nayan bhai Vaghela", "Urvashi Ben Vaghela", "Urvashi"]},
         {"area": "Hostel Common Area", "name": "Suresh Solanki", "phone": "", "pay_code": "472", "worker_type": "general", "shift": "day", "is_reliever": False, "legacy_names": ["Suresh", "Suresh Solanki"]},
         {"area": "Hostel Common Area", "name": "Gurjar Ketan Amrutbhai", "phone": "8347139138", "pay_code": "100", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Ketan Gujjar"]},
         {"area": "Hostels Reliever", "name": "Anju Ben", "phone": "", "pay_code": "", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Anju ben"]},
