@@ -1391,7 +1391,7 @@ def attendance_half_is_open(sel_date, half, user=None, area=None, workers=None):
 
 
 def busy_worker_ids_for_tasks(area, date, exclude_record_id=None):
-    if area is None:
+    if area is None or date is None:
         return set()
     active_records = HKDailyRecord.objects.filter(area=area, date=date).exclude(status="done")
     if exclude_record_id:
@@ -1406,6 +1406,21 @@ def busy_worker_ids_for_tasks(area, date, exclude_record_id=None):
         .filter(daily_record__in=active_records)
         .values_list("worker_id", flat=True)
     )
+    campus_active_records = HKDailyRecord.objects.filter(date=date).exclude(status="done")
+    if exclude_record_id:
+        campus_active_records = campus_active_records.exclude(pk=exclude_record_id)
+    reliever_single = (
+        campus_active_records
+        .filter(assigned_worker__is_reliever=True)
+        .values_list("assigned_worker_id", flat=True)
+    )
+    busy_ids.update(reliever_single)
+    reliever_multi = (
+        HKTaskWorkerAssignment.objects
+        .filter(daily_record__in=campus_active_records, worker__is_reliever=True)
+        .values_list("worker_id", flat=True)
+    )
+    busy_ids.update(reliever_multi)
     return busy_ids
 
 
@@ -2043,9 +2058,13 @@ def hk_dashboard(request):
         area_workers = effective_workers_for_area(sel_area, today)
         mark_busy_workers(area_workers, busy_worker_ids_for_tasks(sel_area, today))
     mark_unavailable_workers(area_workers, today, current_half())
+    reliever_workers = list(_attendance_relievers_for_area(sel_area))
+    mark_busy_workers(reliever_workers, busy_worker_ids_for_tasks(sel_area, today))
+    mark_unavailable_workers(reliever_workers, today, current_half())
     for record in records:
         record.can_multi_worker_assignment = can_multi_worker_task(user, record)
         record.area_workers_for_assignment = assignment_workers_for_record(area_workers, record)
+        record.reliever_workers_for_assignment = assignment_workers_for_record(reliever_workers, record)
         record.is_break_task = is_break_task_name(record.schedule.task_name)
         record.is_direct_staff_task = bool(
             record.schedule.worker_tag == "night_caretaker"
@@ -2359,6 +2378,7 @@ def hk_dashboard(request):
         "percent_done": pct,
         "alerts": get_active_alerts(user, user_areas),
         "area_workers": area_workers,
+        "reliever_workers": reliever_workers,
         "attendance_summary": attendance_summary,
         "monthly_best_worker": monthly_best_worker,
         "special_card": special_card,
@@ -2639,7 +2659,9 @@ def hk_mark_task(request, record_id):
                     single_worker_id = request.POST.get("worker_id")
                     if single_worker_id:
                         worker_ids = [single_worker_id]
-                allowed_worker_ids = display_worker_ids_for_area(record.area, record.date)
+                area_relievers = list(_attendance_relievers_for_area(record.area))
+                reliever_ids = {r.id for r in area_relievers}
+                allowed_worker_ids = display_worker_ids_for_area(record.area, record.date) | reliever_ids
                 busy_ids = busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id)
                 selected_worker_ids = {int(wid) for wid in worker_ids if str(wid).isdigit()}
                 unavailable_ids = unavailable_selection_ids(
@@ -2677,6 +2699,9 @@ def hk_mark_task(request, record_id):
                                 for w in workers
                             ]
                         )
+                        for w in workers:
+                            if w.id in reliever_ids:
+                                _mark_reliever_present(w, record.date, user)
 
                         # Keep legacy single-assignee field for backward-compatible reporting.
                         record.assigned_worker = workers[0]
@@ -2686,9 +2711,12 @@ def hk_mark_task(request, record_id):
         elif record.assigned_worker_id:
             task_error = "Worker already assigned for this task."
         else:
+            area_relievers = list(_attendance_relievers_for_area(record.area))
+            reliever_ids = {r.id for r in area_relievers}
+            allowed_worker_ids = display_worker_ids_for_area(record.area, record.date) | reliever_ids
             worker_id = request.POST.get("worker_id")
             worker = HKWorker.objects.filter(pk=worker_id, is_active=True).first()
-            if worker and worker.id not in display_worker_ids_for_area(record.area, record.date):
+            if worker and worker.id not in allowed_worker_ids:
                 worker = None
             if worker and worker.id in busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id):
                 task_error = "This worker is already assigned to an unfinished task."
@@ -2699,8 +2727,22 @@ def hk_mark_task(request, record_id):
                 record.assigned_by = user
                 record.assigned_at = now
                 record.save(update_fields=["assigned_worker", "assigned_by", "assigned_at"])
+                if worker.id in reliever_ids:
+                    _mark_reliever_present(worker, record.date, user)
             else:
                 task_error = "Please choose a valid worker for this area."
+
+    elif action == "relieve_team" and user.role in HOUSEKEEPING_STAFF_ROLES and record.status != "done":
+        record.worker_assignments.all().delete()
+        record.assigned_worker = None
+        record.assigned_by = None
+        record.assigned_at = None
+        if record.status == "in_progress":
+            record.status = "pending"
+            record.started_at = None
+            record.save(update_fields=["assigned_worker", "assigned_by", "assigned_at", "status", "started_at"])
+        else:
+            record.save(update_fields=["assigned_worker", "assigned_by", "assigned_at"])
 
     elif action == "start":
         if is_break_task:
@@ -2879,10 +2921,15 @@ def hk_mark_task(request, record_id):
     area_workers = effective_workers_for_area(record.area, record.date)
     mark_busy_workers(area_workers, busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id))
     mark_unavailable_workers(area_workers, record.date, attendance_half_for_record(record))
+    reliever_workers = list(_attendance_relievers_for_area(record.area))
+    mark_busy_workers(reliever_workers, busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id))
+    mark_unavailable_workers(reliever_workers, record.date, attendance_half_for_record(record))
+    record.reliever_workers_for_assignment = reliever_workers
     return render(request, "housekeeping/mobile/partials/task_card.html", {
         "record": record,
         "tag_labels": WORKER_TAG_LABELS,
         "area_workers": area_workers,
+        "reliever_workers": reliever_workers,
         "can_assign_tasks": user.role in HOUSEKEEPING_STAFF_ROLES,
         "task_error": task_error,
     })

@@ -75,13 +75,13 @@
   <div style="font-size:11px;color:#374151;margin-top:4px">
     Assigned Team:
     {% for asn in record.worker_assignments.all %}
-      <b>{{ asn.worker.name }}</b>{% if not forloop.last %}, {% endif %}
+      <b>{{ asn.worker.name }}</b>{% if asn.worker.is_reliever %} <span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:700">Reliever</span>{% endif %}{% if not forloop.last %}, {% endif %}
     {% endfor %}
     {% if record.assigned_at %} | {{ record.assigned_at|time:"g:i A" }}{% endif %}
   </div>
   {% elif record.assigned_worker %}
   <div style="font-size:11px;color:#374151;margin-top:4px">
-    Assigned Worker: <b>{{ record.assigned_worker.name }}</b>
+    Assigned Worker: <b>{{ record.assigned_worker.name }}</b>{% if record.assigned_worker.is_reliever %} <span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:700">Reliever</span>{% endif %}
     {% if record.assigned_at %} | {{ record.assigned_at|time:"g:i A" }}{% endif %}
   </div>
   {% endif %}
@@ -97,12 +97,23 @@
     Direct caretaker task. Attendance will be marked when any night task is completed.
   </div>
   {% elif can_assign_tasks and record.status != 'done' and record.can_multi_worker_assignment and not record.assigned_worker and not record.worker_assignments.count %}
-  <button type="button"
-          id="swm-open-{{ record.id }}"
-          onclick="document.getElementById('swm-panel-{{ record.id }}').style.display='block'; this.style.display='none';"
-          style="margin-top:8px;border:none;background:#2d4a3e;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
-    Assign workers
-  </button>
+  {% with relievers=record.reliever_workers_for_assignment|default:reliever_workers %}
+  <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+    <button type="button"
+            id="swm-open-{{ record.id }}"
+            onclick="document.getElementById('swm-panel-{{ record.id }}').style.display='block'; var rp=document.getElementById('rel-panel-{{ record.id }}'); if(rp) rp.style.display='none'; this.style.display='none'; var ro=document.getElementById('rel-open-{{ record.id }}'); if(ro) ro.style.display='none';"
+            style="border:none;background:#2d4a3e;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
+      Assign workers
+    </button>
+    {% if relievers %}
+    <button type="button"
+            id="rel-open-{{ record.id }}"
+            onclick="document.getElementById('rel-panel-{{ record.id }}').style.display='block'; var sp=document.getElementById('swm-panel-{{ record.id }}'); if(sp) sp.style.display='none'; this.style.display='none'; var so=document.getElementById('swm-open-{{ record.id }}'); if(so) so.style.display='none';"
+            style="border:1px solid #d97706;background:#fffbeb;color:#92400e;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
+      <span>🔄</span> Assign Reliever
+    </button>
+    {% endif %}
+  </div>
 
   <div id="swm-panel-{{ record.id }}" style="display:none;margin-top:8px">
     <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
@@ -112,13 +123,26 @@
       <div style="font-size:11px;font-weight:700;color:#374151;margin:0 0 6px 2px">Select workers</div>
       <div style="max-height:180px;overflow:auto;border:1px solid #d1d5db;border-radius:8px;background:#fff">
         {% for w in area_workers %}
-        <label style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last %}1px solid #eef2f7{% else %}none{% endif %};cursor:{% if w.is_busy_for_task or w.is_unavailable_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if w.is_busy_for_task or w.is_unavailable_for_task %}.55{% else %}1{% endif %}">
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last or relievers %}1px solid #eef2f7{% else %}none{% endif %};cursor:{% if w.is_busy_for_task or w.is_unavailable_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if w.is_busy_for_task or w.is_unavailable_for_task %}.55{% else %}1{% endif %}">
           <input type="checkbox" name="worker_ids" value="{{ w.id }}" {% if w.is_busy_for_task or w.is_unavailable_for_task %}disabled{% endif %} style="width:16px;height:16px;flex-shrink:0">
           <span style="font-weight:700;color:#1f2937;font-size:14px">
             {{ w.name }}{% if w.is_busy_for_task %} - Busy{% elif w.is_unavailable_for_task %} - {{ w.unavailable_reason|default:"Absent" }}{% endif %}
           </span>
         </label>
         {% endfor %}
+        {% if relievers %}
+        <div style="padding:6px 11px;background:#fffbeb;font-size:11px;font-weight:800;color:#92400e;border-top:1px solid #fde68a;border-bottom:1px solid #fde68a">
+          🔄 Relievers (Pool)
+        </div>
+        {% for r in relievers %}
+        <label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-bottom:{% if not forloop.last %}1px solid #fef3c7{% else %}none{% endif %};cursor:{% if r.is_busy_for_task or r.is_unavailable_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if r.is_busy_for_task or r.is_unavailable_for_task %}.55{% else %}1{% endif %}">
+          <input type="checkbox" name="worker_ids" value="{{ r.id }}" {% if r.is_busy_for_task or r.is_unavailable_for_task %}disabled{% endif %} style="width:16px;height:16px;flex-shrink:0;accent-color:#d97706">
+          <span style="font-weight:700;color:#1f2937;font-size:13px">
+            {{ r.name }} <span style="font-size:10px;color:#92400e;background:#fef3c7;padding:1px 5px;border-radius:4px">Reliever</span>{% if r.is_busy_for_task %} - Busy{% elif r.is_unavailable_for_task %} - {{ r.unavailable_reason|default:"Absent" }}{% endif %}
+          </span>
+        </label>
+        {% endfor %}
+        {% endif %}
       </div>
       <div style="font-size:10px;color:#6b7280;margin-top:4px">Busy workers unlock after their current task is completed.</div>
       <div style="display:flex;gap:6px;margin-top:6px">
@@ -126,18 +150,79 @@
           Assign Team
         </button>
         <button type="button"
-                onclick="document.getElementById('swm-panel-{{ record.id }}').style.display='none'; document.getElementById('swm-open-{{ record.id }}').style.display='inline-block';"
+                onclick="document.getElementById('swm-panel-{{ record.id }}').style.display='none'; document.getElementById('swm-open-{{ record.id }}').style.display='inline-block'; var ro=document.getElementById('rel-open-{{ record.id }}'); if(ro) ro.style.display='inline-flex';"
                 style="border:none;background:#e5e7eb;color:#374151;padding:8px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">
           Cancel
         </button>
       </div>
     </form>
   </div>
+
+  {% if relievers %}
+  <div id="rel-panel-{{ record.id }}" style="display:none;margin-top:8px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px">
+    <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
+          hx-target="#task-{{ record.id }}" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="assign">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:12px;font-weight:800;color:#92400e">
+          🔄 Select Reliever
+        </div>
+        <span style="font-size:10px;font-weight:600;color:#b45309;background:#fef3c7;padding:2px 6px;border-radius:6px">
+          Reliever Pool
+        </span>
+      </div>
+      <div style="max-height:180px;overflow:auto;border:1px solid #fcd34d;border-radius:8px;background:#fff">
+        {% for r in relievers %}
+        <label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-bottom:{% if not forloop.last %}1px solid #fef3c7{% else %}none{% endif %};cursor:{% if r.is_busy_for_task or r.is_unavailable_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if r.is_busy_for_task or r.is_unavailable_for_task %}.55{% else %}1{% endif %}">
+          <input type="checkbox" name="worker_ids" value="{{ r.id }}"
+                 {% if r.is_busy_for_task or r.is_unavailable_for_task %}disabled{% endif %}
+                 style="width:16px;height:16px;flex-shrink:0;accent-color:#d97706">
+          <div style="display:flex;flex-direction:column">
+            <span style="font-weight:700;color:#1f2937;font-size:13px">
+              {{ r.name }}{% if r.is_busy_for_task %} - <span style="color:#dc2626;font-size:11px">Busy</span>{% elif r.is_unavailable_for_task %} - <span style="color:#dc2626;font-size:11px">{{ r.unavailable_reason|default:"Absent" }}</span>{% endif %}
+            </span>
+            {% if r.phone or r.pay_code %}
+            <span style="font-size:11px;color:#6b7280">
+              {% if r.phone %}📱 {{ r.phone }}{% endif %}{% if r.pay_code %} · #{{ r.pay_code }}{% endif %}
+            </span>
+            {% endif %}
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+      <div style="font-size:10px;color:#78350f;margin-top:5px">
+        Busy workers unlock after their current task is completed.
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button type="submit" style="border:none;background:#92400e;color:#fff;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">
+          Assign Reliever
+        </button>
+        <button type="button"
+                onclick="document.getElementById('rel-panel-{{ record.id }}').style.display='none'; document.getElementById('swm-open-{{ record.id }}').style.display='inline-block'; var ro=document.getElementById('rel-open-{{ record.id }}'); if(ro) ro.style.display='inline-flex';"
+                style="border:none;background:#e5e7eb;color:#374151;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+  {% endwith %}
   {% elif can_assign_tasks and record.status != 'done' and record.can_multi_worker_assignment and record.worker_assignments.count %}
-  <div style="margin-top:7px;font-size:11px;color:#6b7280;background:#f3f4f6;border-radius:7px;padding:6px 8px">
-    Team assignment locked for this task.
+  <div style="margin-top:7px;font-size:11px;color:#6b7280;background:#f3f4f6;border-radius:7px;padding:6px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <span>Team assignment locked for this task.</span>
+    <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
+          hx-target="#task-{{ record.id }}" hx-swap="outerHTML"
+          hx-confirm="Are you sure you want to relieve this team and re-assign?">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="relieve_team">
+      <button type="submit" style="border:1px solid #fde68a;background:#fffbeb;color:#92400e;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:3px">
+        <span>🔄</span> Relieve / Re-assign
+      </button>
+    </form>
   </div>
   {% elif can_assign_tasks and record.status != 'done' and not record.assigned_worker %}
+  {% with relievers=record.reliever_workers_for_assignment|default:reliever_workers %}
   <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
         hx-target="#task-{{ record.id }}" hx-swap="outerHTML"
         style="margin-top:8px;display:flex;gap:6px;align-items:center">
@@ -150,12 +235,31 @@
         {{ w.name }}{% if w.worker_type %} ({{ w.get_worker_type_display }}){% endif %}{% if w.is_busy_for_task %} - Busy{% elif w.is_unavailable_for_task %} - {{ w.unavailable_reason|default:"Absent" }}{% endif %}
       </option>
       {% endfor %}
+      {% if relievers %}
+      <optgroup label="Relievers (Pool)">
+        {% for r in relievers %}
+        <option value="{{ r.id }}" {% if record.assigned_worker_id == r.id %}selected{% endif %} {% if r.is_busy_for_task or r.is_unavailable_for_task %}disabled{% endif %}>
+          {{ r.name }} (Reliever){% if r.is_busy_for_task %} - Busy{% elif r.is_unavailable_for_task %} - {{ r.unavailable_reason|default:"Absent" }}{% endif %}
+        </option>
+        {% endfor %}
+      </optgroup>
+      {% endif %}
     </select>
     <button type="submit" style="border:none;background:#2d4a3e;color:#fff;padding:8px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">Assign</button>
   </form>
+  {% endwith %}
   {% elif record.assigned_worker and record.status != 'done' %}
-  <div style="margin-top:7px;font-size:11px;color:#6b7280;background:#f3f4f6;border-radius:7px;padding:6px 8px">
-    Worker selection locked for this task.
+  <div style="margin-top:7px;font-size:11px;color:#6b7280;background:#f3f4f6;border-radius:7px;padding:6px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <span>Worker selection locked for this task.</span>
+    <form hx-post="/housekeeping/task/{{ record.id }}/mark/"
+          hx-target="#task-{{ record.id }}" hx-swap="outerHTML"
+          hx-confirm="Are you sure you want to relieve this worker and re-assign?">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="relieve_team">
+      <button type="submit" style="border:1px solid #fde68a;background:#fffbeb;color:#92400e;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:3px">
+        <span>🔄</span> Relieve / Re-assign
+      </button>
+    </form>
   </div>
   {% endif %}
 
