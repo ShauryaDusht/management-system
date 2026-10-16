@@ -110,7 +110,7 @@ function InventoryReportTab() {
   return (
     <div>
       <Alert message={error} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(130px, 12vw, 175px), 1fr))', gap: 10, marginBottom: 12 }}>
         <StatCard label="Total Items" value={report?.total_items ?? 0} icon="IT" color="#1d4ed8" />
         <StatCard label="Total Value" value={`INR ${Number(report?.total_value || 0).toLocaleString('en-IN')}`} icon="VL" color="#16a34a" />
         <StatCard label="Low Stock" value={report?.low_stock_count ?? 0} icon="LS" color="#f59e0b" />

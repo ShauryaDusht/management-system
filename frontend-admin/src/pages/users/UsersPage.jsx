@@ -306,9 +306,9 @@ export default function UsersPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(115px, 11vw, 160px), 1fr))',
           gap: 10,
-          marginBottom: 20,
+          marginBottom: 16,
         }}
       >
         <Card

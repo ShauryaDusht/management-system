@@ -13,6 +13,20 @@ if (typeof document !== 'undefined' && !document.getElementById('sidebar-hover-s
       --sidebar-link-bg: rgba(255, 255, 255, 0.08);
       --sidebar-link-color: #fff;
     }
+    @media screen and (max-width: 1023px) {
+      .sidebar-brand-text,
+      .sidebar-nav-label,
+      .sidebar-user-text {
+        display: none !important;
+      }
+      .sidebar-nav-link {
+        justify-content: center !important;
+        padding: 10px 4px !important;
+      }
+      .sidebar-user-block {
+        justify-content: center !important;
+      }
+    }
   `
   document.head.appendChild(style)
 }
@@ -137,7 +151,7 @@ export default function Sidebar() {
               boxShadow: '0 6px 16px rgba(0,0,0,0.22)',
             }}
           />
-          <div>
+          <div className="sidebar-brand-text" style={{ minWidth: 0, overflow: 'hidden' }}>
             <div
               style={{
                 color: '#fff',
@@ -145,11 +159,14 @@ export default function Sidebar() {
                 fontSize: 13,
                 lineHeight: 1.2,
                 letterSpacing: 0.2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
               }}
             >
               {APP_NAME}
             </div>
-            <div style={{ color: 'rgba(255,255,255,0.62)', fontSize: 11, marginTop: 2 }}>
+            <div style={{ color: 'rgba(255,255,255,0.62)', fontSize: 11, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {APP_TAGLINE}
             </div>
           </div>
@@ -186,11 +203,12 @@ export default function Sidebar() {
                 borderRadius: 8,
                 background: 'rgba(255,255,255,0.10)',
                 border: '1px solid rgba(255,255,255,0.18)',
+                flexShrink: 0,
               }}
             />
 
             {/* Label */}
-            <span style={{ flex: 1 }}>{label}</span>
+            <span className="sidebar-nav-label" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
 
             {/* Low stock yellow badge (shows alongside red) */}
             {extraBadge > 0 && (
@@ -209,7 +227,7 @@ export default function Sidebar() {
 
       {/* User + Logout */}
       <div style={{ padding: '12px 14px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
+        <div className="sidebar-user-block" style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
           <div
             style={{
               width: 34, height: 34, borderRadius: '50%',
@@ -220,11 +238,11 @@ export default function Sidebar() {
           >
             {user?.full_name?.[0] || user?.username?.[0]?.toUpperCase() || 'A'}
           </div>
-          <div style={{ overflow: 'hidden' }}>
+          <div className="sidebar-user-text" style={{ overflow: 'hidden', minWidth: 0 }}>
             <div style={{ color: '#fff', fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {user?.full_name || user?.username}
             </div>
-            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, textTransform: 'capitalize' }}>
+            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {user?.role}
             </div>
           </div>

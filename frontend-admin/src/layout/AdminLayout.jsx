@@ -13,16 +13,17 @@ import Sidebar from '../components/Sidebar'
 
 export default function AdminLayout({ children, title, subtitle, actions, fullscreen = false }) {
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', width: '100%', overflowX: 'hidden' }}>
       <Sidebar />
       <main
         style={{
           marginLeft: 'var(--sidebar-w)',
           flex: 1,
+          width: 'calc(100% - var(--sidebar-w))',
+          minWidth: 0,
           minHeight: '100vh',
           display: 'flex',
           flexDirection: 'column',
-          // When fullscreen, remove overflow:auto so the child can manage it
           overflow: fullscreen ? 'hidden' : undefined,
           position: fullscreen ? 'relative' : undefined,
         }}
@@ -30,12 +31,14 @@ export default function AdminLayout({ children, title, subtitle, actions, fullsc
         {title && (
           <div
             style={{
-              padding: '20px 28px 16px',
+              padding: 'var(--header-pad, 16px 28px)',
               borderBottom: '1px solid var(--border)',
               background: 'var(--surface)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
               position: 'sticky',
               top: 0,
               zIndex: 50,
@@ -47,13 +50,13 @@ export default function AdminLayout({ children, title, subtitle, actions, fullsc
                 <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 2 }}>{subtitle}</p>
               )}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 10,
-                  padding: '8px 12px',
+                  padding: '6px 12px',
                   border: '1px solid var(--border)',
                   borderRadius: 999,
                   background: '#f8faf9',
@@ -62,7 +65,7 @@ export default function AdminLayout({ children, title, subtitle, actions, fullsc
                 <img
                   src={APP_LOGO_PATH}
                   alt={APP_NAME}
-                  style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0 }}
+                  style={{ width: 32, height: 32, borderRadius: 10, flexShrink: 0 }}
                 />
                 <div style={{ lineHeight: 1.15 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-3)', textTransform: 'uppercase' }}>
@@ -73,22 +76,24 @@ export default function AdminLayout({ children, title, subtitle, actions, fullsc
                   </div>
                 </div>
               </div>
-              {actions && <div style={{ display: 'flex', gap: 8 }}>{actions}</div>}
+              {actions && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{actions}</div>}
             </div>
           </div>
         )}
 
         {/* 
-          Normal mode:   padded scrollable area (existing behaviour, unchanged)
+          Normal mode:   padded scrollable area with desktop max-width container
           Fullscreen:    children fill the flex-1 parent completely, no padding
         */}
         {fullscreen ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', minWidth: 0 }}>
             {children}
           </div>
         ) : (
-          <div style={{ flex: 1, padding: '20px 28px 40px', overflow: 'auto' }}>
-            {children}
+          <div style={{ flex: 1, padding: 'var(--content-pad, 20px 28px 40px)', overflow: 'auto', minWidth: 0 }}>
+            <div style={{ maxWidth: 'var(--content-max-w, 1680px)', margin: '0 auto', width: '100%', minWidth: 0 }}>
+              {children}
+            </div>
           </div>
         )}
       </main>

@@ -1665,92 +1665,100 @@ export default function GeoTrackerPage() {
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <header style={{
-          padding: '12px 18px',
+          padding: '10px 16px',
           background: 'var(--surface)',
           borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           gap: 10,
           flexWrap: 'wrap',
           flexShrink: 0,
           zIndex: 10,
         }}>
-          <div style={{ flex: 1, minWidth: 140 }}>
-            <h1 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>
-              🌿 Plant GeoTracker
-            </h1>
-            <p style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2 }}>
-              Interactive map · campus trees, plants & creepers
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ minWidth: 140 }}>
+              <h1 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>
+                🌿 Plant GeoTracker
+              </h1>
+              <p style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2 }}>
+                Interactive map · campus flora
+              </p>
+            </div>
+
+            {stats && (
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                <StatChip label="Total"    value={stats.total}          color="#374151"               bg="#f3f4f6" />
+                <StatChip label="Trees"    value={stats.trees}          color={TYPE_CONFIG.tree.color}    bg={TYPE_CONFIG.tree.bg} />
+                <StatChip label="Plants"   value={stats.plants}         color={TYPE_CONFIG.plant.color}   bg={TYPE_CONFIG.plant.bg} />
+                <StatChip label="Creepers" value={stats.creepers || 0}  color={TYPE_CONFIG.creeper.color} bg={TYPE_CONFIG.creeper.bg} />
+              </div>
+            )}
           </div>
 
-          {stats && (
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-              <StatChip label="Total"    value={stats.total}          color="#374151"               bg="#f3f4f6" />
-              <StatChip label="Trees"    value={stats.trees}          color={TYPE_CONFIG.tree.color}    bg={TYPE_CONFIG.tree.bg} />
-              <StatChip label="Plants"   value={stats.plants}         color={TYPE_CONFIG.plant.color}   bg={TYPE_CONFIG.plant.bg} />
-              <StatChip label="Creepers" value={stats.creepers || 0}  color={TYPE_CONFIG.creeper.color} bg={TYPE_CONFIG.creeper.bg} />
-            </div>
-          )}
-
-          <input
-            type="search"
-            aria-label="Search plant records"
-            placeholder="Search ID, name, botanical name…"
-            value={filters.q}
-            onChange={e => handleFilterChange('q', e.target.value)}
-            style={{ ...inputStyle, width: 'min(260px,100%)', flexShrink: 0 }}
-          />
-
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            <button
-              onClick={() => { setAddAreaOpen(true); setAreaError(null) }}
-              style={{
-                padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                border: '1.5px solid #0284c7', background: '#e0f2fe', color: '#0369a1', cursor: 'pointer',
-              }}
-            >
-              + Add Area
-            </button>
-            <button
-              onClick={() => {
-                setAddVarietyOpen(true)
-                setVarietyTab('add')
-                setEditingVarietyId(null)
-                setVarietyForm({ name: '', scientific_name: '', plant_type: 'tree' })
-                setVarietyError(null)
-              }}
-              style={{
-                padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                border: '1.5px solid #16a34a', background: '#dcfce7', color: '#15803d', cursor: 'pointer',
-              }}
-            >
-              🌱 Varieties & Names
-            </button>
-            <button
-              onClick={() => setFiltersOpen(o => !o)}
-              aria-expanded={filtersOpen}
-              style={{
-                padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                border: '1.5px solid var(--border)', cursor: 'pointer',
-                background: filtersOpen ? 'var(--green-800)' : 'var(--surface)',
-                color: filtersOpen ? '#fff' : 'var(--text)',
-                display: 'flex', alignItems: 'center', gap: 5,
-              }}
-            >
-              ⚙ Filters
-              {activeFilterCount > 0 && (
-                <span style={{
-                  background: '#ef4444', color: '#fff', borderRadius: 9,
-                  fontSize: 10, fontWeight: 800, padding: '1px 5px',
-                }}>{activeFilterCount}</span>
-              )}
-            </button>
-            <ExportDropdown
-              label="Export"
-              onExport={handleExport}
-              disabled={records.length === 0}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end', minWidth: 280 }}>
+            <input
+              type="search"
+              aria-label="Search plant records"
+              placeholder="Search ID, name, botanical name…"
+              value={filters.q}
+              onChange={e => handleFilterChange('q', e.target.value)}
+              style={{ ...inputStyle, width: 'min(220px, 100%)', flexShrink: 0 }}
             />
+
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <button
+                onClick={() => { setAddAreaOpen(true); setAreaError(null) }}
+                style={{
+                  padding: '7px 11px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                  border: '1.5px solid #0284c7', background: '#e0f2fe', color: '#0369a1', cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                + Add Area
+              </button>
+              <button
+                onClick={() => {
+                  setAddVarietyOpen(true)
+                  setVarietyTab('add')
+                  setEditingVarietyId(null)
+                  setVarietyForm({ name: '', scientific_name: '', plant_type: 'tree' })
+                  setVarietyError(null)
+                }}
+                style={{
+                  padding: '7px 11px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                  border: '1.5px solid #16a34a', background: '#dcfce7', color: '#15803d', cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                🌱 Varieties & Names
+              </button>
+              <button
+                onClick={() => setFiltersOpen(o => !o)}
+                aria-expanded={filtersOpen}
+                style={{
+                  padding: '7px 11px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                  border: '1.5px solid var(--border)', cursor: 'pointer',
+                  background: filtersOpen ? 'var(--green-800)' : 'var(--surface)',
+                  color: filtersOpen ? '#fff' : 'var(--text)',
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ⚙ Filters
+                {activeFilterCount > 0 && (
+                  <span style={{
+                    background: '#ef4444', color: '#fff', borderRadius: 9,
+                    fontSize: 10, fontWeight: 800, padding: '1px 5px',
+                  }}>{activeFilterCount}</span>
+                )}
+              </button>
+              <ExportDropdown
+                label="Export"
+                onExport={handleExport}
+                disabled={records.length === 0}
+              />
+            </div>
           </div>
         </header>
 

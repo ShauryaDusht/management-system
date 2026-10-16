@@ -117,7 +117,7 @@ export default function RequestsReportTab() {
           </div>
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, padding: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(120px, 11vw, 170px), 1fr))', gap: 10, padding: 14 }}>
               <StatCard label="Total" value={report?.total || 0} icon="TT" color="#1d4ed8" />
               <StatCard label="Pending" value={report?.pending || 0} icon="PN" color="#f59e0b" />
               <StatCard label="Approved" value={report?.approved || 0} icon="AP" color="#16a34a" />

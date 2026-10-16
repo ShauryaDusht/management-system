@@ -565,7 +565,7 @@ export default function DashboardPage() {
           <DashboardHero title={heroTitle} subtitle={heroSubtitle} metric={heroMetric} quickActions={quickActions} variant={isHostelOffice ? 'hostel' : 'default'} />
           {isHostelOffice && <HostelOfficePanel hkSummary={hkSummary} invSummary={invSummary} />}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(clamp(140px, 12vw, 190px), 1fr))', gap: 12, marginBottom: 24 }}>
             {statCards.map(card => (
               <a key={card.label} href={adminHref(card.to || '/dashboard')} className="ui-interactive-card-link" style={{ height: '100%', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
                 <StatCard label={card.label} value={card.value} color={card.color} sub={card.sub} style={{ height: '100%', cursor: 'pointer', userSelect: 'none' }} />

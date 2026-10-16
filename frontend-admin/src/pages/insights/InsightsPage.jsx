@@ -640,25 +640,25 @@ export default function InsightsPage() {
             </Btn>
           ))}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2 }}>Period:</span>
-            {RANGE_OPTIONS.map(opt => (
-              <Btn key={opt.key} size="sm" variant={range === opt.key ? 'primary' : 'secondary'} onClick={() => setRange(opt.key)}>{opt.label}</Btn>
-            ))}
-          </div>
-          {!isHostelOffice && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2 }}>Area:</span>
-              {visibleAreaOptions.map(opt => (
-                <Btn key={opt.key} size="sm" variant={areaClass === opt.key ? 'primary' : 'secondary'} onClick={() => setAreaClass(opt.key)}>
-                  {isHorticultureManager && opt.key === 'others' ? 'Horticulture' : opt.label}
-                </Btn>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2, fontWeight: 600 }}>Period:</span>
+              {RANGE_OPTIONS.map(opt => (
+                <Btn key={opt.key} size="sm" variant={range === opt.key ? 'primary' : 'secondary'} onClick={() => setRange(opt.key)}>{opt.label}</Btn>
               ))}
             </div>
-          )}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+            {!isHostelOffice && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2, fontWeight: 600 }}>Area:</span>
+                {visibleAreaOptions.map(opt => (
+                  <Btn key={opt.key} size="sm" variant={areaClass === opt.key ? 'primary' : 'secondary'} onClick={() => setAreaClass(opt.key)}>
+                    {isHorticultureManager && opt.key === 'others' ? 'Horticulture' : opt.label}
+                  </Btn>
+                ))}
+              </div>
+            )}
+          </div>
           <ExportDropdown
             label="Export Insights"
             onExport={handleExportInsights}
