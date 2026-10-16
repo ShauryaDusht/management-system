@@ -810,13 +810,15 @@ def _dashboard_section_labels(area):
     return labels
 
 
-def _build_usage_issues(user, limit=None):
+def _build_usage_issues(user, area=None, limit=None):
     usage_logs_qs = ItemUsageLog.objects.select_related('logged_by').order_by('-logged_at')
     issues_qs = ItemIssue.objects.select_related(
         'request',
         'request__item',
         'request__item__category',
         'request__requested_by',
+        'request__hkstockrequest',
+        'request__hkstockrequest__area',
         'issued_by',
     ).prefetch_related(
         Prefetch('usage_logs', queryset=usage_logs_qs)
@@ -828,7 +830,15 @@ def _build_usage_issues(user, limit=None):
         )
     ).filter(
         request__requested_by=user
-    ).order_by('-issued_at')
+    )
+
+    if area is not None:
+        issues_qs = issues_qs.filter(
+            dm.Q(request__hkstockrequest__area=area) |
+            dm.Q(request__purpose__icontains=f"[HK - {area.name}]")
+        ).distinct()
+
+    issues_qs = issues_qs.order_by('-issued_at')
 
     issues = []
     for issue in issues_qs:
@@ -2333,7 +2343,7 @@ def hk_dashboard(request):
         .order_by("-created_at")
         if sel_area else []
     )
-    dashboard_issued_items = _build_usage_issues(user, limit=None)
+    dashboard_issued_items = _build_usage_issues(user, area=sel_area, limit=None)
     dashboard_stock_total = len(dashboard_area_stocks) + len(dashboard_issued_items) + len(dashboard_active_requests)
 
     return render(request, "housekeeping/mobile/dashboard.html", {
@@ -3302,7 +3312,7 @@ def hk_stock(request):
     visible_areas = visible_user_areas(user, user_areas)
     sel_area = selected_area(request, visible_areas)
     area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
-    issued_items = _build_usage_issues(user, limit=None)
+    issued_items = _build_usage_issues(user, area=sel_area, limit=None)
     active_requests = (
         HKStockRequest.objects
         .filter(requested_by=user, area=sel_area, status__in=["pending", "approved"])
@@ -3402,8 +3412,8 @@ def hk_log_usage(request, pk):
     visible_areas = visible_user_areas(user, user_areas)
     sel_area = selected_area(request, visible_areas)
     area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
-    my_requests = HKStockRequest.objects.filter(requested_by=user).order_by("-created_at")
-    issued_items = _build_usage_issues(user, limit=None)
+    my_requests = HKStockRequest.objects.filter(requested_by=user, area=sel_area).order_by("-created_at") if sel_area else []
+    issued_items = _build_usage_issues(user, area=sel_area, limit=None)
     active_requests = (
         HKStockRequest.objects
         .filter(requested_by=user, area=sel_area, status__in=["pending", "approved"])

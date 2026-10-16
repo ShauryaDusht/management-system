@@ -2774,17 +2774,27 @@ def horticulture_manager_reports(request):
     )
 
 
-def _horticulture_usage_issues(user, limit=None):
+def _horticulture_usage_issues(user, area=None, limit=None):
     from apps.inventory.models import ItemIssue, ItemUsageLog
 
     usage_logs_qs = ItemUsageLog.objects.select_related('logged_by').order_by('-logged_at')
     issues = (
         ItemIssue.objects
-        .select_related('request__item', 'request__requested_by')
+        .select_related(
+            'request__item',
+            'request__requested_by',
+            'request__horticulture_stock_request',
+            'request__horticulture_stock_request__area',
+        )
         .prefetch_related(Prefetch('usage_logs', queryset=usage_logs_qs))
         .filter(request__requested_by=user)
-        .order_by('-issued_at')
     )
+    if area is not None:
+        issues = issues.filter(
+            models.Q(request__horticulture_stock_request__area=area) |
+            models.Q(request__purpose__icontains=f"[Horticulture - {area.name}]")
+        ).distinct()
+    issues = issues.order_by('-issued_at')
     if limit:
         issues = issues[:limit]
     out = []
@@ -2815,7 +2825,7 @@ def horticulture_stock(request):
             'areas': stable_horticulture_area_nav_rows(dashboard_payload['areas']),
             'area_stocks': area_stocks,
             'low_stocks': [stock for stock in area_stocks if stock.is_low],
-            'issued_items': _horticulture_usage_issues(request.user),
+            'issued_items': _horticulture_usage_issues(request.user, area=selected_area),
             'requested': request.GET.get('requested'),
             'zone_count': len(zones),
         },
