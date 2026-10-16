@@ -25,6 +25,8 @@
   <div style="font-size:26px;font-weight:900;margin:2px 0">{{ stock_card_count|default:0 }} Items</div>
   {% if low_stocks %}
   <div style="font-size:13px;color:#fde68a;margin-top:3px">{{ low_stocks|length }} item(s) running low</div>
+  {% elif active_requests %}
+  <div style="font-size:12px;opacity:.85;margin-top:3px">{{ active_requests|length }} request(s) in progress</div>
   {% else %}
   <div style="font-size:12px;opacity:.7;margin-top:3px">All stocks sufficient</div>
   {% endif %}
@@ -59,7 +61,7 @@
 {% endfor %}
 
 {% if active_requests %}
-<div class="sec">Requests In Progress</div>
+<div class="sec">Requests In Progress ({{ active_requests|length }})</div>
 {% for req in active_requests %}
 <div class="card" style="padding:10px;border-left:4px solid {% if req.status == 'approved' %}#22c55e{% else %}#f59e0b{% endif %}">
   <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
@@ -79,7 +81,7 @@
 {% endif %}
 
 {% if issued_items %}
-<div class="sec">Issued Items</div>
+<div class="sec">Issued Items ({{ issued_items|length }})</div>
 {% for issue in issued_items %}
 <div class="card" style="padding:10px">
   <div style="display:flex;justify-content:space-between;gap:8px">

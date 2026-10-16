@@ -2774,7 +2774,7 @@ def horticulture_manager_reports(request):
     )
 
 
-def _horticulture_usage_issues(user, limit=10):
+def _horticulture_usage_issues(user, limit=None):
     from apps.inventory.models import ItemIssue, ItemUsageLog
 
     usage_logs_qs = ItemUsageLog.objects.select_related('logged_by').order_by('-logged_at')
@@ -2783,8 +2783,10 @@ def _horticulture_usage_issues(user, limit=10):
         .select_related('request__item', 'request__requested_by')
         .prefetch_related(Prefetch('usage_logs', queryset=usage_logs_qs))
         .filter(request__requested_by=user)
-        .order_by('-issued_at')[:limit]
+        .order_by('-issued_at')
     )
+    if limit:
+        issues = issues[:limit]
     out = []
     for issue in issues:
         total_used = sum((log.quantity_used for log in issue.usage_logs.all()), Decimal('0'))

@@ -2325,6 +2325,17 @@ def hk_dashboard(request):
             "latest_assignment": latest_assignment,
         })
 
+    dashboard_area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
+    dashboard_active_requests = (
+        HKStockRequest.objects
+        .filter(requested_by=user, area=sel_area, status__in=["pending", "approved"])
+        .select_related("item", "inventory_request")
+        .order_by("-created_at")
+        if sel_area else []
+    )
+    dashboard_issued_items = _build_usage_issues(user, limit=None)
+    dashboard_stock_total = len(dashboard_area_stocks) + len(dashboard_issued_items) + len(dashboard_active_requests)
+
     return render(request, "housekeeping/mobile/dashboard.html", {
         "today": today,
         "today_dow": today_dow,
@@ -2375,6 +2386,10 @@ def hk_dashboard(request):
         "incharge_today_assignments": incharge_today_assignments,
         "leave_reselection_cards": leave_reselection_cards,
         "incharge_notice": incharge_notice,
+        "dashboard_stock_total": dashboard_stock_total,
+        "dashboard_area_stocks": dashboard_area_stocks,
+        "dashboard_active_requests": dashboard_active_requests,
+        "dashboard_issued_items": dashboard_issued_items,
     })
 
 
@@ -3287,12 +3302,12 @@ def hk_stock(request):
     visible_areas = visible_user_areas(user, user_areas)
     sel_area = selected_area(request, visible_areas)
     area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
-    issued_items = _build_usage_issues(user, limit=10)
+    issued_items = _build_usage_issues(user, limit=None)
     active_requests = (
         HKStockRequest.objects
         .filter(requested_by=user, area=sel_area, status__in=["pending", "approved"])
         .select_related("item", "inventory_request")
-        .order_by("-created_at")[:10]
+        .order_by("-created_at")
         if sel_area else []
     )
     return render(request, "housekeeping/mobile/stock.html", {
@@ -3387,13 +3402,13 @@ def hk_log_usage(request, pk):
     visible_areas = visible_user_areas(user, user_areas)
     sel_area = selected_area(request, visible_areas)
     area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
-    my_requests = HKStockRequest.objects.filter(requested_by=user).order_by("-created_at")[:10]
-    issued_items = _build_usage_issues(user, limit=10)
+    my_requests = HKStockRequest.objects.filter(requested_by=user).order_by("-created_at")
+    issued_items = _build_usage_issues(user, limit=None)
     active_requests = (
         HKStockRequest.objects
         .filter(requested_by=user, area=sel_area, status__in=["pending", "approved"])
         .select_related("item", "inventory_request")
-        .order_by("-created_at")[:10]
+        .order_by("-created_at")
         if sel_area else []
     )
     return render(request, "housekeeping/mobile/stock.html", {
