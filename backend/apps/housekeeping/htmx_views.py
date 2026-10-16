@@ -260,6 +260,7 @@ HOSTEL_RELIEVER_ASSIGNMENTS = {
             "Bhavika Ben Solanki",
             "urvashi ben vaghela",
             "Urvashi Ben Vaghela",
+            "Urvashi Ben Vaghela (#459)",
         ],
     },
 }
@@ -301,6 +302,7 @@ def _attendance_relievers_for_area(area):
             "Bhavika Ben Solanki",
             "urvashi ben vaghela",
             "Urvashi Ben Vaghela",
+            "Urvashi Ben Vaghela (#459)",
         ]
         return qs.filter(
             dm.Q(pay_code__in=common_reliever_pay_codes)

@@ -366,6 +366,7 @@ class Command(BaseCommand):
         {"area": "Hostel Common Area", "name": "Gurjar Ketan Amrutbhai", "phone": "8347139138", "pay_code": "100", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Ketan Gujjar"]},
         {"area": "Hostels Reliever", "name": "Anju Ben", "phone": "", "pay_code": "", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Anju ben"]},
         {"area": "Hostels Reliever", "name": "Sonala Manishaben", "phone": "9157691322", "pay_code": "356", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Manisha Ben", "Manisha ben R"]},
+        {"area": "Hostels Reliever", "name": "Urvashi Ben Vaghela", "phone": "", "pay_code": "459", "worker_type": "reliever", "shift": "day", "is_reliever": True, "supervisor_username": "vishwajeet.mishra", "legacy_names": ["Urvashi ben Nayan bhai Vaghela", "Urvashi Ben Vaghela", "Urvashi", "Urvashi Ben Vaghela (#459)", "Krunal", "Krunal Parmar"]},
     ]
 
     ACADEMIC_SUPERVISOR_BY_AREA = {
