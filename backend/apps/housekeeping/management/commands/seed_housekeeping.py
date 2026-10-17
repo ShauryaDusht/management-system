@@ -1355,11 +1355,11 @@ Existing account passwords are preserved.
                 worker.save(update_fields=['shift', 'supervisor'])
 
         deep_cleaning_roster = [
-            {'area': 'Deep Cleaning', 'name': 'Vaghela Chirag M', 'pay_code': '303', 'phone': '7698612890', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Vaghela Chirag M']},
-            {'area': 'Deep Cleaning', 'name': 'Parmar Vijay Kumar Chhaganbhai', 'pay_code': '329', 'phone': '9824347940', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Parmar Vijay Kumar Chhaganbhai']},
-            {'area': 'Deep Cleaning', 'name': 'Sunil R. Vaghela', 'pay_code': '455', 'phone': '9023986019', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Sunil R. Vaghela', 'Sunil R Vaghela']},
-            {'area': 'Deep Cleaning', 'name': 'Bhangi Sikandar D.', 'pay_code': '389', 'phone': '9723116238', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Bhangi Sikandar D.', 'Bhangi Sikandar D']},
-            {'area': 'Deep Cleaning', 'name': 'Makvana Nikhil Girishbhai', 'pay_code': '364', 'phone': '7572829754', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Makvana Nikhil Girishbhai']},
+            {'area': 'Deep Cleaning', 'name': 'Vaghela Chirag M', 'pay_code': '303', 'phone': '7698612890', 'worker_type': 'general', 'shift': 'day', 'is_reliever': True, 'legacy_names': ['Vaghela Chirag M', 'Vaghela Chirag Mohanbhai', 'Vaghela Chirag M.']},
+            {'area': 'Deep Cleaning', 'name': 'ParmarVijay Kumar Chhaganbha', 'pay_code': '329', 'phone': '9824347940', 'worker_type': 'general', 'shift': 'day', 'is_reliever': True, 'legacy_names': ['ParmarVijay Kumar Chhaganbha', 'Parmar Vijay Kumar Chhaganbhai', 'Parmar Vijaykumar', 'Parmar Vijay Kumar Chhaganbha']},
+            {'area': 'Deep Cleaning', 'name': 'sunil R. vaghela', 'pay_code': '455', 'phone': '9023986019', 'worker_type': 'general', 'shift': 'day', 'is_reliever': True, 'legacy_names': ['sunil R. vaghela', 'Sunil R. Vaghela', 'Sunil R Vaghela', 'Vaghela Sunilkumar Rajubhai']},
+            {'area': 'Deep Cleaning', 'name': 'Bhangi Sikandar D', 'pay_code': '389', 'phone': '9723116238', 'worker_type': 'general', 'shift': 'day', 'is_reliever': True, 'legacy_names': ['Bhangi Sikandar D', 'Bhangi Sikandar D.', 'Sikandarbhai Dungarbhai Bhangi']},
+            {'area': 'Deep Cleaning', 'name': 'Makvana Nikhi Girishbhai', 'pay_code': '364', 'phone': '7572829754', 'worker_type': 'general', 'shift': 'day', 'is_reliever': True, 'legacy_names': ['Makvana Nikhi Girishbhai', 'Makvana Nikhil Girishbhai', 'Makwana Nikhil']},
         ]
         deep_synced, deep_deactivated = self._sync_area_roster(deep_cleaning_roster, 'ganesh.jayesh')
         deep_deleted, deep_kept = self._cleanup_unused_inactive_workers(['Deep Cleaning'])

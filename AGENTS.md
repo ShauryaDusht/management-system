@@ -43,16 +43,24 @@ The following configurations are strictly locked per project owner requirements.
 
 ### 3. Other Staffing Invariants
 - **Maulik Patel (`maulik.patel`)**: Strictly excluded from reliever assignments / pool (`Research Park` has 0 relievers).
-- **Ashok Rathod (`ashok.rathod`)**: Supervisors Guest House New, Old Guest House, Director Bungalow, Canteen.
+- **Ashok Rathod (`ashok.rathod`)**: Supervises Guest House New, Director Bungalow, Canteen.
+- **Narendrakumar Natvarbhai Shrimali (`narendra.shrimali`)**: Supervises Roads & Outdoor and Old Guest House.
 
 ---
 
-### 4. Supervisor Reliever Invariant: Vankar Vishalkumar Aravindbhai
-- **Worker**: **Vankar Vishalkumar Aravindbhai** (ID `#172`, aliases: `Vankar Vishalkumar Aravindbha`, `Vishalkumar Vankar`, `Vishal Vankar`).
-- **Primary Reliever Role**: Designated as the primary / #1 reliever for **all supervisor sections** (Academic Blocks 1–13, Old Academic Common Area, New Academic Common Area, New AB U-Shape, Central Arcade, Sports Complex, Deep Cleaning, Solid Waste Management, Roads & Outdoor).
-- **Strict Exclusions (NEVER ADD TO THESE SECTIONS)**:
-  1. **Ashok Rathod (`ashok.rathod`)** supervisor sections (`Guest House New`, `Old Guest House`, `Director Bungalow`, `Canteen, Gate-01 and Gate-02`).
-  2. **Maulik Patel (`maulik.patel`)** supervisor of **Research Park**.
-  3. **Guest House** sections (`Guest House New`, `Old Guest House`, `Canteen`).
-  4. Caretaker sections (e.g. Caretaker Vishwajeet Mishra's `Hostel Common Area`).
+### 4. Supervisor Reliever Invariant: Exactly 6 Relievers for All Supervisor Sections
+All supervisor sections (Academic Blocks 1–13, Old Academic Common Area, New Academic Common Area, New AB U-Shape, Central Arcade, Sports Complex, Deep Cleaning, Solid Waste Management, Roads & Outdoor) must have **ONLY** these 6 relievers in the following exact order:
+1. **Vankar Vishalkumar Aravindbhai** (ID `#172`, aliases: `Vankar Vishalkumar Aravindbha`, `Vishalkumar Vankar`, `Vishal Vankar`)
+2. **Bhangi Sikandar D** (ID `#168`, pay code `389`, aliases: `Bhangi Sikandar D.`, `Sikandarbhai Dungarbhai Bhangi`)
+3. **Makvana Nikhi Girishbhai** (ID `#169`, pay code `364`, aliases: `Makvana Nikhil Girishbhai`, `Makwana Nikhil`)
+4. **ParmarVijay Kumar Chhaganbha** (ID `#166`, pay code `329`, aliases: `Parmar Vijay Kumar Chhaganbhai`, `Parmar Vijaykumar`)
+5. **sunil R. vaghela** (ID `#167`, pay code `455`, aliases: `Sunil R. Vaghela`, `Vaghela Sunilkumar Rajubhai`)
+6. **Vaghela Chirag M** (ID `#165`, pay code `303`, aliases: `Vaghela Chirag Mohanbhai`, `Vaghela Chirag M.`)
+
+#### Strict Exclusions (NEVER ADD THESE RELIEVERS TO THESE SECTIONS):
+1. **Maulik Patel (`maulik.patel`)** Supervisor (`Research Park` — 0 relievers).
+2. **Ashok Rathod (`ashok.rathod`)** Supervisor sections (`Guest House New`, `Director Bungalow`, `Canteen, Gate-01 and Gate-02`).
+3. **Narendrakumar Natvarbhai Shrimali (`narendra.shrimali`)** Supervisor's section: **Old Guest House** (Note: His other section `Roads & Outdoor` gets the 6 relievers).
+4. **Guest House** sections (`Guest House New`, `Old Guest House`, `Canteen`).
+5. Caretaker sections (Hostels / Caretakers like Vishwajeet Mishra's locked roster in `Hostel Common Area`).
 

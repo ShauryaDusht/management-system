@@ -335,54 +335,73 @@ def _attendance_relievers_for_area(area):
         return relievers.order_by("name")
 
     # Ashok Rathod's areas, Guest House areas, and Director Bungalow:
-    # Excluded from Vankar Vishalkumar Aravindbhai per user instruction:
-    # "but not add to this section --ashok.rathod superviser ,maulik.patel superviser of recharge park and Guest House"
+    # Excluded from the 6 supervisor relievers per user instruction:
+    # "but not add this section maulik.patel Supervisor , ashok.rathod Supervisor and Narendrakumar Natvarbhai Shrimali Supervisor ke is Area me add nahi karna hai Old Guest House"
     is_ashok_or_guesthouse = (
         getattr(area, "area_type", "") in {"guesthouse", "director"}
         or area.name in {"Guest House New", "Old Guest House", "Director Bungalow", "Canteen, Gate-01 and Gate-02"}
         or getattr(getattr(area, "supervisor", None), "username", "") == "ashok.rathod"
     )
     if is_ashok_or_guesthouse:
-        return qs.filter(is_reliever=True).exclude(
-            dm.Q(name__icontains="Vankar") | dm.Q(name__icontains="Vishalkumar")
-        ).order_by("name")
-
-    vankar_filter = dm.Q(name__iexact="Vankar Vishalkumar Aravindbhai") | dm.Q(name__icontains="Vankar")
-
-    if _uses_academic_reliever_pool(area):
-        return qs.filter(is_reliever=True).filter(
-            vankar_filter | dm.Q(area__name__in=["Old Academic Reliever", "New Academic Reliever"])
-        ).order_by(
-            dm.Case(
-                dm.When(vankar_filter, then=0),
-                dm.When(area__name="Old Academic Reliever", then=1),
-                dm.When(area__name="New Academic Reliever", then=2),
-                default=3,
-            ),
-            "name",
+        supervisor_reliever_filter = (
+            dm.Q(id__in=[172, 168, 169, 166, 167, 165])
+            | dm.Q(name__iexact="Vankar Vishalkumar Aravindbhai")
+            | dm.Q(name__icontains="Vankar")
+            | dm.Q(pay_code="389")
+            | dm.Q(name__icontains="Sikandar")
+            | dm.Q(pay_code="364")
+            | dm.Q(name__icontains="Nikhil")
+            | dm.Q(name__icontains="Nikhi")
+            | dm.Q(pay_code="329")
+            | dm.Q(name__icontains="ParmarVijay")
+            | dm.Q(pay_code="455")
+            | (dm.Q(name__icontains="sunil") & dm.Q(name__icontains="vaghela"))
+            | dm.Q(pay_code="303")
+            | dm.Q(name__icontains="Chirag")
         )
+        return qs.filter(is_reliever=True).exclude(supervisor_reliever_filter).order_by("name")
 
-    if _uses_new_academic_reliever_pool(area):
-        return qs.filter(is_reliever=True).filter(
-            vankar_filter | dm.Q(area__name__in=["New Academic Reliever", "Old Academic Reliever"])
-        ).order_by(
-            dm.Case(
-                dm.When(vankar_filter, then=0),
-                dm.When(area__name="New Academic Reliever", then=1),
-                dm.When(area__name="Old Academic Reliever", then=2),
-                default=3,
-            ),
-            "name",
-        )
+    # All supervisor sections (Academic Blocks 1-13, Old & New Academic Common Areas,
+    # New AB U-Shape, Central Arcade, Sports Complex, Deep Cleaning, Solid Waste Management,
+    # and Roads & Outdoor) receive ONLY the 6 specified supervisor relievers:
+    # 1. Vankar Vishalkumar Aravindbhai
+    # 2. Bhangi Sikandar D
+    # 3. Makvana Nikhi Girishbhai
+    # 4. ParmarVijay Kumar Chhaganbha
+    # 5. sunil R. vaghela
+    # 6. Vaghela Chirag M
+    supervisor_relievers_filter = (
+        dm.Q(id__in=[172, 168, 169, 166, 167, 165])
+        | dm.Q(name__iexact="Vankar Vishalkumar Aravindbhai")
+        | dm.Q(name__icontains="Vankar")
+        | dm.Q(pay_code="389")
+        | dm.Q(name__iexact="Bhangi Sikandar D")
+        | dm.Q(name__icontains="Sikandar")
+        | dm.Q(pay_code="364")
+        | dm.Q(name__iexact="Makvana Nikhi Girishbhai")
+        | dm.Q(name__icontains="Makvana Nikhi")
+        | dm.Q(name__icontains="Makvana Nikhil")
+        | dm.Q(pay_code="329")
+        | dm.Q(name__iexact="ParmarVijay Kumar Chhaganbha")
+        | dm.Q(name__icontains="ParmarVijay")
+        | dm.Q(name__icontains="Parmar Vijay")
+        | dm.Q(pay_code="455")
+        | dm.Q(name__iexact="sunil R. vaghela")
+        | (dm.Q(name__icontains="sunil") & dm.Q(name__icontains="vaghela"))
+        | dm.Q(pay_code="303")
+        | dm.Q(name__iexact="Vaghela Chirag M")
+        | (dm.Q(name__icontains="Chirag") & dm.Q(name__icontains="Vaghela"))
+    )
 
-    # All other supervisor sections (Central Arcade, Sports Complex, Deep Cleaning, Solid Waste Management, Roads & Outdoor)
-    # get Vankar Vishalkumar Aravindbhai as their designated #1 supervisor reliever along with the academic reliever pool
-    return qs.filter(is_reliever=True).filter(
-        vankar_filter | dm.Q(area__name__in=["Old Academic Reliever", "New Academic Reliever"])
-    ).order_by(
+    return qs.filter(supervisor_relievers_filter).order_by(
         dm.Case(
-            dm.When(vankar_filter, then=0),
-            default=1,
+            dm.When(dm.Q(id=172) | dm.Q(name__iexact="Vankar Vishalkumar Aravindbhai") | dm.Q(name__icontains="Vankar"), then=1),
+            dm.When(dm.Q(id=168) | dm.Q(pay_code="389") | dm.Q(name__iexact="Bhangi Sikandar D") | dm.Q(name__icontains="Sikandar"), then=2),
+            dm.When(dm.Q(id=169) | dm.Q(pay_code="364") | dm.Q(name__iexact="Makvana Nikhi Girishbhai") | dm.Q(name__icontains="Makvana Nikhi") | dm.Q(name__icontains="Makvana Nikhil"), then=3),
+            dm.When(dm.Q(id=166) | dm.Q(pay_code="329") | dm.Q(name__iexact="ParmarVijay Kumar Chhaganbha") | dm.Q(name__icontains="ParmarVijay") | dm.Q(name__icontains="Parmar Vijay"), then=4),
+            dm.When(dm.Q(id=167) | dm.Q(pay_code="455") | dm.Q(name__iexact="sunil R. vaghela") | (dm.Q(name__icontains="sunil") & dm.Q(name__icontains="vaghela")), then=5),
+            dm.When(dm.Q(id=165) | dm.Q(pay_code="303") | dm.Q(name__iexact="Vaghela Chirag M") | (dm.Q(name__icontains="Chirag") & dm.Q(name__icontains="Vaghela")), then=6),
+            default=7,
         ),
         "name",
     )
