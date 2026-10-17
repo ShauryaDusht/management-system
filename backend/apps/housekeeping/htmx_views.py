@@ -334,29 +334,58 @@ def _attendance_relievers_for_area(area):
             return relievers.filter(reliever_filter).order_by("name")
         return relievers.order_by("name")
 
+    # Ashok Rathod's areas, Guest House areas, and Director Bungalow:
+    # Excluded from Vankar Vishalkumar Aravindbhai per user instruction:
+    # "but not add to this section --ashok.rathod superviser ,maulik.patel superviser of recharge park and Guest House"
+    is_ashok_or_guesthouse = (
+        getattr(area, "area_type", "") in {"guesthouse", "director"}
+        or area.name in {"Guest House New", "Old Guest House", "Director Bungalow", "Canteen, Gate-01 and Gate-02"}
+        or getattr(getattr(area, "supervisor", None), "username", "") == "ashok.rathod"
+    )
+    if is_ashok_or_guesthouse:
+        return qs.filter(is_reliever=True).exclude(
+            dm.Q(name__icontains="Vankar") | dm.Q(name__icontains="Vishalkumar")
+        ).order_by("name")
+
+    vankar_filter = dm.Q(name__iexact="Vankar Vishalkumar Aravindbhai") | dm.Q(name__icontains="Vankar")
+
     if _uses_academic_reliever_pool(area):
-        return qs.filter(is_reliever=True).order_by(
+        return qs.filter(is_reliever=True).filter(
+            vankar_filter | dm.Q(area__name__in=["Old Academic Reliever", "New Academic Reliever"])
+        ).order_by(
             dm.Case(
-                dm.When(area__name="Old Academic Reliever", then=0),
-                dm.When(area__name="New Academic Reliever", then=1),
-                default=2,
+                dm.When(vankar_filter, then=0),
+                dm.When(area__name="Old Academic Reliever", then=1),
+                dm.When(area__name="New Academic Reliever", then=2),
+                default=3,
             ),
             "name",
         )
 
     if _uses_new_academic_reliever_pool(area):
-        return qs.filter(is_reliever=True).order_by(
+        return qs.filter(is_reliever=True).filter(
+            vankar_filter | dm.Q(area__name__in=["New Academic Reliever", "Old Academic Reliever"])
+        ).order_by(
             dm.Case(
-                dm.When(area__name="New Academic Reliever", then=0),
-                dm.When(area__name="Old Academic Reliever", then=1),
-                default=2,
+                dm.When(vankar_filter, then=0),
+                dm.When(area__name="New Academic Reliever", then=1),
+                dm.When(area__name="Old Academic Reliever", then=2),
+                default=3,
             ),
             "name",
         )
 
-    # Ashok Rathod's areas ("Guest House New", "Director Bungalow", "Canteen, Gate-01 and Gate-02")
-    # and all other supervisor sections get all active relievers
-    return qs.filter(is_reliever=True).order_by("name")
+    # All other supervisor sections (Central Arcade, Sports Complex, Deep Cleaning, Solid Waste Management, Roads & Outdoor)
+    # get Vankar Vishalkumar Aravindbhai as their designated #1 supervisor reliever along with the academic reliever pool
+    return qs.filter(is_reliever=True).filter(
+        vankar_filter | dm.Q(area__name__in=["Old Academic Reliever", "New Academic Reliever"])
+    ).order_by(
+        dm.Case(
+            dm.When(vankar_filter, then=0),
+            default=1,
+        ),
+        "name",
+    )
 
 
 def _shared_display_worker_qs_for_area(area):

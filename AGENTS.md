@@ -42,5 +42,17 @@ The following configurations are strictly locked per project owner requirements.
 ---
 
 ### 3. Other Staffing Invariants
-- **Maulik Patel (`maulik.patel`)**: Strictly excluded from reliever assignments / pool.
-- **Ashok Rathod (`ashok.rathod`)**: Has access to all active relievers.
+- **Maulik Patel (`maulik.patel`)**: Strictly excluded from reliever assignments / pool (`Research Park` has 0 relievers).
+- **Ashok Rathod (`ashok.rathod`)**: Supervisors Guest House New, Old Guest House, Director Bungalow, Canteen.
+
+---
+
+### 4. Supervisor Reliever Invariant: Vankar Vishalkumar Aravindbhai
+- **Worker**: **Vankar Vishalkumar Aravindbhai** (ID `#172`, aliases: `Vankar Vishalkumar Aravindbha`, `Vishalkumar Vankar`, `Vishal Vankar`).
+- **Primary Reliever Role**: Designated as the primary / #1 reliever for **all supervisor sections** (Academic Blocks 1–13, Old Academic Common Area, New Academic Common Area, New AB U-Shape, Central Arcade, Sports Complex, Deep Cleaning, Solid Waste Management, Roads & Outdoor).
+- **Strict Exclusions (NEVER ADD TO THESE SECTIONS)**:
+  1. **Ashok Rathod (`ashok.rathod`)** supervisor sections (`Guest House New`, `Old Guest House`, `Director Bungalow`, `Canteen, Gate-01 and Gate-02`).
+  2. **Maulik Patel (`maulik.patel`)** supervisor of **Research Park**.
+  3. **Guest House** sections (`Guest House New`, `Old Guest House`, `Canteen`).
+  4. Caretaker sections (e.g. Caretaker Vishwajeet Mishra's `Hostel Common Area`).
+

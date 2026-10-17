@@ -905,6 +905,7 @@ Existing account passwords are preserved.
             ('Solanki Akashkumar Hasmukhbhai',     '253', '8160847423', 'Old Academic Reliever', 'reliever', True),
             ('Pravinbhai Vaghela',                 '400', '9624126018', 'Old Academic Reliever', 'reliever', True),
             ('Jyotsanaben Vaghela',                '231', '9574720027', 'Old Academic Reliever', 'reliever', True),
+            ('Vankar Vishalkumar Aravindbhai',     '',    '',           'Old Academic Reliever', 'reliever', True),
             ('Jay Kumar Solanki',                  '105', '8511476360', 'Academic Block 9', 'room',     False),
             ('Padmaben',                           '347', '', 'Academic Block 10', 'floor',    False),
             ('Devendra',                           '437', '', 'Academic Block 10', 'room',     False),
