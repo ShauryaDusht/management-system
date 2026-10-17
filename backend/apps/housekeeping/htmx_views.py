@@ -273,12 +273,34 @@ def can_manage_housekeeping_user(user):
     return getattr(user, "role", "") in HOUSEKEEPING_MANAGER_ROLES
 
 
+def _is_reliever_excluded_section(area, user=None):
+    if user and getattr(user, "username", "") in {"maulik.patel", "ashok.rathod"}:
+        return True
+    if not area:
+        return False
+    if getattr(area, "area_type", "") in {"research_park", "guesthouse", "director"}:
+        return True
+    if getattr(area, "name", "") in {
+        "Research Park",
+        "Guest House New",
+        "Old Guest House",
+        "Director Bungalow",
+        "Canteen, Gate-01 and Gate-02",
+    }:
+        return True
+    if getattr(getattr(area, "supervisor", None), "username", "") in {"maulik.patel", "ashok.rathod"}:
+        return True
+    return False
+
+
 def _attendance_relievers_for_area(area):
     qs = HKWorker.objects.filter(is_active=True)
     if not area:
         return qs.none()
 
-    if getattr(area, "area_type", "") == "research_park" or (area.name or "").strip() == "Research Park":
+    # Excluded from relievers per user instruction:
+    # "but not add this section maulik.patel Supervisor , ashok.rathod Supervisor and Narendrakumar Natvarbhai Shrimali Supervisor ke is Area me add nahi karna hai Old Guest House"
+    if _is_reliever_excluded_section(area):
         return qs.none()
 
     if _is_jrha_area(area):
@@ -333,33 +355,6 @@ def _attendance_relievers_for_area(area):
                 reliever_filter |= dm.Q(name__in=names)
             return relievers.filter(reliever_filter).order_by("name")
         return relievers.order_by("name")
-
-    # Ashok Rathod's areas, Guest House areas, and Director Bungalow:
-    # Excluded from the 6 supervisor relievers per user instruction:
-    # "but not add this section maulik.patel Supervisor , ashok.rathod Supervisor and Narendrakumar Natvarbhai Shrimali Supervisor ke is Area me add nahi karna hai Old Guest House"
-    is_ashok_or_guesthouse = (
-        getattr(area, "area_type", "") in {"guesthouse", "director"}
-        or area.name in {"Guest House New", "Old Guest House", "Director Bungalow", "Canteen, Gate-01 and Gate-02"}
-        or getattr(getattr(area, "supervisor", None), "username", "") == "ashok.rathod"
-    )
-    if is_ashok_or_guesthouse:
-        supervisor_reliever_filter = (
-            dm.Q(id__in=[172, 168, 169, 166, 167, 165])
-            | dm.Q(name__iexact="Vankar Vishalkumar Aravindbhai")
-            | dm.Q(name__icontains="Vankar")
-            | dm.Q(pay_code="389")
-            | dm.Q(name__icontains="Sikandar")
-            | dm.Q(pay_code="364")
-            | dm.Q(name__icontains="Nikhil")
-            | dm.Q(name__icontains="Nikhi")
-            | dm.Q(pay_code="329")
-            | dm.Q(name__icontains="ParmarVijay")
-            | dm.Q(pay_code="455")
-            | (dm.Q(name__icontains="sunil") & dm.Q(name__icontains="vaghela"))
-            | dm.Q(pay_code="303")
-            | dm.Q(name__icontains="Chirag")
-        )
-        return qs.filter(is_reliever=True).exclude(supervisor_reliever_filter).order_by("name")
 
     # All supervisor sections (Academic Blocks 1-13, Old & New Academic Common Areas,
     # New AB U-Shape, Central Arcade, Sports Complex, Deep Cleaning, Solid Waste Management,
@@ -2205,7 +2200,7 @@ def hk_dashboard(request):
         area_workers = effective_workers_for_area(sel_area, today)
         mark_busy_workers(area_workers, busy_worker_ids_for_tasks(sel_area, today))
     mark_unavailable_workers(area_workers, today, current_half())
-    if user.username == "maulik.patel" or (sel_area and sel_area.area_type == "research_park"):
+    if _is_reliever_excluded_section(sel_area, user):
         reliever_workers = []
     else:
         reliever_workers = list(_attendance_relievers_for_area(sel_area))
@@ -2214,7 +2209,7 @@ def hk_dashboard(request):
     for record in records:
         record.can_multi_worker_assignment = can_multi_worker_task(user, record)
         record.area_workers_for_assignment = assignment_workers_for_record(area_workers, record)
-        if user.username == "maulik.patel" or (sel_area and sel_area.area_type == "research_park"):
+        if _is_reliever_excluded_section(sel_area, user):
             record.reliever_workers_for_assignment = []
         else:
             record.reliever_workers_for_assignment = assignment_workers_for_record(reliever_workers, record)
@@ -2812,7 +2807,7 @@ def hk_mark_task(request, record_id):
                     single_worker_id = request.POST.get("worker_id")
                     if single_worker_id:
                         worker_ids = [single_worker_id]
-                if user.username == "maulik.patel" or (record.area and record.area.area_type == "research_park"):
+                if _is_reliever_excluded_section(record.area, user):
                     area_relievers = []
                 else:
                     area_relievers = list(_attendance_relievers_for_area(record.area))
@@ -2867,7 +2862,7 @@ def hk_mark_task(request, record_id):
         elif record.assigned_worker_id:
             task_error = "Worker already assigned for this task."
         else:
-            if user.username == "maulik.patel" or (record.area and record.area.area_type == "research_park"):
+            if _is_reliever_excluded_section(record.area, user):
                 area_relievers = []
             else:
                 area_relievers = list(_attendance_relievers_for_area(record.area))
@@ -3080,7 +3075,7 @@ def hk_mark_task(request, record_id):
     area_workers = effective_workers_for_area(record.area, record.date)
     mark_busy_workers(area_workers, busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id))
     mark_unavailable_workers(area_workers, record.date, attendance_half_for_record(record))
-    if user.username == "maulik.patel" or (record.area and record.area.area_type == "research_park"):
+    if _is_reliever_excluded_section(record.area, user):
         reliever_workers = []
     else:
         reliever_workers = list(_attendance_relievers_for_area(record.area))
@@ -3126,7 +3121,7 @@ def hk_log_extra_work(request):
         selected_worker_ids = {int(wid) for wid in worker_ids if str(wid).isdigit()}
         extra_relievers = (
             set()
-            if (user.username == "maulik.patel" or is_research_park)
+            if _is_reliever_excluded_section(area, user) or is_research_park
             else {r.id for r in _attendance_relievers_for_area(area)}
         )
         allowed_worker_ids = display_worker_ids_for_area(area, timezone.localdate()) | extra_relievers
@@ -3339,7 +3334,7 @@ def hk_attendance(request):
                 ).select_related("reliever").first()
                 if not sub:
                     sub = _substitution_for_reliever(worker, sel_area, sel_date)
-                if user.username == "maulik.patel" or (sel_area and getattr(sel_area, "area_type", "") == "research_park"):
+                if _is_reliever_excluded_section(sel_area, user):
                     all_rel = []
                 else:
                     all_rel = list(_attendance_relievers_for_area(sel_area))
@@ -3390,7 +3385,7 @@ def hk_attendance(request):
             row["worker"], sel_area, sel_date
         )
 
-    if user.username == "maulik.patel" or (sel_area and getattr(sel_area, "area_type", "") == "research_park"):
+    if _is_reliever_excluded_section(sel_area, user):
         all_relievers = []
     else:
         all_relievers = list(_attendance_relievers_for_area(sel_area))
@@ -3447,13 +3442,13 @@ def hk_assign_reliever(request):
         return HttpResponseForbidden()
 
     user = request.user
-    if user.username == "maulik.patel":
-        return HttpResponseForbidden("Relievers cannot be assigned for Research Park.")
+    if _is_reliever_excluded_section(None, user):
+        return HttpResponseForbidden("Relievers cannot be assigned for this section.")
     user_areas = get_user_areas(user)
     area_id = request.POST.get("area_id")
     area = user_areas.filter(pk=area_id).first()
-    if area and getattr(area, "area_type", "") == "research_park":
-        return HttpResponseForbidden("Relievers cannot be assigned for Research Park.")
+    if _is_reliever_excluded_section(area, user):
+        return HttpResponseForbidden("Relievers cannot be assigned for this section.")
     today = timezone.localdate()
 
     original = get_object_or_404(HKWorker, pk=request.POST.get("original_worker_id"))

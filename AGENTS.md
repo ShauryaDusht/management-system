@@ -43,8 +43,8 @@ The following configurations are strictly locked per project owner requirements.
 
 ### 3. Other Staffing Invariants
 - **Maulik Patel (`maulik.patel`)**: Strictly excluded from reliever assignments / pool (`Research Park` has 0 relievers).
-- **Ashok Rathod (`ashok.rathod`)**: Supervises Guest House New, Director Bungalow, Canteen.
-- **Narendrakumar Natvarbhai Shrimali (`narendra.shrimali`)**: Supervises Roads & Outdoor and Old Guest House.
+- **Ashok Rathod (`ashok.rathod`)**: Strictly excluded from reliever assignments / pool (`Guest House New`, `Director Bungalow`, `Canteen, Gate-01 and Gate-02` have 0 relievers).
+- **Narendrakumar Natvarbhai Shrimali (`narendra.shrimali`)**: Supervises `Roads & Outdoor` (receives the 6 supervisor relievers) and `Old Guest House` (strictly excluded, 0 relievers).
 
 ---
 
@@ -57,10 +57,10 @@ All supervisor sections (Academic Blocks 1–13, Old Academic Common Area, New A
 5. **sunil R. vaghela** (ID `#167`, pay code `455`, aliases: `Sunil R. Vaghela`, `Vaghela Sunilkumar Rajubhai`)
 6. **Vaghela Chirag M** (ID `#165`, pay code `303`, aliases: `Vaghela Chirag Mohanbhai`, `Vaghela Chirag M.`)
 
-#### Strict Exclusions (NEVER ADD THESE RELIEVERS TO THESE SECTIONS):
+#### Strict Exclusions (0 Relievers — NEVER ADD RELIEVERS TO THESE SECTIONS):
 1. **Maulik Patel (`maulik.patel`)** Supervisor (`Research Park` — 0 relievers).
-2. **Ashok Rathod (`ashok.rathod`)** Supervisor sections (`Guest House New`, `Director Bungalow`, `Canteen, Gate-01 and Gate-02`).
-3. **Narendrakumar Natvarbhai Shrimali (`narendra.shrimali`)** Supervisor's section: **Old Guest House** (Note: His other section `Roads & Outdoor` gets the 6 relievers).
-4. **Guest House** sections (`Guest House New`, `Old Guest House`, `Canteen`).
+2. **Ashok Rathod (`ashok.rathod`)** Supervisor sections (`Guest House New`, `Director Bungalow`, `Canteen, Gate-01 and Gate-02` — 0 relievers).
+3. **Narendrakumar Natvarbhai Shrimali (`narendra.shrimali`)** Supervisor's section: **Old Guest House** (0 relievers; Note: His other section `Roads & Outdoor` gets the 6 relievers).
+4. **Guest House** sections (`Guest House New`, `Old Guest House`, `Canteen` — 0 relievers).
 5. Caretaker sections (Hostels / Caretakers like Vishwajeet Mishra's locked roster in `Hostel Common Area`).
 
