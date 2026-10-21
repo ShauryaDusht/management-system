@@ -47,8 +47,22 @@ export function normalizeExportConfig(config) {
   const moduleName = config.module || 'Campus Operations'
   const title = config.title || 'Report'
   const subtitle = config.subtitle || ''
-  const metadata = Array.isArray(config.metadata) ? config.metadata : []
-  const stats = Array.isArray(config.stats) ? config.stats : []
+
+  let metadata = []
+  if (Array.isArray(config.metadata)) {
+    metadata = config.metadata
+  } else if (config.metadata && typeof config.metadata === 'object') {
+    metadata = Object.entries(config.metadata).map(([label, value]) => ({ label, value }))
+  }
+
+  let stats = []
+  if (Array.isArray(config.stats)) {
+    stats = config.stats
+  } else if (Array.isArray(config.kpis)) {
+    stats = config.kpis
+  } else if (config.stats && typeof config.stats === 'object') {
+    stats = Object.entries(config.stats).map(([label, value]) => ({ label, value }))
+  }
 
   let sections = []
   if (Array.isArray(config.sections) && config.sections.length) {
@@ -71,6 +85,7 @@ export function normalizeExportConfig(config) {
     metadata,
     stats,
     sections,
+    photoTasks: config.photoTasks || config.taskPhotos || [],
   }
 }
 
@@ -125,12 +140,59 @@ export function exportToCsv(rawConfig) {
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. PDF EXPORT (jsPDF + autoTable)
 // ─────────────────────────────────────────────────────────────────────────────
+async function loadImageAsBase64(url, timeoutMs = 6000) {
+  if (!url) return null
+  const fetchPromise = (async () => {
+    try {
+      const res = await fetch(url, { mode: 'cors' })
+      if (res.ok) {
+        const blob = await res.blob()
+        return await new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result)
+          reader.onerror = () => resolve(null)
+          reader.readAsDataURL(blob)
+        })
+      }
+    } catch {
+      // Fallback to Image canvas
+    }
+    return new Promise((resolve) => {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas')
+            canvas.width = img.naturalWidth || 600
+            canvas.height = img.naturalHeight || 600
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(img, 0, 0)
+            resolve(canvas.toDataURL('image/jpeg', 0.85))
+          } catch {
+            resolve(null)
+          }
+        }
+        img.onerror = () => resolve(null)
+        img.src = url
+      } catch {
+        resolve(null)
+      }
+    })
+  })()
+
+  return Promise.race([
+    fetchPromise,
+    new Promise((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+  ])
+}
+
 export async function exportToPdf(rawConfig) {
   const config = normalizeExportConfig(rawConfig)
 
-  // Decide orientation: if any table has > 6 columns, use landscape
+  // Decide orientation: if any table has > 6 columns, or photoTasks are present, use landscape
   const maxCols = Math.max(0, ...config.sections.map((s) => (s.headers || []).length))
-  const orientation = maxCols > 6 ? 'landscape' : 'portrait'
+  const orientation = (config.photoTasks && config.photoTasks.length) || maxCols > 6 ? 'landscape' : 'portrait'
 
   const doc = new jsPDF({
     orientation,
@@ -141,111 +203,413 @@ export async function exportToPdf(rawConfig) {
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
 
-  // Top Accent Banner (Deep Pine Green)
-  doc.setFillColor(26, 60, 52) // #1a3c34
-  doc.rect(0, 0, pageWidth, 16, 'F')
+  const hasPhotoTasks = Array.isArray(config.photoTasks) && config.photoTasks.length > 0
 
-  doc.setTextColor(255, 255, 255)
-  doc.setFontSize(10)
-  doc.setFont('helvetica', 'bold')
-  doc.text(`CAMPUS SANCHALIKA  |  ${String(config.module).toUpperCase()}`, 14, 10.5)
+  if (!hasPhotoTasks) {
+    // Top Accent Banner (Deep Pine Green)
+    doc.setFillColor(26, 60, 52) // #1a3c34
+    doc.rect(0, 0, pageWidth, 16, 'F')
 
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
-  doc.text('Indian Institute of Technology Gandhinagar', pageWidth - 14, 10.5, { align: 'right' })
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`CAMPUS SANCHALIKA  |  ${String(config.module).toUpperCase()}`, 14, 10.5)
 
-  // Report Title
-  let currentY = 25
-  doc.setTextColor(26, 60, 52)
-  doc.setFontSize(16)
-  doc.setFont('helvetica', 'bold')
-  doc.text(config.title, 14, currentY)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.text('Indian Institute of Technology Gandhinagar', pageWidth - 14, 10.5, { align: 'right' })
 
-  currentY += 6
-  doc.setFontSize(9)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(110, 110, 110)
+    // Report Title
+    let currentY = 25
+    doc.setTextColor(26, 60, 52)
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.text(config.title, 14, currentY)
 
-  const genDateStr = `Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} at ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
-  const metaParts = [genDateStr]
-  config.metadata.forEach((m) => {
-    if (m.label && m.value) metaParts.push(`${m.label}: ${m.value}`)
-  })
-  doc.text(metaParts.join('  •  '), 14, currentY)
-
-  // Stats boxes if present
-  if (config.stats.length) {
     currentY += 6
-    const statBoxWidth = Math.min(42, (pageWidth - 28 - (config.stats.length - 1) * 6) / config.stats.length)
-    config.stats.forEach((st, idx) => {
-      const boxX = 14 + idx * (statBoxWidth + 6)
-      doc.setFillColor(248, 246, 242) // #f8f6f2
-      doc.setDrawColor(229, 225, 216) // #e5e1d8
-      doc.roundedRect(boxX, currentY, statBoxWidth, 14, 2, 2, 'FD')
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(110, 110, 110)
 
-      doc.setFontSize(7.5)
-      doc.setFont('helvetica', 'bold')
-      doc.setTextColor(120, 115, 110)
-      doc.text(String(st.label).toUpperCase(), boxX + statBoxWidth / 2, currentY + 4.5, { align: 'center' })
-
-      doc.setFontSize(12)
-      doc.setFont('helvetica', 'bold')
-      doc.setTextColor(26, 60, 52)
-      doc.text(String(st.value), boxX + statBoxWidth / 2, currentY + 11.5, { align: 'center' })
+    const genDateStr = `Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} at ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
+    const metaParts = [genDateStr]
+    config.metadata.forEach((m) => {
+      if (m.label && m.value) metaParts.push(`${m.label}: ${m.value}`)
     })
-    currentY += 18
-  } else {
-    currentY += 4
-  }
+    doc.text(metaParts.join('  •  '), 14, currentY)
 
-  // Render Table Sections
-  config.sections.forEach((sec) => {
-    if (sec.title) {
-      if (currentY > pageHeight - 35) {
-        doc.addPage()
-        currentY = 20
-      }
-      doc.setFontSize(12)
-      doc.setFont('helvetica', 'bold')
-      doc.setTextColor(45, 74, 62)
-      doc.text(sec.title, 14, currentY + 4)
-      currentY += 7
+    // Stats boxes if present
+    if (config.stats.length) {
+      currentY += 6
+      const statBoxWidth = Math.min(42, (pageWidth - 28 - (config.stats.length - 1) * 6) / config.stats.length)
+      config.stats.forEach((st, idx) => {
+        const boxX = 14 + idx * (statBoxWidth + 6)
+        doc.setFillColor(248, 246, 242) // #f8f6f2
+        doc.setDrawColor(229, 225, 216) // #e5e1d8
+        doc.roundedRect(boxX, currentY, statBoxWidth, 14, 2, 2, 'FD')
+
+        doc.setFontSize(7.5)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(120, 115, 110)
+        doc.text(String(st.label).toUpperCase(), boxX + statBoxWidth / 2, currentY + 4.5, { align: 'center' })
+
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(26, 60, 52)
+        doc.text(String(st.value), boxX + statBoxWidth / 2, currentY + 11.5, { align: 'center' })
+      })
+      currentY += 18
+    } else {
+      currentY += 4
     }
 
-    const head = [sec.headers.map((h) => cleanText(h))]
-    const body = (sec.rows || []).map((row) => row.map((c) => cleanText(c)))
+    // Render Table Sections
+    config.sections.forEach((sec) => {
+      if (sec.title) {
+        if (currentY > pageHeight - 35) {
+          doc.addPage()
+          currentY = 20
+        }
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(45, 74, 62)
+        doc.text(sec.title, 14, currentY + 4)
+        currentY += 7
+      }
 
-    autoTable(doc, {
-      startY: currentY,
-      head,
-      body,
-      theme: 'grid',
-      headStyles: {
-        fillColor: [45, 74, 62], // #2d4a3e
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-        fontSize: 8.5,
-        halign: 'left',
-      },
-      bodyStyles: {
-        fontSize: 8,
-        textColor: [30, 30, 30],
-        cellPadding: 2.2,
-      },
-      alternateRowStyles: {
-        fillColor: [249, 248, 246],
-      },
-      styles: {
-        lineColor: [229, 225, 216],
-        lineWidth: 0.15,
-        overflow: 'linebreak',
-      },
-      margin: { left: 14, right: 14 },
-      didDrawPage: () => {},
+      const head = [sec.headers.map((h) => cleanText(h))]
+      const body = (sec.rows || []).map((row) => row.map((c) => cleanText(c)))
+      const colCount = sec.headers.length
+
+      const urlColIndex = sec.headers.findIndex((h) => /photo\s*url|url/i.test(String(h)))
+      const columnStyles = {}
+      if (urlColIndex !== -1) {
+        columnStyles[urlColIndex] = {
+          cellWidth: 46,
+          fontSize: 5.5,
+          overflow: 'linebreak',
+        }
+      }
+
+      autoTable(doc, {
+        startY: currentY,
+        head,
+        body,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [45, 74, 62], // #2d4a3e
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: colCount > 8 ? 7.5 : 8.5,
+          halign: 'left',
+        },
+        bodyStyles: {
+          fontSize: colCount > 8 ? 6.8 : 8,
+          textColor: [30, 30, 30],
+          cellPadding: colCount > 8 ? 1.6 : 2.2,
+        },
+        alternateRowStyles: {
+          fillColor: [249, 248, 246],
+        },
+        columnStyles,
+        styles: {
+          lineColor: [229, 225, 216],
+          lineWidth: 0.15,
+          overflow: 'linebreak',
+        },
+        margin: { left: 14, right: 14 },
+        didDrawPage: () => {},
+      })
+
+      currentY = (doc.lastAutoTable?.finalY || currentY) + 10
     })
+  }
 
-    currentY = (doc.lastAutoTable?.finalY || currentY) + 10
-  })
+  // ── Render 2 × 2 Inch Side-by-Side Task Photo Pages (2 to 3 Tasks Per Page) ──
+  if (hasPhotoTasks) {
+    // 1 inch = 25.4 mm => exactly 2 inches = 50.8 mm
+    const PHOTO_W = 50.8
+    const PHOTO_H = 50.8
+    const BEFORE_X = 168
+    const AFTER_X = 168 + PHOTO_W + 5 // 223.8 mm (Card ends at 283 mm)
+
+    // Pre-load all Before & After images in parallel
+    const loadedTasks = await Promise.all(
+      config.photoTasks.map(async (task) => {
+        const [beforeData, afterData] = await Promise.all([
+          loadImageAsBase64(task.before_photo_url),
+          loadImageAsBase64(task.after_photo_url),
+        ])
+        return {
+          ...task,
+          beforeData,
+          afterData,
+        }
+      })
+    )
+
+    // Format time safely for labels
+    const formatTimeSafe = (val) => {
+      if (!val) return ''
+      try {
+        const d = new Date(val)
+        if (isNaN(d.getTime())) return ''
+        return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+      } catch {
+        return ''
+      }
+    }
+
+    // Partition tasks so every page contains exactly 2 or 3 tasks (never 1 task unless total is 1)
+    const partitionIntoPages = (total) => {
+      if (total <= 3) return [total]
+      const chunks = []
+      let rem = total
+      while (rem > 0) {
+        if (rem === 4) {
+          chunks.push(2, 2)
+          rem = 0
+        } else if (rem === 2) {
+          chunks.push(2)
+          rem = 0
+        } else {
+          chunks.push(3)
+          rem -= 3
+        }
+      }
+      return chunks
+    }
+
+    const pageChunks = partitionIntoPages(loadedTasks.length)
+    let taskPointer = 0
+
+    const drawPageHeader = (visualPageNum, totalVisualPages) => {
+      // Top Accent Banner (Deep Pine Green #1a3c34)
+      doc.setFillColor(26, 60, 52)
+      doc.rect(0, 0, pageWidth, 14, 'F')
+
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(9.5)
+      doc.setFont('helvetica', 'bold')
+      doc.text(`CAMPUS SANCHALIKA  |  ${String(config.module || 'HORTICULTURE OPERATIONS').toUpperCase()}`, 14, 9.5)
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.text('Indian Institute of Technology Gandhinagar', pageWidth - 14, 9.5, { align: 'right' })
+
+      // Page Title & Header
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(26, 60, 52)
+      doc.text(`${cleanText(config.title)} — Visual Task Audit (2x2 in Photos)`, 14, 20.5)
+
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100, 116, 139)
+      const pageInfo = totalVisualPages > 1 ? `Visual Page ${visualPageNum} of ${totalVisualPages}  •  ` : ''
+      doc.text(`${pageInfo}2 to 3 Tasks / Page  •  2x2 inch (50.8x50.8 mm) Photos`, pageWidth - 14, 20.5, { align: 'right' })
+    }
+
+    pageChunks.forEach((chunkCount, pageIdx) => {
+      // First batch renders on initial Page 1; subsequent batches add new landscape pages
+      if (pageIdx > 0) {
+        doc.addPage('a4', 'landscape')
+      }
+      drawPageHeader(pageIdx + 1, pageChunks.length)
+
+      // Dynamic spacing: if 3 tasks, card height 55.5 mm; if 2 tasks, 56.5 mm with more vertical breathing room
+      const cardH = chunkCount === 3 ? 55.5 : 56.5
+      const gapY = chunkCount === 3 ? 3.0 : 8.0
+      const startY = chunkCount === 3 ? 23.0 : 35.0
+
+      for (let i = 0; i < chunkCount; i += 1) {
+        const task = loadedTasks[taskPointer]
+        if (!task) break
+        taskPointer += 1
+
+        const cardY = startY + i * (cardH + gapY)
+
+        // ── Task Card Outer Container ──
+        doc.setFillColor(255, 255, 255)
+        doc.setDrawColor(226, 232, 240)
+        doc.setLineWidth(0.35)
+        doc.roundedRect(14, cardY, pageWidth - 28, cardH, 1.5, 1.5, 'FD')
+
+        // Left Accent Bar (Pine Green)
+        doc.setFillColor(26, 60, 52)
+        doc.roundedRect(14, cardY, 2.5, cardH, 1, 1, 'F')
+
+        // Vertical Separator between Details & Photos
+        doc.setDrawColor(226, 232, 240)
+        doc.setLineWidth(0.25)
+        doc.line(164, cardY + 3, 164, cardY + cardH - 3)
+
+        // ── 1. LEFT SIDE: Task Details ──
+        // Row 1: Task Name & Task ID
+        doc.setFontSize(9.5)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(26, 60, 52)
+        const taskName = cleanText(task.task_name || task.task_type_name || 'Horticulture Task')
+        const shortTaskName = doc.splitTextToSize(taskName, 105)[0] || taskName
+        doc.text(shortTaskName, 20, cardY + 6.5)
+
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(100, 116, 139)
+        doc.text(`[Task #${task.id}]`, 160, cardY + 6.5, { align: 'right' })
+
+        // Row 2: Area / Location
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(71, 85, 105)
+        doc.text('Area / Location:', 20, cardY + 13.5)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(15, 23, 42)
+        const areaName = cleanText(task.area_name || 'General Campus')
+        const shortArea = doc.splitTextToSize(areaName, 100)[0] || areaName
+        doc.text(shortArea, 52, cardY + 13.5)
+
+        // Row 3: Supervisor (Photo By)
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(21, 128, 61)
+        doc.text('Photo By (Supervisor):', 20, cardY + 20.5)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(21, 128, 61)
+        const supervisorName = cleanText(task.supervisor_name || 'Supervisor')
+        const shortSupervisor = doc.splitTextToSize(supervisorName, 90)[0] || supervisorName
+        doc.text(shortSupervisor, 62, cardY + 20.5)
+
+        // Row 4: Assigned Worker(s)
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(71, 85, 105)
+        doc.text('Assigned Worker(s):', 20, cardY + 27.5)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(15, 23, 42)
+        const workerName = cleanText(task.worker_name || 'Unassigned')
+        const shortWorker = doc.splitTextToSize(workerName, 95)[0] || workerName
+        doc.text(shortWorker, 58, cardY + 27.5)
+
+        // Row 5: Date & Session
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(71, 85, 105)
+        doc.text('Date & Session:', 20, cardY + 34.5)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(15, 23, 42)
+        const dateStr = cleanText(task.date || '-')
+        const sessionStr = task.session ? ` (${task.session})` : ''
+        doc.text(`${dateStr}${sessionStr}`, 52, cardY + 34.5)
+
+        // Row 6: Note / Remarks
+        doc.setFontSize(7.5)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(100, 116, 139)
+        doc.text('Remarks / Notes:', 20, cardY + 41.5)
+        doc.setFont('helvetica', 'italic')
+        doc.setTextColor(100, 116, 139)
+        const noteText = cleanText(task.note ? doc.splitTextToSize(task.note, 100)[0] : 'None recorded')
+        doc.text(noteText, 52, cardY + 41.5)
+
+        // Row 7: Verification Badge Pill
+        doc.setFillColor(240, 253, 244)
+        doc.setDrawColor(187, 247, 208)
+        doc.setLineWidth(0.2)
+        doc.roundedRect(20, cardY + 46.5, 138, 5.5, 1, 1, 'FD')
+
+        doc.setFontSize(6.8)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(22, 101, 52)
+        doc.text('VERIFIED PHOTO LOG  •  Field Supervisor Photo Authority', 23, cardY + 50.3)
+
+        // ── 2. RIGHT SIDE: Side-by-Side 2 × 2 Inch Photos ──
+        const PHOTO_Y = cardY + 4.6
+
+        // ── A. BEFORE PHOTO (Left Column) ──
+        // Label Bar (amber)
+        doc.setFillColor(254, 243, 199)
+        doc.setDrawColor(245, 158, 11)
+        doc.setLineWidth(0.25)
+        doc.roundedRect(BEFORE_X, cardY + 0.8, PHOTO_W, 3.8, 0.8, 0.8, 'FD')
+
+        doc.setFontSize(6.8)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(180, 83, 9)
+        doc.text('BEFORE PHOTO', BEFORE_X + 2, cardY + 3.4)
+
+        const beforeTime = formatTimeSafe(task.before_uploaded_at)
+        if (beforeTime) {
+          doc.setFontSize(6)
+          doc.setFont('helvetica', 'normal')
+          doc.text(beforeTime, BEFORE_X + PHOTO_W - 2, cardY + 3.4, { align: 'right' })
+        }
+
+        // Photo Image / Frame (Exactly 2 × 2 inches: 50.8 × 50.8 mm)
+        if (task.beforeData) {
+          doc.addImage(task.beforeData, 'JPEG', BEFORE_X, PHOTO_Y, PHOTO_W, PHOTO_H, undefined, 'FAST')
+          doc.setDrawColor(203, 213, 225)
+          doc.setLineWidth(0.25)
+          doc.rect(BEFORE_X, PHOTO_Y, PHOTO_W, PHOTO_H, 'S')
+        } else {
+          doc.setFillColor(243, 244, 246)
+          doc.rect(BEFORE_X, PHOTO_Y, PHOTO_W, PHOTO_H, 'F')
+          doc.setDrawColor(209, 213, 219)
+          doc.setLineWidth(0.25)
+          doc.rect(BEFORE_X, PHOTO_Y, PHOTO_W, PHOTO_H, 'S')
+
+          doc.setFontSize(8)
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(156, 163, 175)
+          doc.text('Photo Not Available', BEFORE_X + PHOTO_W / 2, PHOTO_Y + 23, { align: 'center' })
+          doc.setFontSize(6.5)
+          doc.setFont('helvetica', 'normal')
+          doc.text('(Before photo not captured)', BEFORE_X + PHOTO_W / 2, PHOTO_Y + 29, { align: 'center' })
+        }
+
+        // ── B. AFTER PHOTO (Right Column) ──
+        // Label Bar (green)
+        doc.setFillColor(220, 252, 231)
+        doc.setDrawColor(34, 197, 94)
+        doc.setLineWidth(0.25)
+        doc.roundedRect(AFTER_X, cardY + 0.8, PHOTO_W, 3.8, 0.8, 0.8, 'FD')
+
+        doc.setFontSize(6.8)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(21, 128, 61)
+        doc.text('AFTER PHOTO', AFTER_X + 2, cardY + 3.4)
+
+        const afterTime = formatTimeSafe(task.after_uploaded_at)
+        if (afterTime) {
+          doc.setFontSize(6)
+          doc.setFont('helvetica', 'normal')
+          doc.text(afterTime, AFTER_X + PHOTO_W - 2, cardY + 3.4, { align: 'right' })
+        }
+
+        // Photo Image / Frame (Exactly 2 × 2 inches: 50.8 × 50.8 mm)
+        if (task.afterData) {
+          doc.addImage(task.afterData, 'JPEG', AFTER_X, PHOTO_Y, PHOTO_W, PHOTO_H, undefined, 'FAST')
+          doc.setDrawColor(203, 213, 225)
+          doc.setLineWidth(0.25)
+          doc.rect(AFTER_X, PHOTO_Y, PHOTO_W, PHOTO_H, 'S')
+        } else {
+          doc.setFillColor(243, 244, 246)
+          doc.rect(AFTER_X, PHOTO_Y, PHOTO_W, PHOTO_H, 'F')
+          doc.setDrawColor(209, 213, 219)
+          doc.setLineWidth(0.25)
+          doc.rect(AFTER_X, PHOTO_Y, PHOTO_W, PHOTO_H, 'S')
+
+          doc.setFontSize(8)
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(156, 163, 175)
+          doc.text('Photo Not Available', AFTER_X + PHOTO_W / 2, PHOTO_Y + 23, { align: 'center' })
+          doc.setFontSize(6.5)
+          doc.setFont('helvetica', 'normal')
+          doc.text('(After photo not captured)', AFTER_X + PHOTO_W / 2, PHOTO_Y + 29, { align: 'center' })
+        }
+      }
+    })
+  }
 
   // Add Page Numbers & Footer to each page
   const totalPages = doc.internal.getNumberOfPages()

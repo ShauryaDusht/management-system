@@ -397,6 +397,7 @@ class AdminDailyAssignmentSerializer(serializers.ModelSerializer):
     area_name = serializers.CharField(source='area.name', read_only=True)
     task_type_name = serializers.CharField(source='task_type.name', read_only=True)
     assigned_by_name = serializers.SerializerMethodField()
+    completed_by_name = serializers.SerializerMethodField()
     photo_url = serializers.SerializerMethodField()
     photo_before_url = serializers.SerializerMethodField()
     photo_after_url = serializers.SerializerMethodField()
@@ -419,6 +420,7 @@ class AdminDailyAssignmentSerializer(serializers.ModelSerializer):
             'status',
             'started_at',
             'completed_by',
+            'completed_by_name',
             'completed_at',
             'photo_before',
             'photo_before_url',
@@ -431,9 +433,16 @@ class AdminDailyAssignmentSerializer(serializers.ModelSerializer):
             'photo_after_uploaded_at',
             'note',
         ]
-        read_only_fields = ['assigned_by', 'assigned_by_name', 'assigned_at', 'started_at', 'completed_by', 'completed_at', 'photo_uploaded_at', 'photo_before_uploaded_at', 'photo_after_uploaded_at']
+        read_only_fields = ['assigned_by', 'assigned_by_name', 'assigned_at', 'started_at', 'completed_by', 'completed_by_name', 'completed_at', 'photo_uploaded_at', 'photo_before_uploaded_at', 'photo_after_uploaded_at']
 
     def get_assigned_by_name(self, obj):
+        if obj.assigned_by:
+            return obj.assigned_by.get_full_name() or obj.assigned_by.username
+        return ''
+
+    def get_completed_by_name(self, obj):
+        if obj.completed_by:
+            return obj.completed_by.get_full_name() or obj.completed_by.username
         if obj.assigned_by:
             return obj.assigned_by.get_full_name() or obj.assigned_by.username
         return ''

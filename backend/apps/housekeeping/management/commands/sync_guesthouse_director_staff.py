@@ -360,13 +360,12 @@ class Command(BaseCommand):
         {"area": "Kyzeel", "name": "Mehulkumar Jadeja", "phone": "7096229284", "pay_code": "106", "worker_type": "washroom", "shift": "day", "is_reliever": False, "legacy_names": ["Mehul Jadeja"]},
         {"area": "Hostel Common Area", "name": "Yogeshbhai Kantibhai Vaghela", "phone": "9998100804", "pay_code": "80", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Yogesh Vaghela"]},
         {"area": "Hostel Common Area", "name": "Solanki Vinayak", "phone": "9023271834", "pay_code": "240", "worker_type": "washroom", "shift": "night", "is_reliever": False, "legacy_names": ["Vinayak Solanki"]},
-        {"area": "Hostel Common Area", "name": "Bhavika Ben Solanki", "phone": "", "pay_code": "457", "worker_type": "general", "shift": "day", "is_reliever": False, "legacy_names": ["Bhavika ben solnki", "Bhavika Ben Solanki"]},
-        {"area": "Hostel Common Area", "name": "Urvashi Ben Vaghela", "phone": "", "pay_code": "459", "worker_type": "general", "shift": "day", "is_reliever": False, "legacy_names": ["Urvashi ben Nayan bhai Vaghela", "Urvashi Ben Vaghela", "Urvashi", "Krunal", "Krunal Parmar"]},
-        {"area": "Hostel Common Area", "name": "Suresh Solanki", "phone": "", "pay_code": "472", "worker_type": "general", "shift": "day", "is_reliever": False, "legacy_names": ["Suresh", "Suresh Solanki"]},
+        {"area": "Hostel Common Area", "name": "Thakor Anilkumar Naginji", "phone": "9265665289", "pay_code": "542", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Anil Thakur", "Anilkumar Bhupatji Thakor"]},
+        {"area": "Hostel Common Area", "name": "Suresh", "phone": "", "pay_code": "", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Suresh"]},
+        {"area": "Hostel Common Area", "name": "Krunal", "phone": "", "pay_code": "", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Krunal", "Solanki Krunal Amrutbhai"]},
         {"area": "Hostel Common Area", "name": "Gurjar Ketan Amrutbhai", "phone": "8347139138", "pay_code": "100", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Ketan Gujjar"]},
         {"area": "Hostels Reliever", "name": "Anju Ben", "phone": "", "pay_code": "", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Anju ben"]},
         {"area": "Hostels Reliever", "name": "Sonala Manishaben", "phone": "9157691322", "pay_code": "356", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Manisha Ben", "Manisha ben R"]},
-        {"area": "Hostels Reliever", "name": "Urvashi Ben Vaghela", "phone": "", "pay_code": "459", "worker_type": "reliever", "shift": "day", "is_reliever": True, "supervisor_username": "vishwajeet.mishra", "legacy_names": ["Urvashi ben Nayan bhai Vaghela", "Urvashi Ben Vaghela", "Urvashi", "Urvashi Ben Vaghela (#459)", "Krunal", "Krunal Parmar"]},
     ]
 
     ACADEMIC_SUPERVISOR_BY_AREA = {
@@ -411,12 +410,6 @@ class Command(BaseCommand):
         {"area": "Old Academic Reliever", "name": "Solanki Akashkumar Hasmukhbhai", "phone": "8160847423", "pay_code": "253", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Akash"]},
         {"area": "Old Academic Reliever", "name": "Pravinbhai Vaghela", "phone": "9624126018", "pay_code": "400", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Pravinbhai M Vaghela"]},
         {"area": "Old Academic Reliever", "name": "Jyotsanaben Vaghela", "phone": "9574720027", "pay_code": "231", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Jyostnaben A Vaghela", "Jyostnaben"]},
-        {"area": "Old Academic Reliever", "name": "Vankar Vishalkumar Aravindbhai", "phone": "", "pay_code": "", "worker_type": "reliever", "shift": "day", "is_reliever": True, "legacy_names": ["Vankar Vishalkumar Aravindbha", "Vankar Vishalkumar Aravindbhai", "Vishalkumar Vankar", "Vishal Vankar"]},
-        {"area": "Deep Cleaning", "name": "Bhangi Sikandar D", "phone": "9723116238", "pay_code": "389", "worker_type": "general", "shift": "day", "is_reliever": True, "legacy_names": ["Bhangi Sikandar D", "Bhangi Sikandar D.", "Sikandarbhai Dungarbhai Bhangi"]},
-        {"area": "Deep Cleaning", "name": "Makvana Nikhi Girishbhai", "phone": "7572829754", "pay_code": "364", "worker_type": "general", "shift": "day", "is_reliever": True, "legacy_names": ["Makvana Nikhi Girishbhai", "Makvana Nikhil Girishbhai", "Makwana Nikhil"]},
-        {"area": "Deep Cleaning", "name": "ParmarVijay Kumar Chhaganbha", "phone": "9824347940", "pay_code": "329", "worker_type": "general", "shift": "day", "is_reliever": True, "legacy_names": ["ParmarVijay Kumar Chhaganbha", "Parmar Vijay Kumar Chhaganbhai", "Parmar Vijaykumar", "Parmar Vijay Kumar Chhaganbha"]},
-        {"area": "Deep Cleaning", "name": "sunil R. vaghela", "phone": "9023986019", "pay_code": "455", "worker_type": "general", "shift": "day", "is_reliever": True, "legacy_names": ["sunil R. vaghela", "Sunil R. Vaghela", "Sunil R Vaghela", "Vaghela Sunilkumar Rajubhai"]},
-        {"area": "Deep Cleaning", "name": "Vaghela Chirag M", "phone": "7698612890", "pay_code": "303", "worker_type": "general", "shift": "day", "is_reliever": True, "legacy_names": ["Vaghela Chirag M", "Vaghela Chirag Mohanbhai", "Vaghela Chirag M."]},
         {"area": "Academic Block 9", "name": "Jay Kumar Solanki", "phone": "8511476360", "pay_code": "105", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Jay", "Jay Solanki"]},
         {"area": "Academic Block 10", "name": "Padmaben", "phone": "", "pay_code": "347", "worker_type": "floor", "shift": "day", "is_reliever": False, "legacy_names": ["Padmaben Vaghela", "Padma", "Vaghela Padma"]},
         {"area": "Academic Block 10", "name": "Devendra", "phone": "", "pay_code": "437", "worker_type": "room", "shift": "day", "is_reliever": False, "legacy_names": ["Parmar Devendra Dalpatbhai"]},
@@ -596,8 +589,9 @@ class Command(BaseCommand):
                     f"Supervisor/caretaker {username} not found; keeping existing assignment when possible."
                 )
 
+        beauki = HKArea.objects.filter(name__in=["Beauki", "Beuaki"]).first()
         areas = {
-            name: HKArea.objects.filter(name=name).first()
+            name: (beauki if name in {"Beauki", "Beuaki"} else HKArea.objects.filter(name=name).first())
             for name in {spec["area"] for spec in full_roster}
         }
         missing_areas = sorted(name for name, area in areas.items() if area is None)

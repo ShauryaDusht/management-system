@@ -249,20 +249,7 @@ HOSTEL_RELIEVER_ASSIGNMENTS = {
     "Jurqia": {"pay_codes": ["136"]},
     "Kyzeel": {"pay_codes": ["154"]},
     "Lekhaag": {"pay_codes": ["88"]},
-    "Hostel Common Area": {
-        "pay_codes": ["100", "472", "80", "240", "457", "459"],
-        "names": [
-            "Gurjar Ketan Amrutbhai",
-            "Suresh Solanki",
-            "Yogeshbhai Kantibhai Vaghela",
-            "Solanki Vinayak",
-            "Bhavika ben solanki",
-            "Bhavika Ben Solanki",
-            "urvashi ben vaghela",
-            "Urvashi Ben Vaghela",
-            "Urvashi Ben Vaghela (#459)",
-        ],
-    },
+    "Hostel Common Area": {"pay_codes": ["471"]},
 }
 
 HOUSEKEEPING_MANAGER_ROLES = {"admin", "hk_inventory_manager"}
@@ -273,78 +260,19 @@ def can_manage_housekeeping_user(user):
     return getattr(user, "role", "") in HOUSEKEEPING_MANAGER_ROLES
 
 
-def _is_reliever_excluded_section(area, user=None):
-    if user and getattr(user, "username", "") in {"maulik.patel", "ashok.rathod"}:
-        return True
-    if not area:
-        return False
-    if getattr(area, "area_type", "") in {"research_park", "guesthouse", "director"}:
-        return True
-    if getattr(area, "name", "") in {
-        "Research Park",
-        "Guest House New",
-        "Old Guest House",
-        "Director Bungalow",
-        "Canteen, Gate-01 and Gate-02",
-    }:
-        return True
-    if getattr(getattr(area, "supervisor", None), "username", "") in {"maulik.patel", "ashok.rathod"}:
-        return True
-    return False
-
-
 def _attendance_relievers_for_area(area):
     qs = HKWorker.objects.filter(is_active=True)
     if not area:
         return qs.none()
 
-    # Excluded from relievers per user instruction:
-    # "but not add this section maulik.patel Supervisor , ashok.rathod Supervisor and Narendrakumar Natvarbhai Shrimali Supervisor ke is Area me add nahi karna hai Old Guest House"
-    if _is_reliever_excluded_section(area):
-        return qs.none()
-
     if _is_jrha_area(area):
         return qs.filter(area__name__in=JRHA_AREA_NAMES).exclude(area=area).order_by("area__name", "name")
-
-    if getattr(area, "name", "") == "Hostel Common Area":
-        # Caretaker Vishwajeet Mishra:
-        # 1. Gurjar Ketan Amrutbhai (100)
-        # 2. Suresh Solanki (472)
-        # 3. Yogeshbhai Kantibhai Vaghela (80)
-        # 4. Solanki Vinayak (240)
-        # 5. Bhavika ben solanki (457)
-        # 6. Urvashi ben vaghela (459)
-        common_reliever_pay_codes = ["100", "472", "80", "240", "457", "459"]
-        common_reliever_names = [
-            "Gurjar Ketan Amrutbhai",
-            "Suresh Solanki",
-            "Yogeshbhai Kantibhai Vaghela",
-            "Solanki Vinayak",
-            "Bhavika ben solanki",
-            "Bhavika Ben Solanki",
-            "urvashi ben vaghela",
-            "Urvashi Ben Vaghela",
-            "Urvashi Ben Vaghela (#459)",
-        ]
-        return qs.filter(
-            dm.Q(pay_code__in=common_reliever_pay_codes)
-            | dm.Q(name__in=common_reliever_names)
-        ).order_by(
-            dm.Case(
-                dm.When(pay_code="100", then=1),
-                dm.When(pay_code="472", then=2),
-                dm.When(pay_code="80", then=3),
-                dm.When(pay_code="240", then=4),
-                dm.When(pay_code="457", then=5),
-                dm.When(pay_code="459", then=6),
-                default=7,
-            ),
-            "name",
-        )
 
     if area_bucket(area) == "hostels":
         assigned = HOSTEL_RELIEVER_ASSIGNMENTS.get(area.name)
         relievers = qs.filter(is_reliever=True, area__name="Hostels Reliever")
+        if area.name != "Hostel Common Area":
+            return relievers.order_by("name")
         if assigned:
             reliever_filter = dm.Q()
             pay_codes = [code for code in assigned.get("pay_codes", []) if code]
@@ -356,50 +284,13 @@ def _attendance_relievers_for_area(area):
             return relievers.filter(reliever_filter).order_by("name")
         return relievers.order_by("name")
 
-    # All supervisor sections (Academic Blocks 1-13, Old & New Academic Common Areas,
-    # New AB U-Shape, Central Arcade, Sports Complex, Deep Cleaning, Solid Waste Management,
-    # and Roads & Outdoor) receive ONLY the 6 specified supervisor relievers:
-    # 1. Vankar Vishalkumar Aravindbhai
-    # 2. Bhangi Sikandar D
-    # 3. Makvana Nikhi Girishbhai
-    # 4. ParmarVijay Kumar Chhaganbha
-    # 5. sunil R. vaghela
-    # 6. Vaghela Chirag M
-    supervisor_relievers_filter = (
-        dm.Q(id__in=[172, 168, 169, 166, 167, 165])
-        | dm.Q(name__iexact="Vankar Vishalkumar Aravindbhai")
-        | dm.Q(name__icontains="Vankar")
-        | dm.Q(pay_code="389")
-        | dm.Q(name__iexact="Bhangi Sikandar D")
-        | dm.Q(name__icontains="Sikandar")
-        | dm.Q(pay_code="364")
-        | dm.Q(name__iexact="Makvana Nikhi Girishbhai")
-        | dm.Q(name__icontains="Makvana Nikhi")
-        | dm.Q(name__icontains="Makvana Nikhil")
-        | dm.Q(pay_code="329")
-        | dm.Q(name__iexact="ParmarVijay Kumar Chhaganbha")
-        | dm.Q(name__icontains="ParmarVijay")
-        | dm.Q(name__icontains="Parmar Vijay")
-        | dm.Q(pay_code="455")
-        | dm.Q(name__iexact="sunil R. vaghela")
-        | (dm.Q(name__icontains="sunil") & dm.Q(name__icontains="vaghela"))
-        | dm.Q(pay_code="303")
-        | dm.Q(name__iexact="Vaghela Chirag M")
-        | (dm.Q(name__icontains="Chirag") & dm.Q(name__icontains="Vaghela"))
-    )
+    if _uses_academic_reliever_pool(area):
+        return qs.filter(is_reliever=True, area__name="Old Academic Reliever").order_by("name")
 
-    return qs.filter(supervisor_relievers_filter).order_by(
-        dm.Case(
-            dm.When(dm.Q(id=172) | dm.Q(name__iexact="Vankar Vishalkumar Aravindbhai") | dm.Q(name__icontains="Vankar"), then=1),
-            dm.When(dm.Q(id=168) | dm.Q(pay_code="389") | dm.Q(name__iexact="Bhangi Sikandar D") | dm.Q(name__icontains="Sikandar"), then=2),
-            dm.When(dm.Q(id=169) | dm.Q(pay_code="364") | dm.Q(name__iexact="Makvana Nikhi Girishbhai") | dm.Q(name__icontains="Makvana Nikhi") | dm.Q(name__icontains="Makvana Nikhil"), then=3),
-            dm.When(dm.Q(id=166) | dm.Q(pay_code="329") | dm.Q(name__iexact="ParmarVijay Kumar Chhaganbha") | dm.Q(name__icontains="ParmarVijay") | dm.Q(name__icontains="Parmar Vijay"), then=4),
-            dm.When(dm.Q(id=167) | dm.Q(pay_code="455") | dm.Q(name__iexact="sunil R. vaghela") | (dm.Q(name__icontains="sunil") & dm.Q(name__icontains="vaghela")), then=5),
-            dm.When(dm.Q(id=165) | dm.Q(pay_code="303") | dm.Q(name__iexact="Vaghela Chirag M") | (dm.Q(name__icontains="Chirag") & dm.Q(name__icontains="Vaghela")), then=6),
-            default=7,
-        ),
-        "name",
-    )
+    if _uses_new_academic_reliever_pool(area):
+        return qs.filter(is_reliever=True, area__name="New Academic Reliever").order_by("name")
+
+    return qs.none()
 
 
 def _shared_display_worker_qs_for_area(area):
@@ -919,15 +810,13 @@ def _dashboard_section_labels(area):
     return labels
 
 
-def _build_usage_issues(user, area=None, limit=None):
+def _build_usage_issues(user, limit=None):
     usage_logs_qs = ItemUsageLog.objects.select_related('logged_by').order_by('-logged_at')
     issues_qs = ItemIssue.objects.select_related(
         'request',
         'request__item',
         'request__item__category',
         'request__requested_by',
-        'request__hkstockrequest',
-        'request__hkstockrequest__area',
         'issued_by',
     ).prefetch_related(
         Prefetch('usage_logs', queryset=usage_logs_qs)
@@ -939,15 +828,7 @@ def _build_usage_issues(user, area=None, limit=None):
         )
     ).filter(
         request__requested_by=user
-    )
-
-    if area is not None:
-        issues_qs = issues_qs.filter(
-            dm.Q(request__hkstockrequest__area=area) |
-            dm.Q(request__purpose__icontains=f"[HK - {area.name}]")
-        ).distinct()
-
-    issues_qs = issues_qs.order_by('-issued_at')
+    ).order_by('-issued_at')
 
     issues = []
     for issue in issues_qs:
@@ -1485,44 +1366,11 @@ def _has_extended_second_half_access(sel_date, user=None, area=None, workers=Non
     )
 
 
-def _is_vishwajeet_section(user=None, area=None, workers=None):
-    if user and getattr(user, "username", "") == "vishwajeet.mishra":
-        return True
-    if area:
-        if getattr(area, "name", "") == "Hostel Common Area":
-            return True
-        try:
-            if area.assigned_users.filter(user__username="vishwajeet.mishra").exists():
-                return True
-        except Exception:
-            pass
-    if workers:
-        for w in workers:
-            if getattr(getattr(w, "supervisor", None), "username", "") == "vishwajeet.mishra":
-                return True
-    return False
-
-
-def attendance_half_labels(user=None, area=None, workers=None, cur_half=None):
-    if _is_vishwajeet_section(user=user, area=area, workers=workers):
-        first_label = "First Half (8AM–5PM)"
-        second_label = "Second Half (1PM–10PM)"
-        active_range = "8AM–5PM" if cur_half == "first" else "1PM–10PM"
-        return first_label, second_label, active_range
-    return "First Half (8AM–1PM)", "Second Half (1PM–5PM)", ("8AM–1PM" if cur_half == "first" else "1PM–5PM")
-
-
 def attendance_half_is_open(sel_date, half, user=None, area=None, workers=None):
     """Today attendance is editable only during the matching half window."""
     if sel_date != timezone.localdate():
         return True
     now_time = timezone.localtime(timezone.now()).time()
-    if _is_vishwajeet_section(user=user, area=area, workers=workers):
-        if half == "first":
-            return datetime.time(8, 0) <= now_time < datetime.time(17, 0)
-        if half == "second":
-            return datetime.time(13, 0) <= now_time < datetime.time(22, 0)
-        return False
     if half == "first":
         return datetime.time(8, 0) <= now_time < datetime.time(13, 0)
     if half == "second":
@@ -1533,7 +1381,7 @@ def attendance_half_is_open(sel_date, half, user=None, area=None, workers=None):
 
 
 def busy_worker_ids_for_tasks(area, date, exclude_record_id=None):
-    if area is None or date is None:
+    if area is None:
         return set()
     active_records = HKDailyRecord.objects.filter(area=area, date=date).exclude(status="done")
     if exclude_record_id:
@@ -1548,21 +1396,6 @@ def busy_worker_ids_for_tasks(area, date, exclude_record_id=None):
         .filter(daily_record__in=active_records)
         .values_list("worker_id", flat=True)
     )
-    campus_active_records = HKDailyRecord.objects.filter(date=date).exclude(status="done")
-    if exclude_record_id:
-        campus_active_records = campus_active_records.exclude(pk=exclude_record_id)
-    reliever_single = (
-        campus_active_records
-        .filter(assigned_worker__is_reliever=True)
-        .values_list("assigned_worker_id", flat=True)
-    )
-    busy_ids.update(reliever_single)
-    reliever_multi = (
-        HKTaskWorkerAssignment.objects
-        .filter(daily_record__in=campus_active_records, worker__is_reliever=True)
-        .values_list("worker_id", flat=True)
-    )
-    busy_ids.update(reliever_multi)
     return busy_ids
 
 
@@ -2200,19 +2033,9 @@ def hk_dashboard(request):
         area_workers = effective_workers_for_area(sel_area, today)
         mark_busy_workers(area_workers, busy_worker_ids_for_tasks(sel_area, today))
     mark_unavailable_workers(area_workers, today, current_half())
-    if _is_reliever_excluded_section(sel_area, user):
-        reliever_workers = []
-    else:
-        reliever_workers = list(_attendance_relievers_for_area(sel_area))
-        mark_busy_workers(reliever_workers, busy_worker_ids_for_tasks(sel_area, today))
-        mark_unavailable_workers(reliever_workers, today, current_half())
     for record in records:
         record.can_multi_worker_assignment = can_multi_worker_task(user, record)
         record.area_workers_for_assignment = assignment_workers_for_record(area_workers, record)
-        if _is_reliever_excluded_section(sel_area, user):
-            record.reliever_workers_for_assignment = []
-        else:
-            record.reliever_workers_for_assignment = assignment_workers_for_record(reliever_workers, record)
         record.is_break_task = is_break_task_name(record.schedule.task_name)
         record.is_direct_staff_task = bool(
             record.schedule.worker_tag == "night_caretaker"
@@ -2502,17 +2325,6 @@ def hk_dashboard(request):
             "latest_assignment": latest_assignment,
         })
 
-    dashboard_area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
-    dashboard_active_requests = (
-        HKStockRequest.objects
-        .filter(requested_by=user, area=sel_area, status__in=["pending", "approved"])
-        .select_related("item", "inventory_request")
-        .order_by("-created_at")
-        if sel_area else []
-    )
-    dashboard_issued_items = _build_usage_issues(user, area=sel_area, limit=None)
-    dashboard_stock_total = len(dashboard_area_stocks) + len(dashboard_issued_items) + len(dashboard_active_requests)
-
     return render(request, "housekeeping/mobile/dashboard.html", {
         "today": today,
         "today_dow": today_dow,
@@ -2526,7 +2338,6 @@ def hk_dashboard(request):
         "percent_done": pct,
         "alerts": get_active_alerts(user, user_areas),
         "area_workers": area_workers,
-        "reliever_workers": reliever_workers,
         "attendance_summary": attendance_summary,
         "monthly_best_worker": monthly_best_worker,
         "special_card": special_card,
@@ -2564,10 +2375,6 @@ def hk_dashboard(request):
         "incharge_today_assignments": incharge_today_assignments,
         "leave_reselection_cards": leave_reselection_cards,
         "incharge_notice": incharge_notice,
-        "dashboard_stock_total": dashboard_stock_total,
-        "dashboard_area_stocks": dashboard_area_stocks,
-        "dashboard_active_requests": dashboard_active_requests,
-        "dashboard_issued_items": dashboard_issued_items,
     })
 
 
@@ -2807,12 +2614,7 @@ def hk_mark_task(request, record_id):
                     single_worker_id = request.POST.get("worker_id")
                     if single_worker_id:
                         worker_ids = [single_worker_id]
-                if _is_reliever_excluded_section(record.area, user):
-                    area_relievers = []
-                else:
-                    area_relievers = list(_attendance_relievers_for_area(record.area))
-                reliever_ids = {r.id for r in area_relievers}
-                allowed_worker_ids = display_worker_ids_for_area(record.area, record.date) | reliever_ids
+                allowed_worker_ids = display_worker_ids_for_area(record.area, record.date)
                 busy_ids = busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id)
                 selected_worker_ids = {int(wid) for wid in worker_ids if str(wid).isdigit()}
                 unavailable_ids = unavailable_selection_ids(
@@ -2850,9 +2652,6 @@ def hk_mark_task(request, record_id):
                                 for w in workers
                             ]
                         )
-                        for w in workers:
-                            if w.id in reliever_ids:
-                                _mark_reliever_present(w, record.date, user)
 
                         # Keep legacy single-assignee field for backward-compatible reporting.
                         record.assigned_worker = workers[0]
@@ -2862,15 +2661,9 @@ def hk_mark_task(request, record_id):
         elif record.assigned_worker_id:
             task_error = "Worker already assigned for this task."
         else:
-            if _is_reliever_excluded_section(record.area, user):
-                area_relievers = []
-            else:
-                area_relievers = list(_attendance_relievers_for_area(record.area))
-            reliever_ids = {r.id for r in area_relievers}
-            allowed_worker_ids = display_worker_ids_for_area(record.area, record.date) | reliever_ids
             worker_id = request.POST.get("worker_id")
             worker = HKWorker.objects.filter(pk=worker_id, is_active=True).first()
-            if worker and worker.id not in allowed_worker_ids:
+            if worker and worker.id not in display_worker_ids_for_area(record.area, record.date):
                 worker = None
             if worker and worker.id in busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id):
                 task_error = "This worker is already assigned to an unfinished task."
@@ -2881,22 +2674,8 @@ def hk_mark_task(request, record_id):
                 record.assigned_by = user
                 record.assigned_at = now
                 record.save(update_fields=["assigned_worker", "assigned_by", "assigned_at"])
-                if worker.id in reliever_ids:
-                    _mark_reliever_present(worker, record.date, user)
             else:
                 task_error = "Please choose a valid worker for this area."
-
-    elif action == "relieve_team" and user.role in HOUSEKEEPING_STAFF_ROLES and record.status != "done":
-        record.worker_assignments.all().delete()
-        record.assigned_worker = None
-        record.assigned_by = None
-        record.assigned_at = None
-        if record.status == "in_progress":
-            record.status = "pending"
-            record.started_at = None
-            record.save(update_fields=["assigned_worker", "assigned_by", "assigned_at", "status", "started_at"])
-        else:
-            record.save(update_fields=["assigned_worker", "assigned_by", "assigned_at"])
 
     elif action == "start":
         if is_break_task:
@@ -3075,18 +2854,10 @@ def hk_mark_task(request, record_id):
     area_workers = effective_workers_for_area(record.area, record.date)
     mark_busy_workers(area_workers, busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id))
     mark_unavailable_workers(area_workers, record.date, attendance_half_for_record(record))
-    if _is_reliever_excluded_section(record.area, user):
-        reliever_workers = []
-    else:
-        reliever_workers = list(_attendance_relievers_for_area(record.area))
-        mark_busy_workers(reliever_workers, busy_worker_ids_for_tasks(record.area, record.date, exclude_record_id=record.id))
-        mark_unavailable_workers(reliever_workers, record.date, attendance_half_for_record(record))
-    record.reliever_workers_for_assignment = reliever_workers
     return render(request, "housekeeping/mobile/partials/task_card.html", {
         "record": record,
         "tag_labels": WORKER_TAG_LABELS,
         "area_workers": area_workers,
-        "reliever_workers": reliever_workers,
         "can_assign_tasks": user.role in HOUSEKEEPING_STAFF_ROLES,
         "task_error": task_error,
     })
@@ -3119,12 +2890,7 @@ def hk_log_extra_work(request):
     if not extra_worker_name_mode:
         worker_ids = list(dict.fromkeys(w for w in request.POST.getlist("worker_ids") if w))
         selected_worker_ids = {int(wid) for wid in worker_ids if str(wid).isdigit()}
-        extra_relievers = (
-            set()
-            if _is_reliever_excluded_section(area, user) or is_research_park
-            else {r.id for r in _attendance_relievers_for_area(area)}
-        )
-        allowed_worker_ids = display_worker_ids_for_area(area, timezone.localdate()) | extra_relievers
+        allowed_worker_ids = display_worker_ids_for_area(area, timezone.localdate())
         busy_ids = busy_worker_ids_for_tasks(area, timezone.localdate())
 
         if not worker_ids:
@@ -3334,11 +3100,7 @@ def hk_attendance(request):
                 ).select_related("reliever").first()
                 if not sub:
                     sub = _substitution_for_reliever(worker, sel_area, sel_date)
-                if _is_reliever_excluded_section(sel_area, user):
-                    all_rel = []
-                else:
-                    all_rel = list(_attendance_relievers_for_area(sel_area))
-                first_label, second_label, _ = attendance_half_labels(user=user, area=sel_area, workers=[worker], cur_half=cur_half)
+                all_rel = list(_attendance_relievers_for_area(sel_area))
                 return render(request, "housekeeping/mobile/partials/attendance_worker_card.html", {
                     "row": {
                         "worker": worker,
@@ -3353,8 +3115,6 @@ def hk_attendance(request):
                     "is_today": is_today,
                     "first_half_open": first_half_open,
                     "second_half_open": second_half_open,
-                    "first_half_label": first_label,
-                    "second_half_label": second_label,
                     "attn_choices": ATTENDANCE_CHOICES,
                     "second_attn_choices": SECOND_HALF_EXCEPTION_CHOICES,
                     "all_relievers": all_rel,
@@ -3385,10 +3145,7 @@ def hk_attendance(request):
             row["worker"], sel_area, sel_date
         )
 
-    if _is_reliever_excluded_section(sel_area, user):
-        all_relievers = []
-    else:
-        all_relievers = list(_attendance_relievers_for_area(sel_area))
+    all_relievers = list(_attendance_relievers_for_area(sel_area))
 
     # Group by worker type
     type_groups = {}
@@ -3402,7 +3159,6 @@ def hk_attendance(request):
             for w in workers
         )
 
-    first_label, second_label, active_half_range = attendance_half_labels(user=user, area=sel_area, workers=workers, cur_half=cur_half)
     return render(request, "housekeeping/mobile/attendance.html", {
         "worker_rows": worker_rows,
         "type_groups": type_groups,
@@ -3419,9 +3175,6 @@ def hk_attendance(request):
         "cur_half": cur_half,
         "first_half_open": first_half_open,
         "second_half_open": second_half_open,
-        "first_half_label": first_label,
-        "second_half_label": second_label,
-        "active_half_time_range": active_half_range,
         "attendance_error": "Attendance can be marked only during the selected half time." if request.GET.get("att_err") == "half_closed" else "",
         "present_first": sum(1 for r in worker_rows if r["first_att"] and r["first_att"].status in ["present", "late"]),
         "present_second": sum(1 for r in worker_rows if r["second_att"] and r["second_att"].status in ["present", "late"]),
@@ -3442,13 +3195,9 @@ def hk_assign_reliever(request):
         return HttpResponseForbidden()
 
     user = request.user
-    if _is_reliever_excluded_section(None, user):
-        return HttpResponseForbidden("Relievers cannot be assigned for this section.")
     user_areas = get_user_areas(user)
     area_id = request.POST.get("area_id")
     area = user_areas.filter(pk=area_id).first()
-    if _is_reliever_excluded_section(area, user):
-        return HttpResponseForbidden("Relievers cannot be assigned for this section.")
     today = timezone.localdate()
 
     original = get_object_or_404(HKWorker, pk=request.POST.get("original_worker_id"))
@@ -3510,26 +3259,17 @@ def hk_assign_reliever(request):
         first_att = HKAttendanceRecord.objects.filter(worker=original, date=today, half="first").first()
         second_att = HKAttendanceRecord.objects.filter(worker=original, date=today, half="second").first()
         all_relievers = list(_attendance_relievers_for_area(area or original.area))
-        target_area = area or original.area
-        first_label, second_label, _ = attendance_half_labels(user=user, area=target_area, workers=[original], cur_half=current_half())
-        first_open = attendance_half_is_open(today, "first", user=user, area=target_area, workers=[original])
-        second_open = attendance_half_is_open(today, "second", user=user, area=target_area, workers=[original])
         return render(request, "housekeeping/mobile/partials/attendance_worker_card.html", {
             "row": {
                 "worker": original,
                 "first_att": first_att,
                 "second_att": second_att,
                 "substitution": sub,
-                "can_assign_reliever": _is_jrha_area(target_area) or not original.is_reliever,
             },
             "sel_date": today,
             "sel_area": area,
             "cur_half": current_half(),
             "is_today": True,
-            "first_half_open": first_open,
-            "second_half_open": second_open,
-            "first_half_label": first_label,
-            "second_half_label": second_label,
             "attn_choices": ATTENDANCE_CHOICES,
             "second_attn_choices": SECOND_HALF_EXCEPTION_CHOICES,
             "all_relievers": all_relievers,
@@ -3547,12 +3287,12 @@ def hk_stock(request):
     visible_areas = visible_user_areas(user, user_areas)
     sel_area = selected_area(request, visible_areas)
     area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
-    issued_items = _build_usage_issues(user, area=sel_area, limit=None)
+    issued_items = _build_usage_issues(user, limit=10)
     active_requests = (
         HKStockRequest.objects
         .filter(requested_by=user, area=sel_area, status__in=["pending", "approved"])
         .select_related("item", "inventory_request")
-        .order_by("-created_at")
+        .order_by("-created_at")[:10]
         if sel_area else []
     )
     return render(request, "housekeeping/mobile/stock.html", {
@@ -3647,13 +3387,13 @@ def hk_log_usage(request, pk):
     visible_areas = visible_user_areas(user, user_areas)
     sel_area = selected_area(request, visible_areas)
     area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
-    my_requests = HKStockRequest.objects.filter(requested_by=user, area=sel_area).order_by("-created_at") if sel_area else []
-    issued_items = _build_usage_issues(user, area=sel_area, limit=None)
+    my_requests = HKStockRequest.objects.filter(requested_by=user).order_by("-created_at")[:10]
+    issued_items = _build_usage_issues(user, limit=10)
     active_requests = (
         HKStockRequest.objects
         .filter(requested_by=user, area=sel_area, status__in=["pending", "approved"])
         .select_related("item", "inventory_request")
-        .order_by("-created_at")
+        .order_by("-created_at")[:10]
         if sel_area else []
     )
     return render(request, "housekeeping/mobile/stock.html", {

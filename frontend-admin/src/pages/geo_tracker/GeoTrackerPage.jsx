@@ -26,6 +26,7 @@ import AdminLayout from '../../layout/AdminLayout'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 import { exportReport } from '../../shared/exportHelper'
 
+
 // ---------------------------------------------------------------------------
 // eFlora of Gandhinagar – Tree Information Database
 // Source: www.efloraofgandhinagar.in  (87 trees from campus survey)
@@ -152,6 +153,7 @@ const TYPE_CONFIG = {
   tree:    { color: '#16a34a', bg: '#dcfce7', label: 'Tree',    emoji: '🌳' },
   plant:   { color: '#7c3aed', bg: '#ede9fe', label: 'Plant',   emoji: '🌿' },
   creeper: { color: '#0284c7', bg: '#e0f2fe', label: 'Creeper', emoji: '🌱' },
+  shrub:   { color: '#d97706', bg: '#fef3c7', label: 'Shrub',   emoji: '🪴' },
 }
 
 const CONDITION_CONFIG = {
@@ -639,6 +641,8 @@ function TreeDetailPanel({
       condition: record.condition || 'good',
       height_m: record.height_m ?? '',
       girth_cm: record.girth_cm ?? '',
+      length_m: record.length_m ?? '',
+      width_m: record.width_m ?? '',
       canopy_area_m: record.canopy_area_m ?? '',
       gps_accuracy_m: record.gps_accuracy_m ?? '',
       notes: record.notes || '',
@@ -692,6 +696,8 @@ function TreeDetailPanel({
       condition: form.condition,
       height_m: numOrNull(form.height_m),
       girth_cm: numOrNull(form.girth_cm),
+      length_m: numOrNull(form.length_m),
+      width_m: numOrNull(form.width_m),
       canopy_area_m: numOrNull(form.canopy_area_m),
       gps_accuracy_m: numOrNull(form.gps_accuracy_m),
       notes: form.notes,
@@ -753,18 +759,111 @@ function TreeDetailPanel({
         flexShrink: 0,
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>
-              {tcfg?.emoji} {record.local_name}
-            </div>
-            {record.tracking_id && (
-              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--green-700)', marginTop: 2, letterSpacing: '0.05em' }}>
-                {record.tracking_id}
-              </div>
-            )}
-            {record.scientific_name && (
-              <div style={{ fontSize: 13, fontStyle: 'italic', color: 'var(--text-2)', marginTop: 2 }}>
-                {record.scientific_name}
+          <div style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+            {!editing ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>
+                    {tcfg?.emoji} {record.local_name}
+                  </span>
+                  <button
+                    onClick={startEdit}
+                    title="Edit tree name & details"
+                    style={{
+                      background: 'none',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: 'var(--green-700)',
+                      padding: '2px 7px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    ✏️ Edit
+                  </button>
+                </div>
+                {record.tracking_id && (
+                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--green-700)', marginTop: 2, letterSpacing: '0.05em' }}>
+                    {record.tracking_id}
+                  </div>
+                )}
+                {record.scientific_name && (
+                  <div style={{ fontSize: 13, fontStyle: 'italic', color: 'var(--text-2)', marginTop: 2 }}>
+                    {record.scientific_name}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 18 }}>{tcfg?.emoji}</span>
+                  <input
+                    type="text"
+                    value={form.local_name}
+                    onChange={e => setField('local_name', e.target.value)}
+                    placeholder="Enter tree/plant name..."
+                    style={{
+                      ...inputStyle,
+                      fontSize: 15,
+                      fontWeight: 800,
+                      padding: '6px 10px',
+                      borderColor: 'var(--green-700)',
+                      background: '#fff',
+                      flex: 1,
+                    }}
+                    autoFocus
+                  />
+                </div>
+                <input
+                  type="text"
+                  value={form.scientific_name}
+                  onChange={e => setField('scientific_name', e.target.value)}
+                  placeholder="Botanical / scientific name..."
+                  style={{
+                    ...inputStyle,
+                    fontSize: 12,
+                    fontStyle: 'italic',
+                    padding: '4px 8px',
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                  <button
+                    onClick={saveEdit}
+                    disabled={saving}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 6,
+                      border: 'none',
+                      background: 'var(--green-800)',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      cursor: saving ? 'default' : 'pointer',
+                    }}
+                  >
+                    {saving ? 'Saving…' : '✓ Save Name'}
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    disabled={saving}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface)',
+                      color: 'var(--text)',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: saving ? 'default' : 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -878,6 +977,8 @@ function TreeDetailPanel({
                         ['Zone',        record.zone_display || record.zone],
                         ['Height',      record.height_m ? `${record.height_m} m` : null],
                         ['Girth',       record.girth_cm  ? `${record.girth_cm} cm` : null],
+                        ['Length',      record.length_m ? `${record.length_m} m` : null],
+                        ['Width',       record.width_m ? `${record.width_m} m` : null],
                         ['GPS',         record.lat != null ? `${parseFloat(record.lat).toFixed(5)}, ${parseFloat(record.lng).toFixed(5)}` : null],
                         ['Accuracy',    record.gps_accuracy_m ? `±${record.gps_accuracy_m} m` : null],
                         ['Location',    record.location_notes],
@@ -971,7 +1072,7 @@ function TreeDetailPanel({
                     </div>
 
                     <div style={{ marginBottom: 10 }}>
-                      <label style={labelStyle}>Tree / Plant / Creeper Name *</label>
+                      <label style={labelStyle}>Tree / Plant / Creeper / Shrub Name *</label>
                       <input
                         type="text"
                         style={inputStyle}
@@ -1033,6 +1134,22 @@ function TreeDetailPanel({
                         type="number" step="0.01" min="0" style={inputStyle}
                         value={form.girth_cm}
                         onChange={e => setField('girth_cm', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Length (m)</label>
+                      <input
+                        type="number" step="0.01" min="0" style={inputStyle}
+                        value={form.length_m}
+                        onChange={e => setField('length_m', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Width (m)</label>
+                      <input
+                        type="number" step="0.01" min="0" style={inputStyle}
+                        value={form.width_m}
+                        onChange={e => setField('width_m', e.target.value)}
                       />
                     </div>
                     <div>
@@ -1290,7 +1407,6 @@ export default function GeoTrackerPage() {
   const [areaForm, setAreaForm]         = useState({ label: '', db_value: '', code: '' })
   const [areaSaving, setAreaSaving]     = useState(false)
   const [areaError, setAreaError]       = useState(null)
-
   // Debounce search input
   const debounceRef = useRef(null)
 
@@ -1481,6 +1597,7 @@ export default function GeoTrackerPage() {
         { label: 'Trees', value: stats?.trees ?? records.filter(r => r.plant_type === 'tree').length },
         { label: 'Plants', value: stats?.plants ?? records.filter(r => r.plant_type === 'plant').length },
         { label: 'Creepers', value: stats?.creepers ?? records.filter(r => r.plant_type === 'creeper').length },
+        { label: 'Shrubs', value: stats?.shrubs ?? records.filter(r => r.plant_type === 'shrub').length },
       ],
       headers: ['Tracking ID', 'Name', 'Scientific Name', 'Type', 'Variety', 'Condition', 'Zone / Area', 'Latitude', 'Longitude'],
       rows: records.map(r => [
@@ -1692,6 +1809,7 @@ export default function GeoTrackerPage() {
                 <StatChip label="Trees"    value={stats.trees}          color={TYPE_CONFIG.tree.color}    bg={TYPE_CONFIG.tree.bg} />
                 <StatChip label="Plants"   value={stats.plants}         color={TYPE_CONFIG.plant.color}   bg={TYPE_CONFIG.plant.bg} />
                 <StatChip label="Creepers" value={stats.creepers || 0}  color={TYPE_CONFIG.creeper.color} bg={TYPE_CONFIG.creeper.bg} />
+                <StatChip label="Shrubs"   value={stats.shrubs || 0}    color={TYPE_CONFIG.shrub.color}   bg={TYPE_CONFIG.shrub.bg} />
               </div>
             )}
           </div>
@@ -1997,7 +2115,7 @@ export default function GeoTrackerPage() {
             <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 14, padding: 22, width: '100%', maxWidth: 500, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,.3)', border: '1.5px solid var(--border)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>
-                  🌿 Tree, Plant & Creeper Varieties
+                  🌿 Tree, Plant, Creeper & Shrub Varieties
                 </div>
                 <button
                   type="button"
@@ -2168,6 +2286,7 @@ export default function GeoTrackerPage() {
                           <option value="tree">Trees</option>
                           <option value="plant">Plants</option>
                           <option value="creeper">Creepers</option>
+                          <option value="shrub">Shrubs</option>
                         </select>
                       </div>
 
@@ -2299,6 +2418,9 @@ export default function GeoTrackerPage() {
             </div>
           </div>
         )}
+
+
+
         {/* ── Global styles ──────────────────────────────────────────────── */}
         <style>{`
           @keyframes spin { to { transform: rotate(360deg); } }

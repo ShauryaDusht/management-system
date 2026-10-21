@@ -1,3 +1,5 @@
+import json
+from decimal import Decimal
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
 from django.shortcuts import render, get_object_or_404
@@ -11,7 +13,9 @@ from rest_framework.views import APIView
 
 from apps.users.permissions import IsAdminOrHKInventoryOrHorticultureManager
 
-from .models import CampusArea, PlantRecord, PlantVariety, CampusAreaConfig
+from .models import (
+    CampusArea, PlantRecord, PlantVariety, CampusAreaConfig,
+)
 from .serializers import (
     PlantRecordSerializer,
     PlantRecordCreateSerializer,
@@ -246,11 +250,13 @@ class GeoTrackerStatsView(APIView):
         trees = PlantRecord.objects.filter(plant_type='tree').count()
         plants = PlantRecord.objects.filter(plant_type='plant').count()
         creepers = PlantRecord.objects.filter(plant_type='creeper').count()
+        shrubs = PlantRecord.objects.filter(plant_type='shrub').count()
         return Response({
             'total': total,
             'trees': trees,
             'plants': plants,
             'creepers': creepers,
+            'shrubs': shrubs,
         })
 
 class GeoTrackerAreasView(APIView):
@@ -279,3 +285,5 @@ class GeoTrackerAreasView(APIView):
 
         area = CampusAreaConfig.objects.create(label=label, db_value=db_value, code=code)
         return Response({'id': area.id, 'label': area.label, 'db_value': area.db_value, 'code': area.code}, status=201)
+
+

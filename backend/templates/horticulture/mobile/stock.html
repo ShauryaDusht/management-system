@@ -61,6 +61,21 @@
 {% endif %}
 {% endfor %}
 
+{% if pending_requests %}
+<div class="sec">Pending Requests</div>
+{% for req in pending_requests %}
+<div class="card" style="padding:10px;border-left:4px solid #3b82f6">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div style="font-weight:700;font-size:13px">{{ req.item_name }}</div>
+      <div style="font-size:12px;color:#6b7280">{{ req.quantity }} {{ req.unit }} - {{ req.created_at|date:"d M Y" }}</div>
+    </div>
+    <span class="bdg b" style="background:#dbeafe;color:#1e40af;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700">Pending</span>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
 {% if issued_items %}
 <div class="sec">Issued Items</div>
 {% for issue in issued_items %}

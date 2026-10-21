@@ -40,53 +40,6 @@
   </div>
 </div>
 
-<div class="card" style="background:#fff;border-radius:14px;padding:13px;border:1px solid #e5e7eb">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-    <div style="display:flex;align-items:center;gap:8px">
-      <span style="font-size:20px">📦</span>
-      <div>
-        <div style="font-weight:800;font-size:14px;color:#1f2937">Stock & Requests</div>
-        <div style="font-size:11px;color:#6b7280">{% if selected_area %}{{ selected_area.name }}{% else %}Assigned Areas{% endif %}</div>
-      </div>
-    </div>
-    <a href="/housekeeping/stock/{% if selected_area %}?area={{ selected_area.id }}{% endif %}" style="text-decoration:none">
-      <span style="font-size:12px;font-weight:700;color:#2d4a3e;background:#edf5f2;padding:5px 10px;border-radius:8px">View Stock &rarr;</span>
-    </a>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-    <div style="background:#f9fafb;border-radius:10px;padding:9px 11px;border:1px solid #f3f4f6">
-      <div style="font-size:11px;color:#6b7280;font-weight:600">Stock Items</div>
-      <div style="font-size:18px;font-weight:900;color:#2d4a3e;margin-top:2px">{{ dashboard_stock_total|default:0 }}</div>
-    </div>
-    <div style="background:#fef3c7;border-radius:10px;padding:9px 11px;border:1px solid #fde68a">
-      <div style="font-size:11px;color:#92400e;font-weight:600">Active Requests</div>
-      <div style="font-size:18px;font-weight:900;color:#b45309;margin-top:2px">{{ dashboard_active_requests|length|default:0 }}</div>
-    </div>
-  </div>
-  {% if dashboard_active_requests %}
-  <div style="margin-top:10px;border-top:1px dashed #e5e7eb;padding-top:8px">
-    <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:6px">Recent Requests ({{ dashboard_active_requests|length }} total):</div>
-    {% for req in dashboard_active_requests|slice:":4" %}
-    <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;color:#374151;border-bottom:1px solid #f3f4f6">
-      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:68%;font-weight:500">{% if req.item.item_code %}[{{ req.item.item_code }}] {% endif %}{{ req.item_name }}</span>
-      <span class="bdg {% if req.status == 'approved' %}g{% else %}y{% endif %}" style="font-size:10px">{{ req.get_status_display }}</span>
-    </div>
-    {% endfor %}
-    {% if dashboard_active_requests|length > 4 %}
-    <a href="/housekeeping/stock/{% if selected_area %}?area={{ selected_area.id }}{% endif %}" style="display:block;text-align:right;font-size:11px;color:#2d4a3e;font-weight:700;margin-top:6px;text-decoration:none">+{{ dashboard_active_requests|length|add:"-4" }} more requests &rarr;</a>
-    {% endif %}
-  </div>
-  {% endif %}
-  <div style="margin-top:10px;display:flex;gap:7px">
-    <a href="/housekeeping/stock/request/{% if selected_area %}?area={{ selected_area.id }}{% endif %}" style="flex:1;text-decoration:none">
-      <button class="btn-p" style="padding:8px 10px;font-size:13px">+ Request Stock</button>
-    </a>
-    <a href="/housekeeping/stock/{% if selected_area %}?area={{ selected_area.id }}{% endif %}" style="flex:1;text-decoration:none">
-      <button class="btn-g" style="padding:8px 10px;font-size:13px">All Stock</button>
-    </a>
-  </div>
-</div>
-
 
 {% if selected_area %}
 {% if toast_card %}
@@ -564,30 +517,15 @@
         <label>Assign workers *</label>
         <div style="max-height:190px;overflow:auto;border:1px solid #d1d5db;border-radius:10px;background:#fff">
           {% for w in area_workers %}
-          <label style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last or reliever_workers %}1px solid #eef2f7{% else %}none{% endif %};cursor:{% if w.is_busy_for_task or w.is_unavailable_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if w.is_busy_for_task or w.is_unavailable_for_task %}.55{% else %}1{% endif %}">
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:{% if not forloop.last %}1px solid #eef2f7{% else %}none{% endif %};cursor:{% if w.is_busy_for_task or w.is_unavailable_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if w.is_busy_for_task or w.is_unavailable_for_task %}.55{% else %}1{% endif %}">
             <input type="checkbox" name="worker_ids" value="{{ w.id }}" {% if w.is_busy_for_task or w.is_unavailable_for_task %}disabled{% endif %} style="width:16px;height:16px;flex-shrink:0">
             <span style="font-weight:700;color:#1f2937;font-size:14px">
               {{ w.name }}{% if w.worker_type %} ({{ w.get_worker_type_display }}){% endif %}{% if w.is_busy_for_task %} - Busy{% elif w.is_unavailable_for_task %} - {{ w.unavailable_reason|default:"Absent" }}{% endif %}
             </span>
           </label>
           {% empty %}
-          {% if not reliever_workers %}
           <div style="padding:12px;font-size:12px;color:#9ca3af">No workers available for this area.</div>
-          {% endif %}
           {% endfor %}
-          {% if reliever_workers and request.user.username != 'maulik.patel' and not is_research_park %}
-          <div style="padding:6px 11px;background:#fffbeb;font-size:11px;font-weight:800;color:#92400e;border-top:1px solid #fde68a;border-bottom:1px solid #fde68a">
-            🔄 Relievers (Pool)
-          </div>
-          {% for r in reliever_workers %}
-          <label style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-bottom:{% if not forloop.last %}1px solid #fef3c7{% else %}none{% endif %};cursor:{% if r.is_busy_for_task or r.is_unavailable_for_task %}not-allowed{% else %}pointer{% endif %};opacity:{% if r.is_busy_for_task or r.is_unavailable_for_task %}.55{% else %}1{% endif %}">
-            <input type="checkbox" name="worker_ids" value="{{ r.id }}" {% if r.is_busy_for_task or r.is_unavailable_for_task %}disabled{% endif %} style="width:16px;height:16px;flex-shrink:0;accent-color:#d97706">
-            <span style="font-weight:700;color:#1f2937;font-size:13px">
-              {{ r.name }} <span style="font-size:10px;color:#92400e;background:#fef3c7;padding:1px 5px;border-radius:4px">Reliever</span>{% if r.is_busy_for_task %} - Busy{% elif r.is_unavailable_for_task %} - {{ r.unavailable_reason|default:"Absent" }}{% endif %}
-            </span>
-          </label>
-          {% endfor %}
-          {% endif %}
         </div>
         <div style="font-size:10px;color:#6b7280;margin-top:4px">Select one or more workers. Busy workers unlock after their current task is completed.</div>
       </div>

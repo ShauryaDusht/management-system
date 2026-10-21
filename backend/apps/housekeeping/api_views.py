@@ -1615,13 +1615,10 @@ class HKStockRequestListView(ListAPIView):
         user = self.request.user
         qs = HKStockRequest.objects.select_related('requested_by', 'area').order_by('-created_at')
         if _is_hostel_office(user):
-            qs = qs.filter(area_id__in=_hostel_area_ids())
-        elif not _can_manage_housekeeping(user):
+            return qs.filter(area_id__in=_hostel_area_ids())[:50]
+        if not _can_manage_housekeeping(user):
             qs = qs.filter(requested_by=user)
-        area_id = self.request.query_params.get('area')
-        if area_id:
-            qs = qs.filter(area_id=area_id)
-        return qs
+        return qs[:50]
 
 
 class HKStockRequestStatusUpdateView(RetrieveUpdateAPIView):

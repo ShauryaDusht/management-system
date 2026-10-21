@@ -30,7 +30,7 @@ class PlantRecordSerializer(serializers.ModelSerializer):
             'variety', 'variety_name',
             'latitude', 'longitude', 'lat', 'lng',
             'zone', 'zone_display',
-            'height_m', 'girth_cm', 'canopy_area_m',
+            'height_m', 'girth_cm', 'length_m', 'width_m', 'canopy_area_m',
             'condition', 'condition_display',
             'photo_url',
             'notes', 'gps_accuracy_m',
@@ -55,7 +55,7 @@ class PlantRecordUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'plant_type', 'variety', 'local_name', 'scientific_name',
             'zone', 'condition',
-            'height_m', 'girth_cm', 'canopy_area_m', 'gps_accuracy_m',
+            'height_m', 'girth_cm', 'length_m', 'width_m', 'canopy_area_m', 'gps_accuracy_m',
             'notes',
         ]
         extra_kwargs = {
@@ -89,7 +89,7 @@ class PlantRecordCreateSerializer(serializers.ModelSerializer):
         fields = [
             'plant_type', 'local_name', 'scientific_name', 'variety',
             'latitude', 'longitude', 'zone',
-            'height_m', 'girth_cm', 'canopy_area_m',
+            'height_m', 'girth_cm', 'length_m', 'width_m', 'canopy_area_m',
             'condition', 'photo', 'notes', 'gps_accuracy_m',
         ]
         read_only_fields = ['plant_type', 'local_name', 'scientific_name']
@@ -134,7 +134,7 @@ def records_to_csv(queryset):
     writer.writerow([
         'ID', 'Type', 'Local Name', 'Scientific Name', 'Variety',
         'Latitude', 'Longitude', 'Campus Area',
-        'Height (m)', 'Girth (cm)', 'Canopy Span (m)',
+        'Height (m)', 'Girth (cm)', 'Length (m)', 'Width (m)', 'Canopy Span (m)',
         'Condition', 'Notes', 'GPS Accuracy (m)', 'Submitted At',
     ])
     for r in queryset:
@@ -149,6 +149,8 @@ def records_to_csv(queryset):
             r.get_zone_display() if r.zone else '',
             r.height_m or '',
             r.girth_cm or '',
+            r.length_m or '',
+            r.width_m or '',
             r.canopy_area_m or '',
             r.get_condition_display(),
             r.notes,
@@ -156,3 +158,5 @@ def records_to_csv(queryset):
             r.submitted_at.strftime('%Y-%m-%d %H:%M') if r.submitted_at else '',
         ])
     return output.getvalue()
+
+

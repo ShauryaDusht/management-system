@@ -189,7 +189,7 @@ export default function AttendanceTab() {
           <div style={{ fontSize: 12, color: 'var(--text-3)', minWidth: 40 }}>Date</div>
           <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
         </Card>
-        <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible', position: 'relative', zIndex: 40 }}>
           <ExportDropdown
             label="Download Attendance"
             onExport={handleExportAttendance}

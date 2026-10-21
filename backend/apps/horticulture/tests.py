@@ -144,3 +144,103 @@ class HorticultureMobilePortalActionTests(TestCase):
                 status=HorticultureAttendanceRecord.Status.PRESENT,
             ).exists()
         )
+
+    def test_before_photo_timing_enforced(self):
+        assignment = HorticultureDailyAssignment.objects.create(
+            area=self.area,
+            worker=self.worker,
+            task_type=self.task_type,
+            date=timezone.localdate(),
+            session=HorticultureDailyAssignment.Session.MORNING,
+            assigned_by=self.supervisor,
+            status=HorticultureDailyAssignment.Status.PENDING,
+        )
+        from unittest.mock import patch
+        import datetime
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        dummy_img = SimpleUploadedFile('test.jpg', b'file_content', content_type='image/jpeg')
+
+        # Test at 12:00 PM (outside 8:00 AM - 10:00 AM)
+        mock_noon = datetime.datetime.combine(timezone.localdate(), datetime.time(12, 0))
+        with patch('django.utils.timezone.localtime', return_value=mock_noon):
+            response = self.client.post(
+                reverse('horticulture_mobile:horti-mark-task'),
+                {
+                    'action': 'start',
+                    'assignment_id': assignment.id,
+                    'task_type_id': self.task_type.id,
+                    'photo_before': dummy_img,
+                },
+                secure=True,
+            )
+            self.assertContains(response, 'बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 10:00 AM के बीच ही ली जा सकती है।')
+
+        # Test at 09:00 AM (inside 8:00 AM - 10:00 AM)
+        mock_9am = datetime.datetime.combine(timezone.localdate(), datetime.time(9, 0))
+        dummy_img2 = SimpleUploadedFile('test2.jpg', b'file_content', content_type='image/jpeg')
+        with patch('django.utils.timezone.localtime', return_value=mock_9am):
+            response = self.client.post(
+                reverse('horticulture_mobile:horti-mark-task'),
+                {
+                    'action': 'start',
+                    'assignment_id': assignment.id,
+                    'task_type_id': self.task_type.id,
+                    'photo_before': dummy_img2,
+                },
+                secure=True,
+            )
+            self.assertEqual(response.status_code, 302)
+            assignment.refresh_from_db()
+            self.assertEqual(assignment.status, HorticultureDailyAssignment.Status.IN_PROGRESS)
+
+    def test_after_photo_timing_enforced(self):
+        assignment = HorticultureDailyAssignment.objects.create(
+            area=self.area,
+            worker=self.worker,
+            task_type=self.task_type,
+            date=timezone.localdate(),
+            session=HorticultureDailyAssignment.Session.MORNING,
+            assigned_by=self.supervisor,
+            status=HorticultureDailyAssignment.Status.IN_PROGRESS,
+            started_at=timezone.now(),
+        )
+        from unittest.mock import patch
+        import datetime
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        dummy_img = SimpleUploadedFile('after.jpg', b'file_content', content_type='image/jpeg')
+
+        # Test at 1:00 PM (outside 4:00 PM - 5:00 PM)
+        mock_1pm = datetime.datetime.combine(timezone.localdate(), datetime.time(13, 0))
+        with patch('django.utils.timezone.localtime', return_value=mock_1pm):
+            response = self.client.post(
+                reverse('horticulture_mobile:horti-mark-task'),
+                {
+                    'action': 'done',
+                    'assignment_id': assignment.id,
+                    'task_type_id': self.task_type.id,
+                    'photo_after': dummy_img,
+                },
+                secure=True,
+            )
+            self.assertContains(response, 'आफ्टर फोटो (After Photo) केवल शाम 4:00 PM से 5:00 PM के बीच ही ली जा सकती है।')
+
+        # Test at 4:30 PM (inside 4:00 PM - 5:00 PM)
+        mock_430pm = datetime.datetime.combine(timezone.localdate(), datetime.time(16, 30))
+        dummy_img2 = SimpleUploadedFile('after2.jpg', b'file_content', content_type='image/jpeg')
+        with patch('django.utils.timezone.localtime', return_value=mock_430pm):
+            response = self.client.post(
+                reverse('horticulture_mobile:horti-mark-task'),
+                {
+                    'action': 'done',
+                    'assignment_id': assignment.id,
+                    'task_type_id': self.task_type.id,
+                    'photo_after': dummy_img2,
+                },
+                secure=True,
+            )
+            self.assertEqual(response.status_code, 302)
+            assignment.refresh_from_db()
+            self.assertEqual(assignment.status, HorticultureDailyAssignment.Status.DONE)
+

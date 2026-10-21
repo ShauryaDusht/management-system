@@ -59,7 +59,7 @@ export function Card({ children, style, onClick, noPad }) {
         borderRadius: 14,
         border: '1px solid var(--border)',
         padding: noPad ? 0 : '18px 20px',
-        overflow: 'hidden',
+        overflow: style?.overflow || (noPad ? 'hidden' : 'visible'),
         cursor: onClick ? 'pointer' : 'default',
         ...style,
       }}

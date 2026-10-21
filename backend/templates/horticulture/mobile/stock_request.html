@@ -20,14 +20,14 @@
       <select name="inventory_item_id" id="inv_sel" onchange="fillItem(this)">
         <option value="">Choose existing item</option>
         {% for item in inv_items %}
-        <option value="{{ item.id }}" data-name="{{ item.name }}" data-unit="{{ item.get_unit_display }}">{% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} - {% if item.available_quantity <= 0 %}Out of stock{% else %}In stock{% endif %}</option>
+        <option value="{{ item.id }}" data-name="{{ item.name }}" data-unit="{{ item.get_unit_display }}" {% if pre_item and pre_item|lower == item.name|lower %}selected{% endif %}>{% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} - {% if item.available_quantity <= 0 %}Out of stock{% else %}In stock{% endif %}</option>
         {% endfor %}
       </select>
     </div>
     <div class="fg"><label>Required Item</label><input type="text" name="item_name" id="iname" required value="{{ pre_item }}" placeholder="Item name"></div>
     <div class="fg">
       <label>Quantity</label>
-      <input type="number" name="quantity" id="qty" value="1" min="1">
+      <input type="number" name="quantity" id="qty" value="1" min="0">
     </div>
     <div class="fg"><label>Unit</label><input type="text" name="unit" id="unit" placeholder="pieces, kg, liters"></div>
     <div class="fg"><label>For Area</label><input type="text" value="{{ selected_area.name }}" disabled style="background:#f3f4f6;color:#6b7280"></div>
@@ -39,6 +39,19 @@
   </form>
 </div>
 <script>
-function fillItem(s){const o=s.options[s.selectedIndex];if(o.value){document.getElementById('iname').value=o.dataset.name||'';document.getElementById('unit').value=o.dataset.unit||'';}}
+function fillItem(s){
+  if (!s) return;
+  const o = s.options[s.selectedIndex];
+  if(o && o.value){
+    document.getElementById('iname').value = o.dataset.name || '';
+    document.getElementById('unit').value = o.dataset.unit || '';
+  }
+}
+document.addEventListener('DOMContentLoaded', function(){
+  const s = document.getElementById('inv_sel');
+  if (s && s.selectedIndex > 0) {
+    fillItem(s);
+  }
+});
 </script>
 {% endblock %}

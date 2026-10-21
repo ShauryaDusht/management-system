@@ -905,7 +905,6 @@ Existing account passwords are preserved.
             ('Solanki Akashkumar Hasmukhbhai',     '253', '8160847423', 'Old Academic Reliever', 'reliever', True),
             ('Pravinbhai Vaghela',                 '400', '9624126018', 'Old Academic Reliever', 'reliever', True),
             ('Jyotsanaben Vaghela',                '231', '9574720027', 'Old Academic Reliever', 'reliever', True),
-            ('Vankar Vishalkumar Aravindbhai',     '',    '',           'Old Academic Reliever', 'reliever', True),
             ('Jay Kumar Solanki',                  '105', '8511476360', 'Academic Block 9', 'room',     False),
             ('Padmaben',                           '347', '', 'Academic Block 10', 'floor',    False),
             ('Devendra',                           '437', '', 'Academic Block 10', 'room',     False),
@@ -989,8 +988,8 @@ Existing account passwords are preserved.
             ('240', 'Vinayak Solanki', 'Hostel Common Area'),
             ('100', 'Ketan Gujjar', 'Hostel Common Area'),
             ('472', 'Suresh Solanki', 'Hostel Common Area'),
-            ('457', 'Bhavika Ben Solanki', 'Hostel Common Area'),
-            ('459', 'Urvashi Ben Vaghela', 'Hostel Common Area'),
+            ('542', 'Anil Thakur', 'Hostel Common Area'),
+            ('471', 'Krunal Parmar', 'Hostels Reliever'),
             ('416', 'Rajesh Parmar', 'Block-A JRHA'),
             ('417', 'Rahul Rathod', 'Block-A JRHA'),
             ('450', 'Darshan', 'Block-A JRHA'),
@@ -1000,7 +999,9 @@ Existing account passwords are preserved.
             ('456', 'Himmat', 'Block-C JRHA'),
             ('77', 'Hasmukh', 'Block-C JRHA'),
             ('454', 'Suresh', 'Block-C JRHA'),
+            ('457', 'Bhavika', 'Block-D JRHA'),
             ('458', 'Hetal', 'Block-D JRHA'),
+            ('459', 'Urvashi', 'Block-D JRHA'),
         ]
         managed_hostel_area_names = [
             'Aibaan', 'Beauki', 'Chimair', 'Duven', 'Emiet', 'Firpeal',
@@ -1141,8 +1142,7 @@ Existing account passwords are preserved.
             {'area': 'Hostel Common Area', 'name': 'Vinayak Solanki', 'pay_code': '240', 'phone': '9023271834', 'worker_type': 'washroom', 'shift': 'night', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Vinayak Solanki']},
             {'area': 'Hostel Common Area', 'name': 'Ketan Gujjar', 'pay_code': '100', 'phone': '8347139138', 'worker_type': 'floor', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Ketan Gujjar']},
             {'area': 'Hostel Common Area', 'name': 'Suresh Solanki', 'pay_code': '472', 'phone': '', 'worker_type': 'general', 'shift': 'evening', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Suresh', 'Suresh Solanki']},
-            {'area': 'Hostel Common Area', 'name': 'Bhavika Ben Solanki', 'pay_code': '457', 'phone': '', 'worker_type': 'general', 'shift': 'day', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Bhavika ben solnki', 'Bhavika Ben Solanki']},
-            {'area': 'Hostel Common Area', 'name': 'Urvashi Ben Vaghela', 'pay_code': '459', 'phone': '', 'worker_type': 'general', 'shift': 'day', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Urvashi Ben Vaghela', 'Urvashi', 'Krunal', 'Krunal Parmar']},
+            {'area': 'Hostel Common Area', 'name': 'Anil Thakur', 'pay_code': '542', 'phone': '9265665289', 'worker_type': 'floor', 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Anil Thakur']},
             {'area': 'Hostels Reliever', 'name': 'Anju ben', 'pay_code': '', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'priyanka.parmar', 'legacy_names': ['Anju Ben', 'Anju ben']},
             {'area': 'Hostels Reliever', 'name': 'Manisha ben', 'pay_code': '356', 'phone': '9157691322', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'anita.vaghela', 'legacy_names': ['Manisha Ben', 'Manisha ben']},
             {'area': 'Hostels Reliever', 'name': 'Umesh Babariya', 'pay_code': '435', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'pankaj.bihola', 'legacy_names': ['Umesh Babariya']},
@@ -1152,7 +1152,7 @@ Existing account passwords are preserved.
             {'area': 'Hostels Reliever', 'name': 'Vinay', 'pay_code': '136', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Vinay']},
             {'area': 'Hostels Reliever', 'name': 'Lala', 'pay_code': '154', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'ram.singh', 'legacy_names': ['Lala']},
             {'area': 'Hostels Reliever', 'name': 'Mukesh', 'pay_code': '88', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'jaimin.parmar', 'legacy_names': ['Mukesh']},
-            {'area': 'Hostels Reliever', 'name': 'Urvashi Ben Vaghela', 'pay_code': '459', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Urvashi Ben Vaghela', 'Urvashi', 'Urvashi Ben Vaghela (#459)', 'Krunal', 'Krunal Parmar']},
+            {'area': 'Hostels Reliever', 'name': 'Krunal Parmar', 'pay_code': '471', 'phone': '', 'worker_type': 'reliever', 'is_reliever': True, 'supervisor_username': 'vishwajeet.mishra', 'legacy_names': ['Krunal', 'Krunal Parmar']},
             {'area': 'Block-A JRHA', 'name': 'Rajesh Parmar', 'pay_code': '416', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'shailesh.vaghela', 'legacy_names': ['Rajeshbhai Parmar', 'Rajesh Parmar']},
             {'area': 'Block-A JRHA', 'name': 'Rahul Rathod', 'pay_code': '417', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'shailesh.vaghela', 'legacy_names': ['Rahul Rathod']},
             {'area': 'Block-A JRHA', 'name': 'Darshan', 'pay_code': '450', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'shailesh.vaghela', 'legacy_names': ['Darshan Brahmaniya', 'Darshan']},
@@ -1162,7 +1162,9 @@ Existing account passwords are preserved.
             {'area': 'Block-C JRHA', 'name': 'Himmat', 'pay_code': '456', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'shailesh.vaghela', 'legacy_names': ['Himmat Bhai', 'Himmat']},
             {'area': 'Block-C JRHA', 'name': 'Hasmukh', 'pay_code': '77', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'shailesh.vaghela', 'legacy_names': ['Hasmukh Bhai', 'Hasmukh']},
             {'area': 'Block-C JRHA', 'name': 'Suresh', 'pay_code': '454', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'shailesh.vaghela', 'legacy_names': ['Suresh Bhai', 'Suresh']},
+            {'area': 'Block-D JRHA', 'name': 'Urvashi', 'pay_code': '459', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Urvashi Ben Vaghela', 'Urvashi']},
             {'area': 'Block-D JRHA', 'name': 'Hetal', 'pay_code': '458', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Hetal Ben Ashokbhai', 'Hetal']},
+            {'area': 'Block-D JRHA', 'name': 'Bhavika', 'pay_code': '457', 'phone': '', 'worker_type': 'general', 'supervisor_username': 'manisha.thapa', 'legacy_names': ['Bhavika Ben Solanki', 'Bhavika']},
         ]
         hostel_synced, hostel_created, hostel_deactivated = self._force_exact_hostel_roster(
             hostel_roster,
@@ -1183,9 +1185,9 @@ Existing account passwords are preserved.
         common_supervisor = User.objects.filter(username='vishwajeet.mishra').first()
         common_shift_map = {
             'Vinayak Solanki': 'night',
-            'Bhavika Ben Solanki': 'day',
+            'Anil Thakur': 'day',
             'Suresh Solanki': 'evening',
-            'Urvashi Ben Vaghela': 'day',
+            'Krunal Parmar': 'day',
             'Yogesh Vaghela': 'day',
             'Ketan Gujjar': 'day',
         }
@@ -1355,11 +1357,11 @@ Existing account passwords are preserved.
                 worker.save(update_fields=['shift', 'supervisor'])
 
         deep_cleaning_roster = [
-            {'area': 'Deep Cleaning', 'name': 'Vaghela Chirag M', 'pay_code': '303', 'phone': '7698612890', 'worker_type': 'general', 'shift': 'day', 'is_reliever': True, 'legacy_names': ['Vaghela Chirag M', 'Vaghela Chirag Mohanbhai', 'Vaghela Chirag M.']},
-            {'area': 'Deep Cleaning', 'name': 'ParmarVijay Kumar Chhaganbha', 'pay_code': '329', 'phone': '9824347940', 'worker_type': 'general', 'shift': 'day', 'is_reliever': True, 'legacy_names': ['ParmarVijay Kumar Chhaganbha', 'Parmar Vijay Kumar Chhaganbhai', 'Parmar Vijaykumar', 'Parmar Vijay Kumar Chhaganbha']},
-            {'area': 'Deep Cleaning', 'name': 'sunil R. vaghela', 'pay_code': '455', 'phone': '9023986019', 'worker_type': 'general', 'shift': 'day', 'is_reliever': True, 'legacy_names': ['sunil R. vaghela', 'Sunil R. Vaghela', 'Sunil R Vaghela', 'Vaghela Sunilkumar Rajubhai']},
-            {'area': 'Deep Cleaning', 'name': 'Bhangi Sikandar D', 'pay_code': '389', 'phone': '9723116238', 'worker_type': 'general', 'shift': 'day', 'is_reliever': True, 'legacy_names': ['Bhangi Sikandar D', 'Bhangi Sikandar D.', 'Sikandarbhai Dungarbhai Bhangi']},
-            {'area': 'Deep Cleaning', 'name': 'Makvana Nikhi Girishbhai', 'pay_code': '364', 'phone': '7572829754', 'worker_type': 'general', 'shift': 'day', 'is_reliever': True, 'legacy_names': ['Makvana Nikhi Girishbhai', 'Makvana Nikhil Girishbhai', 'Makwana Nikhil']},
+            {'area': 'Deep Cleaning', 'name': 'Vaghela Chirag M', 'pay_code': '303', 'phone': '7698612890', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Vaghela Chirag M']},
+            {'area': 'Deep Cleaning', 'name': 'Parmar Vijay Kumar Chhaganbhai', 'pay_code': '329', 'phone': '9824347940', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Parmar Vijay Kumar Chhaganbhai']},
+            {'area': 'Deep Cleaning', 'name': 'Sunil R. Vaghela', 'pay_code': '455', 'phone': '9023986019', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Sunil R. Vaghela', 'Sunil R Vaghela']},
+            {'area': 'Deep Cleaning', 'name': 'Bhangi Sikandar D.', 'pay_code': '389', 'phone': '9723116238', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Bhangi Sikandar D.', 'Bhangi Sikandar D']},
+            {'area': 'Deep Cleaning', 'name': 'Makvana Nikhil Girishbhai', 'pay_code': '364', 'phone': '7572829754', 'worker_type': 'general', 'shift': 'day', 'is_reliever': False, 'legacy_names': ['Makvana Nikhil Girishbhai']},
         ]
         deep_synced, deep_deactivated = self._sync_area_roster(deep_cleaning_roster, 'ganesh.jayesh')
         deep_deleted, deep_kept = self._cleanup_unused_inactive_workers(['Deep Cleaning'])

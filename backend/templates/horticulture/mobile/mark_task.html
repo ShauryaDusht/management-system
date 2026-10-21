@@ -47,12 +47,22 @@
   </div>
   {% if pending_task_count %}
     <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
-    <div style="font-size:13px;font-weight:700">Open a task, optionally attach before/after photos, and submit.</div>
-  </div>
+      <div style="font-size:13px;font-weight:700">Open a task, optionally attach before/after photos, and submit.</div>
+      <div style="font-size:11px;opacity:.92;margin-top:5px;display:flex;gap:8px;flex-wrap:wrap">
+        <span>⏰ <b>बिफोर फोटो (Before Photo):</b> सुबह 8:00 AM – 10:00 AM</span>
+        <span>•</span>
+        <span>⏰ <b>आफ्टर फोटो (After Photo):</b> शाम 4:00 PM – 5:00 PM</span>
+      </div>
+    </div>
   {% else %}
-  <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
-    <div style="font-size:13px;font-weight:700">All listed tasks are submitted for today.</div>
-  </div>
+    <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
+      <div style="font-size:13px;font-weight:700">All listed tasks are submitted for today.</div>
+      <div style="font-size:11px;opacity:.92;margin-top:5px;display:flex;gap:8px;flex-wrap:wrap">
+        <span>⏰ <b>बिफोर फोटो (Before Photo):</b> सुबह 8:00 AM – 10:00 AM</span>
+        <span>•</span>
+        <span>⏰ <b>आफ्टर फोटो (After Photo):</b> शाम 4:00 PM – 5:00 PM</span>
+      </div>
+    </div>
   {% endif %}
 </div>
 
@@ -154,36 +164,48 @@
     <input type="hidden" name="assignment_id" value="{{ task.assignment.id }}">
     <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
     <input type="hidden" name="source" value="{{ task_source }}">
-    <div style="width:100%;border:1.5px solid #bbf7d0;border-radius:10px;padding:9px;background:#f0fdf4;margin-bottom:7px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div style="font-size:11px;font-weight:800;color:#166534">Before Photo <span style="color:#dc2626">* (Required)</span></div>
-        <span style="font-size:10px;background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:4px;font-weight:800">MANDATORY</span>
+    <div style="width:100%;border:1.5px solid {% if is_before_window or can_bypass_time %}#bbf7d0{% else %}#fed7aa{% endif %};border-radius:10px;padding:9px;background:{% if is_before_window or can_bypass_time %}#f0fdf4{% else %}#fffbeb{% endif %};margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:4px">
+        <div style="font-size:11px;font-weight:800;color:{% if is_before_window or can_bypass_time %}#166534{% else %}#9a3412{% endif %}">
+          बिफोर फोटो (Before Photo) <span style="color:#dc2626">* (अनिवार्य)</span>
+        </div>
+        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:10px;background:{% if is_before_window %}#dcfce7;color:#166534;border:1px solid #86efac{% else %}#fee2e2;color:#991b1b;border:1px solid #fca5a5{% endif %};padding:2px 7px;border-radius:4px;font-weight:800">
+            ⏰ सुबह 8:00 AM – 10:00 AM {% if is_before_window %}(चालू){% else %}(समय समाप्त / बंद){% endif %}
+          </span>
+        </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         <button type="button"
                 class="btn-g js-horti-open-camera-before"
                 data-task-id="{{ task.task_type_id }}"
                 data-task-name="Before - {{ task.task_type_name|escape }}"
-                style="padding:9px;font-size:12px;background:#15803d">
-          📷 Take Before Photo
+                data-window-open="{% if is_before_window or can_bypass_time %}1{% else %}0{% endif %}"
+                {% if not is_before_window and not can_bypass_time %}disabled style="padding:9px;font-size:12px;background:#9ca3af;cursor:not-allowed;opacity:.7"{% else %}style="padding:9px;font-size:12px;background:#15803d"{% endif %}>
+          📷 Take Before Photo (फोटो लें)
         </button>
       </div>
+      {% if not is_before_window and not can_bypass_time %}
+      <div style="margin-top:6px;font-size:11px;color:#991b1b;background:#fee2e2;border:1px solid #fca5a5;padding:6px 9px;border-radius:6px;font-weight:700">
+        ⚠️ बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 10:00 AM के बीच ही ली जा सकती है। (वर्तमान समय: {{ current_time_str }})
+      </div>
+      {% endif %}
       <input type="file" name="photo_before" class="js-photo-before-file-input" accept="image/*" capture="environment" required style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
       <div class="js-photo-before-selected" style="display:none;margin-top:8px;background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:7px">
         <div style="display:flex;gap:8px;align-items:center">
           <img class="js-photo-before-thumb" alt="Captured before task photo" style="width:52px;height:52px;border-radius:7px;object-fit:cover;border:1px solid #e5e7eb;flex-shrink:0">
           <div style="flex:1;min-width:0">
-            <div class="js-photo-before-meta" style="font-size:11px;color:#374151;font-weight:700">Before photo ready</div>
+            <div class="js-photo-before-meta" style="font-size:11px;color:#374151;font-weight:700">बिफोर फोटो तैयार (Photo Ready)</div>
             <div class="js-photo-before-size" style="font-size:10px;color:#6b7280;margin-top:2px"></div>
           </div>
           <button type="button" class="js-photo-before-clear" style="border:none;background:#fee2e2;color:#991b1b;border-radius:7px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer">
-            Retake
+            दोबारा लें (Retake)
           </button>
         </div>
       </div>
       <div class="js-photo-before-error" style="display:none;margin-top:8px;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:7px 8px;border-radius:7px;font-size:11px;font-weight:700"></div>
     </div>
-    <button type="submit" class="btn-g" style="padding:9px;font-size:12px">Start Work</button>
+    <button type="submit" class="btn-g" {% if not is_before_window and not can_bypass_time %}disabled style="padding:9px;font-size:12px;opacity:.5;cursor:not-allowed"{% else %}style="padding:9px;font-size:12px"{% endif %}>Start Work (कार्य शुरू करें)</button>
     </form>
 
     {% elif task.assignment.status == 'in_progress' %}
@@ -213,35 +235,47 @@
         <input type="text" name="note" placeholder="Remark / completion note" style="font-size:13px;padding:8px 10px">
       </div>
       <div style="margin-top:8px">
-        <div style="width:100%;border:1.5px solid #bbf7d0;border-radius:10px;padding:9px;background:#f0fdf4">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <div style="font-size:11px;font-weight:800;color:#166534">After Photo <span style="color:#dc2626">* (Required)</span></div>
-            <span style="font-size:10px;background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:4px;font-weight:800">MANDATORY</span>
+        <div style="width:100%;border:1.5px solid {% if is_after_window or can_bypass_time %}#bbf7d0{% else %}#fed7aa{% endif %};border-radius:10px;padding:9px;background:{% if is_after_window or can_bypass_time %}#f0fdf4{% else %}#fffbeb{% endif %}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:4px">
+            <div style="font-size:11px;font-weight:800;color:{% if is_after_window or can_bypass_time %}#166534{% else %}#9a3412{% endif %}">
+              आफ्टर फोटो (After Photo) <span style="color:#dc2626">* (अनिवार्य)</span>
+            </div>
+            <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+              <span style="font-size:10px;background:{% if is_after_window %}#dcfce7;color:#166534;border:1px solid #86efac{% else %}#fee2e2;color:#991b1b;border:1px solid #fca5a5{% endif %};padding:2px 7px;border-radius:4px;font-weight:800">
+                ⏰ शाम 4:00 PM – 5:00 PM {% if is_after_window %}(चालू){% else %}(समय समाप्त / बंद){% endif %}
+              </span>
+            </div>
           </div>
           <button type="button"
                   class="btn-g js-horti-open-camera"
                   data-task-id="{{ task.task_type_id }}"
                   data-task-name="After - {{ task.task_type_name|escape }}"
-                  style="padding:9px;font-size:12px;background:#15803d">
-            📷 Take After Photo
+                  data-window-open="{% if is_after_window or can_bypass_time %}1{% else %}0{% endif %}"
+                  {% if not is_after_window and not can_bypass_time %}disabled style="padding:9px;font-size:12px;background:#9ca3af;cursor:not-allowed;opacity:.7"{% else %}style="padding:9px;font-size:12px;background:#15803d"{% endif %}>
+            📷 Take After Photo (फोटो लें)
           </button>
+          {% if not is_after_window and not can_bypass_time %}
+          <div style="margin-top:6px;font-size:11px;color:#991b1b;background:#fee2e2;border:1px solid #fca5a5;padding:6px 9px;border-radius:6px;font-weight:700">
+            ⚠️ आफ्टर फोटो (After Photo) केवल शाम 4:00 PM से 5:00 PM के बीच ही ली जा सकती है। (वर्तमान समय: {{ current_time_str }})
+          </div>
+          {% endif %}
           <input type="file" name="photo_after" class="js-photo-file-input" accept="image/*" capture="environment" required style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
           <div class="js-photo-selected" style="display:none;margin-top:8px;background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:7px">
             <div style="display:flex;gap:8px;align-items:center">
               <img class="js-photo-thumb" alt="Captured task photo" style="width:52px;height:52px;border-radius:7px;object-fit:cover;border:1px solid #e5e7eb;flex-shrink:0">
               <div style="flex:1;min-width:0">
-                <div class="js-photo-meta" style="font-size:11px;color:#374151;font-weight:700">After photo ready</div>
+                <div class="js-photo-meta" style="font-size:11px;color:#374151;font-weight:700">आफ्टर फोटो तैयार (Photo Ready)</div>
                 <div class="js-photo-size" style="font-size:10px;color:#6b7280;margin-top:2px"></div>
               </div>
               <button type="button" class="js-photo-clear" style="border:none;background:#fee2e2;color:#991b1b;border-radius:7px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer">
-                Retake
+                दोबारा लें (Retake)
               </button>
             </div>
           </div>
           <div class="js-photo-error" style="display:none;margin-top:8px;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:7px 8px;border-radius:7px;font-size:11px;font-weight:700"></div>
         </div>
       </div>
-      <button type="submit" class="btn-s js-submit-btn" style="margin-top:10px;padding:9px;font-size:12px">Mark Completed</button>
+      <button type="submit" class="btn-s js-submit-btn" {% if not is_after_window and not can_bypass_time %}disabled style="margin-top:10px;padding:9px;font-size:12px;opacity:.5;cursor:not-allowed"{% else %}style="margin-top:10px;padding:9px;font-size:12px"{% endif %}>Mark Completed (कार्य पूरा करें)</button>
     </form>
     <form method="post" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}&source={{ task_source }}" style="margin-top:6px">
     {% csrf_token %}
@@ -329,7 +363,7 @@ function setHortiBeforePhoto(form, payload) {
     thumb.src = url;
     thumb.dataset.objectUrl = url;
   }
-  if (meta) meta.textContent = 'Before photo ready';
+  if (meta) meta.textContent = 'बिफोर फोटो तैयार (Photo Ready)';
   if (size) {
     var kb = Math.max(1, Math.round((payload.compressedSize || payload.file.size || 0) / 1024));
     size.textContent = kb + ' KB';
@@ -389,7 +423,7 @@ function setHortiPhoto(form, payload) {
     thumb.src = url;
     thumb.dataset.objectUrl = url;
   }
-  if (meta) meta.textContent = 'After photo ready';
+  if (meta) meta.textContent = 'आफ्टर फोटो तैयार (Photo Ready)';
   if (size) {
     var kb = Math.max(1, Math.round((payload.compressedSize || payload.file.size || 0) / 1024));
     size.textContent = kb + ' KB';
@@ -466,19 +500,31 @@ document.addEventListener('submit', function(event) {
   if (!form) return;
 
   if (form.classList.contains('js-horti-task-start-form')) {
+    var cameraBtn = form.querySelector('.js-horti-open-camera-before');
+    if (cameraBtn && cameraBtn.getAttribute('data-window-open') === '0') {
+      event.preventDefault();
+      showHortiBeforePhotoError(form, '⏰ बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 10:00 AM के बीच ही सबमिट की जा सकती है।');
+      return;
+    }
     var beforeInput = form.querySelector('.js-photo-before-file-input');
     if (!beforeInput || !beforeInput.files || beforeInput.files.length === 0) {
       event.preventDefault();
-      showHortiBeforePhotoError(form, '⚠️ Mandatory: Please take or attach a Before Photo before starting work.');
+      showHortiBeforePhotoError(form, '⚠️ अनिवार्य: कृपया कार्य शुरू करने से पहले बिफोर फोटो (Before Photo) लें।');
       return;
     }
   }
 
   if (form.classList.contains('js-horti-task-complete-form')) {
+    var cameraBtn = form.querySelector('.js-horti-open-camera');
+    if (cameraBtn && cameraBtn.getAttribute('data-window-open') === '0') {
+      event.preventDefault();
+      showHortiPhotoError(form, '⏰ आफ्टर फोटो (After Photo) केवल शाम 4:00 PM से 5:00 PM के बीच ही सबमिट की जा सकती है।');
+      return;
+    }
     var afterInput = form.querySelector('.js-photo-file-input');
     if (!afterInput || !afterInput.files || afterInput.files.length === 0) {
       event.preventDefault();
-      showHortiPhotoError(form, '⚠️ Mandatory: Please take or attach an After Photo before marking completed.');
+      showHortiPhotoError(form, '⚠️ अनिवार्य: कृपया कार्य पूरा करने के लिए आफ्टर फोटो (After Photo) लें।');
       return;
     }
   }
@@ -517,6 +563,10 @@ document.addEventListener('click', function(event) {
     event.preventDefault();
     var form = cameraBeforeButton.closest('.js-horti-task-start-form');
     if (!form) return;
+    if (cameraBeforeButton.getAttribute('data-window-open') === '0') {
+      showHortiBeforePhotoError(form, '⏰ बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 10:00 AM के बीच ही ली जा सकती है।');
+      return;
+    }
     ensureHortiCamera();
     if (!hortiCamera) {
       var fallbackInput = form.querySelector('.js-photo-before-file-input');
@@ -548,6 +598,10 @@ document.addEventListener('click', function(event) {
     event.preventDefault();
     var form = cameraButton.closest('.js-horti-task-complete-form');
     if (!form) return;
+    if (cameraButton.getAttribute('data-window-open') === '0') {
+      showHortiPhotoError(form, '⏰ आफ्टर फोटो (After Photo) केवल शाम 4:00 PM से 5:00 PM के बीच ही ली जा सकती है।');
+      return;
+    }
     ensureHortiCamera();
     if (!hortiCamera) {
       var fallbackInput = form.querySelector('.js-photo-file-input');

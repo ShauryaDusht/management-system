@@ -1,15 +1,20 @@
 import functools
 import calendar
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from urllib.parse import urlencode
+
+BEFORE_PHOTO_START_TIME = time(8, 0)
+BEFORE_PHOTO_END_TIME = time(10, 0, 59)
+AFTER_PHOTO_START_TIME = time(16, 0)
+AFTER_PHOTO_END_TIME = time(17, 0, 59)
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import models, transaction
-from django.db.models import Count, DecimalField, Prefetch, Sum, Value
+from django.db.models import Case, Count, DecimalField, IntegerField, Prefetch, Sum, Value, When
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -2251,10 +2256,18 @@ def horticulture_mark_task(request):
                         messages.success(request, f'{worker.name} assigned to {task_type.name}.')
                     return redirect(f'/horticulture/mark-task/?{query}')
             elif action == 'start':
+                now_time = timezone.localtime().time()
+                is_before_window = BEFORE_PHOTO_START_TIME <= now_time <= BEFORE_PHOTO_END_TIME
+                can_bypass = (request.user.is_superuser or request.user.is_staff) and (request.GET.get('bypass_time') == '1' or request.POST.get('bypass_time') == '1')
                 if assignment is None:
                     error_message = 'Task assignment not found.'
                 elif assignment.status != HorticultureDailyAssignment.Status.PENDING:
                     error_message = 'Only pending tasks can be started.'
+                elif not is_before_window and not can_bypass:
+                    error_message = (
+                        f"बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 10:00 AM के बीच ही ली जा सकती है। "
+                        f"(वर्तमान समय: {timezone.localtime().strftime('%I:%M %p')})"
+                    )
                 elif not request.FILES.get('photo_before') and not assignment.photo_before:
                     error_message = 'Before photo is required. Please capture a before photo before starting work.'
                 else:
@@ -2288,10 +2301,18 @@ def horticulture_mark_task(request):
                     assignment.save(update_fields=['status', 'started_at', 'photo_before', 'photo_before_uploaded_at'])
                     return redirect(f'/horticulture/mark-task/?{query}')
             elif action == 'done':
+                now_time = timezone.localtime().time()
+                is_after_window = AFTER_PHOTO_START_TIME <= now_time <= AFTER_PHOTO_END_TIME
+                can_bypass = (request.user.is_superuser or request.user.is_staff) and (request.GET.get('bypass_time') == '1' or request.POST.get('bypass_time') == '1')
                 if assignment is None:
                     error_message = 'Task assignment not found.'
                 elif assignment.status != HorticultureDailyAssignment.Status.IN_PROGRESS:
                     error_message = 'Start work before marking completed.'
+                elif not is_after_window and not can_bypass:
+                    error_message = (
+                        f"आफ्टर फोटो (After Photo) केवल शाम 4:00 PM से 5:00 PM के बीच ही ली जा सकती है। "
+                        f"(वर्तमान समय: {timezone.localtime().strftime('%I:%M %p')})"
+                    )
                 elif not request.FILES.get('photo_after') and not request.FILES.get('photo') and not assignment.photo_after and not assignment.photo:
                     error_message = 'After photo is required. Please capture an after photo before marking the task completed.'
                 elif TaskLog.objects.filter(zone=selected_zone, area=selected_area, task_type=assignment.task_type, done_date=today).exists():
@@ -2380,6 +2401,12 @@ def horticulture_mark_task(request):
     _mark_horticulture_busy_workers(workers, _busy_horticulture_worker_ids(selected_zone, today))
     _mark_horticulture_unavailable_workers(workers, today)
 
+    now_dt = timezone.localtime()
+    now_time = now_dt.time()
+    is_before_window = BEFORE_PHOTO_START_TIME <= now_time <= BEFORE_PHOTO_END_TIME
+    is_after_window = AFTER_PHOTO_START_TIME <= now_time <= AFTER_PHOTO_END_TIME
+    can_bypass_time = (request.user.is_superuser or request.user.is_staff) and (request.GET.get('bypass_time') == '1' or request.POST.get('bypass_time') == '1')
+
     return render(
         request,
         'horticulture/mobile/mark_task.html',
@@ -2399,6 +2426,12 @@ def horticulture_mark_task(request):
             'error_message': error_message,
             'zone_count': len(zones),
             'task_source': task_source,
+            'is_before_window': is_before_window,
+            'is_after_window': is_after_window,
+            'can_bypass_time': can_bypass_time,
+            'current_time_str': now_dt.strftime('%I:%M %p'),
+            'before_window_str': '8:00 AM – 10:00 AM',
+            'after_window_str': '4:00 PM – 5:00 PM',
         },
     )
 
@@ -2809,11 +2842,32 @@ def _horticulture_usage_issues(user, area=None, limit=None):
     return out
 
 
+HORTICULTURE_STOCK_ITEMS = [
+    'Oil',
+    'Petrol',
+    'Nilon Thread',
+    'Herbicides',
+    'Pesticides',
+    'Neem Oil',
+]
+
+
 @horticulture_supervisor_required
 def horticulture_stock(request):
     selected_zone, zones, dashboard_payload = _mobile_zone_context(request.user, request.GET.get('zone'))
     selected_area = _selected_area_for_zone(selected_zone, request.GET.get('area'))
-    area_stocks = HorticultureAreaStock.objects.filter(area=selected_area).order_by('item_name') if selected_area else []
+    order_cases = [When(item_name__iexact=name, then=Value(idx)) for idx, name in enumerate(HORTICULTURE_STOCK_ITEMS)]
+    area_stocks = (
+        HorticultureAreaStock.objects.filter(area=selected_area)
+        .annotate(custom_order=Case(*order_cases, default=Value(99), output_field=IntegerField()))
+        .order_by('custom_order', 'item_name')
+        if selected_area else []
+    )
+    pending_requests = (
+        HorticultureStockRequest.objects.filter(area=selected_area, status='pending')
+        .order_by('-created_at')
+        if selected_area else []
+    )
     return render(
         request,
         'horticulture/mobile/stock.html',
@@ -2825,6 +2879,7 @@ def horticulture_stock(request):
             'areas': stable_horticulture_area_nav_rows(dashboard_payload['areas']),
             'area_stocks': area_stocks,
             'low_stocks': [stock for stock in area_stocks if stock.is_low],
+            'pending_requests': pending_requests,
             'issued_items': _horticulture_usage_issues(request.user, area=selected_area),
             'requested': request.GET.get('requested'),
             'zone_count': len(zones),
@@ -2844,12 +2899,13 @@ def horticulture_stock_request(request):
 
     selected_zone, zones, dashboard_payload = _mobile_zone_context(request.user, request.GET.get('zone') or request.POST.get('zone'))
     selected_area = _selected_area_for_zone(selected_zone, request.GET.get('area') or request.POST.get('area_id'))
-    inv_items = filter_requestable_items(
+    order_cases = [When(name__iexact=name, then=Value(idx)) for idx, name in enumerate(HORTICULTURE_STOCK_ITEMS)]
+    inv_items = (
         Item.objects
-        .filter(category__name__in=['Garden & Horticulture Equipment', 'Tools & Equipment', 'Consumables'])
+        .filter(name__in=HORTICULTURE_STOCK_ITEMS)
         .select_related('category')
-        .order_by('name'),
-        request.user,
+        .annotate(custom_order=Case(*order_cases, default=Value(99), output_field=IntegerField()))
+        .order_by('custom_order', 'name')
     )
 
     if request.method == 'POST':
@@ -2861,11 +2917,12 @@ def horticulture_stock_request(request):
             messages.error(request, UNAUTHORIZED_ITEM_REQUEST_MESSAGE)
         else:
             try:
-                qty = int(request.POST.get('quantity') or 1)
+                raw_qty = request.POST.get('quantity')
+                qty = int(raw_qty) if raw_qty is not None and str(raw_qty).strip() != '' else 0
             except (TypeError, ValueError):
-                qty = 0
-            if qty <= 0:
-                messages.error(request, 'Quantity must be greater than 0.')
+                qty = -1
+            if qty < 0:
+                messages.error(request, 'Quantity cannot be less than 0.')
                 return render(
                     request,
                     'horticulture/mobile/stock_request.html',
@@ -2904,6 +2961,22 @@ def horticulture_stock_request(request):
                 reason=request.POST.get('reason', '').strip(),
                 is_urgent=request.POST.get('is_urgent') == 'on',
             )
+            if selected_area:
+                area_stock, created = HorticultureAreaStock.objects.get_or_create(
+                    area=selected_area,
+                    item_name=item_name,
+                    defaults={
+                        'item': inv_item,
+                        'quantity': Decimal(qty),
+                        'unit': request.POST.get('unit', '').strip(),
+                        'low_stock_threshold': Decimal('2'),
+                    }
+                )
+                if not created:
+                    area_stock.quantity += Decimal(qty)
+                    if inv_item and not area_stock.item:
+                        area_stock.item = inv_item
+                    area_stock.save(update_fields=['quantity', 'item', 'last_updated'])
             if inv_item:
                 inv_req = InvItemRequest.objects.create(
                     item=inv_item,

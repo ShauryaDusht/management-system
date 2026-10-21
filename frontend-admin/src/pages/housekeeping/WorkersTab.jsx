@@ -159,17 +159,11 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
     }
     const query = search.trim().toLowerCase()
     if (query) {
-      const cleanTokens = query.replace(/[()#]/g, ' ').split(/\s+/).filter(Boolean)
-      list = list.filter((w) => {
-        const fullStr = `${w.name} ${w.pay_code} #${w.pay_code} (${w.pay_code}) ${w.area_name} ${w.supervisor_name}`.toLowerCase()
-        return (
-          [w.name, w.pay_code, w.area_name, w.supervisor_name].some((value) =>
-            String(value || '').toLowerCase().includes(query)
-          ) ||
-          (cleanTokens.length > 0 && cleanTokens.every((token) => fullStr.includes(token))) ||
-          fullStr.includes(query)
+      list = list.filter((w) =>
+        [w.name, w.pay_code, w.area_name, w.supervisor_name].some((value) =>
+          String(value || '').toLowerCase().includes(query)
         )
-      })
+      )
     }
     return [...list].sort((a, b) => {
       const areaA = a.area_name || ''

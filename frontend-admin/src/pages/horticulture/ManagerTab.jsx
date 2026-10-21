@@ -362,7 +362,7 @@ export default function ManagerTab() {
         ) : null}
       </Card>
 
-      <Card style={{ marginBottom: 14 }}>
+      <Card style={{ marginBottom: 14, overflow: 'visible', position: 'relative', zIndex: 30 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800 }}>Weekly Summary</div>

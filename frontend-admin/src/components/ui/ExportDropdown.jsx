@@ -120,7 +120,7 @@ export default function ExportDropdown({
   const isPrimary = variant === 'primary'
 
   return (
-    <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block', ...style }}>
+    <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block', zIndex: open ? 1000 : undefined, ...style }}>
       <button
         type="button"
         disabled={disabled || Boolean(busyFormat)}

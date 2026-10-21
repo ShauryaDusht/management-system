@@ -35,7 +35,7 @@ select,textarea{
 input:focus,select:focus,textarea:focus{border-color:#1a3a2a;box-shadow:0 0 0 3px rgba(26,58,42,.09)}
 input[type=file]{padding:10px;font-size:13px}
 textarea{resize:vertical;min-height:80px}
-.type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:2px}
+.type-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:2px}
 .type-opt input{display:none}
 .type-label{
   display:flex;flex-direction:column;align-items:center;gap:5px;
@@ -47,6 +47,7 @@ textarea{resize:vertical;min-height:80px}
 .type-opt input:checked + .type-label.tree{background:#dcfce7;border-color:#16a34a;color:#166534}
 .type-opt input:checked + .type-label.plant{background:#ede9fe;border-color:#7c3aed;color:#5b21b6}
 .type-opt input:checked + .type-label.creeper{background:#e0f2fe;border-color:#0284c7;color:#075985}
+.type-opt input:checked + .type-label.shrub{background:#fef3c7;border-color:#d97706;color:#92400e}
 @media(max-width:420px){.type-grid{grid-template-columns:repeat(2,1fr)}}
 
 /* ── GPS row ── */
@@ -134,6 +135,21 @@ textarea{resize:vertical;min-height:80px}
 .flash.err{background:#fee2e2;border:1px solid #fca5a5;color:#991b1b}
 .photo-preview{width:100%;max-height:200px;object-fit:cover;border-radius:9px;margin-top:8px;display:none}
 select option[disabled]{color:#9ca3af}
+
+/* ── Creeper Block Management Styles ── */
+.creeper-calc-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:9px 11px}
+.creeper-calc-label{font-size:10.5px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.creeper-calc-val{font-size:16px;font-weight:800;color:#0f172a;margin-top:2px}
+.block-item-card{background:#ffffff;border:1.5px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:10px;transition:all .15s ease}
+.block-item-card.has-coords{border-color:#86efac;background:#fbfdfb}
+.block-item-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:6px;border-bottom:1px dashed #e5e7eb}
+.block-tag-badge{display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:12px;text-transform:uppercase;letter-spacing:.03em}
+.block-tag-badge.tagged{background:#dcfce7;color:#166534}
+.block-tag-badge.pending{background:#fef3c7;color:#92400e}
+.block-btn-sm{padding:7px 11px;border-radius:7px;border:none;font-size:11.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.block-btn-gps{background:#1a3a2a;color:#fff}
+.block-btn-map{background:#0e6b94;color:#fff}
+.block-btn-sm:active{opacity:.85}
 </style>
 </head>
 <body>
@@ -168,6 +184,10 @@ select option[disabled]{color:#9ca3af}
           <input type="radio" name="plant_type_display" value="creeper">
           <span class="type-label creeper"><span class="type-emoji">🌱</span>Creeper</span>
         </label>
+        <label class="type-opt">
+          <input type="radio" name="plant_type_display" value="shrub">
+          <span class="type-label shrub"><span class="type-emoji">🪴</span>Shrub</span>
+        </label>
       </div>
     </div>
 
@@ -190,11 +210,19 @@ select option[disabled]{color:#9ca3af}
         <label for="scientific_name">Botanical Name</label>
         <input type="text" id="scientific_name" name="scientific_name" readonly placeholder="Select local name first">
       </div>
+      <div class="fg" id="creeperSetIdGroup" style="display:none">
+        <label for="set_id" id="setIdLabel">Set Identifier (optional)</label>
+        <input type="text" id="set_id" name="set_id" placeholder="e.g. CRP-01 / SHR-01 (leave blank for auto-ID)">
+        <p style="font-size:11px;color:#6b7280;margin-top:4px">Identifier grouping all 1 m × 1 m blocks belonging to this set.</p>
+      </div>
     </div>
 
     <!-- Location -->
     <div class="card">
-      <div class="sec-title">Location</div>
+      <div class="sec-title" id="locationSecTitle">Location</div>
+      <p id="locationSubtext" style="font-size:11.5px;color:#4b5563;margin-bottom:10px;display:none;line-height:1.4">
+        Reference anchor location for the creeper set. Each 1 m × 1 m block below holds its own individual coordinates.
+      </p>
       <div class="gps-row">
         <div class="fg">
           <label class="required" for="latitude">Latitude</label>
@@ -243,26 +271,111 @@ select option[disabled]{color:#9ca3af}
       </div>
     </div>
 
-    <!-- Measurements -->
-    <div class="card">
+    <!-- Measurements (Standard for Tree/Plant/Shrub) -->
+    <div class="card" id="standardMeasurementsCard">
       <div class="sec-title">Measurements</div>
       <div class="row2">
-      <div class="fg">
-        <label class="required" for="height_m">Height (m)</label>
-        <input type="number" id="height_m" name="height_m" step="0.01" min="0" required placeholder="e.g. 4.5">
+        <div class="fg">
+          <label for="height_m">Height (m)</label>
+          <input type="number" id="height_m" name="height_m" step="0.01" min="0" placeholder="e.g. 4.5">
+        </div>
+
+        <div class="fg">
+          <label for="girth_cm">Girth (cm)</label>
+          <input type="number" id="girth_cm" name="girth_cm" step="0.1" min="0" placeholder="e.g. 85">
+        </div>
       </div>
 
-      <div class="fg">
-        <label class="required" for="girth_cm">Girth (cm)</label>
-        <input type="number" id="girth_cm" name="girth_cm" step="0.1" min="0" required placeholder="e.g. 85">
+      <div class="row2" style="margin-top:10px">
+        <div class="fg">
+          <label for="length_m">Length (m)</label>
+          <input type="number" id="length_m" name="length_m" step="0.01" min="0" placeholder="e.g. 2.5">
+        </div>
+
+        <div class="fg">
+          <label for="width_m">Width (m)</label>
+          <input type="number" id="width_m" name="width_m" step="0.01" min="0" placeholder="e.g. 1.8">
+        </div>
+      </div>
+
+      <div class="fg" style="margin-top:10px">
+        <label for="canopy_area_m">Canopy Span (m)</label>
+        <input type="number" id="canopy_area_m" name="canopy_area_m" step="0.01" min="0" placeholder="e.g. 3.2">
       </div>
     </div>
 
-    <div class="fg" style="margin-top:10px">
-      <label class="required" for="canopy_area_m">Canopy Span (m)</label>
-      <input type="number" vid="canopy_area_m" name="canopy_area_m" step="0.01" min="0" required placeholder="e.g. 3.2">
+    <!-- Creeper / Shrub Area & Block Calculation -->
+    <div class="card" id="creeperCalcCard" style="display:none">
+      <div class="sec-title" id="creeperCalcCardTitle">🌱 Area &amp; Block Calculation</div>
+      <p id="creeperCalcCardDesc" style="font-size:12px;color:#4b5563;margin-bottom:12px;line-height:1.4">
+        Partition the area into individual <strong>1 m × 1 m blocks</strong>. Each block has its own geographical location. Multiple blocks represent this single set.
+      </p>
+
+      <div class="row2">
+        <div class="fg">
+          <label class="required" for="creeper_length">Total Length (m)</label>
+          <input type="number" id="creeper_length" step="0.01" min="0.1" placeholder="e.g. 5.0">
+        </div>
+
+        <div class="fg">
+          <label class="required" for="creeper_width">Total Width (m)</label>
+          <input type="number" id="creeper_width" step="0.01" min="0.1" placeholder="e.g. 4.0">
+        </div>
+      </div>
+
+      <!-- Live Calculation Display -->
+      <div id="creeperCalcSummary" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0">
+        <div class="creeper-calc-box">
+          <div class="creeper-calc-label">Total Area</div>
+          <div class="creeper-calc-val" id="dispTotalArea">0.00 m²</div>
+        </div>
+        <div class="creeper-calc-box">
+          <div class="creeper-calc-label">Block Size</div>
+          <div class="creeper-calc-val">1 m × 1 m</div>
+        </div>
+        <div class="creeper-calc-box" style="background:#f0fdf4;border-color:#bbf7d0">
+          <div class="creeper-calc-label" style="color:#166534">Full Blocks</div>
+          <div class="creeper-calc-val" style="color:#15803d" id="dispFullBlocks">0</div>
+        </div>
+        <div class="creeper-calc-box" style="background:#fffbeb;border-color:#fde68a">
+          <div class="creeper-calc-label" style="color:#92400e">Unpartitioned Area</div>
+          <div class="creeper-calc-val" style="color:#b45309" id="dispUnpartArea">0.00 m²</div>
+        </div>
+      </div>
+
+      <div id="creeperFormulaNote" style="font-size:11px;color:#4b5563;margin-bottom:12px;background:#f3f4f6;padding:8px 10px;border-radius:6px;line-height:1.4">
+        📐 <strong>Calculation Formula:</strong><br>
+        <code>Blocks Along Length = floor(Length / 1)</code><br>
+        <code>Blocks Along Width = floor(Width / 1)</code><br>
+        <code>Total Possible Full Blocks = Blocks Along Length × Blocks Along Width</code><br>
+        <code>Unpartitioned Area = Total Area − Total Possible Full Blocks</code>
+      </div>
+
+      <div id="creeperDimWarning" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;margin-bottom:12px">
+        ⚠️ Dimensions are too small (&lt; 1.0 m) to accommodate a complete 1 m × 1 m block. 0 full blocks possible.
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button type="button" class="gps-btn" id="btnGenBlocks" style="background:#1a3a2a">
+          ⚙️ Generate 1m × 1m Blocks
+        </button>
+        <span id="genBlockMsg" style="font-size:12px;font-weight:700;color:#16a34a"></span>
+      </div>
     </div>
+
+    <!-- Individual Blocks Section (Visible only when plant_type is creeper and blocks generated) -->
+    <div class="card" id="creeperBlocksCard" style="display:none">
+      <div class="sec-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>📍 Individual Block Geo-Tagging</span>
+        <span id="blockProgressBadge" class="block-tag-badge pending">0 / 0 Geo-Tagged</span>
+      </div>
+      <p style="font-size:11px;color:#6b7280;margin-bottom:12px">
+        Each 1 m × 1 m block must have its own distinct coordinates. Use 📍 GPS or 🗺 Map per block, or enter coordinates manually.
+      </p>
+
+      <div id="blocksContainer" style="display:flex;flex-direction:column;gap:10px"></div>
     </div>
+    <input type="hidden" id="blocks_json" name="blocks_json">
 
     <!-- Condition -->
     <div class="card">
@@ -306,6 +419,24 @@ select option[disabled]{color:#9ca3af}
 var varietySelect = document.getElementById('variety');
 var plantTypeInput = document.getElementById('plant_type');
 
+function updatePlantTypeMode() {
+  var pType = plantTypeInput.value;
+  var isBlockPartitioned = false;
+  var creeperSetIdGroup = document.getElementById('creeperSetIdGroup');
+  var creeperCalcCard = document.getElementById('creeperCalcCard');
+  var creeperBlocksCard = document.getElementById('creeperBlocksCard');
+  var standardMeasurementsCard = document.getElementById('standardMeasurementsCard');
+  var locationTitle = document.getElementById('locationSecTitle');
+  var locationSubtext = document.getElementById('locationSubtext');
+
+  if (creeperSetIdGroup) creeperSetIdGroup.style.display = 'none';
+  if (creeperCalcCard) creeperCalcCard.style.display = 'none';
+  if (creeperBlocksCard) creeperBlocksCard.style.display = 'none';
+  if (standardMeasurementsCard) standardMeasurementsCard.style.display = 'block';
+  if (locationTitle) locationTitle.textContent = 'Location';
+  if (locationSubtext) locationSubtext.style.display = 'none';
+}
+
 function syncVarietyOptions() {
   var selectedRadio = document.querySelector(
     'input[name="plant_type_display"]:checked'
@@ -322,7 +453,9 @@ function syncVarietyOptions() {
       ? optionType !== selectedType
       : false;
   });
+  updatePlantTypeMode();
 }
+
 varietySelect.addEventListener('change', function() {
   var sel = this.options[this.selectedIndex];
   if (!sel) return;
@@ -334,28 +467,343 @@ varietySelect.addEventListener('change', function() {
     var r = document.querySelector('input[type="radio"][name="plant_type_display"][value="'+type+'"]');
     if (r) {
       r.checked = true;
-      syncVarietyOptions();
     }
   }
   if (name) document.getElementById('local_name').value = name;
   if (sci)  document.getElementById('scientific_name').value = sci;
   syncVarietyOptions();
 });
+
 document.querySelectorAll('input[name="plant_type_display"]')
   .forEach(function(radio) {
     radio.addEventListener('change', function() {
-
       plantTypeInput.value = this.value;
-
       varietySelect.selectedIndex = 0;
-
       document.getElementById('scientific_name').value = '';
       document.getElementById('local_name').value = '';
-
       syncVarietyOptions();
     });
   });
+
+// ── Creeper Calculation & Individual 1m x 1m Block Management ─────────────
+var generatedBlocks = [];
+var generatedLength = 0;
+var generatedWidth = 0;
+var mapTargetBlockNumber = null;
+
+function updateCreeperCalculations() {
+  var lInp = document.getElementById('creeper_length');
+  var wInp = document.getElementById('creeper_width');
+  if (!lInp || !wInp) return { length: 0, width: 0, totalArea: 0, fullBlocks: 0, unpartArea: 0 };
+
+  var l = parseFloat(lInp.value) || 0;
+  var w = parseFloat(wInp.value) || 0;
+  var totalArea = Math.round(l * w * 100) / 100;
+  var blocksL = Math.floor(l / 1.0);
+  var blocksW = Math.floor(w / 1.0);
+  var fullBlocks = blocksL * blocksW;
+  var unpartArea = Math.max(0, Math.round((totalArea - fullBlocks) * 100) / 100);
+
+  var totalEl = document.getElementById('dispTotalArea');
+  var blocksEl = document.getElementById('dispFullBlocks');
+  var unpartEl = document.getElementById('dispUnpartArea');
+  if (totalEl) totalEl.textContent = totalArea.toFixed(2) + ' m²';
+  if (blocksEl) blocksEl.textContent = fullBlocks;
+  if (unpartEl) unpartEl.textContent = unpartArea.toFixed(2) + ' m²';
+
+  var warningEl = document.getElementById('creeperDimWarning');
+  if (warningEl) {
+    if ((l > 0 || w > 0) && (l < 1.0 || w < 1.0)) {
+      warningEl.style.display = 'block';
+      warningEl.innerHTML = '⚠️ Dimensions (' + l + 'm × ' + w + 'm) are too small to accommodate a complete 1 m × 1 m block. 0 full blocks possible.';
+    } else {
+      warningEl.style.display = 'none';
+    }
+  }
+
+  var msgEl = document.getElementById('genBlockMsg');
+  if (msgEl && generatedBlocks.length > 0 && (l !== generatedLength || w !== generatedWidth)) {
+    msgEl.textContent = '⚠️ Dimensions changed! Tap "Generate" to recalculate.';
+    msgEl.style.color = '#d97706';
+  }
+
+  return { length: l, width: w, totalArea: totalArea, fullBlocks: fullBlocks, unpartArea: unpartArea };
+}
+
+var creeperLenInp = document.getElementById('creeper_length');
+var creeperWidInp = document.getElementById('creeper_width');
+if (creeperLenInp) creeperLenInp.addEventListener('input', updateCreeperCalculations);
+if (creeperWidInp) creeperWidInp.addEventListener('input', updateCreeperCalculations);
+
+var btnGen = document.getElementById('btnGenBlocks');
+if (btnGen) {
+  btnGen.addEventListener('click', function() {
+    generateBlocks();
+  });
+}
+
+function syncBlockInputsToData() {
+  generatedBlocks.forEach(function(b) {
+    var latInp = document.getElementById('block_lat_' + b.block_number);
+    var lngInp = document.getElementById('block_lng_' + b.block_number);
+    var statusSel = document.getElementById('block_status_' + b.block_number);
+    var notesInp = document.getElementById('block_notes_' + b.block_number);
+    if (latInp) b.latitude = latInp.value.trim();
+    if (lngInp) b.longitude = lngInp.value.trim();
+    if (statusSel) b.status = statusSel.value;
+    if (notesInp) b.notes = notesInp.value.trim();
+  });
+}
+
+function generateBlocks() {
+  var calc = updateCreeperCalculations();
+  if (calc.length <= 0 || calc.width <= 0) {
+    alert('Please enter valid positive numbers for length and width.');
+    return;
+  }
+  if (calc.fullBlocks <= 0) {
+    alert('Area dimensions must be at least 1.0 m × 1.0 m to generate complete 1m × 1m blocks.');
+    return;
+  }
+
+  if (generatedBlocks.length === calc.fullBlocks && generatedLength === calc.length && generatedWidth === calc.width) {
+    var msgEl = document.getElementById('genBlockMsg');
+    if (msgEl) {
+      msgEl.textContent = '✓ ' + calc.fullBlocks + ' blocks already generated';
+      msgEl.style.color = '#16a34a';
+    }
+    return;
+  }
+
+  syncBlockInputsToData();
+  var hasExistingCoords = generatedBlocks.some(function(b) { return b.latitude || b.longitude; });
+  if (hasExistingCoords && generatedBlocks.length > 0) {
+    if (!confirm('Dimensions changed from ' + generatedLength + 'm × ' + generatedWidth + 'm to ' + calc.length + 'm × ' + calc.width + 'm. Existing coordinates will be preserved for overlapping blocks. Proceed?')) {
+      return;
+    }
+  }
+
+  var newBlocks = [];
+  var defaultPrefix = 'SHR';
+  var setId = document.getElementById('set_id').value.trim() || defaultPrefix;
+  for (var i = 1; i <= calc.fullBlocks; i++) {
+    var existing = generatedBlocks.find(function(b) { return b.block_number === i; });
+    newBlocks.push({
+      block_number: i,
+      block_id: setId + '-B' + String(i).padStart(2, '0'),
+      latitude: existing ? existing.latitude : '',
+      longitude: existing ? existing.longitude : '',
+      status: existing ? existing.status : 'active',
+      notes: existing ? existing.notes : '',
+    });
+  }
+
+  generatedBlocks = newBlocks;
+  generatedLength = calc.length;
+  generatedWidth = calc.width;
+  renderGeneratedBlocks();
+
+  var cardEl = document.getElementById('creeperBlocksCard');
+  if (cardEl) cardEl.style.display = 'block';
+
+  var msgEl = document.getElementById('genBlockMsg');
+  if (msgEl) {
+    msgEl.textContent = '✓ ' + calc.fullBlocks + ' blocks generated!';
+    msgEl.style.color = '#16a34a';
+  }
+}
+
+function renderGeneratedBlocks() {
+  var container = document.getElementById('blocksContainer');
+  if (!container) return;
+  container.innerHTML = '';
+
+  generatedBlocks.forEach(function(b) {
+    var hasCoords = Boolean(b.latitude && b.longitude);
+    var card = document.createElement('div');
+    card.className = 'block-item-card' + (hasCoords ? ' has-coords' : '');
+    card.id = 'block_card_' + b.block_number;
+
+    card.innerHTML =
+      '<div class="block-item-hdr">' +
+        '<div>' +
+          '<strong style="font-size:13px;color:#111827">Block #' + b.block_number + '</strong> ' +
+          '<span style="font-size:11px;color:#6b7280">(' + b.block_id + ')</span> ' +
+          '<span style="font-size:11px;color:#0e6b94;font-weight:600;margin-left:4px">1m × 1m (1 m²)</span>' +
+        '</div>' +
+        '<span class="block-tag-badge ' + (hasCoords ? 'tagged' : 'pending') + '" id="block_badge_' + b.block_number + '">' +
+          (hasCoords ? '✓ Geo-tagged' : 'Pending') +
+        '</span>' +
+      '</div>' +
+      '<div class="row2">' +
+        '<div class="fg" style="margin-bottom:6px">' +
+          '<label style="font-size:11px">Latitude</label>' +
+          '<input type="number" step="0.0000001" id="block_lat_' + b.block_number + '" value="' + (b.latitude || '') + '" placeholder="e.g. 23.2115" style="padding:7px 9px;font-size:13px">' +
+        '</div>' +
+        '<div class="fg" style="margin-bottom:6px">' +
+          '<label style="font-size:11px">Longitude</label>' +
+          '<input type="number" step="0.0000001" id="block_lng_' + b.block_number + '" value="' + (b.longitude || '') + '" placeholder="e.g. 72.6842" style="padding:7px 9px;font-size:13px">' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;margin:6px 0;align-items:center;flex-wrap:wrap">' +
+        '<button type="button" class="block-btn-sm block-btn-gps" onclick="captureBlockGps(' + b.block_number + ')">' +
+          '📍 GPS for Block #' + b.block_number +
+        '</button>' +
+        '<button type="button" class="block-btn-sm block-btn-map" onclick="openMapForBlock(' + b.block_number + ')">' +
+          '🗺 Map Pin' +
+        '</button>' +
+        '<div class="gps-status" id="block_gps_status_' + b.block_number + '" style="margin:0;font-size:11px"></div>' +
+      '</div>' +
+      '<div class="row2" style="margin-top:6px">' +
+        '<div class="fg" style="margin-bottom:0">' +
+          '<label style="font-size:11px">Status</label>' +
+          '<select id="block_status_' + b.block_number + '" style="padding:6px 8px;font-size:12px">' +
+            '<option value="active"' + (b.status === 'active' ? ' selected' : '') + '>Active</option>' +
+            '<option value="inactive"' + (b.status === 'inactive' ? ' selected' : '') + '>Inactive</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="fg" style="margin-bottom:0">' +
+          '<label style="font-size:11px">Block Notes</label>' +
+          '<input type="text" id="block_notes_' + b.block_number + '" value="' + (b.notes || '') + '" placeholder="Optional notes" style="padding:6px 8px;font-size:12px">' +
+        '</div>' +
+      '</div>';
+
+    container.appendChild(card);
+
+    var latInp = card.querySelector('#block_lat_' + b.block_number);
+    var lngInp = card.querySelector('#block_lng_' + b.block_number);
+    var handleCoordChange = function() {
+      b.latitude = latInp.value.trim();
+      b.longitude = lngInp.value.trim();
+      updateBlockCardUI(b.block_number);
+      updateBlockProgressBadge();
+    };
+    latInp.addEventListener('input', handleCoordChange);
+    lngInp.addEventListener('input', handleCoordChange);
+  });
+
+  updateBlockProgressBadge();
+}
+
+function updateBlockCardUI(blockNum) {
+  var b = generatedBlocks.find(function(item) { return item.block_number === blockNum; });
+  if (!b) return;
+  var card = document.getElementById('block_card_' + blockNum);
+  var badge = document.getElementById('block_badge_' + blockNum);
+  var hasCoords = Boolean(b.latitude && b.longitude);
+  if (card) {
+    if (hasCoords) card.classList.add('has-coords');
+    else card.classList.remove('has-coords');
+  }
+  if (badge) {
+    badge.className = 'block-tag-badge ' + (hasCoords ? 'tagged' : 'pending');
+    badge.textContent = hasCoords ? '✓ Geo-tagged' : 'Pending';
+  }
+}
+
+function updateBlockProgressBadge() {
+  var total = generatedBlocks.length;
+  var tagged = generatedBlocks.filter(function(b) {
+    var lat = document.getElementById('block_lat_' + b.block_number);
+    var lng = document.getElementById('block_lng_' + b.block_number);
+    var latVal = lat ? lat.value.trim() : b.latitude;
+    var lngVal = lng ? lng.value.trim() : b.longitude;
+    return Boolean(latVal && lngVal);
+  }).length;
+
+  var badge = document.getElementById('blockProgressBadge');
+  if (badge) {
+    badge.textContent = tagged + ' / ' + total + ' Geo-Tagged';
+    badge.className = 'block-tag-badge ' + (tagged === total && total > 0 ? 'tagged' : 'pending');
+  }
+}
+
+function captureBlockGps(blockNum) {
+  var statusEl = document.getElementById('block_gps_status_' + blockNum);
+  if (statusEl) {
+    statusEl.textContent = 'Acquiring GPS fix…';
+    statusEl.className = 'gps-status warn';
+  }
+
+  if (!navigator.geolocation) {
+    if (statusEl) {
+      statusEl.textContent = 'GPS not supported on device';
+      statusEl.className = 'gps-status err';
+    }
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      var lat = pos.coords.latitude.toFixed(7);
+      var lng = pos.coords.longitude.toFixed(7);
+      var acc = pos.coords.accuracy ? ' (±' + pos.coords.accuracy.toFixed(1) + 'm)' : '';
+
+      var latInp = document.getElementById('block_lat_' + blockNum);
+      var lngInp = document.getElementById('block_lng_' + blockNum);
+      if (latInp && lngInp) {
+        latInp.value = lat;
+        lngInp.value = lng;
+      }
+
+      var b = generatedBlocks.find(function(item) { return item.block_number === blockNum; });
+      if (b) {
+        b.latitude = lat;
+        b.longitude = lng;
+      }
+
+      var mainLat = document.getElementById('latitude');
+      var mainLng = document.getElementById('longitude');
+      if (mainLat && !mainLat.value) mainLat.value = lat;
+      if (mainLng && !mainLng.value) mainLng.value = lng;
+
+      if (statusEl) {
+        statusEl.textContent = '✓ GPS captured' + acc;
+        statusEl.className = 'gps-status ok';
+      }
+
+      updateBlockCardUI(blockNum);
+      updateBlockProgressBadge();
+    },
+    function(err) {
+      if (statusEl) {
+        statusEl.textContent = '⚠️ GPS unavailable: ' + (err.message || 'Permission denied');
+        statusEl.className = 'gps-status warn';
+      }
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+  );
+}
+
+function openMapForBlock(blockNum) {
+  mapTargetBlockNumber = blockNum;
+  var picker = document.getElementById('mapPicker');
+  var note   = document.getElementById('campusNote');
+  picker.classList.add('open');
+  note.style.display = 'block';
+  mapOpen = true;
+
+  var instr = document.querySelector('.map-instructions span');
+  if (instr) instr.textContent = 'Pan & zoom to Block #' + blockNum + ', then tap Confirm';
+
+  setTimeout(function() {
+    initMap();
+    if (leafletMap) {
+      leafletMap.invalidateSize();
+      var latInp = document.getElementById('block_lat_' + blockNum);
+      var lngInp = document.getElementById('block_lng_' + blockNum);
+      var latVal = latInp ? parseFloat(latInp.value) : NaN;
+      var lngVal = lngInp ? parseFloat(lngInp.value) : NaN;
+      if (!isNaN(latVal) && !isNaN(lngVal) && CAMPUS_BOUNDS.contains([latVal, lngVal])) {
+        leafletMap.setView([latVal, lngVal], 19);
+      }
+    }
+    picker.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 50);
+}
+
 syncVarietyOptions();
+updatePlantTypeMode();
 
 // ── GPS Averaging Engine ──────────────────────────────────────────────────
 // Priority: accuracy and stability over speed.
@@ -618,14 +1066,19 @@ function initMap() {
   }).addTo(leafletMap);
 
   // The map uses a crosshair overlay (CSS) — centre of map = pin position.
-  // No draggable marker needed; user pans the map instead (easier on mobile).
   leafletMap.on('moveend', function() {
     var c = leafletMap.getCenter();
     mapPinLat = c.lat;
     mapPinLng = c.lng;
-    // Live-update fields so user can see coordinates changing
-    document.getElementById('latitude').value  = c.lat.toFixed(7);
-    document.getElementById('longitude').value = c.lng.toFixed(7);
+    if (mapTargetBlockNumber !== null) {
+      var bLat = document.getElementById('block_lat_' + mapTargetBlockNumber);
+      var bLng = document.getElementById('block_lng_' + mapTargetBlockNumber);
+      if (bLat) bLat.value = c.lat.toFixed(7);
+      if (bLng) bLng.value = c.lng.toFixed(7);
+    } else {
+      document.getElementById('latitude').value  = c.lat.toFixed(7);
+      document.getElementById('longitude').value = c.lng.toFixed(7);
+    }
   });
 
   // If GPS already got a fix, centre the map there; else use campus centre
@@ -638,6 +1091,9 @@ function initMap() {
 }
 
 document.getElementById('mapBtn').addEventListener('click', function() {
+  mapTargetBlockNumber = null;
+  var instr = document.querySelector('.map-instructions span');
+  if (instr) instr.textContent = 'Pan & zoom to the plant/anchor, then tap Confirm';
   var picker = document.getElementById('mapPicker');
   var note   = document.getElementById('campusNote');
   if (mapOpen) {
@@ -663,6 +1119,39 @@ document.getElementById('mapConfirmBtn').addEventListener('click', function() {
   var c = leafletMap.getCenter();
   mapPinLat = c.lat;
   mapPinLng = c.lng;
+
+  if (mapTargetBlockNumber !== null) {
+    var bNum = mapTargetBlockNumber;
+    var latInp = document.getElementById('block_lat_' + bNum);
+    var lngInp = document.getElementById('block_lng_' + bNum);
+    if (latInp) latInp.value = c.lat.toFixed(7);
+    if (lngInp) lngInp.value = c.lng.toFixed(7);
+
+    var b = generatedBlocks.find(function(item) { return item.block_number === bNum; });
+    if (b) {
+      b.latitude = c.lat.toFixed(7);
+      b.longitude = c.lng.toFixed(7);
+    }
+
+    var mainLat = document.getElementById('latitude');
+    var mainLng = document.getElementById('longitude');
+    if (mainLat && !mainLat.value) mainLat.value = c.lat.toFixed(7);
+    if (mainLng && !mainLng.value) mainLng.value = c.lng.toFixed(7);
+
+    updateBlockCardUI(bNum);
+    updateBlockProgressBadge();
+
+    // Close map
+    document.getElementById('mapPicker').classList.remove('open');
+    document.getElementById('campusNote').style.display = 'none';
+    document.getElementById('mapBtn').textContent = '🗺 Map';
+    mapOpen = false;
+    mapTargetBlockNumber = null;
+
+    var bCard = document.getElementById('block_card_' + bNum);
+    if (bCard) bCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
 
   document.getElementById('latitude').value  = c.lat.toFixed(7);
   document.getElementById('longitude').value = c.lng.toFixed(7);
@@ -697,6 +1186,7 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
   btn.disabled = true; icon.textContent = '⏳'; text.textContent = 'Submitting…';
 
   var formData = new FormData(this);
+
   fetch('/geo/submit/record/', {
     method: 'POST', body: formData,
     headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') },
@@ -704,9 +1194,18 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
   .then(function(res){ return res.json(); })
   .then(function(data) {
     if (data.success) {
-      showFlash('✓ Record submitted successfully! (ID: ' + data.id + ')', 'ok');
+      var msg = '✓ Record submitted successfully! (ID: ' + data.id + ')';
+      showFlash(msg, 'ok');
       document.getElementById('plantForm').reset();
       plantTypeInput.value = '';
+      generatedBlocks = [];
+      generatedLength = 0;
+      generatedWidth = 0;
+      mapTargetBlockNumber = null;
+      var blocksCont = document.getElementById('blocksContainer');
+      if (blocksCont) blocksCont.innerHTML = '';
+      var msgEl = document.getElementById('genBlockMsg');
+      if (msgEl) msgEl.textContent = '';
       syncVarietyOptions();
       document.getElementById('photoPreview').style.display = 'none';
       document.getElementById('gpsStatus').textContent = '';
