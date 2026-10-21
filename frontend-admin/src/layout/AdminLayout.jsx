@@ -13,12 +13,15 @@ import Sidebar from '../components/Sidebar'
 
 export default function AdminLayout({ children, title, subtitle, actions, fullscreen = false }) {
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
       <Sidebar />
       <main
         style={{
           marginLeft: 'var(--sidebar-w)',
           flex: 1,
+          width: 'calc(100% - var(--sidebar-w))',
+          maxWidth: 'calc(100vw - var(--sidebar-w))',
+          minWidth: 0,
           minHeight: '100vh',
           display: 'flex',
           flexDirection: 'column',
@@ -48,6 +51,7 @@ export default function AdminLayout({ children, title, subtitle, actions, fullsc
               )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {actions && <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{actions}</div>}
               <div
                 style={{
                   display: 'flex',
@@ -73,7 +77,6 @@ export default function AdminLayout({ children, title, subtitle, actions, fullsc
                   </div>
                 </div>
               </div>
-              {actions && <div style={{ display: 'flex', gap: 8 }}>{actions}</div>}
             </div>
           </div>
         )}
@@ -87,7 +90,7 @@ export default function AdminLayout({ children, title, subtitle, actions, fullsc
             {children}
           </div>
         ) : (
-          <div style={{ flex: 1, padding: '20px 28px 40px', overflow: 'auto' }}>
+          <div style={{ flex: 1, padding: '20px 28px 40px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0, maxWidth: '100%' }}>
             {children}
           </div>
         )}

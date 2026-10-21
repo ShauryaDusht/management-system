@@ -99,6 +99,57 @@ class Command(BaseCommand):
         hostel_office.is_superuser = False
         hostel_office.save()
 
+        civil_team, civil_created = User.objects.get_or_create(
+            username='civil.team',
+            defaults={
+                'first_name': 'Civil',
+                'last_name': 'Engineering Team',
+                'email': 'civil@iitgn.ac.in',
+                'phone': '07923951160',
+                'role': User.Role.CIVIL_TEAM,
+            },
+        )
+        if civil_created:
+            civil_team.set_password(DEFAULT_PASSWORD)
+        civil_team.role = User.Role.CIVIL_TEAM
+        civil_team.is_active = True
+        civil_team.is_staff = True
+        civil_team.save()
+
+        electrical_team, elec_created = User.objects.get_or_create(
+            username='electrical.team',
+            defaults={
+                'first_name': 'Electrical',
+                'last_name': 'Engineering Team',
+                'email': 'electrical@iitgn.ac.in',
+                'phone': '07923951170',
+                'role': User.Role.ELECTRICAL_TEAM,
+            },
+        )
+        if elec_created:
+            electrical_team.set_password(DEFAULT_PASSWORD)
+        electrical_team.role = User.Role.ELECTRICAL_TEAM
+        electrical_team.is_active = True
+        electrical_team.is_staff = True
+        electrical_team.save()
+
+        estate_office, estate_created = User.objects.get_or_create(
+            username='estate.office',
+            defaults={
+                'first_name': 'Estate',
+                'last_name': 'Office',
+                'email': 'estateoffice@iitgn.ac.in',
+                'phone': '07923951150',
+                'role': User.Role.ESTATE_OFFICE,
+            },
+        )
+        if estate_created:
+            estate_office.set_password(DEFAULT_PASSWORD)
+        estate_office.role = User.Role.ESTATE_OFFICE
+        estate_office.is_active = True
+        estate_office.is_staff = True
+        estate_office.save()
+
         deleted_legacy_admins = self._replace_legacy_admin_references(admin_user)
 
         disabled = User.objects.filter(
@@ -115,6 +166,9 @@ class Command(BaseCommand):
             f'super.admin login {"created" if admin_created else "repaired"}; '
             f'hk_inventory_manager login {action}; '
             f'hostel.office login {hostel_action}; '
+            f'civil.team login {"created" if civil_created else "repaired"}; '
+            f'electrical.team login {"created" if elec_created else "repaired"}; '
+            f'estate.office login {"created" if estate_created else "repaired"}; '
             f'deleted old admin logins: {deleted_legacy_admins}; '
             f'disabled old manager logins: {disabled}'
         ))

@@ -32,6 +32,7 @@ def api_root(_request):
             'admin_gallery': '/api/admin/gallery/',
             'horticulture': '/api/horticulture/',
             'reports': '/api/reports/',
+            'estate': '/api/estate/',
         }
     )
 
@@ -59,6 +60,7 @@ urlpatterns = [
     path('api/', api_root),
     path(settings.ADMIN_URL, admin_site.urls),
     path('api/auth/', include('apps.users.urls')),
+    path('api/estate/', include('apps.estate_billing.urls')),
     path('api/inventory/', include('apps.inventory.urls')),
     path('api/reports/', include('apps.reports.urls')),
     path('api/horticulture/', include('apps.horticulture.urls')),

@@ -91,6 +91,29 @@ export function exportCsv(rowsOrFilename, filenameOrHeaders, rowsArg) {
   }
 }
 
+// Export data as genuine Microsoft Excel (.xlsx) file and trigger download
+export async function exportExcel(filename, headers, rows, sheetName = 'Sheet1') {
+  try {
+    const xlsx = await import('xlsx')
+    const XLSX = xlsx.default || xlsx
+    const aoa = [headers, ...rows]
+    const ws = XLSX.utils.aoa_to_sheet(aoa)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, sheetName)
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+    const blob = new Blob([wbout], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const finalFilename = filename.endsWith('.xlsx')
+      ? filename
+      : filename.replace(/\.[^/.]+$/, '') + '.xlsx'
+    triggerDownload(blob, finalFilename)
+  } catch (err) {
+    console.error('Failed to export Excel file, falling back to CSV:', err)
+    exportCsv(filename.replace(/\.xlsx$/, '.csv'), headers, rows)
+  }
+}
+
 // Get today's date as YYYY-MM-DD in local time
 export function todayISO() {
   const d = new Date()

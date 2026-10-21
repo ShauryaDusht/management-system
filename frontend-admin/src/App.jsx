@@ -13,14 +13,17 @@ import LoginPage from './pages/LoginPage'
 import ProfilePage from './pages/profile/ProfilePage'
 import UnauthorizedPage from './pages/UnauthorizedPage'
 import UsersPage from './pages/users/UsersPage'
+import EstatePage from './pages/estate/EstatePage'
 
 const ADMIN_OR_HK_INVENTORY = ['admin', 'hk_inventory_manager']
-const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
+const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'estate_office', 'civil_team', 'electrical_team']
 const HK_INVENTORY_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
 const HK_PORTAL_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
 const GEO_TRACKER_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager']
-const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
+const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'estate_office']
+const ESTATE_ALLOWED = ['admin', 'estate_office', 'civil_team', 'electrical_team', 'hk_inventory_manager']
+const PROFILE_ALLOWED = ['admin', 'horticulture_manager', 'estate_office', 'hk_inventory_manager', 'hostel_office', 'civil_team', 'electrical_team']
 const ROUTER_BASENAME = '/admin'
 
 function getLandingRoute(user) {
@@ -28,10 +31,32 @@ function getLandingRoute(user) {
     ? 'hostel_office'
     : user?.role
   if (role === 'admin') return '/dashboard'
+  if (role === 'estate_office') return '/dashboard'
+  if (role === 'civil_team') return '/estate'
+  if (role === 'electrical_team') return '/estate'
   if (role === 'hk_inventory_manager') return '/dashboard'
   if (role === 'horticulture_manager') return '/dashboard'
   if (role === 'hostel_office') return '/dashboard'
   return '/unauthorized'
+}
+
+function DashboardRoute() {
+  const { user } = useAuth()
+  if (user?.role === 'estate_office') {
+    return <EstatePage />
+  }
+  if (user?.role === 'civil_team' || user?.role === 'electrical_team') {
+    return <Navigate to="/estate" replace />
+  }
+  return <DashboardPage />
+}
+
+function EstateRoute() {
+  const { user } = useAuth()
+  if (user?.role === 'estate_office') {
+    return <Navigate to="/dashboard" replace />
+  }
+  return <EstatePage />
 }
 
 function AdminOnlyRedirectRoute({ children }) {
@@ -76,7 +101,7 @@ export default function App() {
             path="/dashboard"
             element={
               <ProtectedRoute allowedRoles={ADMIN_DASHBOARD_ALLOWED}>
-                <DashboardPage />
+                <DashboardRoute />
               </ProtectedRoute>
             }
           />
@@ -113,6 +138,14 @@ export default function App() {
             }
           />
           <Route
+            path="/estate/*"
+            element={
+              <ProtectedRoute allowedRoles={ESTATE_ALLOWED}>
+                <EstateRoute />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/insights"
             element={
               <ProtectedRoute allowedRoles={INSIGHTS_ALLOWED}>
@@ -131,7 +164,7 @@ export default function App() {
           <Route
             path="/profile"
             element={
-              <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
+              <ProtectedRoute allowedRoles={PROFILE_ALLOWED}>
                 <ProfilePage />
               </ProtectedRoute>
             }

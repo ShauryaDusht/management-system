@@ -5,6 +5,10 @@ import { useAuth } from '../context/AuthContext'
 import { APP_LOGO_PATH, APP_NAME, APP_TAGLINE } from '../shared/constants'
 
 function getLandingRoute(user) {
+  const role = user?.role
+  if (role === 'civil_team' || role === 'electrical_team') {
+    return '/estate'
+  }
   return '/dashboard'
 }
 

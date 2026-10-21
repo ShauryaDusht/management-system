@@ -40,7 +40,7 @@ def get_portal_redirect(user):
     role = getattr(user, 'role', '')
     if role == 'horticulture_manager':
         return '/horticulture/dashboard/'
-    if role in ['inventory_manager', 'hk_inventory_manager', 'hostel_office']:
+    if role in ['inventory_manager', 'hk_inventory_manager', 'hostel_office', 'estate_office', 'civil_team', 'electrical_team']:
         return '/admin/login/'
     if role == 'supervisor':
         has_horticulture_zone = user.horticulture_supervised_zones.exists()

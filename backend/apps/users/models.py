@@ -73,6 +73,9 @@ class User(AbstractUser):
         HORTICULTURE_MANAGER = 'horticulture_manager', 'Horticulture Manager'
         SUPERVISOR = 'supervisor', 'Supervisor'
         CARETAKER = 'caretaker', 'Caretaker'
+        ESTATE_OFFICE = 'estate_office', 'Estate Office'
+        CIVIL_TEAM = 'civil_team', 'Civil Team'
+        ELECTRICAL_TEAM = 'electrical_team', 'Electrical Team'
 
     role = models.CharField(max_length=25, choices=Role.choices, default=Role.SUPERVISOR)
     phone = models.CharField(max_length=15, blank=True)
@@ -148,4 +151,16 @@ class User(AbstractUser):
     @property
     def is_hk_staff(self):
         return self.role in [self.Role.SUPERVISOR, self.Role.CARETAKER]
+
+    @property
+    def is_estate_office(self):
+        return self.role == self.Role.ESTATE_OFFICE
+
+    @property
+    def is_civil_team(self):
+        return self.role == self.Role.CIVIL_TEAM
+
+    @property
+    def is_electrical_team(self):
+        return self.role == self.Role.ELECTRICAL_TEAM
 

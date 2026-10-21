@@ -8,6 +8,7 @@ import { Btn, Card, Spinner } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import AdminLayout from '../../layout/AdminLayout'
 import { exportCsv, todayISO } from '../../shared/utils'
+import EstateBillingPanel from './EstateBillingPanel'
 
 const PALETTE = ['#2d4a3e', '#c2622a', '#3b82f6', '#f59e0b', '#8b5cf6', '#0d9488', '#ec4899', '#64748b']
 const MEDAL = ['🥇', '🥈', '🥉']
@@ -19,6 +20,7 @@ const VIEW_OPTIONS = [
   { key: 'area_hk', label: '🏢 Area-wise HK' },
   { key: 'area_inventory', label: '📦 Inventory by Area' },
   { key: 'top_items', label: '🔝 Top Consumed Items' },
+  { key: 'estate_billing', label: '⚡ Estate & Electricity' },
 ]
 const RANGE_OPTIONS = [
   { key: 'today', label: 'Today' },
@@ -294,7 +296,7 @@ function PerformanceInsights({ rows, nameField }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr>
-                {['Rank','Name','Total','Done','Pending','Completion %','Attendance %','Fair Score','Tier'].map(h => (
+                {['Rank', 'Name', 'Total', 'Done', 'Pending', 'Completion %', 'Attendance %', 'Fair Score', 'Tier'].map(h => (
                   <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, fontSize: 11, color: 'var(--text-3)', borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -377,7 +379,7 @@ function InventoryAreaPanel({ rows, totals }) {
         <Divider label="Summary Totals" />
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
           {[['🔄 Transactions', totals?.transactions, '#3b82f6'], ['📦 Total Qty', totals?.total_qty, '#2d4a3e'],
-            ['🧴 Consumables', totals?.consumable_qty, '#c2622a'], ['🛠 Assets', totals?.asset_qty, '#8b5cf6']].map(([l, v, c]) => (
+          ['🧴 Consumables', totals?.consumable_qty, '#c2622a'], ['🛠 Assets', totals?.asset_qty, '#8b5cf6']].map(([l, v, c]) => (
             <div key={l} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 20px', textAlign: 'center', minWidth: 130 }}>
               <div style={{ fontSize: 22, fontWeight: 800, color: c }}>{formatNum(v)}</div>
               <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>{l}</div>
@@ -443,33 +445,38 @@ export default function InsightsPage() {
   const { user } = useAuth()
   const isHorticultureManager = user?.role === 'horticulture_manager'
   const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
+  const isEstateOffice = user?.role === 'estate_office' || user?.actual_role === 'estate_office' || user?.username === 'estate.office'
   const [range, setRange] = useState('weekly')
   const [areaClass, setAreaClass] = useState(isHostelOffice ? 'hostels' : 'all')
-  const [activeView, setActiveView] = useState('caretaker')
+  const [activeView, setActiveView] = useState(isEstateOffice ? 'estate_billing' : 'caretaker')
   const [insights, setInsights] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const visibleViewOptions = useMemo(
     () => VIEW_OPTIONS.filter((option) => (
-      isHorticultureManager
-        ? ['caretaker', 'workers', 'area_hk'].includes(option.key)
-        : isHostelOffice
-        ? ['caretaker', 'workers', 'area_hk'].includes(option.key)
-        : true
+      isEstateOffice
+        ? option.key === 'estate_billing'
+        : isHorticultureManager
+          ? ['caretaker', 'workers', 'area_hk'].includes(option.key)
+          : isHostelOffice
+            ? ['caretaker', 'workers', 'area_hk'].includes(option.key)
+            : true
     )),
-    [isHorticultureManager, isHostelOffice]
+    [isHorticultureManager, isHostelOffice, isEstateOffice]
   )
   const visibleAreaOptions = useMemo(
     () => isHorticultureManager
       ? AREA_CLASS_OPTIONS.filter((option) => option.key === 'all' || option.key === 'others')
       : isHostelOffice
-      ? AREA_CLASS_OPTIONS.filter((option) => option.key === 'hostels')
-      : AREA_CLASS_OPTIONS,
+        ? AREA_CLASS_OPTIONS.filter((option) => option.key === 'hostels')
+        : AREA_CLASS_OPTIONS,
     [isHorticultureManager, isHostelOffice]
   )
 
   useEffect(() => {
-    if ((isHorticultureManager || isHostelOffice) && !visibleViewOptions.some((option) => option.key === activeView)) {
+    if (isEstateOffice && activeView !== 'estate_billing') {
+      setActiveView('estate_billing')
+    } else if ((isHorticultureManager || isHostelOffice) && !visibleViewOptions.some((option) => option.key === activeView)) {
       setActiveView('caretaker')
     }
     if (isHostelOffice && areaClass !== 'hostels') {
@@ -478,7 +485,7 @@ export default function InsightsPage() {
     if (isHorticultureManager && !visibleAreaOptions.some((option) => option.key === areaClass)) {
       setAreaClass('all')
     }
-  }, [activeView, areaClass, isHorticultureManager, isHostelOffice, visibleAreaOptions, visibleViewOptions])
+  }, [activeView, areaClass, isHorticultureManager, isHostelOffice, isEstateOffice, visibleAreaOptions, visibleViewOptions])
 
   useEffect(() => {
     let alive = true
@@ -500,67 +507,79 @@ export default function InsightsPage() {
   }, [range, areaClass, isHostelOffice])
 
   const caretakerRows = Array.isArray(insights?.caretaker_supervisor_performance?.rows) ? insights.caretaker_supervisor_performance.rows : []
-  const workerRows    = Array.isArray(insights?.worker_performance?.rows)               ? insights.worker_performance.rows               : []
-  const areaRows      = Array.isArray(insights?.area_performance?.rows)                 ? insights.area_performance.rows                 : []
-  const invAreaRows   = Array.isArray(insights?.inventory_consumption?.areas)           ? insights.inventory_consumption.areas           : []
-  const topItemRows   = Array.isArray(insights?.inventory_consumption?.top_items)       ? insights.inventory_consumption.top_items       : []
+  const workerRows = Array.isArray(insights?.worker_performance?.rows) ? insights.worker_performance.rows : []
+  const areaRows = Array.isArray(insights?.area_performance?.rows) ? insights.area_performance.rows : []
+  const invAreaRows = Array.isArray(insights?.inventory_consumption?.areas) ? insights.inventory_consumption.areas : []
+  const topItemRows = Array.isArray(insights?.inventory_consumption?.top_items) ? insights.inventory_consumption.top_items : []
   const consumptionTotals = insights?.inventory_consumption?.totals || {}
 
   const exportCurrentCsv = () => {
     const day = todayISO()
     const baseName = `insights_${activeView}_${range}_${areaClass}_${day}.csv`
     if (activeView === 'caretaker') {
-      exportCsv(baseName, ['Staff','Pay Code','Role','Areas','Worker Count','Total Tasks','Completed','Pending','In Progress','Skipped','Completion %','Attendance %','Fair Score'],
-        caretakerRows.map(r => [r.staff_name, r.pay_code||'-', r.role, (r.areas||[]).join(' | '), r.worker_count||0, r.total||0, r.done||0, r.pending||0, r.in_progress||0, r.skipped||0, Number(r.completion_pct||0).toFixed(1), Number(r.attendance_pct||0).toFixed(1), Number(r.fair_score||0).toFixed(2)]))
+      exportCsv(baseName, ['Staff', 'Pay Code', 'Role', 'Areas', 'Worker Count', 'Total Tasks', 'Completed', 'Pending', 'In Progress', 'Skipped', 'Completion %', 'Attendance %', 'Fair Score'],
+        caretakerRows.map(r => [r.staff_name, r.pay_code || '-', r.role, (r.areas || []).join(' | '), r.worker_count || 0, r.total || 0, r.done || 0, r.pending || 0, r.in_progress || 0, r.skipped || 0, Number(r.completion_pct || 0).toFixed(1), Number(r.attendance_pct || 0).toFixed(1), Number(r.fair_score || 0).toFixed(2)]))
     } else if (activeView === 'workers') {
-      exportCsv(baseName, ['Worker','Pay Code','Areas','Total Tasks','Completed','Pending','In Progress','Skipped','Completion %','Attendance %','Fair Score'],
-        workerRows.map(r => [r.worker_name, r.pay_code||'-', (r.areas||[]).join(' | '), r.total||0, r.done||0, r.pending||0, r.in_progress||0, r.skipped||0, Number(r.completion_pct||0).toFixed(1), Number(r.attendance_pct||0).toFixed(1), Number(r.fair_score||0).toFixed(2)]))
+      exportCsv(baseName, ['Worker', 'Pay Code', 'Areas', 'Total Tasks', 'Completed', 'Pending', 'In Progress', 'Skipped', 'Completion %', 'Attendance %', 'Fair Score'],
+        workerRows.map(r => [r.worker_name, r.pay_code || '-', (r.areas || []).join(' | '), r.total || 0, r.done || 0, r.pending || 0, r.in_progress || 0, r.skipped || 0, Number(r.completion_pct || 0).toFixed(1), Number(r.attendance_pct || 0).toFixed(1), Number(r.fair_score || 0).toFixed(2)]))
     } else if (activeView === 'area_hk') {
-      exportCsv(baseName, ['Area / Zone','Department','Area Class','Worker Count','Total Tasks','Completed','Pending','Completion %','Attendance %','Fair Score'],
-        areaRows.map(r => [r.area_name, r.department || 'housekeeping', r.area_class, r.worker_count||0, r.total||0, r.done||0, r.pending||0, Number(r.completion_pct||0).toFixed(1), Number(r.attendance_pct||0).toFixed(1), Number(r.fair_score||0).toFixed(2)]))
+      exportCsv(baseName, ['Area / Zone', 'Department', 'Area Class', 'Worker Count', 'Total Tasks', 'Completed', 'Pending', 'Completion %', 'Attendance %', 'Fair Score'],
+        areaRows.map(r => [r.area_name, r.department || 'housekeeping', r.area_class, r.worker_count || 0, r.total || 0, r.done || 0, r.pending || 0, Number(r.completion_pct || 0).toFixed(1), Number(r.attendance_pct || 0).toFixed(1), Number(r.fair_score || 0).toFixed(2)]))
     } else if (activeView === 'area_inventory') {
-      exportCsv(baseName, ['Area','Area Class','Transactions','Consumable Qty','Asset Qty','Total Qty'],
-        invAreaRows.map(r => [r.area_name, r.area_class, r.transactions||0, r.consumable_qty||0, r.asset_qty||0, r.total_qty||0]))
+      exportCsv(baseName, ['Area', 'Area Class', 'Transactions', 'Consumable Qty', 'Asset Qty', 'Total Qty'],
+        invAreaRows.map(r => [r.area_name, r.area_class, r.transactions || 0, r.consumable_qty || 0, r.asset_qty || 0, r.total_qty || 0]))
     } else {
-      exportCsv(baseName, ['Item Code','Item','Type','Quantity','Transactions','Area Count','Areas'],
-        topItemRows.map(r => [r.item_code||'-', r.item_name, r.item_type, r.quantity||0, r.transactions||0, r.areas_count||0, (r.areas||[]).join(' | ')]))
+      exportCsv(baseName, ['Item Code', 'Item', 'Type', 'Quantity', 'Transactions', 'Area Count', 'Areas'],
+        topItemRows.map(r => [r.item_code || '-', r.item_name, r.item_type, r.quantity || 0, r.transactions || 0, r.areas_count || 0, (r.areas || []).join(' | ')]))
     }
   }
 
   return (
     <AdminLayout
       title="Insights"
-      subtitle={isHorticultureManager ? 'Horticulture performance analysis' : isHostelOffice ? 'Hostel area performance analysis - staff, workers and areas' : 'Fair, multi-chart performance analysis - staff, workers, areas and inventory'}
+      subtitle={
+        isEstateOffice
+          ? 'Commercial outlets & electricity billing analytics'
+          : isHorticultureManager
+            ? 'Horticulture performance analysis'
+            : isHostelOffice
+              ? 'Hostel area performance analysis - staff, workers and areas'
+              : 'Fair, multi-chart performance analysis - staff, workers, areas, inventory and Estate billing'
+      }
     >
       <Card style={{ marginBottom: 14 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: activeView === 'estate_billing' ? 0 : 12 }}>
           {visibleViewOptions.map(opt => (
             <Btn key={opt.key} size="sm" variant={activeView === opt.key ? 'primary' : 'secondary'} onClick={() => setActiveView(opt.key)}>
               {opt.key === 'area_hk' ? (isHorticultureManager ? 'Area-wise Horticulture' : isHostelOffice ? 'Area-wise Hostels' : 'Area-wise Comparison') : opt.label}
             </Btn>
           ))}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2 }}>Period:</span>
-            {RANGE_OPTIONS.map(opt => (
-              <Btn key={opt.key} size="sm" variant={range === opt.key ? 'primary' : 'secondary'} onClick={() => setRange(opt.key)}>{opt.label}</Btn>
-            ))}
-          </div>
-          {!isHostelOffice && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2 }}>Area:</span>
-              {visibleAreaOptions.map(opt => (
-                <Btn key={opt.key} size="sm" variant={areaClass === opt.key ? 'primary' : 'secondary'} onClick={() => setAreaClass(opt.key)}>
-                  {isHorticultureManager && opt.key === 'others' ? 'Horticulture' : opt.label}
-                </Btn>
-              ))}
+        {activeView !== 'estate_billing' && (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2 }}>Period:</span>
+                {RANGE_OPTIONS.map(opt => (
+                  <Btn key={opt.key} size="sm" variant={range === opt.key ? 'primary' : 'secondary'} onClick={() => setRange(opt.key)}>{opt.label}</Btn>
+                ))}
+              </div>
+              {!isHostelOffice && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2 }}>Area:</span>
+                  {visibleAreaOptions.map(opt => (
+                    <Btn key={opt.key} size="sm" variant={areaClass === opt.key ? 'primary' : 'secondary'} onClick={() => setAreaClass(opt.key)}>
+                      {isHorticultureManager && opt.key === 'others' ? 'Horticulture' : opt.label}
+                    </Btn>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
-          <Btn size="sm" variant="secondary" onClick={exportCurrentCsv}>📥 Export CSV</Btn>
-        </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+              <Btn size="sm" variant="secondary" onClick={exportCurrentCsv}>📥 Export CSV</Btn>
+            </div>
+          </>
+        )}
       </Card>
       {error && (
         <Card style={{ marginBottom: 14, borderColor: '#fecaca', background: '#fff1f2' }}>
@@ -568,15 +587,17 @@ export default function InsightsPage() {
         </Card>
       )}
       <Card>
-        {loading ? (
+        {activeView === 'estate_billing' ? (
+          <EstateBillingPanel />
+        ) : loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner /></div>
         ) : (
           <div key={`${activeView}-${range}-${areaClass}`}>
-            {activeView === 'caretaker'      && <PerformanceInsights rows={caretakerRows} nameField="staff_name" />}
-            {activeView === 'workers'        && <PerformanceInsights rows={workerRows}    nameField="worker_name" />}
-            {activeView === 'area_hk'        && <PerformanceInsights rows={areaRows}      nameField="area_name" />}
-            {activeView === 'area_inventory' && (invAreaRows.length  ? <InventoryAreaPanel rows={invAreaRows} totals={consumptionTotals} /> : <EmptyState />)}
-            {activeView === 'top_items'      && (topItemRows.length  ? <TopItemsPanel rows={topItemRows} />                              : <EmptyState />)}
+            {activeView === 'caretaker' && <PerformanceInsights rows={caretakerRows} nameField="staff_name" />}
+            {activeView === 'workers' && <PerformanceInsights rows={workerRows} nameField="worker_name" />}
+            {activeView === 'area_hk' && <PerformanceInsights rows={areaRows} nameField="area_name" />}
+            {activeView === 'area_inventory' && (invAreaRows.length ? <InventoryAreaPanel rows={invAreaRows} totals={consumptionTotals} /> : <EmptyState />)}
+            {activeView === 'top_items' && (topItemRows.length ? <TopItemsPanel rows={topItemRows} /> : <EmptyState />)}
           </div>
         )}
       </Card>
