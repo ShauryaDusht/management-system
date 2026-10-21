@@ -13,6 +13,7 @@ import LoginPage from './pages/LoginPage'
 import ProfilePage from './pages/profile/ProfilePage'
 import UnauthorizedPage from './pages/UnauthorizedPage'
 import UsersPage from './pages/users/UsersPage'
+import LiftLicensePage from './pages/lifts/LiftLicensePage'
 
 const ADMIN_OR_HK_INVENTORY = ['admin', 'hk_inventory_manager']
 const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
@@ -21,6 +22,7 @@ const HK_PORTAL_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
 const GEO_TRACKER_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager']
 const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
+const LIFTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
 const ROUTER_BASENAME = '/admin'
 
 function getLandingRoute(user) {
@@ -125,6 +127,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={ADMIN_OR_HK_INVENTORY}>
                 <UsersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/lifts"
+            element={
+              <ProtectedRoute allowedRoles={LIFTS_ALLOWED}>
+                <LiftLicensePage />
               </ProtectedRoute>
             }
           />
