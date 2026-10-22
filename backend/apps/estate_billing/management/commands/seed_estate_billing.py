@@ -20,35 +20,40 @@ CONTRACTOR_INTRO = 'Reimbursement of power consumption charges borne by the Inst
 CPWD_INTRO = 'Reimbursement of power consumption charges borne by the Institute for utilization of the premises occupied by the contractor working under CPWD:'
 
 SEED_SHOPS = [
-    {'sl': 1, 'name': '2 Degree Café (Hybred Energy Solution Pvt. Ltd)'},
-    {'sl': 2, 'name': 'Brahmani Veg Solutions'},
-    {'sl': 3, 'name': 'The Branch Manager Canara Bank'},
-    {'sl': 4, 'name': 'Gujarat Co-operative Milk Marketing Federation Limited.'},
-    {'sl': 5, 'name': 'Go Insta Cafe'},
-    {'sl': 6, 'name': 'Indus Towers'},
-    {'sl': 7, 'name': 'Just Chill'},
-    {'sl': 8, 'name': 'Krupa Generals (Provisional Store)'},
-    {'sl': 9, 'name': 'Mahavir Healthy Foods'},
-    {'sl': 10, 'name': 'Maruti Xerox & Stationery'},
-    {'sl': 11, 'name': 'Midas Touch - Family Salon'},
-    {'sl': 12, 'name': 'N Root Enterprise'},
-    {'sl': 13, 'name': 'Pooja Stationery'},
-    {'sl': 14, 'name': 'Post Office'},
-    {'sl': 15, 'name': 'Post Office (WC)', 'fixed': True},
-    {'sl': 16, 'name': 'Safety Laundry'},
-    {'sl': 17, 'name': 'Tea Post Pvt. Ltd.'},
-    {'sl': 18, 'name': 'South Point'},
-    {'sl': 19, 'name': 'Short Circuit'},
-    {'sl': 20, 'name': 'Vendooz'},
-    {'sl': 21, 'name': 'JRV Hospitality Services LLP (Hunger Games)'},
-    {'sl': 22, 'name': 'Jay Ambe Supermarkets Limited'},
-    {'sl': 23, 'name': 'Apollo Pharmacies Limited'},
-    {'sl': 24, 'name': 'Priyanshi Corporation (Mr. Sandwhich- Hostel)'},
-    {'sl': 25, 'name': 'Mystique Aroma - Nescafe (Hostel area and Academics)'},
-    {'sl': 26, 'name': 'Naira Hospitality LLP'},
-    {'sl': 27, 'name': 'Regent Hospitalities Services LLP (Mahi Food Junction)'},
-    {'sl': 28, 'name': 'Zayka-e-Adda'},
-    {'sl': 29, 'name': 'Coffee Day Global Limited (Cafe Coffee Day)', 'fixed': True},
+    {'sl': 1, 'name': '2 Degree Café (Hybred Energy Solution Pvt. Ltd)', 'water': Decimal('640.00')},
+    {'sl': 2, 'name': 'Brahmani Veg Solutions', 'water': Decimal('0.00')},
+    {'sl': 3, 'name': 'The Branch Manager Canara Bank', 'water': Decimal('320.00')},
+    {'sl': 4, 'name': 'Gujarat Co-operative Milk Marketing Federation Limited. (Unit - Amulfed Dairy, Gandhinagar)', 'water': Decimal('0.00')},
+    {'sl': 5, 'name': 'Go Insta Cafe', 'water': Decimal('320.00')},
+    {'sl': 6, 'name': 'Indus Towers', 'water': Decimal('0.00')},
+    {'sl': 7, 'name': 'Just Chill', 'water': Decimal('320.00')},
+    {'sl': 8, 'name': 'Krupa Generals (Provisional Store)', 'water': Decimal('0.00')},
+    {'sl': 9, 'name': 'Mahavir Healthy Foods', 'water': Decimal('320.00')},
+    {'sl': 10, 'name': 'Maruti Xerox & Stationery', 'water': Decimal('0.00')},
+    {'sl': 11, 'name': 'Midas Touch - Family Salon', 'water': Decimal('320.00')},
+    {'sl': 12, 'name': 'N Root Enterprise', 'water': Decimal('0.00')},
+    {'sl': 13, 'name': 'Pooja Stationery', 'water': Decimal('0.00')},
+    {'sl': 14, 'name': 'Post Office', 'water': Decimal('0.00')},
+    {'sl': 15, 'name': 'Post Office (WC)', 'fixed': True, 'water': Decimal('320.00')},
+    {'sl': 16, 'name': 'Safety Laundry', 'water': Decimal('0.00')},
+    {'sl': 17, 'name': 'Tea Post Pvt. Ltd.', 'water': Decimal('320.00')},
+    {'sl': 18, 'name': 'South Point', 'water': Decimal('320.00')},
+    {'sl': 19, 'name': 'Short Circuit', 'water': Decimal('0.00')},
+    {'sl': 20, 'name': 'Vendooz', 'water': Decimal('0.00')},
+    {'sl': 21, 'name': 'JRV Hospitality Services LLP (Hunger Games)', 'water': Decimal('320.00')},
+    {'sl': 22, 'name': 'Jay Ambe Supermarkets Limited', 'water': Decimal('320.00')},
+    {'sl': 23, 'name': 'Apollo Pharmacies Limited', 'water': Decimal('0.00')},
+    {'sl': 24, 'name': 'Priyanshi Corporation (Mr. Sandwhich- Hostel)', 'water': Decimal('320.00')},
+    {'sl': 25, 'name': 'Mystique Aroma - Nescafe (Hostel area and Academics)', 'water': Decimal('640.00')},
+    {'sl': 26, 'name': 'Naira Hospitality LLP', 'water': Decimal('320.00')},
+    {'sl': 27, 'name': 'Monika Hospitality Services (Mahi Food Junction)', 'water': Decimal('1120.00')},
+    {'sl': 28, 'name': 'Zayka-e-Adda', 'water': Decimal('227.50')},
+    {'sl': 29, 'name': 'Globe Civil Projects Pvt Ltd. (Old Borewell)', 'water': Decimal('0.00')},
+    {'sl': 30, 'name': 'New Age Education and Skills Foundation (VRV connection - Research Park )', 'water': Decimal('0.00')},
+    {'sl': 31, 'name': 'Summit Digital (Jio Mobile Tower)', 'water': Decimal('0.00')},
+    {'sl': 32, 'name': 'Haier Smart Solution Private Limited (Student Lounge)', 'fixed': True, 'water': Decimal('7678.00')},
+    {'sl': 33, 'name': 'Globe Civil Projects Pvt Ltd. (Old Borewell)', 'water': Decimal('0.00')},
+    {'sl': 34, 'name': 'M/s. ADANI NEW INDUSTRIES LIMITED', 'water': Decimal('0.00')},
 ]
 
 SEED_CONTRACTORS = [
@@ -135,7 +140,7 @@ class Command(BaseCommand):
                     'address': DEFAULT_ADDRESS,
                     'fixed': data.get('fixed', False),
                     'default_rate': Decimal('9.55'),
-                    'default_water': Decimal('320.00'),
+                    'default_water': data.get('water', Decimal('320.00')),
                     'is_active': True,
                 }
             )
@@ -144,7 +149,8 @@ class Command(BaseCommand):
             else:
                 shop.name = data['name']
                 shop.fixed = data.get('fixed', False)
-                shop.save(update_fields=['name', 'fixed'])
+                shop.default_water = data.get('water', Decimal('320.00'))
+                shop.save(update_fields=['name', 'fixed', 'default_water'])
 
         self.stdout.write(f'  [OK] Shops: {Shop.objects.count()} (created: {shops_created})')
 
