@@ -10,13 +10,13 @@ echo [1/4] Freeing ports 8000 and 5173...
 powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 8000, 5173 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"
 
 echo [2/4] Starting Django Backend (Port 8000)...
-start "IITGN Backend (Django)" /min /d "%~dp0backend" cmd /c ".\venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000"
+start "IITGN Backend (Django)" /min /d "%~dp0backend" cmd /c ".\venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000"
 
 echo [3/4] Starting React Admin Frontend (Port 5173)...
 start "IITGN Frontend (Vite)" /min /d "%~dp0frontend-admin" cmd /c "node dev-server.js"
 
 echo [4/4] Waiting for services to initialize...
-powershell -NoProfile -Command "Start-Sleep -Seconds 3; Start-Process 'http://localhost:5173/admin/substation'"
+powershell -NoProfile -Command "Start-Sleep -Seconds 3; Start-Process 'http://localhost:5173/admin/login'"
 
 echo ==========================================================
 echo    Services are running!

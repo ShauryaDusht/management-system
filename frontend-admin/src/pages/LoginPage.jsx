@@ -9,7 +9,6 @@ function getLandingRoute(user) {
   if (
     role === 'plant_engineer' ||
     role === 'electrical_supervisor' ||
-    role === 'supervisor' ||
     role === 'electrical_operator' ||
     role === 'operator'
   ) {
@@ -27,6 +26,9 @@ function getLandingRoute(user) {
     role === 'hvac_operator'
   ) {
     return '/hvac'
+  }
+  if (role === 'supervisor') {
+    return '/housekeeping'
   }
   return '/dashboard'
 }

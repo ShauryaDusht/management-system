@@ -25,7 +25,7 @@ export default function SubstationPage() {
   // - electrical_supervisor: supervisor section, layout, operator entry, overview, flash, reports
   // - admin: campus overview, substations & incomers, flash report, reports & analytics (NO operator or supervisor section)
   const isOperator = authUser?.role === 'electrical_operator' || authUser?.role === 'operator'
-  const isSupervisor = authUser?.role === 'electrical_supervisor' || authUser?.role === 'supervisor' || authUser?.role === 'plant_engineer'
+  const isSupervisor = authUser?.role === 'electrical_supervisor' || authUser?.role === 'plant_engineer'
   const isAdmin = !isOperator && !isSupervisor
 
   const user = useMemo(() => ({
@@ -105,12 +105,6 @@ export default function SubstationPage() {
 
   const querySigRef = useRef('')
 
-  const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark'
-    setTheme(next)
-    localStorage.setItem('sslog_theme', next)
-  }
-
   // Load sheets, readings, layout, and flash config from backend
   const loadInitialData = async () => {
     try {
@@ -171,7 +165,7 @@ export default function SubstationPage() {
           }
         })
         .catch(() => {})
-    }, 10000)
+    }, 30000)
 
     return () => clearInterval(timer)
   }, [])

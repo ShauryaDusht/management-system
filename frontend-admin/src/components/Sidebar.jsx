@@ -127,6 +127,16 @@ export default function Sidebar() {
       { to: '/insights', icon: 'insights', label: 'Insights' },
       { to: '/users', icon: 'users', label: 'Manage Users' },
     ]
+    : user?.role === 'supervisor'
+    ? [
+      {
+        to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
+        badge: badges.housekeeping,
+      },
+      { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
+      { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
     : [
       { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
       {
@@ -275,7 +285,7 @@ export default function Sidebar() {
               {user?.full_name || user?.username}
             </div>
             <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, textTransform: 'capitalize' }}>
-              {user?.role === 'plant_engineer' ? 'Substation & WTP Engineer' : user?.role === 'electrical_supervisor' ? 'Substation Supervisor' : user?.role === 'wtp_supervisor' ? 'WTP / STP Supervisor' : user?.role === 'hvac_supervisor' ? 'HVAC Engineer' : user?.role === 'hvac_operator' ? 'HVAC Operator' : (user?.role || '').replaceAll('_', ' ')}
+              {user?.role === 'plant_engineer' ? 'Substation & WTP Engineer' : user?.role === 'electrical_supervisor' ? 'Substation Supervisor' : user?.role === 'wtp_supervisor' ? 'WTP / STP Supervisor' : user?.role === 'hvac_engineer' ? 'HVAC Engineer' : user?.role === 'hvac_supervisor' ? 'HVAC Supervisor' : user?.role === 'supervisor' ? 'Operations Supervisor' : user?.role === 'hvac_operator' ? 'HVAC Operator' : (user?.role || '').replaceAll('_', ' ')}
             </div>
           </div>
         </div>

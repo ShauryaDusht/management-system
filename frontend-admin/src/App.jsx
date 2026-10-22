@@ -20,7 +20,6 @@ import HvacPage from './pages/hvac/HvacPage'
 const SUBSTATION_ALLOWED = [
   'admin',
   'plant_engineer',
-  'supervisor',
   'electrical_supervisor',
   'operator',
   'electrical_operator',
@@ -29,7 +28,6 @@ const SUBSTATION_ALLOWED = [
 const WTP_STP_ALLOWED = [
   'admin',
   'plant_engineer',
-  'supervisor',
   'wtp_supervisor',
   'operator',
   'wtp_operator',
@@ -37,7 +35,6 @@ const WTP_STP_ALLOWED = [
 
 const HVAC_ALLOWED = [
   'admin',
-  'supervisor',
   'hvac_engineer',
   'hvac_supervisor',
   'operator',
@@ -47,9 +44,9 @@ const HVAC_ALLOWED = [
 const ADMIN_OR_HK_INVENTORY = ['admin', 'hk_inventory_manager']
 const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
 const HK_INVENTORY_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
-const HK_PORTAL_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
-const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
-const GEO_TRACKER_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager']
+const HK_PORTAL_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office', 'supervisor']
+const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager', 'supervisor']
+const GEO_TRACKER_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'supervisor']
 const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
 const ALL_PORTAL_ROLES = [
   'admin',
@@ -97,10 +94,10 @@ function getLandingRoute(user) {
   ) {
     return '/hvac'
   }
-  if (
-    role === 'supervisor' ||
-    role === 'operator'
-  ) {
+  if (role === 'supervisor') {
+    return '/housekeeping'
+  }
+  if (role === 'operator') {
     return '/substation'
   }
   return '/unauthorized'

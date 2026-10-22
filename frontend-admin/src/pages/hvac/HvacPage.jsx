@@ -20,7 +20,7 @@ export default function HvacPage({ defaultTab }) {
   const isOperator = authUser?.role === 'hvac_operator' || authUser?.role === 'operator';
   const isHvacEngineer = authUser?.role === 'hvac_engineer';
   const isEngineer = isHvacEngineer;
-  const isSupervisor = authUser?.role === 'hvac_supervisor' || authUser?.role === 'supervisor';
+  const isSupervisor = authUser?.role === 'hvac_supervisor';
   const isAdmin = !isOperator && !isSupervisor && !isEngineer;
 
   // Tabs:

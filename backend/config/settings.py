@@ -24,7 +24,7 @@ def env_list(name, default=''):
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'change-me-in-production')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = ['*'] if DEBUG else env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
@@ -156,6 +156,7 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS')
 
 CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')

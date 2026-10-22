@@ -24,7 +24,7 @@ export default function WtpPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const isOperator = authUser?.role === 'wtp_operator' || authUser?.role === 'operator'
-  const isSupervisor = authUser?.role === 'wtp_supervisor' || authUser?.role === 'supervisor' || authUser?.role === 'plant_engineer'
+  const isSupervisor = authUser?.role === 'wtp_supervisor' || authUser?.role === 'plant_engineer'
   const isAdmin = !isOperator && !isSupervisor
 
   const user = useMemo(() => ({
