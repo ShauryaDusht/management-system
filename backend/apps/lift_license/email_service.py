@@ -45,6 +45,9 @@ def get_urgent_licenses(window_days=90):
             'days_left': days_left,
             'eng': lift.eng or 'Unassigned',
             'rem': lift.rem or '',
+            'is_applied': lift.is_applied,
+            'applied_date': lift.applied_date.strftime('%d.%m.%Y') if lift.applied_date else None,
+            'application_no': lift.application_no or '',
         }
 
         if days_left < 0:

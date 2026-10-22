@@ -22,7 +22,8 @@ const HK_PORTAL_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
 const GEO_TRACKER_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager']
 const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
-const LIFTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
+const LIFTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'engineer']
+const PROFILE_ALLOWED = ['admin', 'horticulture_manager', 'hk_inventory_manager', 'hostel_office', 'engineer']
 const ROUTER_BASENAME = '/admin'
 
 function getLandingRoute(user) {
@@ -33,6 +34,7 @@ function getLandingRoute(user) {
   if (role === 'hk_inventory_manager') return '/dashboard'
   if (role === 'horticulture_manager') return '/dashboard'
   if (role === 'hostel_office') return '/dashboard'
+  if (role === 'engineer') return '/lifts'
   return '/unauthorized'
 }
 
@@ -141,7 +143,7 @@ export default function App() {
           <Route
             path="/profile"
             element={
-              <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
+              <ProtectedRoute allowedRoles={PROFILE_ALLOWED}>
                 <ProfilePage />
               </ProtectedRoute>
             }

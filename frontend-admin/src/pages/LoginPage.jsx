@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { APP_LOGO_PATH, APP_NAME, APP_TAGLINE } from '../shared/constants'
 
 function getLandingRoute(user) {
+  if (user?.role === 'engineer') return '/lifts'
   return '/dashboard'
 }
 

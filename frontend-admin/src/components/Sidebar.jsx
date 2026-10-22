@@ -47,7 +47,12 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
 
-  const navItems = user?.role === 'horticulture_manager'
+  const navItems = user?.role === 'engineer'
+    ? [
+      { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : user?.role === 'horticulture_manager'
     ? [
       { to: '/dashboard', icon: 'home', label: 'Home' },
       { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
@@ -221,14 +226,14 @@ export default function Sidebar() {
               color: '#fff', fontWeight: 700, fontSize: 13, flexShrink: 0,
             }}
           >
-            {user?.full_name?.[0] || user?.username?.[0]?.toUpperCase() || 'A'}
+            {user?.role === 'engineer' ? 'L' : (user?.full_name?.[0] || user?.username?.[0]?.toUpperCase() || 'A')}
           </div>
           <div style={{ overflow: 'hidden' }}>
             <div style={{ color: '#fff', fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user?.full_name || user?.username}
+              {user?.role === 'engineer' ? 'Lift Engineer' : (user?.full_name || user?.username)}
             </div>
             <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, textTransform: 'capitalize' }}>
-              {user?.role}
+              {user?.role === 'engineer' ? 'Electrical' : (user?.role || '').replace('_', ' ')}
             </div>
           </div>
         </div>

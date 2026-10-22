@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { authAPI } from '../api/auth'
 
 const AuthContext = createContext(null)
-const ALLOWED_PORTAL_ROLES = ['admin', 'horticulture_manager', 'hk_inventory_manager', 'hostel_office']
+const ALLOWED_PORTAL_ROLES = ['admin', 'horticulture_manager', 'hk_inventory_manager', 'hostel_office', 'engineer']
 
 function normalizePortalUser(user) {
   if (user?.username === 'hostel.office' || user?.actual_role === 'hostel_office') {
@@ -79,7 +79,8 @@ export function AuthProvider({ children }) {
   const isHKInventoryManager = user?.role === 'hk_inventory_manager'
   const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
   const isHorticultureManager = user?.role === 'horticulture_manager'
-  const isAnyManager = isInventoryManager || isHKInventoryManager || isHostelOffice || isHorticultureManager
+  const isEngineer = user?.role === 'engineer'
+  const isAnyManager = isInventoryManager || isHKInventoryManager || isHostelOffice || isHorticultureManager || isEngineer
   const isSupervisor = user?.role === 'supervisor'
   const isCaretaker = user?.role === 'caretaker'
 
@@ -90,6 +91,7 @@ export function AuthProvider({ children }) {
     logout,
     unauthorized,
     isAdmin,
+    isEngineer,
     isInventoryManager,
     isHousekeepingManager,
     isHKInventoryManager,

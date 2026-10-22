@@ -7,11 +7,16 @@ class LiftLicense(models.Model):
     loc = models.CharField(max_length=200, verbose_name="Location / Building")
     lift = models.CharField(max_length=200, verbose_name="Lift Identifier")
     no = models.CharField(max_length=150, unique=True, verbose_name="License Number")
+    equipment_no = models.CharField(max_length=100, blank=True, default='', verbose_name="Equipment Number")
     prov = models.CharField(max_length=200, blank=True, null=True, verbose_name="Elevator Provider / OEM")
     frm = models.DateField(blank=True, null=True, verbose_name="Valid From")
     till = models.DateField(blank=True, null=True, verbose_name="Valid Till")
     eng = models.CharField(max_length=150, blank=True, null=True, default='Mr. Naveen Rai', verbose_name="Contact Engineer / In-charge")
     rem = models.CharField(max_length=300, blank=True, null=True, verbose_name="Remarks / Block")
+    is_applied = models.BooleanField(default=False, verbose_name="Renewal Form Applied")
+    applied_date = models.DateField(blank=True, null=True, verbose_name="Application Submission Date")
+    application_no = models.CharField(max_length=150, blank=True, default='', verbose_name="Application / Challan Reference No.")
+    applied_notes = models.TextField(blank=True, default='', verbose_name="Renewal Application Remarks")
     order = models.IntegerField(default=0, verbose_name="Display Order")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -69,3 +74,26 @@ class LiftComplianceSetting(models.Model):
             }
         )
         return obj
+
+
+class LiftLicenseDocument(models.Model):
+    lift = models.ForeignKey(LiftLicense, on_delete=models.CASCADE, related_name='documents')
+    pdf_file = models.FileField(upload_to='lift_licenses/documents/%Y/%m/', verbose_name="Certificate PDF")
+    title = models.CharField(max_length=200, blank=True, default='', verbose_name="Document Title / Version")
+    license_no = models.CharField(max_length=150, blank=True, default='', verbose_name="License Number")
+    valid_from = models.DateField(blank=True, null=True, verbose_name="Valid From")
+    valid_till = models.DateField(blank=True, null=True, verbose_name="Valid Till")
+    is_current = models.BooleanField(default=False, verbose_name="Is Current Active Certificate")
+    uploaded_by = models.CharField(max_length=150, blank=True, default='', verbose_name="Uploaded By")
+    notes = models.TextField(blank=True, default='', verbose_name="Notes / Remarks")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-is_current', '-valid_till', '-created_at']
+        verbose_name = 'Lift License Document'
+        verbose_name_plural = 'Lift License Documents'
+
+    def __str__(self):
+        status_tag = 'CURRENT' if self.is_current else 'ARCHIVED'
+        return f"{self.lift.lift} - {self.title or self.license_no or 'Document'} [{status_tag}]"
