@@ -152,7 +152,22 @@ class ItemListCreateView(generics.ListCreateAPIView):
             qs = qs.filter(item_type=item_type)
         category = self.request.query_params.get('category')
         if category:
-            qs = qs.filter(category_id=category)
+            if str(category).isdigit():
+                qs = qs.filter(category_id=category)
+            else:
+                qs = qs.filter(
+                    dm.Q(category__name__iexact=category)
+                    | dm.Q(category__name__icontains=category)
+                )
+        exclude_category = self.request.query_params.get('exclude_category')
+        if exclude_category:
+            if str(exclude_category).isdigit():
+                qs = qs.exclude(category_id=exclude_category)
+            else:
+                qs = qs.exclude(
+                    dm.Q(category__name__iexact=exclude_category)
+                    | dm.Q(category__name__icontains=exclude_category)
+                )
         low_stock = self.request.query_params.get('low_stock')
         if low_stock == 'true':
             qs = qs.filter(
@@ -300,14 +315,49 @@ class StockEntryListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [IsAdminOrHKInventoryManager()]
+            return [IsAdminOrInventoryManager()]
         return [IsInventoryReportViewer()]
 
     def get_queryset(self):
-        qs = StockEntry.objects.select_related('item', 'added_by').all()
-        item_id = self.request.query_params.get('item')
+        qs = StockEntry.objects.select_related('item', 'item__category', 'added_by').all().order_by('-added_at')
+        params = getattr(self.request, 'query_params', getattr(self.request, 'GET', {}))
+        item_id = params.get('item')
         if item_id:
             qs = qs.filter(item_id=item_id)
+
+        category = params.get('category')
+        if category:
+            if str(category).isdigit():
+                qs = qs.filter(item__category_id=category)
+            else:
+                qs = qs.filter(
+                    dm.Q(item__category__name__iexact=category)
+                    | dm.Q(item__category__name__icontains=category)
+                )
+
+        exclude_category = params.get('exclude_category')
+        if exclude_category:
+            if str(exclude_category).isdigit():
+                qs = qs.exclude(item__category_id=exclude_category)
+            else:
+                qs = qs.exclude(
+                    dm.Q(item__category__name__iexact=exclude_category)
+                    | dm.Q(item__category__name__icontains=exclude_category)
+                )
+
+        user = self.request.user
+        if not category and not exclude_category:
+            if getattr(user, 'is_horticulture_manager', False) or getattr(user, 'role', '') == 'horticulture_manager':
+                qs = qs.filter(
+                    dm.Q(item__category__name__icontains='Horticulture')
+                    | dm.Q(item__category__name__iexact='Garden & Horticulture Equipment')
+                )
+            elif getattr(user, 'is_hk_inventory_manager', False) or getattr(user, 'role', '') == 'hk_inventory_manager':
+                qs = qs.exclude(
+                    dm.Q(item__category__name__icontains='Horticulture')
+                    | dm.Q(item__category__name__iexact='Garden & Horticulture Equipment')
+                )
+
         return qs
 
     def perform_create(self, serializer):

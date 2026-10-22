@@ -150,6 +150,26 @@ select option[disabled]{color:#9ca3af}
 .block-btn-gps{background:#1a3a2a;color:#fff}
 .block-btn-map{background:#0e6b94;color:#fff}
 .block-btn-sm:active{opacity:.85}
+
+/* ── Enhanced Shrub & Creeper Plot Measurements ── */
+.shape-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px;margin-bottom:12px}
+.shape-opt input{display:none}
+.shape-label{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:10px 4px;border-radius:9px;border:1.5px solid #d1d5db;
+  background:#f9fafb;font-size:11.5px;font-weight:700;color:#4b5563;cursor:pointer;
+  text-align:center;transition:all .15s ease
+}
+.shape-icon{font-size:16px;line-height:1}
+.shape-opt input:checked + .shape-label{
+  background:#dcfce7;border-color:#16a34a;color:#166534;
+  box-shadow:0 1px 4px rgba(22,101,52,.15)
+}
+.quick-pill{
+  display:inline-block;padding:2px 8px;border-radius:12px;background:#e2e8f0;
+  color:#334155;font-size:10.5px;font-weight:700;cursor:pointer;margin-right:4px;transition:all .15s
+}
+.quick-pill:hover{background:#cbd5e1}
 </style>
 </head>
 <body>
@@ -251,7 +271,7 @@ select option[disabled]{color:#9ca3af}
       <!-- Map picker — hidden until Map button tapped -->
       <div class="map-picker" id="mapPicker">
         <div class="map-instructions">
-          <span>Pan &amp; zoom to the tree, then tap Confirm</span>
+          <span>Pan &amp; zoom to the plant, then tap Confirm</span>
           <button type="button" class="map-confirm-btn" id="mapConfirmBtn">✓ Confirm pin</button>
         </div>
         <div id="pinMap"></div>
@@ -274,33 +294,135 @@ select option[disabled]{color:#9ca3af}
     <!-- Measurements (Standard for Tree/Plant/Shrub) -->
     <div class="card" id="standardMeasurementsCard">
       <div class="sec-title">Measurements</div>
-      <div class="row2">
-        <div class="fg">
-          <label for="height_m">Height (m)</label>
-          <input type="number" id="height_m" name="height_m" step="0.01" min="0" placeholder="e.g. 4.5">
+
+      <!-- Single Plant Group (Tree & Plant) -->
+      <div id="treeMeasurementsGroup">
+        <div class="row2">
+          <div class="fg">
+            <label for="height_m">Height (m)</label>
+            <input type="number" id="height_m" name="height_m" step="0.01" min="0" placeholder="e.g. 4.5">
+          </div>
+
+          <div class="fg">
+            <label for="girth_cm">Girth (cm)</label>
+            <input type="number" id="girth_cm" name="girth_cm" step="0.1" min="0" placeholder="e.g. 85">
+          </div>
         </div>
 
-        <div class="fg">
-          <label for="girth_cm">Girth (cm)</label>
-          <input type="number" id="girth_cm" name="girth_cm" step="0.1" min="0" placeholder="e.g. 85">
-        </div>
-      </div>
-
-      <div class="row2" style="margin-top:10px">
-        <div class="fg">
-          <label for="length_m">Length (m)</label>
-          <input type="number" id="length_m" name="length_m" step="0.01" min="0" placeholder="e.g. 2.5">
-        </div>
-
-        <div class="fg">
-          <label for="width_m">Width (m)</label>
-          <input type="number" id="width_m" name="width_m" step="0.01" min="0" placeholder="e.g. 1.8">
+        <div class="fg" style="margin-top:10px">
+          <label for="canopy_area_m">Canopy Span (m)</label>
+          <input type="number" id="canopy_area_m" name="canopy_area_m" step="0.01" min="0" placeholder="e.g. 3.2">
         </div>
       </div>
 
-      <div class="fg" style="margin-top:10px">
-        <label for="canopy_area_m">Canopy Span (m)</label>
-        <input type="number" id="canopy_area_m" name="canopy_area_m" step="0.01" min="0" placeholder="e.g. 3.2">
+      <!-- Plot / Block Group (Shrub & Creeper) -->
+      <div id="shrubCreeperMeasurementsGroup" style="display:none">
+        <div class="fg">
+          <label class="required">Plot / Bed Shape</label>
+          <div class="shape-grid">
+            <label class="shape-opt">
+              <input type="radio" name="area_shape" value="rectangle" checked>
+              <span class="shape-label"><span class="shape-icon">▭</span>Rectangle</span>
+            </label>
+            <label class="shape-opt">
+              <input type="radio" name="area_shape" value="square">
+              <span class="shape-label"><span class="shape-icon">⬚</span>Square</span>
+            </label>
+            <label class="shape-opt">
+              <input type="radio" name="area_shape" value="circle">
+              <span class="shape-label"><span class="shape-icon">◯</span>Circle</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Rectangle Inputs -->
+        <div id="shapeRectContainer">
+          <div class="row2">
+            <div class="fg">
+              <label for="length_m">Length (m)</label>
+              <input type="number" id="length_m" name="length_m" step="0.01" min="0" placeholder="e.g. 5.0">
+            </div>
+            <div class="fg">
+              <label for="width_m">Width (m)</label>
+              <input type="number" id="width_m" name="width_m" step="0.01" min="0" placeholder="e.g. 4.0">
+            </div>
+          </div>
+        </div>
+
+        <!-- Square Input -->
+        <div id="shapeSquareContainer" style="display:none">
+          <div class="fg">
+            <label for="square_side_m">Side Length (m)</label>
+            <input type="number" id="square_side_m" step="0.01" min="0" placeholder="e.g. 4.5">
+          </div>
+        </div>
+
+        <!-- Circle Input -->
+        <div id="shapeCircleContainer" style="display:none">
+          <div class="fg">
+            <label for="circle_radius_m">Radius (m)</label>
+            <input type="number" id="circle_radius_m" step="0.01" min="0" placeholder="e.g. 2.5">
+            <span style="font-size:10.5px;color:#6b7280;margin-top:2px;display:block">Area = π × r²</span>
+          </div>
+        </div>
+
+        <!-- Read-only Total Area (m²) -->
+        <div class="fg" style="margin-top:10px">
+          <label for="total_area_m">Total Area (m²)</label>
+          <div style="position:relative">
+            <input type="number" id="total_area_m" name="total_area_m" step="0.01" readonly placeholder="0.00" style="background:#f3f4f6;font-weight:800;color:#166534;padding-right:45px">
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:#6b7280;pointer-events:none">m²</span>
+          </div>
+        </div>
+
+        <!-- Spacing & Pattern -->
+        <div class="row2" style="margin-top:10px">
+          <div class="fg">
+            <label for="plant_spacing_m">Plant Spacing (m)</label>
+            <input type="number" id="plant_spacing_m" name="plant_spacing_m" step="0.05" min="0.1" value="1.0" placeholder="1.0">
+            <div style="margin-top:4px">
+              <span class="quick-pill" onclick="setQuickSpacing('1.0')">1.0 m</span>
+              <span class="quick-pill" onclick="setQuickSpacing('1.5')">1.5 m</span>
+              <span class="quick-pill" onclick="setQuickSpacing('2.0')">2.0 m</span>
+            </div>
+            <span style="font-size:10.5px;color:#6b7280;margin-top:3px;display:block">Default 1×1m · Shrub: 1–2m, Creeper: 1–2m</span>
+          </div>
+
+          <div class="fg">
+            <label for="planting_pattern">Planting Pattern</label>
+            <select id="planting_pattern" name="planting_pattern">
+              <option value="square" selected>Square (1.00×)</option>
+              <option value="triangular">Triangular (+15%)</option>
+            </select>
+            <span style="font-size:10.5px;color:#6b7280;margin-top:4px;display:block">Triangular yields +15% more plants</span>
+          </div>
+        </div>
+
+        <!-- Live Calculation Summary Card -->
+        <div id="measurementSummaryCard" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;border-radius:12px;padding:12px 14px;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:11px;font-weight:800;color:#166534;text-transform:uppercase;letter-spacing:.05em">🌱 Calculation Summary</span>
+            <span id="sumShapeBadge" style="font-size:10px;font-weight:800;background:#15803d;color:#fff;padding:2px 8px;border-radius:10px">RECTANGLE</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+            <div style="background:#fff;border-radius:8px;padding:8px 4px;border:1px solid #bbf7d0">
+              <div style="font-size:9.5px;color:#64748b;font-weight:700;text-transform:uppercase">Total Area</div>
+              <div id="sumTotalArea" style="font-size:15px;font-weight:800;color:#15803d;margin-top:2px">0.00 m²</div>
+            </div>
+            <div style="background:#fff;border-radius:8px;padding:8px 4px;border:1px solid #bbf7d0">
+              <div style="font-size:9.5px;color:#64748b;font-weight:700;text-transform:uppercase">Spacing</div>
+              <div id="sumSpacing" style="font-size:15px;font-weight:800;color:#1e3a8a;margin-top:2px">1.0 m</div>
+            </div>
+            <div style="background:#fff;border-radius:8px;padding:8px 4px;border:1px solid #86efac;box-shadow:0 1px 4px rgba(22,101,52,0.12)">
+              <div style="font-size:9.5px;color:#166534;font-weight:800;text-transform:uppercase">Total Plants</div>
+              <div id="sumTotalPlants" style="font-size:17px;font-weight:900;color:#166534;margin-top:2px">0</div>
+            </div>
+          </div>
+          <div id="sumFormulaNote" style="font-size:10.5px;color:#166534;margin-top:8px;text-align:center;line-height:1.3;font-weight:500">
+            Square Pattern: Total Area ÷ (1.0m × 1.0m) = 0 plants (round down)
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -420,14 +542,17 @@ var varietySelect = document.getElementById('variety');
 var plantTypeInput = document.getElementById('plant_type');
 
 function updatePlantTypeMode() {
-  var pType = plantTypeInput.value;
-  var isBlockPartitioned = false;
+  var selectedRadio = document.querySelector('input[name="plant_type_display"]:checked');
+  var pType = selectedRadio ? selectedRadio.value.toLowerCase() : (plantTypeInput.value || '').toLowerCase();
+
   var creeperSetIdGroup = document.getElementById('creeperSetIdGroup');
   var creeperCalcCard = document.getElementById('creeperCalcCard');
   var creeperBlocksCard = document.getElementById('creeperBlocksCard');
   var standardMeasurementsCard = document.getElementById('standardMeasurementsCard');
   var locationTitle = document.getElementById('locationSecTitle');
   var locationSubtext = document.getElementById('locationSubtext');
+  var treeGroup = document.getElementById('treeMeasurementsGroup');
+  var shrubCreeperGroup = document.getElementById('shrubCreeperMeasurementsGroup');
 
   if (creeperSetIdGroup) creeperSetIdGroup.style.display = 'none';
   if (creeperCalcCard) creeperCalcCard.style.display = 'none';
@@ -435,7 +560,144 @@ function updatePlantTypeMode() {
   if (standardMeasurementsCard) standardMeasurementsCard.style.display = 'block';
   if (locationTitle) locationTitle.textContent = 'Location';
   if (locationSubtext) locationSubtext.style.display = 'none';
+
+  if (pType === 'shrub' || pType === 'creeper') {
+    if (treeGroup) treeGroup.style.display = 'none';
+    if (shrubCreeperGroup) shrubCreeperGroup.style.display = 'block';
+
+    var spacingInp = document.getElementById('plant_spacing_m');
+    if (spacingInp && (!spacingInp.value || parseFloat(spacingInp.value) <= 0)) {
+      spacingInp.value = '1.0';
+    }
+    recalculateMeasurements();
+  } else {
+    // Tree, Plant, or not yet selected
+    if (treeGroup) treeGroup.style.display = 'block';
+    if (shrubCreeperGroup) shrubCreeperGroup.style.display = 'none';
+  }
 }
+
+function setQuickSpacing(val) {
+  var spacingInp = document.getElementById('plant_spacing_m');
+  if (spacingInp) {
+    spacingInp.value = val;
+    recalculateMeasurements();
+  }
+}
+
+function recalculateMeasurements() {
+  var selectedRadio = document.querySelector('input[name="plant_type_display"]:checked');
+  var pType = selectedRadio ? selectedRadio.value.toLowerCase() : (plantTypeInput.value || '').toLowerCase();
+  if (pType !== 'shrub' && pType !== 'creeper') return;
+
+  var shapeVal = document.querySelector('input[name="area_shape"]:checked');
+  var shape = shapeVal ? shapeVal.value : 'rectangle';
+  var area = 0;
+
+  var lenInp = document.getElementById('length_m');
+  var widInp = document.getElementById('width_m');
+  var sideInp = document.getElementById('square_side_m');
+  var radInp = document.getElementById('circle_radius_m');
+  var totalAreaInp = document.getElementById('total_area_m');
+
+  if (shape === 'rectangle') {
+    var l = parseFloat(lenInp ? lenInp.value : 0) || 0;
+    var w = parseFloat(widInp ? widInp.value : 0) || 0;
+    area = l * w;
+  } else if (shape === 'square') {
+    var s = parseFloat(sideInp ? sideInp.value : 0) || 0;
+    area = s * s;
+    if (lenInp) lenInp.value = s > 0 ? s : '';
+    if (widInp) widInp.value = s > 0 ? s : '';
+  } else if (shape === 'circle') {
+    var r = parseFloat(radInp ? radInp.value : 0) || 0;
+    area = Math.PI * r * r;
+    if (lenInp) lenInp.value = r > 0 ? (r * 2).toFixed(2) : '';
+    if (widInp) widInp.value = r > 0 ? (r * 2).toFixed(2) : '';
+  }
+
+  // Update read-only Total Area (m²) field
+  if (totalAreaInp) {
+    totalAreaInp.value = area > 0 ? area.toFixed(2) : '';
+  }
+
+  // Spacing & Pattern
+  var spacingInp = document.getElementById('plant_spacing_m');
+  var spacing = parseFloat(spacingInp ? spacingInp.value : 0) || 1.0;
+  if (spacing <= 0) spacing = 1.0;
+
+  var patternSelect = document.getElementById('planting_pattern');
+  var pattern = patternSelect ? patternSelect.value : 'square';
+  var isTriangular = pattern === 'triangular';
+
+  // Total Plants Formula:
+  // Base = Total Area / (Spacing * Spacing)
+  // For Triangular, multiply by 1.15
+  // Round down with Math.floor
+  var totalPlants = 0;
+  if (area > 0 && spacing > 0) {
+    var baseCapacity = area / (spacing * spacing);
+    if (isTriangular) {
+      totalPlants = Math.floor(baseCapacity * 1.15);
+    } else {
+      totalPlants = Math.floor(baseCapacity);
+    }
+  }
+
+  // Update Summary Card UI
+  var sumShapeBadge = document.getElementById('sumShapeBadge');
+  var sumTotalArea = document.getElementById('sumTotalArea');
+  var sumSpacing = document.getElementById('sumSpacing');
+  var sumTotalPlants = document.getElementById('sumTotalPlants');
+  var sumFormulaNote = document.getElementById('sumFormulaNote');
+
+  if (sumShapeBadge) {
+    var shapeLabels = { rectangle: 'RECTANGLE', square: 'SQUARE', circle: 'CIRCLE' };
+    sumShapeBadge.textContent = shapeLabels[shape] || shape.toUpperCase();
+  }
+  if (sumTotalArea) sumTotalArea.textContent = area.toFixed(2) + ' m²';
+  if (sumSpacing) sumSpacing.textContent = spacing.toFixed(2) + ' m';
+  if (sumTotalPlants) sumTotalPlants.textContent = totalPlants.toLocaleString();
+
+  if (sumFormulaNote) {
+    if (area <= 0) {
+      sumFormulaNote.textContent = 'Enter dimensions above to calculate live area and total plants.';
+    } else if (isTriangular) {
+      sumFormulaNote.innerHTML = 'Triangular Pattern (+15%): (' + area.toFixed(2) + ' m² ÷ (' + spacing.toFixed(2) + 'm)²) × 1.15 = <strong>' + totalPlants + ' plants</strong> (round down)';
+    } else {
+      sumFormulaNote.innerHTML = 'Square Pattern: ' + area.toFixed(2) + ' m² ÷ (' + spacing.toFixed(2) + 'm × ' + spacing.toFixed(2) + 'm) = <strong>' + totalPlants + ' plants</strong> (round down)';
+    }
+  }
+}
+
+// Live recalculation event listeners
+['length_m', 'width_m', 'square_side_m', 'circle_radius_m', 'plant_spacing_m'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('input', recalculateMeasurements);
+    el.addEventListener('change', recalculateMeasurements);
+  }
+});
+
+var patternSelect = document.getElementById('planting_pattern');
+if (patternSelect) {
+  patternSelect.addEventListener('change', recalculateMeasurements);
+}
+
+document.querySelectorAll('input[name="area_shape"]').forEach(function(radio) {
+  radio.addEventListener('change', function() {
+    var val = this.value;
+    var rectCont = document.getElementById('shapeRectContainer');
+    var squareCont = document.getElementById('shapeSquareContainer');
+    var circleCont = document.getElementById('shapeCircleContainer');
+
+    if (rectCont) rectCont.style.display = val === 'rectangle' ? 'block' : 'none';
+    if (squareCont) squareCont.style.display = val === 'square' ? 'block' : 'none';
+    if (circleCont) circleCont.style.display = val === 'circle' ? 'block' : 'none';
+
+    recalculateMeasurements();
+  });
+});
 
 function syncVarietyOptions() {
   var selectedRadio = document.querySelector(
@@ -1090,23 +1352,29 @@ function initMap() {
   }
 }
 
+function closeMapPicker() {
+  var picker = document.getElementById('mapPicker');
+  var note   = document.getElementById('campusNote');
+  var btn    = document.getElementById('mapBtn');
+  if (picker) picker.classList.remove('open');
+  if (note)   note.style.display = 'none';
+  if (btn)    btn.textContent = '🗺 Map';
+  mapOpen = false;
+}
+
 document.getElementById('mapBtn').addEventListener('click', function() {
   mapTargetBlockNumber = null;
   var instr = document.querySelector('.map-instructions span');
-  if (instr) instr.textContent = 'Pan & zoom to the plant/anchor, then tap Confirm';
+  if (instr) instr.textContent = 'Pan & zoom to the plant, then tap Confirm';
   var picker = document.getElementById('mapPicker');
   var note   = document.getElementById('campusNote');
   if (mapOpen) {
-    picker.classList.remove('open');
-    note.style.display = 'none';
-    mapOpen = false;
-    this.textContent = '🗺 Map';
+    closeMapPicker();
   } else {
     picker.classList.add('open');
     note.style.display = 'block';
     mapOpen = true;
     this.textContent = '✕ Close map';
-    // Initialise Leaflet lazily (only when first opened)
     setTimeout(function() {
       initMap();
       if (leafletMap) leafletMap.invalidateSize();
@@ -1140,13 +1408,7 @@ document.getElementById('mapConfirmBtn').addEventListener('click', function() {
 
     updateBlockCardUI(bNum);
     updateBlockProgressBadge();
-
-    // Close map
-    document.getElementById('mapPicker').classList.remove('open');
-    document.getElementById('campusNote').style.display = 'none';
-    document.getElementById('mapBtn').textContent = '🗺 Map';
-    mapOpen = false;
-    mapTargetBlockNumber = null;
+    closeMapPicker();
 
     var bCard = document.getElementById('block_card_' + bNum);
     if (bCard) bCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1155,18 +1417,17 @@ document.getElementById('mapConfirmBtn').addEventListener('click', function() {
 
   document.getElementById('latitude').value  = c.lat.toFixed(7);
   document.getElementById('longitude').value = c.lng.toFixed(7);
-  document.getElementById('gps_accuracy_m').value = '';
+  var accInp = document.getElementById('gps_accuracy_m');
+  if (accInp) accInp.value = '';
 
-  // Update accuracy UI to show map-pin method
   updateAccUI(0, null, null, 'map');
-  document.getElementById('gpsStatus').textContent = '✓ Position set from map pin — pan map to adjust';
-  document.getElementById('gpsStatus').className   = 'gps-status ok';
+  var gpsStat = document.getElementById('gpsStatus');
+  if (gpsStat) {
+    gpsStat.textContent = '✓ Position set from map pin — pan map to adjust';
+    gpsStat.className   = 'gps-status ok';
+  }
 
-  // Close map
-  document.getElementById('mapPicker').classList.remove('open');
-  document.getElementById('campusNote').style.display = 'none';
-  document.getElementById('mapBtn').textContent = '🗺 Map';
-  mapOpen = false;
+  closeMapPicker();
 });
 
 // ── Photo preview ─────────────────────────────────────────────────────────
@@ -1187,6 +1448,41 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
 
   var formData = new FormData(this);
 
+  var selectedRadio = document.querySelector('input[name="plant_type_display"]:checked');
+  var curType = selectedRadio ? selectedRadio.value.toLowerCase() : (plantTypeInput.value || '').toLowerCase();
+  var isPlotType = curType === 'shrub' || curType === 'creeper';
+
+  if (!isPlotType) {
+    // Tree and Plant: remove plot dimensions and extra calculation fields
+    formData.delete('length_m');
+    formData.delete('width_m');
+    formData.delete('total_area_m');
+    formData.delete('plant_spacing_m');
+    formData.delete('planting_pattern');
+    formData.delete('area_shape');
+  } else {
+    // Shrub and Creeper: remove single tree fields
+    formData.delete('height_m');
+    formData.delete('girth_cm');
+    formData.delete('canopy_area_m');
+
+    // Append plot & total plants spec into notes
+    var areaVal = document.getElementById('total_area_m').value;
+    var notesField = document.getElementById('notes');
+    if (areaVal && parseFloat(areaVal) > 0) {
+      var shapeVal = document.querySelector('input[name="area_shape"]:checked');
+      var shapeName = shapeVal ? shapeVal.value : 'rectangle';
+      var spacingVal = document.getElementById('plant_spacing_m').value || '1.0';
+      var patternVal = document.getElementById('planting_pattern').value || 'square';
+      var totalPlantsVal = document.getElementById('sumTotalPlants') ? document.getElementById('sumTotalPlants').textContent : '0';
+      var specNote = '[Plot: ' + shapeName.charAt(0).toUpperCase() + shapeName.slice(1) + ' ' + areaVal + ' m² | Spacing: ' + spacingVal + 'm (' + patternVal + ') | Total Plants: ' + totalPlantsVal + ']';
+      if (notesField && !notesField.value.includes('[Plot:')) {
+        notesField.value = (notesField.value ? notesField.value + '\n' : '') + specNote;
+        formData.set('notes', notesField.value);
+      }
+    }
+  }
+
   fetch('/geo/submit/record/', {
     method: 'POST', body: formData,
     headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') },
@@ -1201,23 +1497,29 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
       generatedBlocks = [];
       generatedLength = 0;
       generatedWidth = 0;
-      mapTargetBlockNumber = null;
-      var blocksCont = document.getElementById('blocksContainer');
-      if (blocksCont) blocksCont.innerHTML = '';
-      var msgEl = document.getElementById('genBlockMsg');
-      if (msgEl) msgEl.textContent = '';
+      // Reset shape to rectangle
+      var defShape = document.querySelector('input[name="area_shape"][value="rectangle"]');
+      if (defShape) defShape.checked = true;
+      var rectCont = document.getElementById('shapeRectContainer');
+      var squareCont = document.getElementById('shapeSquareContainer');
+      var circleCont = document.getElementById('shapeCircleContainer');
+      if (rectCont) rectCont.style.display = 'block';
+      if (squareCont) squareCont.style.display = 'none';
+      if (circleCont) circleCont.style.display = 'none';
+
+      // Reset spacing and pattern
+      var spacingInp = document.getElementById('plant_spacing_m');
+      if (spacingInp) spacingInp.value = '1.0';
+      var patternSel = document.getElementById('planting_pattern');
+      if (patternSel) patternSel.value = 'square';
+
       syncVarietyOptions();
+      recalculateMeasurements();
       document.getElementById('photoPreview').style.display = 'none';
       document.getElementById('gpsStatus').textContent = '';
       document.getElementById('accBarWrap').style.display = 'none';
       document.getElementById('accBadge').style.display   = 'none';
-      // Close map if open
-      if (mapOpen) {
-        document.getElementById('mapPicker').classList.remove('open');
-        document.getElementById('campusNote').style.display = 'none';
-        document.getElementById('mapBtn').textContent = '🗺 Map';
-        mapOpen = false;
-      }
+      closeMapPicker();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       var errs = data.errors

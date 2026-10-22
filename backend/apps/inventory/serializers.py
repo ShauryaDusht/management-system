@@ -85,11 +85,14 @@ class StockEntrySerializer(serializers.ModelSerializer):
     item_name = serializers.CharField(source='item.name', read_only=True)
     item_code = serializers.CharField(source='item.item_code', read_only=True)
     item_unit = serializers.CharField(source='item.unit', read_only=True)
+    category_id = serializers.IntegerField(source='item.category_id', read_only=True)
+    category_name = serializers.CharField(source='item.category.name', read_only=True)
 
     class Meta:
         model = StockEntry
         fields = [
             'id', 'item', 'item_name', 'item_code', 'item_unit',
+            'category_id', 'category_name',
             'quantity_added', 'added_by', 'added_by_name',
             'added_at', 'notes',
         ]

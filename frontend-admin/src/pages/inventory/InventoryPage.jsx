@@ -111,7 +111,12 @@ export default function InventoryPage() {
           excludeCategoryScope="Garden & Horticulture Equipment"
         />
       )}
-      {active === 'stocklog' && <StockLogTab userRole={inventoryRole} />}
+      {active === 'stocklog' && (
+        <StockLogTab
+          userRole={inventoryRole}
+          excludeCategoryScope="Garden & Horticulture Equipment"
+        />
+      )}
       {active === 'monthly' && !isHostelOffice && canViewReports && <MonthlyReportTab />}
       {active === 'inventory-report' && canViewReports && <ReportTab />}
       {active === 'request-report' && canViewReports && (
