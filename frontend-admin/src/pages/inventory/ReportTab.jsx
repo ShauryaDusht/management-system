@@ -17,7 +17,7 @@ const TYPE_OPTIONS = [
   { key: 'consumable', label: 'Consumables' },
 ]
 
-export default function ReportTab() {
+export default function ReportTab({ categoryScope = null }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [report, setReport] = useState(null)
@@ -25,11 +25,12 @@ export default function ReportTab() {
   const [typeFilter, setTypeFilter] = useState('all')
 
   useEffect(() => {
-    ; (async () => {
+    ;(async () => {
       setLoading(true)
       setError('')
       try {
-        const { data } = await getInventoryReport()
+        const params = categoryScope ? { category: categoryScope } : {}
+        const { data } = await getInventoryReport(params)
         setReport(data || null)
       } catch (e) {
         setError(e.response?.data?.detail || 'Failed to load inventory report.')
@@ -37,38 +38,62 @@ export default function ReportTab() {
         setLoading(false)
       }
     })()
-  }, [])
+  }, [categoryScope])
 
   const items = useMemo(() => {
     const list = asList(report?.items)
     return list.filter((item) => {
       const statusOk = statusFilter === 'all' || item.status === statusFilter
       const typeOk = typeFilter === 'all' || item.type === typeFilter
-      return statusOk && typeOk
+      const categoryOk =
+        !categoryScope ||
+        String(item.category || '').trim().toLowerCase() === String(categoryScope).trim().toLowerCase()
+      return statusOk && typeOk && categoryOk
     })
-  }, [report, statusFilter, typeFilter])
+  }, [report, statusFilter, typeFilter, categoryScope])
+
+  const stats = useMemo(() => {
+    if (!categoryScope) {
+      return {
+        total: report?.total_items ?? items.length,
+        value: Number(report?.total_value || 0),
+        lowStock: report?.low_stock_count ?? 0,
+        outOfStock: report?.out_of_stock_count ?? 0,
+      }
+    }
+    const catItems = asList(report?.items).filter((it) =>
+      String(it.category || '').trim().toLowerCase() === String(categoryScope).trim().toLowerCase()
+    )
+    return {
+      total: catItems.length,
+      value: catItems.reduce((acc, it) => acc + Number(it.total_value || 0), 0),
+      lowStock: catItems.filter((it) => it.status === 'low_stock').length,
+      outOfStock: catItems.filter((it) => it.status === 'out_of_stock').length,
+    }
+  }, [report, items, categoryScope])
 
   const handleExportReport = async (format) => {
     const sLabel = STATUS_OPTIONS.find((o) => o.key === statusFilter)?.label || statusFilter
     const tLabel = TYPE_OPTIONS.find((o) => o.key === typeFilter)?.label || typeFilter
     const exportData = {
       filename: `inventory_report_${statusFilter}_${typeFilter}`,
-      module: 'Inventory Management',
-      title: 'Inventory Stock Summary Report',
+      module: categoryScope || 'Inventory Management',
+      title: categoryScope ? `${categoryScope} Stock Report` : 'Inventory Stock Summary Report',
       subtitle: `Status: ${sLabel} • Type: ${tLabel}`,
       metadata: [
+        { label: 'Scope', value: categoryScope || 'All Inventory' },
         { label: 'Status Filter', value: sLabel },
         { label: 'Type Filter', value: tLabel },
         { label: 'Matching Items', value: items.length },
       ],
       stats: [
-        { label: 'Total Items', value: report?.total_items ?? items.length },
+        { label: 'Total Items', value: stats.total },
         {
           label: 'Total Value',
-          value: `INR ${Number(report?.total_value || 0).toLocaleString('en-IN')}`,
+          value: `INR ${stats.value.toLocaleString('en-IN')}`,
         },
-        { label: 'Low Stock', value: report?.low_stock_count ?? 0 },
-        { label: 'Out of Stock', value: report?.out_of_stock_count ?? 0 },
+        { label: 'Low Stock', value: stats.lowStock },
+        { label: 'Out of Stock', value: stats.outOfStock },
       ],
       headers: ['Item Code', 'Item Name', 'Category', 'Type', 'Available', 'Threshold', 'Unit Cost (INR)', 'Status'],
       rows: items.map((item) => [
@@ -97,15 +122,15 @@ export default function ReportTab() {
           marginBottom: 14,
         }}
       >
-        <StatCard label="Total Items" value={report?.total_items ?? 0} icon="IT" color="#1d4ed8" />
+        <StatCard label="Total Items" value={stats.total} icon="IT" color="#1d4ed8" />
         <StatCard
           label="Total Value"
-          value={`INR ${Number(report?.total_value || 0).toLocaleString('en-IN')}`}
+          value={`INR ${stats.value.toLocaleString('en-IN')}`}
           icon="VL"
           color="#16a34a"
         />
-        <StatCard label="Low Stock" value={report?.low_stock_count ?? 0} icon="LS" color="#f59e0b" />
-        <StatCard label="Out of Stock" value={report?.out_of_stock_count ?? 0} icon="OS" color="#dc2626" />
+        <StatCard label="Low Stock" value={stats.lowStock} icon="LS" color="#f59e0b" />
+        <StatCard label="Out of Stock" value={stats.outOfStock} icon="OS" color="#dc2626" />
       </div>
 
       <Card noPad>

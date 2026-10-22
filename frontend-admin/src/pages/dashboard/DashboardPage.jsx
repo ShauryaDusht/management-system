@@ -524,7 +524,7 @@ export default function DashboardPage() {
         { label: 'Horticulture Tasks', value: hortiTotal || '-', color: 'var(--green-700)', sub: `${Number(hortiCounts.on_track || 0)} on track`, to: '/horticulture?tab=schedule' },
         { label: 'Due Soon', value: Number(hortiCounts.due_soon || 0), color: 'var(--orange-600)', sub: `${Number(hortiCounts.overdue || 0)} overdue`, to: '/horticulture?tab=worker_selection' },
         { label: 'Active Areas', value: hortiSummary?.total_areas ?? '-', color: '#3b82f6', sub: 'Horticulture coverage', to: '/horticulture?tab=zones' },
-        { label: 'Horticulture Stock', value: hortiStockTotal || (hortiStockSummary ? '0' : '-'), color: 'var(--green-800)', sub: `${hortiStockItems.low_stock || 0} low stock items`, to: '/horticulture-stock' },
+        { label: 'Horticulture Inventory', value: hortiStockTotal || (hortiStockSummary ? '0' : '-'), color: 'var(--green-800)', sub: `${hortiStockItems.low_stock || 0} low stock items`, to: '/horticulture-stock' },
       ]
     : isHostelOffice
     ? [
@@ -556,7 +556,7 @@ export default function DashboardPage() {
     ? [
         { label: 'Schedule', to: '/horticulture?tab=schedule', primary: true },
         { label: 'Zones', to: '/horticulture?tab=zones' },
-        { label: 'Stock List', to: '/horticulture-stock' },
+        { label: 'Inventory', to: '/horticulture-stock' },
       ]
     : isHostelOffice
     ? [
@@ -591,7 +591,7 @@ export default function DashboardPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 24 }}>
             {[
               canViewInventory ? { title: 'Inventory', subtitle: 'Stock overview', data: invDonut, total: invSummary?.total_items, label: 'Items', palette: DONUT_PALETTE, to: '/inventory' } : null,
-              isHorticultureManager ? { title: 'Horticulture Stock', subtitle: 'Garden & Equipment stock', data: hortiStockDonut, total: hortiStockTotal || 25, label: 'Items', palette: DONUT_PALETTE, to: '/horticulture-stock' } : null,
+              isHorticultureManager ? { title: 'Horticulture Inventory', subtitle: 'Garden & Equipment stock', data: hortiStockDonut, total: hortiStockTotal || 25, label: 'Items', palette: DONUT_PALETTE, to: '/horticulture-stock' } : null,
               canViewHousekeeping ? { title: isHostelOffice ? 'Hostel Housekeeping' : 'Housekeeping', subtitle: isHostelOffice ? 'Hostel tasks today' : 'Today tasks', data: hkDonutData, total: hkSummary?.total_tasks, label: hkHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/housekeeping' } : null,
               canViewHorticulture && !isHorticultureManager ? { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTotal, label: hortiTotal > 0 ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' } : null,
             ].filter(Boolean).map(card => (

@@ -56,7 +56,7 @@ function isIssueInMonth(issue, month, year) {
   )
 }
 
-export default function IssuesTab({ userRole }) {
+export default function IssuesTab({ userRole, categoryScope = null, excludeCategoryScope = null }) {
   const [issues, setIssues] = useState([])
 
   const [actionModal, setActionModal] = useState(null)
@@ -85,14 +85,17 @@ export default function IssuesTab({ userRole }) {
   const [reportData, setReportData] = useState(null)
   const [reportModal, setReportModal] = useState(false)
 
-  const canManager = ['admin', 'inventory_manager', 'hk_inventory_manager'].includes(userRole)
+  const canManager = ['admin', 'inventory_manager', 'hk_inventory_manager', 'horticulture_manager'].includes(userRole)
 
   const { run: runAction, error: actionError, clearError } = useAsyncAction()
   const { loading, error: loadError, reload } = useAsyncLoad(async () => {
-    const { data } = await inventoryAPI.getIssues()
+    const params = {}
+    if (categoryScope) params.category = categoryScope
+    if (excludeCategoryScope) params.exclude_category = excludeCategoryScope
+    const { data } = await inventoryAPI.getIssues(params)
     setIssues(asList(data))
     return null
-  }, [], 'Failed to load issued items.')
+  }, [categoryScope, excludeCategoryScope], 'Failed to load issued items.')
 
   const error = actionError || loadError
 
@@ -140,6 +143,23 @@ export default function IssuesTab({ userRole }) {
 
   const filtered = useMemo(() => {
     let list = [...issues]
+    if (categoryScope) {
+      list = list.filter((issue) => {
+        const cat = issue.category_name || issue.item_category || ''
+        return String(cat).trim().toLowerCase() === String(categoryScope).trim().toLowerCase()
+          || String(cat).toLowerCase().includes('horticulture')
+          || String(issue.purpose || '').toLowerCase().includes('[horticulture')
+      })
+    }
+    if (excludeCategoryScope) {
+      list = list.filter((issue) => {
+        const cat = issue.category_name || issue.item_category || ''
+        const isExcluded = String(cat).trim().toLowerCase() === String(excludeCategoryScope).trim().toLowerCase()
+          || String(cat).toLowerCase().includes('horticulture')
+          || String(issue.purpose || '').toLowerCase().includes('[horticulture')
+        return !isExcluded
+      })
+    }
     if (!dateFrom && !dateTo) {
       list = list.filter((issue) => isIssueInMonth(issue, reportMonth, reportYear))
     }
@@ -172,7 +192,7 @@ export default function IssuesTab({ userRole }) {
       })
     }
     return list
-  }, [issues, areaClass, selectedArea, reportMonth, reportYear, personFilter, itemFilter, dateFrom, dateTo])
+  }, [issues, categoryScope, excludeCategoryScope, areaClass, selectedArea, reportMonth, reportYear, personFilter, itemFilter, dateFrom, dateTo])
 
   const totals = useMemo(() => {
     const total = filtered.length

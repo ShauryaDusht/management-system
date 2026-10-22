@@ -2960,21 +2960,50 @@ HORTICULTURE_STOCK_ITEMS = [
 def horticulture_stock(request):
     selected_zone, zones, dashboard_payload = _mobile_zone_context(request.user, request.GET.get('zone'))
     selected_area = _selected_area_for_zone(selected_zone, request.GET.get('area'))
-    if selected_area and not HorticultureAreaStock.objects.filter(area=selected_area).exists():
-        from .signals import sync_area_to_all_horticulture_items
-        sync_area_to_all_horticulture_items(selected_area)
+
+    stock_requests_qs = (
+        HorticultureStockRequest.objects.filter(area=selected_area)
+        if selected_area else HorticultureStockRequest.objects.none()
+    )
+    requested_names = set(stock_requests_qs.values_list('item_name', flat=True))
+    requested_item_ids = set(stock_requests_qs.filter(item__isnull=False).values_list('item_id', flat=True))
+
+    issued_items = _horticulture_usage_issues(request.user, area=selected_area) if selected_area else []
+    for issue in issued_items:
+        if issue.request and issue.request.item:
+            requested_names.add(issue.request.item.name)
+            requested_item_ids.add(issue.request.item.id)
+
     order_cases = [When(item_name__iexact=name, then=Value(idx)) for idx, name in enumerate(HORTICULTURE_STOCK_ITEMS)]
-    area_stocks = (
-        HorticultureAreaStock.objects.filter(area=selected_area)
-        .annotate(custom_order=Case(*order_cases, default=Value(99), output_field=IntegerField()))
-        .order_by('custom_order', 'item_name')
-        if selected_area else []
-    )
-    pending_requests = (
-        HorticultureStockRequest.objects.filter(area=selected_area, status='pending')
-        .order_by('-created_at')
-        if selected_area else []
-    )
+    if selected_area and (requested_names or requested_item_ids):
+        filter_q = Q(quantity__gt=0)
+        if requested_names:
+            filter_q |= Q(item_name__in=requested_names)
+        if requested_item_ids:
+            filter_q |= Q(item_id__in=requested_item_ids)
+
+        area_stocks = list(
+            HorticultureAreaStock.objects.filter(area=selected_area)
+            .filter(filter_q)
+            .annotate(custom_order=Case(*order_cases, default=Value(99), output_field=IntegerField()))
+            .order_by('custom_order', 'item_name')
+        )
+    elif selected_area:
+        area_stocks = list(
+            HorticultureAreaStock.objects.filter(area=selected_area, quantity__gt=0)
+            .annotate(custom_order=Case(*order_cases, default=Value(99), output_field=IntegerField()))
+            .order_by('custom_order', 'item_name')
+        )
+    else:
+        area_stocks = []
+
+    all_requests = list(
+        HorticultureStockRequest.objects.filter(area=selected_area)
+        .select_related('item')
+        .order_by('-created_at')[:15]
+    ) if selected_area else []
+    pending_requests = [r for r in all_requests if r.status == 'pending']
+
     return render(
         request,
         'horticulture/mobile/stock.html',
@@ -2987,7 +3016,7 @@ def horticulture_stock(request):
             'area_stocks': area_stocks,
             'low_stocks': [stock for stock in area_stocks if stock.is_low],
             'pending_requests': pending_requests,
-            'issued_items': _horticulture_usage_issues(request.user, area=selected_area),
+            'issued_items': issued_items,
             'requested': request.GET.get('requested'),
             'zone_count': len(zones),
         },

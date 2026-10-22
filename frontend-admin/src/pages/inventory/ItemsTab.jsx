@@ -58,13 +58,14 @@ const UNIT_OPTIONS = [
   { value: 'Roll', label: 'Roll' },
 ]
 
-export default function ItemsTab({ userRole }) {
+export default function ItemsTab({ userRole, initialCategory = null }) {
   const { run: runAction, saving, error: actionError, clearError } = useAsyncAction()
   const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
   const [summary, setSummary] = useState(null)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState(initialCategory || 'all')
   const [addModal, setAddModal] = useState(false)
   const [editItem, setEditItem] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -75,7 +76,7 @@ export default function ItemsTab({ userRole }) {
   const [formErrors, setFormErrors] = useState({})
   const [deleting, setDeleting] = useState(false)
 
-  const canAdmin = ['admin', 'inventory_manager', 'hk_inventory_manager'].includes(userRole)
+  const canAdmin = ['admin', 'inventory_manager', 'hk_inventory_manager', 'horticulture_manager'].includes(userRole)
   const { loading, error: loadError, reload } = useAsyncLoad(async () => {
     const [itemsRes, categoriesRes, summaryRes] = await Promise.all([
       inventoryAPI.getItems(),
@@ -127,6 +128,18 @@ export default function ItemsTab({ userRole }) {
     setAddModal(true)
   }
 
+  const getInitialNewItem = () => {
+    let catId = ''
+    const targetCat = categoryFilter !== 'all' ? categoryFilter : initialCategory
+    if (targetCat) {
+      const match = categories.find(
+        (c) => String(c.name || '').trim().toLowerCase() === String(targetCat).trim().toLowerCase()
+      )
+      if (match) catId = String(match.id)
+    }
+    return { ...EMPTY_ITEM, category: catId }
+  }
+
   const filtered = useMemo(() => {
     return items.filter((it) => {
       const q = search.toLowerCase()
@@ -136,9 +149,14 @@ export default function ItemsTab({ userRole }) {
           String(v || '').toLowerCase().includes(q)
         )
       const hitType = typeFilter === 'all' || it.item_type === typeFilter
-      return hit && hitType
+      const hitCat =
+        categoryFilter === 'all' ||
+        String(it.category_name || '').trim().toLowerCase() === String(categoryFilter).trim().toLowerCase() ||
+        String(it.category || '') === String(categoryFilter) ||
+        String(it.category_id || '') === String(categoryFilter)
+      return hit && hitType && hitCat
     })
-  }, [items, search, typeFilter])
+  }, [items, search, typeFilter, categoryFilter])
 
   const lowStockItems = filtered.filter((i) => itemStatus(i) !== 'in_stock')
 
@@ -304,9 +322,9 @@ export default function ItemsTab({ userRole }) {
               marginBottom: 14,
             }}
           >
-            <StatCard label="Total Items" value={summary?.total_items ?? items.length} icon="📦" />
-            <StatCard label="Low Stock" value={summary?.low_stock_count ?? stockCounts.lowStock} icon="⚠️" color="var(--orange-600)" />
-            <StatCard label="Out of Stock" value={summary?.out_of_stock_count ?? stockCounts.outOfStock} icon="🟥" color="#dc2626" />
+            <StatCard label="Total Items" value={categoryFilter === 'all' ? (summary?.total_items ?? items.length) : filtered.length} icon="📦" />
+            <StatCard label="Low Stock" value={categoryFilter === 'all' ? (summary?.low_stock_count ?? stockCounts.lowStock) : stockCounts.lowStock} icon="⚠️" color="var(--orange-600)" />
+            <StatCard label="Out of Stock" value={categoryFilter === 'all' ? (summary?.out_of_stock_count ?? stockCounts.outOfStock) : stockCounts.outOfStock} icon="🟥" color="#dc2626" />
             <StatCard label="Pending Requests" value={summary?.pending_requests ?? 0} icon="📋" color="#3b82f6" />
           </div>
 
@@ -409,6 +427,29 @@ export default function ItemsTab({ userRole }) {
           >
             Assets
           </Btn>
+          {categories.length > 0 && (
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                color: 'var(--text)',
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              <option value="all">All Categories ({items.length})</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          )}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <ExportDropdown
               label="Download Items"
@@ -420,7 +461,7 @@ export default function ItemsTab({ userRole }) {
                 onClick={() => {
                   clearError()
                   setFormErrors({})
-                  setNewItem(EMPTY_ITEM)
+                  setNewItem(getInitialNewItem())
                   setEditItem(null)
                   setAddModal(true)
                 }}

@@ -64,7 +64,7 @@ export default function Sidebar() {
   const navItems = user?.role === 'horticulture_manager'
     ? [
       { to: '/dashboard', icon: 'home', label: 'Home' },
-      { to: '/horticulture-stock', icon: 'inventory', label: 'Horticulture Stock' },
+      { to: '/horticulture-stock', icon: 'inventory', label: 'Horticulture Inventory' },
       { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
       { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
       { to: '/insights', icon: 'insights', label: 'Insights' },
@@ -110,7 +110,12 @@ export default function Sidebar() {
         badge: badges.housekeeping,
       },
       { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
-      { to: '/horticulture-stock', icon: 'inventory', label: 'Horticulture Stock' },
+      {
+        to: '/horticulture-stock',
+        icon: 'inventory',
+        label: 'Horticulture Inventory',
+        badge: badges.horticultureInventory,
+      },
       { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
       { to: '/insights', icon: 'insights', label: 'Insights' },
       { to: '/users', icon: 'users', label: 'Manage Users' },
