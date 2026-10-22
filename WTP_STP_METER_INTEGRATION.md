@@ -87,3 +87,24 @@ $$\text{Actual Consumption} = (10,000 - \text{Previous Reading}) + \text{Current
 - **Readings > 10,000 CUM**: Agar reading 10,000 se zyada ho (jaise WTP bulk treatment plant meters `c` aur `f` jo 100,000+ par chalte hain ya koi reading > 10,000 ho), to **koi rollover change NAHI hoga**.
 - **Supervisor UI Indicator**: Rollover events are flagged with a `🔄 10k` badge on the consumption matrix and live entry hint in the operator form (`10,000 CUM WSC / STP Rollover Detected`).
 
+---
+
+## GWSSB Water Bill Amount & Net Consumption (Supervisor Portal)
+
+A dedicated monthly billing section for **GWSSB (Gujarat Water Supply and Sewerage Board)** bulk incoming water has been integrated into both the **React Admin SPA** (`/admin/wtp?tab=gwssb`) and the **Mobile Portal** (`/wtp/gwssb/`).
+
+### Mathematical Calculations:
+1. **Reading Difference**:
+   $$\text{Difference} = \text{Final Reading} - \text{Initial Reading}$$
+2. **Net Water Consumption (CUM)**:
+   $$\text{Net Water Consumption} = (\text{Final Reading} - \text{Initial Reading}) \times 1,000$$
+3. **Bill Amount (₹)**:
+   $$\text{Bill Amount} = \text{Net Water Consumption} \times ₹ 10.00$$
+
+### Key Features:
+- **Live Real-Time Calculations**: As the supervisor types the Initial or Final reading, the difference, net consumption ($\times 1000$), and bill amount ($\times 10$) update instantly.
+- **Auto-Suggestions**: When creating a new month, the Initial Reading automatically suggests the previous month's Final Reading.
+- **Historical Table & Monthly Overview**: Full historical log with Month, Bill No, Initial, Final, Diff, Net Consumption, Rate, Bill Amount, and Status (Pending, Verified, Paid).
+- **Export Capabilities**: 1-click CSV and PDF download for billing audits and account reconciliations.
+
+

@@ -5,7 +5,7 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import StationMeter, WtpReading, BlockMeter, BlockReading, SupervisorLog
+from .models import StationMeter, WtpReading, BlockMeter, BlockReading, SupervisorLog, GwssbBill
 
 STATION_IDS = ['wtp', 'stp', 'wsc3', 'jm']
 
@@ -484,3 +484,82 @@ class WtpSummaryView(APIView):
                 'updated_at': latest_reading.updated_at.isoformat() if latest_reading else None,
             } if latest_reading else None,
         })
+
+
+class GwssbBillsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, month=None):
+        if month:
+            try:
+                bill = GwssbBill.objects.get(month=month)
+                return Response(bill.to_dict())
+            except GwssbBill.DoesNotExist:
+                return Response({'error': f"GWSSB bill for month '{month}' not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        bills = GwssbBill.objects.all().order_by('-month')
+        return Response([b.to_dict() for b in bills])
+
+    def put(self, request, month=None):
+        data = request.data or {}
+        m = month or data.get('month')
+        if not m or not re.match(r'^\d{4}-\d{2}$', str(m)):
+            return Response({'error': 'Month must be in YYYY-MM format (e.g. 2026-10)'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            init_val = float(data.get('initialReading', 0.0) or 0.0)
+            final_val = float(data.get('finalReading', 0.0) or 0.0)
+        except (ValueError, TypeError):
+            return Response({'error': 'Initial and Final readings must be valid numbers'}, status=status.HTTP_400_BAD_REQUEST)
+
+        rate_val = float(data.get('ratePerUnit', 10.0) if data.get('ratePerUnit') is not None else 10.0)
+        bill_no = str(data.get('billNo', '')).strip()
+        status_val = str(data.get('status', 'Pending')).strip()
+        remarks = str(data.get('remarks', '')).strip()
+        date_str = str(data.get('date', ''))
+        by_user = data.get('by') or (
+            request.user.get_full_name() if hasattr(request.user, 'get_full_name') and request.user.get_full_name()
+            else request.user.username
+        )
+
+        bill, created = GwssbBill.objects.get_or_create(
+            month=m,
+            defaults={
+                'date': date_str,
+                'initial_reading': init_val,
+                'final_reading': final_val,
+                'rate_per_unit': rate_val,
+                'bill_no': bill_no,
+                'status': status_val,
+                'remarks': remarks,
+                'by': by_user,
+            }
+        )
+        if not created:
+            bill.initial_reading = init_val
+            bill.final_reading = final_val
+            bill.rate_per_unit = rate_val
+            if bill_no:
+                bill.bill_no = bill_no
+            if status_val:
+                bill.status = status_val
+            if remarks:
+                bill.remarks = remarks
+            if date_str:
+                bill.date = date_str
+            bill.by = by_user
+            bill.save()
+
+        return Response(bill.to_dict())
+
+    def post(self, request):
+        return self.put(request)
+
+    def delete(self, request, month):
+        try:
+            bill = GwssbBill.objects.get(month=month)
+            bill.delete()
+            return Response({'ok': True})
+        except GwssbBill.DoesNotExist:
+            return Response({'error': f"GWSSB bill for month '{month}' not found"}, status=status.HTTP_404_NOT_FOUND)
+

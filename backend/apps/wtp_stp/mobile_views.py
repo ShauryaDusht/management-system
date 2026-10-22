@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
 
-from .models import WtpReading, BlockMeter, BlockReading, SupervisorLog, StationMeter
+from .models import WtpReading, BlockMeter, BlockReading, SupervisorLog, StationMeter, GwssbBill
 from .views import clean_reading_values
 
 STATIONS = [
@@ -97,6 +97,7 @@ def mobile_dashboard(request):
 
     # Supervisor log for today
     sup_log = SupervisorLog.objects.filter(date=query_date).order_by('-shift').first()
+    latest_gwssb = GwssbBill.objects.order_by('-month').first()
 
     return render(request, 'wtp_stp/mobile/dashboard.html', {
         'today': today_str,
@@ -109,6 +110,7 @@ def mobile_dashboard(request):
         'station_cards': station_cards,
         'tank_levels': tank_levels,
         'sup_log': sup_log,
+        'latest_gwssb': latest_gwssb,
         'user': request.user,
         'is_operator': is_operator,
         'is_supervisor': is_supervisor,
@@ -362,4 +364,80 @@ def mobile_operators_view(request):
         'user': request.user,
     }
     return render(request, 'wtp_stp/mobile/operators.html', context)
+
+
+@login_required(login_url='/portal/login/')
+def mobile_gwssb_view(request):
+    user_role = getattr(request.user, 'role', '')
+    is_supervisor = user_role in ['plant_engineer', 'wtp_supervisor', 'supervisor', 'admin', 'electrical_supervisor', 'hvac_engineer', 'hvac_supervisor'] or request.user.is_superuser
+    if not is_supervisor:
+        messages.error(request, 'Permission Denied: GWSSB Water Bill calculations are accessible only to Shift Engineers and Supervisors.')
+        return redirect('/wtp/dashboard/')
+
+    now_month = timezone.localdate().strftime('%Y-%m')
+    selected_month = request.GET.get('month', now_month)
+
+    bills = list(GwssbBill.objects.all().order_by('-month'))
+    current_bill = next((b for b in bills if b.month == selected_month), None)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'delete':
+            del_month = request.POST.get('month')
+            GwssbBill.objects.filter(month=del_month).delete()
+            messages.success(request, f"Deleted GWSSB bill record for {del_month}.")
+            return redirect(f"/wtp/gwssb/?month={now_month}")
+
+        month_val = request.POST.get('month', selected_month).strip()
+        try:
+            init_val = float(request.POST.get('initial_reading', 0.0) or 0.0)
+            final_val = float(request.POST.get('final_reading', 0.0) or 0.0)
+        except (ValueError, TypeError):
+            messages.error(request, 'Please enter valid numerical Initial and Final readings.')
+            return redirect(f"/wtp/gwssb/?month={selected_month}")
+
+        if final_val < init_val:
+            messages.error(request, 'Final reading cannot be less than Initial reading.')
+            return redirect(f"/wtp/gwssb/?month={selected_month}")
+
+        bill_no = request.POST.get('bill_no', '').strip()
+        status_val = request.POST.get('status', 'Verified').strip()
+        remarks = request.POST.get('remarks', '').strip()
+        by_user = request.user.get_full_name() or request.user.username
+
+        bill, created = GwssbBill.objects.update_or_create(
+            month=month_val,
+            defaults={
+                'date': str(timezone.localdate()),
+                'initial_reading': init_val,
+                'final_reading': final_val,
+                'rate_per_unit': 10.0,
+                'bill_no': bill_no,
+                'status': status_val,
+                'remarks': remarks,
+                'by': by_user,
+            }
+        )
+        messages.success(request, f"Saved GWSSB bill for {month_val}! Net Water Consumption: {bill.net_consumption:,.1f} CUM | Bill: ₹ {bill.bill_amount:,.2f}")
+        return redirect(f"/wtp/gwssb/?month={month_val}")
+
+    suggested_init = ''
+    if not current_bill:
+        prev_bill = next((b for b in bills if b.month < selected_month), None)
+        if prev_bill:
+            suggested_init = prev_bill.final_reading
+
+    total_billed = sum(b.bill_amount for b in bills)
+
+    return render(request, 'wtp_stp/mobile/gwssb.html', {
+        'bills': bills,
+        'selected_month': selected_month,
+        'current_bill': current_bill,
+        'suggested_init': suggested_init,
+        'total_billed': total_billed,
+        'is_supervisor': True,
+        'active_nav': 'gwssb',
+        'user': request.user,
+    })
+
 

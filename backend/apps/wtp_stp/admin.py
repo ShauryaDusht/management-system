@@ -1,6 +1,6 @@
 from django.contrib import admin
 from config.admin import admin_site
-from .models import StationMeter, WtpReading, BlockMeter, BlockReading, SupervisorLog
+from .models import StationMeter, WtpReading, BlockMeter, BlockReading, SupervisorLog, GwssbBill
 
 
 class StationMeterAdmin(admin.ModelAdmin):
@@ -35,6 +35,13 @@ class SupervisorLogAdmin(admin.ModelAdmin):
     date_hierarchy = 'date'
 
 
+class GwssbBillAdmin(admin.ModelAdmin):
+    list_display = ('month', 'initial_reading', 'final_reading', 'net_consumption', 'rate_per_unit', 'bill_amount', 'status', 'by', 'updated_at')
+    list_filter = ('status', 'month')
+    search_fields = ('month', 'bill_no', 'by', 'remarks')
+    ordering = ('-month',)
+
+
 # Register in both default and restricted admin site
 for site in (admin.site, admin_site):
     site.register(StationMeter, StationMeterAdmin)
@@ -42,3 +49,5 @@ for site in (admin.site, admin_site):
     site.register(BlockMeter, BlockMeterAdmin)
     site.register(BlockReading, BlockReadingAdmin)
     site.register(SupervisorLog, SupervisorLogAdmin)
+    site.register(GwssbBill, GwssbBillAdmin)
+

@@ -94,6 +94,26 @@ export const WtpApi = {
     const res = await api.get('/wtp/summary')
     return res.data
   },
+
+  gwssbBills: async () => {
+    const res = await api.get('/wtp/gwssb')
+    return res.data
+  },
+
+  gwssbBill: async (month) => {
+    const res = await api.get(`/wtp/gwssb/${encodeURIComponent(month)}`)
+    return res.data
+  },
+
+  saveGwssbBill: async (body) => {
+    const res = await api.put('/wtp/gwssb', body)
+    return res.data
+  },
+
+  deleteGwssbBill: async (month) => {
+    const res = await api.delete(`/wtp/gwssb/${encodeURIComponent(month)}`)
+    return res.data
+  },
 }
 
 export const WtpApiService = WtpApi

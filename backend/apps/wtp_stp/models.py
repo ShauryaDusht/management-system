@@ -183,3 +183,56 @@ class SupervisorLog(models.Model):
             'createdAt': self.created_at.isoformat() if self.created_at else None,
             'updatedAt': self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+class GwssbBill(models.Model):
+    month = models.CharField(max_length=7, primary_key=True)  # YYYY-MM
+    date = models.CharField(max_length=20, blank=True)
+    initial_reading = models.FloatField(default=0.0)
+    final_reading = models.FloatField(default=0.0)
+    net_consumption = models.FloatField(default=0.0)  # (final_reading - initial_reading) * 1000
+    rate_per_unit = models.FloatField(default=10.0)   # Rs 10 per unit
+    bill_amount = models.FloatField(default=0.0)      # net_consumption * 10
+    bill_no = models.CharField(max_length=100, blank=True, default='')
+    status = models.CharField(max_length=30, default='Pending')  # Pending, Verified, Paid
+    by = models.CharField(max_length=100, blank=True, default='')
+    remarks = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-month']
+        verbose_name = 'GWSSB Bill'
+        verbose_name_plural = 'GWSSB Bills'
+
+    def save(self, *args, **kwargs):
+        # Auto-compute if not provided:
+        # Net Water Consumption = (Final - Initial) * 1000
+        # Bill Amount = Net Water Consumption * 10
+        diff = max(0.0, float(self.final_reading or 0.0) - float(self.initial_reading or 0.0))
+        self.net_consumption = round(diff * 1000.0, 2)
+        rate = float(self.rate_per_unit if self.rate_per_unit is not None else 10.0)
+        self.bill_amount = round(self.net_consumption * rate, 2)
+        super().save(*args, **kwargs)
+
+    def to_dict(self):
+        diff = max(0.0, float(self.final_reading or 0.0) - float(self.initial_reading or 0.0))
+        return {
+            '_id': self.month,
+            'id': self.month,
+            'month': self.month,
+            'date': self.date,
+            'initialReading': self.initial_reading,
+            'finalReading': self.final_reading,
+            'readingDiff': round(diff, 3),
+            'netConsumption': self.net_consumption,
+            'ratePerUnit': self.rate_per_unit,
+            'billAmount': self.bill_amount,
+            'billNo': self.bill_no,
+            'status': self.status,
+            'by': self.by,
+            'remarks': self.remarks,
+            'createdAt': self.created_at.isoformat() if self.created_at else None,
+            'updatedAt': self.updated_at.isoformat() if self.updated_at else None,
+        }
+

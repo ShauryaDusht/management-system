@@ -78,6 +78,37 @@
     </a>
   </div>
 </div>
+
+<!-- GWSSB Bulk Water Bill Card (Shift Engineer / Supervisor) -->
+<div class="card" style="background: linear-gradient(135deg, #0e6f8f, #0369a1); color: #fff; border:none; padding:14px 16px; margin-bottom:12px; box-shadow:0 4px 14px rgba(14,111,143,.25);">
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+    <div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:rgba(255,255,255,.85);">
+          💧 Water Billing
+        </span>
+        {% if latest_gwssb %}
+          <span style="background:rgba(255,255,255,.2); font-size:10.5px; font-weight:800; padding:2px 6px; border-radius:4px;">
+            {{ latest_gwssb.month }}
+          </span>
+        {% endif %}
+      </div>
+      <div style="font-size:15px; font-weight:800; margin-top:2px;">
+        GWSSB Water Bill &amp; Consumption
+      </div>
+      <div style="font-size:11.5px; color:rgba(255,255,255,.9); margin-top:2px;">
+        {% if latest_gwssb %}
+          Latest: <b>₹ {{ latest_gwssb.bill_amount|floatformat:2 }}</b> ({{ latest_gwssb.net_consumption|floatformat:1 }} CUM)
+        {% else %}
+          Monthly Initial &amp; Final reading &amp; bill calculation (&times;1000 &amp; &times;₹10).
+        {% endif %}
+      </div>
+    </div>
+    <a href="/wtp/gwssb/" style="background:#fff; color:#0e6f8f; font-weight:800; padding:8px 14px; font-size:12px; white-space:nowrap; text-decoration:none; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.2); flex-shrink:0;">
+      Calculate &rarr;
+    </a>
+  </div>
+</div>
 {% endif %}
 
 <!-- Jalmandapam Tank Levels Snapshot (Shift Engineer / Supervisor only) -->

@@ -6,7 +6,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from apps.wtp_stp.models import BlockMeter, BlockReading, WtpReading, SupervisorLog
+from apps.wtp_stp.models import BlockMeter, BlockReading, WtpReading, SupervisorLog, GwssbBill
 from apps.users.models import User
 
 
@@ -217,6 +217,29 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"Seeded {station_count} station readings & supervisor logs."))
 
         # 4. Seed Default WTP Staff Accounts
+        # 5. Seed GWSSB Water Bills
+        gwssb_samples = [
+            {'month': '2026-07', 'date': '2026-07-31', 'initial': 102.350, 'final': 114.850, 'bill_no': 'GWSSB/2026/07-441', 'status': 'Paid'},
+            {'month': '2026-08', 'date': '2026-08-31', 'initial': 114.850, 'final': 128.250, 'bill_no': 'GWSSB/2026/08-512', 'status': 'Paid'},
+            {'month': '2026-09', 'date': '2026-09-30', 'initial': 128.250, 'final': 141.950, 'bill_no': 'GWSSB/2026/09-623', 'status': 'Paid'},
+            {'month': '2026-10', 'date': '2026-10-22', 'initial': 141.950, 'final': 156.450, 'bill_no': 'GWSSB/2026/10-705', 'status': 'Verified'},
+        ]
+        for b in gwssb_samples:
+            GwssbBill.objects.update_or_create(
+                month=b['month'],
+                defaults={
+                    'date': b['date'],
+                    'initial_reading': b['initial'],
+                    'final_reading': b['final'],
+                    'rate_per_unit': 10.0,
+                    'bill_no': b['bill_no'],
+                    'status': b['status'],
+                    'by': 'Vikash Kumar Yadav',
+                    'remarks': 'Narmada bulk line monthly meter reading',
+                }
+            )
+        self.stdout.write(self.style.SUCCESS(f"Seeded {len(gwssb_samples)} GWSSB Water Bills."))
+
         staff_accounts = [
             {
                 'username': 'wtp.engineer',

@@ -12,6 +12,7 @@ from .views import (
     SupervisorLogsView,
     SupervisorVerifyView,
     SupervisorOverviewView,
+    GwssbBillsView,
 )
 
 urlpatterns = [
@@ -51,4 +52,10 @@ urlpatterns = [
     path('supervisor/verify/', SupervisorVerifyView.as_view(), name='wtp-supervisor-verify-slash'),
     path('supervisor/overview', SupervisorOverviewView.as_view(), name='wtp-supervisor-overview'),
     path('supervisor/overview/', SupervisorOverviewView.as_view(), name='wtp-supervisor-overview-slash'),
+
+    # GWSSB Water Bill
+    path('gwssb', GwssbBillsView.as_view(), name='wtp-gwssb'),
+    path('gwssb/', GwssbBillsView.as_view(), name='wtp-gwssb-slash'),
+    path('gwssb/<str:month>', GwssbBillsView.as_view(), name='wtp-gwssb-month'),
+    path('gwssb/<str:month>/', GwssbBillsView.as_view(), name='wtp-gwssb-month-slash'),
 ]

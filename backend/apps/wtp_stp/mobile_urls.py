@@ -6,6 +6,7 @@ from .mobile_views import (
     mobile_block_entry,
     mobile_history,
     mobile_operators_view,
+    mobile_gwssb_view,
 )
 
 mobile_urlpatterns = [
@@ -15,4 +16,5 @@ mobile_urlpatterns = [
     path('blocks/', mobile_block_entry, name='wtp-mobile-blocks'),
     path('history/', mobile_history, name='wtp-mobile-history'),
     path('operators/', mobile_operators_view, name='wtp-mobile-operators'),
+    path('gwssb/', mobile_gwssb_view, name='wtp-mobile-gwssb'),
 ]
