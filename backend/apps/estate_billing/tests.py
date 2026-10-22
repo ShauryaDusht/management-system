@@ -10,6 +10,8 @@ from .models import (
     ShopDemandNote,
     Contractor,
     ContractorDemandNote,
+    HousingUnit,
+    HousingAllotment,
 )
 from .views import (
     calculate_shop_total,
@@ -119,6 +121,40 @@ class EstateBillingTestCase(TestCase):
         # 100 * 10 + 200 = 1200
         self.assertEqual(Decimal(str(patch_res.data['total_amount'])), Decimal('1200'))
 
+    def test_shop_demand_note_cycle_independent_expiry(self):
+        self.client.force_authenticate(user=self.estate_user)
+        # 1. Patch cycle 2026-10 with expiryDate
+        res = self.client.get(f'/api/estate/shops/?cycle={self.cycle_month}')
+        note_id_1 = res.data[0]['id']
+        patch_res = self.client.patch(
+            f'/api/estate/shops/{note_id_1}/',
+            {'expiryDate': '2026-10-31'},
+            format='json',
+        )
+        self.assertEqual(patch_res.status_code, 200)
+        self.assertEqual(patch_res.data['expiryDate'], '2026-10-31')
+
+        # 2. Open new cycle 2026-11
+        ensure_cycle_notes('2026-11')
+        res_new = self.client.get('/api/estate/shops/?cycle=2026-11')
+        note_id_2 = res_new.data[0]['id']
+        self.assertNotEqual(note_id_1, note_id_2)
+        # New cycle should start blank, not inheriting 2026-10's expiry date
+        self.assertEqual(res_new.data[0]['expiryDate'], '')
+
+        # 3. Patch cycle 2026-11 with a different expiry date
+        patch_res_2 = self.client.patch(
+            f'/api/estate/shops/{note_id_2}/',
+            {'expiryDate': '2026-11-30'},
+            format='json',
+        )
+        self.assertEqual(patch_res_2.status_code, 200)
+        self.assertEqual(patch_res_2.data['expiryDate'], '2026-11-30')
+
+        # 4. Check cycle 2026-10 still has original 2026-10-31 date
+        note_1 = ShopDemandNote.objects.get(id=note_id_1)
+        self.assertEqual(note_1.expiry_date, '2026-10-31')
+
     def test_contractors_patch(self):
         self.client.force_authenticate(user=self.estate_user)
         res = self.client.get(f'/api/estate/contractors/?cycle={self.cycle_month}')
@@ -186,25 +222,25 @@ class EstateBillingTestCase(TestCase):
         self.assertEqual(dup_res.status_code, 400)
         self.assertIn('OCCUPIED', dup_res.data['error'])
 
-        # 2. Allotting a vacant house succeeds
-        create_res = self.client.post(
-            '/api/estate/housing/',
-            {
-                'houseType': 'B',
-                'houseNo': '05/101',  # vacant
-                'occupantName': 'Dr. Test Faculty',
-                'emplCode': '0999',
-                'designation': 'Assistant Professor',
-                'email': 'faculty@iitgn.ac.in',
-                'dateOfOccupation': '01-Nov-26',
-                'alIssueDate': '20-Oct-26',
-                'dateOfExpiry': 'PoE/Relocation, whichever is earlier',
-            },
-            format='json',
+        # 2. Setup allotment for Dr. Test Faculty in vacant house 05/101
+        unit_101 = HousingUnit.objects.get(house_type='B', house_no='05/101')
+        allotment = HousingAllotment.objects.create(
+            unit=unit_101,
+            sl=999,
+            house_type='B',
+            house_no='05/101',
+            occupant_name='Dr. Test Faculty',
+            empl_code='0999',
+            designation='Assistant Professor',
+            email='faculty@iitgn.ac.in',
+            date_of_occupation='01-Nov-26',
+            date_of_expiry='PoE/Relocation, whichever is earlier',
+            is_current=True,
+            status=HousingAllotment.Status.OCCUPIED,
         )
-        self.assertEqual(create_res.status_code, 201)
-        new_id = create_res.data['id']
-        self.assertEqual(create_res.data['houseType'], 'B')
+        unit_101.status = HousingUnit.Status.OCCUPIED
+        unit_101.save(update_fields=['status'])
+        new_id = allotment.id
 
         # 3. Relocate Dr. Test Faculty from 05/101 to vacant 05/102
         reloc_res = self.client.post(

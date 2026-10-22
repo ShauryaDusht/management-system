@@ -184,6 +184,7 @@ def ensure_cycle_notes(cycle_month):
                 fixed=shop.fixed,
                 extras=[],
                 total_amount=shop.default_water if shop.fixed else Decimal('0'),
+                expiry_date='',
             )
         elif settings.auto_financial_year:
             n = existing_shop_notes[shop.id]
@@ -314,6 +315,7 @@ class ShopListCreateView(APIView):
                     'fixed': fixed,
                     'extras': [],
                     'total_amount': water if fixed else Decimal('0'),
+                    'expiry_date': expiry_date,
                 }
             )
 
@@ -332,6 +334,10 @@ class ShopListCreateView(APIView):
             updates['month'] = request.data['month']
         if 'monthTo' in request.data:
             updates['month_to'] = request.data['monthTo']
+        if 'expiryDate' in request.data:
+            updates['expiry_date'] = str(request.data['expiryDate'] or '').strip()
+        elif 'expiry_date' in request.data:
+            updates['expiry_date'] = str(request.data['expiry_date'] or '').strip()
 
         if not updates:
             return Response({'error': 'No update fields provided'}, status=status.HTTP_400_BAD_REQUEST)
@@ -365,7 +371,11 @@ class ShopDetailView(APIView):
             note.shop.save(update_fields=['fixed'])
         if 'expiryDate' in data or 'expiry_date' in data:
             exp = str(data.get('expiryDate') if 'expiryDate' in data else data.get('expiry_date') or '').strip()
-            note.shop.expiry_date = exp
+            note.expiry_date = exp
+            note.save(update_fields=['expiry_date'])
+        if 'shopExpiryDate' in data or 'shop_expiry_date' in data:
+            s_exp = str(data.get('shopExpiryDate') if 'shopExpiryDate' in data else data.get('shop_expiry_date') or '').strip()
+            note.shop.expiry_date = s_exp
             note.shop.save(update_fields=['expiry_date'])
 
         if 'units' in data:

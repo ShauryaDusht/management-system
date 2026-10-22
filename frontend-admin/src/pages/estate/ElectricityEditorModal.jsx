@@ -71,21 +71,6 @@ export default function ElectricityEditorModal({
     onPatch(rec.id, { meters: next })
   }
 
-  const printNote = () => {
-    const prevTitle = document.title
-    const name = pdfFileName(rec.noteNo, settings.headline, note.toLine || rec.name)
-    const apply = () => { document.title = name }
-    const restore = () => {
-      document.title = prevTitle
-      window.removeEventListener('beforeprint', apply)
-      window.removeEventListener('afterprint', restore)
-    }
-    window.addEventListener('beforeprint', apply)
-    window.addEventListener('afterprint', restore)
-    apply()
-    window.print()
-  }
-
   const downloadPdf = async () => {
     if (pdfBusy) return
     const el = document.getElementById('demand-note-doc')

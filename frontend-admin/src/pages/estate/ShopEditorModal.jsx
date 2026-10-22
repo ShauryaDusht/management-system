@@ -72,21 +72,6 @@ export default function ShopEditorModal({
     onPatch(rec.id, { extras: next })
   }
 
-  const printNote = () => {
-    const prevTitle = document.title
-    const name = pdfFileName(rec.noteNo, settings.headline, note.name)
-    const apply = () => { document.title = name }
-    const restore = () => {
-      document.title = prevTitle
-      window.removeEventListener('beforeprint', apply)
-      window.removeEventListener('afterprint', restore)
-    }
-    window.addEventListener('beforeprint', apply)
-    window.addEventListener('afterprint', restore)
-    apply()
-    window.print()
-  }
-
   const downloadPdf = async () => {
     if (pdfBusy) return
     const el = document.getElementById('demand-note-doc')
@@ -264,7 +249,7 @@ export default function ShopEditorModal({
             <div style={{ background: 'var(--surface-2)', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)' }}>
-                  Agreement / Contract Expiry Date
+                  Bill Expiry / Payment Due Date
                 </label>
                 {expiryStatus.status !== 'none' && (
                   <span
@@ -301,18 +286,18 @@ export default function ShopEditorModal({
               <div style={{ fontSize: 11, marginTop: 5, color: 'var(--text-3)' }}>
                 {expiryStatus.status === 'expired' ? (
                   <span style={{ color: '#dc2626', fontWeight: 600 }}>
-                    Shop contract expired on {expiryStatus.formattedDate}! Renew or take action.
+                    Payment due date passed on {expiryStatus.formattedDate}! Follow up for payment.
                   </span>
                 ) : expiryStatus.status === 'expiring' ? (
                   <span style={{ color: '#b45309', fontWeight: 600 }}>
-                    Notice: Expires in {expiryStatus.days} days ({expiryStatus.formattedDate}).
+                    Notice: Payment due in {expiryStatus.days} days ({expiryStatus.formattedDate}).
                   </span>
                 ) : expiryStatus.status === 'active' ? (
                   <span style={{ color: '#16a34a', fontWeight: 500 }}>
-                    Active until {expiryStatus.formattedDate} ({expiryStatus.days} days remaining).
+                    Due on {expiryStatus.formattedDate} ({expiryStatus.days} days remaining).
                   </span>
                 ) : (
-                  <span>Set expiry date to show alert on shops list when expiring within {settings.expiryAlertDays || 30} days.</span>
+                  <span>Set payment due / expiry date for this billing cycle note.</span>
                 )}
               </div>
             </div>

@@ -236,7 +236,7 @@ export default function ShopsTab({
               />
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }} title="Universal alert threshold (days before agreement expiry)">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }} title="Universal alert threshold (days before bill payment due date)">
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase' }}>Alert:</span>
               <input
                 type="number"
@@ -316,7 +316,7 @@ export default function ShopsTab({
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 700, color: expiryAlerts.expired.length > 0 ? '#b91c1c' : '#92400e' }}>
-                Agreement Expiry Alerts ({alertDays}d window):
+                Bill Expiry / Payment Due Alerts ({alertDays}d window):
               </span>
               {expiryAlerts.expired.length > 0 && (
                 <span style={{ color: '#dc2626', fontWeight: 600 }}>
@@ -596,7 +596,7 @@ export default function ShopsTab({
 
           <div>
             <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 4 }}>
-              Agreement / Contract Expiry Date (Optional)
+              Bill Expiry / Payment Due Date (Optional)
             </label>
             <input
               type="date"

@@ -107,7 +107,8 @@ class ShopDemandNoteSerializer(serializers.ModelSerializer):
     sl = serializers.IntegerField(source='shop.sl', read_only=True)
     name = serializers.CharField(source='shop.name', read_only=True)
     address = serializers.CharField(source='shop.address', read_only=True)
-    expiryDate = serializers.CharField(source='shop.expiry_date', required=False, allow_blank=True)
+    expiryDate = serializers.CharField(source='expiry_date', required=False, allow_blank=True)
+    shopExpiryDate = serializers.CharField(source='shop.expiry_date', read_only=True)
     noteNo = serializers.CharField(source='note_no', required=False, allow_blank=True)
     monthTo = serializers.CharField(source='month_to', required=False, allow_blank=True)
 
@@ -120,6 +121,7 @@ class ShopDemandNoteSerializer(serializers.ModelSerializer):
             'name',
             'address',
             'expiryDate',
+            'shopExpiryDate',
             'fixed',
             'units',
             'rate',

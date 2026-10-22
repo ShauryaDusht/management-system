@@ -156,6 +156,7 @@ class ShopDemandNote(models.Model):
     date = models.CharField(max_length=10, blank=True, default='')  # YYYY-MM-DD
     month = models.CharField(max_length=7, blank=True, default='')  # YYYY-MM
     month_to = models.CharField(max_length=7, blank=True, default='')
+    expiry_date = models.CharField(max_length=10, blank=True, default='', help_text="Bill expiry / payment due date in YYYY-MM-DD")
     note_no = models.CharField(max_length=100, blank=True, default='')
     units = models.CharField(max_length=40, blank=True, default='')
     rate = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('9.55'))
