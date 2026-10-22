@@ -343,9 +343,10 @@ export default function DashboardPage() {
   const canViewInventory = !isHorticultureManager
   const canViewHousekeeping = !isHorticultureManager
   const canViewHorticulture = user?.role !== 'hk_inventory_manager' && !isHostelOffice
-  const [invSummary, setInvSummary]     = useState(null)
-  const [hkSummary, setHkSummary]       = useState(null)
-  const [hortiSummary, setHortiSummary] = useState(null)
+  const [invSummary, setInvSummary]         = useState(null)
+  const [hkSummary, setHkSummary]           = useState(null)
+  const [hortiSummary, setHortiSummary]     = useState(null)
+  const [hortiStockSummary, setHortiStockSummary] = useState(null)
 
   const [trendRange,   setTrendRange]   = useState('weekly')
   const [trendModule,  setTrendModule]  = useState('all')
@@ -360,16 +361,18 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setTrendLoading(true)
       try {
-        const [inv, hk, horti, trend] = await Promise.all([
+        const [inv, hk, horti, hortiStock, trend] = await Promise.all([
           canViewInventory ? inventoryAPI.getDashboard().catch(() => null) : Promise.resolve(null),
           canViewHousekeeping ? hkAPI.getDashboardSummary().catch(() => null) : Promise.resolve(null),
           canViewHorticulture ? horticultureAPI.getSummary().catch(() => null) : Promise.resolve(null),
+          (isHorticultureManager || canViewHorticulture) ? horticultureAPI.getAreaStocks().catch(() => null) : Promise.resolve(null),
           reportsAPI.getActivityTrend({ range: trendRange }).catch(() => null),
         ])
         if (!alive) return
         setInvSummary(inv?.data || null)
         setHkSummary(hk?.data || null)
         setHortiSummary(horti?.data || null)
+        setHortiStockSummary(hortiStock?.data || null)
         const series = Array.isArray(trend?.data?.series) ? trend.data.series : []
         setTrendData(series.map(row => ({
           name: row.label || row.date,
@@ -434,6 +437,16 @@ export default function DashboardPage() {
     { name: 'Overdue', value: Number(hortiCounts.overdue || 0) },
   ]
   const hortiDonutData = hortiTotal > 0 ? hortiDonut : [{ name: 'No Activity', value: 1 }]
+
+  const hortiStockItems = hortiStockSummary?.items_summary || {}
+  const hortiStockTotal = Number(hortiStockItems.total_items || 0)
+  const hortiStockDonut = hortiStockTotal > 0
+    ? [
+        { name: 'In Stock', value: Number(hortiStockItems.in_stock || 0) },
+        { name: 'Low Stock', value: Number(hortiStockItems.low_stock || 0) },
+        { name: 'Out of Stock', value: Number(hortiStockItems.out_of_stock || 0) },
+      ]
+    : [{ name: 'No Activity', value: 1 }]
 
   const trendLines = trendModule === 'inventory'
     ? [
@@ -511,6 +524,7 @@ export default function DashboardPage() {
         { label: 'Horticulture Tasks', value: hortiTotal || '-', color: 'var(--green-700)', sub: `${Number(hortiCounts.on_track || 0)} on track`, to: '/horticulture?tab=schedule' },
         { label: 'Due Soon', value: Number(hortiCounts.due_soon || 0), color: 'var(--orange-600)', sub: `${Number(hortiCounts.overdue || 0)} overdue`, to: '/horticulture?tab=worker_selection' },
         { label: 'Active Areas', value: hortiSummary?.total_areas ?? '-', color: '#3b82f6', sub: 'Horticulture coverage', to: '/horticulture?tab=zones' },
+        { label: 'Horticulture Stock', value: hortiStockTotal || (hortiStockSummary ? '0' : '-'), color: 'var(--green-800)', sub: `${hortiStockItems.low_stock || 0} low stock items`, to: '/horticulture-stock' },
       ]
     : isHostelOffice
     ? [
@@ -542,6 +556,7 @@ export default function DashboardPage() {
     ? [
         { label: 'Schedule', to: '/horticulture?tab=schedule', primary: true },
         { label: 'Zones', to: '/horticulture?tab=zones' },
+        { label: 'Stock List', to: '/horticulture-stock' },
       ]
     : isHostelOffice
     ? [
@@ -576,6 +591,7 @@ export default function DashboardPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 24 }}>
             {[
               canViewInventory ? { title: 'Inventory', subtitle: 'Stock overview', data: invDonut, total: invSummary?.total_items, label: 'Items', palette: DONUT_PALETTE, to: '/inventory' } : null,
+              isHorticultureManager ? { title: 'Horticulture Stock', subtitle: 'Garden & Equipment stock', data: hortiStockDonut, total: hortiStockTotal || 25, label: 'Items', palette: DONUT_PALETTE, to: '/horticulture-stock' } : null,
               canViewHousekeeping ? { title: isHostelOffice ? 'Hostel Housekeeping' : 'Housekeeping', subtitle: isHostelOffice ? 'Hostel tasks today' : 'Today tasks', data: hkDonutData, total: hkSummary?.total_tasks, label: hkHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/housekeeping' } : null,
               canViewHorticulture && !isHorticultureManager ? { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTotal, label: hortiTotal > 0 ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' } : null,
             ].filter(Boolean).map(card => (

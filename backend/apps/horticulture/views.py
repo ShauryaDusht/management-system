@@ -617,6 +617,110 @@ def _is_critical_task(task_row):
     )
 
 
+class AdminHorticultureAreaStocksAPIView(APIView):
+    permission_classes = [IsAdminOrHorticultureManager]
+
+    def get(self, request):
+        from apps.inventory.models import Item, Category
+
+        area_id = request.query_params.get('area_id')
+        zone_id = request.query_params.get('zone_id')
+        item_id = request.query_params.get('item_id')
+        search = (request.query_params.get('search') or '').strip()
+        low_stock_only = request.query_params.get('low_stock') == 'true'
+
+        horti_items_qs = Item.objects.filter(
+            Q(category__name__iexact='Garden & Horticulture Equipment')
+            | Q(category__name__icontains='Horticulture')
+        ).select_related('category')
+
+        total_horti_items = horti_items_qs.count()
+        out_of_stock_count = horti_items_qs.filter(available_quantity=0).count()
+        low_stock_items_count = horti_items_qs.filter(
+            available_quantity__gt=0,
+            available_quantity__lte=models.F('threshold_quantity')
+        ).count()
+        in_stock_items_count = max(0, total_horti_items - out_of_stock_count - low_stock_items_count)
+
+        horti_category = Category.objects.filter(name__icontains='Horticulture').first()
+
+        items_data = [
+            {
+                'id': it.id,
+                'name': it.name,
+                'item_code': it.item_code or '',
+                'category_id': it.category_id,
+                'category_name': it.category.name if it.category else '',
+                'item_type': it.item_type,
+                'unit': it.unit,
+                'unit_display': it.get_unit_display() or it.unit,
+                'total_quantity': it.total_quantity,
+                'available_quantity': it.available_quantity,
+                'threshold_quantity': it.threshold_quantity,
+                'unit_cost': float(it.unit_cost) if it.unit_cost is not None else None,
+                'description': it.description,
+                'status': it.status,
+            }
+            for it in horti_items_qs.order_by('name')
+        ]
+
+        stocks_qs = HorticultureAreaStock.objects.select_related('area', 'area__zone', 'item').all()
+        if area_id:
+            stocks_qs = stocks_qs.filter(area_id=area_id)
+        if zone_id:
+            stocks_qs = stocks_qs.filter(area__zone_id=zone_id)
+        if item_id:
+            stocks_qs = stocks_qs.filter(item_id=item_id)
+        if search:
+            stocks_qs = stocks_qs.filter(
+                Q(item_name__icontains=search)
+                | Q(area__name__icontains=search)
+            )
+        if low_stock_only:
+            stocks_qs = stocks_qs.filter(quantity__lte=models.F('low_stock_threshold'))
+
+        total_area_stocks = stocks_qs.count()
+        area_low_stock_count = stocks_qs.filter(quantity__lte=models.F('low_stock_threshold')).count()
+
+        stocks_data = [
+            {
+                'id': s.id,
+                'area_id': s.area_id,
+                'area_number': s.area.area_number,
+                'area_name': s.area.name,
+                'zone_id': s.area.zone_id,
+                'zone_name': s.area.zone.name if s.area.zone else '',
+                'zone_color': s.area.zone.color_code if s.area.zone else '',
+                'item_id': s.item_id,
+                'item_code': s.item.item_code if s.item else '',
+                'item_name': s.item_name,
+                'quantity': float(s.quantity),
+                'unit': s.unit,
+                'low_stock_threshold': float(s.low_stock_threshold),
+                'is_low': s.is_low,
+                'last_updated': s.last_updated.isoformat() if s.last_updated else None,
+            }
+            for s in stocks_qs.order_by('area__area_number', 'item_name')[:600]
+        ]
+
+        return Response({
+            'category_id': horti_category.id if horti_category else None,
+            'category_name': horti_category.name if horti_category else 'Garden & Horticulture Equipment',
+            'items_summary': {
+                'total_items': total_horti_items,
+                'in_stock': in_stock_items_count,
+                'low_stock': low_stock_items_count,
+                'out_of_stock': out_of_stock_count,
+            },
+            'area_stocks_summary': {
+                'total_count': total_area_stocks,
+                'low_stock_count': area_low_stock_count,
+            },
+            'items': items_data,
+            'stocks': stocks_data,
+        })
+
+
 class AdminHorticultureSummaryAPIView(APIView):
     permission_classes = [IsAdminOrHorticultureManager]
 

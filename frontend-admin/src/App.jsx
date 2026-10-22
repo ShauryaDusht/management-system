@@ -6,6 +6,7 @@ import { NotificationProvider } from './context/NotificationContext'
 import DashboardPage from './pages/dashboard/DashboardPage'
 import GeoTrackerPage from './pages/geo_tracker/GeoTrackerPage'
 import HorticulturePage from './pages/horticulture/HorticulturePage'
+import HorticultureStockPage from './pages/horticulture/HorticultureStockPage'
 import HousekeepingPage from './pages/housekeeping/HousekeepingPage'
 import InsightsPage from './pages/insights/InsightsPage'
 import InventoryPage from './pages/inventory/InventoryPage'
@@ -93,6 +94,22 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={HK_PORTAL_ALLOWED}>
                 <HousekeepingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/horticulture-stock"
+            element={
+              <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
+                <HorticultureStockPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/horticulture/stock"
+            element={
+              <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
+                <HorticultureStockPage />
               </ProtectedRoute>
             }
           />

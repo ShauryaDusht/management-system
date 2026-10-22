@@ -122,7 +122,12 @@ class User(AbstractUser):
 
     @property
     def can_manage_inventory(self):
-        return self.is_admin or self.is_inventory_manager or self.is_hk_inventory_manager
+        return (
+            self.is_admin
+            or self.is_inventory_manager
+            or self.is_hk_inventory_manager
+            or self.is_horticulture_manager
+        )
 
     @property
     def can_manage_housekeeping(self):
