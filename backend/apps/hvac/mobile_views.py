@@ -52,7 +52,7 @@ def mobile_dashboard(request):
 
     user_role = getattr(request.user, 'role', '')
     is_operator = user_role in ['hvac_operator', 'operator']
-    is_supervisor = user_role in ['plant_engineer', 'hvac_engineer', 'hvac_supervisor', 'supervisor', 'admin'] or request.user.is_superuser
+    is_supervisor = user_role in ['hvac_engineer', 'hvac_supervisor', 'supervisor', 'admin'] or request.user.is_superuser
 
     latest = logs[-1] if logs else HvacLog.objects.order_by('-date', '-slot').first()
     latest_vals = latest.values if latest else {}
@@ -198,7 +198,7 @@ def mobile_entry(request):
     existing = HvacLog.objects.filter(id=log_id).first()
 
     user_role = getattr(request.user, 'role', '')
-    is_supervisor = user_role in ['plant_engineer', 'hvac_engineer', 'hvac_supervisor', 'supervisor', 'admin', 'electrical_supervisor', 'wtp_supervisor'] or request.user.is_superuser
+    is_supervisor = user_role in ['hvac_engineer', 'hvac_supervisor', 'supervisor', 'admin'] or request.user.is_superuser
     is_operator = not is_supervisor
     is_locked = (existing is not None) and (not is_supervisor)
 
@@ -507,7 +507,7 @@ def mobile_handover(request):
     formatted_date = query_date.strftime('%a, %d %b %Y')
 
     user_role = getattr(request.user, 'role', '')
-    is_supervisor = user_role in ['plant_engineer', 'hvac_engineer', 'hvac_supervisor', 'supervisor', 'admin'] or request.user.is_superuser
+    is_supervisor = user_role in ['hvac_engineer', 'hvac_supervisor', 'supervisor', 'admin'] or request.user.is_superuser
 
     existing = HvacSupervisorLog.objects.filter(date=query_date, shift=shift_str).first()
 
@@ -559,13 +559,13 @@ def mobile_handover(request):
 @never_cache
 def mobile_operators_view(request):
     """
-    Mobile operator management for HVAC supervisors and plant engineers.
+    Mobile operator management for HVAC supervisors and engineers.
     Allows adding, toggling status, and removing hvac_operator accounts.
     """
     user_role = getattr(request.user, 'role', '')
-    is_allowed = (user_role in ['plant_engineer', 'hvac_engineer', 'hvac_supervisor', 'admin'] or request.user.is_superuser)
+    is_allowed = (user_role in ['hvac_engineer', 'hvac_supervisor', 'admin'] or request.user.is_superuser)
     if not is_allowed:
-        messages.error(request, 'Only Supervisors and Plant Engineers can manage field operators.')
+        messages.error(request, 'Only HVAC Supervisors and Engineers can manage field operators.')
         return redirect('/hvac/dashboard/')
 
     if request.method == 'POST':

@@ -19,8 +19,7 @@ export default function HvacPage({ defaultTab }) {
 
   const isOperator = authUser?.role === 'hvac_operator' || authUser?.role === 'operator';
   const isHvacEngineer = authUser?.role === 'hvac_engineer';
-  const isPlantEngineer = authUser?.role === 'plant_engineer';
-  const isEngineer = isHvacEngineer || isPlantEngineer;
+  const isEngineer = isHvacEngineer;
   const isSupervisor = authUser?.role === 'hvac_supervisor' || authUser?.role === 'supervisor';
   const isAdmin = !isOperator && !isSupervisor && !isEngineer;
 
@@ -119,8 +118,6 @@ export default function HvacPage({ defaultTab }) {
           ? 'HVAC Engineer Portal'
           : isSupervisor
           ? 'HVAC Supervisor Portal'
-          : isPlantEngineer
-          ? 'Plant Executive Engineer Portal'
           : 'HVAC Plant Daily Log'
       }
       subtitle={
@@ -130,8 +127,6 @@ export default function HvacPage({ defaultTab }) {
           ? 'HVAC Engineer Oversight • Real-time chiller status, R-01 daily flash reports, and monthly energy & water consumption analytics'
           : isSupervisor
           ? 'HVAC Supervisor Oversight • Shift verification, plant checklist audits, and operator oversight'
-          : isPlantEngineer
-          ? 'Executive Engineer Oversight • Campus-wide utilities, substation, WTP/STP, and central HVAC plant monitoring'
           : 'Central AC & Chiller Operations • 7 Chillers (Trane, Carrier, Daikin) · Primary/Secondary/Condenser Pumps · Cooling Towers · MWh Panels'
       }
     >

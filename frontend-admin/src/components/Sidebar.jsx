@@ -66,7 +66,6 @@ export default function Sidebar() {
     ? [
       { to: '/substation', icon: 'substation', label: 'Substation Log' },
       { to: '/wtp', icon: 'water', label: 'WTP/STP Meters' },
-      { to: '/hvac', icon: 'hvac', label: 'HVAC Plant Log' },
       { to: '/profile', icon: 'users', label: 'Profile' },
     ]
     : isElectrical

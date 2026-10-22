@@ -125,7 +125,7 @@ def mobile_dashboard(request):
     completion_pct = int(round((completed_count / total_sheets) * 100)) if total_sheets > 0 else 0
 
     user_role = getattr(request.user, 'role', '')
-    is_supervisor = (user_role in ['plant_engineer', 'electrical_supervisor', 'supervisor', 'admin', 'wtp_supervisor', 'hvac_supervisor'] or request.user.is_superuser)
+    is_supervisor = (user_role in ['plant_engineer', 'electrical_supervisor', 'supervisor', 'admin', 'wtp_supervisor'] or request.user.is_superuser)
     is_operator = not is_supervisor
 
     context = {
@@ -242,7 +242,7 @@ def mobile_panel_entry(request, sheet_id):
     display_name, subtitle = get_panel_display_meta(sheet)
 
     user_role = getattr(request.user, 'role', '')
-    is_supervisor = (user_role in ['plant_engineer', 'electrical_supervisor', 'supervisor', 'admin', 'wtp_supervisor', 'hvac_engineer', 'hvac_supervisor'] or request.user.is_superuser)
+    is_supervisor = (user_role in ['plant_engineer', 'electrical_supervisor', 'supervisor', 'admin', 'wtp_supervisor'] or request.user.is_superuser)
     is_operator = not is_supervisor
 
     # Next panel in sequence

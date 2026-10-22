@@ -139,7 +139,7 @@ def mobile_station_entry(request, station='wtp'):
     st_info = next((s for s in STATIONS if s['id'] == station), STATIONS[0])
 
     user_role = getattr(request.user, 'role', '')
-    is_supervisor = (user_role in ['plant_engineer', 'wtp_supervisor', 'supervisor', 'admin', 'electrical_supervisor', 'hvac_engineer', 'hvac_supervisor'] or request.user.is_superuser)
+    is_supervisor = (user_role in ['plant_engineer', 'wtp_supervisor', 'supervisor', 'admin', 'electrical_supervisor'] or request.user.is_superuser)
     is_operator = not is_supervisor
 
     # Fetch existing values
@@ -220,7 +220,7 @@ def mobile_block_entry(request):
     meters = BlockMeter.objects.all().order_by('sr')
 
     user_role = getattr(request.user, 'role', '')
-    is_supervisor = (user_role in ['plant_engineer', 'wtp_supervisor', 'supervisor', 'admin', 'electrical_supervisor', 'hvac_engineer', 'hvac_supervisor'] or request.user.is_superuser)
+    is_supervisor = (user_role in ['plant_engineer', 'wtp_supervisor', 'supervisor', 'admin', 'electrical_supervisor'] or request.user.is_superuser)
     is_operator = not is_supervisor
 
     doc = BlockReading.objects.filter(month=month).first()
@@ -369,7 +369,7 @@ def mobile_operators_view(request):
 @login_required(login_url='/portal/login/')
 def mobile_gwssb_view(request):
     user_role = getattr(request.user, 'role', '')
-    is_supervisor = user_role in ['plant_engineer', 'wtp_supervisor', 'supervisor', 'admin', 'electrical_supervisor', 'hvac_engineer', 'hvac_supervisor'] or request.user.is_superuser
+    is_supervisor = user_role in ['plant_engineer', 'wtp_supervisor', 'supervisor', 'admin', 'electrical_supervisor'] or request.user.is_superuser
     if not is_supervisor:
         messages.error(request, 'Permission Denied: GWSSB Water Bill calculations are accessible only to Shift Engineers and Supervisors.')
         return redirect('/wtp/dashboard/')

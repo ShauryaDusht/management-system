@@ -50,7 +50,7 @@ def _get_managed_operator_roles(user):
     allowed = set()
     role = getattr(user, 'role', '')
     if role == User.Role.PLANT_ENGINEER:
-        allowed.update([User.Role.ELECTRICAL_OPERATOR, User.Role.WTP_OPERATOR, User.Role.HVAC_OPERATOR])
+        allowed.update([User.Role.ELECTRICAL_OPERATOR, User.Role.WTP_OPERATOR])
     elif role == User.Role.ELECTRICAL_SUPERVISOR:
         allowed.add(User.Role.ELECTRICAL_OPERATOR)
     elif role == User.Role.WTP_SUPERVISOR:

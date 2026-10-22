@@ -37,7 +37,6 @@ const WTP_STP_ALLOWED = [
 
 const HVAC_ALLOWED = [
   'admin',
-  'plant_engineer',
   'supervisor',
   'hvac_engineer',
   'hvac_supervisor',

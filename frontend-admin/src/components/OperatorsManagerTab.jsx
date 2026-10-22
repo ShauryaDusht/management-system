@@ -16,11 +16,11 @@ import { useAuth } from '../context/AuthContext'
 
 const DEFAULT_OPERATOR_PASSWORD = 'IITGN@2025'
 
-const ROLE_OPTIONS = [
-  { value: 'electrical_operator', label: 'Substation Electrical Operator' },
-  { value: 'wtp_operator', label: 'WTP / STP Plant Operator' },
-  { value: 'hvac_operator', label: 'HVAC Plant Operator' },
-]
+const ROLE_LABELS = {
+  electrical_operator: 'Substation Electrical Operator',
+  wtp_operator: 'WTP / STP Plant Operator',
+  hvac_operator: 'HVAC Plant Operator',
+}
 
 function formatPhone(phone) {
   if (!phone) return '—'
@@ -850,22 +850,11 @@ export default function OperatorsManagerTab({
             </Field>
 
             <Field label="Department Role" required>
-              {isPlantEngineer ? (
-                <SelectField
-                  value={formData.role}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value }))}
-                >
-                  {ROLE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </SelectField>
-              ) : (
-                <Input
-                  value={operatorRole === 'electrical_operator' ? 'Substation Electrical Operator' : 'WTP / STP Operator'}
-                  readOnly
-                  style={{ background: 'var(--surface-2)', cursor: 'not-allowed' }}
-                />
-              )}
+              <Input
+                value={ROLE_LABELS[operatorRole] || operatorRole}
+                readOnly
+                style={{ background: 'var(--surface-2)', cursor: 'not-allowed' }}
+              />
             </Field>
           </div>
 
