@@ -18,6 +18,8 @@ def is_hvac_authorized(request):
     # Allow if standard authenticated user (JWT or session)
     if request.user and request.user.is_authenticated:
         return True
+    if hasattr(request, 'session') and request.session.get('_auth_user_id'):
+        return True
     # Or allow if x-admin-key matches admin key or 'admin123'
     key = request.headers.get('x-admin-key') or request.META.get('HTTP_X_ADMIN_KEY') or request.GET.get('key')
     if key in ['admin123', 'IITGN@2025', 'engineer123']:

@@ -540,7 +540,9 @@ export function StatCard({
 }
 
 // -- Tabs ---------------------------------------------------------------------
-export function Tabs({ tabs, active, onChange }) {
+export function Tabs({ tabs, active, activeTab, onChange }) {
+  const currentActive = active ?? activeTab
+
   const defaultCountStyle = (isActive) => ({
     background: isActive ? 'rgba(255,255,255,0.25)' : 'var(--border)',
     color: isActive ? '#fff' : 'var(--text-3)',
@@ -572,7 +574,7 @@ export function Tabs({ tabs, active, onChange }) {
       }}
     >
       {tabs.map((tab) => {
-        const isActive = active === tab.key
+        const isActive = currentActive === tab.key
         const countStyle = toneCountStyle(tab.countTone) || defaultCountStyle(isActive)
         return (
         <button

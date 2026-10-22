@@ -22,11 +22,11 @@ export default function HvacPage({ defaultTab }) {
   const isEngineer = isHvacEngineer;
   const isSupervisor = authUser?.role === 'hvac_supervisor';
   const isAdmin = !isOperator && !isSupervisor && !isEngineer;
+  const canEdit = isSupervisor || isEngineer || isAdmin || Boolean(authUser?.is_superuser);
 
   // Tabs:
   // - Operator Access: GIVE ENTRY ONLY
-  // - Supervisor / Engineer Access: Plant Status & Daily Log, Daily Flash Report (R-01), Edit Readings, Monthly Report, Operators
-  // - Admin Access: Plant Status & Daily Log, Daily Flash Report (R-01), Monthly Report, Operators
+  // - Supervisor / Engineer / Admin Access: Plant Status & Daily Log, Daily Flash Report (R-01), Edit Readings, Monthly Report, Operators
   const availableTabs = useMemo(() => {
     if (isOperator) {
       return [
@@ -37,15 +37,15 @@ export default function HvacPage({ defaultTab }) {
       { key: 'daily', label: 'Plant Status & Daily Log', icon: '❄️' },
       { key: 'flash', label: 'Daily Flash Report (R-01)', icon: '⚡' },
     ];
-    if (isSupervisor || isEngineer || authUser?.is_superuser) {
+    if (canEdit) {
       tabs.push({ key: 'edit', label: 'Edit Readings', icon: '✏️' });
     }
     tabs.push({ key: 'monthly', label: 'Monthly Report', icon: '📊' });
-    if (isSupervisor || isEngineer || isAdmin || authUser?.is_superuser) {
+    if (canEdit) {
       tabs.push({ key: 'operators', label: 'Operators (Add / Remove)', icon: '👥' });
     }
     return tabs;
-  }, [isOperator, isSupervisor, isEngineer, isAdmin, authUser?.is_superuser]);
+  }, [isOperator, canEdit]);
 
   const initialTab = searchParams.get('tab') || defaultTab || availableTabs[0].key;
   const [activeTab, setActiveTab] = useState(
@@ -135,7 +135,7 @@ export default function HvacPage({ defaultTab }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <Tabs
             tabs={availableTabs}
-            activeTab={activeTab}
+            active={activeTab}
             onChange={handleTabChange}
           />
         </div>
@@ -156,7 +156,7 @@ export default function HvacPage({ defaultTab }) {
           </Card>
         ) : (
           <div>
-            {(activeTab === 'entry' || (activeTab === 'edit' && (isSupervisor || authUser?.is_superuser))) && (
+            {(activeTab === 'entry' || (activeTab === 'edit' && canEdit)) && (
               <EditReadingTab
                 selectedDate={selectedDate}
                 onDateChange={setSelectedDate}
@@ -173,7 +173,7 @@ export default function HvacPage({ defaultTab }) {
                 logs={logs}
                 selectedDate={selectedDate}
                 onDateChange={setSelectedDate}
-                isSupervisor={isSupervisor}
+                isSupervisor={canEdit}
                 onNavigateToEdit={handleNavigateToEdit}
               />
             )}
@@ -192,7 +192,7 @@ export default function HvacPage({ defaultTab }) {
               />
             )}
 
-            {activeTab === 'operators' && (isSupervisor || isEngineer || isAdmin || authUser?.is_superuser) && (
+            {activeTab === 'operators' && canEdit && (
               <OperatorsManagerTab
                 department="hvac"
                 operatorRole="hvac_operator"
