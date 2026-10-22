@@ -244,3 +244,141 @@ class HorticultureMobilePortalActionTests(TestCase):
             assignment.refresh_from_db()
             self.assertEqual(assignment.status, HorticultureDailyAssignment.Status.DONE)
 
+
+@override_settings(ALLOWED_HOSTS=['testserver', 'localhost'])
+class HorticultureStockInventorySyncTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.supervisor = User.objects.create_user(
+            username='horti.sup.stock',
+            password='testpass',
+            role='supervisor',
+        )
+        self.zone = HorticultureZone.objects.create(
+            name='Zone Red',
+            color_code='#ef4444',
+            supervisor=self.supervisor,
+        )
+        self.area1 = HorticultureArea.objects.create(area_number=101, name='Garden North', zone=self.zone)
+        self.area2 = HorticultureArea.objects.create(area_number=102, name='Garden South', zone=self.zone)
+
+        from apps.inventory.models import Category, Item
+        from .models import HorticultureAreaStock
+        self.Category = Category
+        self.Item = Item
+        self.HorticultureAreaStock = HorticultureAreaStock
+
+        self.horti_cat = Category.objects.create(name='Garden & Horticulture Equipment')
+        self.clean_cat = Category.objects.create(name='Cleaning Supplies')
+
+        self.client = Client(HTTP_USER_AGENT='test-mobile')
+        self.client.force_login(self.supervisor)
+
+    def test_item_creation_syncs_to_all_horticulture_areas(self):
+        item = self.Item.objects.create(
+            name='Pruning Shears High Carbon',
+            category=self.horti_cat,
+            item_type='asset',
+            unit='pieces',
+            threshold_quantity=4,
+        )
+        stocks = self.HorticultureAreaStock.objects.filter(item=item)
+        self.assertEqual(stocks.count(), 2)
+        for stock in stocks:
+            self.assertEqual(stock.item_name, 'Pruning Shears High Carbon')
+            self.assertEqual(stock.quantity, 0)
+            self.assertEqual(stock.low_stock_threshold, 4)
+
+    def test_non_horticulture_item_not_synced(self):
+        item = self.Item.objects.create(
+            name='Floor Cleaner 5L',
+            category=self.clean_cat,
+            item_type='consumable',
+            unit='litres',
+            threshold_quantity=2,
+        )
+        stocks = self.HorticultureAreaStock.objects.filter(item=item)
+        self.assertEqual(stocks.count(), 0)
+
+    def test_item_update_syncs_name_unit_threshold(self):
+        item = self.Item.objects.create(
+            name='Grass Trimmer Line',
+            category=self.horti_cat,
+            item_type='consumable',
+            unit='pieces',
+            threshold_quantity=3,
+        )
+        item.name = 'Grass Trimmer Line Heavy Duty'
+        item.unit = 'metres'
+        item.threshold_quantity = 8
+        item.save()
+
+        stocks = self.HorticultureAreaStock.objects.filter(item=item)
+        self.assertEqual(stocks.count(), 2)
+        for stock in stocks:
+            self.assertEqual(stock.item_name, 'Grass Trimmer Line Heavy Duty')
+            self.assertEqual(stock.low_stock_threshold, 8)
+
+    def test_category_change_deletes_and_recreates_stocks(self):
+        item = self.Item.objects.create(
+            name='Dual Purpose Tool',
+            category=self.horti_cat,
+            item_type='asset',
+            unit='pieces',
+        )
+        self.assertEqual(self.HorticultureAreaStock.objects.filter(item=item).count(), 2)
+
+        # Change away from horticulture
+        item.category = self.clean_cat
+        item.save()
+        self.assertEqual(self.HorticultureAreaStock.objects.filter(item=item).count(), 0)
+
+        # Change back to horticulture
+        item.category = self.horti_cat
+        item.save()
+        self.assertEqual(self.HorticultureAreaStock.objects.filter(item=item).count(), 2)
+
+    def test_item_deletion_removes_horticulture_area_stocks(self):
+        item = self.Item.objects.create(
+            name='Temporary Lawn Rake',
+            category=self.horti_cat,
+            item_type='asset',
+            unit='pieces',
+        )
+        self.assertEqual(self.HorticultureAreaStock.objects.filter(item=item).count(), 2)
+
+        item.delete()
+        self.assertEqual(
+            self.HorticultureAreaStock.objects.filter(item_name='Temporary Lawn Rake').count(),
+            0
+        )
+
+    def test_new_area_creation_syncs_existing_horticulture_items(self):
+        item = self.Item.objects.create(
+            name='Hedge Trimmer Pro',
+            category=self.horti_cat,
+            item_type='asset',
+            unit='pieces',
+        )
+        new_area = HorticultureArea.objects.create(area_number=103, name='Garden East', zone=self.zone)
+        stock = self.HorticultureAreaStock.objects.filter(area=new_area, item=item).first()
+        self.assertIsNotNone(stock)
+        self.assertEqual(stock.item_name, 'Hedge Trimmer Pro')
+
+    def test_stock_request_view_includes_all_horticulture_items(self):
+        item = self.Item.objects.create(
+            name='Petrol Brush Cutter 43cc',
+            category=self.horti_cat,
+            item_type='asset',
+            unit='pieces',
+            total_quantity=5,
+            available_quantity=5,
+        )
+        response = self.client.get(
+            reverse('horticulture_mobile:horti-stock-request'),
+            {'zone': self.zone.id, 'area': self.area1.id},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Petrol Brush Cutter 43cc')
+
+

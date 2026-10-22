@@ -14,7 +14,7 @@ from django.contrib.auth import get_user_model, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import models, transaction
-from django.db.models import Case, Count, DecimalField, IntegerField, Prefetch, Sum, Value, When
+from django.db.models import Case, Count, DecimalField, IntegerField, Prefetch, Q, Sum, Value, When
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -2856,6 +2856,9 @@ HORTICULTURE_STOCK_ITEMS = [
 def horticulture_stock(request):
     selected_zone, zones, dashboard_payload = _mobile_zone_context(request.user, request.GET.get('zone'))
     selected_area = _selected_area_for_zone(selected_zone, request.GET.get('area'))
+    if selected_area and not HorticultureAreaStock.objects.filter(area=selected_area).exists():
+        from .signals import sync_area_to_all_horticulture_items
+        sync_area_to_all_horticulture_items(selected_area)
     order_cases = [When(item_name__iexact=name, then=Value(idx)) for idx, name in enumerate(HORTICULTURE_STOCK_ITEMS)]
     area_stocks = (
         HorticultureAreaStock.objects.filter(area=selected_area)
@@ -2902,7 +2905,11 @@ def horticulture_stock_request(request):
     order_cases = [When(name__iexact=name, then=Value(idx)) for idx, name in enumerate(HORTICULTURE_STOCK_ITEMS)]
     inv_items = (
         Item.objects
-        .filter(name__in=HORTICULTURE_STOCK_ITEMS)
+        .filter(
+            Q(category__name__iexact='Garden & Horticulture Equipment')
+            | Q(category__name__icontains='Horticulture')
+            | Q(name__in=HORTICULTURE_STOCK_ITEMS)
+        )
         .select_related('category')
         .annotate(custom_order=Case(*order_cases, default=Value(99), output_field=IntegerField()))
         .order_by('custom_order', 'name')
