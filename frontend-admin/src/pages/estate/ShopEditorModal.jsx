@@ -77,15 +77,18 @@ export default function ShopEditorModal({
     const el = document.getElementById('demand-note-doc')
     if (!el) return
     setPdfBusy(true)
+    const prevShadow = el.style.boxShadow
     try {
+      el.style.boxShadow = 'none'
       const { default: html2pdf } = await import('html2pdf.js')
       await html2pdf()
         .set({
           margin: 0,
           filename: `${pdfFileName(rec.noteNo, settings.headline, note.name)}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0, scrollX: 0 },
           jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
         })
         .from(el)
         .save()
@@ -93,6 +96,7 @@ export default function ShopEditorModal({
       console.error('PDF generation failed:', err)
       alert('Could not generate PDF. Please try Print -> Save as PDF.')
     } finally {
+      el.style.boxShadow = prevShadow
       setPdfBusy(false)
     }
   }
@@ -438,8 +442,29 @@ export default function ShopEditorModal({
         </Card>
 
         {/* Right: Live Preview */}
-        <div style={{ overflowX: 'auto', background: '#f1f5f9', padding: 16, borderRadius: 12, border: '1px solid var(--border)', maxHeight: '82vh', overflowY: 'auto' }}>
-          <div style={{ transform: 'scale(0.85)', transformOrigin: 'top center', marginBottom: -100 }}>
+        <div
+          style={{
+            overflowX: 'auto',
+            background: '#f1f5f9',
+            padding: '16px 16px 32px 16px',
+            borderRadius: 12,
+            border: '1px solid var(--border)',
+            maxHeight: '82vh',
+            overflowY: 'auto',
+            display: 'flex',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            style={{
+              width: 675,
+              flexShrink: 0,
+              transformOrigin: 'top left',
+              transform: 'scale(0.85)',
+              marginBottom: -100,
+              margin: '0 auto',
+            }}
+          >
             <DemandNoteTemplate note={note} />
           </div>
         </div>

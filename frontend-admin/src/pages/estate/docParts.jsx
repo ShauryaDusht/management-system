@@ -2,7 +2,7 @@ import React from 'react'
 import { inr } from './utils'
 
 export const DOC_WIDTH = 794
-export const DOC_HEIGHT = 1123
+export const DOC_HEIGHT = 1115
 export const FONT = 'Arial, "Nirmala UI", "Noto Sans Devanagari", sans-serif'
 export const BORDER = '1px solid #1a1a1a'
 

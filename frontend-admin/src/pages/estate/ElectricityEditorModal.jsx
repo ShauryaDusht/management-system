@@ -76,15 +76,18 @@ export default function ElectricityEditorModal({
     const el = document.getElementById('demand-note-doc')
     if (!el) return
     setPdfBusy(true)
+    const prevShadow = el.style.boxShadow
     try {
+      el.style.boxShadow = 'none'
       const { default: html2pdf } = await import('html2pdf.js')
       await html2pdf()
         .set({
           margin: 0,
           filename: `${pdfFileName(rec.noteNo, settings.headline, note.toLine || rec.name)}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0, scrollX: 0 },
           jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
         })
         .from(el)
         .save()
@@ -92,6 +95,7 @@ export default function ElectricityEditorModal({
       console.error('PDF generation failed:', err)
       alert('Could not generate PDF. Please try Print -> Save as PDF.')
     } finally {
+      el.style.boxShadow = prevShadow
       setPdfBusy(false)
     }
   }
