@@ -2,18 +2,29 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { STATIONS, SHIFTS, GROUPS, FIELDS, JMT, getMergedGroups, getMergedFields } from '../config';
 import { fmt, today } from '../lib/format';
-import { calcMeterDelta, isMeterRollover } from '../lib/calc';
+import { calcMeterDelta, isMeterRollover, prevOf } from '../lib/calc';
 
-function Hint({ f, rows, date, shift, value }) {
+function Hint({ f, rows = [], date, shift, value }) {
   const v = parseFloat(value);
   const jm = JMT[f.k];
   const isJm = f.st === 'jm';
 
-  // For Jalmandapam, if entering Final reading, show discharged water relative to Initial reading
-  const todayInit = isJm && shift === 2 ? rows.find((r) => r.date === date && r.shift === 1)?.[f.k] : null;
-  const initVal = todayInit != null ? parseFloat(todayInit) : null;
-  const isRolled = f.cum && hasDiff && isMeterRollover(v, initVal, f.k);
-  const diff = hasDiff ? (f.cum ? calcMeterDelta(v, initVal, 1, f.k) : initVal - v) : null;
+  // For Jalmandapam, if entering Final reading (shift 2), show discharged water relative to Initial reading (shift 1)
+  let prevVal = null;
+  if (isJm && shift === 2) {
+    const todayInit = rows.find((r) => r.date === date && r.shift === 1)?.[f.k];
+    if (todayInit != null && todayInit !== '') prevVal = parseFloat(todayInit);
+  } else if (f.cum) {
+    // For cumulative flow meters, find the most recent previous reading
+    const prevRow = prevOf(rows, date, shift, f.k);
+    if (prevRow?.[f.k] != null && prevRow[f.k] !== '') {
+      prevVal = parseFloat(prevRow[f.k]);
+    }
+  }
+
+  const hasDiff = !Number.isNaN(v) && prevVal != null && !Number.isNaN(prevVal);
+  const isRolled = f.cum && hasDiff && isMeterRollover(v, prevVal, f.k);
+  const diff = hasDiff ? (f.cum ? calcMeterDelta(v, prevVal, 1, f.k) : prevVal - v) : null;
   const diffCum = hasDiff && jm ? (diff / jm.h) * jm.cap : null;
 
   if (Number.isNaN(v) || (!jm && !hasDiff)) return null;
@@ -26,7 +37,7 @@ function Hint({ f, rows, date, shift, value }) {
       {hasDiff && (
         <span style={{ display: 'block', marginTop: '2px', color: diff >= 0 ? 'var(--ok)' : 'var(--amber)', fontWeight: 500 }}>
           {f.cum
-            ? `Net flow (today): ${fmt(diff, 2)} CUM${isRolled ? ' 🔄 (10,000 CUM WSC / STP Rollover Detected)' : ''}`
+            ? `Net flow: ${fmt(diff, 2)} CUM${isRolled ? ' 🔄 (10,000 CUM WSC / STP Rollover Detected)' : ''} (prev: ${fmt(prevVal, 2)})`
             : `Water discharged (today): ${fmt(diff, 2)} m ≈ ${fmt(diffCum, 1)} CUM`}
         </span>
       )}
@@ -34,7 +45,7 @@ function Hint({ f, rows, date, shift, value }) {
   );
 }
 
-export default function StationForm({ rows, user, onSaved, stationMeters = [] }) {
+export default function StationForm({ rows = [], user, onSaved, stationMeters = [] }) {
   const [station, setStation] = useState('wtp');
   const [shift, setShift] = useState(1);
   const [date, setDate] = useState(today());
