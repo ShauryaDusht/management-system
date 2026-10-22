@@ -192,7 +192,8 @@ class GwssbBill(models.Model):
     final_reading = models.FloatField(default=0.0)
     net_consumption = models.FloatField(default=0.0)  # (final_reading - initial_reading) * 1000
     rate_per_unit = models.FloatField(default=10.0)   # Rs 10 per unit
-    bill_amount = models.FloatField(default=0.0)      # net_consumption * 10
+    bill_amount = models.FloatField(default=0.0)      # net_consumption * 10 (Calculated)
+    actual_bill = models.FloatField(default=0.0, null=True, blank=True)  # Filled by Supervisor from official GWSSB invoice
     bill_no = models.CharField(max_length=100, blank=True, default='')
     status = models.CharField(max_length=30, default='Pending')  # Pending, Verified, Paid
     by = models.CharField(max_length=100, blank=True, default='')
@@ -215,8 +216,20 @@ class GwssbBill(models.Model):
         self.bill_amount = round(self.net_consumption * rate, 2)
         super().save(*args, **kwargs)
 
+    @property
+    def reading_diff(self):
+        return round(max(0.0, float(self.final_reading or 0.0) - float(self.initial_reading or 0.0)), 3)
+
+    @property
+    def variance(self):
+        if self.actual_bill is not None and self.actual_bill > 0:
+            return round(float(self.actual_bill) - float(self.bill_amount), 2)
+        return 0.0
+
     def to_dict(self):
-        diff = max(0.0, float(self.final_reading or 0.0) - float(self.initial_reading or 0.0))
+        diff = self.reading_diff
+        actual = self.actual_bill if self.actual_bill is not None else 0.0
+        variance = self.variance
         return {
             '_id': self.month,
             'id': self.month,
@@ -228,6 +241,8 @@ class GwssbBill(models.Model):
             'netConsumption': self.net_consumption,
             'ratePerUnit': self.rate_per_unit,
             'billAmount': self.bill_amount,
+            'actualBill': self.actual_bill,
+            'variance': variance,
             'billNo': self.bill_no,
             'status': self.status,
             'by': self.by,

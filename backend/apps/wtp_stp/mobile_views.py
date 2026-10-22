@@ -405,6 +405,14 @@ def mobile_gwssb_view(request):
         remarks = request.POST.get('remarks', '').strip()
         by_user = request.user.get_full_name() or request.user.username
 
+        actual_val = None
+        raw_actual = request.POST.get('actual_bill', '').strip()
+        if raw_actual:
+            try:
+                actual_val = float(raw_actual)
+            except (ValueError, TypeError):
+                actual_val = None
+
         bill, created = GwssbBill.objects.update_or_create(
             month=month_val,
             defaults={
@@ -412,13 +420,19 @@ def mobile_gwssb_view(request):
                 'initial_reading': init_val,
                 'final_reading': final_val,
                 'rate_per_unit': 10.0,
+                'actual_bill': actual_val,
                 'bill_no': bill_no,
                 'status': status_val,
                 'remarks': remarks,
                 'by': by_user,
             }
         )
-        messages.success(request, f"Saved GWSSB bill for {month_val}! Net Water Consumption: {bill.net_consumption:,.1f} CUM | Bill: ₹ {bill.bill_amount:,.2f}")
+        if not created and actual_val is not None:
+            bill.actual_bill = actual_val
+            bill.save()
+
+        act_text = f" | Actual Bill: ₹ {bill.actual_bill:,.2f}" if bill.actual_bill else ""
+        messages.success(request, f"Saved GWSSB bill for {month_val}! Net Water Consumption: {bill.net_consumption:,.1f} CUM | Calculated Bill: ₹ {bill.bill_amount:,.2f}{act_text}")
         return redirect(f"/wtp/gwssb/?month={month_val}")
 
     suggested_init = ''

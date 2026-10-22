@@ -219,10 +219,10 @@ class Command(BaseCommand):
         # 4. Seed Default WTP Staff Accounts
         # 5. Seed GWSSB Water Bills
         gwssb_samples = [
-            {'month': '2026-07', 'date': '2026-07-31', 'initial': 102.350, 'final': 114.850, 'bill_no': 'GWSSB/2026/07-441', 'status': 'Paid'},
-            {'month': '2026-08', 'date': '2026-08-31', 'initial': 114.850, 'final': 128.250, 'bill_no': 'GWSSB/2026/08-512', 'status': 'Paid'},
-            {'month': '2026-09', 'date': '2026-09-30', 'initial': 128.250, 'final': 141.950, 'bill_no': 'GWSSB/2026/09-623', 'status': 'Paid'},
-            {'month': '2026-10', 'date': '2026-10-22', 'initial': 141.950, 'final': 156.450, 'bill_no': 'GWSSB/2026/10-705', 'status': 'Verified'},
+            {'month': '2026-07', 'date': '2026-07-31', 'initial': 102.350, 'final': 114.850, 'actual_bill': 125000.0, 'bill_no': 'GWSSB/2026/07-441', 'status': 'Paid'},
+            {'month': '2026-08', 'date': '2026-08-31', 'initial': 114.850, 'final': 128.250, 'actual_bill': 134000.0, 'bill_no': 'GWSSB/2026/08-512', 'status': 'Paid'},
+            {'month': '2026-09', 'date': '2026-09-30', 'initial': 128.250, 'final': 141.950, 'actual_bill': 137000.0, 'bill_no': 'GWSSB/2026/09-623', 'status': 'Paid'},
+            {'month': '2026-10', 'date': '2026-10-22', 'initial': 141.950, 'final': 156.450, 'actual_bill': 145000.0, 'bill_no': 'GWSSB/2026/10-705', 'status': 'Verified'},
         ]
         for b in gwssb_samples:
             GwssbBill.objects.update_or_create(
@@ -232,6 +232,7 @@ class Command(BaseCommand):
                     'initial_reading': b['initial'],
                     'final_reading': b['final'],
                     'rate_per_unit': 10.0,
+                    'actual_bill': b['actual_bill'],
                     'bill_no': b['bill_no'],
                     'status': b['status'],
                     'by': 'Vikash Kumar Yadav',

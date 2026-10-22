@@ -522,6 +522,14 @@ class GwssbBillsView(APIView):
             else request.user.username
         )
 
+        actual_val = None
+        raw_actual = data.get('actualBill') if 'actualBill' in data else data.get('actual_bill')
+        if raw_actual is not None and str(raw_actual).strip() != '':
+            try:
+                actual_val = float(raw_actual)
+            except (ValueError, TypeError):
+                actual_val = None
+
         bill, created = GwssbBill.objects.get_or_create(
             month=m,
             defaults={
@@ -529,6 +537,7 @@ class GwssbBillsView(APIView):
                 'initial_reading': init_val,
                 'final_reading': final_val,
                 'rate_per_unit': rate_val,
+                'actual_bill': actual_val,
                 'bill_no': bill_no,
                 'status': status_val,
                 'remarks': remarks,
@@ -539,6 +548,8 @@ class GwssbBillsView(APIView):
             bill.initial_reading = init_val
             bill.final_reading = final_val
             bill.rate_per_unit = rate_val
+            if 'actualBill' in data or 'actual_bill' in data:
+                bill.actual_bill = actual_val
             if bill_no:
                 bill.bill_no = bill_no
             if status_val:

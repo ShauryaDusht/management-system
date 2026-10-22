@@ -36,7 +36,7 @@ class SupervisorLogAdmin(admin.ModelAdmin):
 
 
 class GwssbBillAdmin(admin.ModelAdmin):
-    list_display = ('month', 'initial_reading', 'final_reading', 'net_consumption', 'rate_per_unit', 'bill_amount', 'status', 'by', 'updated_at')
+    list_display = ('month', 'initial_reading', 'final_reading', 'net_consumption', 'rate_per_unit', 'bill_amount', 'actual_bill', 'status', 'by', 'updated_at')
     list_filter = ('status', 'month')
     search_fields = ('month', 'bill_no', 'by', 'remarks')
     ordering = ('-month',)

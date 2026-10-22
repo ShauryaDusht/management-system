@@ -21,9 +21,11 @@
   </div>
 
   <!-- Formulas Callout -->
-  <div style="margin-top: 12px; padding: 10px 12px; background: #ffffff; border: 1px solid #bae6fd; border-radius: 8px; font-size: 11.5px; line-height: 1.5; color: #0369a1;">
+  <div style="margin-top: 12px; padding: 10px 12px; background: #ffffff; border: 1px solid #bae6fd; border-radius: 8px; font-size: 11.5px; line-height: 1.6; color: #0369a1;">
     <div><b>1. Net Consumption:</b> (Final − Initial) &times; 1,000 CUM</div>
-    <div><b>2. Bill Amount:</b> Net Consumption &times; ₹ 10.00</div>
+    <div><b>2. Calculated Bill:</b> Net Consumption &times; ₹ 10.00</div>
+    <div><b>3. Actual Bill:</b> Filled by Supervisor from official physical invoice</div>
+    <div><b>4. Variance:</b> Actual Bill − Calculated Bill (₹)</div>
   </div>
 </div>
 
@@ -32,7 +34,7 @@
   <div class="card-header">
     <div>
       <div class="card-title">📝 {% if current_bill %}Update {{ selected_month }} Bill{% else %}Enter {{ selected_month }} Bill{% endif %}</div>
-      <div class="card-sub">Select billing month and enter flow meter readings</div>
+      <div class="card-sub">Select billing month, flow readings, and physical invoice bill</div>
     </div>
     {% if current_bill %}
       <span class="pill pill-green">Existing Saved</span>
@@ -84,6 +86,27 @@
       </div>
     </div>
 
+    <!-- Actual Bill Field Filled by Supervisor -->
+    <div style="margin-bottom: 12px; background: #f0fdf4; padding: 10px 12px; border-radius: 8px; border: 1.5px solid #86efac;">
+      <label style="font-weight: 800; color: #166534; display: block; margin-bottom: 4px;">
+        Actual Bill Amount (₹) <span style="font-size: 11px; font-weight: 600; color: #047857;">(Filled by Supervisor from Official Invoice)</span>
+      </label>
+      <input
+        type="number"
+        step="any"
+        inputmode="decimal"
+        name="actual_bill"
+        id="inpActual"
+        value="{{ current_bill.actual_bill|default:'' }}"
+        placeholder="e.g. 145000.00"
+        oninput="recalcGwssb()"
+        style="font-size: 16px; font-weight: 800; color: #166534; background: #fff;"
+      >
+      <div style="font-size: 11px; color: #15803d; margin-top: 4px;">
+        Enter the actual rupees amount printed on the GWSSB invoice received.
+      </div>
+    </div>
+
     <!-- Live Calculated Results Box -->
     <div id="calcBox" style="background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%); border: 1.5px dashed #86efac; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;">
       <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
@@ -95,9 +118,17 @@
         <span id="txtNet" style="font-size: 17px; font-weight: 800; color: #0284c7;">– CUM</span>
       </div>
       <div style="height: 1px; background: rgba(0,0,0,0.08); margin: 6px 0;"></div>
-      <div style="display: flex; justify-content: space-between; align-items: baseline;">
-        <span style="font-size: 11.5px; font-weight: 800; color: #166534; text-transform: uppercase;">Total Bill Amount (&times; ₹10):</span>
-        <span id="txtBill" style="font-size: 22px; font-weight: 900; color: #15803d;">₹ –</span>
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+        <span style="font-size: 11.5px; font-weight: 800; color: #166534; text-transform: uppercase;">Calculated Bill (&times; ₹10):</span>
+        <span id="txtBill" style="font-size: 20px; font-weight: 900; color: #15803d;">₹ –</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+        <span style="font-size: 11.5px; font-weight: 800; color: #0284c7; text-transform: uppercase;">Actual Bill (Supervisor):</span>
+        <span id="txtActual" style="font-size: 20px; font-weight: 900; color: #0369a1;">₹ –</span>
+      </div>
+      <div id="rowVariance" style="display: none; justify-content: space-between; align-items: baseline; border-top: 1px dashed #cbd5e1; padding-top: 6px;">
+        <span style="font-size: 11.5px; font-weight: 800; color: #475569; text-transform: uppercase;">Variance (Actual − Calc):</span>
+        <span id="txtVariance" style="font-size: 13.5px; font-weight: 800;">₹ 0.00</span>
       </div>
     </div>
 
@@ -177,16 +208,27 @@
             </div>
             <div>
               <div style="color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase;">Diff</div>
-              <div style="font-weight: 700;">{{ b.final_reading|add:"-"|add:b.initial_reading|floatformat:3 }}</div>
+              <div style="font-weight: 700;">{{ b.reading_diff|floatformat:3 }}</div>
             </div>
           </div>
 
-          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-            <div style="font-size: 12px; color: #0369a1; font-weight: 700;">
-              Net: {{ b.net_consumption|floatformat:2 }} CUM
+          <!-- Calculated vs Actual Bill Grid -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; background: #fff; padding: 8px; border-radius: 6px; border: 1px solid #f1f5f9;">
+            <div>
+              <div style="color: #166534; font-size: 10.5px; font-weight: 800; text-transform: uppercase;">Calculated Bill</div>
+              <div style="font-size: 15px; font-weight: 800; color: #15803d;">₹ {{ b.bill_amount|floatformat:2 }}</div>
+              <div style="font-size: 10px; color: #64748b;">{{ b.net_consumption|floatformat:1 }} CUM</div>
             </div>
-            <div style="font-size: 16px; font-weight: 900; color: #15803d;">
-              ₹ {{ b.bill_amount|floatformat:2 }}
+            <div>
+              <div style="color: #0369a1; font-size: 10.5px; font-weight: 800; text-transform: uppercase;">Actual Bill (Supervisor)</div>
+              {% if b.actual_bill %}
+                <div style="font-size: 15px; font-weight: 800; color: #0284c7;">₹ {{ b.actual_bill|floatformat:2 }}</div>
+                <div style="font-size: 10px; font-weight: 700; color: {% if b.variance == 0 %}#16a34a{% elif b.variance > 0 %}#dc2626{% else %}#2563eb{% endif %};">
+                  {% if b.variance == 0 %}✓ Exact Match{% elif b.variance > 0 %}+₹ {{ b.variance|floatformat:2 }} (Higher){% else %}-₹ {{ b.variance|floatformat:2 }} (Lower){% endif %}
+                </div>
+              {% else %}
+                <div style="font-size: 13px; font-weight: 600; color: #94a3b8;">Not entered</div>
+              {% endif %}
             </div>
           </div>
 
@@ -216,25 +258,53 @@
 function recalcGwssb() {
   var init = parseFloat(document.getElementById('inpInit').value);
   var fin = parseFloat(document.getElementById('inpFinal').value);
+  var act = parseFloat(document.getElementById('inpActual').value);
 
   var txtDiff = document.getElementById('txtDiff');
   var txtNet = document.getElementById('txtNet');
   var txtBill = document.getElementById('txtBill');
+  var txtActual = document.getElementById('txtActual');
+  var rowVar = document.getElementById('rowVariance');
+  var txtVar = document.getElementById('txtVariance');
 
-  if (isNaN(init) || isNaN(fin)) {
+  var calcBill = 0;
+  var hasReadings = !isNaN(init) && !isNaN(fin);
+
+  if (hasReadings) {
+    var diff = Math.max(0, fin - init);
+    var net = diff * 1000.0;
+    calcBill = net * 10.0;
+    txtDiff.innerText = diff.toFixed(3);
+    txtNet.innerText = net.toLocaleString('en-IN', { maximumFractionDigits: 2 }) + ' CUM';
+    txtBill.innerText = '₹ ' + calcBill.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  } else {
     txtDiff.innerText = '–';
     txtNet.innerText = '– CUM';
     txtBill.innerText = '₹ –';
-    return;
   }
 
-  var diff = Math.max(0, fin - init);
-  var net = diff * 1000.0;
-  var bill = net * 10.0;
-
-  txtDiff.innerText = diff.toFixed(3);
-  txtNet.innerText = net.toLocaleString('en-IN', { maximumFractionDigits: 2 }) + ' CUM';
-  txtBill.innerText = '₹ ' + bill.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (!isNaN(act)) {
+    txtActual.innerText = '₹ ' + act.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (hasReadings) {
+      var variance = act - calcBill;
+      rowVar.style.display = 'flex';
+      if (Math.abs(variance) < 0.01) {
+        txtVar.innerText = '₹ 0.00 (Exact Match ✓)';
+        txtVar.style.color = '#16a34a';
+      } else if (variance > 0) {
+        txtVar.innerText = '+₹ ' + variance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' (GWSSB Higher)';
+        txtVar.style.color = '#dc2626';
+      } else {
+        txtVar.innerText = '-₹ ' + Math.abs(variance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' (GWSSB Lower)';
+        txtVar.style.color = '#2563eb';
+      }
+    } else {
+      rowVar.style.display = 'none';
+    }
+  } else {
+    txtActual.innerText = '–';
+    rowVar.style.display = 'none';
+  }
 }
 document.addEventListener('DOMContentLoaded', function() {
   recalcGwssb();
