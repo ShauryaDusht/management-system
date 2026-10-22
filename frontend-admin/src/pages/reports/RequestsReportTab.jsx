@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { getRequestsReport } from '../../api/inventory'
-import { Alert, Btn, Card, DataTable, Field, Input, Spinner, StatCard } from '../../components/ui'
-import { exportCsv } from '../../shared/utils'
+import { Alert, Btn, Card, DataTable, Field, Input, Spinner, StatCard, ExportDropdown } from '../../components/ui'
 
 const todayStr = () => new Date().toISOString().split('T')[0]
 
@@ -67,13 +66,24 @@ export default function RequestsReportTab() {
             <Btn onClick={load} style={{ marginBottom: 14 }}>
               Apply
             </Btn>
-            <Btn
-              variant="secondary"
-              onClick={() => exportCsv(report?.requests || [], 'requests_report.csv')}
+            <ExportDropdown
+              filename="requests_report"
+              title="Inventory Requests Report"
+              subtitle={`Date Range: ${dateFrom || 'Any'} to ${dateTo || 'Any'} | Total: ${(report?.requests || []).length}`}
+              headers={['Requester', 'Item Code', 'Item', 'Qty', 'Status', 'Date', 'Reviewed By', 'Issued At']}
+              rows={(report?.requests || []).map((r) => [
+                r.requester || '-',
+                r.item_code || '—',
+                r.item || '-',
+                r.quantity ?? 0,
+                String(r.status || '').toUpperCase(),
+                r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '-',
+                r.reviewed_by || '-',
+                r.issued_at ? new Date(r.issued_at).toLocaleString('en-IN') : '-',
+              ])}
+              disabled={loading || !report?.requests?.length}
               style={{ marginBottom: 14 }}
-            >
-              Export CSV
-            </Btn>
+            />
           </div>
         </div>
 

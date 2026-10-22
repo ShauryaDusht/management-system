@@ -109,18 +109,6 @@
     {{ req.purpose }}
   </div>
 
-  {# ── Urgent toggle ── #}
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:var(--bg);border-radius:var(--radius-sm)">
-    <input type="checkbox" id="urgent-{{ req.id }}"
-      {% if req.is_urgent %}checked{% endif %}
-      onchange="toggleUrgent({{ req.id }}, this.checked)"
-      style="width:18px;height:18px;cursor:pointer;accent-color:var(--brand-orange)">
-    <label for="urgent-{{ req.id }}" style="font-size:13px;font-weight:600;color:var(--text-primary);cursor:pointer;display:flex;align-items:center;gap:6px">
-      <span class="material-icons-round" style="font-size:16px;color:var(--brand-orange)">priority_high</span>
-      Mark as Urgent
-    </label>
-  </div>
-
   {# ── Qty adjuster for assets ── #}
   {% if req.item.item_type == 'asset' %}
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">

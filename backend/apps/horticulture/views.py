@@ -407,6 +407,16 @@ def _decide_horti_incharge_assignment(assignment, decision, acted_by_user, note=
     _create_horti_incharge_notice(assignment.leave_staff, assignment, msg, level=level)
     _create_horti_incharge_notice(assignment.assigned_staff, assignment, msg, level=level)
 
+    from apps.core.notifications import notify_leave_decision
+    notify_leave_decision(
+        assignment.leave_staff,
+        assignment.leave_date,
+        'approved' if decision == 'approve' else 'rejected',
+        area_name=getattr(assignment.zone, 'name', ''),
+        note=note,
+        leave_id=assignment.leave_request_id,
+    )
+
 
 class IsAdminOrHorticultureManager(BasePermission):
     def has_permission(self, request, view):
@@ -2665,6 +2675,9 @@ def horticulture_manager_requests(request):
 
             stock_request.status = HorticultureStockRequest.Status.APPROVED
             stock_request.save(update_fields=['status'])
+            if stock_request.inventory_request:
+                from apps.core.notifications import notify_inventory_approved
+                notify_inventory_approved(stock_request.inventory_request)
             messages.success(request, 'Horticulture request approved and sent to inventory for issue.')
         elif action == 'reject' and stock_request.status == HorticultureStockRequest.Status.PENDING:
             stock_request.status = HorticultureStockRequest.Status.REJECTED
@@ -2676,6 +2689,8 @@ def horticulture_manager_requests(request):
                 inv_req.reviewed_at = timezone.now()
                 inv_req.rejection_reason = request.POST.get('reason', '').strip()
                 inv_req.save(update_fields=['status', 'approved_by', 'reviewed_at', 'rejection_reason'])
+                from apps.core.notifications import notify_inventory_rejected
+                notify_inventory_rejected(inv_req, inv_req.rejection_reason)
             messages.success(request, 'Horticulture request rejected.')
         return redirect('/horticulture/requests/')
 

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { getInventoryReport } from '../../api/inventory'
-import { Alert, Badge, Btn, Card, DataTable, Spinner, StatCard } from '../../components/ui'
-import { asList, exportCsv } from '../../shared/utils'
+import { Alert, Badge, Btn, Card, DataTable, Spinner, StatCard, ExportDropdown } from '../../components/ui'
+import { asList } from '../../shared/utils'
 
 const STATUS_OPTIONS = [
   { key: 'all', label: 'All' },
@@ -126,13 +126,23 @@ export default function ReportTab() {
             </div>
           </div>
 
-          <Btn
-            variant="secondary"
-            onClick={() => exportCsv(csvRows, csvFilename)}
-            disabled={csvRows.length === 0}
-          >
-            Download CSV
-          </Btn>
+          <ExportDropdown
+            filename={`inventory_report_${statusFilter}_${typeFilter}`}
+            title="Inventory Status & Stock Report"
+            subtitle={`Status: ${statusFilter} | Type: ${typeFilter} | Total Items: ${csvRows.length}`}
+            headers={['Item Code', 'Item', 'Category', 'Type', 'Available', 'Threshold', 'Unit Cost INR', 'Status']}
+            rows={csvRows.map((r) => [
+              r['Item Code'],
+              r['Item'],
+              r['Category'],
+              r['Type'],
+              r['Available'],
+              r['Threshold'],
+              r['UnitCost'],
+              r['Status'],
+            ])}
+            disabled={loading || csvRows.length === 0}
+          />
         </div>
 
         {loading ? (

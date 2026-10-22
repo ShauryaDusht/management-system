@@ -150,6 +150,8 @@ class ApproveRequestView(APIView):
         )
         item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'units_remaining'])
         _sync_horticulture_request_status(item_request, ItemRequest.Status.APPROVED)
+        from apps.core.notifications import notify_inventory_approved
+        notify_inventory_approved(item_request)
 
         return Response(ItemRequestSerializer(item_request).data, status=status.HTTP_200_OK)
 
@@ -178,6 +180,8 @@ class RejectRequestView(APIView):
         item_request.units_remaining = item_request.item.available_quantity
         item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'rejection_reason', 'units_remaining'])
         _sync_horticulture_request_status(item_request, ItemRequest.Status.REJECTED)
+        from apps.core.notifications import notify_inventory_rejected
+        notify_inventory_rejected(item_request, item_request.rejection_reason)
 
         return Response(ItemRequestSerializer(item_request).data, status=status.HTTP_200_OK)
 

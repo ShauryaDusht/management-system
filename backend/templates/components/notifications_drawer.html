@@ -1,0 +1,535 @@
+<!-- Notification Drawer Component for Mobile Staff Portal -->
+<style>
+  .notif-bell-btn {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    outline: none;
+    transition: transform 0.15s ease, background 0.15s ease;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .notif-bell-btn:active {
+    transform: scale(0.92);
+    background: rgba(255, 255, 255, 0.25);
+  }
+  .notif-badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    background: #ef4444;
+    color: #fff;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #2d4a3e;
+    box-sizing: border-box;
+    line-height: 1;
+    animation: notifPulse 2s infinite;
+  }
+  @keyframes notifPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+  }
+
+  /* Drawer Overlay & Panel */
+  .notif-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 9998;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .notif-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .notif-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 440px;
+    background: #edeae4;
+    z-index: 9999;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.25);
+  }
+  .notif-drawer.open {
+    transform: translateX(0);
+  }
+
+  .notif-hdr {
+    background: linear-gradient(135deg, #2d4a3e, #1e3a30);
+    color: #fff;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+  }
+  .notif-hdr-ttl {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+  }
+  .notif-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .notif-btn-clear {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    border-radius: 8px;
+    padding: 5px 9px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .notif-btn-clear:hover, .notif-btn-clear:active {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  .notif-close-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px 6px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .notif-close-btn:active {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .notif-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Notification Card */
+  .notif-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 12px 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-left: 4.5px solid #2d4a3e;
+    position: relative;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  .notif-card.is-read {
+    background: rgba(255, 255, 255, 0.65);
+    border-left: 4.5px solid #cbd5e1;
+    opacity: 0.88;
+  }
+  .notif-card:active {
+    transform: scale(0.985);
+  }
+  .notif-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .notif-card-title {
+    font-weight: 800;
+    font-size: 13.5px;
+    color: #111827;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .notif-card.is-read .notif-card-title {
+    font-weight: 700;
+    color: #374151;
+  }
+  .notif-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    flex-shrink: 0;
+  }
+  .notif-card.is-read .notif-dot {
+    display: none;
+  }
+
+  .notif-time {
+    font-size: 11px;
+    color: #6b7280;
+    white-space: nowrap;
+  }
+  .notif-msg {
+    font-size: 12.5px;
+    color: #374151;
+    line-height: 1.4;
+    margin: 4px 0 8px 0;
+  }
+  .notif-card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  /* Status Badges */
+  .notif-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: capitalize;
+  }
+  .notif-pill.pill-approved {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  .notif-pill.pill-rejected {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+  .notif-pill.pill-pending {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  .notif-pill.pill-default {
+    background: #f3f4f6;
+    color: #4b5563;
+  }
+
+  .notif-open-link {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #2d4a3e;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  /* Empty state */
+  .notif-empty {
+    text-align: center;
+    padding: 50px 20px;
+    color: #6b7280;
+  }
+  .notif-empty-icon {
+    font-size: 42px;
+    margin-bottom: 12px;
+    opacity: 0.6;
+  }
+  .notif-empty-text {
+    font-size: 14px;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 4px;
+  }
+  .notif-empty-sub {
+    font-size: 12px;
+  }
+</style>
+
+<!-- Drawer Markup -->
+<div id="notif-backdrop" class="notif-backdrop" onclick="closeNotificationDrawer()"></div>
+<div id="notif-drawer" class="notif-drawer" role="dialog" aria-modal="true" aria-labelledby="notif-drawer-title">
+  <div class="notif-hdr">
+    <div class="notif-hdr-ttl">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+      <span id="notif-drawer-title">Notifications</span>
+      <span id="notif-unread-pill" style="display:none;background:#ef4444;color:#fff;border-radius:12px;padding:1px 7px;font-size:10px;font-weight:800;"></span>
+    </div>
+    <div class="notif-actions">
+      <button type="button" class="notif-btn-clear" onclick="markAllNotificationsRead()">Mark all read</button>
+      <button type="button" class="notif-close-btn" aria-label="Close" onclick="closeNotificationDrawer()">&times;</button>
+    </div>
+  </div>
+  <div id="notif-body" class="notif-body">
+    <div class="notif-empty">
+      <div class="notif-empty-icon">🔔</div>
+      <div class="notif-empty-text">Loading notifications...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var notifCache = [];
+    var unreadCount = 0;
+    var pollTimer = null;
+
+    function getCookie(name) {
+      var cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+          var cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    function updateBadgeUI(count) {
+      unreadCount = count;
+      var badge = document.getElementById('notif-badge');
+      var unreadPill = document.getElementById('notif-unread-pill');
+
+      if (badge) {
+        if (count > 0) {
+          badge.textContent = count > 9 ? '9+' : count;
+          badge.style.display = 'flex';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+
+      if (unreadPill) {
+        if (count > 0) {
+          unreadPill.textContent = count + ' new';
+          unreadPill.style.display = 'inline-block';
+        } else {
+          unreadPill.style.display = 'none';
+        }
+      }
+    }
+
+    function renderNotifications(notifications) {
+      var body = document.getElementById('notif-body');
+      if (!body) return;
+
+      if (!notifications || notifications.length === 0) {
+        body.innerHTML = [
+          '<div class="notif-empty">',
+          '  <div class="notif-empty-icon">🔔</div>',
+          '  <div class="notif-empty-text">No notifications yet</div>',
+          '  <div class="notif-empty-sub">You are completely caught up!</div>',
+          '</div>'
+        ].join('');
+        return;
+      }
+
+      var html = notifications.map(function(item) {
+        var pillClass = 'pill-default';
+        var status = (item.status_label || '').toLowerCase();
+        if (status.indexOf('approved') !== -1) {
+          pillClass = 'pill-approved';
+        } else if (status.indexOf('rejected') !== -1) {
+          pillClass = 'pill-rejected';
+        } else if (status.indexOf('usage') !== -1 || status.indexOf('pending') !== -1) {
+          pillClass = 'pill-pending';
+        }
+
+        var linkAttr = item.link ? 'data-link="' + item.link + '"' : '';
+        var isReadClass = item.is_read ? 'is-read' : '';
+
+        return [
+          '<div class="notif-card ' + isReadClass + '" data-id="' + item.id + '" ' + linkAttr + ' onclick="handleNotificationClick(' + item.id + ', \'' + (item.link || '') + '\')">',
+          '  <div class="notif-card-top">',
+          '    <div class="notif-card-title">',
+          '      <span class="notif-dot"></span>',
+          '      <span>' + escapeHtml(item.title) + '</span>',
+          '    </div>',
+          '    <span class="notif-time">' + escapeHtml(item.time_ago || '') + '</span>',
+          '  </div>',
+          '  <div class="notif-msg">' + escapeHtml(item.message) + '</div>',
+          '  <div class="notif-card-foot">',
+          item.status_label ? '    <span class="notif-pill ' + pillClass + '">' + escapeHtml(item.status_label) + '</span>' : '<span></span>',
+          item.link ? '    <span class="notif-open-link">Open &rarr;</span>' : '',
+          '  </div>',
+          '</div>'
+        ].join('');
+      }).join('');
+
+      body.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    window.fetchNotifications = function() {
+      fetch('/api/notifications/', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'include'
+      })
+      .then(function(res) {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then(function(data) {
+        if (data) {
+          notifCache = data.notifications || [];
+          updateBadgeUI(data.unread_count || 0);
+          if (document.getElementById('notif-drawer').classList.contains('open')) {
+            renderNotifications(notifCache);
+          }
+        }
+      })
+      .catch(function(err) {
+        console.debug('Notification fetch error:', err);
+      });
+    };
+
+    window.openNotificationDrawer = function() {
+      var backdrop = document.getElementById('notif-backdrop');
+      var drawer = document.getElementById('notif-drawer');
+      if (backdrop && drawer) {
+        backdrop.classList.add('open');
+        drawer.classList.add('open');
+        renderNotifications(notifCache);
+        window.fetchNotifications();
+      }
+    };
+
+    window.closeNotificationDrawer = function() {
+      var backdrop = document.getElementById('notif-backdrop');
+      var drawer = document.getElementById('notif-drawer');
+      if (backdrop && drawer) {
+        backdrop.classList.remove('open');
+        drawer.classList.remove('open');
+      }
+    };
+
+    window.handleNotificationClick = function(id, link) {
+      var csrf = getCookie('csrftoken');
+      fetch('/api/notifications/' + id + '/read/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf || '',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'include'
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data && typeof data.unread_count === 'number') {
+          updateBadgeUI(data.unread_count);
+        }
+        // Update item in cache and DOM
+        for (var i = 0; i < notifCache.length; i++) {
+          if (notifCache[i].id === id) {
+            notifCache[i].is_read = true;
+            break;
+          }
+        }
+        var card = document.querySelector('.notif-card[data-id="' + id + '"]');
+        if (card) {
+          card.classList.add('is-read');
+        }
+
+        if (link && link.trim() !== '') {
+          window.location.assign(link);
+        }
+      })
+      .catch(function() {
+        if (link && link.trim() !== '') {
+          window.location.assign(link);
+        }
+      });
+    };
+
+    window.markAllNotificationsRead = function() {
+      var csrf = getCookie('csrftoken');
+      fetch('/api/notifications/mark-all-read/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf || '',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'include'
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data && data.success) {
+          updateBadgeUI(0);
+          for (var i = 0; i < notifCache.length; i++) {
+            notifCache[i].is_read = true;
+          }
+          renderNotifications(notifCache);
+        }
+      })
+      .catch(function(err) {
+        console.error('Failed to mark all read:', err);
+      });
+    };
+
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        window.closeNotificationDrawer();
+      }
+    });
+
+    // Initial fetch and start periodic polling (every 30 seconds)
+    document.addEventListener('DOMContentLoaded', function() {
+      window.fetchNotifications();
+      if (!pollTimer) {
+        pollTimer = setInterval(window.fetchNotifications, 30000);
+      }
+    });
+  })();
+</script>

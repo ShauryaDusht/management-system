@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
-import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
 import { asList, getErrorMessage, triggerDownload } from '../../shared/utils'
 import WorkerReportModal from './WorkerReportModal'
 
@@ -185,9 +185,24 @@ export default function WorkersTab() {
                 <option key={zone} value={zone}>{zone}</option>
               ))}
             </SelectField>
-            <Btn size="sm" variant="secondary" onClick={downloadWorkersCsv} disabled={loading || !visibleWorkers.length}>
-              Download CSV
-            </Btn>
+            <ExportDropdown
+              size="sm"
+              headers={['Worker Name', 'Areas', 'Zones', 'Supervisor', 'Phone', 'Pay Code', 'Status']}
+              data={visibleWorkers.map((worker) => [
+                worker.name || '',
+                areaNames(worker),
+                zoneNames(worker),
+                worker.supervisor_name || '-',
+                worker.phone || '-',
+                worker.pay_code || '-',
+                worker.is_active ? 'Active' : 'Inactive',
+              ])}
+              title="Horticulture Workers Directory"
+              filename="horticulture_workers"
+              disabled={loading || !visibleWorkers.length}
+              buttonText="Download Report"
+              align="right"
+            />
             <Btn size="sm" onClick={openCreate}>+ Add Worker</Btn>
           </div>
         </div>

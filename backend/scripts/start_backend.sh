@@ -45,6 +45,7 @@ mkdir -p /app/backups/logs
 
 chmod +x /app/scripts/cron_cleanup.sh
 chmod +x /app/scripts/cron_seed_update.sh
+chmod +x /app/scripts/cron_usage_reminders.sh
 chmod +x /app/scripts/backup_database.sh
 chmod +x /app/scripts/restore_sql_backup.sh
 
@@ -53,10 +54,13 @@ echo "0 2 * * * root /app/scripts/cron_cleanup.sh >> /app/backups/logs/photo_cle
     > /etc/cron.d/photo-cleanup
 echo "0 3 * * 0 root /app/scripts/cron_seed_update.sh >> /app/backups/logs/seed_update.log 2>&1" \
     > /etc/cron.d/seed-update
+# 17:00 IST corresponds to 11:30 UTC. Run daily reminder check.
+echo "30 11 * * * root /app/scripts/cron_usage_reminders.sh >> /app/backups/logs/usage_reminders.log 2>&1" \
+    > /etc/cron.d/usage-reminders
 
-chmod 0644 /etc/cron.d/photo-cleanup /etc/cron.d/seed-update
+chmod 0644 /etc/cron.d/photo-cleanup /etc/cron.d/seed-update /etc/cron.d/usage-reminders
 cron
-printf '%s\n' "Cron started (daily cleanup @ 2 AM, weekly seed update @ Sunday 3 AM)."
+printf '%s\n' "Cron started (daily cleanup @ 2 AM, weekly seed @ Sun 3 AM, usage reminders @ 5 PM IST)."
 
 printf '%s\n' "Starting Gunicorn..."
 exec gunicorn config.wsgi:application \

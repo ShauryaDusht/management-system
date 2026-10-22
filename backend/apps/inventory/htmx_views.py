@@ -1,4 +1,7 @@
 import csv
+import io
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -7,14 +10,12 @@ from django.db.models import F, Prefetch, Sum, Value, DecimalField
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from apps.users.models import normalize_username_value
-from django.views.decorators.http import require_POST
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-
 from .models import Category, Item, ItemIssue, ItemUsageLog, ItemRequest, ItemRequestBatch, PurchaseRequest, RequisitionItem, StockEntry
 from .request_permissions import (
     EXCESSIVE_QUANTITY_MESSAGE,
@@ -459,7 +460,7 @@ def mobile_log_usage(request, pk):
     except (ValueError, TypeError, InvalidOperation):
         error = 'Enter a valid number.'
 
-    if error is None:
+    if error is None and quantity_used is not None:
         if quantity_used <= 0:
             error = 'Quantity must be greater than 0.'
         else:
@@ -613,6 +614,165 @@ def mobile_reports(request):
     })
 
 
+def _export_report_multiformat(export_format, headers, rows, filename_base, title):
+    fmt = (export_format or 'csv').strip().lower()
+
+    if fmt == 'xlsx':
+        try:
+            import openpyxl
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            from openpyxl.utils import get_column_letter
+
+            wb = openpyxl.Workbook()
+            ws = wb.active if wb.active is not None else wb.create_sheet(title=title[:30])
+            ws.title = title[:30]
+
+            ws.append([title])
+            ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+            title_cell = ws.cell(row=1, column=1)
+            title_cell.font = Font(name='Arial', size=13, bold=True, color='FFFFFF')
+            title_cell.fill = PatternFill(start_color='1E3A8A', end_color='1E3A8A', fill_type='solid')
+            title_cell.alignment = Alignment(horizontal='center', vertical='center')
+            ws.row_dimensions[1].height = 28
+
+            ws.append(headers)
+            ws.row_dimensions[2].height = 22
+            header_fill = PatternFill(start_color='2563EB', end_color='2563EB', fill_type='solid')
+            header_font = Font(name='Arial', size=10, bold=True, color='FFFFFF')
+            border = Border(
+                left=Side(style='thin', color='CBD5E1'),
+                right=Side(style='thin', color='CBD5E1'),
+                top=Side(style='thin', color='CBD5E1'),
+                bottom=Side(style='thin', color='CBD5E1')
+            )
+
+            for col_idx in range(1, len(headers) + 1):
+                c = ws.cell(row=2, column=col_idx)
+                c.fill = header_fill
+                c.font = header_font
+                c.alignment = Alignment(horizontal='center', vertical='center')
+                c.border = border
+
+            alt_fill = PatternFill(start_color='F8FAFC', end_color='F8FAFC', fill_type='solid')
+            for row_idx, row in enumerate(rows, start=3):
+                ws.append(row)
+                ws.row_dimensions[row_idx].height = 18
+                is_alt = (row_idx % 2 == 0)
+                for col_idx in range(1, len(row) + 1):
+                    cell = ws.cell(row=row_idx, column=col_idx)
+                    cell.font = Font(name='Arial', size=9)
+                    cell.border = border
+                    if is_alt:
+                        cell.fill = alt_fill
+
+            for col_idx, col in enumerate(ws.columns, 1):
+                col_letter = get_column_letter(col_idx)
+                max_len = max(len(str(cell.value or '')) for cell in col)
+                ws.column_dimensions[col_letter].width = max(max_len + 3, 11)
+
+            buf = io.BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            response = HttpResponse(buf.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            response['Content-Disposition'] = f'attachment; filename="{filename_base}.xlsx"'
+            return response
+        except Exception:
+            pass
+
+    if fmt == 'pdf':
+        try:
+            from reportlab.lib.pagesizes import letter, landscape
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.lib import colors
+
+            buf = io.BytesIO()
+            doc = SimpleDocTemplate(
+                buf,
+                pagesize=landscape(letter) if len(headers) > 6 else letter,
+                rightMargin=24, leftMargin=24, topMargin=24, bottomMargin=24
+            )
+            elements: list = []
+            styles = getSampleStyleSheet()
+
+            elements.append(Paragraph(f"<b>{title}</b>", styles['Title']))
+            elements.append(Spacer(1, 10))
+
+            table_data = [headers] + [[str(c if c is not None else '') for c in r] for r in rows]
+            table = Table(table_data, repeatRows=1)
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E3A8A')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 5),
+                ('TOPPADDING', (0, 0), (-1, 0), 5),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 7),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8FAFC')]),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E1')),
+            ]))
+            elements.append(table)
+            doc.build(elements)
+
+            buf.seek(0)
+            response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename_base}.pdf"'
+            return response
+        except Exception:
+            pass
+
+    if fmt == 'print':
+        html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{title}</title>
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; color: #1e293b; }}
+        h1 {{ font-size: 18px; margin-bottom: 4px; color: #0f172a; }}
+        .meta {{ font-size: 11px; color: #64748b; margin-bottom: 16px; }}
+        table {{ width: 100%; border-collapse: collapse; font-size: 11px; }}
+        th, td {{ border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; }}
+        th {{ background: #f1f5f9; font-weight: 700; }}
+        tr:nth-child(even) {{ background: #f8fafc; }}
+        @media print {{
+            @page {{ size: landscape; margin: 12mm; }}
+            body {{ margin: 0; }}
+        }}
+    </style>
+</head>
+<body>
+    <h1>{title}</h1>
+    <div class="meta">Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}</div>
+    <table>
+        <thead>
+            <tr>{''.join(f'<th>{h}</th>' for h in headers)}</tr>
+        </thead>
+        <tbody>
+            {''.join('<tr>' + ''.join(f'<td>{c if c is not None else ""}</td>' for c in row) + '</tr>' for row in rows)}
+        </tbody>
+    </table>
+    <script>window.onload = function() {{ window.print(); }};</script>
+</body>
+</html>"""
+        return HttpResponse(html, content_type='text/html')
+
+    # Default: CSV
+    filename = f'{filename_base}.csv'
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response.write('\ufeff')
+
+    writer = csv.writer(response)
+    writer.writerow(headers)
+    for row in rows:
+        writer.writerow(row)
+
+    return response
+
+
 @login_required
 def mobile_export_inventory_report_csv(request):
     role = getattr(request.user, 'role', '')
@@ -623,6 +783,7 @@ def mobile_export_inventory_report_csv(request):
 
     status_filter = (request.GET.get('filter') or 'all').strip().lower()
     item_type_filter = (request.GET.get('item_type') or 'all').strip().lower()
+    export_format = (request.GET.get('format') or 'csv').strip().lower()
 
     if status_filter not in {'all', 'in_stock', 'low_stock', 'out_of_stock'}:
         status_filter = 'all'
@@ -634,19 +795,15 @@ def mobile_export_inventory_report_csv(request):
         item_type_filter=item_type_filter if item_type_filter != 'all' else None,
     )
 
-    filename = f'inventory_report_{status_filter}_{item_type_filter}.csv'
-    response = HttpResponse(content_type='text/csv; charset=utf-8')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    response.write('\ufeff')
-
-    writer = csv.writer(response)
-    writer.writerow([
+    filename_base = f'inventory_report_{status_filter}_{item_type_filter}'
+    headers = [
         'ID', 'Name', 'Category', 'Type', 'Unit',
         'Total Quantity', 'Available Quantity', 'Threshold Quantity',
         'Unit Cost', 'Total Value', 'Status',
-    ])
+    ]
+    rows = []
     for row in report.get('items', []):
-        writer.writerow([
+        rows.append([
             row.get('id'),
             row.get('name'),
             row.get('category'),
@@ -660,7 +817,13 @@ def mobile_export_inventory_report_csv(request):
             row.get('status'),
         ])
 
-    return response
+    return _export_report_multiformat(
+        export_format,
+        headers,
+        rows,
+        filename_base,
+        f'Inventory Status Report ({status_filter.replace("_", " ").title()})',
+    )
 
 
 @login_required
@@ -673,6 +836,7 @@ def mobile_export_requests_report_csv(request):
 
     date_from_raw = (request.GET.get('date_from') or '').strip()
     date_to_raw = (request.GET.get('date_to') or '').strip()
+    export_format = (request.GET.get('format') or 'csv').strip().lower()
     date_from = parse_date(date_from_raw)
     date_to = parse_date(date_to_raw)
 
@@ -681,18 +845,14 @@ def mobile_export_requests_report_csv(request):
         date_to.isoformat() if date_to else None,
     )
 
-    filename = 'requests_report.csv'
-    response = HttpResponse(content_type='text/csv; charset=utf-8')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    response.write('\ufeff')
-
-    writer = csv.writer(response)
-    writer.writerow([
+    filename_base = 'requests_report'
+    headers = [
         'ID', 'Requester', 'Item', 'Quantity', 'Status', 'Urgent',
         'Reason', 'Created At', 'Reviewed By', 'Reviewed At', 'Issued At',
-    ])
+    ]
+    rows = []
     for row in report.get('requests', []):
-        writer.writerow([
+        rows.append([
             row.get('id'),
             row.get('requester'),
             row.get('item'),
@@ -706,7 +866,13 @@ def mobile_export_requests_report_csv(request):
             row.get('issued_at') or '',
         ])
 
-    return response
+    return _export_report_multiformat(
+        export_format,
+        headers,
+        rows,
+        filename_base,
+        'Inventory Requests Report',
+    )
 
 
 # ─────────────────────────────────────────────────

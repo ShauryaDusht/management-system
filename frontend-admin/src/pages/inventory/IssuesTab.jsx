@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { inventoryAPI, reportsAPI } from '../../api/inventory'
-import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, SelectField } from '../../components/ui'
+import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, SelectField, ExportDropdown } from '../../components/ui'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import { asList, todayISO, triggerDownload } from '../../shared/utils'
 
@@ -292,6 +292,52 @@ export default function IssuesTab({ userRole }) {
     }
   }
 
+  const fetchAreaIssuesReportData = async () => {
+    const params = {
+      month: reportMonth,
+      year: reportYear,
+    }
+    if (areaClass !== 'all') params.area_class = areaClass
+    if (selectedArea !== 'all') params.area_name = selectedArea
+
+    const { data } = await reportsAPI.getAreaIssuesReport(params)
+    const rows = (data?.rows || []).map((row) => [
+      row.area_name || '-',
+      row.area_type || '-',
+      row.item_name || '-',
+      row.item_type || '-',
+      row.item_unit || '-',
+      row.requested_by || '-',
+      row.quantity_requested ?? 0,
+      row.quantity_issued ?? 0,
+      row.issued_at || '-',
+      row.issued_by || '-',
+      row.status || '-',
+      (row.returned || row.usage_finalized) ? 'Yes' : 'No',
+    ])
+    const period = `${reportYear}_${String(reportMonth).padStart(2, '0')}`
+    return {
+      title: 'Area-Wise Issued Items Report',
+      subtitle: `Period: ${MONTHS[reportMonth - 1]} ${reportYear} | Filter: ${reportFilterLabel} | Total: ${rows.length}`,
+      filename: `area_issues_${period}`,
+      headers: [
+        'Area',
+        'Area Type',
+        'Item',
+        'Item Type',
+        'Unit',
+        'Requested By',
+        'Qty Requested',
+        'Qty Issued',
+        'Issued At',
+        'Issued By',
+        'Status',
+        'Returned/Finalized',
+      ],
+      rows,
+    }
+  }
+
   const years = Array.from(
     { length: 4 },
     (_, index) => new Date().getFullYear() - index
@@ -331,8 +377,7 @@ export default function IssuesTab({ userRole }) {
           style={{
             display: 'flex',
             gap: 8,
-            flexWrap: 'nowrap',
-            overflowX: 'auto',
+            flexWrap: 'wrap',
             alignItems: 'center',
             paddingBottom: 4,
           }}
@@ -396,14 +441,11 @@ export default function IssuesTab({ userRole }) {
           >
             {generatingReport ? 'Generating...' : 'View Report'}
           </Btn>
-          <Btn
-            variant="ghost"
-            onClick={downloadMonthlyReportCsv}
+          <ExportDropdown
+            getData={fetchAreaIssuesReportData}
             disabled={generatingReport || downloadingReport}
             style={{ flex: '0 0 auto' }}
-          >
-            {downloadingReport ? 'Downloading...' : 'Download CSV'}
-          </Btn>
+          />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 10, marginTop: 12 }}>
@@ -605,12 +647,10 @@ export default function IssuesTab({ userRole }) {
             <Btn variant="ghost" onClick={() => setReportModal(false)}>
               Close
             </Btn>
-            <Btn
-              onClick={downloadMonthlyReportCsv}
+            <ExportDropdown
+              getData={fetchAreaIssuesReportData}
               disabled={downloadingReport}
-            >
-              {downloadingReport ? 'Downloading...' : 'Download CSV'}
-            </Btn>
+            />
           </>
         }
       >

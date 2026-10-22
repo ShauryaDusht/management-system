@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { hkAPI } from '../../api/housekeeping'
 import { inventoryAPI } from '../../api/inventory'
 import { usersAPI } from '../../api/users'
-import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
+import { Alert, Badge, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
 import { getAreaGroup, triggerDownload } from '../../shared/utils'
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
 import { useMonthYear } from '../../shared/hooks/useMonthYear'
@@ -104,19 +104,51 @@ function SupervisorReportModal({ open, supervisor, onClose }) {
     }
   }
 
-  const downloadCsv = async () => {
-    if (!supervisor?.id) return
-    setDownloading(true)
-    setError('')
-    try {
+  const getSupervisorExportData = async (format) => {
+    if (!supervisor?.id) throw new Error('Supervisor report not available.')
+    if (format === 'csv') {
       const response = await hkAPI.downloadSupervisorReportCSV(supervisor.id, month, year)
       const blob = new Blob([response.data], { type: 'text/csv' })
       const safeUsername = toCsvSafe(supervisor.username, String(supervisor.id))
       triggerDownload(blob, `supervisor_${safeUsername}_${String(month).padStart(2, '0')}_${year}.csv`)
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to download CSV.')
-    } finally {
-      setDownloading(false)
+      return null
+    }
+
+    let headers = ['Date', 'Tasks Assigned', 'Tasks Completed', 'Attendance Submissions', 'Extra Work Logged']
+    let rows = dailyRows.map((row) => [
+      formatDate(row.date),
+      row.tasks_assigned || 0,
+      row.tasks_completed || 0,
+      row.attendance_submissions || 0,
+      row.extra_work_logged || 0,
+    ])
+    let titleSuffix = 'Daily Activity'
+    if (activeSection === 'extra') {
+      titleSuffix = 'Extra Work'
+      headers = ['Date', 'Task Name', 'Area', 'Verified']
+      rows = (extraWork.list || []).map((row) => [
+        formatDate(row.date),
+        row.task_name || '-',
+        row.area_name || '-',
+        row.is_verified ? 'Yes' : 'No',
+      ])
+    } else if (activeSection === 'stock') {
+      titleSuffix = 'Stock Requests'
+      headers = ['Item', 'Qty', 'Status', 'Urgent', 'Date']
+      rows = (stock.list || []).map((row) => [
+        row.item_name || '-',
+        row.quantity || 0,
+        row.status || 'pending',
+        row.is_urgent ? 'Yes' : 'No',
+        formatDate(row.created_at),
+      ])
+    }
+    const safeUsername = toCsvSafe(supervisor.username, String(supervisor.id))
+    return {
+      title: `${toDisplayName(supervisor)} - ${titleSuffix} (${String(month).padStart(2, '0')}/${year})`,
+      filename: `supervisor_${safeUsername}_${titleSuffix.toLowerCase().replace(/\s+/g, '_')}_${String(month).padStart(2, '0')}_${year}`,
+      headers,
+      rows,
     }
   }
 
@@ -160,9 +192,12 @@ function SupervisorReportModal({ open, supervisor, onClose }) {
             {loading ? 'Loading...' : 'Load Report'}
           </Btn>
         </div>
-        <Btn variant="secondary" onClick={downloadCsv} disabled={loading || downloading || !supervisor}>
-          {downloading ? 'Downloading...' : 'Download CSV'}
-        </Btn>
+        <ExportDropdown
+          getData={getSupervisorExportData}
+          disabled={loading || downloading || !supervisor}
+          buttonText="Download Report"
+          align="right"
+        />
       </div>
 
       {report && (
@@ -348,40 +383,29 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
     }
   }
 
-  const downloadCsv = () => {
-    if (!usageItems.length) return
-    const rows = []
-    rows.push(['Report Title', 'Supervisor Inventory Usage Report'])
-    rows.push(['Supervisor', toDisplayName(supervisor)])
-    rows.push(['Pay Code', supervisor.pay_code || '-'])
-    rows.push(['Period', `${String(month).padStart(2, '0')}/${year}`])
-    rows.push([])
-    rows.push(['Item', 'Issued', 'Used', 'Remaining'])
-    usageItems.forEach((item) => {
-      rows.push([
-        item.item_name || '',
-        `${item.issued_quantity || 0} ${item.unit || ''}`,
-        `${item.total_used || 0} ${item.unit || ''} used`,
-        `${item.remaining || 0} ${item.unit || ''}`,
-      ])
-      if (item.logs?.length) {
-        rows.push(['  Date', 'Qty Used', 'Purpose', ''])
-        item.logs.forEach((log) => {
-          rows.push([
-            formatDate(log.date),
-            `${log.quantity_used || 0} ${item.unit || ''}`,
-            log.purpose || '',
-            '',
-          ])
-        })
-      }
-      rows.push([])
-    })
-
-    const csvBody = rows.map((row) => row.map((cell) => toCsvValue(cell)).join(',')).join('\n')
-    const blob = new Blob([`\uFEFF${csvBody}`], { type: 'text/csv' })
+  const getInventoryUsageExportData = () => {
+    if (!usageItems.length) throw new Error('No usage data available.')
     const safeUsername = toCsvSafe(supervisor?.username, String(supervisor?.id || 'supervisor'))
-    triggerDownload(blob, `supervisor_inventory_usage_${safeUsername}_${String(month).padStart(2, '0')}_${year}.csv`)
+    const filename = `supervisor_inventory_usage_${safeUsername}_${String(month).padStart(2, '0')}_${year}`
+    const headers = ['Item', 'Issued Qty', 'Total Used', 'Remaining', 'Usage Logs']
+    const exportRows = usageItems.map((item) => {
+      const logsStr = (item.logs || [])
+        .map((log) => `${formatDate(log.date)}: ${log.quantity_used || 0} ${item.unit || ''} (${log.purpose || 'No purpose'})`)
+        .join('; ')
+      return [
+        item.item_name || '-',
+        `${item.issued_quantity || 0} ${item.unit || ''}`,
+        `${item.total_used || 0} ${item.unit || ''}`,
+        `${item.remaining || 0} ${item.unit || ''}`,
+        logsStr || 'No logs',
+      ]
+    })
+    return {
+      title: `${toDisplayName(supervisor)} - Inventory Usage Report (${String(month).padStart(2, '0')}/${year})`,
+      filename,
+      headers,
+      rows: exportRows,
+    }
   }
 
   const toggleExpanded = (issueId) => {
@@ -462,9 +486,12 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
             {loading ? 'Loading...' : 'Load Usage'}
           </Btn>
         </div>
-        <Btn variant="secondary" onClick={downloadCsv} disabled={loading || !usageItems.length}>
-          Download CSV
-        </Btn>
+        <ExportDropdown
+          getData={getInventoryUsageExportData}
+          disabled={loading || !usageItems.length}
+          buttonText="Download Report"
+          align="right"
+        />
       </div>
 
       {loading ? (
@@ -861,6 +888,26 @@ export default function SupervisorsTab({ hostelOnly = false }) {
                 </option>
               ))}
             </SelectField>
+            <ExportDropdown
+              headers={['Role', 'Name', 'Pay Code', 'Email', 'Username', 'Phone', 'Assigned Areas']}
+              data={visibleUsers.map((u) => {
+                const areasForUser = areaMap[u.id] || []
+                return [
+                  u.role || '-',
+                  toDisplayName(u),
+                  u.pay_code || '-',
+                  u.email || '-',
+                  u.username || '-',
+                  u.phone || '-',
+                  areasForUser.length ? areasForUser.join(', ') : '-',
+                ]
+              })}
+              title="Housekeeping Supervisors & Staff List"
+              filename="housekeeping_supervisors_list"
+              disabled={loading || !visibleUsers.length}
+              buttonText="Download Report"
+              align="right"
+            />
           </div>
         </div>
         {loading ? (

@@ -87,12 +87,7 @@
       <textarea name="notes" rows="2" class="input" style="resize:none" placeholder="Any additional details...">{{ notes }}</textarea>
     </div>
 
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:20px;font-size:13px;color:var(--text-primary)">
-      <input type="checkbox" name="is_urgent" {% if is_urgent %}checked{% endif %}>
-      Mark as urgent
-    </label>
-
-    <div style="display:flex;gap:10px">
+    <div style="display:flex;gap:10px;margin-top:18px">
       <a href="{% url 'mobile_dashboard' %}" style="flex:1">
         <button type="button" class="btn btn-outline btn-full">
           <span class="material-icons-round" style="font-size:18px">close</span>

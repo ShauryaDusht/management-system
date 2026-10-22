@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
-import { Alert, Btn, Card, DataTable, Input, Spinner, StatCard } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Input, Spinner, StatCard } from '../../components/ui'
 import { BarGroupChart } from '../../components/ui/Charts'
 import { asList, getErrorMessage, todayISO, triggerDownload } from '../../shared/utils'
 
@@ -162,6 +162,31 @@ export default function AttendanceTab() {
     triggerDownload(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), `horticulture_attendance_${date}.csv`)
   }
 
+  const getAttendanceExportData = async (format) => {
+    if (format === 'csv') {
+      downloadAttendanceCsv()
+      return null
+    }
+    const headers = ['Area', 'Zone', 'Total Workers', 'Present', 'Absent', 'Attendance %']
+    const rows = visibleRows.map((row) => {
+      const pct = row.total_workers ? Math.round((Number(row.present || 0) / Number(row.total_workers || 1)) * 100) : 0
+      return [
+        row.area_name || '-',
+        row.zone_name || '-',
+        row.total_workers || 0,
+        row.present || 0,
+        row.absent || 0,
+        `${pct}%`,
+      ]
+    })
+    return {
+      title: `Horticulture Attendance Report (${date})`,
+      filename: `horticulture_attendance_${date}`,
+      headers,
+      rows: rows.length ? rows : [['No area attendance records', '-', '-', '-', '-', '-']],
+    }
+  }
+
   return (
     <div>
       <Alert message={error} />
@@ -174,9 +199,13 @@ export default function AttendanceTab() {
           <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
         </Card>
         <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Btn size="sm" variant="secondary" onClick={downloadAttendanceCsv} disabled={loading || (!visibleRows.length && !workers.length)}>
-            Download CSV
-          </Btn>
+          <ExportDropdown
+            size="sm"
+            getData={getAttendanceExportData}
+            disabled={loading || (!visibleRows.length && !workers.length)}
+            buttonText="Download Report"
+            align="right"
+          />
         </Card>
       </div>
 

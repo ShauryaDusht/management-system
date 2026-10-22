@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
 import { usersAPI } from '../../api/users'
-import { Alert, Btn, Card, DataTable, Input, Modal, SelectField, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Input, Modal, SelectField, Spinner } from '../../components/ui'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import { getAreaGroup, todayISO, triggerDownload } from '../../shared/utils'
 
@@ -354,14 +354,32 @@ export default function SectionsTab({ hostelOnly = false }) {
               </>
             )}
             {!hostelOnly && (
-              <Btn
+              <ExportDropdown
                 size="sm"
-                variant="secondary"
-                onClick={downloadAreaInchargeReport}
-                disabled={downloadingReport}
-              >
-                {downloadingReport ? 'Generating Report...' : 'Area Incharge Report CSV'}
-              </Btn>
+                headers={[
+                  'Area Name',
+                  'Caretaker / Supervisor',
+                  'Pay Code',
+                  'Username',
+                  'Phone No',
+                  'Worker Count',
+                  'Status',
+                ]}
+                data={filteredRows.map((row) => [
+                  row.areaName || '-',
+                  row.role === '-' ? '-' : `${row.assignedTo} (${row.role})`,
+                  row.pay_code || '-',
+                  row.username || '-',
+                  row.phone || '-',
+                  row.workerCount ?? 0,
+                  row.role === '-' ? 'Unassigned' : row.isActive ? 'Active' : 'Inactive',
+                ])}
+                title={`Housekeeping Area Incharge Report (${areaClassFilter.toUpperCase()})`}
+                filename={`area_incharge_report_${areaClassFilter}_${new Date().toISOString().slice(0, 10)}`}
+                disabled={!filteredRows.length}
+                buttonText="Download Report"
+                align="right"
+              />
             )}
           </div>
         </div>

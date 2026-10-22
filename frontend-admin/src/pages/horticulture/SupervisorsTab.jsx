@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
 import { inventoryAPI } from '../../api/inventory'
-import { Alert, Badge, Btn, Card, DataTable, Modal, Spinner } from '../../components/ui'
+import { Alert, Badge, Btn, Card, DataTable, ExportDropdown, Modal, Spinner } from '../../components/ui'
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
 import { useMonthYear } from '../../shared/hooks/useMonthYear'
 import { asList, getErrorMessage, triggerDownload } from '../../shared/utils'
@@ -54,6 +54,30 @@ function HorticultureReportModal({ open, supervisor, onClose }) {
     )
   }
 
+  const getSupervisorReportExportData = (format) => {
+    if (!supervisor) throw new Error('Supervisor data not available.')
+    if (format === 'csv') {
+      downloadCsv()
+      return null
+    }
+    return {
+      title: `${toDisplayName(supervisor)} - Horticulture Supervisor Report`,
+      filename: `horticulture_staff_${toCsvSafe(supervisor.username || supervisor.id)}`,
+      headers: ['Metric', 'Value'],
+      rows: [
+        ['Name', toDisplayName(supervisor)],
+        ['Username', supervisor.username || '-'],
+        ['Pay Code', supervisor.pay_code || '-'],
+        ['Phone', supervisor.phone || '-'],
+        ['Workers', String(supervisor.workers_count ?? 0)],
+        ['Tasks This Week', String(supervisor.tasks_logged_this_week ?? 0)],
+        ['Last Login', formatDateTime(supervisor.last_login, 'Never')],
+        ['Zones', asList(supervisor.zone_names).join(', ') || '-'],
+        ['Assigned Areas', asList(supervisor.area_names).join(', ') || '-'],
+      ],
+    }
+  }
+
   return (
     <Modal
       open={open}
@@ -62,7 +86,11 @@ function HorticultureReportModal({ open, supervisor, onClose }) {
       width={760}
       footer={(
         <>
-          <Btn variant="secondary" onClick={downloadCsv} disabled={!supervisor}>Download CSV</Btn>
+          <ExportDropdown
+            getData={getSupervisorReportExportData}
+            disabled={!supervisor}
+            buttonText="Download Report"
+          />
           <Btn variant="ghost" onClick={onClose}>Close</Btn>
         </>
       )}
@@ -153,6 +181,25 @@ function InventoryUsageModal({ open, supervisor, onClose }) {
     triggerDownload(new Blob([`\uFEFF${csv}`], { type: 'text/csv' }), `horticulture_inventory_usage_${toCsvSafe(supervisor?.username)}_${month}_${year}.csv`)
   }
 
+  const getUsageExportData = (format) => {
+    if (!items.length) throw new Error('No usage data available.')
+    if (format === 'csv') {
+      downloadCsv()
+      return null
+    }
+    return {
+      title: `${toDisplayName(supervisor)} - Horticulture Inventory Usage (${String(month).padStart(2, '0')}/${year})`,
+      filename: `horticulture_inventory_usage_${toCsvSafe(supervisor?.username)}_${month}_${year}`,
+      headers: ['Item', 'Issued', 'Used', 'Remaining'],
+      rows: items.map((item) => [
+        item.item_name || '-',
+        `${item.issued_quantity || 0} ${item.unit || ''}`,
+        `${item.total_used || 0} ${item.unit || ''}`,
+        `${item.remaining || 0} ${item.unit || ''}`,
+      ]),
+    }
+  }
+
   return (
     <Modal
       open={open}
@@ -167,7 +214,12 @@ function InventoryUsageModal({ open, supervisor, onClose }) {
           <MonthYearPicker month={month} year={year} onMonthChange={setMonth} onYearChange={setYear} />
           <Btn onClick={load} disabled={loading}>{loading ? 'Loading...' : 'Load Usage'}</Btn>
         </div>
-        <Btn variant="secondary" onClick={downloadCsv} disabled={loading || !items.length}>Download CSV</Btn>
+        <ExportDropdown
+          getData={getUsageExportData}
+          disabled={loading || !items.length}
+          buttonText="Download Report"
+          align="right"
+        />
       </div>
 
       {loading ? (
@@ -250,9 +302,27 @@ export default function SupervisorsTab() {
       <Card noPad>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ fontWeight: 700 }}>Supervisor List</div>
-          <Btn size="sm" variant="secondary" onClick={downloadStaffCsv} disabled={loading || !rows.length}>
-            Download Staff CSV
-          </Btn>
+          <ExportDropdown
+            size="sm"
+            headers={['Name', 'Pay Code', 'Email', 'Username', 'Phone', 'Assigned Areas', 'Zones', 'Workers', 'Tasks This Week', 'Status']}
+            data={rows.map((row) => [
+              toDisplayName(row),
+              row.pay_code || '-',
+              row.email || '-',
+              row.username || '-',
+              row.phone || '-',
+              asList(row.area_names).join(', ') || '-',
+              asList(row.zone_names).join(', ') || '-',
+              row.workers_count ?? 0,
+              row.tasks_logged_this_week ?? 0,
+              row.is_active ? 'Active' : 'Inactive',
+            ])}
+            title="Horticulture Supervisors Directory"
+            filename="horticulture_supervisors_list"
+            disabled={loading || !rows.length}
+            buttonText="Download Report"
+            align="right"
+          />
         </div>
 
         {loading ? (

@@ -435,6 +435,10 @@ class HKStockRequest(models.Model):
     item_name = models.CharField(max_length=200)
     item = models.ForeignKey('inventory.Item', on_delete=models.SET_NULL, null=True, blank=True)
     quantity = models.PositiveIntegerField(default=1)
+    covered_quantity = models.PositiveIntegerField(
+        default=0,
+        help_text='Quantity fulfilled directly from outstanding issued stock.'
+    )
     unit = models.CharField(max_length=50, blank=True)
     reason = models.TextField()
     is_urgent = models.BooleanField(default=False)
@@ -443,6 +447,18 @@ class HKStockRequest(models.Model):
         'inventory.ItemRequest', on_delete=models.SET_NULL, null=True, blank=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def approval_required_quantity(self):
+        return max(0, self.quantity - self.covered_quantity)
+
+    @property
+    def is_fully_covered(self):
+        return self.covered_quantity >= self.quantity and self.quantity > 0
+
+    @property
+    def is_partially_covered(self):
+        return 0 < self.covered_quantity < self.quantity
 
     class Meta:
         ordering = ['-created_at']

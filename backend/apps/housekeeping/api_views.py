@@ -779,6 +779,16 @@ class HKSupervisorSwitchView(APIView):
                 level='success',
             )
 
+            from apps.core.notifications import notify_leave_decision
+            notify_leave_decision(
+                source_staff,
+                effective_date,
+                'approved',
+                area_name='',
+                note='Temporary supervisor switch from admin panel.',
+                leave_id=getattr(assignment, 'leave_request_id', None),
+            )
+
             return Response({
                 'success': True,
                 'mode': mode,
@@ -1384,6 +1394,15 @@ class HKInchargeAssignmentDecisionView(APIView):
                     f'Admin approved you as incharge for {assignment.leave_date}.',
                     level='success',
                 )
+                from apps.core.notifications import notify_leave_decision
+                notify_leave_decision(
+                    assignment.leave_staff,
+                    assignment.leave_date,
+                    'approved',
+                    area_name=getattr(assignment.area, 'name', ''),
+                    note=note,
+                    leave_id=assignment.leave_request_id,
+                )
             else:
                 _push_incharge_notice(
                     assignment.leave_staff,
@@ -1396,6 +1415,15 @@ class HKInchargeAssignmentDecisionView(APIView):
                     assignment,
                     f'Admin rejected your temporary incharge assignment for {assignment.leave_date}.',
                     level='warning',
+                )
+                from apps.core.notifications import notify_leave_decision
+                notify_leave_decision(
+                    assignment.leave_staff,
+                    assignment.leave_date,
+                    'rejected',
+                    area_name=getattr(assignment.area, 'name', ''),
+                    note=note,
+                    leave_id=assignment.leave_request_id,
                 )
 
         return Response(HKInchargeAssignmentSerializer(assignment).data)
@@ -1628,6 +1656,15 @@ class HKStockRequestStatusUpdateView(RetrieveUpdateAPIView):
 
     def get_permissions(self):
         return [IsAdminOrHousekeepingManager()]
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        if instance.inventory_request:
+            from apps.core.notifications import notify_inventory_approved, notify_inventory_rejected
+            if instance.status == 'approved':
+                notify_inventory_approved(instance.inventory_request)
+            elif instance.status == 'rejected':
+                notify_inventory_rejected(instance.inventory_request)
 
 
 class HKAlertListView(ListAPIView):

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
-import { Alert, Btn, Card, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, ExportDropdown, Spinner } from '../../components/ui'
 import { asList, getErrorMessage, triggerDownload } from '../../shared/utils'
 import { formatDate, formatDateTime, getZoneTone, humanizeSeason } from './helpers'
 
@@ -345,9 +345,21 @@ export default function ManagerTab() {
               {summary?.week_start ? formatDate(summary.week_start) : '-'} to {summary?.week_end ? formatDate(summary.week_end) : '-'}
             </div>
           </div>
-          <Btn onClick={exportWeeklyReport} disabled={loading || updatingSeason || !reportRows.length}>
-            Download Weekly CSV
-          </Btn>
+          <ExportDropdown
+            headers={['Zone', 'Area', 'Task', 'Last Done', 'Days Overdue']}
+            data={reportRows.map((row) => [
+              row.zone_name || '-',
+              row.area_name || '-',
+              row.task_name || '-',
+              row.last_done_date ? formatDate(row.last_done_date) : '-',
+              row.days_overdue ?? 0,
+            ])}
+            title={`Horticulture Weekly Summary Report (${summary?.week_start ? formatDate(summary.week_start) : ''} - ${summary?.week_end ? formatDate(summary.week_end) : ''})`}
+            filename={`horticulture_weekly_report_${summary?.week_end || 'current'}`}
+            disabled={loading || updatingSeason || !reportRows.length}
+            buttonText="Download Report"
+            align="right"
+          />
         </div>
       </Card>
 

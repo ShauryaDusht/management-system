@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { Alert, Btn, Card, DataTable, Modal, SelectField, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, Modal, SelectField, Spinner, ExportDropdown } from '../../components/ui'
 import { triggerDownload } from '../../shared/utils'
 
 const MONTH_NAMES = [
@@ -121,21 +121,34 @@ export default function WorkerReportModal({ open, worker, onClose }) {
     }
   }, [open, worker?.id, selectedPeriod])
 
-  const onDownloadCSV = async () => {
-    if (!worker?.id || !selectedPeriod) return
-    setDownloading(true)
-    setError('')
-    try {
+  const getWorkerExportData = async (format) => {
+    if (!worker?.id || !selectedPeriod) throw new Error('Worker report not available.')
+    if (format === 'csv') {
       const response = await hkAPI.downloadWorkerReportCSV(worker.id, selectedPeriod.month, selectedPeriod.year)
       const blob = new Blob([response.data], { type: 'text/csv' })
       triggerDownload(
         blob,
         `worker_${toSafeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}.csv`,
       )
-    } catch (e) {
-      setError(e.response?.data?.detail || 'CSV download failed.')
-    } finally {
-      setDownloading(false)
+      return null
+    }
+    const rows = (snap.task_details || []).map((t) => [
+      formatDate(t.date),
+      t.area_name || '-',
+      t.task_name || '-',
+      toLabel(t.status),
+      formatDateTime(t.assigned_at),
+      formatDateTime(t.completed_at),
+      t.assigned_by || '-',
+      t.completed_by || '-',
+      t.remarks || '-',
+    ])
+    return {
+      title: `Worker Performance Report — ${worker.name}`,
+      subtitle: `Period: ${MONTH_NAMES[(selectedPeriod.month || 1) - 1]} ${selectedPeriod.year} | Area: ${worker.area_name || '-'} | Attendance: ${attendance.attendance_pct || 0}% | Completion: ${tasks.completion_pct || 0}%`,
+      filename: `worker_${toSafeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}`,
+      headers: ['Date', 'Area', 'Task', 'Status', 'Assigned At', 'Completed At', 'Assigned By', 'Completed By', 'Remarks'],
+      rows,
     }
   }
 
@@ -181,9 +194,11 @@ export default function WorkerReportModal({ open, worker, onClose }) {
             Area: <strong>{snap?.worker?.area_name || worker?.area_name || '-'}</strong>
           </div>
         </div>
-        <Btn size="sm" onClick={onDownloadCSV} disabled={loading || downloading || !worker}>
-          {downloading ? 'Downloading...' : 'Download CSV'}
-        </Btn>
+        <ExportDropdown
+          size="sm"
+          getData={getWorkerExportData}
+          disabled={loading || downloading || !worker}
+        />
       </div>
 
       {isCurrentMonth && (

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
-import { Alert, Btn, Card, DataTable, Input, SelectField, Spinner, StatCard } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Input, SelectField, Spinner, StatCard } from '../../components/ui'
 import { generateImageUrl, handleImageError, imageDebugEnabled, imageDebugLog } from '../../shared/imageUrls'
 import { asList, getErrorMessage, todayISO, triggerDownload } from '../../shared/utils'
 
@@ -321,7 +321,26 @@ export default function GalleryTab() {
               placeholder="Search area, task, worker..."
               style={{ width: 250 }}
             />
-            <Btn variant="secondary" onClick={exportPhotoLog} disabled={!filteredPhotos.length}>Export Photo Log</Btn>
+            <ExportDropdown
+              headers={['Date', 'Type', 'Session', 'Worker', 'Area', 'Task', 'Assigned By', 'Photo URL', 'Uploaded At', 'Note']}
+              data={filteredPhotos.map((row) => [
+                row.date || '',
+                row.photo_type || 'after',
+                row.session || '',
+                row.worker_name || '',
+                row.area_name || '',
+                row.task_type_name || '',
+                row.assigned_by_name || '',
+                row.photo_url || '',
+                formatDateTime(row.uploaded_at),
+                row.note || '',
+              ])}
+              title="Horticulture Task Photo Gallery Log"
+              filename="horticulture_gallery_log"
+              disabled={!filteredPhotos.length}
+              buttonText="Download Report"
+              align="right"
+            />
           </div>
         </div>
       </Card>

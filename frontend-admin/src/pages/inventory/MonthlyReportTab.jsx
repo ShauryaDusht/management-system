@@ -13,7 +13,7 @@ import {
   Legend,
 } from 'recharts'
 import api from '../../api/client'
-import { Alert, Badge, Btn, Card, Spinner } from '../../components/ui'
+import { Alert, Badge, Btn, Card, Spinner, ExportDropdown } from '../../components/ui'
 import {
   csvUrl,
   deleteMonthly,
@@ -578,9 +578,27 @@ export default function MonthlyReportTab() {
                     title={`Current Stock Register — ${budgetYear}`}
                     subtitle={`Verified housekeeping consumables. Baseline receipt date: ${stockSummary?.baseline_received_date || '—'} · Latest receipt: ${stockSummary?.latest_receipt_date || '—'}`}
                     right={
-                      <Btn size="sm" variant="secondary" onClick={()=>downloadStockRegister(budgetYear)}>
-                        ⬇ CSV
-                      </Btn>
+                      <ExportDropdown
+                        size="sm"
+                        filename={`inventory_stock_register_${budgetYear}`}
+                        title={`Current Stock Register — ${budgetYear}`}
+                        subtitle={`Total Tracked Items: ${filteredStockRows.length} | Stock Value: ${inr(trackedCurrentStockValue)}`}
+                        headers={['Code', 'Material', 'Category', 'Unit', 'Current Qty', 'Current Value INR', `Received Qty (${budgetYear})`, `Received Value INR (${budgetYear})`, 'Balance %', 'Last Received', 'Status']}
+                        rows={filteredStockRows.map((r) => [
+                          r.item_code || '—',
+                          r.item_name,
+                          r.category,
+                          r.unit,
+                          r.current_quantity,
+                          r.current_value,
+                          r.received_quantity_year,
+                          r.received_value_year,
+                          r.balance_pct_of_year_receipts !== null ? `${r.balance_pct_of_year_receipts}%` : '—',
+                          r.last_received_on || '—',
+                          r.status,
+                        ])}
+                        disabled={budgetLoading || !filteredStockRows.length}
+                      />
                     }
                   />
                   <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
@@ -784,16 +802,26 @@ export default function MonthlyReportTab() {
                       <strong>{inr(totalSnapshotCost)}</strong>
                     </div>
                   </div>
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                    <Btn size="sm" variant="secondary"
-                      onClick={()=>downloadWithToken(csvUrl(selected.id), `procurement_${selected.year}_${String(selected.month).padStart(2,'0')}.csv`)}>
-                      ⬇ CSV
-                    </Btn>
-                    <Btn size="sm" variant="secondary"
-                      onClick={()=>downloadWithToken(pdfUrl(selected.id), `procurement_${selected.year}_${String(selected.month).padStart(2,'0')}.pdf`)}>
-                      ⬇ PDF
-                    </Btn>
-                  </div>
+                  <ExportDropdown
+                    size="sm"
+                    filename={`procurement_${selected.year}_${String(selected.month).padStart(2,'0')}`}
+                    title={`Procurement Snapshot — ${MONTHS[(selected.month||1)-1]} ${selected.year}`}
+                    subtitle={`Total Items: ${filteredItems.length} | Est. Cost: ${inr(totalSnapshotCost)}`}
+                    headers={['Code', 'Item', 'Category', 'Type', 'Stock', 'Threshold', 'Consumed', 'Rec. Order', 'Unit Cost INR', 'Est. Cost INR', 'Status']}
+                    rows={filteredItems.map(r => [
+                      r.item_code || '—',
+                      r.item_name,
+                      r.category,
+                      r.item_type,
+                      r.current_stock,
+                      r.threshold,
+                      r.consumed_last_month ?? 0,
+                      r.recommended_qty ?? 0,
+                      r.unit_cost,
+                      r.estimated_cost,
+                      r.status,
+                    ])}
+                  />
                 </div>
 
                 {/* Filter bar */}
@@ -942,10 +970,27 @@ export default function MonthlyReportTab() {
                         <td style={{ padding:'10px 12px' }}>
                           <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                             <Btn size="sm" variant="ghost" onClick={()=>{ viewReport(r.id); setView('report') }}>View</Btn>
-                            <Btn size="sm" variant="secondary"
-                              onClick={()=>downloadWithToken(csvUrl(r.id),`procurement_${r.year}_${String(r.month).padStart(2,'0')}.csv`)}>CSV</Btn>
-                            <Btn size="sm" variant="secondary"
-                              onClick={()=>downloadWithToken(pdfUrl(r.id),`procurement_${r.year}_${String(r.month).padStart(2,'0')}.pdf`)}>PDF</Btn>
+                            <ExportDropdown
+                              size="sm"
+                              label="Download"
+                              filename={`procurement_${r.year}_${String(r.month).padStart(2,'0')}`}
+                              title={`Procurement Snapshot — ${r.period_label || `${MONTHS[(r.month||1)-1]} ${r.year}`}`}
+                              subtitle={`Items: ${r.total_items || 0} | Est. Cost: ${r.snapshot?.total_estimated_cost ? inr(r.snapshot.total_estimated_cost) : '—'}`}
+                              headers={['Code', 'Item', 'Category', 'Type', 'Stock', 'Threshold', 'Consumed', 'Rec. Order', 'Unit Cost INR', 'Est. Cost INR', 'Status']}
+                              rows={(r.snapshot?.items || []).map((it) => [
+                                it.item_code || '—',
+                                it.item_name,
+                                it.category,
+                                it.item_type,
+                                it.current_stock,
+                                it.threshold,
+                                it.consumed_last_month ?? 0,
+                                it.recommended_qty ?? 0,
+                                it.unit_cost,
+                                it.estimated_cost,
+                                it.status,
+                              ])}
+                            />
                             <Btn size="sm" variant="danger" onClick={()=>setConfirmDelete(r)}>Delete</Btn>
                           </div>
                         </td>

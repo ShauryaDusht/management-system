@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { Alert, Btn, Card, DataTable, Input, Spinner, StatCard } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Input, Spinner, StatCard } from '../../components/ui'
 import { BarGroupChart } from '../../components/ui/Charts'
 import { exportCsv, todayISO, triggerDownload } from '../../shared/utils'
 
@@ -119,22 +119,26 @@ export default function AttendanceTab({ hostelOnly = false }) {
     [areaTypeById, date, visibleRows],
   )
 
-  const downloadCsv = () => {
-    const filterName = areaClassFilter === 'all' ? 'all_areas' : areaClassFilter
-    exportCsv(csvRows, `housekeeping_worker_attendance_${filterName}_${date}.csv`)
-  }
-
-  const downloadAbsentCsv = async () => {
-    setExportingAbsent(true)
-    setError('')
-    try {
+  const getAbsentWorkersExportData = async (format) => {
+    if (format === 'csv') {
       const response = await hkAPI.downloadAbsentAttendanceCSV(date, 'workers')
       const blob = new Blob([response.data], { type: 'text/csv' })
       triggerDownload(blob, `housekeeping_absent_workers_${date}.csv`)
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to export absent workers CSV.')
-    } finally {
-      setExportingAbsent(false)
+      return null
+    }
+    const response = await hkAPI.downloadAbsentAttendanceCSV(date, 'workers')
+    const csvText = typeof response.data === 'string' ? response.data : await response.data.text()
+    const lines = csvText.trim().split('\n').map((l) => l.split(',').map((c) => c.replace(/^"|"$/g, '').trim()))
+    const parsedHeaders = lines[0] || [
+      'Record Type', 'Date', 'Area', 'Worker Name', 'Pay Code', 'Phone',
+      'Worker Type', 'Shift', 'Supervisor', 'First Half Status', 'Second Half Status', 'Absent Reason/Status',
+    ]
+    const parsedRows = lines.slice(1).filter((r) => r.length > 1)
+    return {
+      title: `Absent Workers Report (${date})`,
+      filename: `housekeeping_absent_workers_${date}`,
+      headers: parsedHeaders,
+      rows: parsedRows,
     }
   }
 
@@ -206,22 +210,33 @@ export default function AttendanceTab({ hostelOnly = false }) {
                   </Btn>
                 </>
               )}
-              <Btn
+              <ExportDropdown
                 size="sm"
-                variant="secondary"
-                onClick={downloadCsv}
+                headers={['Date', 'Area Group', 'Area', 'Total Workers', 'Present', 'Absent', 'Attendance Percent']}
+                data={csvRows.map((r) => [
+                  r.Date,
+                  r['Area Group'],
+                  r.Area,
+                  r['Total Workers'],
+                  r.Present,
+                  r.Absent,
+                  r['Attendance Percent'],
+                ])}
+                title={`Housekeeping Worker Attendance (${date})`}
+                filename={`housekeeping_worker_attendance_${areaClassFilter === 'all' ? 'all_areas' : areaClassFilter}_${date}`}
                 disabled={loading || csvRows.length === 0}
-              >
-                CSV Report
-              </Btn>
-              <Btn
+                buttonText="Attendance Report"
+                label="Attendance Report"
+                align="right"
+              />
+              <ExportDropdown
                 size="sm"
-                variant="secondary"
-                onClick={downloadAbsentCsv}
-                disabled={loading || exportingAbsent}
-              >
-                {exportingAbsent ? 'Exporting...' : 'Absent Workers CSV'}
-              </Btn>
+                getData={getAbsentWorkersExportData}
+                disabled={loading}
+                buttonText="Absent Report"
+                label="Absent Report"
+                align="right"
+              />
             </div>
           </div>
           {loading ? (

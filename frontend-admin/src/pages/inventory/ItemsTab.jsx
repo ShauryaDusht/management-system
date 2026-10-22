@@ -13,6 +13,7 @@ import {
   Input,
   Modal,
   SelectField,
+  ExportDropdown,
   Spinner,
   StatCard,
 } from '../../components/ui'
@@ -374,14 +375,27 @@ export default function ItemsTab({ userRole }) {
           >
             Assets
           </Btn>
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Btn
-              variant="secondary"
-              onClick={downloadItemsCsv}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <ExportDropdown
+              filename={`inventory_items_${typeFilter === 'all' ? 'all_items' : typeFilter}_${todayISO()}`}
+              title="Inventory Items Report"
+              subtitle={`Filter: ${typeFilter === 'all' ? 'All Items' : typeFilter.toUpperCase()} | Total: ${csvRows.length}`}
+              headers={['Item Code', 'Item Name', 'Category', 'Type', 'Unit', 'Total Quantity', 'Available Quantity', 'Threshold Quantity', 'Unit Price INR', 'Total Value INR', 'Status']}
+              rows={csvRows.map((r) => [
+                r['Item Code'],
+                r['Item Name'],
+                r['Category'],
+                r['Type'],
+                r['Unit'],
+                r['Total Quantity'],
+                r['Available Quantity'],
+                r['Threshold Quantity'],
+                r['Unit Price INR'],
+                r['Total Value INR'],
+                r['Status'],
+              ])}
               disabled={loading || csvRows.length === 0}
-            >
-              CSV Report
-            </Btn>
+            />
             {canAdmin && (
               <Btn
                 onClick={() => {

@@ -41,14 +41,6 @@ export default function RequestsTab({ userRole }) {
   const [rejectTarget, setRejectTarget] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
 
-  const [issueTarget, setIssueTarget] = useState(null)
-  const [issuing, setIssuing] = useState(false)
-  const [issueForm, setIssueForm] = useState({
-    issued_quantity: 1,
-    expected_return_date: '',
-    notes: '',
-  })
-
   const [actingId, setActingId] = useState(null)
   const [purchaseModal, setPurchaseModal] = useState(false)
   const [savingPurchase, setSavingPurchase] = useState(false)
@@ -125,52 +117,27 @@ export default function RequestsTab({ userRole }) {
     }
   }
 
-  const toggleUrgent = async (request) => {
-    if (!request) return
-    setActingId(request.id)
-    clearError()
-    try {
-      await runAction(async () => {
-        await inventoryAPI.markUrgent(request.id, !request.is_urgent)
-        await reload()
-      }, 'Failed to update urgency.')
-    } finally {
-      setActingId(null)
-    }
-  }
 
-  const openIssueModal = (req) => {
-    setIssueTarget(req)
-    setIssueForm({
-      issued_quantity: Number(req.quantity_requested || 1),
-      expected_return_date: '',
-      notes: '',
-    })
-  }
-
-  const issueRequest = async () => {
-    if (!issueTarget) return
-    setIssuing(true)
+  const issueRequest = async (req) => {
+    if (!req) return
+    setActingId(req.id)
     clearError()
     setSuccess('')
     try {
-      await runAction(async () => {
+      const result = await runAction(async () => {
         const payload = {
-          issued_quantity: Number(issueForm.issued_quantity || 0),
-          notes: issueForm.notes || '',
+          issued_quantity: Number(req.quantity_requested || 1),
+          notes: '',
         }
-        if (issueTarget.item_type === 'asset' && issueForm.expected_return_date) {
-          if (issueForm.expected_return_date < today) {
-            throw new Error('Expected return date cannot be in the past.')
-          }
-          payload.expected_return_date = issueForm.expected_return_date
-        }
-        await inventoryAPI.issueRequest(issueTarget.id, payload)
-        setIssueTarget(null)
-        await reload()
+        await inventoryAPI.issueRequest(req.id, payload)
+        return true
       }, 'Issue failed.')
+      if (!result) return
+      await reload()
+      refreshBadges()
+      setSuccess(`Issued ${req.item_name || 'item'} successfully.`)
     } finally {
-      setIssuing(false)
+      setActingId(null)
     }
   }
 
@@ -180,6 +147,17 @@ export default function RequestsTab({ userRole }) {
     setSuccess('')
     try {
       await runAction(async () => {
+        const blockedLine = form.items.find((line) => {
+          const it = items.find((item) => Number(item.id) === Number(line.item))
+          return it?.is_blocked_for_requester
+        })
+        if (blockedLine) {
+          const it = items.find((item) => Number(item.id) === Number(blockedLine.item))
+          throw new Error(
+            it?.blocked_reason || "Previous item's usage report must be completed before requesting it again."
+          )
+        }
+
         const requestItems = form.items
           .filter((line) => line.item)
           .map((line) => ({
@@ -308,10 +286,10 @@ export default function RequestsTab({ userRole }) {
                       <Btn
                         size="sm"
                         variant="success"
-                        onClick={() => openIssueModal(r)}
+                        onClick={() => issueRequest(r)}
                         disabled={actingId === r.id}
                       >
-                        Issue Item
+                        {actingId === r.id ? 'Issuing...' : 'Issue Item'}
                       </Btn>
                       <Btn
                         size="sm"
@@ -320,14 +298,6 @@ export default function RequestsTab({ userRole }) {
                         disabled={actingId === r.id}
                       >
                         Reject
-                      </Btn>
-                      <Btn
-                        size="sm"
-                        variant={r.is_urgent ? 'secondary' : 'orange'}
-                        onClick={() => toggleUrgent(r)}
-                        disabled={actingId === r.id}
-                      >
-                        {r.is_urgent ? 'Unmark Urgent' : 'Mark Urgent'}
                       </Btn>
                     </div>
                   )}
@@ -369,9 +339,10 @@ export default function RequestsTab({ userRole }) {
                     <Btn
                       size="sm"
                       variant="orange"
-                      onClick={() => openIssueModal(r)}
+                      onClick={() => issueRequest(r)}
+                      disabled={actingId === r.id}
                     >
-                      Issue Item
+                      {actingId === r.id ? 'Issuing...' : 'Issue Item'}
                     </Btn>
                   </div>
                 </div>
@@ -433,10 +404,10 @@ export default function RequestsTab({ userRole }) {
                 <Btn
                   size="sm"
                   variant="orange"
-                  onClick={() => openIssueModal(r)}
+                  onClick={() => issueRequest(r)}
                   disabled={actingId === r.id}
                 >
-                  Issue
+                  {actingId === r.id ? 'Issuing...' : 'Issue'}
                 </Btn>
                 <Btn
                   size="sm"
@@ -446,18 +417,16 @@ export default function RequestsTab({ userRole }) {
                 >
                   Reject
                 </Btn>
-                <Btn
-                  size="sm"
-                  variant={r.is_urgent ? 'secondary' : 'orange'}
-                  onClick={() => toggleUrgent(r)}
-                  disabled={actingId === r.id}
-                >
-                  {r.is_urgent ? 'Unmark' : 'Urgent'}
-                </Btn>
               </div>
             ) : canReview && r.status === 'approved' ? (
-              <Btn key={`act-i-${r.id}`} size="sm" variant="orange" onClick={() => openIssueModal(r)}>
-                Issue
+              <Btn
+                key={`act-i-${r.id}`}
+                size="sm"
+                variant="orange"
+                onClick={() => issueRequest(r)}
+                disabled={actingId === r.id}
+              >
+                {actingId === r.id ? 'Issuing...' : 'Issue'}
               </Btn>
             ) : r.status === 'rejected' && r.rejection_reason ? (
               <span key={`act-r-${r.id}`} style={{ fontSize: 12, color: '#991b1b' }} title={r.rejection_reason}>
@@ -479,7 +448,16 @@ export default function RequestsTab({ userRole }) {
             <Btn variant="ghost" onClick={() => setNewModal(false)}>
               Cancel
             </Btn>
-            <Btn onClick={createRequest} disabled={savingNew}>
+            <Btn
+              onClick={createRequest}
+              disabled={
+                savingNew ||
+                form.items.some((line) => {
+                  const it = items.find((item) => Number(item.id) === Number(line.item))
+                  return it?.is_blocked_for_requester
+                })
+              }
+            >
               {savingNew ? 'Saving...' : 'Submit Request'}
             </Btn>
           </>
@@ -525,8 +503,13 @@ export default function RequestsTab({ userRole }) {
                     >
                       <option value="">Select item</option>
                       {items.map((it) => (
-                        <option key={it.id} value={it.id}>
-                          {it.name} ({it.available_quantity} {it.unit})
+                        <option
+                          key={it.id}
+                          value={it.id}
+                          disabled={it.is_blocked_for_requester}
+                        >
+                          {it.name} ({it.available_quantity != null ? `${it.available_quantity} ${it.unit}` : it.unit})
+                          {it.is_blocked_for_requester ? ' [Blocked: Pending Usage Report]' : ''}
                         </option>
                       ))}
                     </SelectField>
@@ -550,8 +533,19 @@ export default function RequestsTab({ userRole }) {
                   </Field>
                 </div>
                 {selected && (
-                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 6 }}>
-                    Available: {selected.available_quantity} {selected.unit} | Type: {selected.item_type}
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: selected.is_blocked_for_requester ? 'var(--danger, #dc2626)' : 'var(--text-2)',
+                      marginTop: 6,
+                      fontWeight: selected.is_blocked_for_requester ? 600 : 'normal',
+                    }}
+                  >
+                    {selected.is_blocked_for_requester ? (
+                      <>Blocked: {selected.blocked_reason || "Previous item's usage report must be completed before requesting it again."}</>
+                    ) : (
+                      <>Available: {selected.available_quantity} {selected.unit} | Type: {selected.item_type}</>
+                    )}
                   </div>
                 )}
               </div>
@@ -581,16 +575,6 @@ export default function RequestsTab({ userRole }) {
             onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
           />
         </Field>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-          <input
-            type="checkbox"
-            checked={form.is_urgent}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, is_urgent: e.target.checked }))
-            }
-          />
-          Mark as urgent
-        </label>
       </Modal>
 
       <Modal
@@ -722,61 +706,6 @@ export default function RequestsTab({ userRole }) {
             placeholder="Reason for rejection..."
           />
         </Field>
-      </Modal>
-
-      <Modal
-        open={!!issueTarget}
-        onClose={() => setIssueTarget(null)}
-        title={`Issue Item - ${issueTarget?.item_name || ''}`}
-        footer={
-          <>
-            <Btn variant="ghost" onClick={() => setIssueTarget(null)}>
-              Cancel
-            </Btn>
-            <Btn onClick={issueRequest} disabled={issuing}>
-              {issuing ? 'Issuing...' : 'Confirm Issue'}
-            </Btn>
-          </>
-        }
-      >
-        {issueTarget && (
-          <>
-            <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 10 }}>
-              Requested: {issueTarget.quantity_requested} {issueTarget.item_unit || ''} | Available:{' '}
-              {issueTarget.item_available ?? issueTarget.units_remaining ?? 0}{' '}
-              {issueTarget.item_unit || ''}
-            </div>
-            <Field label="Issued Quantity" required>
-              <Input
-                type="number"
-                min="1"
-                max={issueTarget.item_available ?? undefined}
-                value={issueForm.issued_quantity}
-                onChange={(e) =>
-                  setIssueForm((p) => ({ ...p, issued_quantity: e.target.value }))
-                }
-              />
-            </Field>
-            {issueTarget.item_type === 'asset' && (
-              <Field label="Expected Return Date">
-                <Input
-                  type="date"
-                  min={today}
-                  value={issueForm.expected_return_date}
-                  onChange={(e) =>
-                    setIssueForm((p) => ({ ...p, expected_return_date: e.target.value }))
-                  }
-                />
-              </Field>
-            )}
-            <Field label="Notes">
-              <Input
-                value={issueForm.notes}
-                onChange={(e) => setIssueForm((p) => ({ ...p, notes: e.target.value }))}
-              />
-            </Field>
-          </>
-        )}
       </Modal>
     </div>
   )

@@ -1,6 +1,6 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-import { Alert, Badge, Btn, Card, Spinner } from '../../components/ui'
+import { Alert, Badge, Btn, Card, Spinner, ExportDropdown } from '../../components/ui'
 import { TrendArea } from '../../components/ui/Charts'
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
 import { useMonthYear } from '../../shared/hooks/useMonthYear'
@@ -223,23 +223,42 @@ export default function PurchasePlannerPanel() {
     }
   }
 
-  const handleExport = async () => {
+  const getPurchasePlanExportData = async () => {
     let latest = plan
     if (dirty) {
       latest = await handleSave({ silent: true })
-      if (!latest) return
+      if (!latest) throw new Error('Could not save purchase plan.')
     }
-    try {
-      const visibleItemIds = filteredRows.map((row) => row.item_id)
-      if (!visibleItemIds.length) {
-        setError('No visible rows to export.')
-        return
-      }
-      const resp = await downloadPurchasePlanCSV(month, year, visibleItemIds)
-      const suffix = hasActiveFilters ? '_filtered' : ''
-      triggerDownload(resp.data, `purchase_plan_${year}_${String(month).padStart(2, '0')}${suffix}.csv`)
-    } catch {
-      setError('CSV export failed.')
+    const visibleRows = filteredRows.map((r) => [
+      r.item_code || '—',
+      r.item_name || '—',
+      r.category || '—',
+      r.current_stock ?? 0,
+      r.threshold ?? 0,
+      r.purchase_quantity ?? 0,
+      Number(r.unit_cost || 0).toFixed(2),
+      Number(r.estimated_cost || 0).toFixed(2),
+      r.vendor || '—',
+      r.notes || '—',
+    ])
+    const suffix = hasActiveFilters ? '_filtered' : ''
+    return {
+      title: `Monthly Purchase Plan — ${titleFor(month, year)}`,
+      subtitle: `Total Items: ${visibleRows.length} | Estimated Reorder Cost: ${inr(filteredTotalCost)}`,
+      filename: `purchase_plan_${year}_${String(month).padStart(2, '0')}${suffix}`,
+      headers: [
+        'Item Code',
+        'Item Name',
+        'Category',
+        'Current Stock',
+        'Threshold',
+        'Purchase Qty',
+        'Unit Cost INR',
+        'Estimated Cost INR',
+        'Vendor',
+        'Notes',
+      ],
+      rows: visibleRows,
     }
   }
 
@@ -385,9 +404,12 @@ export default function PurchasePlannerPanel() {
             <Btn onClick={() => handleSave()} disabled={loading || saving || !plan} style={{ marginBottom: 14 }}>
               {saving ? 'Saving...' : dirty ? 'Save & Update Stock' : 'Saved'}
             </Btn>
-            <Btn variant="secondary" onClick={handleExport} disabled={loading || saving || !plan} style={{ marginBottom: 14 }}>
-              Export Visible CSV
-            </Btn>
+            <ExportDropdown
+              label="Download Plan"
+              getData={getPurchasePlanExportData}
+              disabled={loading || saving || !plan}
+              style={{ marginBottom: 14 }}
+            />
           </div>
         </div>
 

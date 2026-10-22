@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.functions import Coalesce
 from django.core.validators import MinValueValidator
 from decimal import Decimal
 from django.conf import settings
@@ -398,6 +399,32 @@ class ItemUsageLog(models.Model):
 
     class Meta:
         ordering = ['-logged_at']
+
+    def clean(self):
+        super().clean()
+        if self.quantity_used is not None:
+            if self.quantity_used <= Decimal('0.00'):
+                raise ValidationError({'quantity_used': 'Quantity must be greater than 0.'})
+            if self.issue_id:
+                consumed = ItemUsageLog.objects.filter(issue_id=self.issue_id).exclude(pk=self.pk).aggregate(
+                    total=Coalesce(
+                        models.Sum('quantity_used'),
+                        models.Value(0),
+                        output_field=models.DecimalField(max_digits=10, decimal_places=2),
+                    )
+                )['total'] or Decimal('0.00')
+                issued_qty = Decimal(self.issue.issued_quantity)
+                remaining = issued_qty - consumed
+                if self.quantity_used > remaining:
+                    rem_display = max(Decimal('0.00'), remaining).quantize(Decimal('0.01'))
+                    unit = getattr(getattr(self.issue.request, 'item', None), 'unit', '')
+                    raise ValidationError({
+                        'quantity_used': f'Cannot exceed remaining quantity ({rem_display} {unit}).'.strip()
+                    })
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Usage #{self.id} — {self.quantity_used} for Issue #{self.issue_id}"

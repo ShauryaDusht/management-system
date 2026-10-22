@@ -241,10 +241,22 @@ class HKStockRequestSerializer(serializers.ModelSerializer):
             'area_name',
             'item_name',
             'quantity',
+            'covered_quantity',
+            'approval_required_quantity',
+            'is_fully_covered',
+            'is_partially_covered',
             'unit',
             'reason',
             'is_urgent',
             'status',
+            'created_at',
+        ]
+        read_only_fields = [
+            'id',
+            'covered_quantity',
+            'approval_required_quantity',
+            'is_fully_covered',
+            'is_partially_covered',
             'created_at',
         ]
 

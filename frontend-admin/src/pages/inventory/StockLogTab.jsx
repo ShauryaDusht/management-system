@@ -3,8 +3,7 @@ import { useState } from 'react'
 import { asList } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
-import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField } from '../../components/ui'
-import { exportCsv } from '../../shared/utils'
+import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField, ExportDropdown } from '../../components/ui'
 
 
 
@@ -55,18 +54,23 @@ export default function StockLogTab({ userRole }) {
           }}
         >
           <div style={{ fontWeight: 700 }}>Replenishment Log</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn variant="secondary" onClick={() => exportCsv(entries.map(e => ({
-                'Item Code': e.item_code || '—',
-                'Item': e.item_name || e.item || '—',
-                'Quantity Added': e.quantity_added,
-                'Unit': e.item_unit || '—',
-                'Added By': e.added_by_name || '—',
-                'Date': new Date(e.added_at).toLocaleString('en-IN'),
-                'Notes': e.notes || '—'
-              })), 'replenishment_log.csv')}>
-              Export CSV
-            </Btn>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <ExportDropdown
+              filename="inventory_replenishment_log"
+              title="Inventory Replenishment Log"
+              subtitle={`Total Records: ${entries.length}`}
+              headers={['Item Code', 'Item', 'Quantity Added', 'Unit', 'Added By', 'Date', 'Notes']}
+              rows={entries.map((e) => [
+                e.item_code || '—',
+                e.item_name || e.item || '—',
+                e.quantity_added,
+                e.item_unit || '—',
+                e.added_by_name || '—',
+                new Date(e.added_at).toLocaleString('en-IN'),
+                e.notes || '—',
+              ])}
+              disabled={loading || entries.length === 0}
+            />
             {canAdmin && <Btn onClick={() => setModal(true)}>+ Add Stock</Btn>}
           </div>
         </div>

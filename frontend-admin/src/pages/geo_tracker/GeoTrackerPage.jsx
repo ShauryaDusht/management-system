@@ -23,6 +23,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { geoApi } from '../../api/geoTracker'
 import AdminLayout from '../../layout/AdminLayout'
 import ConfirmModal from '../../shared/components/ConfirmModal'
+import { ExportDropdown } from '../../components/ui'
 
 // ---------------------------------------------------------------------------
 // eFlora of Gandhinagar – Tree Information Database
@@ -48,7 +49,6 @@ const EFLORA_DB = {
   'ficus virens': { local:'Pilkhan', gujarati:'Pilkhan', family:'Moraceae', habit:'Large semi-evergreen tree, 20–35 m', flowering:'Feb–May', uses:'Shade, sacred, wildlife habitat, fodder', description:'Massive fig tree with spreading aerial roots and dense canopy. Leaves turn copper-red before new growth – beautiful seasonal display. Important food source for birds. Sacred in parts of India.', slug:'ficus-virens' },
   'ficus religiosa': { local:'Pipal', gujarati:'Pipal', family:'Moraceae', habit:'Large deciduous tree, 25–35 m', flowering:'Feb–May', uses:'Sacred, medicinal, shade, wildlife', description:'Most sacred tree in Hindu, Buddhist and Jain traditions. Heart-shaped leaves with distinctive long drip-tip. Small figs (syconia) eaten by birds. Lord Buddha attained enlightenment under this tree. Rich in medicinal compounds.', slug:'ficus-religiosa' },
   'ficus benghalensis': { local:'Vad', gujarati:'Vad', family:'Moraceae', habit:'Very large evergreen tree, 20–35 m+', flowering:'March–June', uses:'Sacred, shade, medicinal, timber, wildlife', description:'National tree of India. Famous for its prop roots that form additional trunks, allowing single trees to cover vast areas. The tree in Auroville covers ~2 hectares. Sacred to Hindus. Small red figs attract birds and bats.', slug:'ficus-benghalensis' },
-  'ficus benghalensis': { local:'Vad', gujarati:'Vad', family:'Moraceae', habit:'Very large evergreen tree, 20–35 m+', flowering:'March–June', uses:'Sacred, shade, medicinal, timber, wildlife', description:'National tree of India. Famous for its prop roots that form additional trunks, allowing single trees to cover vast areas. Sacred to Hindus. Small red figs attract birds and bats.', slug:'ficus-benghalensis' },
   'terminalia catappa': { local:'Badam', gujarati:'Jangli Badam', family:'Combretaceae', habit:'Large deciduous tree, 15–25 m', flowering:'March–July', uses:'Edible nuts, shade, medicinal, ornamental', description:'Distinctive tiered horizontal branches. Leaves turn crimson before falling – beautiful autumn display. Almond-like edible kernel inside fruit. Widely planted as a shade tree in coastal and urban areas.', slug:'terminalia-catappa' },
   'mimusops elengi': { local:'Borsali', gujarati:'Borsali', family:'Sapotaceae', habit:'Medium evergreen tree, 10–20 m', flowering:'March–May', uses:'Fragrant flowers, timber, medicinal, ornamental', description:'Dense dark green canopy and highly fragrant small white flowers used in garlands and hair decoration. Timber very hard and durable. Bark and flowers used in Ayurveda. Good avenue tree tolerant of pollution.', slug:'mimusops-elengi' },
   'butea monosperma': { local:'Kesudo', gujarati:'Khakhro', family:'Fabaceae', habit:'Medium deciduous tree, 10–15 m', flowering:'Feb–April', uses:'Sacred (Holi), dye, medicinal, fodder, lac host', description:'Flame of the Forest – brilliant orange-red flowers on leafless branches in spring. Flowers used to make Holi colour. Lac insect host. Leaves used as plates. Bark yields fibre. Important in tribal rituals.', slug:'butea-monosperma' },
@@ -1350,6 +1350,36 @@ export default function GeoTrackerPage() {
     geoApi.exportCsv(params)
   }
 
+  async function getGeoTrackerExportData(format) {
+    const params = {}
+    Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v })
+    if (format === 'csv') {
+      await geoApi.exportCsv(params)
+      return null
+    }
+    const query = new URLSearchParams(params).toString()
+    const url = `/api/geo-tracker/records/export/${query ? '?' + query : ''}`
+    const token = localStorage.getItem('access_token')
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!response.ok) throw new Error('Export failed')
+    const csvText = await response.text()
+    const lines = csvText.trim().split('\n').map((l) => l.split(',').map((c) => c.replace(/^"|"$/g, '').trim()))
+    const parsedHeaders = lines[0] || [
+      'Tracking ID', 'Plant Type', 'Common Name', 'Botanical Name', 'Variety',
+      'Latitude', 'Longitude', 'Zone / Area', 'Height (m)', 'Girth (cm)',
+      'Canopy Span (m)', 'Condition', 'Notes', 'GPS Accuracy (m)', 'Submitted At',
+    ]
+    const parsedRows = lines.slice(1).filter((r) => r.length > 1)
+    return {
+      title: 'IIT Gandhinagar Geo-Tracker Plant Records',
+      filename: 'plant_records',
+      headers: parsedHeaders,
+      rows: parsedRows,
+    }
+  }
+
   function resetView() {
     if (!mapInstanceRef.current) return
     mapInstanceRef.current.setView(CAMPUS_CENTER, 16, { animate: true })
@@ -1550,15 +1580,12 @@ export default function GeoTrackerPage() {
                 }}>{activeFilterCount}</span>
               )}
             </button>
-            <button
-              onClick={handleExport}
-              style={{
-                padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                background: 'var(--green-800)', color: '#fff', border: 'none', cursor: 'pointer',
-              }}
-            >
-              ↓ CSV
-            </button>
+            <ExportDropdown
+              getData={getGeoTrackerExportData}
+              buttonText="Download Report"
+              size="sm"
+              align="right"
+            />
           </div>
         </header>
 

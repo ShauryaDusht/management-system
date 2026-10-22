@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { Alert, Btn, Card, DataTable, Input, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Input, Spinner } from '../../components/ui'
 import { todayISO, triggerDownload } from '../../shared/utils'
 
 const STATUS_META = {
@@ -83,38 +83,26 @@ export default function StaffAttendanceTab() {
     [rows],
   )
 
-  const downloadCsv = () => {
-    if (!rows.length) return
-    const headers = ['Staff Name', 'Pay Code', 'Area', 'Role', 'Date', 'Status']
-    const csvRows = rows.map((r) => [
-      r.staff_name || '-',
-      r.staff_pay_code || '-',
-      Array.isArray(r.staff_areas) && r.staff_areas.length ? r.staff_areas.join('; ') : '-',
-      r.staff_role || '-',
-      r.date || date,
-      r.status || '-',
-    ])
-    const csvBody = [headers, ...csvRows]
-      .map((row) => row.map((cell) => {
-        const s = String(cell ?? '')
-        return /["\,\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-      }).join(','))
-      .join('\n')
-    const blob = new Blob([`\uFEFF${csvBody}`], { type: 'text/csv' })
-    triggerDownload(blob, `staff_attendance_${date}.csv`)
-  }
-
-  const downloadAbsentCsv = async () => {
-    setExportingAbsent(true)
-    setError('')
-    try {
+  const getAbsentExportData = async (format) => {
+    if (format === 'csv') {
       const response = await hkAPI.downloadAbsentAttendanceCSV(date, 'staff')
       const blob = new Blob([response.data], { type: 'text/csv' })
       triggerDownload(blob, `housekeeping_absent_staff_${date}.csv`)
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to export absent CSV.')
-    } finally {
-      setExportingAbsent(false)
+      return null
+    }
+    const absentRows = rows.filter((r) => r.status === 'absent')
+    return {
+      title: `Absent Staff Report (${date})`,
+      filename: `housekeeping_absent_staff_${date}`,
+      headers: ['Staff Name', 'Pay Code', 'Area', 'Role', 'Date', 'Status'],
+      rows: absentRows.map((r) => [
+        r.staff_name || '-',
+        r.staff_pay_code || '-',
+        Array.isArray(r.staff_areas) && r.staff_areas.length ? r.staff_areas.join('; ') : '-',
+        r.staff_role || '-',
+        r.date || date,
+        r.status || 'absent',
+      ]),
     }
   }
 
@@ -128,9 +116,23 @@ export default function StaffAttendanceTab() {
             <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Total Staff</div>
             <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.total}</div>
           </div>
-          <Btn size="sm" variant="secondary" onClick={downloadCsv} disabled={!rows.length}>
-            Export CSV
-          </Btn>
+          <ExportDropdown
+            size="sm"
+            headers={['Staff Name', 'Pay Code', 'Area', 'Role', 'Date', 'Status']}
+            data={rows.map((r) => [
+              r.staff_name || '-',
+              r.staff_pay_code || '-',
+              Array.isArray(r.staff_areas) && r.staff_areas.length ? r.staff_areas.join('; ') : '-',
+              r.staff_role || '-',
+              r.date || date,
+              r.status || '-',
+            ])}
+            title={`Staff Attendance Report (${date})`}
+            filename={`staff_attendance_${date}`}
+            disabled={!rows.length}
+            buttonText="Export"
+            align="right"
+          />
         </Card>
         <Card>
           <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Present</div>
@@ -141,9 +143,13 @@ export default function StaffAttendanceTab() {
             <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Absent</div>
             <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.absent}</div>
           </div>
-          <Btn size="sm" variant="secondary" onClick={downloadAbsentCsv} disabled={exportingAbsent}>
-            {exportingAbsent ? 'Exporting...' : 'Absent CSV'}
-          </Btn>
+          <ExportDropdown
+            size="sm"
+            getData={getAbsentExportData}
+            disabled={totals.absent === 0}
+            buttonText="Absent"
+            align="right"
+          />
         </Card>
         <Card>
           <div style={{ fontSize: 12, color: 'var(--text-3)' }}>On Leave</div>

@@ -4,6 +4,10 @@ __pycache__/
 *.pyd
 .env
 venv/
+.venv/
+pyrefly.toml
+backend/pyrefly.toml
+backend/pyproject.toml
 *.egg-info/
 staticfiles/
 media/

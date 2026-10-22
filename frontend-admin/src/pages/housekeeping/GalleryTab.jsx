@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { Alert, Btn, Card, DataTable, Input, SelectField, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Input, SelectField, Spinner } from '../../components/ui'
 import { triggerDownload } from '../../shared/utils'
 import { generateImageUrl, handleImageError, imageDebugEnabled, imageDebugLog } from '../../shared/imageUrls'
 import ConfirmModal from '../../shared/components/ConfirmModal'
@@ -262,13 +262,26 @@ export default function GalleryTab({ readOnly = false }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [box.open, moveBox])
 
-  const exportCsv = async () => {
-    try {
-      const { data } = await hkAPI.exportGalleryCsv(params)
+  const getGalleryExportData = async (format) => {
+    const { data } = await hkAPI.exportGalleryCsv(params)
+    if (format === 'csv') {
       saveBlob(data, 'housekeeping_gallery_export.csv')
       setSuccess('Gallery log exported.')
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to export CSV.')
+      return null
+    }
+    const csvText = typeof data === 'string' ? data : await data.text()
+    const lines = csvText.trim().split('\n').map((l) => l.split(',').map((c) => c.replace(/^"|"$/g, '').trim()))
+    const parsedHeaders = lines[0] || [
+      'Area', 'Task', 'Staff', 'Pay Code', 'Captured At', 'Method',
+      'Photo URL', 'Thumbnail URL', 'Original Size', 'Saved Size',
+      'Thumb Size', 'Compression Ratio', 'Format',
+    ]
+    const parsedRows = lines.slice(1).filter((r) => r.length > 1)
+    return {
+      title: 'Housekeeping Task Photo Gallery Log',
+      filename: 'housekeeping_gallery_export',
+      headers: parsedHeaders,
+      rows: parsedRows,
     }
   }
 
@@ -339,7 +352,12 @@ export default function GalleryTab({ readOnly = false }) {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 700 }}>{total.toLocaleString()} photos</span>
             <Input value={filters.search} onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))} placeholder="Search area, task, staff..." style={{ width: 250 }} />
-            <Btn variant="secondary" onClick={exportCsv}>Export Photo Log</Btn>
+            <ExportDropdown
+              getData={getGalleryExportData}
+              disabled={total === 0}
+              buttonText="Download Report"
+              align="right"
+            />
           </div>
         </div>
       </Card>

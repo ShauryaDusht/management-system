@@ -32,6 +32,7 @@ def api_root(_request):
             'admin_gallery': '/api/admin/gallery/',
             'horticulture': '/api/horticulture/',
             'reports': '/api/reports/',
+            'notifications': '/api/notifications/',
         }
     )
 

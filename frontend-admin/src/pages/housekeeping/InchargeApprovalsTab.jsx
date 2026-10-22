@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { Alert, Badge, Btn, Card, DataTable, Modal, Spinner } from '../../components/ui'
+import { Alert, Badge, Btn, Card, DataTable, ExportDropdown, Modal, Spinner } from '../../components/ui'
 import { useNotifications } from '../../context/NotificationContext'
 import { triggerDownload } from '../../shared/utils'
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
@@ -148,9 +148,22 @@ function InchargeReportModal({ open, onClose }) {
             {loading ? 'Loading...' : 'Load Report'}
           </Btn>
         </div>
-        <Btn variant="secondary" onClick={downloadCsv} disabled={loading || downloading || !report?.rows?.length}>
-          {downloading ? 'Preparing...' : 'Download CSV'}
-        </Btn>
+        <ExportDropdown
+          headers={['Leave Staff', 'Area', 'Leave Date', 'Incharge', 'Status', 'Admin Note']}
+          data={(report?.rows || []).map((row) => [
+            row.leave_staff || '-',
+            row.cover_all_areas ? 'All Areas' : (row.area || '-'),
+            formatDate(row.leave_date),
+            row.incharge || '-',
+            row.status || '-',
+            row.admin_action_note || '-',
+          ])}
+          title={`Monthly Incharge Report (${String(month).padStart(2, '0')}/${year})`}
+          filename={`incharge_report_${String(month).padStart(2, '0')}_${year}`}
+          disabled={loading || downloading || !report?.rows?.length}
+          buttonText="Download Report"
+          align="right"
+        />
       </div>
 
       {loading ? (

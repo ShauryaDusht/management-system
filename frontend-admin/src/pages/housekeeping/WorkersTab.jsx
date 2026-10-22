@@ -14,6 +14,7 @@ import {
   Modal,
   SelectField,
   Spinner,
+  ExportDropdown,
 } from '../../components/ui'
 import WorkerReportModal from './WorkerReportModal'
 import ConfirmModal from '../../shared/components/ConfirmModal'
@@ -321,9 +322,25 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </SelectField>
-            <Btn size="sm" variant="secondary" onClick={downloadCsv} disabled={loading || csvRows.length === 0}>
-              Download CSV
-            </Btn>
+            <ExportDropdown
+              size="sm"
+              filename={`housekeeping_workers_${safeFilePart(selectedArea ? areaById.get(Number(selectedArea))?.name : `${areaClassFilter === 'all' ? 'all_areas' : areaClassFilter}_areas`)}_${todayISO()}`}
+              title="Housekeeping Workers Directory"
+              subtitle={`Filter: ${selectedArea ? areaById.get(Number(selectedArea))?.name : areaClassFilter} | Total: ${csvRows.length}`}
+              headers={['Area', 'Worker Name', 'Type', 'Shift', 'Supervisor', 'Phone', 'Pay Code', 'Reliever', 'Status']}
+              rows={csvRows.map((w) => [
+                w['Area'],
+                w['Worker Name'],
+                w['Type'],
+                w['Shift'],
+                w['Supervisor'],
+                w['Phone'],
+                w['Pay Code'],
+                w['Reliever'],
+                w['Status'],
+              ])}
+              disabled={loading || csvRows.length === 0}
+            />
             {!readOnly && <Btn size="sm" onClick={openCreate}>+ Add Worker</Btn>}
           </div>
         </div>

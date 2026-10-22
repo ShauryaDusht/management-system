@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
-import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
 import { asList, getErrorMessage, triggerDownload } from '../../shared/utils'
 import { formatDate, getZoneTone, taskChipStyle } from './helpers'
 
@@ -570,14 +570,28 @@ export default function ZonesTab() {
                 <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
                   Showing {visibleTaskTypes.length} of {taskTypes.length} task types
                 </div>
-                <Btn
+                <ExportDropdown
                   size="sm"
-                  variant="secondary"
-                  onClick={downloadAreaTaskCsv}
+                  headers={['Zone', 'Area', 'Area Number', ...visibleTaskTypes.map((taskType) => taskType.name)]}
+                  data={areas.map((area) => {
+                    const taskMap = new Map(asList(area.tasks).map((task) => [String(task.task_type_id), task]))
+                    return [
+                      detail?.zone_name || selectedZone?.name || '',
+                      area.name || '',
+                      area.area_number || '',
+                      ...visibleTaskTypes.map((taskType) => {
+                        const task = taskMap.get(String(taskType.id))
+                        const presentation = getTaskPresentation(task, taskType.threshold)
+                        return `${presentation.label} - ${presentation.detail}`
+                      }),
+                    ]
+                  })}
+                  title={`Horticulture Area Task Status - ${detail?.zone_name || selectedZone?.name || 'Zone'} (${frequencyFilter})`}
+                  filename={`horticulture_area_task_report_${String(detail?.zone_name || selectedZone?.name || 'zone').toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${frequencyFilter}`}
                   disabled={detailLoading || !areas.length || !visibleTaskTypes.length}
-                >
-                  Download CSV
-                </Btn>
+                  buttonText="Download Report"
+                  align="right"
+                />
               </div>
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

@@ -13,6 +13,7 @@ import {
   Modal,
   SelectField,
   Spinner,
+  ExportDropdown,
 } from '../../components/ui'
 import AdminLayout from '../../layout/AdminLayout'
 import ConfirmModal from '../../shared/components/ConfirmModal'
@@ -359,9 +360,23 @@ export default function UsersPage() {
           </SelectField>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, color: 'var(--text-3)' }}>{filtered.length} users</span>
-            <Btn variant="secondary" onClick={downloadCsv} disabled={loading || csvRows.length === 0}>
-              Download CSV
-            </Btn>
+            <ExportDropdown
+              filename={`manage_users_${safeFilePart(roleFilter === 'all' ? 'all_roles' : roleFilter)}_${todayISO()}`}
+              title="Users & Roles Directory"
+              subtitle={`Filter: ${roleFilter === 'all' ? 'All Roles' : roleFilter} | Total: ${csvRows.length}`}
+              headers={['Name', 'Username', 'Pay Code', 'Email', 'Phone', 'Role', 'Area Incharge', 'Status']}
+              rows={csvRows.map((u) => [
+                u['Name'],
+                u['Username'],
+                u['Pay Code'],
+                u['Email'],
+                u['Phone'],
+                u['Role'],
+                u['Area Incharge'],
+                u['Status'],
+              ])}
+              disabled={loading || csvRows.length === 0}
+            />
           </div>
         </div>
 

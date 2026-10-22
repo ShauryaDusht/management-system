@@ -488,10 +488,13 @@ class ReviewRequestView(APIView):
             item = Item.objects.select_for_update().get(pk=item_request.item_id)
             item_request.units_remaining = item.available_quantity
 
-        item_request.approved_by = request.user
-        item_request.reviewed_at = timezone.now()
         item_request.save()
         _sync_horticulture_request_status(item_request, item_request.status)
+        from apps.core.notifications import notify_inventory_approved, notify_inventory_rejected
+        if item_request.status == ItemRequest.Status.APPROVED:
+            notify_inventory_approved(item_request)
+        elif item_request.status == ItemRequest.Status.REJECTED:
+            notify_inventory_rejected(item_request, item_request.rejection_reason)
 
         return Response(ItemRequestSerializer(item_request).data)
 

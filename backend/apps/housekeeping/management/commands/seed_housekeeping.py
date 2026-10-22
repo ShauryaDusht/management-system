@@ -1916,9 +1916,6 @@ Existing account passwords are preserved.
                 return 0
             HKScheduleTemplate.objects.create(
                 area=area,
-                order=order,
-                start_time=start_time,
-                end_time=end_time,
                 task_name=name,
                 frequency=frequency,
                 **defaults,

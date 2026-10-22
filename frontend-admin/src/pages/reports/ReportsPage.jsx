@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import api from '../../api/client'
 import AdminLayout from '../../layout/AdminLayout'
-import { Alert, Badge, Btn, Card, DataTable, Input, Modal, SelectField, Spinner, StatCard, Tabs } from '../../components/ui'
+import { Alert, Badge, Btn, Card, DataTable, Input, Modal, SelectField, Spinner, StatCard, Tabs, ExportDropdown } from '../../components/ui'
 import RequestsReportTab from './RequestsReportTab'
 import { exportCsv, triggerDownload } from '../../shared/utils'
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
@@ -113,9 +113,23 @@ function InventoryReportTab() {
                 <option value="asset">Assets</option>
                 <option value="consumable">Consumables</option>
               </SelectField>
-              <Btn variant="secondary" onClick={() => exportCsv(items, `inventory_report_${statusFilter}_${typeFilter}.csv`)}>
-                Export CSV
-              </Btn>
+              <ExportDropdown
+                filename={`inventory_report_${statusFilter}_${typeFilter}`}
+                title="Inventory Report"
+                subtitle={`Filter: ${statusFilter} / ${typeFilter} | Total Items: ${items.length}`}
+                headers={['Item Code', 'Item', 'Category', 'Type', 'Available', 'Threshold', 'Unit Price INR', 'Status']}
+                rows={items.map((item) => [
+                  item.item_code || '—',
+                  item.name || '-',
+                  item.category || '-',
+                  item.type || '-',
+                  `${item.available_quantity} ${item.unit || ''}`.trim(),
+                  item.threshold_quantity,
+                  `INR ${Number(item.unit_cost || 0).toFixed(2)}`,
+                  item.status || '-',
+                ])}
+                disabled={loading || items.length === 0}
+              />
             </div>
           </div>
         </div>
@@ -703,9 +717,26 @@ function ConsumptionTab() {
                   }}
                 >
                   <div style={{ fontWeight: 700 }}>Item Breakdown</div>
-                  <Btn size="sm" variant="secondary" onClick={downloadItemCsv} disabled={busy}>
-                    Download Item CSV
-                  </Btn>
+                  <ExportDropdown
+                    size="sm"
+                    filename={`consumption_items_${report.year}_${String(report.month).padStart(2, '0')}`}
+                    title={`Item Consumption Breakdown — ${MONTHS[(report.month || 1) - 1]} ${report.year}`}
+                    subtitle={`Total Items: ${itemRows.length}`}
+                    headers={['Item Code', 'Item Name', 'Category', 'Type', 'Stock Added', 'Issued', 'Consumed', 'Est. Cost INR', 'Current Stock', 'Status']}
+                    rows={itemRows.map((row) => [
+                      row.item_code || '—',
+                      row.item_name || '-',
+                      row.category_name || '-',
+                      String(row.item_type || '').replace(/^./, (x) => x.toUpperCase()),
+                      row.stock_added || 0,
+                      row.total_issued || 0,
+                      row.actual_consumed || 0,
+                      `INR ${Number(row.estimated_cost || 0).toFixed(2)}`,
+                      `${row.current_stock || 0} ${row.unit || ''}`.trim(),
+                      row.status || 'in_stock',
+                    ])}
+                    disabled={busy || itemRows.length === 0}
+                  />
                 </div>
                 <DataTable
                   headers={['Item Code', 'Item Name', 'Category', 'Type', 'Stock Added', 'Issued', 'Consumed', 'Total Value (₹)', 'Est. Cost (₹)', 'Current Stock', 'Status']}
@@ -741,9 +772,24 @@ function ConsumptionTab() {
                   }}
                 >
                   <div style={{ fontWeight: 700 }}>Requester Summary</div>
-                  <Btn size="sm" variant="secondary" onClick={downloadRequesterCsv} disabled={busy}>
-                    Download Requester CSV
-                  </Btn>
+                  <ExportDropdown
+                    size="sm"
+                    filename={`consumption_requesters_${report.year}_${String(report.month).padStart(2, '0')}`}
+                    title={`Requester Consumption Summary — ${MONTHS[(report.month || 1) - 1]} ${report.year}`}
+                    subtitle={`Total Requesters: ${requesterRows.length}`}
+                    headers={['Requester', 'Pay Code', 'Role', 'Requests', 'Issued', 'Rejected', 'Urgent', 'Est. Cost INR']}
+                    rows={requesterRows.map((row) => [
+                      row.requester_name || row.username || '-',
+                      row.pay_code || '-',
+                      row.role || '-',
+                      row.total_requests || 0,
+                      row.issued_requests || 0,
+                      row.rejected_requests || 0,
+                      row.urgent_requests || 0,
+                      `INR ${Number(row.total_estimated_cost || 0).toFixed(2)}`,
+                    ])}
+                    disabled={busy || requesterRows.length === 0}
+                  />
                 </div>
                 <DataTable
                   headers={['Requester', 'Pay Code', 'Role', 'Requests', 'Issued', 'Rejected', 'Urgent', 'Est. Cost (₹)', 'Details']}
