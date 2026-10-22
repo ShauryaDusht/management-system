@@ -14,6 +14,7 @@ import JalmandapamReport from '../../modules/wtp/components/JalmandapamReport'
 import ChemReport from '../../modules/wtp/components/ChemReport'
 import BlockReport from '../../modules/wtp/components/BlockReport'
 import MeterManager from '../../modules/wtp/components/MeterManager'
+import GwssbReport from '../../modules/wtp/components/GwssbReport'
 import OperatorsManagerTab from '../../components/OperatorsManagerTab'
 
 import '../../modules/wtp/wtp.css'
@@ -44,6 +45,7 @@ export default function WtpPage() {
       return [
         { key: 'meters', label: 'Meter Readings', icon: '💧' },
         { key: 'enter', label: 'Edit', icon: '✏️' },
+        { key: 'gwssb', label: 'GWSSB Bill', icon: '💰' },
         { key: 'jm', label: 'Jalmandapam Tanks', icon: '🚰' },
         { key: 'chem', label: 'Chlorination & Alum', icon: '🧪' },
         { key: 'blocks', label: 'Block Meters', icon: '🏢' },
@@ -212,6 +214,13 @@ export default function WtpPage() {
               />
             )}
 
+
+            {/* GWSSB Monthly Water Bill (Supervisor only - hidden from Admin) */}
+            {activeTab === 'gwssb' && isSupervisor && (
+              <GwssbReport
+                user={user}
+              />
+            )}
 
             {/* 4. Jalmandapam Tanks Report */}
             {activeTab === 'jm' && !isOperator && (
