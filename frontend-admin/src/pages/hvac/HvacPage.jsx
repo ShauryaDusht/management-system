@@ -23,10 +23,12 @@ export default function HvacPage({ defaultTab }) {
   const isSupervisor = authUser?.role === 'hvac_supervisor';
   const isAdmin = !isOperator && !isSupervisor && !isEngineer;
   const canEdit = isSupervisor || isEngineer || isAdmin || Boolean(authUser?.is_superuser);
+  const isSupervisorOrEngineer = isSupervisor || isEngineer;
 
   // Tabs:
   // - Operator Access: GIVE ENTRY ONLY
-  // - Supervisor / Engineer / Admin Access: Plant Status & Daily Log, Daily Flash Report (R-01), Edit Readings, Monthly Report, Operators
+  // - Supervisor / Engineer Access: Plant Status & Daily Log, Daily Flash Report (R-01), Edit Readings, Monthly Report, Operators
+  // - Admin Access: Plant Status & Daily Log, Daily Flash Report (R-01), Edit Readings, Monthly Report (NO Operators tab)
   const availableTabs = useMemo(() => {
     if (isOperator) {
       return [
@@ -41,11 +43,11 @@ export default function HvacPage({ defaultTab }) {
       tabs.push({ key: 'edit', label: 'Edit Readings', icon: '✏️' });
     }
     tabs.push({ key: 'monthly', label: 'Monthly Report', icon: '📊' });
-    if (canEdit) {
+    if (isSupervisorOrEngineer) {
       tabs.push({ key: 'operators', label: 'Operators (Add / Remove)', icon: '👥' });
     }
     return tabs;
-  }, [isOperator, canEdit]);
+  }, [isOperator, canEdit, isSupervisorOrEngineer]);
 
   const initialTab = searchParams.get('tab') || defaultTab || availableTabs[0].key;
   const [activeTab, setActiveTab] = useState(
@@ -192,7 +194,8 @@ export default function HvacPage({ defaultTab }) {
               />
             )}
 
-            {activeTab === 'operators' && canEdit && (
+            {/* HVAC Operators Management (Supervisor & Engineer only - removed from Admin) */}
+            {activeTab === 'operators' && isSupervisorOrEngineer && (
               <OperatorsManagerTab
                 department="hvac"
                 operatorRole="hvac_operator"

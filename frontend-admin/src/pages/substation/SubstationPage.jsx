@@ -59,7 +59,6 @@ export default function SubstationPage() {
       { key: 'layout', label: 'Substations & Incomers', icon: '🏢' },
       { key: 'flash', label: 'R-01 Flash Report', icon: '⚡' },
       { key: 'reports', label: 'Reports & Analytics', icon: '📊' },
-      { key: 'operators', label: 'Operators (Add / Remove)', icon: '👥' },
     ]
   }, [isOperator, isSupervisor, isAdmin])
 
@@ -353,8 +352,8 @@ export default function SubstationPage() {
               />
             )}
 
-            {/* 6. Substation Operators Management (Supervisor & Admin) */}
-            {activeTab === 'operators' && (isSupervisor || isAdmin) && (
+            {/* 6. Substation Operators Management (Supervisor only - removed from Admin) */}
+            {activeTab === 'operators' && isSupervisor && (
               <OperatorsManagerTab
                 department="electrical"
                 operatorRole="electrical_operator"

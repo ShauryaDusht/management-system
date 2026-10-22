@@ -59,7 +59,6 @@ export default function WtpPage() {
       { key: 'chem', label: 'Chlorination & Alum', icon: '🧪' },
       { key: 'blocks', label: 'Block Meters', icon: '🏢' },
       { key: 'manage', label: 'Add / Manage Meters', icon: '⚙️' },
-      { key: 'operators', label: 'Operators (Add / Remove)', icon: '👥' },
     ]
   }, [isOperator, isSupervisor, isAdmin])
 
@@ -253,8 +252,8 @@ export default function WtpPage() {
               />
             )}
 
-            {/* 8. WTP/STP Operators Management (Supervisor & Admin) */}
-            {activeTab === 'operators' && (isSupervisor || isAdmin) && (
+            {/* 8. WTP/STP Operators Management (Supervisor only - removed from Admin) */}
+            {activeTab === 'operators' && isSupervisor && (
               <OperatorsManagerTab
                 department="wtp"
                 operatorRole="wtp_operator"
