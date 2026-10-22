@@ -31,6 +31,9 @@ def _repair_hostel_office_user(user):
 
 
 def get_react_admin_url(request):
+    if settings.DEBUG:
+        host = request.get_host().split(':')[0]
+        return f'http://{host}:5173/admin/'
     return '/admin/'
 
 
@@ -40,6 +43,12 @@ def get_portal_redirect(user):
     role = getattr(user, 'role', '')
     if role == 'horticulture_manager':
         return '/horticulture/dashboard/'
+    if role in ['plant_engineer', 'electrical_supervisor', 'electrical_operator']:
+        return '/substation/dashboard/'
+    if role in ['wtp_supervisor', 'wtp_operator']:
+        return '/wtp/dashboard/'
+    if role in ['hvac_engineer', 'hvac_supervisor', 'hvac_operator']:
+        return '/hvac/dashboard/'
     if role in ['inventory_manager', 'hk_inventory_manager', 'hostel_office']:
         return '/admin/login/'
     if role == 'supervisor':

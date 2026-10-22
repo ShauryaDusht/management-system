@@ -47,7 +47,55 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
 
-  const navItems = user?.role === 'horticulture_manager'
+  const isPlantEngineer = user?.role === 'plant_engineer'
+
+  const isElectrical =
+    user?.role === 'electrical_supervisor' ||
+    user?.role === 'electrical_operator'
+
+  const isWtp =
+    user?.role === 'wtp_supervisor' ||
+    user?.role === 'wtp_operator'
+
+  const isHvac =
+    user?.role === 'hvac_engineer' ||
+    user?.role === 'hvac_supervisor' ||
+    user?.role === 'hvac_operator'
+
+  const navItems = isPlantEngineer
+    ? [
+      { to: '/substation', icon: 'substation', label: 'Substation Log' },
+      { to: '/wtp', icon: 'water', label: 'WTP/STP Meters' },
+      { to: '/hvac', icon: 'hvac', label: 'HVAC Plant Log' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : isElectrical
+    ? [
+      { to: '/substation', icon: 'substation', label: 'Substation Log' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : isWtp
+    ? [
+      { to: '/wtp', icon: 'water', label: 'WTP/STP Meters' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : isHvac
+    ? [
+      {
+        to: '/hvac',
+        icon: 'hvac',
+        label:
+          user?.role === 'hvac_engineer'
+            ? 'HVAC Engineer Portal'
+            : user?.role === 'hvac_supervisor'
+            ? 'HVAC Supervisor Portal'
+            : user?.role === 'hvac_operator'
+            ? 'HVAC Operator Portal'
+            : 'HVAC Plant Log',
+      },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : user?.role === 'horticulture_manager'
     ? [
       { to: '/dashboard', icon: 'home', label: 'Home' },
       { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
@@ -96,6 +144,9 @@ export default function Sidebar() {
       },
       { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
       { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
+      { to: '/substation', icon: 'substation', label: 'Substation Log' },
+      { to: '/wtp', icon: 'water', label: 'WTP / STP Meters' },
+      { to: '/hvac', icon: 'hvac', label: 'HVAC Plant Log' },
       { to: '/insights', icon: 'insights', label: 'Insights' },
       { to: '/users', icon: 'users', label: 'Manage Users' },
       { to: '/profile', icon: 'users', label: 'Profile' },
@@ -225,7 +276,7 @@ export default function Sidebar() {
               {user?.full_name || user?.username}
             </div>
             <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, textTransform: 'capitalize' }}>
-              {user?.role}
+              {user?.role === 'plant_engineer' ? 'Substation & WTP Engineer' : user?.role === 'electrical_supervisor' ? 'Substation Supervisor' : user?.role === 'wtp_supervisor' ? 'WTP / STP Supervisor' : user?.role === 'hvac_supervisor' ? 'HVAC Engineer' : user?.role === 'hvac_operator' ? 'HVAC Operator' : (user?.role || '').replaceAll('_', ' ')}
             </div>
           </div>
         </div>

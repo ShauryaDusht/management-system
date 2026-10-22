@@ -1,8 +1,13 @@
 import os
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from project root (.env)
+load_dotenv(BASE_DIR.parent / '.env')
+load_dotenv(BASE_DIR / '.env')
 
 
 def env(name, default=None):
@@ -55,6 +60,9 @@ INSTALLED_APPS = [
     'apps.housekeeping',
     'apps.horticulture',
     'apps.geo_tracker',
+    'apps.substation',
+    'apps.wtp_stp',
+    'apps.hvac',
 ]
 
 MIDDLEWARE = [
@@ -88,10 +96,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+db_engine = os.getenv("DB_ENGINE", "django.db.backends.postgresql")
+db_name = os.getenv("DB_NAME", "inventory_db")
+if "sqlite" in db_engine and not os.path.isabs(db_name):
+    db_name = str(BASE_DIR / db_name)
+
 DATABASES = {
     "default": {
-        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
-        "NAME": os.getenv("DB_NAME", "inventory_db"),
+        "ENGINE": db_engine,
+        "NAME": db_name,
         "USER": os.getenv("DB_USER", "postgres"),
         "PASSWORD": os.getenv("DB_PASSWORD", ""),
         "HOST": os.getenv("DB_HOST", "db"),
@@ -121,6 +134,11 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
+
+AUTHENTICATION_BACKENDS = [
+    'apps.users.auth_backend.DualPasswordModelBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

@@ -1,0 +1,109 @@
+{% extends "substation/mobile/base_substation.html" %}
+
+{% block title %}Select Panel | Substation Log{% endblock %}
+
+{% block content %}
+<div class="card" style="background: linear-gradient(135deg, #1e3a30, #2d4a3e); color: #fff; border: none; padding: 14px 16px;">
+  <!-- Live Sync Status & Shift Badge -->
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px;">
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      {% if is_today %}
+        <span class="live-badge">
+          <span class="live-pulse-dot"></span> LIVE CALENDAR
+        </span>
+        <span style="font-size:12px; font-weight:700; color:rgba(255,255,255,.95);">
+          {{ formatted_date }}
+        </span>
+      {% else %}
+        <span class="live-badge-history">
+          &#x1F4C5; History: {{ formatted_date }}
+        </span>
+        <button type="button" class="live-cal-sync-btn" onclick="syncToLiveToday('/substation/entry/', {slot: '{{ current_slot }}'})">
+          &#x26A1; Sync Today
+        </button>
+      {% endif %}
+    </div>
+    <span class="pill pill-blue" style="font-size:11.5px; padding:4px 10px; background:rgba(255,255,255,.2); color:#fff; border:1px solid rgba(255,255,255,.3);">
+      Shift {{ current_slot }}
+    </span>
+  </div>
+
+  <div style="font-size:18px; font-weight:800; margin-top:2px;">
+    Select a Substation Panel
+  </div>
+
+  <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+    <form method="get" action="/substation/entry/" style="margin:0; flex:1;">
+      <input type="hidden" name="slot" value="{{ current_slot }}">
+      <input
+        type="date"
+        name="date"
+        value="{{ current_date }}"
+        onchange="this.form.submit()"
+        class="cal-date-input"
+        style="width:100%;"
+        title="Tap to pick calendar date"
+      >
+    </form>
+    {% if not is_today %}
+      <button type="button" class="live-cal-sync-btn" onclick="syncToLiveToday('/substation/entry/', {slot: '{{ current_slot }}'})" title="Sync live calendar to current date">
+        Today
+      </button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- HT Section -->
+<div style="margin: 16px 4px 8px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#475569; display:flex; align-items:center; gap:6px;">
+  <span style="width:8px; height:8px; border-radius:50%; background:#ef4444; display:inline-block;"></span>
+  High Tension (HT) Panels (11 kV)
+</div>
+
+{% for p in ht_panels %}
+<a href="/substation/entry/{{ p.id }}/?date={{ current_date }}&slot={% if p.is_hourly %}day{% else %}{{ current_slot }}{% endif %}" style="text-decoration:none; color:inherit;">
+  <div class="card" style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; margin-bottom:8px; border-left: 4px solid {% if p.logged %}#10b981{% elif p.is_hourly %}#7c3aed{% else %}#f59e0b{% endif %};">
+    <div>
+      <div style="font-size:14px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:6px;">
+        <span>{{ p.display_name }}</span>
+        {% if p.is_hourly %}
+          <span class="pill pill-purple" style="font-size:10px; padding:2px 8px; background:rgba(124,58,237,.12); color:#7c3aed; border:1px solid rgba(124,58,237,.25);">Hourly (24h)</span>
+        {% endif %}
+      </div>
+      <div style="font-size:12px; color:#64748b; margin-top:2px;">{{ p.subtitle }}</div>
+    </div>
+    <div>
+      {% if p.logged %}
+        <span class="pill pill-green">Logged</span>
+      {% else %}
+        <span class="pill pill-orange">Pending</span>
+      {% endif %}
+    </div>
+  </div>
+</a>
+{% endfor %}
+
+<!-- LT Section -->
+<div style="margin: 20px 4px 8px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#475569; display:flex; align-items:center; gap:6px;">
+  <span style="width:8px; height:8px; border-radius:50%; background:#0284c7; display:inline-block;"></span>
+  Low Tension (LT) Panels (415 V)
+</div>
+
+{% for p in lt_panels %}
+<a href="/substation/entry/{{ p.id }}/?date={{ current_date }}&slot={{ current_slot }}" style="text-decoration:none; color:inherit;">
+  <div class="card" style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; margin-bottom:8px; border-left: 4px solid {% if p.logged %}#10b981{% else %}#0284c7{% endif %};">
+    <div>
+      <div style="font-size:14px; font-weight:800; color:#0f172a;">{{ p.display_name }}</div>
+      <div style="font-size:12px; color:#64748b; margin-top:2px;">{{ p.subtitle }}</div>
+    </div>
+    <div>
+      {% if p.logged %}
+        <span class="pill pill-green">Logged</span>
+      {% else %}
+        <span class="pill pill-blue">Open</span>
+      {% endif %}
+    </div>
+  </div>
+</a>
+{% endfor %}
+
+{% endblock %}

@@ -1,0 +1,378 @@
+{% extends "wtp_stp/mobile/base_wtp.html" %}
+
+{% block title %}Log {{ station.name }}{% endblock %}
+
+{% block content %}
+<!-- Station Entry Live Header Card -->
+<div class="card" style="border-top: 4px solid #0e6f8f;">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+    <div>
+      <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap;">
+        {% if is_today %}
+          <span class="live-badge" style="background:rgba(16,185,129,.12); color:#059669; border-color:rgba(16,185,129,.25);">
+            <span class="live-pulse-dot"></span> LIVE CALENDAR
+          </span>
+        {% else %}
+          <span class="live-badge-history" style="background:rgba(245,158,11,.12); color:#d97706; border-color:rgba(245,158,11,.25);">
+            📅 History
+          </span>
+        {% endif %}
+        <span style="font-size:12px; font-weight:700; color:#475569;">
+          {{ formatted_date }}
+        </span>
+      </div>
+      <div style="font-size: 17px; font-weight: 800; color: #14283a;">{{ station.name }}</div>
+      <div style="font-size: 12px; color: #5b6f7c; margin-top: 2px;">
+        {% if station.id == 'jm' %}
+          {% if shift == 2 %}Final Value (Evening){% else %}Initial Value (Morning){% endif %}
+        {% else %}
+          Shift {{ shift }} Log Entry
+        {% endif %}
+      </div>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+      <a href="/wtp/dashboard/?date={{ date }}" class="btn-outline" style="width: auto; padding: 6px 12px; font-size: 12px; white-space:nowrap;">
+        ← Back
+      </a>
+      {% if not is_today %}
+        <button type="button" class="live-cal-sync-btn" onclick="syncToLiveToday('/wtp/entry/{{ station.id }}/', {shift: '{{ shift }}'})" style="background:#0e6f8f; color:#fff; border:none; padding:4px 8px; font-size:11px; border-radius:6px;">
+          ⚡ Sync Today
+        </button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if is_locked %}
+  <style>
+    .reading-inputs input, .reading-inputs select, .reading-inputs textarea { pointer-events: none; background: #f1f5f9 !important; color: #334155 !important; border-color: #cbd5e1 !important; }
+  </style>
+  <div class="alert-box alert-warn" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;border:1.5px solid #fde68a;background:#fffbeb;color:#92400e;padding:12px 14px">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    <div>
+      <div style="font-weight:800;font-size:13px">Locked (Read-Only Mode)</div>
+      <div style="font-size:12px;margin-top:3px;line-height:1.4">Shift <b>{{ shift }}</b> reading for <b>{{ station.name }}</b> was submitted by <b>{{ existing.by|default:"Operator" }}</b>. Operators have access to <b>enter new readings only</b> and cannot edit already logged shifts. Contact Shift Engineer for any revisions.</div>
+    </div>
+  </div>
+{% elif has_existing and is_supervisor %}
+  <div class="alert-box" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;border:1.5px solid #7dd3fc;background:#f0f9ff;color:#0369a1;padding:10px 14px">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+    <div>
+      <div style="font-weight:800;font-size:12.5px">Shift Engineer Revision Mode</div>
+      <div style="font-size:11.5px">You have supervisory permissions to modify previously logged readings for this shift.</div>
+    </div>
+  </div>
+{% endif %}
+
+<form method="post" action="">
+  {% csrf_token %}
+  <div class="card">
+    <div style="margin-bottom: 12px;">
+      <label>Operator Name</label>
+      <input type="text" name="by" value="{{ existing.by|default:user.get_full_name|default:user.username }}" required {% if is_locked %}readonly style="pointer-events:none;background:#f1f5f9;"{% endif %}>
+    </div>
+
+    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+      <div style="flex: 1;">
+        {% if station.id == 'jm' %}
+          <label>Reading</label>
+          <select onchange="location.href='/wtp/entry/{{ station.id }}/?shift=' + this.value + '&date={{ date }}'">
+            <option value="1" {% if shift == 1 %}selected{% endif %}>Initial Value (Morning)</option>
+            <option value="2" {% if shift == 2 %}selected{% endif %}>Final Value (Evening)</option>
+          </select>
+        {% else %}
+          <label>Shift</label>
+          <select onchange="location.href='/wtp/entry/{{ station.id }}/?shift=' + this.value + '&date={{ date }}'">
+            <option value="1" {% if shift == 1 %}selected{% endif %}>Shift 1 (6 AM - 2 PM)</option>
+            <option value="2" {% if shift == 2 %}selected{% endif %}>Shift 2 (2 PM - 10 PM)</option>
+            <option value="3" {% if shift == 3 %}selected{% endif %}>Shift 3 (10 PM - 6 AM)</option>
+          </select>
+        {% endif %}
+      </div>
+      <div style="flex: 1;">
+        <label>Date</label>
+        <input type="date" value="{{ date }}" onchange="location.href='/wtp/entry/{{ station.id }}/?shift={{ shift }}&date=' + this.value">
+      </div>
+    </div>
+  </div>
+
+  <div class="reading-inputs">
+
+  {% if station.id == 'wtp' %}
+    <div class="card">
+      <div class="card-title">Incoming & Treatment</div>
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+        <div>
+          <label>Incoming Narmada flow meter (MLD)</label>
+          <input type="number" step="any" inputmode="decimal" name="b" value="{{ vals.b|default:'' }}" placeholder="MLD">
+        </div>
+        <div>
+          <label>After treatment flow meter (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="c" value="{{ vals.c|default:'' }}" placeholder="CUM">
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <div style="flex: 1;">
+            <label>pH</label>
+            <input type="number" step="0.01" inputmode="decimal" name="d" value="{{ vals.d|default:'' }}" placeholder="6.5 - 8.5">
+          </div>
+          <div style="flex: 1;">
+            <label>Turbidity (NTU)</label>
+            <input type="number" step="0.001" inputmode="decimal" name="e" value="{{ vals.e|default:'' }}" placeholder="< 2.0 NTU">
+          </div>
+        </div>
+        <div>
+          <label>Clean water pumping station (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="f" value="{{ vals.f|default:'' }}" placeholder="CUM">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">WSC-II Hostel</div>
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+        <div>
+          <label>WSC-2 Hostel – Fresh (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="g" value="{{ vals.g|default:'' }}" placeholder="CUM">
+        </div>
+        <div>
+          <label>WSC-2 Hostel – Recycle (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="h" value="{{ vals.h|default:'' }}" placeholder="CUM">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Chemicals Used This Shift</div>
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+        <div>
+          <label>WTP Chlorine (kg)</label>
+          <input type="number" step="any" inputmode="decimal" name="cl_wtp" value="{{ vals.cl_wtp|default:'' }}" placeholder="kg">
+        </div>
+        <div>
+          <label>WTP Alum (kg)</label>
+          <input type="number" step="any" inputmode="decimal" name="alum" value="{{ vals.alum|default:'' }}" placeholder="kg">
+        </div>
+        <div>
+          <label>WSC-II Chlorine (gm)</label>
+          <input type="number" step="any" inputmode="decimal" name="cl_wsc2" value="{{ vals.cl_wsc2|default:'' }}" placeholder="gm">
+        </div>
+      </div>
+    </div>
+
+  {% elif station.id == 'stp' %}
+    <div class="card">
+      <div class="card-title">WSC-I Flow Meters</div>
+      <div style="font-size: 11px; color: #5b6f7c; margin-top: 2px; margin-bottom: 8px;">
+        ⚡ Multiplier: <b>&times; 3.7854</b> (USMG converts to CUM)
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+        <div>
+          <label>WSC-I Fresh Water (USMG &middot; &times;3.7854 = CUM)</label>
+          <input type="number" step="any" inputmode="decimal" id="meter_i" name="i" value="{{ vals.i|default:'' }}" placeholder="USMG" oninput="calcMultiplier(this, 3.7854, 'hint_i')">
+          <div id="hint_i" style="font-size: 11.5px; color: #0284c7; font-weight: 700; margin-top: 4px;"></div>
+        </div>
+        <div>
+          <label>WSC-I Recycle Water (USMG &middot; &times;3.7854 = CUM)</label>
+          <input type="number" step="any" inputmode="decimal" id="meter_j" name="j" value="{{ vals.j|default:'' }}" placeholder="USMG" oninput="calcMultiplier(this, 3.7854, 'hint_j')">
+          <div id="hint_j" style="font-size: 11.5px; color: #0284c7; font-weight: 700; margin-top: 4px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Sewage Pumping & Ultra Filtration</div>
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+        <div>
+          <label>SPS-1 Housing (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="m" value="{{ vals.m|default:'' }}" placeholder="CUM">
+        </div>
+        <div>
+          <label>SPS-2 Academic (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="n" value="{{ vals.n|default:'' }}" placeholder="CUM">
+        </div>
+        <div>
+          <label>STP SKID-1 (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="o" value="{{ vals.o|default:'' }}" placeholder="CUM">
+        </div>
+        <div>
+          <label>STP SKID-2 (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="p" value="{{ vals.p|default:'' }}" placeholder="CUM">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Irrigation & Chemicals</div>
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+        <div>
+          <label>Housing Irrigation & R/P (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="q" value="{{ vals.q|default:'' }}" placeholder="CUM">
+        </div>
+        <div>
+          <label>Central Vista (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="r" value="{{ vals.r|default:'' }}" placeholder="CUM">
+        </div>
+        <div>
+          <label>Scenic Drive (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="s" value="{{ vals.s|default:'' }}" placeholder="CUM">
+        </div>
+        <div>
+          <label>STP Chlorine (kg)</label>
+          <input type="number" step="any" inputmode="decimal" name="cl_stp" value="{{ vals.cl_stp|default:'' }}" placeholder="kg">
+        </div>
+        <div>
+          <label>WSC-I Chlorine (gm)</label>
+          <input type="number" step="any" inputmode="decimal" name="cl_wsc1" value="{{ vals.cl_wsc1|default:'' }}" placeholder="gm">
+        </div>
+      </div>
+    </div>
+
+  {% elif station.id == 'wsc3' %}
+    <div class="card">
+      <div class="card-title">WSC-III Housing</div>
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+        <div>
+          <label>WSC-3 Housing – Fresh (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="k" value="{{ vals.k|default:'' }}" placeholder="CUM">
+        </div>
+        <div>
+          <label>WSC-3 Housing – Recycle (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="l" value="{{ vals.l|default:'' }}" placeholder="CUM">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Chlorine Used This Shift</div>
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+        <div>
+          <label>WSC-3 Irrigation (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="t" value="{{ vals.t|default:'' }}" placeholder="CUM">
+        </div>
+        <div>
+          <label>WSC-III Chlorine (gm)</label>
+          <input type="number" step="any" inputmode="decimal" name="cl_wsc3" value="{{ vals.cl_wsc3|default:'' }}" placeholder="gm">
+        </div>
+      </div>
+    </div>
+
+  {% elif station.id == 'jm' %}
+    <div class="card">
+      <div class="card-title">Jalmandapam Tank Levels (m)</div>
+      <div style="font-size: 12px; color: #64748b; margin-bottom: 10px;">Max safe capacity: 4.0 m</div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div>
+          <label>Jalmandap-1 (m)</label>
+          <input type="number" step="0.01" inputmode="decimal" name="jm1" value="{{ vals.jm1|default:'' }}" placeholder="metres (4m max)">
+        </div>
+        <div>
+          <label>Jalmandap-2 (m)</label>
+          <input type="number" step="0.01" inputmode="decimal" name="jm2" value="{{ vals.jm2|default:'' }}" placeholder="metres (4m max)">
+        </div>
+        <div>
+          <label>Jalmandap-3 (m)</label>
+          <input type="number" step="0.01" inputmode="decimal" name="jm3" value="{{ vals.jm3|default:'' }}" placeholder="metres (4m max)">
+        </div>
+        <div>
+          <label>Jalmandap-4 (m)</label>
+          <input type="number" step="0.01" inputmode="decimal" name="jm4" value="{{ vals.jm4|default:'' }}" placeholder="metres (4m max)">
+        </div>
+        <div>
+          <label>Jalmandap-5 (m)</label>
+          <input type="number" step="0.01" inputmode="decimal" name="jm5" value="{{ vals.jm5|default:'' }}" placeholder="metres (4m max)">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Flow Meters (Optional)</div>
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+        <div>
+          <label>Jalmandap-1 Meter (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="jm1_m" value="{{ vals.jm1_m|default:'' }}" placeholder="CUM">
+        </div>
+        <div>
+          <label>Jalmandap-2 Meter (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="jm2_m" value="{{ vals.jm2_m|default:'' }}" placeholder="CUM">
+        </div>
+        <div>
+          <label>Jalmandap-3 Meter (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="jm3_m" value="{{ vals.jm3_m|default:'' }}" placeholder="CUM">
+        </div>
+        <div>
+          <label>Jalmandap-4 Meter (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="jm4_m" value="{{ vals.jm4_m|default:'' }}" placeholder="CUM">
+        </div>
+        <div>
+          <label>Jalmandap-5 Meter (CUM)</label>
+          <input type="number" step="any" inputmode="decimal" name="jm5_m" value="{{ vals.jm5_m|default:'' }}" placeholder="CUM">
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if custom_meters %}
+    <div class="card">
+      <div class="card-title">Additional / Custom Meters</div>
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+        {% for cm in custom_meters %}
+          <div>
+            <label>
+              {{ cm.label }} ({{ cm.unit }}{% if cm.coef and cm.coef != 1 %} &middot; &times;{{ cm.coef }} = CUM{% endif %})
+            </label>
+            <input type="number" step="any" inputmode="decimal" id="meter_{{ cm.k }}" name="{{ cm.k }}" value="{{ cm.val|default:'' }}" placeholder="{{ cm.unit }}" {% if cm.coef and cm.coef != 1 %}oninput="calcMultiplier(this, {{ cm.coef }}, 'hint_{{ cm.k }}')"{% endif %}>
+            {% if cm.coef and cm.coef != 1 %}
+              <div id="hint_{{ cm.k }}" style="font-size: 11.5px; color: #0284c7; font-weight: 700; margin-top: 4px;"></div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+  </div> <!-- end .reading-inputs -->
+
+  {% if not is_locked %}
+    <button type="submit" class="btn-primary" style="margin-top: 14px;">
+      {% if has_existing and is_supervisor %}Update Readings (Shift Engineer Revision){% else %}Save Readings{% endif %}
+    </button>
+  {% else %}
+    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 14px;text-align:center;margin-top:14px;color:#166534;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      <span>Shift {{ shift }} Logged &middot; Read-Only</span>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <a href="/wtp/dashboard/?date={{ date }}" class="btn-outline" style="flex:1; text-align:center; text-decoration:none; padding:11px; font-size:13px;">
+        ← Back to Dashboard
+      </a>
+    </div>
+  {% endif %}
+</form>
+
+<script>
+function calcMultiplier(input, coef, targetId) {
+  var el = document.getElementById(targetId);
+  if (!el) return;
+  var val = parseFloat(input.value);
+  if (isNaN(val) || input.value === '') {
+    el.innerText = '';
+  } else {
+    var res = (val * coef).toFixed(2);
+    el.innerText = '≈ ' + res + ' CUM (multiplied by ' + coef + ')';
+  }
+}
+document.addEventListener('DOMContentLoaded', function() {
+  var mi = document.getElementById('meter_i');
+  if (mi && mi.value) calcMultiplier(mi, 3.7854, 'hint_i');
+  var mj = document.getElementById('meter_j');
+  if (mj && mj.value) calcMultiplier(mj, 3.7854, 'hint_j');
+  {% if custom_meters %}
+    {% for cm in custom_meters %}
+      {% if cm.coef and cm.coef != 1 %}
+        var mc = document.getElementById('meter_{{ cm.k }}');
+        if (mc && mc.value) calcMultiplier(mc, {{ cm.coef }}, 'hint_{{ cm.k }}');
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+});
+</script>
+{% endblock %}

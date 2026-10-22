@@ -2,7 +2,22 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { authAPI } from '../api/auth'
 
 const AuthContext = createContext(null)
-const ALLOWED_PORTAL_ROLES = ['admin', 'horticulture_manager', 'hk_inventory_manager', 'hostel_office']
+const ALLOWED_PORTAL_ROLES = [
+  'admin',
+  'plant_engineer',
+  'horticulture_manager',
+  'hk_inventory_manager',
+  'hostel_office',
+  'electrical_supervisor',
+  'electrical_operator',
+  'wtp_supervisor',
+  'wtp_operator',
+  'hvac_engineer',
+  'hvac_supervisor',
+  'hvac_operator',
+  'supervisor',
+  'operator',
+]
 
 function normalizePortalUser(user) {
   if (user?.username === 'hostel.office' || user?.actual_role === 'hostel_office') {

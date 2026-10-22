@@ -503,6 +503,9 @@ export default function DashboardPage() {
     { label: 'Low Stock Alerts',       value: invSummary?.low_stock_count ?? '-',        color: 'var(--orange-600)', sub: `${invSummary?.out_of_stock_count ?? 0} out of stock`,  to: '/inventory?tab=items' },
     { label: 'HK Tasks Today',         value: hkSummary?.total_tasks ?? '-',            color: 'var(--green-700)', sub: `${hkSummary?.completion_pct ?? 0}% completed`,           to: '/housekeeping?tab=overview' },
     { label: 'HK Workers',             value: hkSummary?.total_workers ?? '-',          color: '#3b82f6',          sub: `${hkSummary?.present_today ?? 0} present today`,          to: '/housekeeping?tab=attendance' },
+    { label: 'Substation Panels',      value: '11 HT/LT',                               color: '#0284c7',          sub: 'Campus electrical logging',                               to: '/substation' },
+    { label: 'WTP / STP Meters',       value: '4 Stations + 84 Blocks',                 color: '#0e6f8f',          sub: 'Water treatment & tank logs',                             to: '/wtp' },
+    { label: 'HVAC Plant Log',         value: '7 Chillers · 24h Telemetry',             color: '#15506b',          sub: 'Central AC & energy telemetry',                           to: '/hvac' },
     { label: 'Unreturned Assets',      value: invSummary?.unreturned_assets ?? '-',     color: '#f59e0b',          sub: `${invSummary?.overdue_returns ?? 0} overdue`,             to: '/inventory?tab=issues' },
     { label: 'Pending Stock Req.',     value: hkSummary?.pending_stock_requests ?? '-', color: 'var(--orange-600)', sub: 'Open approval queue',                                    to: '/inventory?tab=requests' },
   ]
@@ -552,6 +555,8 @@ export default function DashboardPage() {
       ]
     : [
         { label: 'Housekeeping', to: '/housekeeping?tab=overview', primary: true },
+        { label: 'Substation Log', to: '/substation' },
+        { label: 'WTP/STP Log', to: '/wtp' },
         { label: 'Inventory', to: '/inventory?tab=items' },
         { label: 'Reports', to: '/inventory?tab=inventory-report' },
       ]

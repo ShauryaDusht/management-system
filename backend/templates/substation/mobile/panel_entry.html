@@ -1,0 +1,436 @@
+{% extends "substation/mobile/base_substation.html" %}
+
+{% block title %}Log {{ display_name }} | Substation Log{% endblock %}
+
+{% block content %}
+<!-- Navigation & Panel Header -->
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+  <a href="/substation/dashboard/?date={{ current_date }}&slot={% if is_hourly %}R1{% else %}{{ current_slot }}{% endif %}" style="display:inline-flex; align-items:center; gap:4px; text-decoration:none; color:#2d4a3e; font-size:13px; font-weight:700;">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    All Panels
+  </a>
+  <div style="display:flex; gap:6px;">
+    <span class="pill {% if sheet.section == 'HT' %}pill-orange{% else %}pill-blue{% endif %}">
+      {{ sheet.section }}
+    </span>
+    {% if is_hourly %}
+      <span class="pill pill-purple" style="font-size:11px; padding:3px 10px; background:rgba(124,58,237,.12); color:#7c3aed; border:1px solid rgba(124,58,237,.25);">
+        ⏱️ Hourly (24h)
+      </span>
+    {% else %}
+      <span class="pill pill-green">
+        Shift {{ current_slot }}
+      </span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Panel Title Card -->
+<div class="card" style="border-top: 4px solid {% if sheet.section == 'HT' %}#f59e0b{% else %}#0284c7{% endif %};">
+  <div style="font-size:18px; font-weight:800; color:#0f172a;">
+    {{ display_name }}
+  </div>
+  <div style="font-size:12px; color:#64748b; margin-top:2px;">
+    {{ subtitle }} • Date: {{ current_date }}
+  </div>
+</div>
+
+{% if is_hourly %}
+  <!-- 24-Hour Selector Strip -->
+  <div style="margin: 10px 4px 4px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#475569;">
+    Select Hour (24 Hours)
+  </div>
+  <div class="hour-strip">
+    {% for h in hours_nav %}
+      <a href="/substation/entry/{{ sheet.id }}/?date={{ current_date }}&hour={{ h.id }}" class="hour-pill {% if h.is_active %}active{% endif %}">
+        <span>{{ h.label }}</span>
+        {% if h.is_logged %}<span class="dot">●</span>{% endif %}
+      </a>
+    {% endfor %}
+  </div>
+
+  <!-- Active Hour Status Card -->
+  <div class="card" style="background:#f8fafc; border:1.5px solid #cbd5e1; padding:12px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
+    <div>
+      <div style="font-size:14px; font-weight:800; color:#0f172a;">
+        ⏱️ Logging Hour: {{ selected_hour_label }}
+      </div>
+      <div style="font-size:11px; color:#64748b; margin-top:2px;">
+        Shift {% if selected_hour_num >= 6 and selected_hour_num < 14 %}R1 (Morning){% elif selected_hour_num >= 14 and selected_hour_num < 22 %}R2 (Evening){% else %}R3 (Night){% endif %}
+      </div>
+    </div>
+    <div>
+      {% if is_current_hour_logged %}
+        <span class="pill pill-green">✓ Hour Logged</span>
+      {% else %}
+        <span class="pill pill-orange">Pending</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if is_locked %}
+    <style>
+      .reading-input-card input, .reading-input-card select { pointer-events: none; background: #f1f5f9 !important; color: #334155 !important; border-color: #cbd5e1 !important; }
+    </style>
+    <div class="alert-box alert-warn" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;border:1.5px solid #fde68a;background:#fffbeb;color:#92400e;padding:12px 14px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div>
+        <div style="font-weight:800;font-size:13px">Locked (Read-Only Mode)</div>
+        <div style="font-size:12px;margin-top:3px;line-height:1.4">Reading for <b>{{ selected_hour_label }}</b> has been recorded by <b>{{ reading.operator|default:"Operator" }}</b>. Operators have access to <b>enter new readings only</b> and cannot edit already logged hours. Contact Shift Engineer for any revisions.</div>
+      </div>
+    </div>
+  {% elif is_current_hour_logged and is_supervisor %}
+    <div class="alert-box" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;border:1.5px solid #7dd3fc;background:#f0f9ff;color:#0369a1;padding:10px 14px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      <div>
+        <div style="font-weight:800;font-size:12.5px">Shift Engineer Revision Mode</div>
+        <div style="font-size:11.5px">You have supervisory permissions to modify previously logged readings for this hour.</div>
+      </div>
+    </div>
+  {% endif %}
+
+  <form method="post" action="/substation/entry/{{ sheet.id }}/">
+    {% csrf_token %}
+    <input type="hidden" name="date" value="{{ current_date }}">
+    <input type="hidden" name="hour" value="{{ selected_hour }}">
+
+    <!-- Operator, Date & Time -->
+    <div class="card">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+        <div>
+          <label>Operator Name</label>
+          <input type="text" name="operator" value="{{ reading.operator|default:operator_default }}" required placeholder="e.g. Ravi Patel">
+        </div>
+        <div>
+          <label style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Reading Date</span>
+            {% if is_today %}
+              <span class="live-badge" style="font-size:10px; padding:2px 6px;">
+                <span class="live-pulse-dot" style="width:5px; height:5px;"></span> LIVE
+              </span>
+            {% else %}
+              <button type="button" onclick="syncToLiveToday('/substation/entry/{{ sheet.id }}/', {hour: '{{ selected_hour }}'})" style="border:none; background:none; color:#0284c7; font-weight:800; font-size:11px; cursor:pointer; padding:0;">
+                &#x26A1; Today
+              </button>
+            {% endif %}
+          </label>
+          <input
+            type="date"
+            name="date"
+            id="hourlyReadingDate"
+            value="{{ current_date }}"
+            onchange="location.href='/substation/entry/{{ sheet.id }}/?date=' + this.value + '&hour={{ selected_hour }}'"
+            style="font-weight:700;"
+            title="Tap to change calendar date"
+          >
+        </div>
+      </div>
+      <div>
+        <label style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Log Time</span>
+          <button type="button" onclick="setLiveTimeToInput('hourlyLogTime')" style="border:none; background:none; color:#0284c7; font-weight:800; font-size:11px; cursor:pointer; padding:0;">
+            &#x26A1; Live Time (Now)
+          </button>
+        </label>
+        <input type="time" id="hourlyLogTime" name="time" value="{{ reading.time|default:current_time }}" required>
+      </div>
+    </div>
+
+    <!-- Feeders & Meters for this Hour -->
+    <div style="margin: 14px 4px 8px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#475569;">
+      Feeders & Meters (Hour {{ selected_hour_label }})
+    </div>
+
+    {% for g in feeder_groups %}
+      <div class="card reading-input-card" style="padding:14px; margin-bottom:12px; border-left: 4px solid {% if g.is_incomer %}#7c3aed{% elif g.is_meter %}#0284c7{% else %}#10b981{% endif %};">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+          <span style="font-size:14px; font-weight:800; color:#0f172a;">
+            {{ g.name }}
+          </span>
+          {% if g.is_incomer %}
+            <span class="pill pill-purple">Incomer</span>
+          {% elif g.is_meter %}
+            <span class="pill pill-blue">Meter</span>
+          {% else %}
+            <span class="pill pill-green">Feeder</span>
+          {% endif %}
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap:10px;">
+          {% for col in g.cols %}
+            <div>
+              <label style="font-size:10px; margin-bottom:3px;">{{ col.label }}</label>
+              <input type="number" step="any" name="col_{{ col.key }}" value="{{ col.val }}" placeholder="{{ col.label }}" style="padding:8px 10px; font-size:13px;">
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+
+    {% if has_torrent_table %}
+      <!-- Torrent Meter Reading Section (Daily Reading) -->
+      <div style="margin: 26px 4px 10px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:7px; background:#0284c7; color:#fff;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </span>
+          <div>
+            <div style="font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:#0369a1;">
+              Torrent Meter Reading
+            </div>
+            <div style="font-size:11px; color:#64748b; font-weight:500;">
+              Daily reading (taken once a day)
+            </div>
+          </div>
+        </div>
+        <button type="submit" name="save_torrent" class="btn-outline" style="font-size:11.5px; padding:7px 14px; font-weight:700; color:#0284c7; border:1.5px solid #0284c7; background:#f0f9ff; border-radius:8px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Torrent
+        </button>
+      </div>
+
+      <div class="card reading-input-card" style="padding:14px; margin-bottom:14px; border-left: 4px solid #0284c7; background:#ffffff;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:14px; font-weight:800; color:#0f172a;">
+              Torrent Meter
+            </span>
+            <span style="font-size:11px; color:#64748b; font-weight:600;">(Once a Day)</span>
+          </div>
+          {% if is_torrent_logged %}
+            <span class="pill pill-green" style="font-size:10.5px;">Logged</span>
+          {% else %}
+            <span class="pill" style="font-size:10.5px; background:#f1f5f9; color:#64748b;">Pending</span>
+          {% endif %}
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap:10px;">
+          {% for col in torrent_cols %}
+            <div {% if col.key == 'elec' %}style="grid-column: 1 / -1;"{% endif %}>
+              <label style="font-size:10.5px; margin-bottom:3px; color:#475569; font-weight:700;">{{ col.label }}</label>
+              {% if col.key == 'time' %}
+                <input type="time" name="torrent_{{ col.key }}" value="{{ col.val }}" style="padding:8px 10px; font-size:13px;">
+              {% elif col.txt %}
+                <input type="text" name="torrent_{{ col.key }}" value="{{ col.val }}" placeholder="e.g. Electrician Name" style="padding:8px 10px; font-size:13px;">
+              {% else %}
+                <input type="number" step="any" name="torrent_{{ col.key }}" value="{{ col.val }}" placeholder="{{ col.label }}" style="padding:8px 10px; font-size:13px;">
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Submit Action Bar -->
+    <div style="position:sticky; bottom:70px; z-index:90; margin-top:16px; background:#f0f4f2; padding-top:8px;">
+      {% if not is_locked %}
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+          <button type="submit" name="save_this_hour" class="btn-primary" style="font-size:14px; padding:13px; box-shadow:0 8px 24px rgba(2,132,199,.4);">
+            {% if is_current_hour_logged and is_supervisor %}Update {{ selected_hour_label }} (Engineer Revision){% else %}Save {{ selected_hour_label }}{% endif %}
+          </button>
+          <button type="submit" name="save_next_hour" class="btn-secondary" style="font-size:14px; padding:13px;">
+            Save & Next Hour →
+          </button>
+        </div>
+      {% else %}
+        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 14px;text-align:center;color:#166534;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Hour {{ selected_hour_label }} Logged &middot; Read-Only</span>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">
+          <a href="/substation/dashboard/?date={{ current_date }}" class="btn-outline" style="text-align:center; text-decoration:none; padding:11px; font-size:13px;">
+            ← Dashboard
+          </a>
+          <a href="/substation/entry/{{ sheet.id }}/?date={{ current_date }}&hour=h{% if selected_hour_num < 23 %}{{ selected_hour_num|add:1|stringformat:'02d' }}{% else %}00{% endif %}" class="btn-secondary" style="text-align:center; text-decoration:none; padding:11px; font-size:13px;">
+            Next Hour →
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </form>
+
+{% else %}
+  <!-- SNAPSHOT SHEET (HT & LT Panels) -->
+  {% if is_locked %}
+    <style>
+      .reading-input-card input, .reading-input-card select { pointer-events: none; background: #f1f5f9 !important; color: #334155 !important; border-color: #cbd5e1 !important; }
+    </style>
+    <div class="alert-box alert-warn" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;border:1.5px solid #fde68a;background:#fffbeb;color:#92400e;padding:12px 14px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div>
+        <div style="font-weight:800;font-size:13px">Locked (Read-Only Mode)</div>
+        <div style="font-size:12px;margin-top:3px;line-height:1.4">Shift <b>{{ current_slot }}</b> reading for <b>{{ display_name }}</b> was submitted by <b>{{ reading.operator|default:"Operator" }}</b>. Operators have access to <b>enter new readings only</b> and cannot edit already logged panels. Contact Shift Engineer for any revisions.</div>
+      </div>
+    </div>
+  {% elif is_panel_logged and is_supervisor %}
+    <div class="alert-box" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;border:1.5px solid #7dd3fc;background:#f0f9ff;color:#0369a1;padding:10px 14px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      <div>
+        <div style="font-weight:800;font-size:12.5px">Shift Engineer Revision Mode</div>
+        <div style="font-size:11.5px">You have supervisory permissions to modify previously logged readings for this panel.</div>
+      </div>
+    </div>
+  {% endif %}
+
+  <form method="post" action="/substation/entry/{{ sheet.id }}/">
+    {% csrf_token %}
+    <input type="hidden" name="date" value="{{ current_date }}">
+    <input type="hidden" name="slot" value="{{ current_slot }}">
+
+    <!-- Shift Selector Pills -->
+    <div class="card" style="padding:12px;">
+      <label>Select Shift</label>
+      <div class="shift-pills" style="margin-top:6px; margin-bottom:0;">
+        {% for s in "R1 R2 R3"|make_list %}
+          {% if s == 'R' or s == '1' or s == '2' or s == '3' or s == ' ' %}
+          {% endif %}
+        {% endfor %}
+        <a href="?date={{ current_date }}&slot=R1" class="shift-pill {% if current_slot == 'R1' %}active{% endif %}">Shift R1 (06:00 - 14:00)</a>
+        <a href="?date={{ current_date }}&slot=R2" class="shift-pill {% if current_slot == 'R2' %}active{% endif %}">Shift R2 (14:00 - 22:00)</a>
+        <a href="?date={{ current_date }}&slot=R3" class="shift-pill {% if current_slot == 'R3' %}active{% endif %}">Shift R3 (22:00 - 06:00)</a>
+      </div>
+    </div>
+
+    <!-- Operator, Date & Time Card -->
+    <div class="card">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+        <div>
+          <label>Operator Name</label>
+          <input type="text" name="operator" value="{{ reading.operator|default:operator_default }}" required placeholder="e.g. Ravi Patel">
+        </div>
+        <div>
+          <label style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Reading Date</span>
+            {% if is_today %}
+              <span class="live-badge" style="font-size:10px; padding:2px 6px;">
+                <span class="live-pulse-dot" style="width:5px; height:5px;"></span> LIVE
+              </span>
+            {% else %}
+              <button type="button" onclick="syncToLiveToday('/substation/entry/{{ sheet.id }}/', {slot: '{{ current_slot }}'})" style="border:none; background:none; color:#0284c7; font-weight:800; font-size:11px; cursor:pointer; padding:0;">
+                &#x26A1; Today
+              </button>
+            {% endif %}
+          </label>
+          <input
+            type="date"
+            name="date"
+            id="snapReadingDate"
+            value="{{ current_date }}"
+            onchange="location.href='/substation/entry/{{ sheet.id }}/?date=' + this.value + '&slot={{ current_slot }}'"
+            style="font-weight:700;"
+            title="Tap to change calendar date"
+          >
+        </div>
+      </div>
+      <div>
+        <label style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Log Time</span>
+          <button type="button" onclick="setLiveTimeToInput('snapLogTime')" style="border:none; background:none; color:#0284c7; font-weight:800; font-size:11px; cursor:pointer; padding:0;">
+            &#x26A1; Live Time (Now)
+          </button>
+        </label>
+        <input type="time" id="snapLogTime" name="time" value="{{ reading.time|default:current_time }}" required>
+      </div>
+    </div>
+
+    <!-- Feeders & Incomers List -->
+    <div style="margin: 14px 4px 8px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#475569;">
+      Feeders & Incomers ({{ rows_count }} entries)
+    </div>
+
+    {% for row in rows %}
+      {% if row.is_header %}
+        <!-- Section Header Banner -->
+        <div style="margin: 16px 2px 8px; padding: 8px 12px; background: #e2e8f0; border-radius: 8px; font-size: 12px; font-weight: 800; color: #334155; display: flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>
+          {{ row.label }}
+        </div>
+      {% else %}
+        <!-- Feeder Input Card -->
+        <div class="card reading-input-card" style="padding:14px; margin-bottom:10px; border-left: 4px solid {% if row.is_incomer %}#7c3aed{% elif row.is_apfc %}#0284c7{% else %}#10b981{% endif %};">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <span style="font-size:13px; font-weight:800; color:#0f172a;">
+              {% if row.sn %}<span style="color:#64748b; font-weight:600; margin-right:4px;">{{ row.sn }}.</span>{% endif %}
+              {{ row.label }}
+            </span>
+            {% if row.is_incomer %}
+              <span class="pill pill-purple">Incomer</span>
+            {% elif row.is_apfc %}
+              <span class="pill pill-blue">APFC</span>
+            {% endif %}
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+            <div>
+              <label style="font-size:10px;">Vol ({% if sheet.section == 'HT' %}kV{% else %}V{% endif %})</label>
+              <input type="number" step="0.01" name="row_{{ row.id }}_vol" value="{{ row.val.vol }}" placeholder="{% if sheet.section == 'HT' %}11.00{% else %}230.0{% endif %}" style="padding:8px 10px; font-size:13px;">
+            </div>
+            <div>
+              <label style="font-size:10px;">PF (0.80 - 1.00)</label>
+              <input type="number" step="0.01" name="row_{{ row.id }}_pf" value="{{ row.val.pf }}" placeholder="0.98" style="padding:8px 10px; font-size:13px;">
+            </div>
+          </div>
+
+          <div style="margin-top:8px;">
+            <label style="font-size:10px;">kWh (Meter Reading)</label>
+            <input type="number" step="any" name="row_{{ row.id }}_kwh" value="{{ row.val.kwh }}" placeholder="e.g. 124560" style="padding:8px 10px; font-size:13px;">
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; margin-top:8px;">
+            <div>
+              <label style="font-size:10px;">A1 (Amps)</label>
+              <input type="number" step="0.1" name="row_{{ row.id }}_a1" value="{{ row.val.a1 }}" placeholder="A1" style="padding:8px 10px; font-size:13px;">
+            </div>
+            <div>
+              <label style="font-size:10px;">A2 (Amps)</label>
+              <input type="number" step="0.1" name="row_{{ row.id }}_a2" value="{{ row.val.a2 }}" placeholder="A2" style="padding:8px 10px; font-size:13px;">
+            </div>
+            <div>
+              <label style="font-size:10px;">A3 (Amps)</label>
+              <input type="number" step="0.1" name="row_{{ row.id }}_a3" value="{{ row.val.a3 }}" placeholder="A3" style="padding:8px 10px; font-size:13px;">
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    <!-- Submit Action Bar -->
+    <div style="position:sticky; bottom:70px; z-index:90; margin-top:16px; background:#f0f4f2; padding-top:8px;">
+      {% if not is_locked %}
+        <button type="submit" class="btn-primary" style="font-size:15px; padding:14px; box-shadow:0 8px 24px rgba(2,132,199,.4);">
+          {% if is_panel_logged and is_supervisor %}Update Shift {{ current_slot }} (Engineer Revision){% else %}Save Shift {{ current_slot }} Reading{% endif %}
+        </button>
+        {% if next_panel %}
+          <button type="submit" name="save_next" class="btn-secondary" style="margin-top:8px; font-size:14px; padding:12px;">
+            Save & Next: {{ next_panel_display_name }} →
+          </button>
+        {% endif %}
+      {% else %}
+        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 14px;text-align:center;color:#166534;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Shift {{ current_slot }} Logged &middot; Read-Only</span>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">
+          <a href="/substation/dashboard/?date={{ current_date }}&slot={{ current_slot }}" class="btn-outline" style="text-align:center; text-decoration:none; padding:11px; font-size:13px;">
+            ← Dashboard
+          </a>
+          {% if next_panel %}
+            <a href="/substation/entry/{{ next_panel.id }}/?date={{ current_date }}&slot={% if next_is_hourly %}day{% else %}{{ current_slot }}{% endif %}" class="btn-secondary" style="text-align:center; text-decoration:none; padding:11px; font-size:13px;">
+              Next Panel →
+            </a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </form>
+{% endif %}
+
+{% if next_panel and not is_hourly %}
+  <div style="margin-top:14px; text-align:center;">
+    <a href="/substation/entry/{{ next_panel.id }}/?date={{ current_date }}&slot={% if next_is_hourly %}day{% else %}{{ current_slot }}{% endif %}" class="btn-outline">
+      Skip to Next: {{ next_panel_display_name }} →
+    </a>
+  </div>
+{% endif %}
+
+{% endblock %}

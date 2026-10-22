@@ -1,0 +1,2332 @@
+[
+  {
+    "id": "sport_ht",
+    "name": "Sport Sub Station",
+    "section": "HT",
+    "full": "Sport Sub Station \u2013 HT Panel",
+    "mode": "snapshot",
+    "slots": [
+      "R1",
+      "R2",
+      "R3"
+    ],
+    "tables": [
+      {
+        "id": "t0",
+        "title": "HT Panel",
+        "cols": [
+          {
+            "k": "vol",
+            "l": "Vol (kV)",
+            "f": "vol",
+            "r": [
+              10,
+              12.5
+            ]
+          },
+          {
+            "k": "pf",
+            "l": "PF",
+            "f": "pf"
+          },
+          {
+            "k": "kwh",
+            "l": "kWh",
+            "f": "kwh"
+          },
+          {
+            "k": "a1",
+            "l": "A1",
+            "f": "a1"
+          },
+          {
+            "k": "a2",
+            "l": "A2",
+            "f": "a2"
+          },
+          {
+            "k": "a3",
+            "l": "A3",
+            "f": "a3"
+          }
+        ],
+        "rows": [
+          {
+            "id": "r0",
+            "sn": "1",
+            "label": "Incomer 1 (Main Infra Ring)",
+            "div": false
+          },
+          {
+            "id": "r1",
+            "sn": "2",
+            "label": "Incomer 2 (Research Park Ring)",
+            "div": true
+          },
+          {
+            "id": "r2",
+            "sn": "3",
+            "label": "Panel 3 O.G. (Block 13)",
+            "div": false
+          },
+          {
+            "id": "r3",
+            "sn": "4",
+            "label": "Panel 4 O.G. (Block 12)",
+            "div": false
+          },
+          {
+            "id": "r4",
+            "sn": "5",
+            "label": "Panel 5 O.G. (Block 11)",
+            "div": false
+          },
+          {
+            "id": "r5",
+            "sn": "6",
+            "label": "Panel 6 O.G. (Sport Complex)",
+            "div": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "rpark_ht",
+    "name": "Research Park Sub Station",
+    "section": "HT",
+    "full": "Research Park Sub Station \u2013 HT Panel",
+    "mode": "snapshot",
+    "slots": [
+      "R1",
+      "R2",
+      "R3"
+    ],
+    "tables": [
+      {
+        "id": "t0",
+        "title": "HT Panel",
+        "cols": [
+          {
+            "k": "vol",
+            "l": "Vol (kV)",
+            "f": "vol",
+            "r": [
+              10,
+              12.5
+            ]
+          },
+          {
+            "k": "pf",
+            "l": "PF",
+            "f": "pf"
+          },
+          {
+            "k": "kwh",
+            "l": "kWh",
+            "f": "kwh"
+          },
+          {
+            "k": "a1",
+            "l": "A1",
+            "f": "a1"
+          },
+          {
+            "k": "a2",
+            "l": "A2",
+            "f": "a2"
+          },
+          {
+            "k": "a3",
+            "l": "A3",
+            "f": "a3"
+          }
+        ],
+        "rows": [
+          {
+            "id": "r0",
+            "sn": "1",
+            "label": "Incomer 1",
+            "div": false
+          },
+          {
+            "id": "r1",
+            "sn": "2",
+            "label": "Incomer 2",
+            "div": true
+          },
+          {
+            "id": "r2",
+            "sn": "3",
+            "label": "Transformer 1",
+            "div": false
+          },
+          {
+            "id": "r3",
+            "sn": "4",
+            "label": "Transformer 2",
+            "div": false
+          },
+          {
+            "id": "r4",
+            "sn": "5",
+            "label": "Transformer 3",
+            "div": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "newht",
+    "name": "Main Infra New HT Panel (hourly)",
+    "full": "Main Infra New HT Panel (hourly)",
+    "section": "HT",
+    "mode": "hourly",
+    "slots": [
+      "day"
+    ],
+    "tables": [
+      {
+        "id": "hr",
+        "title": "Hourly readings",
+        "hourly": true,
+        "rows": [
+          {
+            "id": "h00",
+            "label": "00:00"
+          },
+          {
+            "id": "h01",
+            "label": "01:00"
+          },
+          {
+            "id": "h02",
+            "label": "02:00"
+          },
+          {
+            "id": "h03",
+            "label": "03:00"
+          },
+          {
+            "id": "h04",
+            "label": "04:00"
+          },
+          {
+            "id": "h05",
+            "label": "05:00"
+          },
+          {
+            "id": "h06",
+            "label": "06:00"
+          },
+          {
+            "id": "h07",
+            "label": "07:00"
+          },
+          {
+            "id": "h08",
+            "label": "08:00"
+          },
+          {
+            "id": "h09",
+            "label": "09:00"
+          },
+          {
+            "id": "h10",
+            "label": "10:00"
+          },
+          {
+            "id": "h11",
+            "label": "11:00"
+          },
+          {
+            "id": "h12",
+            "label": "12:00"
+          },
+          {
+            "id": "h13",
+            "label": "13:00"
+          },
+          {
+            "id": "h14",
+            "label": "14:00"
+          },
+          {
+            "id": "h15",
+            "label": "15:00"
+          },
+          {
+            "id": "h16",
+            "label": "16:00"
+          },
+          {
+            "id": "h17",
+            "label": "17:00"
+          },
+          {
+            "id": "h18",
+            "label": "18:00"
+          },
+          {
+            "id": "h19",
+            "label": "19:00"
+          },
+          {
+            "id": "h20",
+            "label": "20:00"
+          },
+          {
+            "id": "h21",
+            "label": "21:00"
+          },
+          {
+            "id": "h22",
+            "label": "22:00"
+          },
+          {
+            "id": "h23",
+            "label": "23:00"
+          }
+        ],
+        "cols": [
+          {
+            "k": "i1_kwh",
+            "f": "kwh",
+            "l": "KWH",
+            "g": "Incomer 1"
+          },
+          {
+            "k": "i1_pf",
+            "f": "pf",
+            "l": "PF",
+            "g": "Incomer 1"
+          },
+          {
+            "k": "i1_a1",
+            "f": "a1",
+            "l": "A1",
+            "g": "Incomer 1"
+          },
+          {
+            "k": "i1_a2",
+            "f": "a2",
+            "l": "A2",
+            "g": "Incomer 1"
+          },
+          {
+            "k": "i1_a3",
+            "f": "a3",
+            "l": "A3",
+            "g": "Incomer 1"
+          },
+          {
+            "k": "i2_kwh",
+            "f": "kwh",
+            "l": "KWH",
+            "g": "Incomer 2"
+          },
+          {
+            "k": "i2_pf",
+            "f": "pf",
+            "l": "PF",
+            "g": "Incomer 2"
+          },
+          {
+            "k": "i2_a1",
+            "f": "a1",
+            "l": "A1",
+            "g": "Incomer 2"
+          },
+          {
+            "k": "i2_a2",
+            "f": "a2",
+            "l": "A2",
+            "g": "Incomer 2"
+          },
+          {
+            "k": "i2_a3",
+            "f": "a3",
+            "l": "A3",
+            "g": "Incomer 2"
+          },
+          {
+            "k": "hos_kwh",
+            "f": "kwh",
+            "l": "KWH",
+            "g": "OG1 (HOSTEL-WTP-MRS)"
+          },
+          {
+            "k": "hos_pf",
+            "f": "pf",
+            "l": "PF",
+            "g": "OG1 (HOSTEL-WTP-MRS)"
+          },
+          {
+            "k": "hos_a1",
+            "f": "a1",
+            "l": "A1",
+            "g": "OG1 (HOSTEL-WTP-MRS)"
+          },
+          {
+            "k": "hos_a2",
+            "f": "a2",
+            "l": "A2",
+            "g": "OG1 (HOSTEL-WTP-MRS)"
+          },
+          {
+            "k": "hos_a3",
+            "f": "a3",
+            "l": "A3",
+            "g": "OG1 (HOSTEL-WTP-MRS)"
+          },
+          {
+            "k": "hmms_kwh",
+            "f": "kwh",
+            "l": "KWH",
+            "g": "OG 4(MRS-WTP-Hostel)"
+          },
+          {
+            "k": "hmms_pf",
+            "f": "pf",
+            "l": "PF",
+            "g": "OG 4(MRS-WTP-Hostel)"
+          },
+          {
+            "k": "hmms_a1",
+            "f": "a1",
+            "l": "A1",
+            "g": "OG 4(MRS-WTP-Hostel)"
+          },
+          {
+            "k": "hmms_a2",
+            "f": "a2",
+            "l": "A2",
+            "g": "OG 4(MRS-WTP-Hostel)"
+          },
+          {
+            "k": "hmms_a3",
+            "f": "a3",
+            "l": "A3",
+            "g": "OG 4(MRS-WTP-Hostel)"
+          },
+          {
+            "k": "spa_kwh",
+            "f": "kwh",
+            "l": "KWH",
+            "g": "OG3 SPR Research Park (1)"
+          },
+          {
+            "k": "spa_pf",
+            "f": "pf",
+            "l": "PF",
+            "g": "OG3 SPR Research Park (1)"
+          },
+          {
+            "k": "spa_a1",
+            "f": "a1",
+            "l": "A1",
+            "g": "OG3 SPR Research Park (1)"
+          },
+          {
+            "k": "spa_a2",
+            "f": "a2",
+            "l": "A2",
+            "g": "OG3 SPR Research Park (1)"
+          },
+          {
+            "k": "spa_a3",
+            "f": "a3",
+            "l": "A3",
+            "g": "OG3 SPR Research Park (1)"
+          },
+          {
+            "k": "spb_kwh",
+            "f": "kwh",
+            "l": "KWH",
+            "g": "OG5 SPR Research Park (2)"
+          },
+          {
+            "k": "spb_pf",
+            "f": "pf",
+            "l": "PF",
+            "g": "OG5 SPR Research Park (2)"
+          },
+          {
+            "k": "spb_a1",
+            "f": "a1",
+            "l": "A1",
+            "g": "OG5 SPR Research Park (2)"
+          },
+          {
+            "k": "spb_a2",
+            "f": "a2",
+            "l": "A2",
+            "g": "OG5 SPR Research Park (2)"
+          },
+          {
+            "k": "spb_a3",
+            "f": "a3",
+            "l": "A3",
+            "g": "OG5 SPR Research Park (2)"
+          },
+          {
+            "k": "sp1_kwh",
+            "f": "kwh",
+            "l": "KWH",
+            "g": "Spare 2"
+          },
+          {
+            "k": "sp1_pf",
+            "f": "pf",
+            "l": "PF",
+            "g": "Spare 2"
+          },
+          {
+            "k": "sp1_a1",
+            "f": "a1",
+            "l": "A1",
+            "g": "Spare 2"
+          },
+          {
+            "k": "sp1_a2",
+            "f": "a2",
+            "l": "A2",
+            "g": "Spare 2"
+          },
+          {
+            "k": "sp1_a3",
+            "f": "a3",
+            "l": "A3",
+            "g": "Spare 2"
+          },
+          {
+            "k": "sp2_kwh",
+            "f": "kwh",
+            "l": "KWH",
+            "g": "Spare 6"
+          },
+          {
+            "k": "sp2_pf",
+            "f": "pf",
+            "l": "PF",
+            "g": "Spare 6"
+          },
+          {
+            "k": "sp2_a1",
+            "f": "a1",
+            "l": "A1",
+            "g": "Spare 6"
+          },
+          {
+            "k": "sp2_a2",
+            "f": "a2",
+            "l": "A2",
+            "g": "Spare 6"
+          },
+          {
+            "k": "sp2_a3",
+            "f": "a3",
+            "l": "A3",
+            "g": "Spare 6"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "oldht",
+    "name": "Main Infra Old HT Panel (hourly)",
+    "full": "Main Infra Old HT Panel (hourly)",
+    "section": "HT",
+    "mode": "hourly",
+    "slots": [
+      "day"
+    ],
+    "tables": [
+      {
+        "id": "hr",
+        "title": "Hourly readings",
+        "hourly": true,
+        "rows": [
+          {
+            "id": "h00",
+            "label": "00:00"
+          },
+          {
+            "id": "h01",
+            "label": "01:00"
+          },
+          {
+            "id": "h02",
+            "label": "02:00"
+          },
+          {
+            "id": "h03",
+            "label": "03:00"
+          },
+          {
+            "id": "h04",
+            "label": "04:00"
+          },
+          {
+            "id": "h05",
+            "label": "05:00"
+          },
+          {
+            "id": "h06",
+            "label": "06:00"
+          },
+          {
+            "id": "h07",
+            "label": "07:00"
+          },
+          {
+            "id": "h08",
+            "label": "08:00"
+          },
+          {
+            "id": "h09",
+            "label": "09:00"
+          },
+          {
+            "id": "h10",
+            "label": "10:00"
+          },
+          {
+            "id": "h11",
+            "label": "11:00"
+          },
+          {
+            "id": "h12",
+            "label": "12:00"
+          },
+          {
+            "id": "h13",
+            "label": "13:00"
+          },
+          {
+            "id": "h14",
+            "label": "14:00"
+          },
+          {
+            "id": "h15",
+            "label": "15:00"
+          },
+          {
+            "id": "h16",
+            "label": "16:00"
+          },
+          {
+            "id": "h17",
+            "label": "17:00"
+          },
+          {
+            "id": "h18",
+            "label": "18:00"
+          },
+          {
+            "id": "h19",
+            "label": "19:00"
+          },
+          {
+            "id": "h20",
+            "label": "20:00"
+          },
+          {
+            "id": "h21",
+            "label": "21:00"
+          },
+          {
+            "id": "h22",
+            "label": "22:00"
+          },
+          {
+            "id": "h23",
+            "label": "23:00"
+          }
+        ],
+        "cols": [
+          {
+            "k": "tvm_pf",
+            "f": "pf",
+            "l": "PF",
+            "g": "HTTVM Meter"
+          },
+          {
+            "k": "tvm_mwh",
+            "f": "kwh",
+            "l": "MWH",
+            "g": "HTTVM Meter"
+          },
+          {
+            "k": "tvm_mvah",
+            "f": "mvah",
+            "l": "MVAH",
+            "g": "HTTVM Meter"
+          },
+          {
+            "k": "tvm_mwh2",
+            "f": "kwh",
+            "l": "MWH 2",
+            "g": "HTTVM Meter"
+          },
+          {
+            "k": "tvm_cmd",
+            "f": "cmd",
+            "l": "CMD MW",
+            "g": "HTTVM Meter"
+          },
+          {
+            "k": "mfm_vol",
+            "f": "vol",
+            "l": "VOL",
+            "g": "MFM Meter"
+          },
+          {
+            "k": "mfm_kwh",
+            "f": "kwh",
+            "l": "KWH",
+            "g": "MFM Meter"
+          },
+          {
+            "k": "mfm_pf",
+            "f": "pf",
+            "l": "PF",
+            "g": "MFM Meter"
+          },
+          {
+            "k": "mfm_a1",
+            "f": "a1",
+            "l": "A1",
+            "g": "MFM Meter"
+          },
+          {
+            "k": "mfm_a2",
+            "f": "a2",
+            "l": "A2",
+            "g": "MFM Meter"
+          },
+          {
+            "k": "mfm_a3",
+            "f": "a3",
+            "l": "A3",
+            "g": "MFM Meter"
+          },
+          {
+            "k": "spc_kwh",
+            "f": "kwh",
+            "l": "KWH",
+            "g": "OG 1/Sport Complex (1)"
+          },
+          {
+            "k": "spc_pf",
+            "f": "pf",
+            "l": "PF",
+            "g": "OG 1/Sport Complex (1)"
+          },
+          {
+            "k": "spc_a1",
+            "f": "a1",
+            "l": "A1",
+            "g": "OG 1/Sport Complex (1)"
+          },
+          {
+            "k": "spc_a2",
+            "f": "a2",
+            "l": "A2",
+            "g": "OG 1/Sport Complex (1)"
+          },
+          {
+            "k": "spc_a3",
+            "f": "a3",
+            "l": "A3",
+            "g": "OG 1/Sport Complex (1)"
+          },
+          {
+            "k": "spc2_kwh",
+            "f": "kwh",
+            "l": "KWH",
+            "g": "OG 2/Sport Complex (2)"
+          },
+          {
+            "k": "spc2_pf",
+            "f": "pf",
+            "l": "PF",
+            "g": "OG 2/Sport Complex (2)"
+          },
+          {
+            "k": "spc2_a1",
+            "f": "a1",
+            "l": "A1",
+            "g": "OG 2/Sport Complex (2)"
+          },
+          {
+            "k": "spc2_a2",
+            "f": "a2",
+            "l": "A2",
+            "g": "OG 2/Sport Complex (2)"
+          },
+          {
+            "k": "spc2_a3",
+            "f": "a3",
+            "l": "A3",
+            "g": "OG 2/Sport Complex (2)"
+          },
+          {
+            "k": "aca_kwh",
+            "f": "kwh",
+            "l": "KWH",
+            "g": "OG 3/Academic(1)"
+          },
+          {
+            "k": "aca_pf",
+            "f": "pf",
+            "l": "PF",
+            "g": "OG 3/Academic(1)"
+          },
+          {
+            "k": "aca_a1",
+            "f": "a1",
+            "l": "A1",
+            "g": "OG 3/Academic(1)"
+          },
+          {
+            "k": "aca_a2",
+            "f": "a2",
+            "l": "A2",
+            "g": "OG 3/Academic(1)"
+          },
+          {
+            "k": "aca_a3",
+            "f": "a3",
+            "l": "A3",
+            "g": "OG 3/Academic(1)"
+          },
+          {
+            "k": "bac_kwh",
+            "f": "kwh",
+            "l": "KWH",
+            "g": "OG 4/Academic(2)"
+          },
+          {
+            "k": "bac_pf",
+            "f": "pf",
+            "l": "PF",
+            "g": "OG 4/Academic(2)"
+          },
+          {
+            "k": "bac_a1",
+            "f": "a1",
+            "l": "A1",
+            "g": "OG 4/Academic(2)"
+          },
+          {
+            "k": "bac_a2",
+            "f": "a2",
+            "l": "A2",
+            "g": "OG 4/Academic(2)"
+          },
+          {
+            "k": "bac_a3",
+            "f": "a3",
+            "l": "A3",
+            "g": "OG 4/Academic(2)"
+          }
+        ]
+      },
+      {
+        "id": "torrent",
+        "title": "Torrent Meter Reading",
+        "raw": true,
+        "rows": [
+          {
+            "id": "daily",
+            "label": "Torrent Meter"
+          }
+        ],
+        "cols": [
+          {
+            "k": "time",
+            "l": "Time",
+            "txt": 1
+          },
+          {
+            "k": "tc_mwh",
+            "l": "TC MWH"
+          },
+          {
+            "k": "cm_varh",
+            "l": "CM/VARH"
+          },
+          {
+            "k": "t1c_mwh",
+            "l": "T/C MWH"
+          },
+          {
+            "k": "t2c_mwh",
+            "l": "T2C MWH"
+          },
+          {
+            "k": "cmd",
+            "l": "CMD"
+          },
+          {
+            "k": "mvah",
+            "l": "MVAH"
+          },
+          {
+            "k": "elec",
+            "l": "Electrician name",
+            "txt": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sport_lt",
+    "name": "Sport Sub Station",
+    "section": "LT",
+    "full": "Sport Sub Station \u2013 LT Panel",
+    "mode": "snapshot",
+    "slots": [
+      "R1",
+      "R2",
+      "R3"
+    ],
+    "tables": [
+      {
+        "id": "t0",
+        "title": "LT Panel",
+        "cols": [
+          {
+            "k": "vol",
+            "l": "Vol (V)",
+            "f": "vol",
+            "r": [
+              200,
+              260
+            ]
+          },
+          {
+            "k": "pf",
+            "l": "PF",
+            "f": "pf"
+          },
+          {
+            "k": "kwh",
+            "l": "kWh",
+            "f": "kwh"
+          },
+          {
+            "k": "a1",
+            "l": "A1",
+            "f": "a1"
+          },
+          {
+            "k": "a2",
+            "l": "A2",
+            "f": "a2"
+          },
+          {
+            "k": "a3",
+            "l": "A3",
+            "f": "a3"
+          }
+        ],
+        "rows": [
+          {
+            "id": "r0",
+            "sn": "1",
+            "label": "Incomer (Block 13) 1600 A",
+            "div": false
+          },
+          {
+            "id": "a0",
+            "anchor": true,
+            "group": "Incomer 1 (Block 13)",
+            "div": true
+          },
+          {
+            "id": "r1",
+            "sn": "2",
+            "label": "Incomer (Block 12) 1600 A",
+            "div": false
+          },
+          {
+            "id": "a1",
+            "anchor": true,
+            "group": "Incomer 2 (Block 12)",
+            "div": true
+          },
+          {
+            "id": "r2",
+            "sn": "3",
+            "label": "Incomer (Block 11) 1600 A",
+            "div": false
+          },
+          {
+            "id": "a2",
+            "anchor": true,
+            "group": "Incomer 3 (Block 11)",
+            "div": true
+          },
+          {
+            "id": "r3",
+            "sn": "4",
+            "label": "Incomer (Sport Com.) 1600 A",
+            "div": false
+          },
+          {
+            "id": "r4",
+            "sn": "5",
+            "label": "Football G. LT 250 A",
+            "div": false
+          },
+          {
+            "id": "r5",
+            "sn": "6",
+            "label": "Cricket G. LT Panel 100 A",
+            "div": false
+          },
+          {
+            "id": "r6",
+            "sn": "7",
+            "label": "External Lighting Panel 3 63 A",
+            "div": false
+          },
+          {
+            "id": "a3",
+            "anchor": true,
+            "group": "Incomer 4 (Sport Complex)",
+            "div": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "rpark_lt",
+    "name": "Research Park Sub Station",
+    "section": "LT",
+    "full": "Research Park Sub Station \u2013 LT Panel",
+    "mode": "snapshot",
+    "slots": [
+      "R1",
+      "R2",
+      "R3"
+    ],
+    "tables": [
+      {
+        "id": "t0",
+        "title": "LT Panel",
+        "cols": [
+          {
+            "k": "vol",
+            "l": "Vol (V)",
+            "f": "vol",
+            "r": [
+              200,
+              260
+            ]
+          },
+          {
+            "k": "pf",
+            "l": "PF",
+            "f": "pf"
+          },
+          {
+            "k": "kwh",
+            "l": "kWh",
+            "f": "kwh"
+          },
+          {
+            "k": "a1",
+            "l": "A1",
+            "f": "a1"
+          },
+          {
+            "k": "a2",
+            "l": "A2",
+            "f": "a2"
+          },
+          {
+            "k": "a3",
+            "l": "A3",
+            "f": "a3"
+          }
+        ],
+        "rows": [
+          {
+            "id": "r0",
+            "sn": "",
+            "label": "Incomer 1 \u2013 feeders up to Substation Light DB",
+            "div": false,
+            "head": true
+          },
+          {
+            "id": "r1",
+            "sn": "1",
+            "label": "Incomer 1",
+            "div": false
+          },
+          {
+            "id": "r2",
+            "sn": "2",
+            "label": "APFC Feeder 1",
+            "div": false
+          },
+          {
+            "id": "r3",
+            "sn": "\u2013",
+            "label": "APFC Panel 1",
+            "div": false
+          },
+          {
+            "id": "r4",
+            "sn": "3",
+            "label": "Spare",
+            "div": false
+          },
+          {
+            "id": "r5",
+            "sn": "4",
+            "label": "External Lighting",
+            "div": false
+          },
+          {
+            "id": "r6",
+            "sn": "5",
+            "label": "HVAC Panel",
+            "div": false
+          },
+          {
+            "id": "r7",
+            "sn": "6",
+            "label": "UPS Feeder",
+            "div": false
+          },
+          {
+            "id": "r8",
+            "sn": "7",
+            "label": "B1 Rising Main",
+            "div": false
+          },
+          {
+            "id": "r9",
+            "sn": "8",
+            "label": "Emergency Panel",
+            "div": false
+          },
+          {
+            "id": "r10",
+            "sn": "9",
+            "label": "Substation Light DB",
+            "div": false
+          },
+          {
+            "id": "a0",
+            "anchor": true,
+            "group": "Incomer 1",
+            "div": true
+          },
+          {
+            "id": "r11",
+            "sn": "",
+            "label": "Incomer 2 \u2013 feeders up to Spare",
+            "div": false,
+            "head": true
+          },
+          {
+            "id": "r12",
+            "sn": "10",
+            "label": "Incomer 2",
+            "div": false
+          },
+          {
+            "id": "r13",
+            "sn": "11",
+            "label": "APFC Feeder 2",
+            "div": false
+          },
+          {
+            "id": "r14",
+            "sn": "\u2013",
+            "label": "APFC Panel 2",
+            "div": false
+          },
+          {
+            "id": "r15",
+            "sn": "12",
+            "label": "Pump Room",
+            "div": false
+          },
+          {
+            "id": "r16",
+            "sn": "13",
+            "label": "Spare (Ex Lighting)",
+            "div": false
+          },
+          {
+            "id": "r17",
+            "sn": "14",
+            "label": "Spare",
+            "div": false
+          },
+          {
+            "id": "r18",
+            "sn": "15",
+            "label": "Spare",
+            "div": false
+          },
+          {
+            "id": "a1",
+            "anchor": true,
+            "group": "Incomer 2",
+            "div": true
+          },
+          {
+            "id": "r19",
+            "sn": "",
+            "label": "Incomer 3",
+            "div": false,
+            "head": true
+          },
+          {
+            "id": "r20",
+            "sn": "16",
+            "label": "Incomer 3",
+            "div": false
+          },
+          {
+            "id": "r21",
+            "sn": "17",
+            "label": "Block-D",
+            "div": false
+          },
+          {
+            "id": "a2",
+            "anchor": true,
+            "group": "Incomer 3",
+            "div": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "hostel",
+    "name": "Hostel Sub Station",
+    "section": "LT",
+    "full": "Hostel Sub Station \u2013 LT Panel",
+    "mode": "snapshot",
+    "slots": [
+      "R1",
+      "R2",
+      "R3"
+    ],
+    "tables": [
+      {
+        "id": "t0",
+        "title": "LT Panel",
+        "cols": [
+          {
+            "k": "vol",
+            "l": "Vol (V)",
+            "f": "vol",
+            "r": [
+              200,
+              260
+            ]
+          },
+          {
+            "k": "pf",
+            "l": "PF",
+            "f": "pf"
+          },
+          {
+            "k": "kwh",
+            "l": "kWh",
+            "f": "kwh"
+          },
+          {
+            "k": "a1",
+            "l": "A1",
+            "f": "a1"
+          },
+          {
+            "k": "a2",
+            "l": "A2",
+            "f": "a2"
+          },
+          {
+            "k": "a3",
+            "l": "A3",
+            "f": "a3"
+          }
+        ],
+        "rows": [
+          {
+            "id": "r0",
+            "sn": "1",
+            "label": "Main Incomer No 1",
+            "div": false
+          },
+          {
+            "id": "r1",
+            "sn": "2",
+            "label": "Street Lighting Feeder 1 & 2",
+            "div": false
+          },
+          {
+            "id": "r2",
+            "sn": "3",
+            "label": "UG 1 Hostel Electrical Room 1",
+            "div": false
+          },
+          {
+            "id": "r3",
+            "sn": "4",
+            "label": "UG 2 Hostel Electrical Room 1",
+            "div": false
+          },
+          {
+            "id": "r4",
+            "sn": "5",
+            "label": "UG 3 Hostel Electrical Room 1",
+            "div": false
+          },
+          {
+            "id": "r5",
+            "sn": "6",
+            "label": "Spare",
+            "div": false
+          },
+          {
+            "id": "r6",
+            "sn": "7",
+            "label": "UG 1 Hostel Electrical Room 2",
+            "div": false
+          },
+          {
+            "id": "r7",
+            "sn": "8",
+            "label": "UG 2 Hostel Electrical Room 2",
+            "div": false
+          },
+          {
+            "id": "r8",
+            "sn": "9",
+            "label": "UG 3 Hostel Electrical Room 2",
+            "div": false
+          },
+          {
+            "id": "r9",
+            "sn": "10",
+            "label": "LT Supply Sub Station",
+            "div": false
+          },
+          {
+            "id": "r10",
+            "sn": "11",
+            "label": "Bore Well Hostel",
+            "div": false
+          },
+          {
+            "id": "r11",
+            "sn": "12",
+            "label": "200 kVAr Capacitor Feeder 1",
+            "div": false
+          },
+          {
+            "id": "r12",
+            "sn": "\u2013",
+            "label": "200 kVAr APFC Panel 1",
+            "div": false
+          },
+          {
+            "id": "a0",
+            "anchor": true,
+            "group": "Main Incomer No 1",
+            "div": true
+          },
+          {
+            "id": "r13",
+            "sn": "13",
+            "label": "Main Incomer No 4",
+            "div": false
+          },
+          {
+            "id": "r14",
+            "sn": "14",
+            "label": "PG 1 Hostel Electrical Room 2",
+            "div": false
+          },
+          {
+            "id": "r15",
+            "sn": "15",
+            "label": "PG 2 Hostel Electrical Room 2",
+            "div": false
+          },
+          {
+            "id": "r16",
+            "sn": "16",
+            "label": "GH 2 Hostel Electrical Room 2",
+            "div": false
+          },
+          {
+            "id": "r17",
+            "sn": "17",
+            "label": "PG 1 Hostel Electrical Room 1",
+            "div": false
+          },
+          {
+            "id": "r18",
+            "sn": "18",
+            "label": "PG 2 Hostel Electrical Room 1",
+            "div": false
+          },
+          {
+            "id": "r19",
+            "sn": "19",
+            "label": "Dining Electrical Room",
+            "div": false
+          },
+          {
+            "id": "r20",
+            "sn": "20",
+            "label": "GH 1 Hostel Electrical Room 1",
+            "div": false
+          },
+          {
+            "id": "r21",
+            "sn": "21",
+            "label": "Street Lighting Feeder 10 & 11",
+            "div": false
+          },
+          {
+            "id": "r22",
+            "sn": "22",
+            "label": "200 kVAr Capacitor Feeder 2",
+            "div": false
+          },
+          {
+            "id": "r23",
+            "sn": "\u2013",
+            "label": "200 kVAr APFC Panel 2",
+            "div": false
+          },
+          {
+            "id": "a1",
+            "anchor": true,
+            "group": "Main Incomer No 4",
+            "div": true
+          },
+          {
+            "id": "r24",
+            "sn": "23",
+            "label": "New CSS 2",
+            "div": false
+          },
+          {
+            "id": "r25",
+            "sn": "24",
+            "label": "OAT SAC",
+            "div": false
+          },
+          {
+            "id": "r26",
+            "sn": "25",
+            "label": "New Hostel Block 5",
+            "div": false
+          },
+          {
+            "id": "r27",
+            "sn": "26",
+            "label": "Ex Lighting Panel",
+            "div": false
+          },
+          {
+            "id": "r28",
+            "sn": "27",
+            "label": "New Hostel Block 4",
+            "div": false
+          },
+          {
+            "id": "r29",
+            "sn": "28",
+            "label": "Mess",
+            "div": false
+          },
+          {
+            "id": "a_css2",
+            "anchor": true,
+            "group": "New CSS 2",
+            "div": true
+          },
+          {
+            "id": "r30",
+            "sn": "29",
+            "label": "New CSS 3",
+            "div": false
+          },
+          {
+            "id": "r31",
+            "sn": "30",
+            "label": "New Hostel Block 6",
+            "div": false
+          },
+          {
+            "id": "r32",
+            "sn": "31",
+            "label": "New Hostel Block 2",
+            "div": false
+          },
+          {
+            "id": "r33",
+            "sn": "32",
+            "label": "New Hostel Block 1",
+            "div": false
+          },
+          {
+            "id": "r34",
+            "sn": "33",
+            "label": "New Hostel Block 3",
+            "div": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "acad1",
+    "name": "Academic Sub Station 1",
+    "section": "LT",
+    "full": "Academic Sub Station 1 \u2013 LT Panel",
+    "mode": "snapshot",
+    "slots": [
+      "R1",
+      "R2",
+      "R3"
+    ],
+    "tables": [
+      {
+        "id": "t0",
+        "title": "LT Panel",
+        "cols": [
+          {
+            "k": "vol",
+            "l": "Vol (V)",
+            "f": "vol",
+            "r": [
+              200,
+              260
+            ]
+          },
+          {
+            "k": "pf",
+            "l": "PF",
+            "f": "pf"
+          },
+          {
+            "k": "kwh",
+            "l": "kWh",
+            "f": "kwh"
+          },
+          {
+            "k": "a1",
+            "l": "A1",
+            "f": "a1"
+          },
+          {
+            "k": "a2",
+            "l": "A2",
+            "f": "a2"
+          },
+          {
+            "k": "a3",
+            "l": "A3",
+            "f": "a3"
+          }
+        ],
+        "rows": [
+          {
+            "id": "r0",
+            "sn": "1",
+            "label": "Main Incomer No 1",
+            "div": false
+          },
+          {
+            "id": "r1",
+            "sn": "2",
+            "label": "Chiller No 2",
+            "div": false
+          },
+          {
+            "id": "r2",
+            "sn": "3",
+            "label": "Solar Incomer",
+            "div": false
+          },
+          {
+            "id": "a_solar",
+            "anchor": true,
+            "group": "Solar Incomer",
+            "div": false
+          },
+          {
+            "id": "r3",
+            "sn": "4",
+            "label": "Block 7 Main Panel",
+            "div": false
+          },
+          {
+            "id": "r4",
+            "sn": "5",
+            "label": "Block 6 Cubical Panel 1",
+            "div": false
+          },
+          {
+            "id": "r5",
+            "sn": "6",
+            "label": "Block 8 Main Panel",
+            "div": false
+          },
+          {
+            "id": "r6",
+            "sn": "7",
+            "label": "Block 6 Cubical Panel 2",
+            "div": false
+          },
+          {
+            "id": "r7",
+            "sn": "8",
+            "label": "300 kVAr Capacitor Feeder 1",
+            "div": false
+          },
+          {
+            "id": "r8",
+            "sn": "\u2013",
+            "label": "300 kVAr APFC Panel 1",
+            "div": true
+          },
+          {
+            "id": "r9",
+            "sn": "9(A)",
+            "label": "AMF Feeder",
+            "div": false
+          },
+          {
+            "id": "r10",
+            "sn": "A1",
+            "label": "140 kVA AMF Panel",
+            "div": false
+          },
+          {
+            "id": "r11",
+            "sn": "A2",
+            "label": "Essential Main LT Panel",
+            "div": false
+          },
+          {
+            "id": "r12",
+            "sn": "A3",
+            "label": "Block 6 Essential Panel",
+            "div": false
+          },
+          {
+            "id": "r13",
+            "sn": "A4",
+            "label": "External Lighting Panel 1",
+            "div": false
+          },
+          {
+            "id": "r14",
+            "sn": "A5",
+            "label": "External Lighting Panel 2",
+            "div": false
+          },
+          {
+            "id": "r15",
+            "sn": "A6",
+            "label": "Solar Carport Lighting",
+            "div": false
+          },
+          {
+            "id": "r16",
+            "sn": "A7",
+            "label": "LT Supply Sub Station",
+            "div": false
+          },
+          {
+            "id": "a0",
+            "anchor": true,
+            "group": "Main Incomer No 1",
+            "div": true
+          },
+          {
+            "id": "r17",
+            "sn": "10",
+            "label": "Main Incomer No 2",
+            "div": false
+          },
+          {
+            "id": "r18",
+            "sn": "11",
+            "label": "Chiller 1",
+            "div": false
+          },
+          {
+            "id": "r19",
+            "sn": "12",
+            "label": "BLOCK 7/109",
+            "div": false
+          },
+          {
+            "id": "r20",
+            "sn": "13",
+            "label": "Block 6 Main Panel",
+            "div": false
+          },
+          {
+            "id": "r21",
+            "sn": "14",
+            "label": "Block 9 Main Panel",
+            "div": false
+          },
+          {
+            "id": "r22",
+            "sn": "15",
+            "label": "VRF Block 7",
+            "div": false
+          },
+          {
+            "id": "r23",
+            "sn": "16",
+            "label": "300 kVAr Capacitor Feeder 2",
+            "div": false
+          },
+          {
+            "id": "r24",
+            "sn": "\u2013",
+            "label": "300 kVAr APFC Panel",
+            "div": false
+          },
+          {
+            "id": "a1",
+            "anchor": true,
+            "group": "Main Incomer No 2",
+            "div": true
+          },
+          {
+            "id": "r25",
+            "sn": "17",
+            "label": "Main Incomer No 3",
+            "div": false
+          },
+          {
+            "id": "r26",
+            "sn": "18",
+            "label": "Chiller 3",
+            "div": false
+          },
+          {
+            "id": "r27",
+            "sn": "19",
+            "label": "310 kVAr Capacitor Feeder 3",
+            "div": false
+          },
+          {
+            "id": "r28",
+            "sn": "20",
+            "label": "310 kVAr APFC Panel 3",
+            "div": false
+          },
+          {
+            "id": "a2",
+            "anchor": true,
+            "group": "Main Incomer No 3",
+            "div": true
+          },
+          {
+            "id": "r29",
+            "sn": "21",
+            "label": "Main Incomer No 4",
+            "div": false
+          },
+          {
+            "id": "r30",
+            "sn": "22",
+            "label": "Chiller 4",
+            "div": false
+          },
+          {
+            "id": "a3",
+            "anchor": true,
+            "group": "Main Incomer No 4",
+            "div": true
+          },
+          {
+            "id": "r31",
+            "sn": "23",
+            "label": "Main Incomer 5",
+            "div": false
+          },
+          {
+            "id": "r32",
+            "sn": "24",
+            "label": "Chiller 5",
+            "div": false
+          },
+          {
+            "id": "a4",
+            "anchor": true,
+            "group": "Main Incomer 5",
+            "div": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "acad2",
+    "name": "Academic Sub Station 2",
+    "section": "LT",
+    "full": "Academic Sub Station 2 \u2013 LT Panel",
+    "mode": "snapshot",
+    "slots": [
+      "R1",
+      "R2",
+      "R3"
+    ],
+    "tables": [
+      {
+        "id": "t0",
+        "title": "LT Panel",
+        "cols": [
+          {
+            "k": "vol",
+            "l": "Vol (V)",
+            "f": "vol",
+            "r": [
+              200,
+              260
+            ]
+          },
+          {
+            "k": "pf",
+            "l": "PF",
+            "f": "pf"
+          },
+          {
+            "k": "kwh",
+            "l": "kWh",
+            "f": "kwh"
+          },
+          {
+            "k": "a1",
+            "l": "A1",
+            "f": "a1"
+          },
+          {
+            "k": "a2",
+            "l": "A2",
+            "f": "a2"
+          },
+          {
+            "k": "a3",
+            "l": "A3",
+            "f": "a3"
+          }
+        ],
+        "rows": [
+          {
+            "id": "r0",
+            "sn": "1",
+            "label": "Main Incomer No 1",
+            "div": false
+          },
+          {
+            "id": "r1",
+            "sn": "2",
+            "label": "Block 3 Main Panel",
+            "div": false
+          },
+          {
+            "id": "r2",
+            "sn": "3",
+            "label": "Block 4 F Floor Main Panel",
+            "div": false
+          },
+          {
+            "id": "r3",
+            "sn": "4",
+            "label": "Street Lighting Feeder 3",
+            "div": false
+          },
+          {
+            "id": "r4",
+            "sn": "5",
+            "label": "225 kVAr Capacitor Feeder 1",
+            "div": false
+          },
+          {
+            "id": "r5",
+            "sn": "\u2013",
+            "label": "225 kVAr APFC Panel 1",
+            "div": true
+          },
+          {
+            "id": "r6",
+            "sn": "6(A)",
+            "label": "AMF Feeder",
+            "div": false
+          },
+          {
+            "id": "r7",
+            "sn": "\u2013",
+            "label": "500 kVA AMF Panel",
+            "div": false
+          },
+          {
+            "id": "r8",
+            "sn": "a1",
+            "label": "Essential Main Panel",
+            "div": false
+          },
+          {
+            "id": "r9",
+            "sn": "a2",
+            "label": "Block 5 Essential Feeder",
+            "div": false
+          },
+          {
+            "id": "r10",
+            "sn": "a3",
+            "label": "Block 4 Essential Feeder",
+            "div": false
+          },
+          {
+            "id": "r11",
+            "sn": "a4",
+            "label": "Block 1 Essential Feeder",
+            "div": false
+          },
+          {
+            "id": "r12",
+            "sn": "a5",
+            "label": "External Lighting Feeder 1",
+            "div": false
+          },
+          {
+            "id": "r13",
+            "sn": "a6",
+            "label": "External Lighting Feeder 2",
+            "div": false
+          },
+          {
+            "id": "r14",
+            "sn": "a7",
+            "label": "LT Supply Sub Station",
+            "div": false
+          },
+          {
+            "id": "r15",
+            "sn": "a8",
+            "label": "Block 3 Essential Feeder",
+            "div": false
+          },
+          {
+            "id": "r16",
+            "sn": "a9",
+            "label": "Block 5 Essential Feeder (102)",
+            "div": false
+          },
+          {
+            "id": "r17",
+            "sn": "a10",
+            "label": "Block 2 Stage Lit. Feeder",
+            "div": false
+          },
+          {
+            "id": "r18",
+            "sn": "a11",
+            "label": "Block 2 Essential Feeder",
+            "div": false
+          },
+          {
+            "id": "a0",
+            "anchor": true,
+            "group": "Main Incomer No 1",
+            "div": true
+          },
+          {
+            "id": "r19",
+            "sn": "7",
+            "label": "Main Incomer No 2",
+            "div": false
+          },
+          {
+            "id": "r20",
+            "sn": "8",
+            "label": "Block 5 Main Feeder",
+            "div": false
+          },
+          {
+            "id": "r21",
+            "sn": "9",
+            "label": "Block 4 Main Feeder",
+            "div": false
+          },
+          {
+            "id": "r22",
+            "sn": "10",
+            "label": "External Lighting Feeder",
+            "div": false
+          },
+          {
+            "id": "r23",
+            "sn": "11",
+            "label": "225 kVAr Capacitor Feeder 2",
+            "div": false
+          },
+          {
+            "id": "r24",
+            "sn": "\u2013",
+            "label": "225 kVAr Panel 2",
+            "div": true
+          },
+          {
+            "id": "r25",
+            "sn": "12",
+            "label": "AMF Feeder 2",
+            "div": false
+          },
+          {
+            "id": "a1",
+            "anchor": true,
+            "group": "Main Incomer No 2",
+            "div": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mainlt",
+    "name": "Main Infra LT Panel",
+    "section": "LT",
+    "full": "Main Infra LT Panel \u2013 LT Panel",
+    "mode": "snapshot",
+    "slots": [
+      "R1",
+      "R2",
+      "R3"
+    ],
+    "tables": [
+      {
+        "id": "t0",
+        "title": "LT Panel",
+        "cols": [
+          {
+            "k": "vol",
+            "l": "Vol (V)",
+            "f": "vol",
+            "r": [
+              200,
+              260
+            ]
+          },
+          {
+            "k": "pf",
+            "l": "PF",
+            "f": "pf"
+          },
+          {
+            "k": "kwh",
+            "l": "kWh",
+            "f": "kwh"
+          },
+          {
+            "k": "a1",
+            "l": "A1",
+            "f": "a1"
+          },
+          {
+            "k": "a2",
+            "l": "A2",
+            "f": "a2"
+          },
+          {
+            "k": "a3",
+            "l": "A3",
+            "f": "a3"
+          }
+        ],
+        "rows": [
+          {
+            "id": "r0",
+            "sn": "1",
+            "label": "Main Incomer No 1",
+            "div": false
+          },
+          {
+            "id": "r1",
+            "sn": "2",
+            "label": "SPS 2",
+            "div": false
+          },
+          {
+            "id": "r2",
+            "sn": "3",
+            "label": "Street Lighting Feeder",
+            "div": false
+          },
+          {
+            "id": "r3",
+            "sn": "4",
+            "label": "Bore Well Academic",
+            "div": false
+          },
+          {
+            "id": "r4",
+            "sn": "5",
+            "label": "LT Supply Substation",
+            "div": false
+          },
+          {
+            "id": "r5",
+            "sn": "6",
+            "label": "Guest House of LTP 1",
+            "div": false
+          },
+          {
+            "id": "r6",
+            "sn": "7",
+            "label": "225 kVAr Capacitor Feeder 1",
+            "div": false
+          },
+          {
+            "id": "r7",
+            "sn": "\u2013",
+            "label": "225 kVAr APFC Panel 1",
+            "div": false
+          },
+          {
+            "id": "a0",
+            "anchor": true,
+            "group": "Main Incomer No 1",
+            "div": true
+          },
+          {
+            "id": "r8",
+            "sn": "8",
+            "label": "Main Incomer No 2",
+            "div": false
+          },
+          {
+            "id": "r9",
+            "sn": "9",
+            "label": "WSC 1",
+            "div": false
+          },
+          {
+            "id": "r10",
+            "sn": "10",
+            "label": "Laundry",
+            "div": false
+          },
+          {
+            "id": "r11",
+            "sn": "11",
+            "label": "Gate No 2",
+            "div": false
+          },
+          {
+            "id": "r12",
+            "sn": "12",
+            "label": "WSC 3",
+            "div": false
+          },
+          {
+            "id": "r13",
+            "sn": "13",
+            "label": "Guest House of LTP 2",
+            "div": false
+          },
+          {
+            "id": "r14",
+            "sn": "14",
+            "label": "225 kVAr Capacitor Feeder 2",
+            "div": false
+          },
+          {
+            "id": "r15",
+            "sn": "\u2013",
+            "label": "225 kVAr APFC Panel 2",
+            "div": false
+          },
+          {
+            "id": "a1",
+            "anchor": true,
+            "group": "Main Incomer No 2",
+            "div": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "wtp",
+    "name": "WTP Sub Station",
+    "section": "LT",
+    "full": "WTP Sub Station \u2013 LT Panel",
+    "mode": "snapshot",
+    "slots": [
+      "R1",
+      "R2",
+      "R3"
+    ],
+    "tables": [
+      {
+        "id": "t0",
+        "title": "LT Panel",
+        "cols": [
+          {
+            "k": "vol",
+            "l": "Vol (V)",
+            "f": "vol",
+            "r": [
+              200,
+              260
+            ]
+          },
+          {
+            "k": "pf",
+            "l": "PF",
+            "f": "pf"
+          },
+          {
+            "k": "kwh",
+            "l": "kWh",
+            "f": "kwh"
+          },
+          {
+            "k": "a1",
+            "l": "A1",
+            "f": "a1"
+          },
+          {
+            "k": "a2",
+            "l": "A2",
+            "f": "a2"
+          },
+          {
+            "k": "a3",
+            "l": "A3",
+            "f": "a3"
+          }
+        ],
+        "rows": [
+          {
+            "id": "r0",
+            "sn": "1",
+            "label": "Main Incomer No 1",
+            "div": false
+          },
+          {
+            "id": "r1",
+            "sn": "2",
+            "label": "Street Lighting Main Panel",
+            "div": false
+          },
+          {
+            "id": "r2",
+            "sn": "3",
+            "label": "WTP",
+            "div": false
+          },
+          {
+            "id": "r3",
+            "sn": "4",
+            "label": "LT Supply Sub Station",
+            "div": false
+          },
+          {
+            "id": "r4",
+            "sn": "5",
+            "label": "SPS 2",
+            "div": false
+          },
+          {
+            "id": "r5",
+            "sn": "6",
+            "label": "100 kVAr Capacitor Feeder 1",
+            "div": false
+          },
+          {
+            "id": "r6",
+            "sn": "\u2013",
+            "label": "100 kVAr APFC Panel 1",
+            "div": false
+          },
+          {
+            "id": "a0",
+            "anchor": true,
+            "group": "Main Incomer No 1",
+            "div": true
+          },
+          {
+            "id": "r7",
+            "sn": "7",
+            "label": "Main Incomer 2",
+            "div": false
+          },
+          {
+            "id": "r8",
+            "sn": "8",
+            "label": "WSC 2",
+            "div": false
+          },
+          {
+            "id": "r9",
+            "sn": "9",
+            "label": "CWPS WTP",
+            "div": false
+          },
+          {
+            "id": "r10",
+            "sn": "10",
+            "label": "New External S. Light Feeder",
+            "div": false
+          },
+          {
+            "id": "r11",
+            "sn": "11",
+            "label": "100 kVAr Capacitor Feeder 2",
+            "div": false
+          },
+          {
+            "id": "r12",
+            "sn": "\u2013",
+            "label": "100 kVAr APFC Panel 2",
+            "div": false
+          },
+          {
+            "id": "r13",
+            "sn": "12",
+            "label": "Green House",
+            "div": false
+          },
+          {
+            "id": "a1",
+            "anchor": true,
+            "group": "Main Incomer 2",
+            "div": false
+          }
+        ]
+      }
+    ]
+  }
+]

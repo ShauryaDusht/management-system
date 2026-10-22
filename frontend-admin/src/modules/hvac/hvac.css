@@ -1,0 +1,323 @@
+/* HVAC Plant Log – Integrated IITGN Management System Theme */
+.hvac-root {
+  --hvac-bg: #f8fafc;
+  --hvac-card: #ffffff;
+  --hvac-line: #e2e8f0;
+  --hvac-primary: #0c2535;
+  --hvac-teal: #15506b;
+  --hvac-cyan: #0284c7;
+  --hvac-green: #10b981;
+  --hvac-amber: #f59e0b;
+  --hvac-red: #ef4444;
+  --hvac-text: #0f172a;
+  --hvac-muted: #64748b;
+  font-family: inherit;
+  color: var(--hvac-text);
+}
+
+.hvac-header {
+  background: linear-gradient(135deg, #0c2535 0%, #15506b 100%);
+  color: #fff;
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 18px rgba(12, 37, 53, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.hvac-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #0284c7 0%, #38bdf8 25%, #f59e0b 50%, #10b981 100%);
+}
+
+.hvac-header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+}
+
+.hvac-header p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: #94a3b8;
+}
+
+.hvac-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.hvac-tab-btn {
+  padding: 8px 18px;
+  border-radius: 24px;
+  border: 1.5px solid var(--hvac-line);
+  background: #ffffff;
+  color: var(--hvac-muted);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.hvac-tab-btn:hover {
+  background: #f1f5f9;
+  color: var(--hvac-text);
+  border-color: #cbd5e1;
+}
+
+.hvac-tab-btn.active {
+  background: #15506b;
+  color: #ffffff;
+  border-color: #15506b;
+  box-shadow: 0 2px 8px rgba(21, 80, 107, 0.3);
+}
+
+.hvac-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.hvac-kpi-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--hvac-line);
+  box-shadow: 0 1px 4px rgba(11, 30, 42, 0.05);
+  border-left: 4px solid var(--hvac-cyan);
+}
+
+.hvac-kpi-card:nth-child(2) { border-left-color: var(--hvac-green); }
+.hvac-kpi-card:nth-child(3) { border-left-color: var(--hvac-amber); }
+.hvac-kpi-card:nth-child(4) { border-left-color: #ec4899; }
+.hvac-kpi-card:nth-child(5) { border-left-color: #8b5cf6; }
+
+.hvac-kpi-card span {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--hvac-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hvac-kpi-card b {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  color: #0c2535;
+  margin-top: 4px;
+  font-family: inherit;
+}
+
+.hvac-kpi-card small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--hvac-muted);
+  margin-top: 2px;
+}
+
+/* Chillers status tiles */
+.hvac-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.hvac-tile {
+  background: #ffffff;
+  border: 1px solid var(--hvac-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  position: relative;
+  opacity: 0.72;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.hvac-tile.on {
+  opacity: 1;
+  border-color: var(--hvac-green);
+  box-shadow: inset 0 3px 0 var(--hvac-green), 0 3px 10px rgba(16, 185, 129, 0.12);
+}
+
+.hvac-tile .dot {
+  position: absolute;
+  right: 12px;
+  top: 14px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #cbd5e1;
+}
+
+.hvac-tile.on .dot {
+  background: var(--hvac-green);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.28);
+  animation: pulse-dot 2s infinite;
+}
+
+.hvac-tile.alert-high-dt {
+  opacity: 1 !important;
+  border-color: #ef4444 !important;
+  background: #fff5f5 !important;
+  box-shadow: inset 0 3px 0 #ef4444, 0 3px 12px rgba(239, 68, 68, 0.22) !important;
+}
+
+.hvac-tile.alert-high-dt .dot {
+  background: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.35) !important;
+  animation: pulse-dot-red 1.6s infinite !important;
+}
+
+@keyframes pulse-dot-red {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { box-shadow: 0 0 0 7px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.hvac-tile b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--hvac-text);
+}
+
+.hvac-tile small {
+  display: block;
+  font-size: 11px;
+  color: var(--hvac-muted);
+  margin-top: 1px;
+}
+
+.hvac-tile div {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--hvac-cyan);
+  margin-top: 6px;
+  font-family: monospace;
+}
+
+/* Flash report matrix */
+.hvac-flash-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.hvac-flash-table th,
+.hvac-flash-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--hvac-line);
+  white-space: nowrap;
+  text-align: right;
+  font-family: 'DM Mono', monospace;
+}
+
+.hvac-flash-table th:first-child,
+.hvac-flash-table td:first-child {
+  position: sticky;
+  left: 0;
+  text-align: left;
+  min-width: 220px;
+  background: #ffffff;
+  z-index: 2;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.04);
+}
+
+.hvac-flash-table tr.group-header td {
+  background: #f1f5f9;
+  font-weight: 800;
+  text-align: left;
+  border-left: 4px solid var(--hvac-cyan);
+  font-family: inherit;
+  font-size: 13px;
+  color: #0c2535;
+}
+
+.hvac-flash-table th {
+  background: #f8fafc;
+  color: var(--hvac-muted);
+  font-weight: 700;
+  font-size: 11.5px;
+}
+
+/* Alert badge */
+.hvac-alert-box {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 4px solid var(--hvac-red);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+}
+
+.hvac-alert-box h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #b91c1c;
+}
+
+.hvac-alert-box ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: #991b1b;
+  line-height: 1.5;
+}
+
+/* Card container */
+.hvac-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid var(--hvac-line);
+  box-shadow: 0 1px 4px rgba(11, 30, 42, 0.04);
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.hvac-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.hvac-card-title {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #0c2535;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Responsive Table scroll */
+.hvac-scroll {
+  overflow-x: auto;
+  border-radius: 8px;
+}

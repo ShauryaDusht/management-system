@@ -5,6 +5,29 @@ import { useAuth } from '../context/AuthContext'
 import { APP_LOGO_PATH, APP_NAME, APP_TAGLINE } from '../shared/constants'
 
 function getLandingRoute(user) {
+  const role = user?.role
+  if (
+    role === 'plant_engineer' ||
+    role === 'electrical_supervisor' ||
+    role === 'supervisor' ||
+    role === 'electrical_operator' ||
+    role === 'operator'
+  ) {
+    return '/substation'
+  }
+  if (
+    role === 'wtp_supervisor' ||
+    role === 'wtp_operator'
+  ) {
+    return '/wtp'
+  }
+  if (
+    role === 'hvac_engineer' ||
+    role === 'hvac_supervisor' ||
+    role === 'hvac_operator'
+  ) {
+    return '/hvac'
+  }
   return '/dashboard'
 }
 

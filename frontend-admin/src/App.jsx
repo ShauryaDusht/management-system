@@ -13,6 +13,37 @@ import LoginPage from './pages/LoginPage'
 import ProfilePage from './pages/profile/ProfilePage'
 import UnauthorizedPage from './pages/UnauthorizedPage'
 import UsersPage from './pages/users/UsersPage'
+import SubstationPage from './pages/substation/SubstationPage'
+import WtpPage from './pages/wtp/WtpPage'
+import HvacPage from './pages/hvac/HvacPage'
+
+const SUBSTATION_ALLOWED = [
+  'admin',
+  'plant_engineer',
+  'supervisor',
+  'electrical_supervisor',
+  'operator',
+  'electrical_operator',
+]
+
+const WTP_STP_ALLOWED = [
+  'admin',
+  'plant_engineer',
+  'supervisor',
+  'wtp_supervisor',
+  'operator',
+  'wtp_operator',
+]
+
+const HVAC_ALLOWED = [
+  'admin',
+  'plant_engineer',
+  'supervisor',
+  'hvac_engineer',
+  'hvac_supervisor',
+  'operator',
+  'hvac_operator',
+]
 
 const ADMIN_OR_HK_INVENTORY = ['admin', 'hk_inventory_manager']
 const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
@@ -21,6 +52,22 @@ const HK_PORTAL_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
 const GEO_TRACKER_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager']
 const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
+const ALL_PORTAL_ROLES = [
+  'admin',
+  'hk_inventory_manager',
+  'horticulture_manager',
+  'hostel_office',
+  'supervisor',
+  'plant_engineer',
+  'electrical_supervisor',
+  'electrical_operator',
+  'wtp_supervisor',
+  'wtp_operator',
+  'hvac_engineer',
+  'hvac_supervisor',
+  'hvac_operator',
+  'operator',
+]
 const ROUTER_BASENAME = '/admin'
 
 function getLandingRoute(user) {
@@ -31,6 +78,32 @@ function getLandingRoute(user) {
   if (role === 'hk_inventory_manager') return '/dashboard'
   if (role === 'horticulture_manager') return '/dashboard'
   if (role === 'hostel_office') return '/dashboard'
+  if (role === 'plant_engineer') return '/substation'
+  if (
+    role === 'electrical_supervisor' ||
+    role === 'electrical_operator'
+  ) {
+    return '/substation'
+  }
+  if (
+    role === 'wtp_supervisor' ||
+    role === 'wtp_operator'
+  ) {
+    return '/wtp'
+  }
+  if (
+    role === 'hvac_engineer' ||
+    role === 'hvac_supervisor' ||
+    role === 'hvac_operator'
+  ) {
+    return '/hvac'
+  }
+  if (
+    role === 'supervisor' ||
+    role === 'operator'
+  ) {
+    return '/substation'
+  }
   return '/unauthorized'
 }
 
@@ -121,6 +194,46 @@ export default function App() {
             }
           />
           <Route
+            path="/substation/*"
+            element={
+              <ProtectedRoute allowedRoles={SUBSTATION_ALLOWED}>
+                <SubstationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/wtp/*"
+            element={
+              <ProtectedRoute allowedRoles={WTP_STP_ALLOWED}>
+                <WtpPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/wtp-stp/*"
+            element={
+              <ProtectedRoute allowedRoles={WTP_STP_ALLOWED}>
+                <WtpPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/hvac/*"
+            element={
+              <ProtectedRoute allowedRoles={HVAC_ALLOWED}>
+                <HvacPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/hvac-engineer/*"
+            element={
+              <ProtectedRoute allowedRoles={HVAC_ALLOWED}>
+                <HvacPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/users"
             element={
               <ProtectedRoute allowedRoles={ADMIN_OR_HK_INVENTORY}>
@@ -131,7 +244,7 @@ export default function App() {
           <Route
             path="/profile"
             element={
-              <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
+              <ProtectedRoute allowedRoles={ALL_PORTAL_ROLES}>
                 <ProfilePage />
               </ProtectedRoute>
             }

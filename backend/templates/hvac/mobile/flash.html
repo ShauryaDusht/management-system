@@ -1,0 +1,138 @@
+{% extends 'hvac/mobile/base_hvac.html' %}
+
+{% block title %}Daily Flash Report ({{ date }}) | HVAC Plant{% endblock %}
+
+{% block content %}
+<!-- Top Date Filter & Live Calendar Summary -->
+<div class="card" style="padding:14px 16px; background: linear-gradient(135deg, #1a3c34, #2d4a3e); color: #fff; border:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px;">
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      {% if is_today %}
+        <span class="live-badge">
+          <span class="live-pulse-dot"></span> LIVE CALENDAR
+        </span>
+        <span style="font-size:12px; font-weight:700; color:rgba(255,255,255,.95);">
+          {{ formatted_date }}
+        </span>
+      {% else %}
+        <span class="live-badge-history">
+          &#x1F4C5; History: {{ formatted_date }}
+        </span>
+        <button type="button" class="live-cal-sync-btn" onclick="syncToLiveToday('/hvac/flash/')">
+          &#x26A1; Sync Today
+        </button>
+      {% endif %}
+    </div>
+    <span class="pill pill-green" style="background:rgba(255,255,255,.2); color:#fff; border:1px solid rgba(255,255,255,.3);">
+      {{ total_slots }} / 24 Logged
+    </span>
+  </div>
+
+  <div style="font-size:18px; font-weight:800; margin-top:2px;">
+    R-01 HVAC Flash Log
+  </div>
+  <div style="font-size:11.5px; opacity:0.8; margin-top:2px;">
+    IIT Gandhinagar &middot; Plant Daily Report
+  </div>
+
+  <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+    <form method="get" action="/hvac/flash/" style="margin:0; flex:1;">
+      <input
+        type="date"
+        name="date"
+        value="{{ date }}"
+        onchange="this.form.submit()"
+        class="cal-date-input"
+        style="width:100%;"
+      >
+    </form>
+    {% if not is_today %}
+      <button type="button" class="live-cal-sync-btn" onclick="syncToLiveToday('/hvac/flash/')" title="Sync live calendar to today">
+        Today
+      </button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Daily Summary Metrics -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+  <div class="card" style="margin:0;padding:12px;border-top:3px solid #7c3aed">
+    <div style="font-size:10.5px;font-weight:800;color:#716b66;text-transform:uppercase">Daily Energy</div>
+    <div style="font-size:18px;font-weight:800;color:#0f172a;font-family:'DM Mono',monospace;margin-top:2px">
+      {% if total_energy is not None %}{{ total_energy }} MWh{% else %}–{% endif %}
+    </div>
+    <div style="font-size:10.5px;color:#716b66;margin-top:2px">
+      P1: {{ p1_cons|default:"–" }} &middot; P2: {{ p2_cons|default:"–" }}
+    </div>
+  </div>
+
+  <div class="card" style="margin:0;padding:12px;border-top:3px solid #0284c7">
+    <div style="font-size:10.5px;font-weight:800;color:#716b66;text-transform:uppercase">Daily Water</div>
+    <div style="font-size:18px;font-weight:800;color:#0f172a;font-family:'DM Mono',monospace;margin-top:2px">
+      {% if total_water is not None %}{{ total_water }} kL{% else %}–{% endif %}
+    </div>
+    <div style="font-size:10.5px;color:#716b66;margin-top:2px">
+      W1: {{ wm1_cons|default:"–" }} &middot; W2: {{ wm2_cons|default:"–" }}
+    </div>
+  </div>
+</div>
+
+<!-- R-01 Table -->
+<div class="card" style="padding:0;overflow:hidden">
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr style="background:#1a3c34;color:#fff">
+          <th style="padding:9px 10px;text-align:left;white-space:nowrap;position:sticky;left:0;background:#1a3c34;z-index:2">Time</th>
+          <th style="padding:9px 10px;text-align:left;white-space:nowrap">Shift</th>
+          <th style="padding:9px 10px;text-align:left;white-space:nowrap">Operator</th>
+          <th style="padding:9px 10px;text-align:right;white-space:nowrap">SP &deg;C</th>
+          <th style="padding:9px 10px;text-align:left;white-space:nowrap">Chillers Running</th>
+          <th style="padding:9px 10px;text-align:right;white-space:nowrap">P1 MWh</th>
+          <th style="padding:9px 10px;text-align:right;white-space:nowrap">P2 MWh</th>
+          <th style="padding:9px 10px;text-align:right;white-space:nowrap">W1 kL</th>
+          <th style="padding:9px 10px;text-align:right;white-space:nowrap">W2 kL</th>
+          <th style="padding:9px 10px;text-align:center;white-space:nowrap">Alerts</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in logs %}
+          <tr style="border-bottom:1px solid #e5e1d8;background:{% cycle '#ffffff' '#faf8f5' %}">
+            <td style="padding:8px 10px;font-weight:800;position:sticky;left:0;background:inherit;white-space:nowrap;font-family:'DM Mono',monospace;z-index:1">
+              <a href="/hvac/entry/?date={{ date }}&slot={{ l.slot }}" style="color:#1a3c34;text-decoration:none">
+                {{ l.time }} &rarr;
+              </a>
+            </td>
+            <td style="padding:8px 10px;white-space:nowrap">Shift {{ l.shift }}</td>
+            <td style="padding:8px 10px;white-space:nowrap;font-weight:600">{{ l.operator|default:"Staff" }}</td>
+            <td style="padding:8px 10px;text-align:right">{{ l.setpoint|default:"–" }}</td>
+            <td style="padding:8px 10px;white-space:nowrap;font-size:11.5px;color:#15803d;font-weight:600">{{ l.running_names }}</td>
+            <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.pn1_mwh|default:"–" }}</td>
+            <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.pn2_mwh|default:"–" }}</td>
+            <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.wm1_kl|default:"–" }}</td>
+            <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.wm2_kl|default:"–" }}</td>
+            <td style="padding:8px 10px;text-align:center">
+              {% if l.alerts %}
+                <span class="pill pill-red" style="font-size:10px">{{ l.alerts|length }}</span>
+              {% else %}
+                <span style="color:#15803d;font-weight:800">&check;</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="10" style="padding:28px 16px;text-align:center;color:#716b66">
+              No entries logged for {{ date }}.
+              <div style="margin-top:8px">
+                <a href="/hvac/entry/?date={{ date }}" class="btn-primary" style="display:inline-block;width:auto;padding:8px 16px">
+                  + Log First Entry
+                </a>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -18,6 +18,7 @@ RUN_DATA_SYNC_ON_STARTUP="${RUN_DATA_SYNC_ON_STARTUP:-false}"
 
 printf '%s\n' "Checking baseline data..."
 python manage.py seed_all_data_if_empty -v 0
+python manage.py seed_substation
 
 if [ "${RUN_DATA_SYNC_ON_STARTUP}" = "true" ]; then
     printf '%s\n' "Running opt-in data sync commands..."

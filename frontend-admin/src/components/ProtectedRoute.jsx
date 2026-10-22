@@ -2,8 +2,18 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 function getLandingRoute(user) {
-  if (['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office'].includes(getEffectiveRole(user))) {
+  const role = getEffectiveRole(user)
+  if (['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office'].includes(role)) {
     return '/dashboard'
+  }
+  if (['plant_engineer', 'electrical_supervisor', 'supervisor', 'electrical_operator', 'operator'].includes(role)) {
+    return '/substation'
+  }
+  if (['wtp_supervisor', 'wtp_operator'].includes(role)) {
+    return '/wtp'
+  }
+  if (['hvac_engineer', 'hvac_supervisor', 'hvac_operator'].includes(role)) {
+    return '/hvac'
   }
   return '/unauthorized'
 }

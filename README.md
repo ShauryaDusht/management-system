@@ -234,6 +234,8 @@ Users do not need to reinstall the CA certificate as long as the same CA is used
 ## Module Documentation
 
 - Beta server deployment: `BETA_SERVER_DEPLOYMENT.md`
+- Substation Log Integration: `SUBSTATION_LOG_INTEGRATION.md`
+- WTP / STP Meter Integration: `WTP_STP_METER_INTEGRATION.md`
 - Inventory: `backend/apps/inventory/README.md`
 - Housekeeping: `backend/apps/housekeeping/README.md`
 - Horticulture: `backend/apps/horticulture/README.md`

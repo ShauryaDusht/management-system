@@ -1,0 +1,218 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="icon" type="image/png" href="/campus-sanchalika-logo.png">
+<title>{% block title %}HVAC Plant Log{% endblock %} | Campus Sanchalika</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HVAC Plant Log">
+<meta name="theme-color" content="#1a3c34">
+<link rel="apple-touch-icon" href="/campus-sanchalika-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=DM+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="{% static 'shared/authService.js' %}" defer></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f4f2ed;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;color:#1a1a1a;min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* Header */
+.hdr{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#1a3c34,#2d4a3e);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 3px 12px rgba(26,60,52,.22)}
+.hdr-l{display:flex;align-items:center;gap:10px}
+.brand-logo{width:36px;height:36px;border-radius:10px;background:#fff;padding:2px;box-shadow:0 4px 12px rgba(0,0,0,.15);flex-shrink:0}
+.hdr-copy{display:flex;flex-direction:column;gap:1px;line-height:1.1}
+.hdr-app{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.75)}
+.hdr-ttl{font-weight:700;font-size:15px;letter-spacing:.3px}
+.hdr-r{display:flex;align-items:center;gap:8px}
+.user-badge{font-size:11px;font-weight:700;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);padding:4px 10px;border-radius:20px;color:#fff}
+.logout-btn{background:none;border:none;color:rgba(255,255,255,.85);cursor:pointer;padding:4px;display:flex;align-items:center}
+
+/* Container */
+.page{padding:12px 12px calc(84px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto}
+
+/* Cards */
+.card{background:#ffffff;border-radius:14px;padding:16px;margin-bottom:12px;border:1px solid #e5e1d8;box-shadow:0 2px 8px rgba(0,0,0,.03)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.card-title{font-size:14px;font-weight:800;color:#1a3c34;display:flex;align-items:center;gap:6px}
+.card-sub{font-size:12px;color:#716b66;margin-top:2px}
+
+/* Buttons */
+.btn-primary{background:linear-gradient(135deg,#2d4a3e,#1a3c34);color:#fff;border:none;border-radius:10px;padding:12px 16px;font-size:14px;font-weight:700;width:100%;cursor:pointer;display:block;text-align:center;text-decoration:none;box-shadow:0 4px 12px rgba(26,60,52,.22);transition:transform .1s,opacity .15s}
+.btn-primary:active{transform:scale(0.98);opacity:.92}
+.btn-secondary{background:#2d4a3e;color:#fff;border:none;border-radius:10px;padding:12px 16px;font-size:14px;font-weight:700;width:100%;cursor:pointer;display:block;text-align:center;text-decoration:none}
+.btn-outline{background:#fff;color:#2d4a3e;border:1.5px solid #2d4a3e;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;width:100%;display:block;text-align:center;text-decoration:none;transition:background .15s}
+.btn-outline:active{background:#f0f4f2}
+
+/* Status Pills */
+.pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;gap:4px}
+.pill-green{background:#dcfce7;color:#15803d}
+.pill-orange{background:#fff7ed;color:#c2622a}
+.pill-blue{background:#e0f2fe;color:#0369a1}
+.pill-red{background:#fee2e2;color:#991b1b}
+.pill-purple{background:#f3e8ff;color:#7e22ce}
+.pill-gray{background:#f1f5f9;color:#475569}
+
+/* Form Controls */
+input,select,textarea{width:100%;border:1.5px solid #d1cdc4;border-radius:8px;padding:9px 12px;font-size:14px;outline:none;background:#faf8f5;color:#1a1a1a;font-family:inherit;transition:border-color .15s,box-shadow .15s,background .15s}
+input:focus,select:focus,textarea:focus{border-color:#2d4a3e;box-shadow:0 0 0 3px rgba(45,74,62,.15);background:#fff}
+label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#4a4540;margin-bottom:4px}
+
+/* Shift Pills */
+.shift-pills{display:flex;gap:6px;margin:10px 0}
+.shift-pill{flex:1;text-align:center;padding:8px 4px;border-radius:8px;border:1.5px solid #d1cdc4;background:#fff;font-size:12px;font-weight:700;color:#716b66;cursor:pointer;text-decoration:none;transition:all .15s}
+.shift-pill.active{background:#2d4a3e;border-color:#2d4a3e;color:#fff}
+
+/* Hour Strip for 24-hr entries */
+.hour-strip{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 8px;margin-bottom:12px;-webkit-overflow-scrolling:touch}
+.hour-strip::-webkit-scrollbar{height:4px}
+.hour-strip::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
+.hour-pill{flex-shrink:0;padding:8px 12px;border-radius:8px;border:1.5px solid #d1cdc4;background:#fff;font-size:12px;font-weight:700;color:#716b66;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:4px;transition:all .15s}
+.hour-pill.active{background:#2d4a3e;border-color:#2d4a3e;color:#fff}
+.hour-pill .dot{font-size:9px;color:#10b981}
+.hour-pill.active .dot{color:#86efac}
+
+/* Progress bar */
+.prog-wrap{height:8px;background:#e5e1d8;border-radius:999px;overflow:hidden;margin-top:8px}
+.prog-bar{height:100%;border-radius:999px;background:linear-gradient(90deg,#2d4a3e,#10b981);transition:width .4s}
+
+/* Equipment Tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin:8px 0}
+.tile{background:#fff;border:1.5px solid #e5e1d8;border-radius:10px;padding:10px;position:relative;opacity:.8;transition:all .15s}
+.tile.on{opacity:1;border-color:#15803d;box-shadow:inset 0 3px 0 #15803d,0 2px 6px rgba(0,0,0,.04)}
+.tile small{display:block;color:#716b66;font-size:11px}
+.tile div{font:600 12px 'DM Mono',monospace;margin-top:4px}
+.tile .dot{position:absolute;right:10px;top:10px;width:8px;height:8px;border-radius:50%;background:#cbd5e1}
+.tile.on .dot{background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.25)}
+
+/* Alerts */
+.alert-box{padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;font-weight:600}
+.alert-success{background:#dcfce7;color:#166534;border:1px solid #86efac}
+.alert-warn{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+.alert-error{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+
+/* Accordion sections */
+details.equip-section{border:1px solid #e5e1d8;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#faf8f5}
+details.equip-section[open]{background:#ffffff;border-color:#2d4a3e;box-shadow:0 2px 6px rgba(0,0,0,.04)}
+details.equip-section summary{font-weight:800;font-size:13px;color:#1a3c34;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
+details.equip-section summary::-webkit-details-marker{display:none}
+
+/* Bottom Navigation (4 Core Tabs) */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(255,255,255,.98);backdrop-filter:blur(12px);border-top:1px solid #e5e1d8;padding:8px 12px calc(8px + env(safe-area-inset-bottom));display:flex;gap:6px;max-width:560px;margin:0 auto}
+.bottom-nav a{flex:1;text-decoration:none}
+.nav-item{width:100%;border:none;border-radius:10px;padding:7px 2px;font-size:11px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;color:#716b66;line-height:1.2;transition:all .15s}
+.nav-item svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
+.nav-item.active{background:#2d4a3e;color:#fff}
+.nav-item.active svg{stroke:#fff}
+.live-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(16,185,129,.18);color:#34d399;border:1px solid rgba(16,185,129,.35);padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.02em}
+.live-badge-history{display:inline-flex;align-items:center;gap:5px;background:rgba(245,158,11,.18);color:#fbbf24;border:1px solid rgba(245,158,11,.35);padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.02em}
+.live-pulse-dot{width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 0 0 rgba(16,185,129,.7);animation:pulse-green 1.8s infinite}
+@keyframes pulse-green{0%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(16,185,129,.7)}70%{transform:scale(1);box-shadow:0 0 0 6px rgba(16,185,129,0)}100%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+.live-cal-sync-btn{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.35);padding:5px 10px;border-radius:8px;font-size:12px;font-weight:800;text-decoration:none;cursor:pointer;white-space:nowrap;transition:all .15s ease}
+.live-cal-sync-btn:active{transform:scale(0.96);background:rgba(255,255,255,.3)}
+.cal-date-input{background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.35);font-weight:800;font-size:13.5px;padding:6px 10px;border-radius:8px;width:auto;color-scheme:dark;cursor:pointer}
+</style>
+<script>
+function getLiveLocalDateString() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function syncToLiveToday(targetPath, extraParams) {
+  const todayStr = getLiveLocalDateString();
+  const url = new URL(targetPath || window.location.href, window.location.origin);
+  url.searchParams.set('date', todayStr);
+  if (extraParams) {
+    for (const [k, v] of Object.entries(extraParams)) {
+      if (v !== undefined && v !== null && v !== '') {
+        url.searchParams.set(k, v);
+      }
+    }
+  }
+  window.location.href = url.pathname + url.search;
+}
+</script>
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+<header class="hdr">
+  <div class="hdr-l">
+    <img src="/campus-sanchalika-logo.png" alt="Campus Sanchalika" class="brand-logo">
+    <div class="hdr-copy">
+      <span class="hdr-app">Campus Operations</span>
+      <span class="hdr-ttl">HVAC Plant Daily Log</span>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <span class="user-badge">{{ user.first_name|default:user.username }}</span>
+    <form method="post" action="/portal/logout/" style="margin:0" data-logout-form data-redirect-url="/portal/login/">
+      {% csrf_token %}
+      <button type="submit" class="logout-btn" title="Sign Out">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+      </button>
+    </form>
+  </div>
+</header>
+
+<main class="page">
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="alert-box {% if msg.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
+        {{ msg }}
+      </div>
+    {% endfor %}
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+
+<nav class="bottom-nav">
+  <a href="/hvac/dashboard/">
+    <div class="nav-item {% if active_nav == 'dashboard' %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z"/></svg>
+      <span>Dashboard</span>
+    </div>
+  </a>
+  <a href="/hvac/entry/">
+    <div class="nav-item {% if active_nav == 'entry' %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      <span>Log Entry</span>
+    </div>
+  </a>
+  <a href="/hvac/flash/">
+    <div class="nav-item {% if active_nav == 'flash' %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>
+      <span>Flash R-01</span>
+    </div>
+  </a>
+  <a href="/hvac/history/">
+    <div class="nav-item {% if active_nav == 'history' %}active{% endif %}">
+      <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+      <span>History</span>
+    </div>
+  </a>
+</nav>
+
+<script>
+// Auto-trigger mobile native calendar picker on click/tap
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('input[type="date"]').forEach(function(inp) {
+    inp.addEventListener('click', function() {
+      try {
+        if (typeof this.showPicker === 'function') {
+          this.showPicker();
+        }
+      } catch (e) {}
+    });
+  });
+});
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

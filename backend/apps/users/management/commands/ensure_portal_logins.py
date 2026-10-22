@@ -33,7 +33,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         admin_user, admin_created = User.objects.get_or_create(username='super.admin')
 
-        if admin_created:
+        if admin_created or not admin_user.check_password(DEFAULT_PASSWORD):
             admin_user.first_name = 'Super'
             admin_user.last_name = 'Admin'
             admin_user.email = 'pragnesh@iitgn.ac.in'
