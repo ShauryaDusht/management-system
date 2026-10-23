@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
-import { Alert, Btn, Card, DataTable, Modal, SelectField, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Modal, SelectField, Spinner } from '../../components/ui'
 import { getErrorMessage, triggerDownload } from '../../shared/utils'
+import { exportHorticultureReport } from './exportHelper'
 import { humanizeStatus } from './helpers'
 
 const MONTH_NAMES = [
@@ -109,54 +110,53 @@ export default function WorkerReportModal({ open, worker, onClose }) {
     setDownloading(false)
   }, [monthOptions, open, worker?.id])
 
-  const downloadCsv = () => {
+  const handleExportWorkerReport = async (format) => {
     if (!worker || !report || !selectedPeriod) return
-    setDownloading(true)
-    try {
-      const rows = [
-        ['Report Title', 'Horticulture Worker Attendance Report'],
-        ['Worker', worker.name || '-'],
-        ['Pay Code', worker.pay_code || '-'],
-        ['Period', `${String(selectedPeriod.month).padStart(2, '0')}/${selectedPeriod.year}`],
-        ['Attendance %', `${Number(report.attendance_pct || 0).toFixed(2)}%`],
-        ['Present', report.days_present || 0],
-        ['Absent', report.days_absent || 0],
-        ['Half Day', report.half_days || 0],
-        ['Tasks Assigned', report.tasks_assigned || 0],
-        ['Tasks Completed', report.tasks_completed || 0],
-        ['Tasks Pending', report.tasks_pending || 0],
-        ['Task Completion %', `${Number(report.task_completion_pct || 0).toFixed(2)}%`],
-        [],
-        ['Date', 'Status', 'Supervisor'],
-        ...(report.daily_breakdown || []).map((row) => [
-          row.date || '',
-          humanizeStatus(row.status),
-          row.supervisor_name || '',
-        ]),
-        [],
-        ['Task Details'],
-        ['Date', 'Area', 'Task', 'Session', 'Status', 'Assigned At', 'Submitted At', 'Supervisor', 'Remarks', 'Photo Submitted'],
-        ...(report.task_details || []).map((row) => [
-          row.date || '',
-          row.area_name || '',
-          row.task_name || '',
-          humanizeStatus(row.session),
-          humanizeStatus(row.status),
-          row.assigned_at || '',
-          row.submitted_at || '',
-          row.supervisor_name || '',
-          row.remarks || '',
-          row.photo_submitted ? 'Yes' : 'No',
-        ]),
-      ]
-      const csv = rows.map((row) => row.map((cell) => csvValue(cell)).join(',')).join('\n')
-      triggerDownload(
-        new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }),
-        `horticulture_worker_${safeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}.csv`
-      )
-    } finally {
-      setDownloading(false)
+    const exportData = {
+      filename: `horticulture_worker_${safeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}`,
+      title: `${worker.name || 'Worker'} - Performance & Attendance Report`,
+      subtitle: `Horticulture Operations  |  Period: ${selectedPeriod.label}`,
+      metadata: [
+        { label: 'Worker', value: worker.name || '-' },
+        { label: 'Pay Code', value: worker.pay_code || '-' },
+        { label: 'Period', value: selectedPeriod.label },
+      ],
+      stats: [
+        { label: 'Attendance %', value: `${Number(report.attendance_pct || 0).toFixed(1)}%` },
+        { label: 'Present', value: report.days_present || 0 },
+        { label: 'Absent', value: report.days_absent || 0 },
+        { label: 'Half Days', value: report.half_days || 0 },
+        { label: 'Tasks Done', value: `${report.tasks_completed || 0}/${report.tasks_assigned || 0}` },
+        { label: 'Task %', value: `${Number(report.task_completion_pct || 0).toFixed(1)}%` },
+      ],
+      sections: [
+        {
+          title: 'Daily Attendance Breakdown',
+          headers: ['Date', 'Status', 'Supervisor'],
+          rows: (report.daily_breakdown || []).map((row) => [
+            row.date || '',
+            humanizeStatus(row.status),
+            row.supervisor_name || '',
+          ]),
+        },
+        {
+          title: 'Task Execution Details',
+          headers: ['Date', 'Area', 'Task', 'Session', 'Status', 'Assigned At', 'Submitted At', 'Supervisor', 'Remarks'],
+          rows: (report.task_details || []).map((row) => [
+            row.date || '',
+            row.area_name || '',
+            row.task_name || '',
+            humanizeStatus(row.session),
+            humanizeStatus(row.status),
+            row.assigned_at || '',
+            row.submitted_at || '',
+            row.supervisor_name || '',
+            row.remarks || '',
+          ]),
+        },
+      ],
     }
+    await exportHorticultureReport(format, exportData)
   }
 
   return (
@@ -177,9 +177,11 @@ export default function WorkerReportModal({ open, worker, onClose }) {
             ))}
           </SelectField>
         </div>
-        <Btn size="sm" variant="secondary" onClick={downloadCsv} disabled={loading || downloading || !report}>
-          {downloading ? 'Preparing...' : 'Download CSV'}
-        </Btn>
+        <ExportDropdown
+          label="Download Report"
+          onExport={handleExportWorkerReport}
+          disabled={loading || downloading || !report}
+        />
       </div>
 
       {loading ? (

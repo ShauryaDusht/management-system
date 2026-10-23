@@ -6,6 +6,7 @@ import { NotificationProvider } from './context/NotificationContext'
 import DashboardPage from './pages/dashboard/DashboardPage'
 import GeoTrackerPage from './pages/geo_tracker/GeoTrackerPage'
 import HorticulturePage from './pages/horticulture/HorticulturePage'
+import HorticultureStockPage from './pages/horticulture/HorticultureStockPage'
 import HousekeepingPage from './pages/housekeeping/HousekeepingPage'
 import InsightsPage from './pages/insights/InsightsPage'
 import InventoryPage from './pages/inventory/InventoryPage'
@@ -15,9 +16,9 @@ import UnauthorizedPage from './pages/UnauthorizedPage'
 import UsersPage from './pages/users/UsersPage'
 import EstatePage from './pages/estate/EstatePage'
 
-const ADMIN_OR_HK_INVENTORY = ['admin', 'hk_inventory_manager']
+const ADMIN_OR_HK_INVENTORY = ['admin', 'hk_inventory_manager', 'horticulture_manager']
 const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'estate_office', 'civil_team', 'electrical_team']
-const HK_INVENTORY_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
+const HK_INVENTORY_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
 const HK_PORTAL_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager']
 const GEO_TRACKER_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager']
@@ -118,6 +119,30 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={HK_PORTAL_ALLOWED}>
                 <HousekeepingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/horticulture-stock"
+            element={
+              <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
+                <HorticultureStockPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/horticulture-inventory"
+            element={
+              <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
+                <HorticultureStockPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/horticulture/stock"
+            element={
+              <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
+                <HorticultureStockPage />
               </ProtectedRoute>
             }
           />

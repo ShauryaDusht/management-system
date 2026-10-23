@@ -4,11 +4,12 @@ import {
   PieChart, Pie, Cell, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts'
 import { reportsAPI } from '../../api/inventory'
-import { Btn, Card, Spinner } from '../../components/ui'
+import { Btn, Card, ExportDropdown, Spinner } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import AdminLayout from '../../layout/AdminLayout'
-import { exportCsv, todayISO } from '../../shared/utils'
 import EstateBillingPanel from './EstateBillingPanel'
+import { exportReport } from '../../shared/exportHelper'
+import { todayISO } from '../../shared/utils'
 
 const PALETTE = ['#2d4a3e', '#c2622a', '#3b82f6', '#f59e0b', '#8b5cf6', '#0d9488', '#ec4899', '#64748b']
 const MEDAL = ['🥇', '🥈', '🥉']
@@ -513,25 +514,124 @@ export default function InsightsPage() {
   const topItemRows = Array.isArray(insights?.inventory_consumption?.top_items) ? insights.inventory_consumption.top_items : []
   const consumptionTotals = insights?.inventory_consumption?.totals || {}
 
-  const exportCurrentCsv = () => {
+  const handleExportInsights = async (format) => {
     const day = todayISO()
-    const baseName = `insights_${activeView}_${range}_${areaClass}_${day}.csv`
-    if (activeView === 'caretaker') {
-      exportCsv(baseName, ['Staff', 'Pay Code', 'Role', 'Areas', 'Worker Count', 'Total Tasks', 'Completed', 'Pending', 'In Progress', 'Skipped', 'Completion %', 'Attendance %', 'Fair Score'],
-        caretakerRows.map(r => [r.staff_name, r.pay_code || '-', r.role, (r.areas || []).join(' | '), r.worker_count || 0, r.total || 0, r.done || 0, r.pending || 0, r.in_progress || 0, r.skipped || 0, Number(r.completion_pct || 0).toFixed(1), Number(r.attendance_pct || 0).toFixed(1), Number(r.fair_score || 0).toFixed(2)]))
-    } else if (activeView === 'workers') {
-      exportCsv(baseName, ['Worker', 'Pay Code', 'Areas', 'Total Tasks', 'Completed', 'Pending', 'In Progress', 'Skipped', 'Completion %', 'Attendance %', 'Fair Score'],
-        workerRows.map(r => [r.worker_name, r.pay_code || '-', (r.areas || []).join(' | '), r.total || 0, r.done || 0, r.pending || 0, r.in_progress || 0, r.skipped || 0, Number(r.completion_pct || 0).toFixed(1), Number(r.attendance_pct || 0).toFixed(1), Number(r.fair_score || 0).toFixed(2)]))
-    } else if (activeView === 'area_hk') {
-      exportCsv(baseName, ['Area / Zone', 'Department', 'Area Class', 'Worker Count', 'Total Tasks', 'Completed', 'Pending', 'Completion %', 'Attendance %', 'Fair Score'],
-        areaRows.map(r => [r.area_name, r.department || 'housekeeping', r.area_class, r.worker_count || 0, r.total || 0, r.done || 0, r.pending || 0, Number(r.completion_pct || 0).toFixed(1), Number(r.attendance_pct || 0).toFixed(1), Number(r.fair_score || 0).toFixed(2)]))
-    } else if (activeView === 'area_inventory') {
-      exportCsv(baseName, ['Area', 'Area Class', 'Transactions', 'Consumable Qty', 'Asset Qty', 'Total Qty'],
-        invAreaRows.map(r => [r.area_name, r.area_class, r.transactions || 0, r.consumable_qty || 0, r.asset_qty || 0, r.total_qty || 0]))
-    } else {
-      exportCsv(baseName, ['Item Code', 'Item', 'Type', 'Quantity', 'Transactions', 'Area Count', 'Areas'],
-        topItemRows.map(r => [r.item_code || '-', r.item_name, r.item_type, r.quantity || 0, r.transactions || 0, r.areas_count || 0, (r.areas || []).join(' | ')]))
+    const viewLabel = visibleViewOptions.find((v) => v.key === activeView)?.label || activeView
+    const exportData = {
+      filename: `insights_${activeView}_${range}_${areaClass}_${day}`,
+      module: 'Analytics & Insights',
+      title: `${viewLabel} Report`,
+      subtitle: `Period: ${range.toUpperCase()} • Area: ${areaClass.toUpperCase()} • Date: ${day}`,
+      metadata: [
+        { label: 'View', value: viewLabel },
+        { label: 'Period Range', value: range.toUpperCase() },
+        { label: 'Area Class', value: areaClass.toUpperCase() },
+        { label: 'Export Date', value: day },
+      ],
+      stats: [],
+      headers: [],
+      rows: [],
     }
+
+    if (activeView === 'caretaker') {
+      const avgScore = caretakerRows.length
+        ? (caretakerRows.reduce((a, b) => a + Number(b.fair_score || 0), 0) / caretakerRows.length).toFixed(1)
+        : '0.0'
+      exportData.stats = [
+        { label: 'Total Staff', value: caretakerRows.length },
+        { label: 'Avg Fair Score', value: avgScore },
+      ]
+      exportData.headers = ['Staff', 'Pay Code', 'Role', 'Areas', 'Worker Count', 'Total Tasks', 'Completed', 'Pending', 'In Progress', 'Skipped', 'Completion %', 'Attendance %', 'Fair Score']
+      exportData.rows = caretakerRows.map((r) => [
+        r.staff_name || '-',
+        r.pay_code || '-',
+        r.role || '-',
+        (r.areas || []).join(' | ') || '-',
+        r.worker_count || 0,
+        r.total || 0,
+        r.done || 0,
+        r.pending || 0,
+        r.in_progress || 0,
+        r.skipped || 0,
+        `${Number(r.completion_pct || 0).toFixed(1)}%`,
+        `${Number(r.attendance_pct || 0).toFixed(1)}%`,
+        Number(r.fair_score || 0).toFixed(2),
+      ])
+    } else if (activeView === 'workers') {
+      const avgScore = workerRows.length
+        ? (workerRows.reduce((a, b) => a + Number(b.fair_score || 0), 0) / workerRows.length).toFixed(1)
+        : '0.0'
+      exportData.stats = [
+        { label: 'Total Workers', value: workerRows.length },
+        { label: 'Avg Fair Score', value: avgScore },
+      ]
+      exportData.headers = ['Worker', 'Pay Code', 'Areas', 'Total Tasks', 'Completed', 'Pending', 'In Progress', 'Skipped', 'Completion %', 'Attendance %', 'Fair Score']
+      exportData.rows = workerRows.map((r) => [
+        r.worker_name || '-',
+        r.pay_code || '-',
+        (r.areas || []).join(' | ') || '-',
+        r.total || 0,
+        r.done || 0,
+        r.pending || 0,
+        r.in_progress || 0,
+        r.skipped || 0,
+        `${Number(r.completion_pct || 0).toFixed(1)}%`,
+        `${Number(r.attendance_pct || 0).toFixed(1)}%`,
+        Number(r.fair_score || 0).toFixed(2),
+      ])
+    } else if (activeView === 'area_hk') {
+      exportData.stats = [
+        { label: 'Total Areas', value: areaRows.length },
+      ]
+      exportData.headers = ['Area / Zone', 'Department', 'Area Class', 'Worker Count', 'Total Tasks', 'Completed', 'Pending', 'Completion %', 'Attendance %', 'Fair Score']
+      exportData.rows = areaRows.map((r) => [
+        r.area_name || '-',
+        r.department || 'housekeeping',
+        r.area_class || '-',
+        r.worker_count || 0,
+        r.total || 0,
+        r.done || 0,
+        r.pending || 0,
+        `${Number(r.completion_pct || 0).toFixed(1)}%`,
+        `${Number(r.attendance_pct || 0).toFixed(1)}%`,
+        Number(r.fair_score || 0).toFixed(2),
+      ])
+    } else if (activeView === 'area_inventory') {
+      const totalTx = invAreaRows.reduce((a, b) => a + Number(b.transactions || 0), 0)
+      const totalQty = invAreaRows.reduce((a, b) => a + Number(b.total_qty || 0), 0)
+      exportData.stats = [
+        { label: 'Areas Tracked', value: invAreaRows.length },
+        { label: 'Total Transactions', value: totalTx },
+        { label: 'Total Items Issued', value: totalQty },
+      ]
+      exportData.headers = ['Area', 'Area Class', 'Transactions', 'Consumable Qty', 'Asset Qty', 'Total Qty']
+      exportData.rows = invAreaRows.map((r) => [
+        r.area_name || '-',
+        r.area_class || '-',
+        r.transactions || 0,
+        r.consumable_qty || 0,
+        r.asset_qty || 0,
+        r.total_qty || 0,
+      ])
+    } else {
+      const totalItemQty = topItemRows.reduce((a, b) => a + Number(b.quantity || 0), 0)
+      exportData.stats = [
+        { label: 'Top Items Count', value: topItemRows.length },
+        { label: 'Total Quantity', value: totalItemQty },
+      ]
+      exportData.headers = ['Item Code', 'Item', 'Type', 'Quantity', 'Transactions', 'Area Count', 'Areas']
+      exportData.rows = topItemRows.map((r) => [
+        r.item_code || '-',
+        r.item_name || '-',
+        r.item_type || '-',
+        r.quantity || 0,
+        r.transactions || 0,
+        r.areas_count || 0,
+        (r.areas || []).join(' | ') || '-',
+      ])
+    }
+
+    await exportReport(format, exportData)
   }
 
   return (
@@ -556,17 +656,17 @@ export default function InsightsPage() {
           ))}
         </div>
         {activeView !== 'estate_billing' && (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2 }}>Period:</span>
+                <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2, fontWeight: 600 }}>Period:</span>
                 {RANGE_OPTIONS.map(opt => (
                   <Btn key={opt.key} size="sm" variant={range === opt.key ? 'primary' : 'secondary'} onClick={() => setRange(opt.key)}>{opt.label}</Btn>
                 ))}
               </div>
               {!isHostelOffice && (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2 }}>Area:</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 2, fontWeight: 600 }}>Area:</span>
                   {visibleAreaOptions.map(opt => (
                     <Btn key={opt.key} size="sm" variant={areaClass === opt.key ? 'primary' : 'secondary'} onClick={() => setAreaClass(opt.key)}>
                       {isHorticultureManager && opt.key === 'others' ? 'Horticulture' : opt.label}
@@ -575,10 +675,12 @@ export default function InsightsPage() {
                 </div>
               )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
-              <Btn size="sm" variant="secondary" onClick={exportCurrentCsv}>📥 Export CSV</Btn>
-            </div>
-          </>
+            <ExportDropdown
+              label="Export Insights"
+              onExport={handleExportInsights}
+              disabled={loading}
+            />
+          </div>
         )}
       </Card>
       {error && (

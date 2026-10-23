@@ -41,8 +41,14 @@ def _exclude_break_tasks(qs):
     )
 
 
-def generate_inventory_report(status_filter=None, item_type_filter=None):
+def generate_inventory_report(status_filter=None, item_type_filter=None, category_filter=None):
     qs = Item.objects.all().select_related('category')
+
+    if category_filter:
+        if str(category_filter).isdigit():
+            qs = qs.filter(category_id=category_filter)
+        else:
+            qs = qs.filter(category__name__iexact=category_filter)
 
     if item_type_filter in {'asset', 'consumable'}:
         qs = qs.filter(item_type=item_type_filter)
@@ -95,9 +101,28 @@ def generate_inventory_report(status_filter=None, item_type_filter=None):
 
 # ── Requests report ───────────────────────────────────────────────────────────
 
-def generate_requests_report(date_from=None, date_to=None):
+def generate_requests_report(date_from=None, date_to=None, category_filter=None, exclude_category_filter=None):
     from apps.inventory.models import ItemRequest
-    qs = ItemRequest.objects.all().select_related('requested_by', 'item', 'approved_by', 'issue')
+    from django.db.models import Q
+    qs = ItemRequest.objects.all().select_related('requested_by', 'item__category', 'approved_by', 'issue')
+    if category_filter:
+        if str(category_filter).isdigit():
+            qs = qs.filter(item__category_id=category_filter)
+        else:
+            qs = qs.filter(
+                Q(item__category__name__iexact=category_filter)
+                | Q(item__category__name__icontains='Horticulture')
+                | Q(purpose__icontains='[Horticulture')
+            )
+    if exclude_category_filter:
+        if str(exclude_category_filter).isdigit():
+            qs = qs.exclude(item__category_id=exclude_category_filter)
+        else:
+            qs = qs.exclude(
+                Q(item__category__name__iexact=exclude_category_filter)
+                | Q(item__category__name__icontains='Horticulture')
+                | Q(purpose__icontains='[Horticulture')
+            )
     if date_from:
         qs = qs.filter(requested_at__date__gte=date_from)
     if date_to:
@@ -111,6 +136,7 @@ def generate_requests_report(date_from=None, date_to=None):
             'requester': req.requested_by.get_full_name() or req.requested_by.username,
             'item_code': req.item.item_code,
             'item': req.item.name,
+            'category': req.item.category.name if req.item and req.item.category else '',
             'quantity': req.quantity_requested,
             'status': req.status,
             'is_urgent': req.is_urgent,

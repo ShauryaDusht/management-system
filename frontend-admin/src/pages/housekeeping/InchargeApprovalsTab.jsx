@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { Alert, Badge, Btn, Card, DataTable, Modal, Spinner } from '../../components/ui'
+import { Alert, Badge, Btn, Card, DataTable, ExportDropdown, Modal, Spinner } from '../../components/ui'
 import { useNotifications } from '../../context/NotificationContext'
+import { exportReport } from '../../shared/exportHelper'
 import { triggerDownload } from '../../shared/utils'
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
 import { useMonthYear } from '../../shared/hooks/useMonthYear'
@@ -81,25 +82,36 @@ function InchargeReportModal({ open, onClose }) {
     }
   }
 
-  const downloadCsv = () => {
+  const handleExportInchargeReport = async (format) => {
     if (!report?.rows?.length) return
     setDownloading(true)
     try {
-      const headers = ['Leave Staff', 'Area', 'Leave Date', 'Incharge', 'Status', 'Admin Note']
-      const csvRows = report.rows.map((row) => ([
-        row.leave_staff || '',
-        row.cover_all_areas ? 'All Areas' : (row.area || ''),
-        row.leave_date || '',
-        row.incharge || '',
-        row.status || '',
-        row.admin_action_note || '',
-      ]))
-      const csvBody = [headers, ...csvRows]
-        .map((r) => r.map((cell) => toCsvValue(cell)).join(','))
-        .join('\n')
-      const blob = new Blob([`\uFEFF${csvBody}`], { type: 'text/csv' })
-      const filename = `incharge_report_${String(month).padStart(2, '0')}_${year}.csv`
-      triggerDownload(blob, filename)
+      const exportData = {
+        filename: `incharge_report_${String(month).padStart(2, '0')}_${year}`,
+        module: 'Housekeeping Operations',
+        title: 'Monthly Incharge Approval Report',
+        subtitle: `Period: ${String(month).padStart(2, '0')}/${year}`,
+        metadata: [
+          { label: 'Month/Year', value: `${String(month).padStart(2, '0')}/${year}` },
+          { label: 'Total Assignments', value: summary.total || report.rows.length },
+        ],
+        stats: [
+          { label: 'Total', value: summary.total || 0 },
+          { label: 'Approved', value: summary.approved || 0 },
+          { label: 'Rejected', value: summary.rejected || 0 },
+          { label: 'Pending', value: summary.pending || 0 },
+        ],
+        headers: ['Leave Staff', 'Area', 'Leave Date', 'Incharge', 'Status', 'Admin Note'],
+        rows: report.rows.map((row) => ([
+          row.leave_staff || '-',
+          row.cover_all_areas ? 'All Areas' : (row.area || '-'),
+          formatDate(row.leave_date),
+          row.incharge || '-',
+          row.status || '-',
+          row.admin_action_note || '-',
+        ])),
+      }
+      await exportReport(format, exportData)
     } finally {
       setDownloading(false)
     }
@@ -148,9 +160,11 @@ function InchargeReportModal({ open, onClose }) {
             {loading ? 'Loading...' : 'Load Report'}
           </Btn>
         </div>
-        <Btn variant="secondary" onClick={downloadCsv} disabled={loading || downloading || !report?.rows?.length}>
-          {downloading ? 'Preparing...' : 'Download CSV'}
-        </Btn>
+        <ExportDropdown
+          label="Download Report"
+          onExport={handleExportInchargeReport}
+          disabled={loading || downloading || !report?.rows?.length}
+        />
       </div>
 
       {loading ? (

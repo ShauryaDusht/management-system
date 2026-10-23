@@ -40,6 +40,7 @@ class IsInventoryReportViewer(IsAuthenticated):
                 getattr(user, 'is_admin', False)
                 or getattr(user, 'is_inventory_manager', False)
                 or getattr(user, 'is_hk_inventory_manager', False)
+                or getattr(user, 'is_horticulture_manager', False)
                 or _is_hostel_office(user)
             )
         )
@@ -151,7 +152,22 @@ class ItemListCreateView(generics.ListCreateAPIView):
             qs = qs.filter(item_type=item_type)
         category = self.request.query_params.get('category')
         if category:
-            qs = qs.filter(category_id=category)
+            if str(category).isdigit():
+                qs = qs.filter(category_id=category)
+            else:
+                qs = qs.filter(
+                    dm.Q(category__name__iexact=category)
+                    | dm.Q(category__name__icontains=category)
+                )
+        exclude_category = self.request.query_params.get('exclude_category')
+        if exclude_category:
+            if str(exclude_category).isdigit():
+                qs = qs.exclude(category_id=exclude_category)
+            else:
+                qs = qs.exclude(
+                    dm.Q(category__name__iexact=exclude_category)
+                    | dm.Q(category__name__icontains=exclude_category)
+                )
         low_stock = self.request.query_params.get('low_stock')
         if low_stock == 'true':
             qs = qs.filter(
@@ -299,14 +315,49 @@ class StockEntryListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [IsAdminOrHKInventoryManager()]
+            return [IsAdminOrInventoryManager()]
         return [IsInventoryReportViewer()]
 
     def get_queryset(self):
-        qs = StockEntry.objects.select_related('item', 'added_by').all()
-        item_id = self.request.query_params.get('item')
+        qs = StockEntry.objects.select_related('item', 'item__category', 'added_by').all().order_by('-added_at')
+        params = getattr(self.request, 'query_params', getattr(self.request, 'GET', {}))
+        item_id = params.get('item')
         if item_id:
             qs = qs.filter(item_id=item_id)
+
+        category = params.get('category')
+        if category:
+            if str(category).isdigit():
+                qs = qs.filter(item__category_id=category)
+            else:
+                qs = qs.filter(
+                    dm.Q(item__category__name__iexact=category)
+                    | dm.Q(item__category__name__icontains=category)
+                )
+
+        exclude_category = params.get('exclude_category')
+        if exclude_category:
+            if str(exclude_category).isdigit():
+                qs = qs.exclude(item__category_id=exclude_category)
+            else:
+                qs = qs.exclude(
+                    dm.Q(item__category__name__iexact=exclude_category)
+                    | dm.Q(item__category__name__icontains=exclude_category)
+                )
+
+        user = self.request.user
+        if not category and not exclude_category:
+            if getattr(user, 'is_horticulture_manager', False) or getattr(user, 'role', '') == 'horticulture_manager':
+                qs = qs.filter(
+                    dm.Q(item__category__name__icontains='Horticulture')
+                    | dm.Q(item__category__name__iexact='Garden & Horticulture Equipment')
+                )
+            elif getattr(user, 'is_hk_inventory_manager', False) or getattr(user, 'role', '') == 'hk_inventory_manager':
+                qs = qs.exclude(
+                    dm.Q(item__category__name__icontains='Horticulture')
+                    | dm.Q(item__category__name__iexact='Garden & Horticulture Equipment')
+                )
+
         return qs
 
     def perform_create(self, serializer):
@@ -333,7 +384,28 @@ class ItemRequestListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = ItemRequest.objects.select_related('item', 'requested_by', 'approved_by').prefetch_related('requisition_items__inventory_item')
+        qs = ItemRequest.objects.select_related('item__category', 'requested_by', 'approved_by').prefetch_related('requisition_items__inventory_item__category')
+        params = getattr(self.request, 'query_params', getattr(self.request, 'GET', {}))
+        category = params.get('category')
+        if category:
+            if str(category).isdigit():
+                qs = qs.filter(item__category_id=category)
+            else:
+                qs = qs.filter(
+                    dm.Q(item__category__name__iexact=category)
+                    | dm.Q(item__category__name__icontains='Horticulture')
+                    | dm.Q(purpose__icontains='[Horticulture')
+                )
+        exclude_category = params.get('exclude_category')
+        if exclude_category:
+            if str(exclude_category).isdigit():
+                qs = qs.exclude(item__category_id=exclude_category)
+            else:
+                qs = qs.exclude(
+                    dm.Q(item__category__name__iexact=exclude_category)
+                    | dm.Q(item__category__name__icontains='Horticulture')
+                    | dm.Q(purpose__icontains='[Horticulture')
+                )
         if getattr(user, 'role', '') in ['supervisor', 'caretaker']:
             return qs.filter(requested_by=user)
         if _is_hostel_office(user):
@@ -395,14 +467,14 @@ class PurchaseRequestListCreateView(generics.ListCreateAPIView):
         if item_type_filter in ['asset', 'consumable']:
             qs = qs.filter(item_type=item_type_filter)
         if getattr(user, 'role', '') != 'admin':
-            if _is_hostel_office(user) or getattr(user, 'is_hk_inventory_manager', False):
+            if _is_hostel_office(user) or getattr(user, 'is_hk_inventory_manager', False) or getattr(user, 'is_horticulture_manager', False):
                 return qs
             qs = qs.filter(requested_by=user)
         return qs
 
     def perform_create(self, serializer):
         role = getattr(self.request.user, 'role', '')
-        if role not in ['inventory_manager', 'admin', 'hk_inventory_manager']:
+        if role not in ['inventory_manager', 'admin', 'hk_inventory_manager', 'horticulture_manager']:
             raise PermissionDenied('Only inventory managers/admin can create purchase requests.')
         serializer.save(requested_by=self.request.user)
 
@@ -608,6 +680,27 @@ class ItemIssueListView(generics.ListAPIView):
                 output_field=DecimalField(max_digits=10, decimal_places=2),
             )
         )
+        params = getattr(self.request, 'query_params', getattr(self.request, 'GET', {}))
+        category = params.get('category')
+        if category:
+            if str(category).isdigit():
+                qs = qs.filter(request__item__category_id=category)
+            else:
+                qs = qs.filter(
+                    dm.Q(request__item__category__name__iexact=category)
+                    | dm.Q(request__item__category__name__icontains='Horticulture')
+                    | dm.Q(request__purpose__icontains='[Horticulture')
+                )
+        exclude_category = params.get('exclude_category')
+        if exclude_category:
+            if str(exclude_category).isdigit():
+                qs = qs.exclude(request__item__category_id=exclude_category)
+            else:
+                qs = qs.exclude(
+                    dm.Q(request__item__category__name__iexact=exclude_category)
+                    | dm.Q(request__item__category__name__icontains='Horticulture')
+                    | dm.Q(request__purpose__icontains='[Horticulture')
+                )
         if getattr(user, 'role', '') in ['supervisor', 'caretaker']:
             return qs.filter(request__requested_by=user)
         if _is_hostel_office(user):
@@ -678,7 +771,7 @@ class FinalizeConsumableView(APIView):
             base_qs = ItemIssue.objects.select_for_update().select_related(
                 'request__item', 'request__requested_by'
             )
-            if user.is_admin or user.is_inventory_manager or getattr(user, 'is_hk_inventory_manager', False):
+            if user.is_admin or user.is_inventory_manager or getattr(user, 'is_hk_inventory_manager', False) or getattr(user, 'is_horticulture_manager', False):
                 issue = base_qs.get(pk=pk)
             elif user.is_supervisor:
                 # Supervisors can only finalize their own issues
@@ -736,7 +829,7 @@ class IssueUsageLogView(APIView):
 
         if _is_hostel_office(user):
             return base_qs.get(pk=pk, request__requested_by_id__in=_hostel_office_staff_ids())
-        if user.is_admin or user.is_inventory_manager or getattr(user, 'is_hk_inventory_manager', False):
+        if user.is_admin or user.is_inventory_manager or getattr(user, 'is_hk_inventory_manager', False) or getattr(user, 'is_horticulture_manager', False):
             return base_qs.get(pk=pk)
         if user.is_supervisor or user.is_caretaker:
             return base_qs.get(pk=pk, request__requested_by=user)
@@ -864,6 +957,7 @@ class UserUsageLogsView(APIView):
             request.user.is_admin
             or getattr(request.user, 'is_inventory_manager', False)
             or getattr(request.user, 'is_hk_inventory_manager', False)
+            or getattr(request.user, 'is_horticulture_manager', False)
         )
         user_area_names = _hostel_office_staff_area_names(user)
         if not can_manage_inventory:

@@ -8,6 +8,7 @@ import {
   Btn,
   Card,
   DataTable,
+  ExportDropdown,
   Field,
   Input,
   Modal,
@@ -17,7 +18,8 @@ import {
 import AdminLayout from '../../layout/AdminLayout'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
-import { exportCsv, todayISO } from '../../shared/utils'
+import { exportReport } from '../../shared/exportHelper'
+import { todayISO } from '../../shared/utils'
 import { useAuth } from '../../context/AuthContext'
 
 const ROLES = [
@@ -253,11 +255,6 @@ export default function UsersPage() {
     [filtered]
   )
 
-  const downloadCsv = () => {
-    const scope = roleFilter === 'all' ? 'all_roles' : roleFilter
-    exportCsv(csvRows, `manage_users_${safeFilePart(scope)}_${todayISO()}.csv`)
-  }
-
   const roleCounts = useMemo(() => {
     const counts = {
       admin: 0,
@@ -279,6 +276,39 @@ export default function UsersPage() {
     }
   }, [users])
 
+  const handleExportUsers = async (format) => {
+    const scope = roleFilter === 'all' ? 'All Roles' : (ROLE_FILTERS.find((r) => r.key === roleFilter)?.label || roleFilter)
+    const exportData = {
+      filename: `manage_users_${safeFilePart(roleFilter)}_${todayISO()}`,
+      module: 'User Administration',
+      title: 'Staff & User Directory Report',
+      subtitle: `Role Filter: ${scope} • Total Users: ${filtered.length}`,
+      metadata: [
+        { label: 'Role Filter', value: scope },
+        { label: 'Export Date', value: todayISO() },
+        { label: 'Total Users Listed', value: filtered.length },
+      ],
+      stats: [
+        { label: 'Total Users', value: filtered.length },
+        { label: 'Admins', value: roleCounts.admin || 0 },
+        { label: 'Supervisors', value: roleCounts.supervisor || 0 },
+        { label: 'Caretakers', value: roleCounts.caretaker || 0 },
+      ],
+      headers: ['Name', 'Username', 'Pay Code', 'Email', 'Phone', 'Role', 'Area Incharge', 'Status'],
+      rows: filtered.map((u) => [
+        userDisplayName(u),
+        u.username || '-',
+        u.pay_code || '-',
+        u.email || '-',
+        u.phone || '-',
+        String(u.role || '-').replace(/_/g, ' ').toUpperCase(),
+        areaInchargeText(u) || '-',
+        u.is_active ? 'Active' : 'Inactive',
+      ]),
+    }
+    await exportReport(format, exportData)
+  }
+
   return (
     <AdminLayout
       title="Manage Users"
@@ -294,9 +324,9 @@ export default function UsersPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(115px, 11vw, 160px), 1fr))',
           gap: 10,
-          marginBottom: 20,
+          marginBottom: 16,
         }}
       >
         <Card
@@ -377,9 +407,11 @@ export default function UsersPage() {
           </SelectField>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, color: 'var(--text-3)' }}>{filtered.length} users</span>
-            <Btn variant="secondary" onClick={downloadCsv} disabled={loading || csvRows.length === 0}>
-              Download CSV
-            </Btn>
+            <ExportDropdown
+              label="Download Users"
+              onExport={handleExportUsers}
+              disabled={loading || filtered.length === 0}
+            />
           </div>
         </div>
 

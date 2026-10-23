@@ -59,7 +59,7 @@ export function Card({ children, style, onClick, noPad }) {
         borderRadius: 14,
         border: '1px solid var(--border)',
         padding: noPad ? 0 : '18px 20px',
-        overflow: 'hidden',
+        overflow: style?.overflow || (noPad ? 'hidden' : 'visible'),
         cursor: onClick ? 'pointer' : 'default',
         ...style,
       }}
@@ -376,8 +376,8 @@ export function Modal({ open, onClose, title, children, footer, width = 480 }) {
 // -- Table --------------------------------------------------------------------
 export function DataTable({ headers, rows, loading, emptyMsg = 'No data found.' }) {
   return (
-    <div style={{ overflow: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+    <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <table style={{ width: '100%', minWidth: 600, borderCollapse: 'collapse', fontSize: 13 }}>
         <thead>
           <tr>
             {headers.map((h, i) => (
@@ -511,17 +511,56 @@ export function StatCard({
       style={{
         display: 'flex',
         alignItems: 'center',
+        padding: '14px 16px',
         transition: 'transform 0.15s, box-shadow 0.15s',
+        minWidth: 0,
         ...style,
       }}
     >
-      <IconMark icon={icon} label={label} color={color} style={{ marginRight: 16 }} />
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1 }}>
+      <IconMark icon={icon} label={label} color={color} size={42} style={{ marginRight: 12, flexShrink: 0 }} />
+      <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+        <div
+          title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}
+          style={{
+            fontSize: 22,
+            fontWeight: 800,
+            color: 'var(--text)',
+            lineHeight: 1.1,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
           {value}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{label}</div>
-        {sub && <div style={{ fontSize: 11, color, marginTop: 2, fontWeight: 600 }}>{sub}</div>}
+        <div
+          title={typeof label === 'string' ? label : undefined}
+          style={{
+            fontSize: 11,
+            color: 'var(--text-3)',
+            marginTop: 3,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {label}
+        </div>
+        {sub && (
+          <div
+            style={{
+              fontSize: 11,
+              color,
+              marginTop: 2,
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {sub}
+          </div>
+        )}
       </div>
     </Card>
   )
@@ -666,3 +705,5 @@ if (typeof document !== 'undefined' && !document.getElementById('ui-shared-style
   `
   document.head.appendChild(style)
 }
+
+export { default as ExportDropdown } from './ExportDropdown'

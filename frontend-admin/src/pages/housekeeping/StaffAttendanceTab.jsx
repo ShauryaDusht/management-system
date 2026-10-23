@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { Alert, Btn, Card, DataTable, Input, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Input, Spinner } from '../../components/ui'
 import { todayISO, triggerDownload } from '../../shared/utils'
+import { exportReport } from '../../shared/exportHelper'
 
 const STATUS_META = {
   present: { label: 'Present', color: '#166534', bg: '#dcfce7' },
@@ -83,39 +84,75 @@ export default function StaffAttendanceTab() {
     [rows],
   )
 
-  const downloadCsv = () => {
+  const handleExportAttendance = async (format) => {
     if (!rows.length) return
-    const headers = ['Staff Name', 'Pay Code', 'Area', 'Role', 'Date', 'Status']
-    const csvRows = rows.map((r) => [
-      r.staff_name || '-',
-      r.staff_pay_code || '-',
-      Array.isArray(r.staff_areas) && r.staff_areas.length ? r.staff_areas.join('; ') : '-',
-      r.staff_role || '-',
-      r.date || date,
-      r.status || '-',
-    ])
-    const csvBody = [headers, ...csvRows]
-      .map((row) => row.map((cell) => {
-        const s = String(cell ?? '')
-        return /["\,\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-      }).join(','))
-      .join('\n')
-    const blob = new Blob([`\uFEFF${csvBody}`], { type: 'text/csv' })
-    triggerDownload(blob, `staff_attendance_${date}.csv`)
+    const exportData = {
+      filename: `housekeeping_staff_attendance_${date}`,
+      module: 'Housekeeping Operations',
+      title: 'Housekeeping Staff Attendance Report',
+      subtitle: `Daily staff attendance records for ${date}`,
+      metadata: [
+        { label: 'Date', value: date },
+        { label: 'Total Staff', value: totals.total },
+      ],
+      stats: [
+        { label: 'Total Staff', value: totals.total },
+        { label: 'Present', value: totals.present },
+        { label: 'Absent', value: totals.absent },
+        { label: 'On Leave', value: totals.leave },
+      ],
+      headers: ['Staff Name', 'Pay Code', 'Area', 'Role', 'Date', 'Status'],
+      rows: rows.map((r) => [
+        r.staff_name || '-',
+        r.staff_pay_code || '-',
+        Array.isArray(r.staff_areas) && r.staff_areas.length ? r.staff_areas.join('; ') : '-',
+        r.staff_role || '-',
+        r.date || date,
+        STATUS_META[r.status]?.label || r.status || '-',
+      ]),
+    }
+    await exportReport(format, exportData)
   }
 
-  const downloadAbsentCsv = async () => {
-    setExportingAbsent(true)
-    setError('')
-    try {
-      const response = await hkAPI.downloadAbsentAttendanceCSV(date, 'staff')
-      const blob = new Blob([response.data], { type: 'text/csv' })
-      triggerDownload(blob, `housekeeping_absent_staff_${date}.csv`)
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to export absent CSV.')
-    } finally {
-      setExportingAbsent(false)
+  const handleExportAbsent = async (format) => {
+    const absentRows = rows.filter((r) => r.status === 'absent')
+    if (format === 'csv') {
+      try {
+        setExportingAbsent(true)
+        const response = await hkAPI.downloadAbsentAttendanceCSV(date, 'staff')
+        const blob = new Blob([response.data], { type: 'text/csv' })
+        triggerDownload(blob, `housekeeping_absent_staff_${date}.csv`)
+        return
+      } catch (e) {
+        // fallback to client generation
+      } finally {
+        setExportingAbsent(false)
+      }
     }
+
+    const exportData = {
+      filename: `housekeeping_absent_staff_${date}`,
+      module: 'Housekeeping Operations',
+      title: 'Housekeeping Absent Staff Report',
+      subtitle: `List of absent staff on ${date}`,
+      metadata: [
+        { label: 'Date', value: date },
+        { label: 'Total Absent', value: totals.absent },
+      ],
+      stats: [
+        { label: 'Total Staff', value: totals.total },
+        { label: 'Absent Count', value: totals.absent },
+      ],
+      headers: ['Staff Name', 'Pay Code', 'Area', 'Role', 'Status'],
+      rows: (absentRows.length ? absentRows : rows.filter((r) => r.status === 'absent')).map((r) => [
+        r.staff_name || '-',
+        r.staff_pay_code || '-',
+        Array.isArray(r.staff_areas) && r.staff_areas.length ? r.staff_areas.join('; ') : '-',
+        r.staff_role || '-',
+        'Absent',
+      ]),
+    }
+    await exportReport(format, exportData)
   }
 
   return (
@@ -128,9 +165,11 @@ export default function StaffAttendanceTab() {
             <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Total Staff</div>
             <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.total}</div>
           </div>
-          <Btn size="sm" variant="secondary" onClick={downloadCsv} disabled={!rows.length}>
-            Export CSV
-          </Btn>
+          <ExportDropdown
+            label="Download"
+            onExport={handleExportAttendance}
+            disabled={!rows.length}
+          />
         </Card>
         <Card>
           <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Present</div>
@@ -141,9 +180,11 @@ export default function StaffAttendanceTab() {
             <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Absent</div>
             <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.absent}</div>
           </div>
-          <Btn size="sm" variant="secondary" onClick={downloadAbsentCsv} disabled={exportingAbsent}>
-            {exportingAbsent ? 'Exporting...' : 'Absent CSV'}
-          </Btn>
+          <ExportDropdown
+            label="Absent"
+            onExport={handleExportAbsent}
+            disabled={exportingAbsent || !totals.absent}
+          />
         </Card>
         <Card>
           <div style={{ fontSize: 12, color: 'var(--text-3)' }}>On Leave</div>

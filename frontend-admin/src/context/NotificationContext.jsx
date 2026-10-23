@@ -5,14 +5,14 @@ import { useAuth } from './AuthContext'
 
 const NotificationContext = createContext(null)
 
-const BADGE_KEYS = ['inventory', 'lowStock', 'housekeeping']
+const BADGE_KEYS = ['inventory', 'lowStock', 'housekeeping', 'horticultureInventory']
 
 function createEmptyBadges() {
-  return { inventory: 0, lowStock: 0, housekeeping: 0 }
+  return { inventory: 0, lowStock: 0, housekeeping: 0, horticultureInventory: 0 }
 }
 
 function createEmptySeen() {
-  return { inventory: [], lowStock: [], housekeeping: [] }
+  return { inventory: [], lowStock: [], housekeeping: [], horticultureInventory: [] }
 }
 
 function normalizeSeen(raw) {
@@ -59,15 +59,16 @@ export function NotificationProvider({ children }) {
   const fetchBadges = useCallback(async () => {
     if (loading || !user) return
     try {
-      const [reqRes, purchaseRes, stockRes, inchargeRes, leaveRes] = await Promise.allSettled([
-        inventoryAPI.getRequests({ status: 'pending', page_size: 1000 }),
+      const [reqRes, hortReqRes, purchaseRes, stockRes, inchargeRes, leaveRes] = await Promise.allSettled([
+        inventoryAPI.getRequests({ status: 'pending', page_size: 1000, exclude_category: 'Garden & Horticulture Equipment' }),
+        inventoryAPI.getRequests({ status: 'pending', page_size: 1000, category: 'Garden & Horticulture Equipment' }),
         inventoryAPI.getPurchaseRequests({ status: 'pending', page_size: 1000 }),
         inventoryAPI.getLowStockItems(),
         hkAPI.getInchargeAssignments('pending_acceptance'),
         hkAPI.getLeaveRequests(),
       ])
 
-      // Pending inventory requests IDs
+      // Pending inventory requests IDs (Housekeeping / General only)
       let invIds = []
       if (reqRes.status === 'fulfilled') {
         const list = normalizeList(reqRes.value?.data)
@@ -85,6 +86,17 @@ export function NotificationProvider({ children }) {
               .map((r) => buildId('purchase', r?.id))
               .filter(Boolean)
           )
+        )
+      }
+
+      // Pending horticulture requests IDs
+      let hortIds = []
+      if (hortReqRes.status === 'fulfilled') {
+        const list = normalizeList(hortReqRes.value?.data)
+        hortIds = uniqueIds(
+          list
+            .map((r) => buildId('hort-req', r?.id))
+            .filter(Boolean)
         )
       }
 
@@ -118,13 +130,19 @@ export function NotificationProvider({ children }) {
       }
 
       hkIds = uniqueIds(hkIds)
-      currentIdsRef.current = { inventory: invIds, lowStock: lowIds, housekeeping: hkIds }
+      currentIdsRef.current = {
+        inventory: invIds,
+        lowStock: lowIds,
+        housekeeping: hkIds,
+        horticultureInventory: hortIds,
+      }
 
       const seenIds = seenIdsRef.current
       setBadges({
         inventory: getUnseenCount(invIds, seenIds.inventory),
         lowStock: getUnseenCount(lowIds, seenIds.lowStock),
         housekeeping: getUnseenCount(hkIds, seenIds.housekeeping),
+        horticultureInventory: getUnseenCount(hortIds, seenIds.horticultureInventory),
       })
     } catch {
       // fail silently — badges just don't update

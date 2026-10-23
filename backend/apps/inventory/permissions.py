@@ -41,4 +41,5 @@ class IsAdminOrInventoryManager(BasePermission):
             request.user.is_admin
             or request.user.is_inventory_manager
             or getattr(request.user, 'is_hk_inventory_manager', False)
+            or getattr(request.user, 'is_horticulture_manager', False)
         )

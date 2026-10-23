@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
-import { Alert, Btn, Card, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, ExportDropdown, Spinner } from '../../components/ui'
 import { asList, getErrorMessage, triggerDownload } from '../../shared/utils'
+import { exportHorticultureReport } from './exportHelper'
 import { formatDate, formatDateTime, getZoneTone, humanizeSeason } from './helpers'
 
 const SEASON_OPTIONS = [
@@ -222,8 +223,32 @@ export default function ManagerTab() {
     }
   }
 
-  const exportWeeklyReport = () => {
-    downloadWeeklyReport(reportRows, summary?.week_end)
+  const handleExportWeeklyReport = async (format) => {
+    const periodLabel = `${summary?.week_start ? formatDate(summary.week_start) : '-'} to ${summary?.week_end ? formatDate(summary.week_end) : '-'}`
+    const statsList = zones.map((z) => ({
+      label: `${z.zone_name}`,
+      value: `${z.tasks_completed_total ?? 0} tasks (${z.attendance_compliance_pct ?? 0}%)`,
+    }))
+
+    const exportData = {
+      filename: `horticulture_weekly_report_${summary?.week_end || 'current'}`,
+      title: 'Horticulture Weekly Executive Report',
+      subtitle: `Weekly operational summary and overdue tasks: ${periodLabel}`,
+      metadata: [
+        { label: 'Week Period', value: periodLabel },
+        { label: 'Current Season', value: seasonSetting?.season ? humanizeSeason(seasonSetting.season) : 'Standard' },
+      ],
+      stats: statsList,
+      headers: ['Zone', 'Area', 'Task', 'Last Done', 'Days Overdue'],
+      rows: reportRows.map((row) => [
+        row.zone_name || '',
+        row.area_name || '',
+        row.task_name || '',
+        row.last_done_date || '-',
+        row.days_overdue ?? '-',
+      ]),
+    }
+    await exportHorticultureReport(format, exportData)
   }
 
   const decideLeave = async (id, decision) => {
@@ -337,7 +362,7 @@ export default function ManagerTab() {
         ) : null}
       </Card>
 
-      <Card style={{ marginBottom: 14 }}>
+      <Card style={{ marginBottom: 14, overflow: 'visible', position: 'relative', zIndex: 30 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800 }}>Weekly Summary</div>
@@ -345,9 +370,11 @@ export default function ManagerTab() {
               {summary?.week_start ? formatDate(summary.week_start) : '-'} to {summary?.week_end ? formatDate(summary.week_end) : '-'}
             </div>
           </div>
-          <Btn onClick={exportWeeklyReport} disabled={loading || updatingSeason || !reportRows.length}>
-            Download Weekly CSV
-          </Btn>
+          <ExportDropdown
+            label="Download Weekly Report"
+            onExport={handleExportWeeklyReport}
+            disabled={loading || updatingSeason || !reportRows.length}
+          />
         </div>
       </Card>
 

@@ -2,7 +2,6 @@ from django.contrib import admin
 
 from .models import PlantRecord, PlantVariety
 
-
 @admin.register(PlantVariety)
 class PlantVarietyAdmin(admin.ModelAdmin):
     list_display = ['name', 'plant_type', 'scientific_name']
