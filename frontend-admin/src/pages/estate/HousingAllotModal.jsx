@@ -333,6 +333,60 @@ export default function HousingAllotModal({
           />
         </div>
 
+        {/* Date of Expiry / Tenure Type & Calendar Date Picker */}
+        <div style={{ display: 'grid', gridTemplateColumns: expiryType === 'contract' ? '1.2fr 1fr' : '1fr', gap: 12 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 5 }}>
+              Date of Expiry / Tenure
+            </label>
+            <select
+              value={expiryType}
+              onChange={(e) => setExpiryType(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: '1.5px solid var(--border)',
+                fontSize: 13,
+                background: 'var(--surface)',
+                color: 'var(--text)',
+                outline: 'none',
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="poe">PoE/Relocation, whichever is earlier</option>
+              <option value="contract">On Contract till (date)</option>
+            </select>
+          </div>
+
+          {expiryType === 'contract' && (
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 5 }}>
+                Contract Expiry Date *
+              </label>
+              <input
+                type="date"
+                required
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: '1.5px solid var(--border)',
+                  fontSize: 13,
+                  background: 'var(--surface)',
+                  color: 'var(--text)',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
+              />
+            </div>
+          )}
+        </div>
+
         {/* Historical Stay Checkbox */}
         <div style={{ marginTop: 2 }}>
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: 'var(--text-2)', cursor: 'pointer' }}>

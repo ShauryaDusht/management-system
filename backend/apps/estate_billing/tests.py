@@ -198,7 +198,7 @@ class EstateBillingTestCase(TestCase):
         self.client.force_authenticate(user=self.admin)
         res = self.client.get('/api/estate/housing/')
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(len(res.data), 13)
+        self.assertEqual(len(res.data), 418)
         self.assertEqual(res.data[0]['occupantName'], 'Gaurav Srivastava')
         self.assertEqual(res.data[0]['houseNo'], '01/101')
 
@@ -222,13 +222,13 @@ class EstateBillingTestCase(TestCase):
         self.assertEqual(dup_res.status_code, 400)
         self.assertIn('OCCUPIED', dup_res.data['error'])
 
-        # 2. Setup allotment for Dr. Test Faculty in vacant house 05/101
-        unit_101 = HousingUnit.objects.get(house_type='B', house_no='05/101')
+        # 2. Setup allotment for Dr. Test Faculty in vacant house 07/301
+        unit_101 = HousingUnit.objects.get(house_type='B', house_no='07/301')
         allotment = HousingAllotment.objects.create(
             unit=unit_101,
             sl=999,
             house_type='B',
-            house_no='05/101',
+            house_no='07/301',
             occupant_name='Dr. Test Faculty',
             empl_code='0999',
             designation='Assistant Professor',
@@ -242,12 +242,12 @@ class EstateBillingTestCase(TestCase):
         unit_101.save(update_fields=['status'])
         new_id = allotment.id
 
-        # 3. Relocate Dr. Test Faculty from 05/101 to vacant 05/102
+        # 3. Relocate Dr. Test Faculty from 07/301 to vacant 09/303
         reloc_res = self.client.post(
             f'/api/estate/housing/{new_id}/relocate/',
             {
                 'targetHouseType': 'B',
-                'targetHouseNo': '05/102',
+                'targetHouseNo': '09/303',
                 'relocationDate': '15-Dec-26',
                 'remarks': 'Upgraded unit',
             },
@@ -261,9 +261,9 @@ class EstateBillingTestCase(TestCase):
         self.assertEqual(hist_res.status_code, 200)
         self.assertEqual(hist_res.data['totalAllotments'], 2)
         self.assertEqual(hist_res.data['roomChangesCount'], 1)
-        self.assertEqual(hist_res.data['currentHouse']['houseNo'], '05/102')
+        self.assertEqual(hist_res.data['currentHouse']['houseNo'], '09/303')
 
-        # 5. Vacate the current house 05/102
+        # 5. Vacate the current house 09/303
         curr_id = hist_res.data['currentHouse']['id']
         vacate_res = self.client.post(
             f'/api/estate/housing/{curr_id}/vacate/',
@@ -275,5 +275,60 @@ class EstateBillingTestCase(TestCase):
         )
         self.assertEqual(vacate_res.status_code, 200)
         self.assertTrue(vacate_res.data['success'])
+
+    def test_continuous_note_numbers_across_cycles(self):
+        self.client.force_authenticate(user=self.estate_user)
+        # Add a second shop to test sequencing
+        Shop.objects.create(
+            sl=2,
+            name='Second Shop',
+            address='IITGN',
+            default_rate=Decimal('9.55'),
+            default_water=Decimal('320.00'),
+            is_active=True,
+        )
+        ensure_cycle_notes('2026-10')
+        notes_10 = list(ShopDemandNote.objects.filter(cycle_month='2026-10', shop__is_active=True).order_by('shop__sl'))
+        self.assertEqual(len(notes_10), 2)
+        # In test DB, default first_note_no is 259
+        self.assertEqual(notes_10[0].note_no, 'IWD/26-27/259')
+        self.assertEqual(notes_10[1].note_no, 'IWD/26-27/260')
+
+        # Next cycle 2026-11 must start at 261
+        ensure_cycle_notes('2026-11')
+        notes_11 = list(ShopDemandNote.objects.filter(cycle_month='2026-11', shop__is_active=True).order_by('shop__sl'))
+        self.assertEqual(len(notes_11), 2)
+        self.assertEqual(notes_11[0].note_no, 'IWD/26-27/261')
+        self.assertEqual(notes_11[1].note_no, 'IWD/26-27/262')
+
+    def test_cancel_shop_demand_note_resequencing(self):
+        self.client.force_authenticate(user=self.estate_user)
+        Shop.objects.create(
+            sl=2,
+            name='Second Shop',
+            address='IITGN',
+            default_rate=Decimal('9.55'),
+            default_water=Decimal('320.00'),
+            is_active=True,
+        )
+        ensure_cycle_notes('2026-10')
+        notes_10 = list(ShopDemandNote.objects.filter(cycle_month='2026-10', shop__is_active=True).order_by('shop__sl'))
+        first_note_id = notes_10[0].id
+
+        # Cancel shop 1: note_no becomes 'CANCELLED', amount becomes 0, shop 2 gets 259
+        patch_res = self.client.patch(
+            f'/api/estate/shops/{first_note_id}/',
+            {'isCancelled': True},
+            format='json',
+        )
+        self.assertEqual(patch_res.status_code, 200)
+        self.assertTrue(patch_res.data['isCancelled'])
+        self.assertEqual(patch_res.data['noteNo'], 'CANCELLED')
+        self.assertEqual(Decimal(str(patch_res.data['total_amount'])), Decimal('0'))
+
+        # Shop 2 note should now take note number 259
+        shop_2_note = ShopDemandNote.objects.get(id=notes_10[1].id)
+        self.assertEqual(shop_2_note.note_no, 'IWD/26-27/259')
+
 
 

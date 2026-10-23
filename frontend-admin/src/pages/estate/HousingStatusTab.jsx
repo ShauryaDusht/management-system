@@ -68,23 +68,23 @@ export function formatDisplayDate(str) {
 
 export function checkCivilDone(r) {
   if (!r) return false
-  const s = (r.civilStatus || '').toLowerCase()
-  if (s === 'in progress' || s === 'pending') return false
-  return s === 'completed' || Boolean(r.civilCompletedDate) || Boolean(r.civilKeyHandedOverDate) || Boolean(r.civilIsLocked)
+  const s = (r.civilStatus || '').toLowerCase().trim()
+  if (s === 'in progress' || s === 'pending' || s === 'on process') return false
+  return s === 'completed' || s === 'complted' || Boolean(r.civilCompletedDate) || Boolean(r.civilKeyHandedOverDate) || Boolean(r.civilIsLocked)
 }
 
 export function checkElecDone(r) {
   if (!r) return false
-  const s = (r.electricalStatus || '').toLowerCase()
-  if (s === 'in progress' || s === 'pending') return false
-  return s === 'completed' || Boolean(r.electricalCompletedDate) || Boolean(r.electricalKeyHandedOverDate) || Boolean(r.electricalIsLocked)
+  const s = (r.electricalStatus || '').toLowerCase().trim()
+  if (s === 'in progress' || s === 'pending' || s === 'on process') return false
+  return s === 'completed' || s === 'complted' || Boolean(r.electricalCompletedDate) || Boolean(r.electricalKeyHandedOverDate) || Boolean(r.electricalIsLocked)
 }
 
 export function checkHKDone(r) {
   if (!r) return false
-  const s = (r.hkStatus || '').toLowerCase()
-  if (s === 'in progress' || s === 'pending') return false
-  return s === 'completed' || Boolean(r.hkCompletedDate) || Boolean(r.hkKeyHandedOverDate) || Boolean(r.hkIsLocked)
+  const s = (r.hkStatus || '').toLowerCase().trim()
+  if (s === 'in progress' || s === 'pending' || s === 'on process') return false
+  return s === 'completed' || s === 'complted' || Boolean(r.hkCompletedDate) || Boolean(r.hkKeyHandedOverDate) || Boolean(r.hkIsLocked)
 }
 
 /**
@@ -93,7 +93,7 @@ export function checkHKDone(r) {
 export function StatusBadge({ status }) {
   if (!status) return <span style={{ color: 'var(--text-3)' }}>—</span>
   const s = String(status).trim().toLowerCase()
-  if (s === 'completed') {
+  if (s === 'completed' || s === 'complted') {
     return (
       <span
         style={{
@@ -114,7 +114,7 @@ export function StatusBadge({ status }) {
       </span>
     )
   }
-  if (s === 'in progress' || s === 'in_progress') {
+  if (s === 'in progress' || s === 'in_progress' || s === 'on process') {
     return (
       <span
         style={{
@@ -261,6 +261,273 @@ export function CalendarDatePicker({
 }
 
 /**
+ * Helper to extract any DD-Mon-YY, DD-Mon-YYYY, YYYY-MM-DD or DD-MM-YYYY from arbitrary text
+ */
+export function extractDateFromText(str) {
+  if (!str) return ''
+  const trimmed = String(str).trim()
+
+  // Match e.g. 03-July-26 or 3-Jul-26 or 16-Jan-27 or 16-Jun-2027
+  const monMatch = trimmed.match(/(\d{1,2})[\/\-\s]([A-Za-z]{3,})[\/\-\s](\d{2,4})/)
+  if (monMatch) {
+    const day = monMatch[1].padStart(2, '0')
+    const monStr = monMatch[2].toLowerCase()
+    let year = monMatch[3]
+    if (year.length === 2) year = '20' + year
+    const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+    const monIdx = months.findIndex((m) => monStr.startsWith(m))
+    if (monIdx !== -1) {
+      const month = String(monIdx + 1).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+  }
+
+  // Match ISO YYYY-MM-DD
+  const isoMatch = trimmed.match(/(\d{4})-(\d{2})-(\d{2})/)
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`
+
+  // Match DD-MM-YYYY or DD/MM/YYYY
+  const dmyMatch = trimmed.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/)
+  if (dmyMatch) {
+    let day = dmyMatch[1].padStart(2, '0')
+    let month = dmyMatch[2].padStart(2, '0')
+    let year = dmyMatch[3]
+    if (year.length === 2) year = '20' + year
+    if (parseInt(day, 10) <= 12 && parseInt(month, 10) > 12) {
+      const temp = day
+      day = month
+      month = temp
+    }
+    return `${year}-${month}-${day}`
+  }
+
+  return toDateInputValue(trimmed)
+}
+
+/**
+ * Format ISO date string into standard IITGN display date (e.g. 03-Jul-26)
+ */
+export function formatTenureDate(isoDate) {
+  if (!isoDate) return ''
+  const trimmed = String(isoDate).trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [yyyy, mm, dd] = trimmed.split('-')
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const monIdx = parseInt(mm, 10) - 1
+    const mon = months[monIdx] || 'Jan'
+    const shortYr = yyyy.slice(-2)
+    return `${dd}-${mon}-${shortYr}`
+  }
+  return trimmed
+}
+
+/**
+ * ExpiryTenurePicker: Dropdown (PoE, Contract, Lien, Fixed, Custom) + Calendar date picker
+ */
+export function ExpiryTenurePicker({ value = '', onChange, disabled = false }) {
+  const parseVal = (v) => {
+    const s = String(v || '').trim()
+    if (!s) return { type: 'poe', date: '', custom: '' }
+    const lower = s.toLowerCase()
+    if (lower.includes('poe') || lower.includes('relocation')) {
+      return { type: 'poe', date: '', custom: '' }
+    }
+    if (lower.includes('contract') || lower.includes('cotract')) {
+      const d = extractDateFromText(s)
+      return { type: 'contract', date: d, custom: '' }
+    }
+    if (lower.includes('lien')) {
+      const d = extractDateFromText(s)
+      return { type: 'lien', date: d, custom: '' }
+    }
+    const d = extractDateFromText(s)
+    if (d && !lower.match(/[a-z]{4,}/)) {
+      return { type: 'fixed', date: d, custom: '' }
+    }
+    return { type: 'custom', date: '', custom: s }
+  }
+
+  const [state, setState] = useState(() => parseVal(value))
+
+  useEffect(() => {
+    setState(parseVal(value))
+  }, [value])
+
+  const handleTypeChange = (newType) => {
+    if (newType === 'poe') {
+      setState({ type: 'poe', date: '', custom: '' })
+      onChange('PoE/Relocation, whichever is earlier')
+    } else if (newType === 'contract') {
+      const d = state.date || ''
+      setState((prev) => ({ ...prev, type: 'contract' }))
+      onChange(d ? `On Contract till ${formatTenureDate(d)}` : 'On Contract')
+    } else if (newType === 'lien') {
+      const d = state.date || ''
+      setState((prev) => ({ ...prev, type: 'lien' }))
+      onChange(d ? `On Lien till ${formatTenureDate(d)}` : 'On Lien')
+    } else if (newType === 'fixed') {
+      const d = state.date || ''
+      setState((prev) => ({ ...prev, type: 'fixed' }))
+      onChange(d ? formatTenureDate(d) : '')
+    } else {
+      const c = state.custom || value || ''
+      setState((prev) => ({ ...prev, type: 'custom' }))
+      onChange(c)
+    }
+  }
+
+  const handleDateChange = (newDate) => {
+    setState((prev) => {
+      const updated = { ...prev, date: newDate }
+      let nextStr = ''
+      if (updated.type === 'contract') {
+        nextStr = newDate ? `On Contract till ${formatTenureDate(newDate)}` : 'On Contract'
+      } else if (updated.type === 'lien') {
+        nextStr = newDate ? `On Lien till ${formatTenureDate(newDate)}` : 'On Lien'
+      } else if (updated.type === 'fixed') {
+        nextStr = newDate ? formatTenureDate(newDate) : ''
+      }
+      onChange(nextStr)
+      return updated
+    })
+  }
+
+  const handleCustomChange = (text) => {
+    setState((prev) => ({ ...prev, custom: text }))
+    onChange(text)
+  }
+
+  const isDateType = state.type === 'contract' || state.type === 'lien' || state.type === 'fixed'
+
+  return (
+    <div
+      style={{
+        background: 'var(--surface-2)',
+        padding: '12px 14px',
+        borderRadius: 8,
+        border: '1px solid var(--border)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+      }}
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12, alignItems: 'flex-start' }}>
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>
+            Date of Expiry / Tenure Type
+          </label>
+          <select
+            value={state.type}
+            onChange={(e) => handleTypeChange(e.target.value)}
+            disabled={disabled}
+            style={{
+              width: '100%',
+              height: 38,
+              padding: '0 10px',
+              borderRadius: 8,
+              border: '1.5px solid var(--border)',
+              fontSize: 13,
+              background: 'var(--surface)',
+              color: 'var(--text)',
+              boxSizing: 'border-box',
+              outline: 'none',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+            }}
+          >
+            <option value="poe">PoE/Relocation, whichever is earlier</option>
+            <option value="contract">On Contract till (date)</option>
+            <option value="lien">On Lien till (date)</option>
+            <option value="fixed">Fixed Tenure Date</option>
+            <option value="custom">Custom / Other text</option>
+          </select>
+        </div>
+
+        <div>
+          {state.type === 'poe' ? (
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>
+                Tenure Status
+              </label>
+              <div
+                style={{
+                  height: 38,
+                  padding: '0 12px',
+                  borderRadius: 8,
+                  background: 'var(--green-100)',
+                  border: '1px solid #bbf7d0',
+                  color: 'var(--green-900)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <span>Standard Faculty Tenure (PoE/Relocation)</span>
+              </div>
+            </div>
+          ) : isDateType ? (
+            <CalendarDatePicker
+              label={
+                state.type === 'contract'
+                  ? 'Contract Expiry Date *'
+                  : state.type === 'lien'
+                    ? 'Lien Expiry Date *'
+                    : 'Tenure Expiry Date *'
+              }
+              value={state.date}
+              onChange={handleDateChange}
+              disabled={disabled}
+              required
+            />
+          ) : (
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>
+                Custom Tenure / Expiry Terms
+              </label>
+              <input
+                type="text"
+                value={state.custom}
+                onChange={(e) => handleCustomChange(e.target.value)}
+                disabled={disabled}
+                placeholder="e.g. Visiting Professor till Dec 2026"
+                style={{
+                  width: '100%',
+                  height: 38,
+                  padding: '0 11px',
+                  borderRadius: 8,
+                  border: '1.5px solid var(--border)',
+                  fontSize: 13,
+                  background: 'var(--surface)',
+                  color: 'var(--text)',
+                  boxSizing: 'border-box',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Live Value Preview Pill */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--text-3)', padding: '2px 4px' }}>
+        <span>
+          Recorded Expiry:{' '}
+          <strong style={{ color: 'var(--green-900)', fontWeight: 700 }}>
+            {value || 'PoE/Relocation, whichever is earlier'}
+          </strong>
+        </span>
+        {isDateType && !state.date && (
+          <span style={{ color: '#b45309', fontWeight: 600 }}>
+            Select the exact expiry date from calendar
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
  * SearchableHouseSelect matching project theme
  */
 export function SearchableHouseSelect({
@@ -270,6 +537,7 @@ export function SearchableHouseSelect({
   vacantUnits = [],
   placeholder = 'Select or type house no...',
   required = true,
+  disabled = false,
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef(null)
@@ -311,10 +579,11 @@ export function SearchableHouseSelect({
           height: 38,
           borderRadius: 8,
           border: '1.5px solid var(--border)',
-          background: 'var(--surface)',
+          background: disabled ? 'var(--surface-2)' : 'var(--surface)',
           boxSizing: 'border-box',
           overflow: 'hidden',
           transition: 'all 0.15s ease',
+          cursor: disabled ? 'not-allowed' : 'default',
         }}
       >
         <input
@@ -322,12 +591,16 @@ export function SearchableHouseSelect({
           autoComplete="off"
           autoCorrect="off"
           spellCheck="false"
+          disabled={disabled}
           value={value}
           onChange={(e) => {
+            if (disabled) return
             onChange(e.target.value)
             setIsOpen(true)
           }}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => {
+            if (!disabled) setIsOpen(true)
+          }}
           placeholder={matchingUnits.length > 0 ? placeholder : `No vacant ${houseType} units`}
           required={required}
           style={{
@@ -339,11 +612,12 @@ export function SearchableHouseSelect({
             outline: 'none',
             fontSize: 13,
             background: 'transparent',
-            color: 'var(--text)',
+            color: disabled ? 'var(--text-3)' : 'var(--text)',
+            cursor: disabled ? 'not-allowed' : 'inherit',
             fontFamily: 'inherit',
           }}
         />
-        {value && (
+        {value && !disabled && (
           <button
             type="button"
             tabIndex={-1}
@@ -368,28 +642,30 @@ export function SearchableHouseSelect({
             ×
           </button>
         )}
-        <button
-          type="button"
-          tabIndex={-1}
-          onClick={() => setIsOpen((prev) => !prev)}
-          style={{
-            border: 'none',
-            background: 'transparent',
-            padding: '0 10px',
-            height: '100%',
-            cursor: 'pointer',
-            color: 'var(--text-3)',
-            fontSize: 11,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {isOpen ? '▲' : '▼'}
-        </button>
+        {!disabled && (
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => setIsOpen((prev) => !prev)}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              padding: '0 10px',
+              height: '100%',
+              cursor: 'pointer',
+              color: 'var(--text-3)',
+              fontSize: 11,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {isOpen ? '▲' : '▼'}
+          </button>
+        )}
       </div>
 
-      {isOpen && (
+      {isOpen && !disabled && (
         <div
           style={{
             position: 'absolute',
@@ -462,10 +738,11 @@ const getSavedClearedHistory = () => {
   }
 }
 
-export default function HousingStatusTab({ onReloadHousing }) {
+export default function HousingStatusTab({ onReloadHousing, isReadOnly: propReadOnly }) {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin' || user?.is_superuser
   const isEstateOffice = user?.role === 'estate_office'
+  const isReadOnly = propReadOnly !== undefined ? propReadOnly : (isAdmin ? true : false)
   const isMaster = isAdmin || isEstateOffice
   const isCivil = user?.role === 'civil_team'
   const isElectrical = user?.role === 'electrical_team'
@@ -514,6 +791,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
   }, [])
 
   const handleToggleAlerts = async () => {
+    if (isReadOnly) return
     setTogglingAlerts(true)
     try {
       const res = await estateApi.toggleClearanceAlerts({ enabled: !alertsEnabled })
@@ -543,7 +821,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
     emplCode: '',
     designation: '',
     email: '',
-    dateOfExpiry: '',
+    dateOfExpiry: 'PoE/Relocation, whichever is earlier',
     timeStamp: todayISO(),
     keyHandedOverDate: '',
     priority: '',
@@ -578,7 +856,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
     (isElectrical && checkElecDone(activeRecord)) ||
     (isHK && checkHKDone(activeRecord))
   ) : false
-  const isLockedForUser = isEditOpen && isCurrentDeptLocked && !isAdmin
+  const isLockedForUser = isEditOpen && (isReadOnly || (isCurrentDeptLocked && !isAdmin))
   const isFormDisabled = isLockedForUser
 
   // Load clearances and vacant units
@@ -860,7 +1138,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
             : 0
 
   const handleClearHistory = () => {
-    if (!currentCompletedKey) return
+    if (isReadOnly || !currentCompletedKey) return
     const currentCompletedList = clearances.filter((c) => {
       if (currentCompletedKey === 'civil') return checkCivilDone(c)
       if (currentCompletedKey === 'electrical') return checkCivilDone(c) && checkElecDone(c)
@@ -890,7 +1168,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
   }
 
   const handleRestoreHistory = () => {
-    if (!currentCompletedKey) return
+    if (isReadOnly || !currentCompletedKey) return
     const next = {
       ...clearedHistory,
       [currentCompletedKey]: [],
@@ -900,6 +1178,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
 
   // Open Add Modal
   const handleOpenAdd = () => {
+    if (isReadOnly) return
     setForm({
       houseType: 'Type A',
       houseNo: '',
@@ -907,7 +1186,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
       emplCode: '',
       designation: '',
       email: '',
-      dateOfExpiry: '',
+      dateOfExpiry: 'PoE/Relocation, whichever is earlier',
       timeStamp: todayISO(),
       keyHandedOverDate: '',
       priority: '',
@@ -950,7 +1229,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
       emplCode: rec.emplCode || '',
       designation: rec.designation || '',
       email: rec.email || '',
-      dateOfExpiry: rec.dateOfExpiry || '',
+      dateOfExpiry: rec.dateOfExpiry || 'PoE/Relocation, whichever is earlier',
       timeStamp: toDateInputValue(rec.timeStamp) || rec.timeStamp || todayISO(),
       keyHandedOverDate: toDateInputValue(rec.keyHandedOverDate) || '',
       priority: rec.priority || '',
@@ -979,7 +1258,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
       remarks: rec.remarks || '',
       status: rec.status || 'in_progress',
     })
-    setShowDeptClearances(isAdmin ? true : false)
+    setShowDeptClearances(isAdmin && !isReadOnly ? true : false)
     setIsEditOpen(true)
   }
 
@@ -1056,6 +1335,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
 
   // Estate Office Hands Over Key to Civil
   const handleEstateHandover = async (rec) => {
+    if (isReadOnly) return
     if (!window.confirm(`Hand over key for ${rec.houseNo} to Civil Team today?`)) return
     try {
       await estateApi.patchClearance(rec.id, { action: 'estate_handover' })
@@ -1068,6 +1348,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
 
   // Civil Actions
   const handleAcceptKeyCivil = async (rec) => {
+    if (isReadOnly) return
     try {
       const today = todayISO()
       await estateApi.patchClearance(rec.id, {
@@ -1082,6 +1363,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
   }
 
   const handleCompleteAndHandoverCivil = async (rec) => {
+    if (isReadOnly) return
     if (!window.confirm(`Mark Civil work COMPLETED for ${rec.houseNo} and handover key to Electrical?\nYour edit access will be locked once handed over.`)) return
     try {
       const today = todayISO()
@@ -1099,6 +1381,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
 
   // Electrical Actions
   const handleAcceptKeyElec = async (rec) => {
+    if (isReadOnly) return
     try {
       const today = todayISO()
       await estateApi.patchClearance(rec.id, {
@@ -1113,6 +1396,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
   }
 
   const handleCompleteAndHandoverElec = async (rec) => {
+    if (isReadOnly) return
     if (!window.confirm(`Mark Electrical work COMPLETED for ${rec.houseNo} and handover key to Housekeeping?\nYour edit access will be locked once handed over.`)) return
     try {
       const today = todayISO()
@@ -1130,6 +1414,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
 
   // Housekeeping Actions
   const handleAcceptKeyHK = async (rec) => {
+    if (isReadOnly) return
     try {
       const today = todayISO()
       await estateApi.patchClearance(rec.id, {
@@ -1144,6 +1429,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
   }
 
   const handleCompleteAndHandoverHK = async (rec) => {
+    if (isReadOnly) return
     if (!window.confirm(`Mark Cleaning COMPLETED for ${rec.houseNo} and handover key to Estate Office?\nThe unit will become Ready for Allotment, and edit access will be locked.`)) return
     try {
       const today = todayISO()
@@ -1161,6 +1447,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
 
   // Priority Management
   const handleUpdatePriority = async (targetRecord, newPriorityValue) => {
+    if (isReadOnly) return
     try {
       await estateApi.patchClearance(targetRecord.id, { priority: newPriorityValue })
       setPriorityModalRecord(null)
@@ -1172,6 +1459,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
   }
 
   const handlePriorityShift = async (targetRecord, direction) => {
+    if (isReadOnly) return
     try {
       await estateApi.patchClearance(targetRecord.id, { action: direction === 'up' ? 'priority_up' : 'priority_down' })
       loadData()
@@ -1185,8 +1473,8 @@ export default function HousingStatusTab({ onReloadHousing }) {
   const handleEditSubmit = async (e) => {
     e.preventDefault()
     if (!activeRecord) return
-    if (isFormDisabled) {
-      alert('This clearance record is completed and locked for your department. Contact Admin if corrections are required.')
+    if (isFormDisabled || isReadOnly) {
+      alert('This clearance record is currently view-only.')
       return
     }
     setSaving(true)
@@ -1284,6 +1572,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
 
   // Delete Record
   const handleDelete = async (id) => {
+    if (isReadOnly || isFormDisabled) return
     if (!window.confirm('Are you sure you want to delete this housing status entry?')) return
     try {
       await estateApi.deleteClearance(id)
@@ -1297,6 +1586,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
 
   // Finalize Allotment into House Register
   const handleFinalizeAllotment = async (rec) => {
+    if (isReadOnly) return
     let allotteeName = (rec.allotteeName || '').trim()
     if (!allotteeName) {
       const promptName = window.prompt(`Enter Allottee Name to finalize allotment for ${rec.houseType} ${rec.houseNo}:`)
@@ -1344,7 +1634,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
     let completedDate = r.civilCompletedDate || r.civilKeyHandedOverDate
     let remarks = r.civilRemarks
     let isDone = checkCivilDone(r)
-    let canAct = isCivil
+    let canAct = isCivil && !isReadOnly
     let onAccept = () => handleAcceptKeyCivil(r)
     let onComplete = () => handleCompleteAndHandoverCivil(r)
 
@@ -1356,7 +1646,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
       completedDate = r.electricalCompletedDate || r.electricalKeyHandedOverDate
       remarks = r.electricalRemarks
       isDone = checkElecDone(r)
-      canAct = isElectrical
+      canAct = isElectrical && !isReadOnly
       onAccept = () => handleAcceptKeyElec(r)
       onComplete = () => handleCompleteAndHandoverElec(r)
     } else if (activeView === 'hk') {
@@ -1367,7 +1657,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
       completedDate = r.hkCompletedDate || r.hkKeyHandedOverDate
       remarks = r.hkRemarks
       isDone = checkHKDone(r)
-      canAct = isHK
+      canAct = isHK && !isReadOnly
       onAccept = () => handleAcceptKeyHK(r)
       onComplete = () => handleCompleteAndHandoverHK(r)
     }
@@ -1409,7 +1699,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
             <div style={{ marginTop: 3 }}>
               <span
                 onClick={(e) => {
-                  if (!isMaster) return
+                  if (!isMaster || isReadOnly) return
                   e.stopPropagation()
                   setPriorityModalRecord(r)
                 }}
@@ -1425,14 +1715,14 @@ export default function HousingStatusTab({ onReloadHousing }) {
                   color: r.priority === '1' ? '#991b1b' : r.priority === '2' ? '#9a3412' : '#854d0e',
                   border: `1px solid ${r.priority === '1' ? '#fca5a5' : r.priority === '2' ? '#fdba74' : '#fde047'}`,
                   letterSpacing: 0.2,
-                  cursor: isMaster ? 'pointer' : 'default',
+                  cursor: (isMaster && !isReadOnly) ? 'pointer' : 'default',
                 }}
-                title={isMaster ? 'Click to manage clearance priority' : undefined}
+                title={(isMaster && !isReadOnly) ? 'Click to manage clearance priority' : undefined}
               >
                 P{r.priority} · {r.priority === '1' ? 'Top' : r.priority === '2' ? 'High' : 'Normal'} Priority
               </span>
             </div>
-          ) : isMaster ? (
+          ) : (isMaster && !isReadOnly) ? (
             <div style={{ marginTop: 2 }}>
               <button
                 type="button"
@@ -1564,7 +1854,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
           <button
             type="button"
             onClick={() => handleOpenEdit(r)}
-            title={isDone && !isAdmin ? 'View Details (Locked)' : 'Edit Remarks and Work'}
+            title={isReadOnly ? 'View Clearance Details' : (isDone && !isAdmin ? 'View Details (Locked)' : 'Edit Remarks and Work')}
             style={{
               padding: '5px 12px',
               borderRadius: 6,
@@ -1577,7 +1867,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
               whiteSpace: 'nowrap',
             }}
           >
-            {isDone && !isAdmin ? 'View' : 'Edit'}
+            {isReadOnly || (isDone && !isAdmin) ? 'View' : 'Edit'}
           </button>
         </td>
       </tr>
@@ -1658,46 +1948,27 @@ export default function HousingStatusTab({ onReloadHousing }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {/* Universal Email Alerts Toggle for All Departments */}
-          <button
-            type="button"
-            onClick={handleToggleAlerts}
-            disabled={togglingAlerts}
-            title={
-              alertsEnabled
-                ? 'Automated department handover email alerts are currently ACTIVE. Click to turn OFF.'
-                : 'Automated department handover email alerts are currently PAUSED. Click to turn ON.'
-            }
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '7px 12px',
-              borderRadius: 8,
-              border: `1.5px solid ${alertsEnabled ? '#86efac' : '#cbd5e1'}`,
-              background: alertsEnabled ? '#f0fdf4' : '#f8fafc',
-              color: alertsEnabled ? '#15803d' : '#64748b',
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: togglingAlerts ? 'wait' : 'pointer',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.15s ease',
-              boxShadow: alertsEnabled ? '0 1px 3px rgba(34,197,94,0.15)' : 'none',
-            }}
-          >
+
+          {isReadOnly && isAdmin && (
             <span
               style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: alertsEnabled ? '#22c55e' : '#94a3b8',
-                boxShadow: alertsEnabled ? '0 0 6px #22c55e' : 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 8,
+                background: 'var(--surface-2)',
+                border: '1.5px solid var(--border)',
+                color: 'var(--text-3)',
+                fontSize: 12,
+                fontWeight: 700,
               }}
-            />
-            <span>{alertsEnabled ? 'Email Alerts: ON' : 'Email Alerts: OFF'}</span>
-          </button>
+            >
+              View-Only Mode
+            </span>
+          )}
 
-          {isMaster && (
+          {isMaster && !isReadOnly && (
             <button
               type="button"
               onClick={handleOpenAdd}
@@ -1813,7 +2084,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
           {/* Delete All History / Restore History controls (Only on Completed Work views) */}
           {Boolean(currentCompletedKey) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {filtered.length > 0 && (
+              {filtered.length > 0 && !isReadOnly && (
                 <button
                   type="button"
                   onClick={handleClearHistory}
@@ -2124,7 +2395,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                       </td>
                       <td style={{ padding: '8px 6px', textAlign: 'center', whiteSpace: 'nowrap', color: 'var(--text-2)', fontSize: 11.5 }}>
                         {!r.keyHandedOverDate ? (
-                          isMaster ? (
+                          (isMaster && !isReadOnly) ? (
                             <button
                               type="button"
                               onClick={() => handleEstateHandover(r)}
@@ -2158,11 +2429,11 @@ export default function HousingStatusTab({ onReloadHousing }) {
                           textAlign: 'center',
                           fontWeight: 700,
                           borderRight: '1.5px solid var(--border)',
-                          cursor: isMaster ? 'pointer' : 'default',
+                          cursor: (isMaster && !isReadOnly) ? 'pointer' : 'default',
                         }}
-                        title={isMaster ? 'Click to manage clearance priority' : undefined}
+                        title={(isMaster && !isReadOnly) ? 'Click to manage clearance priority' : undefined}
                         onClick={(e) => {
-                          if (!isMaster) return
+                          if (!isMaster || isReadOnly) return
                           e.stopPropagation()
                           setPriorityModalRecord(r)
                         }}
@@ -2187,7 +2458,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                               {r.priority === '1' ? 'Top' : r.priority === '2' ? 'High' : 'Normal'}
                             </span>
                           </span>
-                        ) : isMaster ? (
+                        ) : (isMaster && !isReadOnly) ? (
                           <span
                             style={{
                               color: 'var(--text-3)',
@@ -2308,7 +2579,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                               Allotted
                             </span>
                           ) : isCivilDone && isElecDone && isHKDone ? (
-                            isMaster ? (
+                            (isMaster && !isReadOnly) ? (
                               <button
                                 type="button"
                                 onClick={() => handleFinalizeAllotment(r)}
@@ -2363,7 +2634,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                           <button
                             type="button"
                             onClick={() => handleOpenEdit(r)}
-                            title="Edit Allotment Pipeline Entry"
+                            title={isReadOnly ? 'View Allotment Pipeline Entry' : 'Edit Allotment Pipeline Entry'}
                             style={{
                               padding: '5px 10px',
                               borderRadius: 6,
@@ -2376,7 +2647,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                               whiteSpace: 'nowrap',
                             }}
                           >
-                            Edit
+                            {isReadOnly ? 'View' : 'Edit'}
                           </button>
                         </div>
                       </td>
@@ -2400,15 +2671,17 @@ export default function HousingStatusTab({ onReloadHousing }) {
           title={
             isAddOpen
               ? 'Add Housing Allotment Pipeline Entry'
-              : isCivil
-                ? `Civil Clearance ${isLockedForUser ? '(Locked / View Only)' : ''} — ${form.houseType} ${form.houseNo}`
-                : isElectrical
-                  ? `Electrical Clearance ${isLockedForUser ? '(Locked / View Only)' : ''} — ${form.houseType} ${form.houseNo}`
-                  : isHK
-                    ? `Housekeeping Clearance ${isLockedForUser ? '(Locked / View Only)' : ''} — ${form.houseType} ${form.houseNo}`
-                    : isAdmin
-                      ? `Master Edit (All Departments Override) — ${form.houseType} ${form.houseNo}`
-                      : `Estate Office Allotment — ${form.houseType} ${form.houseNo}`
+              : isReadOnly
+                ? `Housing Pipeline Details (View Only) — ${form.houseType} ${form.houseNo}`
+                : isCivil
+                  ? `Civil Clearance ${isLockedForUser ? '(Locked / View Only)' : ''} — ${form.houseType} ${form.houseNo}`
+                  : isElectrical
+                    ? `Electrical Clearance ${isLockedForUser ? '(Locked / View Only)' : ''} — ${form.houseType} ${form.houseNo}`
+                    : isHK
+                      ? `Housekeeping Clearance ${isLockedForUser ? '(Locked / View Only)' : ''} — ${form.houseType} ${form.houseNo}`
+                      : isAdmin
+                        ? `Master Edit (All Departments Override) — ${form.houseType} ${form.houseNo}`
+                        : `Estate Office Allotment — ${form.houseType} ${form.houseNo}`
           }
           width={isMaster ? 760 : 620}
         >
@@ -2428,7 +2701,13 @@ export default function HousingStatusTab({ onReloadHousing }) {
                   gap: 8,
                 }}
               >
-                <span>Clearance for your department is completed and locked. Form fields are in view-only mode. Contact Admin if corrections are required.</span>
+                <span>
+                  {isReadOnly && isAdmin
+                    ? 'View-Only Mode is active for Administrator. To modify pipeline records, click "Edit" in the top bar.'
+                    : isReadOnly
+                      ? 'You have view-only access to this housing clearance record.'
+                      : 'Clearance for your department is completed and locked. Form fields are in view-only mode. Contact Admin if corrections are required.'}
+                </span>
               </div>
             )}
 
@@ -2733,6 +3012,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                             houseNo: '',
                           })
                         }}
+                        disabled={isFormDisabled}
                         style={{
                           width: '100%',
                           height: 38,
@@ -2740,10 +3020,10 @@ export default function HousingStatusTab({ onReloadHousing }) {
                           borderRadius: 8,
                           border: '1.5px solid var(--border)',
                           fontSize: 13,
-                          background: 'var(--surface)',
-                          color: 'var(--text)',
+                          background: isFormDisabled ? 'var(--surface-2)' : 'var(--surface)',
+                          color: isFormDisabled ? 'var(--text-3)' : 'var(--text)',
                           boxSizing: 'border-box',
-                          cursor: 'pointer',
+                          cursor: isFormDisabled ? 'not-allowed' : 'pointer',
                           outline: 'none',
                         }}
                         required
@@ -2764,6 +3044,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                         onChange={(val) => setForm({ ...form, houseNo: val })}
                         vacantUnits={vacantUnits}
                         placeholder="Search or select house..."
+                        disabled={isFormDisabled}
                         required
                       />
                     </div>
@@ -2776,6 +3057,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                         type="text"
                         value={form.allotteeName}
                         onChange={(e) => setForm({ ...form, allotteeName: e.target.value })}
+                        disabled={isFormDisabled}
                         placeholder="e.g. Dr. Pratik"
                         style={{
                           width: '100%',
@@ -2784,8 +3066,9 @@ export default function HousingStatusTab({ onReloadHousing }) {
                           borderRadius: 8,
                           border: '1.5px solid var(--border)',
                           fontSize: 13,
-                          background: 'var(--surface)',
-                          color: 'var(--text)',
+                          background: isFormDisabled ? 'var(--surface-2)' : 'var(--surface)',
+                          color: isFormDisabled ? 'var(--text-3)' : 'var(--text)',
+                          cursor: isFormDisabled ? 'not-allowed' : 'inherit',
                           boxSizing: 'border-box',
                           outline: 'none',
                         }}
@@ -2793,7 +3076,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                     <div>
                       <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>
                         Employee Code
@@ -2802,6 +3085,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                         type="text"
                         value={form.emplCode}
                         onChange={(e) => setForm({ ...form, emplCode: e.target.value })}
+                        disabled={isFormDisabled}
                         placeholder="e.g. 1042 / CPWD"
                         style={{
                           width: '100%',
@@ -2810,8 +3094,9 @@ export default function HousingStatusTab({ onReloadHousing }) {
                           borderRadius: 8,
                           border: '1.5px solid var(--border)',
                           fontSize: 13,
-                          background: 'var(--surface)',
-                          color: 'var(--text)',
+                          background: isFormDisabled ? 'var(--surface-2)' : 'var(--surface)',
+                          color: isFormDisabled ? 'var(--text-3)' : 'var(--text)',
+                          cursor: isFormDisabled ? 'not-allowed' : 'inherit',
                           boxSizing: 'border-box',
                           outline: 'none',
                         }}
@@ -2826,6 +3111,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                         type="text"
                         value={form.designation}
                         onChange={(e) => setForm({ ...form, designation: e.target.value })}
+                        disabled={isFormDisabled}
                         placeholder="e.g. Assistant Professor"
                         style={{
                           width: '100%',
@@ -2834,8 +3120,9 @@ export default function HousingStatusTab({ onReloadHousing }) {
                           borderRadius: 8,
                           border: '1.5px solid var(--border)',
                           fontSize: 13,
-                          background: 'var(--surface)',
-                          color: 'var(--text)',
+                          background: isFormDisabled ? 'var(--surface-2)' : 'var(--surface)',
+                          color: isFormDisabled ? 'var(--text-3)' : 'var(--text)',
+                          cursor: isFormDisabled ? 'not-allowed' : 'inherit',
                           boxSizing: 'border-box',
                           outline: 'none',
                         }}
@@ -2850,6 +3137,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                         type="email"
                         value={form.email}
                         onChange={(e) => setForm({ ...form, email: e.target.value })}
+                        disabled={isFormDisabled}
                         placeholder="e.g. name@iitgn.ac.in"
                         style={{
                           width: '100%',
@@ -2858,32 +3146,9 @@ export default function HousingStatusTab({ onReloadHousing }) {
                           borderRadius: 8,
                           border: '1.5px solid var(--border)',
                           fontSize: 13,
-                          background: 'var(--surface)',
-                          color: 'var(--text)',
-                          boxSizing: 'border-box',
-                          outline: 'none',
-                        }}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>
-                        Date of Expiry / Tenure
-                      </label>
-                      <input
-                        type="text"
-                        value={form.dateOfExpiry}
-                        onChange={(e) => setForm({ ...form, dateOfExpiry: e.target.value })}
-                        placeholder="e.g. PoE/Relocation"
-                        style={{
-                          width: '100%',
-                          height: 38,
-                          padding: '0 11px',
-                          borderRadius: 8,
-                          border: '1.5px solid var(--border)',
-                          fontSize: 13,
-                          background: 'var(--surface)',
-                          color: 'var(--text)',
+                          background: isFormDisabled ? 'var(--surface-2)' : 'var(--surface)',
+                          color: isFormDisabled ? 'var(--text-3)' : 'var(--text)',
+                          cursor: isFormDisabled ? 'not-allowed' : 'inherit',
                           boxSizing: 'border-box',
                           outline: 'none',
                         }}
@@ -2891,17 +3156,26 @@ export default function HousingStatusTab({ onReloadHousing }) {
                     </div>
                   </div>
 
+                  {/* Date of Expiry / Tenure Picker */}
+                  <ExpiryTenurePicker
+                    value={form.dateOfExpiry}
+                    onChange={(val) => setForm({ ...form, dateOfExpiry: val })}
+                    disabled={isFormDisabled}
+                  />
+
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                     <CalendarDatePicker
                       label="Request Date"
                       value={form.timeStamp}
                       onChange={(val) => setForm({ ...form, timeStamp: val })}
+                      disabled={isFormDisabled}
                     />
 
                     <CalendarDatePicker
                       label="Key Handed to Civil"
                       value={form.keyHandedOverDate}
                       onChange={(val) => setForm({ ...form, keyHandedOverDate: val })}
+                      disabled={isFormDisabled}
                     />
 
                     <div>
@@ -2911,6 +3185,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                       <select
                         value={form.priority}
                         onChange={(e) => setForm({ ...form, priority: e.target.value })}
+                        disabled={isFormDisabled}
                         style={{
                           width: '100%',
                           height: 38,
@@ -2919,11 +3194,11 @@ export default function HousingStatusTab({ onReloadHousing }) {
                           border: '1.5px solid var(--border)',
                           fontSize: 13,
                           fontWeight: 600,
-                          background: 'var(--surface)',
-                          color: 'var(--text)',
+                          background: isFormDisabled ? 'var(--surface-2)' : 'var(--surface)',
+                          color: isFormDisabled ? 'var(--text-3)' : 'var(--text)',
                           boxSizing: 'border-box',
                           outline: 'none',
-                          cursor: 'pointer',
+                          cursor: isFormDisabled ? 'not-allowed' : 'pointer',
                         }}
                       >
                         <option value="">Standard Queue (No Special Priority)</option>
@@ -2957,24 +3232,28 @@ export default function HousingStatusTab({ onReloadHousing }) {
                       label="Allotment Letter Issued"
                       value={form.estateDate1}
                       onChange={(val) => setForm({ ...form, estateDate1: val })}
+                      disabled={isFormDisabled}
                     />
 
                     <CalendarDatePicker
                       label="User Accepted"
                       value={form.estateDate2}
                       onChange={(val) => setForm({ ...form, estateDate2: val })}
+                      disabled={isFormDisabled}
                     />
 
                     <CalendarDatePicker
                       label="Key Handed to Allottee"
                       value={form.estateDate3}
                       onChange={(val) => setForm({ ...form, estateDate3: val })}
+                      disabled={isFormDisabled}
                     />
 
                     <CalendarDatePicker
                       label="Possession Deadline"
                       value={form.estateDate4}
                       onChange={(val) => setForm({ ...form, estateDate4: val })}
+                      disabled={isFormDisabled}
                     />
                   </div>
                 </div>
@@ -2995,6 +3274,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                     type="text"
                     value={form.estateRemarks}
                     onChange={(e) => setForm({ ...form, estateRemarks: e.target.value })}
+                    disabled={isFormDisabled}
                     placeholder="e.g. Allotment approved with effect from date / Instructions for departments..."
                     style={{
                       width: '100%',
@@ -3003,8 +3283,9 @@ export default function HousingStatusTab({ onReloadHousing }) {
                       borderRadius: 8,
                       border: '1.5px solid var(--border)',
                       fontSize: 13,
-                      background: 'var(--surface)',
-                      color: 'var(--text)',
+                      background: isFormDisabled ? 'var(--surface-2)' : 'var(--surface)',
+                      color: isFormDisabled ? 'var(--text-3)' : 'var(--text)',
+                      cursor: isFormDisabled ? 'not-allowed' : 'inherit',
                       boxSizing: 'border-box',
                       outline: 'none',
                     }}
@@ -3122,27 +3403,30 @@ export default function HousingStatusTab({ onReloadHousing }) {
                             <span style={{ fontSize: 12.5, fontWeight: 700, color: '#1e40af' }}>
                               Civil Team
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const today = todayISO()
-                                setForm((prev) => ({
-                                  ...prev,
-                                  civilStatus: 'Completed',
-                                  civilCompletedDate: today,
-                                  civilKeyReceivedDate: prev.civilKeyReceivedDate || today,
-                                }))
-                              }}
-                              style={{ padding: '3px 8px', borderRadius: 4, border: 'none', background: '#2563eb', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                            >
-                              Mark Completed Today
-                            </button>
+                            {!isFormDisabled && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const today = todayISO()
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    civilStatus: 'Completed',
+                                    civilCompletedDate: today,
+                                    civilKeyReceivedDate: prev.civilKeyReceivedDate || today,
+                                  }))
+                                }}
+                                style={{ padding: '3px 8px', borderRadius: 4, border: 'none', background: '#2563eb', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                              >
+                                Mark Completed Today
+                              </button>
+                            )}
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                             <CalendarDatePicker
                               label="Key Received On"
                               value={form.civilKeyReceivedDate}
                               onChange={(val) => setForm({ ...form, civilKeyReceivedDate: val })}
+                              disabled={isFormDisabled}
                             />
                             <div>
                               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>Status</label>
@@ -3158,7 +3442,20 @@ export default function HousingStatusTab({ onReloadHousing }) {
                                     civilKeyReceivedDate: val === 'Completed' ? (prev.civilKeyReceivedDate || today) : prev.civilKeyReceivedDate,
                                   }))
                                 }}
-                                style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' }}
+                                disabled={isFormDisabled}
+                                style={{
+                                  width: '100%',
+                                  height: 38,
+                                  padding: '0 10px',
+                                  borderRadius: 8,
+                                  border: '1.5px solid var(--border)',
+                                  fontSize: 13,
+                                  background: isFormDisabled ? 'var(--surface-2)' : 'var(--surface)',
+                                  color: isFormDisabled ? 'var(--text-3)' : 'var(--text)',
+                                  cursor: isFormDisabled ? 'not-allowed' : 'default',
+                                  boxSizing: 'border-box',
+                                  outline: 'none',
+                                }}
                               >
                                 <option value="">Select status...</option>
                                 <option value="Pending">Pending</option>
@@ -3171,6 +3468,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                               label="Key Handed Over On"
                               value={form.civilCompletedDate}
                               onChange={(val) => setForm({ ...form, civilCompletedDate: val })}
+                              disabled={isFormDisabled}
                             />
                           </div>
                           <div style={{ marginTop: 6 }}>
@@ -3181,8 +3479,21 @@ export default function HousingStatusTab({ onReloadHousing }) {
                               type="text"
                               value={form.civilRemarks}
                               onChange={(e) => setForm({ ...form, civilRemarks: e.target.value })}
+                              disabled={isFormDisabled}
                               placeholder="Civil team clearance notes..."
-                              style={{ width: '100%', height: 34, padding: '0 10px', borderRadius: 6, border: '1px solid #bfdbfe', fontSize: 12, background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' }}
+                              style={{
+                                width: '100%',
+                                height: 34,
+                                padding: '0 10px',
+                                borderRadius: 6,
+                                border: '1px solid #bfdbfe',
+                                fontSize: 12,
+                                background: isFormDisabled ? 'var(--surface-2)' : 'var(--surface)',
+                                color: isFormDisabled ? 'var(--text-3)' : 'var(--text)',
+                                cursor: isFormDisabled ? 'not-allowed' : 'text',
+                                boxSizing: 'border-box',
+                                outline: 'none',
+                              }}
                             />
                           </div>
                         </div>
@@ -3193,27 +3504,30 @@ export default function HousingStatusTab({ onReloadHousing }) {
                             <span style={{ fontSize: 12.5, fontWeight: 700, color: '#854d0e' }}>
                               Electrical Team
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const today = todayISO()
-                                setForm((prev) => ({
-                                  ...prev,
-                                  electricalStatus: 'Completed',
-                                  electricalCompletedDate: today,
-                                  electricalKeyReceivedDate: prev.electricalKeyReceivedDate || today,
-                                }))
-                              }}
-                              style={{ padding: '3px 8px', borderRadius: 4, border: 'none', background: '#d97706', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                            >
-                              Mark Completed Today
-                            </button>
+                            {!isFormDisabled && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const today = todayISO()
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    electricalStatus: 'Completed',
+                                    electricalCompletedDate: today,
+                                    electricalKeyReceivedDate: prev.electricalKeyReceivedDate || today,
+                                  }))
+                                }}
+                                style={{ padding: '3px 8px', borderRadius: 4, border: 'none', background: '#d97706', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                              >
+                                Mark Completed Today
+                              </button>
+                            )}
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                             <CalendarDatePicker
                               label="Key Received On"
                               value={form.electricalKeyReceivedDate}
                               onChange={(val) => setForm({ ...form, electricalKeyReceivedDate: val })}
+                              disabled={isFormDisabled}
                             />
                             <div>
                               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>Status</label>
@@ -3229,7 +3543,20 @@ export default function HousingStatusTab({ onReloadHousing }) {
                                     electricalKeyReceivedDate: val === 'Completed' ? (prev.electricalKeyReceivedDate || today) : prev.electricalKeyReceivedDate,
                                   }))
                                 }}
-                                style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' }}
+                                disabled={isFormDisabled}
+                                style={{
+                                  width: '100%',
+                                  height: 38,
+                                  padding: '0 10px',
+                                  borderRadius: 8,
+                                  border: '1.5px solid var(--border)',
+                                  fontSize: 13,
+                                  background: isFormDisabled ? 'var(--surface-2)' : 'var(--surface)',
+                                  color: isFormDisabled ? 'var(--text-3)' : 'var(--text)',
+                                  cursor: isFormDisabled ? 'not-allowed' : 'default',
+                                  boxSizing: 'border-box',
+                                  outline: 'none',
+                                }}
                               >
                                 <option value="">Select status...</option>
                                 <option value="Pending">Pending</option>
@@ -3242,6 +3569,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                               label="Key Handed Over On"
                               value={form.electricalCompletedDate}
                               onChange={(val) => setForm({ ...form, electricalCompletedDate: val })}
+                              disabled={isFormDisabled}
                             />
                           </div>
                           <div style={{ marginTop: 6 }}>
@@ -3252,8 +3580,21 @@ export default function HousingStatusTab({ onReloadHousing }) {
                               type="text"
                               value={form.electricalRemarks}
                               onChange={(e) => setForm({ ...form, electricalRemarks: e.target.value })}
+                              disabled={isFormDisabled}
                               placeholder="Electrical team clearance notes..."
-                              style={{ width: '100%', height: 34, padding: '0 10px', borderRadius: 6, border: '1px solid #fef08a', fontSize: 12, background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' }}
+                              style={{
+                                width: '100%',
+                                height: 34,
+                                padding: '0 10px',
+                                borderRadius: 6,
+                                border: '1px solid #fef08a',
+                                fontSize: 12,
+                                background: isFormDisabled ? 'var(--surface-2)' : 'var(--surface)',
+                                color: isFormDisabled ? 'var(--text-3)' : 'var(--text)',
+                                cursor: isFormDisabled ? 'not-allowed' : 'text',
+                                boxSizing: 'border-box',
+                                outline: 'none',
+                              }}
                             />
                           </div>
                         </div>
@@ -3264,27 +3605,30 @@ export default function HousingStatusTab({ onReloadHousing }) {
                             <span style={{ fontSize: 12.5, fontWeight: 700, color: '#166534' }}>
                               Housekeeping Team
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const today = todayISO()
-                                setForm((prev) => ({
-                                  ...prev,
-                                  hkStatus: 'Completed',
-                                  hkCompletedDate: today,
-                                  hkHandoverDate: prev.hkHandoverDate || today,
-                                }))
-                              }}
-                              style={{ padding: '3px 8px', borderRadius: 4, border: 'none', background: '#16a34a', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                            >
-                              Mark Completed Today
-                            </button>
+                            {!isFormDisabled && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const today = todayISO()
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    hkStatus: 'Completed',
+                                    hkCompletedDate: today,
+                                    hkHandoverDate: prev.hkHandoverDate || today,
+                                  }))
+                                }}
+                                style={{ padding: '3px 8px', borderRadius: 4, border: 'none', background: '#16a34a', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                              >
+                                Mark Completed Today
+                              </button>
+                            )}
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                             <CalendarDatePicker
                               label="Key Received On"
                               value={form.hkHandoverDate}
                               onChange={(val) => setForm({ ...form, hkHandoverDate: val })}
+                              disabled={isFormDisabled}
                             />
                             <div>
                               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>Status</label>
@@ -3300,7 +3644,20 @@ export default function HousingStatusTab({ onReloadHousing }) {
                                     hkHandoverDate: val === 'Completed' ? (prev.hkHandoverDate || today) : prev.hkHandoverDate,
                                   }))
                                 }}
-                                style={{ width: '100%', height: 38, padding: '0 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' }}
+                                disabled={isFormDisabled}
+                                style={{
+                                  width: '100%',
+                                  height: 38,
+                                  padding: '0 10px',
+                                  borderRadius: 8,
+                                  border: '1.5px solid var(--border)',
+                                  fontSize: 13,
+                                  background: isFormDisabled ? 'var(--surface-2)' : 'var(--surface)',
+                                  color: isFormDisabled ? 'var(--text-3)' : 'var(--text)',
+                                  cursor: isFormDisabled ? 'not-allowed' : 'default',
+                                  boxSizing: 'border-box',
+                                  outline: 'none',
+                                }}
                               >
                                 <option value="">Select status...</option>
                                 <option value="Pending">Pending</option>
@@ -3313,6 +3670,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                               label="Key Handed Over On"
                               value={form.hkCompletedDate}
                               onChange={(val) => setForm({ ...form, hkCompletedDate: val })}
+                              disabled={isFormDisabled}
                             />
                           </div>
                           <div style={{ marginTop: 6 }}>
@@ -3323,8 +3681,21 @@ export default function HousingStatusTab({ onReloadHousing }) {
                               type="text"
                               value={form.hkRemarks}
                               onChange={(e) => setForm({ ...form, hkRemarks: e.target.value })}
+                              disabled={isFormDisabled}
                               placeholder="Housekeeping team clearance notes..."
-                              style={{ width: '100%', height: 34, padding: '0 10px', borderRadius: 6, border: '1px solid #bbf7d0', fontSize: 12, background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' }}
+                              style={{
+                                width: '100%',
+                                height: 34,
+                                padding: '0 10px',
+                                borderRadius: 6,
+                                border: '1px solid #bbf7d0',
+                                fontSize: 12,
+                                background: isFormDisabled ? 'var(--surface-2)' : 'var(--surface)',
+                                color: isFormDisabled ? 'var(--text-3)' : 'var(--text)',
+                                cursor: isFormDisabled ? 'not-allowed' : 'text',
+                                boxSizing: 'border-box',
+                                outline: 'none',
+                              }}
                             />
                           </div>
                         </div>
@@ -3337,7 +3708,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
 
             {/* Modal Actions */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-              {isEditOpen && isMaster && (
+              {isEditOpen && isMaster && !isFormDisabled && (
                 <button
                   type="button"
                   onClick={() => handleDelete(activeRecord.id)}
@@ -3369,7 +3740,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                   {isFormDisabled ? 'Close' : 'Cancel'}
                 </Btn>
 
-                {isEditOpen && isMaster && !activeRecord?.isAllotted && (
+                {isEditOpen && isMaster && !activeRecord?.isAllotted && !isFormDisabled && (
                   <button
                     type="button"
                     disabled={saving || !form.allotteeName}
@@ -3497,7 +3868,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                   padding: 4,
                 }}
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -3566,7 +3937,7 @@ export default function HousingStatusTab({ onReloadHousing }) {
                                 </span>
                               )}
                             </div>
-                            {isCurrent && (
+                            {isCurrent && !isReadOnly && (
                               <div style={{ display: 'flex', gap: 4 }}>
                                 <button
                                   type="button"
@@ -3618,83 +3989,107 @@ export default function HousingStatusTab({ onReloadHousing }) {
               <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
                 Assign Priority Level
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-                <button
-                  type="button"
-                  onClick={() => handleUpdatePriority(priorityModalRecord, '1')}
+              {isReadOnly ? (
+                <div
                   style={{
-                    padding: '10px 12px',
+                    padding: '10px 14px',
+                    background: 'var(--surface-2)',
                     borderRadius: 8,
-                    border: '1.5px solid #fca5a5',
-                    background: priorityModalRecord.priority === '1' ? '#fee2e2' : 'var(--surface)',
-                    color: '#991b1b',
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  <div style={{ fontWeight: 800 }}>P1 · Urgent / Top</div>
-                  <div style={{ fontSize: 10.5, opacity: 0.8, marginTop: 2 }}>Moves to #1, shifts others down</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleUpdatePriority(priorityModalRecord, '2')}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: '1.5px solid #fdba74',
-                    background: priorityModalRecord.priority === '2' ? '#ffedd5' : 'var(--surface)',
-                    color: '#9a3412',
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  <div style={{ fontWeight: 800 }}>P2 · High Priority</div>
-                  <div style={{ fontSize: 10.5, opacity: 0.8, marginTop: 2 }}>Moves to #2 in queue</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleUpdatePriority(priorityModalRecord, '3')}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: '1.5px solid #fde047',
-                    background: priorityModalRecord.priority === '3' ? '#fef9c3' : 'var(--surface)',
-                    color: '#854d0e',
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  <div style={{ fontWeight: 800 }}>P3 · Normal Priority</div>
-                  <div style={{ fontSize: 10.5, opacity: 0.8, marginTop: 2 }}>Moves to #3 in queue</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleUpdatePriority(priorityModalRecord, '')}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: '1.5px solid var(--border)',
-                    background: !priorityModalRecord.priority ? 'var(--surface-2)' : 'var(--surface)',
+                    border: '1px solid var(--border)',
                     color: 'var(--text-2)',
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    textAlign: 'left',
+                    fontSize: 12,
+                    marginBottom: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                   }}
                 >
-                  <div style={{ fontWeight: 800 }}>Standard FIFO</div>
-                  <div style={{ fontSize: 10.5, opacity: 0.8, marginTop: 2 }}>Remove from priority queue</div>
-                </button>
-              </div>
+                  <span>Priority modification is disabled in View-Only mode.</span>
+                  {isAdmin && (
+                    <span style={{ fontSize: 11, color: 'var(--green-900)', fontWeight: 600 }}>
+                      Click the Edit pencil icon in top bar to modify
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdatePriority(priorityModalRecord, '1')}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: '1.5px solid #fca5a5',
+                      background: priorityModalRecord.priority === '1' ? '#fee2e2' : 'var(--surface)',
+                      color: '#991b1b',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ fontWeight: 800 }}>P1 · Urgent / Top</div>
+                    <div style={{ fontSize: 10.5, opacity: 0.8, marginTop: 2 }}>Moves to #1, shifts others down</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleUpdatePriority(priorityModalRecord, '2')}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: '1.5px solid #fdba74',
+                      background: priorityModalRecord.priority === '2' ? '#ffedd5' : 'var(--surface)',
+                      color: '#9a3412',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ fontWeight: 800 }}>P2 · High Priority</div>
+                    <div style={{ fontSize: 10.5, opacity: 0.8, marginTop: 2 }}>Moves to #2 in queue</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleUpdatePriority(priorityModalRecord, '3')}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: '1.5px solid #fde047',
+                      background: priorityModalRecord.priority === '3' ? '#fef9c3' : 'var(--surface)',
+                      color: '#854d0e',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ fontWeight: 800 }}>P3 · Normal Priority</div>
+                    <div style={{ fontSize: 10.5, opacity: 0.8, marginTop: 2 }}>Moves to #3 in queue</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleUpdatePriority(priorityModalRecord, '')}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: '1.5px solid var(--border)',
+                      background: !priorityModalRecord.priority ? 'var(--surface-2)' : 'var(--surface)',
+                      color: 'var(--text-2)',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ fontWeight: 800 }}>Standard FIFO</div>
+                    <div style={{ fontSize: 10.5, opacity: 0.8, marginTop: 2 }}>Remove from priority queue</div>
+                  </button>
+                </div>
+              )}
 
               <div style={{ fontSize: 11, color: 'var(--text-3)', lineHeight: 1.4, background: 'var(--surface-2)', padding: '8px 12px', borderRadius: 6 }}>
                 Active priority queue is processed sequentially by Civil, Electrical, and Housekeeping teams. When you assign or change priority, the sequence automatically re-orders (1, 2, 3...) with zero gaps or duplicate numbers.

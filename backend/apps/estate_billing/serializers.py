@@ -112,6 +112,8 @@ class ShopDemandNoteSerializer(serializers.ModelSerializer):
     noteNo = serializers.CharField(source='note_no', required=False, allow_blank=True)
     monthTo = serializers.CharField(source='month_to', required=False, allow_blank=True)
 
+    isCancelled = serializers.BooleanField(source='is_cancelled', required=False)
+
     class Meta:
         model = ShopDemandNote
         fields = [
@@ -133,6 +135,7 @@ class ShopDemandNoteSerializer(serializers.ModelSerializer):
             'extras',
             'total_amount',
             'cycle_month',
+            'isCancelled',
         ]
 
 

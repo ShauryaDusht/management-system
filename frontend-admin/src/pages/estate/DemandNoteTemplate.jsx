@@ -14,6 +14,26 @@ export default function DemandNoteTemplate({ note }) {
     <DocShell>
       <DocHeader note={note} />
 
+      {note.isCancelled && (
+        <div
+          style={{
+            margin: '12px 0',
+            padding: '8px 14px',
+            background: '#fee2e2',
+            border: '1.5px solid #ef4444',
+            borderRadius: 6,
+            color: '#b91c1c',
+            fontWeight: 700,
+            textAlign: 'center',
+            fontSize: 13,
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase',
+          }}
+        >
+          *** DEMAND NOTE CANCELLED FOR THIS CYCLE ***
+        </div>
+      )}
+
       {/* Addressee */}
       <div style={{ fontWeight: 700, fontSize: 13 }}>To,</div>
       <div style={{ fontWeight: 700, marginTop: 6, fontSize: 13.5 }}>{note.name || 'Shop name'}</div>
@@ -33,6 +53,17 @@ export default function DemandNoteTemplate({ note }) {
           </tr>
         </thead>
         <tbody>
+          {note.fixed && (
+            <tr>
+              <td style={{ ...descCell, paddingTop: 10 }}>
+                <div style={{ display: 'flex' }}>
+                  <span style={{ width: 120 }}>Month</span>
+                  <span style={{ fontWeight: 700 }}>{note.monthHyphen}</span>
+                </div>
+              </td>
+              <td style={amtCell} />
+            </tr>
+          )}
           {(note.items || []).map((it, i) => {
             const last = i === note.items.length - 1
             const bottom = last ? 10 : 0

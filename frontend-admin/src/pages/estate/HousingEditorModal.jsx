@@ -13,6 +13,7 @@ export default function HousingEditorModal({
   onDelete,
   onOpenHistory,
   onSuccess,
+  isReadOnly = false,
 }) {
   const [form, setForm] = useState({
     houseType: 'A',
@@ -71,11 +72,13 @@ export default function HousingEditorModal({
   if (!isOpen || !record) return null
 
   const handleChange = (field, val) => {
+    if (isReadOnly) return
     setForm((prev) => ({ ...prev, [field]: val }))
   }
 
   // Handle House dropdown select
   const handleHouseChange = (e) => {
+    if (isReadOnly) return
     const val = e.target.value
     const found = allUnits.find((u) => `${u.houseType} ${u.houseNo}` === val)
     if (found) {
@@ -89,6 +92,7 @@ export default function HousingEditorModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (isReadOnly) return
     if (!form.occupantName.trim()) {
       alert("Please provide the Occupant's Name.")
       return
@@ -129,6 +133,7 @@ export default function HousingEditorModal({
   }
 
   const handleMarkVacated = async () => {
+    if (isReadOnly) return
     if (!vacateDate) {
       alert('Please enter a vacation date.')
       return
@@ -150,6 +155,7 @@ export default function HousingEditorModal({
   }
 
   const handleDelete = async () => {
+    if (isReadOnly) return
     if (!confirmDelete) {
       setConfirmDelete(true)
       return
@@ -167,10 +173,25 @@ export default function HousingEditorModal({
     <Modal
       open={isOpen}
       onClose={onClose}
-      title="Edit Housing Record"
+      title={isReadOnly ? 'Housing Allotment Details (View Only)' : 'Edit Housing Record'}
       width={540}
     >
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {isReadOnly && (
+          <div
+            style={{
+              padding: '9px 14px',
+              borderRadius: 8,
+              background: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              color: '#475569',
+              fontSize: 12,
+              fontWeight: 500,
+            }}
+          >
+            Viewing record in View-Only mode. Toggle &quot;Edit&quot; in the top bar to make changes.
+          </div>
+        )}
         {/* Top Link */}
         {form.occupantName && (
           <div>
@@ -205,14 +226,16 @@ export default function HousingEditorModal({
           <select
             value={currentHouseKey}
             onChange={handleHouseChange}
+            disabled={isReadOnly}
             style={{
               width: '100%',
               padding: '8px 12px',
               borderRadius: 8,
               border: '1.5px solid #cbd5e1',
               fontSize: 13,
-              background: '#ffffff',
-              color: '#0f172a',
+              background: isReadOnly ? '#f1f5f9' : '#ffffff',
+              color: isReadOnly ? '#64748b' : '#0f172a',
+              cursor: isReadOnly ? 'not-allowed' : 'default',
               outline: 'none',
               fontFamily: 'inherit',
             }}
@@ -241,14 +264,16 @@ export default function HousingEditorModal({
             required
             value={form.occupantName}
             onChange={(e) => handleChange('occupantName', e.target.value)}
+            disabled={isReadOnly}
             style={{
               width: '100%',
               padding: '8px 12px',
               borderRadius: 8,
               border: '1.5px solid #cbd5e1',
               fontSize: 13,
-              background: '#ffffff',
-              color: '#0f172a',
+              background: isReadOnly ? '#f1f5f9' : '#ffffff',
+              color: isReadOnly ? '#64748b' : '#0f172a',
+              cursor: isReadOnly ? 'not-allowed' : 'text',
               outline: 'none',
               fontFamily: 'inherit',
             }}
@@ -265,14 +290,16 @@ export default function HousingEditorModal({
               type="text"
               value={form.emplCode}
               onChange={(e) => handleChange('emplCode', e.target.value)}
+              disabled={isReadOnly}
               style={{
                 width: '100%',
                 padding: '8px 12px',
                 borderRadius: 8,
                 border: '1.5px solid #cbd5e1',
                 fontSize: 13,
-                background: '#ffffff',
-                color: '#0f172a',
+                background: isReadOnly ? '#f1f5f9' : '#ffffff',
+                color: isReadOnly ? '#64748b' : '#0f172a',
+                cursor: isReadOnly ? 'not-allowed' : 'text',
                 outline: 'none',
                 fontFamily: 'inherit',
               }}
@@ -287,14 +314,16 @@ export default function HousingEditorModal({
               type="text"
               value={form.designation}
               onChange={(e) => handleChange('designation', e.target.value)}
+              disabled={isReadOnly}
               style={{
                 width: '100%',
                 padding: '8px 12px',
                 borderRadius: 8,
                 border: '1.5px solid #cbd5e1',
                 fontSize: 13,
-                background: '#ffffff',
-                color: '#0f172a',
+                background: isReadOnly ? '#f1f5f9' : '#ffffff',
+                color: isReadOnly ? '#64748b' : '#0f172a',
+                cursor: isReadOnly ? 'not-allowed' : 'text',
                 outline: 'none',
                 fontFamily: 'inherit',
               }}
@@ -311,14 +340,16 @@ export default function HousingEditorModal({
             type="email"
             value={form.email}
             onChange={(e) => handleChange('email', e.target.value)}
+            disabled={isReadOnly}
             style={{
               width: '100%',
               padding: '8px 12px',
               borderRadius: 8,
               border: '1.5px solid #cbd5e1',
               fontSize: 13,
-              background: '#ffffff',
-              color: '#0f172a',
+              background: isReadOnly ? '#f1f5f9' : '#ffffff',
+              color: isReadOnly ? '#64748b' : '#0f172a',
+              cursor: isReadOnly ? 'not-allowed' : 'text',
               outline: 'none',
               fontFamily: 'inherit',
             }}
@@ -336,14 +367,16 @@ export default function HousingEditorModal({
               required
               value={form.dateOfOccupation}
               onChange={(e) => handleChange('dateOfOccupation', e.target.value)}
+              disabled={isReadOnly}
               style={{
                 width: '100%',
                 padding: '8px 12px',
                 borderRadius: 8,
                 border: '1.5px solid #cbd5e1',
                 fontSize: 13,
-                background: '#ffffff',
-                color: '#0f172a',
+                background: isReadOnly ? '#f1f5f9' : '#ffffff',
+                color: isReadOnly ? '#64748b' : '#0f172a',
+                cursor: isReadOnly ? 'not-allowed' : 'pointer',
                 outline: 'none',
                 fontFamily: 'inherit',
               }}
@@ -358,14 +391,16 @@ export default function HousingEditorModal({
               type="date"
               value={form.alIssueDate}
               onChange={(e) => handleChange('alIssueDate', e.target.value)}
+              disabled={isReadOnly}
               style={{
                 width: '100%',
                 padding: '8px 12px',
                 borderRadius: 8,
                 border: '1.5px solid #cbd5e1',
                 fontSize: 13,
-                background: '#ffffff',
-                color: '#0f172a',
+                background: isReadOnly ? '#f1f5f9' : '#ffffff',
+                color: isReadOnly ? '#64748b' : '#0f172a',
+                cursor: isReadOnly ? 'not-allowed' : 'pointer',
                 outline: 'none',
                 fontFamily: 'inherit',
               }}
@@ -381,14 +416,16 @@ export default function HousingEditorModal({
           <select
             value={form.expiryType}
             onChange={(e) => handleChange('expiryType', e.target.value)}
+            disabled={isReadOnly}
             style={{
               width: '100%',
               padding: '8px 12px',
               borderRadius: 8,
               border: '1.5px solid #cbd5e1',
               fontSize: 13,
-              background: '#ffffff',
-              color: '#0f172a',
+              background: isReadOnly ? '#f1f5f9' : '#ffffff',
+              color: isReadOnly ? '#64748b' : '#0f172a',
+              cursor: isReadOnly ? 'not-allowed' : 'default',
               outline: 'none',
               fontFamily: 'inherit',
             }}
@@ -409,14 +446,16 @@ export default function HousingEditorModal({
               required
               value={form.expiryDate}
               onChange={(e) => handleChange('expiryDate', e.target.value)}
+              disabled={isReadOnly}
               style={{
                 width: '100%',
                 padding: '8px 12px',
                 borderRadius: 8,
                 border: '1.5px solid #cbd5e1',
                 fontSize: 13,
-                background: '#ffffff',
-                color: '#0f172a',
+                background: isReadOnly ? '#f1f5f9' : '#ffffff',
+                color: isReadOnly ? '#64748b' : '#0f172a',
+                cursor: isReadOnly ? 'not-allowed' : 'pointer',
                 outline: 'none',
                 fontFamily: 'inherit',
               }}
@@ -425,55 +464,57 @@ export default function HousingEditorModal({
         )}
 
         {/* Yellow Box: Vacate this house */}
-        <div
-          style={{
-            background: '#fffdf0',
-            border: '1.5px solid #fef08a',
-            borderRadius: 10,
-            padding: '14px 16px',
-            marginTop: 4,
-          }}
-        >
-          <div style={{ fontSize: 13, fontWeight: 800, color: '#9a3412', marginBottom: 4 }}>
-            Vacate this house
+        {!isReadOnly && (
+          <div
+            style={{
+              background: '#fffdf0',
+              border: '1.5px solid #fef08a',
+              borderRadius: 10,
+              padding: '14px 16px',
+              marginTop: 4,
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#9a3412', marginBottom: 4 }}>
+              Vacate this house
+            </div>
+            <div style={{ fontSize: 12, color: '#78350f', lineHeight: 1.4, marginBottom: 10 }}>
+              Use the day they actually leave. The house becomes vacant and this stay stays in its history. A date in the future keeps them listed until that day.
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <input
+                type="date"
+                value={vacateDate}
+                onChange={(e) => setVacateDate(e.target.value)}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid #d97706',
+                  fontSize: 12.5,
+                  background: '#ffffff',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <button
+                type="button"
+                disabled={vacating}
+                onClick={handleMarkVacated}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#c2410c',
+                  color: '#ffffff',
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {vacating ? 'Vacating...' : 'Mark as vacated'}
+              </button>
+            </div>
           </div>
-          <div style={{ fontSize: 12, color: '#78350f', lineHeight: 1.4, marginBottom: 10 }}>
-            Use the day they actually leave. The house becomes vacant and this stay stays in its history. A date in the future keeps them listed until that day.
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <input
-              type="date"
-              value={vacateDate}
-              onChange={(e) => setVacateDate(e.target.value)}
-              style={{
-                padding: '6px 10px',
-                borderRadius: 6,
-                border: '1px solid #d97706',
-                fontSize: 12.5,
-                background: '#ffffff',
-                outline: 'none',
-                fontFamily: 'inherit',
-              }}
-            />
-            <button
-              type="button"
-              disabled={vacating}
-              onClick={handleMarkVacated}
-              style={{
-                padding: '7px 16px',
-                borderRadius: 8,
-                border: 'none',
-                background: '#c2410c',
-                color: '#ffffff',
-                fontSize: 12.5,
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              {vacating ? 'Vacating...' : 'Mark as vacated'}
-            </button>
-          </div>
-        </div>
+        )}
 
         {/* Modal Bottom Actions */}
         <div
@@ -487,22 +528,24 @@ export default function HousingEditorModal({
           }}
         >
           <div>
-            <button
-              type="button"
-              onClick={handleDelete}
-              style={{
-                padding: '7px 14px',
-                borderRadius: 8,
-                border: '1px solid #cbd5e1',
-                background: '#ffffff',
-                color: confirmDelete ? '#b91c1c' : '#334155',
-                fontSize: 12.5,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              {confirmDelete ? 'Confirm delete record?' : 'Delete (entered by mistake)'}
-            </button>
+            {!isReadOnly && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 8,
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: confirmDelete ? '#b91c1c' : '#334155',
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {confirmDelete ? 'Confirm delete record?' : 'Delete (entered by mistake)'}
+              </button>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
@@ -521,24 +564,26 @@ export default function HousingEditorModal({
                 cursor: 'pointer',
               }}
             >
-              Cancel
+              {isReadOnly ? 'Close' : 'Cancel'}
             </button>
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                padding: '7px 18px',
-                borderRadius: 8,
-                border: 'none',
-                background: '#164e3f',
-                color: '#ffffff',
-                fontSize: 12.5,
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              {saving ? 'Saving...' : 'Save changes'}
-            </button>
+            {!isReadOnly && (
+              <button
+                type="submit"
+                disabled={saving}
+                style={{
+                  padding: '7px 18px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#164e3f',
+                  color: '#ffffff',
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {saving ? 'Saving...' : 'Save changes'}
+              </button>
+            )}
           </div>
         </div>
       </form>

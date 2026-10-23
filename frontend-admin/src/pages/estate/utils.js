@@ -79,7 +79,10 @@ export const inr = (n) =>
 export const inr0 = (n) =>
   Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })
 
-export function calcNote({ units, rate, water, fixed, extras = [] }) {
+export function calcNote({ units, rate, water, fixed, extras = [], isCancelled, is_cancelled }) {
+  if (isCancelled || is_cancelled) {
+    return { hasUnits: false, electricity: 0, water: 0, extrasTotal: 0, total: 0 }
+  }
   const u = Number(units)
   const hasUnits = !fixed && units !== '' && units != null && !Number.isNaN(u)
   const electricity = hasUnits ? Math.round(u * (Number(rate) || 0)) : 0
@@ -97,17 +100,24 @@ export function splitName(full) {
 const roman = (n) => ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv'][n - 1] || String(n)
 
 export function buildNote(rec, settings = {}) {
+  const isCancelled = Boolean(rec.isCancelled || rec.is_cancelled)
   const calc = calcNote(rec)
   const { name, sub } = splitName(rec.name)
   const monthSpaced = monthRange(rec.month, rec.monthTo, ' ', ' to ')
 
   const items = []
-  if (!rec.fixed) items.push({ type: 'power' })
-  if (calc.water) items.push({ type: 'line', label: `${rec.fixed ? 'Fixed charges' : 'Water usages charges'}\u00a0\u00a0(${monthSpaced})`, amount: calc.water })
-  ;(rec.extras || [])
-    .filter((x) => String(x.label || '').trim() || Number(x.amount))
-    .forEach((x) => items.push({ type: 'line', label: String(x.label || '').trim(), amount: Number(x.amount) || 0 }))
-  items.forEach((it, i) => { it.no = `(${roman(i + 1)})` })
+  if (!isCancelled) {
+    if (!rec.fixed) items.push({ type: 'power' })
+    if (calc.water) {
+      const isWc = Boolean(rec.name && rec.name.includes('(WC)'))
+      const waterLabel = isWc || !rec.fixed ? 'Water usages charges' : 'Fixed charges'
+      items.push({ type: 'line', label: `${waterLabel}\u00a0\u00a0(${monthSpaced})`, amount: calc.water })
+    }
+    ;(rec.extras || [])
+      .filter((x) => String(x.label || '').trim() || Number(x.amount))
+      .forEach((x) => items.push({ type: 'line', label: String(x.label || '').trim(), amount: Number(x.amount) || 0 }))
+    items.forEach((it, i) => { it.no = `(${roman(i + 1)})` })
+  }
 
   const bank = Array.isArray(settings.bank) ? settings.bank.filter(([l, v]) => String(l || '').trim() || String(v || '').trim()) : []
 
@@ -116,7 +126,7 @@ export function buildNote(rec, settings = {}) {
     paymentNote: settings.paymentNote || '',
     bank,
     signatory: settings.signatory || { name: 'Sujeet Kumar, SE', title: 'Estate Officer' },
-    noteNo: rec.noteNo || '',
+    noteNo: isCancelled ? 'CANCELLED' : (rec.noteNo || ''),
     date: formatDMY(rec.date),
     name,
     sub,
@@ -125,9 +135,10 @@ export function buildNote(rec, settings = {}) {
     units: rec.units,
     rate: Number(rec.rate) || 0,
     fixed: !!rec.fixed,
+    isCancelled,
     items,
     ...calc,
-    totalWords: rupeesInWords(calc.total),
+    totalWords: isCancelled ? 'Demand Note Cancelled — Rupees Zero Only' : rupeesInWords(calc.total),
   }
 }
 

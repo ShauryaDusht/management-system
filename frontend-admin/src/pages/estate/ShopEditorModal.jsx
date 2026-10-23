@@ -322,7 +322,7 @@ export default function ShopEditorModal({
             {rec.fixed ? (
               <div>
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
-                  Fixed Charges (Rs.)
+                  {rec.name?.includes('(WC)') ? 'Water Charges (Rs.)' : 'Fixed Charges (Rs.)'}
                 </label>
                 <input
                   type="number"
@@ -434,10 +434,65 @@ export default function ShopEditorModal({
 
             <div style={{ padding: '10px 14px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
               <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Total Calculated:</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--green-900)' }}>
-                ₹ {inr(note.total)}
+              <div style={{ fontSize: 18, fontWeight: 800, color: rec.isCancelled ? '#94a3b8' : 'var(--green-900)' }}>
+                {rec.isCancelled ? '₹ 0.00 (Cancelled)' : `₹ ${inr(note.total)}`}
               </div>
             </div>
+
+            {/* Cancel / Restore demand note for this cycle */}
+            {rec.isCancelled ? (
+              <div
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 8,
+                  background: '#fee2e2',
+                  border: '1.5px solid #fca5a5',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}
+              >
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#b91c1c' }}>
+                  Demand Note Cancelled for this Cycle
+                </div>
+                <div style={{ fontSize: 11.5, color: '#7f1d1d' }}>
+                  This shop was closed or reading was unavailable. Note No. has been shifted to subsequent shops without gaps.
+                </div>
+                {!isReadOnly && (
+                  <Btn
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleFieldChange('isCancelled', false)}
+                    style={{ alignSelf: 'flex-start', color: '#15803d', borderColor: '#86efac', fontWeight: 700 }}
+                  >
+                    Restore Demand Note
+                  </Btn>
+                )}
+              </div>
+            ) : !isReadOnly ? (
+              <div style={{ paddingTop: 6, borderTop: '1px solid var(--border)' }}>
+                <Btn
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (window.confirm(`Are you sure you want to cancel the demand note for "${rec.name}" for this billing cycle?\n\nIts Note No. (${rec.noteNo || 'current'}) will automatically be assigned to the next shop so there are no number gaps.`)) {
+                      handleFieldChange('isCancelled', true)
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    color: '#dc2626',
+                    background: '#fef2f2',
+                    border: '1.5px dashed #fca5a5',
+                    fontWeight: 600,
+                    padding: '8px 12px',
+                    fontSize: 12,
+                  }}
+                >
+                  Cancel Demand Note (Shop Closed / No Reading)
+                </Btn>
+              </div>
+            ) : null}
           </div>
         </Card>
 

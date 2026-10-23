@@ -2,7 +2,7 @@ import datetime
 import re
 from decimal import Decimal, ROUND_HALF_UP
 from django.db import models, transaction
-from django.db.models import Max
+from django.db.models import F, Max
 from django.db.models.functions import Cast
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -150,10 +150,109 @@ def calculate_contractor_total(meters):
     return total
 
 
+def get_cycle_first_note_no(cycle_month):
+    """
+    Returns the starting note number for shops in the given cycle_month.
+    If an earlier cycle exists in the same financial year (same prefix), continues
+    from the maximum numeric note_no of active, non-cancelled shops in that previous cycle + 1.
+    Otherwise, starts at settings.first_note_no.
+    """
+    settings = EstateSettings.get_settings()
+    prefix = settings.get_effective_prefix(cycle_month)
+
+    prev_cycle = (
+        BillingCycle.objects.filter(month__lt=cycle_month, is_active=True)
+        .order_by('-month')
+        .first()
+    )
+    if not prev_cycle:
+        return settings.first_note_no
+
+    prev_prefix = settings.get_effective_prefix(prev_cycle.month)
+    if prev_prefix != prefix:
+        return settings.first_note_no
+
+    prev_notes = ShopDemandNote.objects.filter(
+        cycle_month=prev_cycle.month,
+        shop__is_active=True,
+        is_cancelled=False,
+    ).exclude(note_no__in=['', 'CANCELLED'])
+
+    max_num = None
+    for n in prev_notes:
+        m = re.search(r'(\d+)$', n.note_no or '')
+        if m:
+            val = int(m.group(1))
+            if max_num is None or val > max_num:
+                max_num = val
+
+    if max_num is not None:
+        return max_num + 1
+
+    return settings.first_note_no
+
+
+def resequence_shop_note_numbers(cycle_month):
+    """
+    Re-assigns note_no (e.g. IWD/26-27/196, 197...) sequentially to all active,
+    non-cancelled shop demand notes in this billing cycle so there are no number gaps.
+    Skips any note numbers already claimed by contractor demand notes in this cycle.
+    Cancelled notes have note_no = 'CANCELLED'.
+    """
+    settings = EstateSettings.get_settings()
+    prefix = settings.get_effective_prefix(cycle_month)
+    first_no = get_cycle_first_note_no(cycle_month)
+
+    # Avoid collisions with note numbers used by contractors in the same cycle
+    contractor_note_nos = set(
+        ContractorDemandNote.objects.filter(cycle_month=cycle_month)
+        .exclude(note_no__in=['', None])
+        .values_list('note_no', flat=True)
+    )
+
+    active_notes = (
+        ShopDemandNote.objects.filter(cycle_month=cycle_month, shop__is_active=True, is_cancelled=False)
+        .select_related('shop')
+        .order_by('shop__sl', 'id')
+    )
+
+    curr_no = first_no
+    for n in active_notes:
+        expected_no = f"{prefix}{curr_no}"
+        while expected_no in contractor_note_nos:
+            curr_no += 1
+            expected_no = f"{prefix}{curr_no}"
+
+        if n.note_no != expected_no:
+            n.note_no = expected_no
+            n.save(update_fields=['note_no'])
+        curr_no += 1
+
+    cancelled_notes = ShopDemandNote.objects.filter(
+        cycle_month=cycle_month, shop__is_active=True, is_cancelled=True
+    )
+    for cn in cancelled_notes:
+        if cn.note_no != 'CANCELLED':
+            cn.note_no = 'CANCELLED'
+            cn.save(update_fields=['note_no'])
+
+
+def resequence_all_cycles_from(cycle_month):
+    """Resequences cycle_month and any subsequent cycles in chronological order."""
+    cycle_months = set(
+        BillingCycle.objects.filter(month__gte=cycle_month, is_active=True).values_list('month', flat=True)
+    )
+    cycle_months.update(
+        ShopDemandNote.objects.filter(cycle_month__gte=cycle_month).values_list('cycle_month', flat=True)
+    )
+    for m in sorted(cycle_months):
+        resequence_shop_note_numbers(m)
+
+
 def ensure_cycle_notes(cycle_month):
     settings = EstateSettings.get_settings()
     prefix = settings.get_effective_prefix(cycle_month)
-    first_no = settings.first_note_no
+    first_no = get_cycle_first_note_no(cycle_month)
     today_str = get_today_iso()
     prev_m = get_prev_month(today_str)
 
@@ -195,6 +294,8 @@ def ensure_cycle_notes(cycle_month):
                     n.note_no = expected_note_no
                     n.save(update_fields=['note_no'])
 
+    resequence_shop_note_numbers(cycle_month)
+
     # 2. Contractors
     contractors = list(Contractor.objects.filter(is_active=True).order_by('sl', 'id'))
     existing_contractor_notes = {
@@ -203,7 +304,8 @@ def ensure_cycle_notes(cycle_month):
     shops_count = len(shops)
     for contractor in contractors:
         if contractor.id not in existing_contractor_notes:
-            note_no = f"{prefix}{first_no + shops_count + contractor.sl - 1}"
+            # Contractor note numbers are assigned manually by Estate Office
+            note_no = ''
             # Copy meters template from previous cycle or defaults
             prev_note = ContractorDemandNote.objects.filter(contractor=contractor).order_by('-cycle_month').first()
             if prev_note and prev_note.meters:
@@ -318,6 +420,8 @@ class ShopListCreateView(APIView):
                     'expiry_date': expiry_date,
                 }
             )
+            resequence_all_cycles_from(cycle)
+            note.refresh_from_db()
 
         return Response(ShopDemandNoteSerializer(note).data, status=status.HTTP_201_CREATED)
 
@@ -398,9 +502,26 @@ class ShopDetailView(APIView):
                 for x in data['extras']
             ]
 
-        note.total_amount = calculate_shop_total(
-            note.units, note.rate, note.water, note.fixed, note.extras
-        )
+        if 'isCancelled' in data or 'is_cancelled' in data:
+            c_val = bool(data.get('isCancelled') if 'isCancelled' in data else data.get('is_cancelled'))
+            note.is_cancelled = c_val
+            if c_val:
+                note.note_no = 'CANCELLED'
+                note.total_amount = Decimal('0.00')
+            else:
+                note.total_amount = calculate_shop_total(
+                    note.units, note.rate, note.water, note.fixed, note.extras
+                )
+            note.save(update_fields=['is_cancelled', 'note_no', 'total_amount'])
+            resequence_all_cycles_from(note.cycle_month)
+            note.refresh_from_db()
+
+        if note.is_cancelled:
+            note.total_amount = Decimal('0.00')
+        else:
+            note.total_amount = calculate_shop_total(
+                note.units, note.rate, note.water, note.fixed, note.extras
+            )
         note.save()
 
         return Response(ShopDemandNoteSerializer(note).data)
@@ -415,8 +536,15 @@ class ShopDetailView(APIView):
             return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
 
         shop = note.shop
+        deleted_sl = shop.sl
+        cycle_month = note.cycle_month
         shop.is_active = False
         shop.save(update_fields=['is_active'])
+
+        if deleted_sl:
+            Shop.objects.filter(is_active=True, sl__gt=deleted_sl).update(sl=F('sl') - 1)
+            resequence_all_cycles_from(cycle_month)
+
         return Response({'ok': True})
 
 
@@ -783,17 +911,21 @@ def ensure_master_housing_inventory():
             )
         HousingUnit.objects.bulk_create(units_to_create, ignore_conflicts=True)
 
-    # Seed initial 13 active allotments if no allotments exist
+    # Seed initial official active allotments if no allotments exist
     if not HousingAllotment.objects.filter(is_active=True).exists():
-        for item in INITIAL_HOUSING_RECORDS:
+        from .housing_allotments_data import OFFICIAL_HOUSING_REGISTER
+        for item in OFFICIAL_HOUSING_REGISTER:
+            if item.get('is_vacant'):
+                continue
             h_type = item.get('house_type', 'A')
             h_no = item.get('house_no', '')
             unit = HousingUnit.objects.filter(house_type=h_type, house_no=h_no).first()
+            data_to_save = {k: v for k, v in item.items() if k != 'is_vacant'}
             HousingAllotment.objects.create(
                 unit=unit,
                 is_current=True,
                 status=HousingAllotment.Status.OCCUPIED,
-                **item
+                **data_to_save
             )
             if unit:
                 unit.status = HousingUnit.Status.OCCUPIED
@@ -1367,124 +1499,135 @@ class HousingHistoryView(APIView):
 INITIAL_CLEARANCES = [
     {
         'sr_no': 1, 'house_type': 'Type B', 'house_no': '27/103',
-        'allottee_name': 'Dr Ajay', 'time_stamp': '2026-07-06',
-        'key_handed_over_date': '2026-07-06', 'priority': '',
-        'civil_key_received_date': '2026-07-06', 'civil_status': 'Completed', 'civil_completed_date': '2026-07-07',
-        'electrical_key_received_date': '2026-07-07', 'electrical_status': 'Completed', 'electrical_completed_date': '2026-07-07',
-        'hk_handover_date': '2026-07-13', 'hk_status': 'Completed', 'hk_completed_date': '2026-07-14',
-        'estate_date_1': '2026-07-14', 'estate_date_2': '2026-07-16', 'estate_date_3': '2026-07-16', 'estate_date_4': '2026-07-21',
+        'allottee_name': 'Dr Ajay', 'time_stamp': '6-Jul-2026',
+        'key_handed_over_date': '6-Jul-2026', 'priority': '',
+        'civil_key_received_date': '6-Jul-2026', 'civil_status': 'completed', 'civil_completed_date': '7-Jul-2026',
+        'electrical_key_received_date': '7-Jul-2026', 'electrical_status': 'Completed', 'electrical_completed_date': '7-Jul-2026',
+        'hk_handover_date': '13/07/2026 at 10:00 hrs', 'hk_status': 'Complted', 'hk_completed_date': '14/07/2026 at 14:55 hrs',
+        'estate_date_1': '14-Jul-26', 'estate_date_2': '16-Jul-26', 'estate_date_3': '16-Jul-26', 'estate_date_4': '21-Jul-26',
         'remarks': 'The allotment of HB-27/103 was approved with effect from 26 June 2026',
-        'status': 'completed'
+        'status': 'completed', 'is_allotted': True,
     },
     {
         'sr_no': 2, 'house_type': 'Type A', 'house_no': '02/303',
-        'allottee_name': 'Dr. Pratik', 'time_stamp': '2026-07-06',
-        'key_handed_over_date': '2026-07-06', 'priority': '',
-        'civil_key_received_date': '2026-07-06', 'civil_status': 'Completed', 'civil_completed_date': '2026-07-07',
-        'electrical_key_received_date': '2026-07-07', 'electrical_status': 'Completed', 'electrical_completed_date': '2026-07-07',
-        'hk_handover_date': '2026-07-17', 'hk_status': 'Completed', 'hk_completed_date': '2026-07-21',
-        'estate_date_1': '2026-07-22', 'estate_date_2': '2026-07-22', 'estate_date_3': '2026-07-27', 'estate_date_4': '2026-07-30',
+        'allottee_name': 'Dr. Pratik', 'time_stamp': '6-Jul-2026',
+        'key_handed_over_date': '6-Jul-2026', 'priority': '',
+        'civil_key_received_date': '6-Jul-2026', 'civil_status': 'completed', 'civil_completed_date': '7-Jul-2026',
+        'electrical_key_received_date': '7-Jul-2026', 'electrical_status': 'Completed', 'electrical_completed_date': '7-Jul-2026',
+        'hk_handover_date': '17/07/2026 at 15:05 hrs', 'hk_status': 'Complted', 'hk_completed_date': '21/07/2026 at 17: 20 hrs',
+        'estate_date_1': '22-Jul-26', 'estate_date_2': '22-Jul-26', 'estate_date_3': '27-Jul-26', 'estate_date_4': '30-Jul-26',
         'remarks': 'The allotment of HB-02/303 was approved with effect from 13 July 2026',
-        'status': 'completed'
+        'status': 'completed', 'is_allotted': True,
     },
     {
         'sr_no': 3, 'house_type': 'Type C', 'house_no': '13/301',
-        'allottee_name': '', 'time_stamp': '2026-07-06',
-        'key_handed_over_date': '2026-07-06', 'priority': '',
-        'civil_key_received_date': '2026-07-06', 'civil_status': 'Completed', 'civil_completed_date': '2026-07-15',
-        'electrical_key_received_date': '2026-07-15', 'electrical_status': 'Completed', 'electrical_completed_date': '2026-07-15',
-        'hk_handover_date': '2026-07-21', 'hk_status': 'Completed', 'hk_completed_date': '2026-07-23',
+        'allottee_name': '', 'time_stamp': '6-Jul-2026',
+        'key_handed_over_date': '6-Jul-2026', 'priority': '',
+        'civil_key_received_date': '6-Jul-2026', 'civil_status': 'completed', 'civil_completed_date': '15-Jul-2026',
+        'electrical_key_received_date': '15-Jul-2026', 'electrical_status': 'Completed', 'electrical_completed_date': '15-Jul-2026',
+        'hk_handover_date': '21/07/2026 at 15:35 hrs', 'hk_status': 'Complted', 'hk_completed_date': '23/07/2026 at 17:30 hrs',
         'estate_date_1': '', 'estate_date_2': '', 'estate_date_3': '', 'estate_date_4': '',
         'remarks': '',
-        'status': 'in_progress'
+        'status': 'in_progress', 'is_allotted': False,
     },
     {
         'sr_no': 4, 'house_type': 'Type C', 'house_no': '20/203',
-        'allottee_name': 'Dr. Soumendu', 'time_stamp': '2026-08-03',
-        'key_handed_over_date': '2026-08-03', 'priority': '',
-        'civil_key_received_date': '2026-08-03', 'civil_status': 'Completed', 'civil_completed_date': '2026-08-09',
-        'electrical_key_received_date': '2026-08-09', 'electrical_status': 'Completed', 'electrical_completed_date': '2026-08-09',
-        'hk_handover_date': '2026-08-10', 'hk_status': 'Completed', 'hk_completed_date': '2026-08-12',
-        'estate_date_1': '2026-08-12', 'estate_date_2': '2026-08-14', 'estate_date_3': '2026-08-14', 'estate_date_4': '2026-08-19',
+        'allottee_name': 'Dr. Soumendu', 'time_stamp': '3-Aug-2026',
+        'key_handed_over_date': '3-Aug-2026', 'priority': '',
+        'civil_key_received_date': '3-Aug-2026', 'civil_status': 'completed', 'civil_completed_date': '9-Aug-2026',
+        'electrical_key_received_date': '9-Aug-2026', 'electrical_status': 'Completed', 'electrical_completed_date': '9-Aug-2026',
+        'hk_handover_date': '10/08/2026 at 12:40 hrs', 'hk_status': 'Complted', 'hk_completed_date': '12/08/2026 at 14:30 hrs',
+        'estate_date_1': '12-Aug-26', 'estate_date_2': '14-Aug-26', 'estate_date_3': '14-Aug-26', 'estate_date_4': '19-Aug-26',
         'remarks': 'The allotment of RB-20/203 was approved with effect from 10th August 2026',
-        'status': 'completed'
+        'status': 'completed', 'is_allotted': True,
     },
     {
         'sr_no': 5, 'house_type': 'Type C', 'house_no': '19/101',
-        'allottee_name': 'HMC office', 'time_stamp': '2026-08-03',
-        'key_handed_over_date': '2026-08-03', 'priority': '',
-        'civil_key_received_date': '2026-08-03', 'civil_status': 'Completed', 'civil_completed_date': '2026-08-05',
-        'electrical_key_received_date': '2026-08-05', 'electrical_status': 'Completed', 'electrical_completed_date': '2026-08-05',
-        'hk_handover_date': '2026-08-07', 'hk_status': 'Completed', 'hk_completed_date': '2026-08-10',
-        'estate_date_1': '2026-08-05', 'estate_date_2': '2026-08-11', 'estate_date_3': '2026-08-11', 'estate_date_4': '2026-08-12',
+        'allottee_name': 'HMC office', 'time_stamp': '3-Aug-2026',
+        'key_handed_over_date': '3-Aug-2026', 'priority': '',
+        'civil_key_received_date': '3-Aug-2026', 'civil_status': 'completed', 'civil_completed_date': '5-Aug-2026',
+        'electrical_key_received_date': '5-Aug-2026', 'electrical_status': 'Completed', 'electrical_completed_date': '5-Aug-2026',
+        'hk_handover_date': '07/08/2026 at 10:00 hrs', 'hk_status': 'Completed', 'hk_completed_date': '10/08/2026 at 09:55 hrs',
+        'estate_date_1': '5-Aug-26', 'estate_date_2': '11-Aug-26', 'estate_date_3': '11-Aug-26', 'estate_date_4': '12-Aug-26',
         'remarks': 'NA',
-        'status': 'completed'
+        'status': 'completed', 'is_allotted': True,
     },
     {
         'sr_no': 6, 'house_type': 'Type A', 'house_no': '30/103',
-        'allottee_name': 'Prof. Sivpriya', 'time_stamp': '2026-08-03',
-        'key_handed_over_date': '2026-08-03', 'priority': '1',
-        'civil_key_received_date': '2026-08-03', 'civil_status': 'Completed', 'civil_completed_date': '2026-09-09',
-        'electrical_key_received_date': '2026-09-09', 'electrical_status': 'Completed', 'electrical_completed_date': '2026-09-09',
-        'hk_handover_date': '2026-09-09', 'hk_status': 'Completed', 'hk_completed_date': '2026-09-12',
-        'estate_date_1': '', 'estate_date_2': '', 'estate_date_3': '', 'estate_date_4': '',
+        'allottee_name': 'Prof. Sivpriya', 'time_stamp': '3-Aug-2026',
+        'key_handed_over_date': '3-Aug-2026', 'priority': '',
+        'civil_key_received_date': '3-Aug-2026', 'civil_status': 'completed', 'civil_completed_date': '9-Sep-2026',
+        'electrical_key_received_date': '9-Sep-2026', 'electrical_status': 'completed', 'electrical_completed_date': '9-Sep-2026',
+        'hk_handover_date': '12/09/2026 at 11:00 hrs', 'hk_status': 'Completed', 'hk_completed_date': '15/09/2026 at 14:00 hrs',
+        'estate_date_1': '19-Aug-26', 'estate_date_2': '21-Aug-26', 'estate_date_3': '21-Aug-26', 'estate_date_4': '25-Aug-26',
         'remarks': 'The allotment of RB-30/103 was approved with effect from 19th August 2026',
-        'status': 'in_progress'
+        'status': 'completed', 'is_allotted': True,
     },
     {
         'sr_no': 7, 'house_type': 'Type B', 'house_no': '25/201',
-        'allottee_name': 'Dr Praharsh', 'time_stamp': '2026-08-17',
-        'key_handed_over_date': '2026-08-17', 'priority': '',
-        'civil_key_received_date': '2026-08-17', 'civil_status': 'Completed', 'civil_completed_date': '2026-09-21',
-        'electrical_key_received_date': '2026-09-09', 'electrical_status': 'Completed', 'electrical_completed_date': '2026-09-09',
-        'hk_handover_date': '2026-09-24', 'hk_status': 'Completed', 'hk_completed_date': '2026-09-28',
-        'estate_date_1': '2026-09-29', 'estate_date_2': '2026-10-01', 'estate_date_3': '2026-10-01', 'estate_date_4': '2026-10-07',
+        'allottee_name': 'Dr Praharsh', 'time_stamp': '17/08/26',
+        'key_handed_over_date': '17/08/26', 'priority': '',
+        'civil_key_received_date': '17/08/26', 'civil_status': 'completed', 'civil_completed_date': '21-Sep-2026',
+        'electrical_key_received_date': '9-Sep-2026', 'electrical_status': 'completed', 'electrical_completed_date': '9-Sep-2026',
+        'hk_handover_date': '24/09/2026 at 17:00 hrs', 'hk_status': 'Completed', 'hk_completed_date': '28/09/2026 at 10:40 hrs',
+        'estate_date_1': '29-Sep-26', 'estate_date_2': '1-Oct-26', 'estate_date_3': '1-Oct-26', 'estate_date_4': '7-Oct-26',
         'remarks': 'The allotment of RB-25/201 was approved with effect from 25th August 2026',
-        'status': 'completed'
+        'status': 'completed', 'is_allotted': True,
     },
     {
         'sr_no': 8, 'house_type': 'Type B', 'house_no': '23/301',
-        'allottee_name': 'Dr Aditya', 'time_stamp': '2026-08-25',
-        'key_handed_over_date': '2026-08-25', 'priority': '',
-        'civil_key_received_date': '2026-08-25', 'civil_status': 'Completed', 'civil_completed_date': '2026-09-09',
-        'electrical_key_received_date': '2026-09-09', 'electrical_status': 'Completed', 'electrical_completed_date': '2026-09-09',
-        'hk_handover_date': '2026-09-08', 'hk_status': 'Completed', 'hk_completed_date': '2026-09-10',
-        'estate_date_1': '2026-09-11', 'estate_date_2': '2026-09-11', 'estate_date_3': '2026-09-11', 'estate_date_4': '2026-09-17',
+        'allottee_name': 'Dr Aditya', 'time_stamp': '25/08/26',
+        'key_handed_over_date': '25/08/26', 'priority': '',
+        'civil_key_received_date': '25/08/26', 'civil_status': 'completed', 'civil_completed_date': '9-Sep-2026',
+        'electrical_key_received_date': '9-Sep-2026', 'electrical_status': 'completed', 'electrical_completed_date': '9-Sep-2026',
+        'hk_handover_date': '08/09/2026 at 17:30 hrs', 'hk_status': 'Completed', 'hk_completed_date': '10/09/2026 at 17:55 hrs',
+        'estate_date_1': '11-Sep-26', 'estate_date_2': '11-Sep-26', 'estate_date_3': '11-Sep-26', 'estate_date_4': '17-Sep-26',
         'remarks': 'The allotment of RB-23/302 was approved with effect from 25th August 2026',
-        'status': 'completed'
+        'status': 'completed', 'is_allotted': True,
     },
     {
         'sr_no': 9, 'house_type': 'Type D', 'house_no': '33/405',
-        'allottee_name': 'Pranav', 'time_stamp': '2026-09-01',
-        'key_handed_over_date': '2026-09-01', 'priority': '',
-        'civil_key_received_date': '2026-09-01', 'civil_status': 'Completed', 'civil_completed_date': '2026-09-12',
-        'electrical_key_received_date': '2026-09-12', 'electrical_status': 'Completed', 'electrical_completed_date': '2026-09-12',
-        'hk_handover_date': '2026-09-15', 'hk_status': 'Completed', 'hk_completed_date': '2026-09-17',
-        'estate_date_1': '2026-09-18', 'estate_date_2': '2026-09-18', 'estate_date_3': '2026-09-18', 'estate_date_4': '2026-09-25',
+        'allottee_name': 'Pranav', 'time_stamp': '01/09/26',
+        'key_handed_over_date': '01/09/26', 'priority': '',
+        'civil_key_received_date': '01/09/26', 'civil_status': 'completed', 'civil_completed_date': '12-Sep-2026',
+        'electrical_key_received_date': '12-Sep-2026', 'electrical_status': 'completed', 'electrical_completed_date': '12-Sep-2026',
+        'hk_handover_date': '15/09/2026 at 14:10 hrs', 'hk_status': 'Completed', 'hk_completed_date': '17/09/2026 at 17:35 hrs',
+        'estate_date_1': '18-Sep-26', 'estate_date_2': '18-Sep-26', 'estate_date_3': '18-Sep-26', 'estate_date_4': '25-Sep-26',
         'remarks': '',
-        'status': 'completed'
+        'status': 'completed', 'is_allotted': True,
     },
     {
         'sr_no': 10, 'house_type': 'Type B', 'house_no': '08/301',
-        'allottee_name': 'Dr Hasan', 'time_stamp': '2026-09-10',
-        'key_handed_over_date': '2026-09-10', 'priority': '',
-        'civil_key_received_date': '2026-09-10', 'civil_status': 'Completed', 'civil_completed_date': '2026-10-07',
-        'electrical_key_received_date': '2026-09-21', 'electrical_status': 'Completed', 'electrical_completed_date': '2026-09-21',
-        'hk_handover_date': '2026-10-08', 'hk_status': 'Completed', 'hk_completed_date': '2026-10-12',
-        'estate_date_1': '2026-10-12', 'estate_date_2': '2026-10-15', 'estate_date_3': '2026-10-15', 'estate_date_4': '2026-10-19',
+        'allottee_name': 'Dr Hasan', 'time_stamp': '10/09/2026',
+        'key_handed_over_date': '10/09/2026', 'priority': '2',
+        'civil_key_received_date': '10/09/2026', 'civil_status': 'completed', 'civil_completed_date': '7-Oct-2026',
+        'electrical_key_received_date': '21-Sep-2026', 'electrical_status': 'completed', 'electrical_completed_date': '21-Sep-2026',
+        'hk_handover_date': '08/10/2026 at 10:40 hrs', 'hk_status': 'Completed', 'hk_completed_date': '12/10/2026 at 10:00 hrs',
+        'estate_date_1': '12-Oct-26', 'estate_date_2': '15-Oct-26', 'estate_date_3': '15-Oct-26', 'estate_date_4': '19-Oct-26',
         'remarks': '',
-        'status': 'completed'
+        'status': 'completed', 'is_allotted': True,
     },
     {
         'sr_no': 11, 'house_type': 'Type B', 'house_no': '05/302',
-        'allottee_name': 'Manuj Kumar Singh', 'time_stamp': '2026-09-25',
-        'key_handed_over_date': '2026-09-25', 'priority': '2',
-        'civil_key_received_date': '2026-09-25', 'civil_status': 'Completed', 'civil_completed_date': '2026-10-19',
-        'electrical_key_received_date': '2026-10-19', 'electrical_status': 'Completed', 'electrical_completed_date': '2026-10-19',
-        'hk_handover_date': '2026-10-19', 'hk_status': 'In Progress', 'hk_completed_date': '',
-        'estate_date_1': '', 'estate_date_2': '', 'estate_date_3': '', 'estate_date_4': '',
+        'allottee_name': 'Manuj Kumar Singh', 'time_stamp': '09/25/2026',
+        'key_handed_over_date': '09/25/2026', 'priority': '',
+        'civil_key_received_date': '09/25/2026', 'civil_status': 'completed', 'civil_completed_date': '19-Oct-2026',
+        'electrical_key_received_date': '10-Sep-2026', 'electrical_status': 'completed', 'electrical_completed_date': '10-Sep-2026',
+        'hk_handover_date': '21/10/2026 at 11:15 hrs', 'hk_status': 'Completed', 'hk_completed_date': '21/10/2026 at 17:30 hrs',
+        'estate_date_1': '21-Oct-26', 'estate_date_2': '21-Oct-26', 'estate_date_3': '22-Oct-26', 'estate_date_4': '22-Oct-26',
         'remarks': '',
-        'status': 'in_progress'
+        'status': 'completed', 'is_allotted': True,
+    },
+    {
+        'sr_no': 12, 'house_type': 'Type B', 'house_no': '06/301',
+        'allottee_name': 'Vinod Ramakrishnan', 'time_stamp': '09/26/2026',
+        'key_handed_over_date': '09/26/2026', 'priority': '',
+        'civil_key_received_date': '09/26/2026', 'civil_status': 'completed', 'civil_completed_date': '19-Oct-2026',
+        'electrical_key_received_date': '10-Sep-2026', 'electrical_status': 'completed', 'electrical_completed_date': '10-Sep-2026',
+        'hk_handover_date': '21/10/2026 at 11:15 hrs', 'hk_status': 'Completed', 'hk_completed_date': '21/10/2026 at 17:45 hrs',
+        'estate_date_1': '21-Oct-26', 'estate_date_2': '21-Oct-26', 'estate_date_3': '22-Oct-26', 'estate_date_4': '22-Oct-26',
+        'remarks': '',
+        'status': 'completed', 'is_allotted': True,
     },
 ]
 
@@ -1498,12 +1641,36 @@ def ensure_initial_clearances():
         unit = HousingUnit.objects.filter(house_type__iexact=raw_type, house_no__iexact=item['house_no']).first()
         if not unit:
             unit = HousingUnit.objects.filter(house_no__iexact=item['house_no']).first()
+
+        empl_code = ''
+        designation = ''
+        email = ''
+        date_of_expiry = ''
+        if unit and unit.current_allotment:
+            occ = unit.current_allotment
+            empl_code = occ.empl_code
+            designation = occ.designation
+            email = occ.email
+            date_of_expiry = occ.date_of_expiry
+        elif item.get('allottee_name'):
+            clean_name = item['allottee_name'].replace('Dr.', '').replace('Dr', '').replace('Prof.', '').strip()
+            match_allot = HousingAllotment.objects.filter(occupant_name__icontains=clean_name).first()
+            if match_allot:
+                empl_code = match_allot.empl_code
+                designation = match_allot.designation
+                email = match_allot.email
+                date_of_expiry = match_allot.date_of_expiry
+
         HousingClearance.objects.create(
             unit=unit,
             sr_no=item['sr_no'],
             house_type=item['house_type'],
             house_no=item['house_no'],
             allottee_name=item['allottee_name'],
+            empl_code=empl_code,
+            designation=designation,
+            email=email,
+            date_of_expiry=date_of_expiry,
             time_stamp=item['time_stamp'],
             key_handed_over_date=item['key_handed_over_date'],
             priority=item['priority'],
@@ -1522,9 +1689,10 @@ def ensure_initial_clearances():
             estate_date_4=item['estate_date_4'],
             remarks=item['remarks'],
             status=item['status'],
+            is_allotted=item.get('is_allotted', False),
             civil_is_locked=bool(item.get('civil_completed_date') or (item.get('civil_status') or '').lower() == 'completed'),
             electrical_is_locked=bool(item.get('electrical_completed_date') or (item.get('electrical_status') or '').lower() == 'completed'),
-            hk_is_locked=bool(item.get('hk_completed_date') or (item.get('hk_status') or '').lower() == 'completed'),
+            hk_is_locked=bool(item.get('hk_completed_date') or (item.get('hk_status') or '').lower() in ['completed', 'complted']),
         )
 
 

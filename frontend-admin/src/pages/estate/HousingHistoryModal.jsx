@@ -11,6 +11,7 @@ export default function HousingHistoryModal({
   unitId = null,
   onOpenRecord,
   onAddEarlierRecord,
+  isReadOnly = false,
 }) {
   const [loading, setLoading] = useState(false)
   const [historyList, setHistoryList] = useState([])
@@ -159,24 +160,28 @@ export default function HousingHistoryModal({
 
         {/* Bottom Actions */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid #e2e8f0' }}>
-          <button
-            type="button"
-            onClick={() => {
-              if (onAddEarlierRecord) onAddEarlierRecord({ houseType, houseNo })
-            }}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 8,
-              border: '1px solid #cbd5e1',
-              background: '#ffffff',
-              color: '#0f172a',
-              fontSize: 12.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            + Add earlier record
-          </button>
+          <div>
+            {!isReadOnly && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (onAddEarlierRecord) onAddEarlierRecord({ houseType, houseNo })
+                }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#0f172a',
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                + Add earlier record
+              </button>
+            )}
+          </div>
 
           <button
             type="button"

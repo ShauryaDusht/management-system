@@ -20,7 +20,7 @@ const VIEW_OPTIONS = [
   { key: 'area_hk', label: '🏢 Area-wise HK' },
   { key: 'area_inventory', label: '📦 Inventory by Area' },
   { key: 'top_items', label: '🔝 Top Consumed Items' },
-  { key: 'estate_billing', label: '⚡ Estate & Electricity' },
+  { key: 'estate_billing', label: 'Estate Insights' },
 ]
 const RANGE_OPTIONS = [
   { key: 'today', label: 'Today' },
@@ -539,7 +539,7 @@ export default function InsightsPage() {
       title="Insights"
       subtitle={
         isEstateOffice
-          ? 'Commercial outlets & electricity billing analytics'
+          ? 'Commercial outlets, electricity billing, housing occupancy, and clearance analytics'
           : isHorticultureManager
             ? 'Horticulture performance analysis'
             : isHostelOffice

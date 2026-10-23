@@ -15,7 +15,6 @@ export default function ElectricityTab({
   const [query, setQuery] = useState('')
   const [bulkDate, setBulkDate] = useState('')
   const [bulkMonth, setBulkMonth] = useState('')
-  const [bulkMonthTo, setBulkMonthTo] = useState('')
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [newContractor, setNewContractor] = useState({ name: '', toLine: '', address: '', intro: '', meterLabel: '', rate: '9.55' })
   const [adding, setAdding] = useState(false)
@@ -25,16 +24,11 @@ export default function ElectricityTab({
     if (records && records.length > 0) {
       const firstDate = records.find((r) => r.date)?.date || ''
       const firstMonth = records.find((r) => r.month)?.month || ''
-      const firstMonthTo = records.find((r) => r.monthTo || r.month_to)
-      const valMonthTo = firstMonthTo?.monthTo || firstMonthTo?.month_to || ''
-
       if (firstDate) setBulkDate(firstDate)
       if (firstMonth) setBulkMonth(firstMonth)
-      setBulkMonthTo(valMonthTo)
     } else if (cycleMonth) {
       setBulkDate(todayISO())
       setBulkMonth(prevMonthOf(cycleMonth))
-      setBulkMonthTo('')
     }
   }, [cycleMonth, records])
 
@@ -53,11 +47,6 @@ export default function ElectricityTab({
   const handleApplyMonth = (m) => {
     setBulkMonth(m)
     if (m) onPatchAll({ month: m })
-  }
-
-  const handleApplyMonthTo = (m) => {
-    setBulkMonthTo(m)
-    onPatchAll({ monthTo: m })
   }
 
   const handleAddSubmit = async (e) => {
@@ -89,44 +78,77 @@ export default function ElectricityTab({
 
     const filename = `contractors_billing_${cycleMonth || todayISO()}.xlsx`
     const headers = [
-      '#',
-      'Contractor Name',
-      'Meters / Location',
-      'Note No.',
+      'Sl. #',
       'Date',
-      'Billing Period',
-      'Units Consumed',
-      'Recovery Amount (INR)',
+      'Contractor',
+      'Billing Month',
+      'Current Reading',
+      'Previous Reading',
+      'Unit Consumed',
+      'Amount',
       'Signature',
     ]
 
     let sumUnits = 0
     let sumAmount = 0
+    const rows = []
 
-    const rows = records.map((r, i) => {
+    records.forEach((r, i) => {
       const calc = calcMeters(r.meters)
-      const meterLabels = (r.meters || []).map((x) => x.label).filter(Boolean).join('; ')
-      const units = calc.hasInvalid
-        ? 'Invalid'
-        : calc.rows.some((x) => x.filled)
-        ? calc.rows.reduce((sum, x) => sum + (x.units || 0), 0)
-        : 0
-      const amount = calc.complete ? calc.total : 0
+      const noteNum = r.noteNo ? r.noteNo.replace(/^IWD\/\d{2}-\d{2}\//, '') : String(r.sl || i + 1)
+      const dateStr = formatDMY(r.date) || r.date || ''
+      const periodStr = billingLabel(r) || ''
+      const meters = r.meters || []
 
-      if (typeof units === 'number') sumUnits += units
-      sumAmount += amount
+      if (meters.length <= 1) {
+        const m = meters[0] || {}
+        const mRow = calc.rows[0] || {}
+        const unitsVal = mRow.filled ? mRow.units : ''
+        const amountVal = mRow.filled ? mRow.amount : ''
 
-      return [
-        r.sl || i + 1,
-        r.name || '',
-        meterLabels || 'Main Meter',
-        r.noteNo || '',
-        formatDMY(r.date) || r.date || '',
-        billingLabel(r) || '',
-        units,
-        amount,
-        '', // Blank column for Signature
-      ]
+        if (typeof unitsVal === 'number') sumUnits += unitsVal
+        if (typeof amountVal === 'number') sumAmount += amountVal
+
+        const contractorLabel = m.label ? `${r.name}\n(${m.label})` : r.name
+
+        rows.push([
+          noteNum,
+          dateStr,
+          contractorLabel,
+          periodStr,
+          m.current || '',
+          m.previous || '',
+          unitsVal,
+          amountVal,
+          '',
+        ])
+      } else {
+        // Multi-meter contractor (e.g. Haier Smart Solution)
+        meters.forEach((m, mIdx) => {
+          const mRow = calc.rows[mIdx] || {}
+          const unitsVal = mRow.filled ? mRow.units : ''
+          const amountVal = mRow.filled ? mRow.amount : ''
+
+          if (typeof unitsVal === 'number') sumUnits += unitsVal
+          if (typeof amountVal === 'number') sumAmount += amountVal
+
+          const contractorLabel = mIdx === 0
+            ? `${r.name}\n(${m.label || 'Meter 1'})`
+            : `(${m.label || `Meter ${mIdx + 1}`})`
+
+          rows.push([
+            mIdx === 0 ? noteNum : '',
+            mIdx === 0 ? dateStr : '',
+            contractorLabel,
+            mIdx === 0 ? periodStr : '',
+            m.current || '',
+            m.previous || '',
+            unitsVal,
+            amountVal,
+            '',
+          ])
+        })
+      }
     })
 
     rows.push(['TOTAL', '', '', '', '', '', sumUnits, sumAmount, ''])
@@ -199,25 +221,7 @@ export default function ElectricityTab({
                 disabled={isReadOnly}
                 value={bulkMonth}
                 onChange={(e) => handleApplyMonth(e.target.value)}
-                title="Billing Month (From)"
-                style={{
-                  padding: '5px 7px',
-                  borderRadius: 8,
-                  border: '1.5px solid var(--border)',
-                  fontSize: 12,
-                  background: 'var(--surface)',
-                  fontFamily: 'inherit',
-                  opacity: isReadOnly ? 0.75 : 1,
-                }}
-              />
-              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>to</span>
-              <input
-                type="month"
-                disabled={isReadOnly}
-                value={bulkMonthTo}
-                onChange={(e) => handleApplyMonthTo(e.target.value)}
-                placeholder="Optional"
-                title="Optional Billing Month (To)"
+                title="Billing Month"
                 style={{
                   padding: '5px 7px',
                   borderRadius: 8,
@@ -269,7 +273,7 @@ export default function ElectricityTab({
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
           <thead>
             <tr style={{ background: 'var(--surface-2)', borderBottom: '2px solid var(--border)' }}>
-              <th style={{ padding: '10px 14px', width: 44, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)' }}>#</th>
+              <th style={{ padding: '10px 14px', width: 55, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)' }}>Sl No.</th>
               <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', minWidth: 200 }}>Contractor</th>
               <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', width: 160 }}>Note No.</th>
               <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', width: 100 }}>Date</th>
@@ -302,7 +306,7 @@ export default function ElectricityTab({
                   }}
                   className="ui-data-row"
                 >
-                  <td style={{ padding: '10px 14px', color: 'var(--text-3)' }}>{r.sl || i + 1}</td>
+                  <td style={{ padding: '10px 14px', color: 'var(--text-3)' }}>{i + 1}</td>
                   <td style={{ padding: '10px 14px' }}>
                     <div
                       onClick={() => onOpenEditor(r.id)}
@@ -325,11 +329,51 @@ export default function ElectricityTab({
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: '10px 14px', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
-                    {r.noteNo}
+                  <td style={{ padding: '6px 14px', whiteSpace: 'nowrap' }}>
+                    {isReadOnly ? (
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>
+                        {r.noteNo || '—'}
+                      </span>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder="e.g. IWD/26-27/228"
+                        value={r.noteNo || ''}
+                        onChange={(e) => onPatch(r.id, { noteNo: e.target.value })}
+                        style={{
+                          width: 140,
+                          padding: '5px 8px',
+                          borderRadius: 6,
+                          border: '1.5px solid var(--border)',
+                          background: 'var(--surface)',
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          color: 'var(--text)',
+                          outline: 'none',
+                          fontFamily: 'inherit',
+                        }}
+                      />
+                    )}
                   </td>
-                  <td style={{ padding: '10px 14px', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
-                    {formatDMY(r.date)}
+                  <td style={{ padding: '6px 14px', whiteSpace: 'nowrap' }}>
+                    {isReadOnly ? (
+                      <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{formatDMY(r.date)}</span>
+                    ) : (
+                      <input
+                        type="date"
+                        value={r.date || ''}
+                        onChange={(e) => onPatch(r.id, { date: e.target.value })}
+                        style={{
+                          padding: '4px 6px',
+                          borderRadius: 6,
+                          border: '1.5px solid var(--border)',
+                          background: 'var(--surface)',
+                          fontSize: 12,
+                          fontFamily: 'inherit',
+                          color: 'var(--text)',
+                        }}
+                      />
+                    )}
                   </td>
                   <td style={{ padding: '10px 14px', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
                     {billingLabel(r)}

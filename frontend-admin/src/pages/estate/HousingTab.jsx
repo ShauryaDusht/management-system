@@ -28,7 +28,10 @@ export default function HousingTab({
   // Filters
   const [query, setQuery] = useState('')
   const [selectedType, setSelectedType] = useState('all')
-  const [selectedHouseFilter, setSelectedHouseFilter] = useState('all') // 'all', 'occupied', 'vacant'
+  const [selectedHouseFilter, setSelectedHouseFilter] = useState('all') // 'all', 'occupied', 'vacant', 'under_clearance', 'under_maintenance', 'expired', 'expiring_soon'
+  const [isExpiryAlertsExpanded, setIsExpiryAlertsExpanded] = useState(false)
+  const [expiryAlertFilter, setExpiryAlertFilter] = useState('all') // 'all', 'expired', 'expiring_soon'
+  const [expiryAlertSearch, setExpiryAlertSearch] = useState('')
 
   // Modals
   const [isVacateOpen, setIsVacateOpen] = useState(false)
@@ -149,14 +152,47 @@ export default function HousingTab({
           unit: u,
           occupant: occ,
           label: `${u.houseNo} ${occ.occupantName}`,
-          isExpired: expStatus.isExpired,
-          overdueDays: expStatus.overdueDays,
-          daysLeft: expStatus.daysLeft,
+          isExpired: Boolean(expStatus.isExpired),
+          isExpiringSoon: Boolean(expStatus.isExpiringSoon),
+          overdueDays: expStatus.overdueDays || 0,
+          daysLeft: expStatus.daysLeft !== undefined ? expStatus.daysLeft : null,
+          badgeText: expStatus.badgeText || (expStatus.isExpired ? 'Expired' : 'Expiring Soon'),
+          dateOfExpiry: occ.dateOfExpiry || '—',
         })
       }
     })
+    // Sort: expired first (highest overdue days first), then expiring soon (fewest days left first)
+    alerts.sort((a, b) => {
+      if (a.isExpired && !b.isExpired) return -1
+      if (!a.isExpired && b.isExpired) return 1
+      if (a.isExpired && b.isExpired) return b.overdueDays - a.overdueDays
+      return (a.daysLeft ?? 999) - (b.daysLeft ?? 999)
+    })
     return alerts
   }, [occupiedUnits])
+
+  const expiredCount = useMemo(() => expiryAlerts.filter((a) => a.isExpired).length, [expiryAlerts])
+  const expiringSoonCount = useMemo(() => expiryAlerts.filter((a) => a.isExpiringSoon).length, [expiryAlerts])
+
+  const displayedExpiryAlerts = useMemo(() => {
+    return expiryAlerts.filter((a) => {
+      if (expiryAlertFilter === 'expired' && !a.isExpired) return false
+      if (expiryAlertFilter === 'expiring_soon' && !a.isExpiringSoon) return false
+      if (expiryAlertSearch.trim()) {
+        const q = expiryAlertSearch.trim().toLowerCase()
+        const matchHouse = (a.unit.houseNo || '').toLowerCase().includes(q)
+        const matchType = (a.unit.houseType || '').toLowerCase().includes(q)
+        const matchName = (a.occupant.occupantName || '').toLowerCase().includes(q)
+        const matchCode = (a.occupant.emplCode || '').toLowerCase().includes(q)
+        const matchDesig = (a.occupant.designation || '').toLowerCase().includes(q)
+        const matchExpiry = (a.dateOfExpiry || '').toLowerCase().includes(q)
+        if (!matchHouse && !matchType && !matchName && !matchCode && !matchDesig && !matchExpiry) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [expiryAlerts, expiryAlertFilter, expiryAlertSearch])
 
   // Filtered House Register
   const filteredRegister = useMemo(() => {
@@ -172,6 +208,16 @@ export default function HousingTab({
       if (selectedHouseFilter === 'vacant' && u.status !== 'vacant') return false
       if (selectedHouseFilter === 'under_clearance' && u.status !== 'under_clearance') return false
       if (selectedHouseFilter === 'under_maintenance' && u.status !== 'under_maintenance') return false
+      if (selectedHouseFilter === 'expired') {
+        if (u.status !== 'occupied' || !u.currentOccupant) return false
+        const exp = calcHousingExpiry(u.currentOccupant.dateOfExpiry, 30)
+        if (!exp || !exp.isExpired) return false
+      }
+      if (selectedHouseFilter === 'expiring_soon') {
+        if (u.status !== 'occupied' || !u.currentOccupant) return false
+        const exp = calcHousingExpiry(u.currentOccupant.dateOfExpiry, 30)
+        if (!exp || !exp.isExpiringSoon) return false
+      }
 
       // Query search
       if (q) {
@@ -513,11 +559,19 @@ export default function HousingTab({
                 whiteSpace: 'nowrap',
               }}
             >
-              <option value="all">All houses</option>
-              <option value="occupied">Occupied only</option>
-              <option value="vacant">Vacant only</option>
-              <option value="under_clearance">Under Clearance</option>
+              <option value="all">All houses ({totalHousesCount})</option>
+              <option value="occupied">Occupied only ({occupiedCount})</option>
+              <option value="vacant">Vacant only ({vacantCount})</option>
+              {clearanceCount > 0 && (
+                <option value="under_clearance">Under Clearance ({clearanceCount})</option>
+              )}
               <option value="under_maintenance">Under Maintenance</option>
+              {expiredCount > 0 && (
+                <option value="expired">Expired Tenures ({expiredCount})</option>
+              )}
+              {expiringSoonCount > 0 && (
+                <option value="expiring_soon">Expiring Soon 30d ({expiringSoonCount})</option>
+              )}
             </select>
           )}
         </div>
@@ -619,7 +673,6 @@ export default function HousingTab({
                       onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
-                      <span style={{ fontSize: 14 }}>📄</span>
                       <span>Download as PDF (.pdf)</span>
                     </button>
                   )}
@@ -651,7 +704,6 @@ export default function HousingTab({
                     onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <span style={{ fontSize: 14 }}>📊</span>
                     <span>Download as Excel (.xlsx)</span>
                   </button>
                 </div>,
@@ -682,26 +734,352 @@ export default function HousingTab({
         </div>
       </div>
 
-      {/* Housing Expiry Alerts Banner */}
+      {/* Housing Expiry Alerts Collapsible Bar & Drawer */}
       {!loading && expiryAlerts.length > 0 && (
         <div
           style={{
-            background: '#fff5f5',
-            border: '1px solid #fed7d7',
-            borderRadius: 8,
-            padding: '10px 14px',
-            fontSize: 12.5,
-            color: '#9b2c2c',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
+            background: '#ffffff',
+            border: '1px solid #fed7aa',
+            borderRadius: 10,
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+            overflow: 'hidden',
+            transition: 'all 0.2s ease',
           }}
         >
-          <span style={{ fontWeight: 700 }}>Notice:</span>
-          <span>
-            <strong>Housing Expiry Alerts (30d window):</strong>{' '}
-            {expiryAlerts.filter((a) => a.isExpired).length} expired ({expiryAlerts.map((a) => a.label).join(', ')})
-          </span>
+          {/* Top Collapsible Header Bar */}
+          <div
+            onClick={() => setIsExpiryAlertsExpanded((prev) => !prev)}
+            style={{
+              background: isExpiryAlertsExpanded ? '#fff7ed' : '#fffaf5',
+              padding: '10px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              userSelect: 'none',
+              borderBottom: isExpiryAlertsExpanded ? '1px solid #fed7aa' : 'none',
+            }}
+          >
+            {/* Left: Icon, Title & Pill Badges */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 6,
+                  background: '#fef2f2',
+                  color: '#dc2626',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 13,
+                  fontWeight: 800,
+                }}
+              >
+                !
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#9a3412' }}>
+                  Tenure Expiry Alerts
+                </span>
+                <span style={{ fontSize: 11.5, color: '#78716c' }}>
+                  (30-day window)
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {expiredCount > 0 && (
+                  <span
+                    style={{
+                      background: '#fef2f2',
+                      border: '1px solid #fecaca',
+                      color: '#991b1b',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 12,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#dc2626' }} />
+                    {expiredCount} Expired
+                  </span>
+                )}
+                {expiringSoonCount > 0 && (
+                  <span
+                    style={{
+                      background: '#fffbeb',
+                      border: '1px solid #fde68a',
+                      color: '#92400e',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 12,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#d97706' }} />
+                    {expiringSoonCount} Expiring Soon
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Toggle Button */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11.5, color: '#b45309', fontWeight: 600 }}>
+                {isExpiryAlertsExpanded ? 'Hide Alerts' : `View Details (${expiryAlerts.length})`}
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: '#b45309',
+                  transition: 'transform 0.2s ease',
+                  transform: isExpiryAlertsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                  display: 'inline-block',
+                }}
+              >
+                ▼
+              </span>
+            </div>
+          </div>
+
+          {/* Expanded Drawer: Sub-filters, Search & Structured Table */}
+          {isExpiryAlertsExpanded && (
+            <div style={{ padding: '12px 16px', background: '#ffffff' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  marginBottom: 10,
+                  flexWrap: 'wrap',
+                }}
+              >
+                {/* Filter Pills */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setExpiryAlertFilter('all')
+                    }}
+                    style={{
+                      padding: '3px 10px',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      border: expiryAlertFilter === 'all' ? '1px solid #ea580c' : '1px solid #e2e8f0',
+                      background: expiryAlertFilter === 'all' ? '#ea580c' : '#f8fafc',
+                      color: expiryAlertFilter === 'all' ? '#ffffff' : '#64748b',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    All ({expiryAlerts.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setExpiryAlertFilter('expired')
+                    }}
+                    style={{
+                      padding: '3px 10px',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      border: expiryAlertFilter === 'expired' ? '1px solid #dc2626' : '1px solid #fee2e2',
+                      background: expiryAlertFilter === 'expired' ? '#dc2626' : '#fef2f2',
+                      color: expiryAlertFilter === 'expired' ? '#ffffff' : '#991b1b',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Expired ({expiredCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setExpiryAlertFilter('expiring_soon')
+                    }}
+                    style={{
+                      padding: '3px 10px',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      border: expiryAlertFilter === 'expiring_soon' ? '1px solid #d97706' : '1px solid #fef3c7',
+                      background: expiryAlertFilter === 'expiring_soon' ? '#d97706' : '#fffbeb',
+                      color: expiryAlertFilter === 'expiring_soon' ? '#ffffff' : '#92400e',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Expiring Soon ({expiringSoonCount})
+                  </button>
+                </div>
+
+                {/* Inner Quick Search */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input
+                    type="text"
+                    placeholder="Search alert by house, occupant, code..."
+                    value={expiryAlertSearch}
+                    onChange={(e) => setExpiryAlertSearch(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: 6,
+                      border: '1px solid #cbd5e1',
+                      fontSize: 11.5,
+                      width: 240,
+                      outline: 'none',
+                    }}
+                  />
+                  {expiryAlertSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setExpiryAlertSearch('')}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        color: '#94a3b8',
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        padding: 0,
+                      }}
+                      title="Clear search"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Structured Alerts Table with Scroll Container */}
+              <div
+                style={{
+                  maxHeight: 280,
+                  overflowY: 'auto',
+                  border: '1px solid #f1f5f9',
+                  borderRadius: 6,
+                }}
+              >
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5, textAlign: 'left' }}>
+                  <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }}>
+                    <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase' }}>
+                      <th style={{ padding: '6px 10px', width: 40 }}>#</th>
+                      <th style={{ padding: '6px 10px', width: 90 }}>House</th>
+                      <th style={{ padding: '6px 10px' }}>Occupant</th>
+                      <th style={{ padding: '6px 10px', width: 90 }}>Empl. Code</th>
+                      <th style={{ padding: '6px 10px' }}>Tenure / Expiry Clause</th>
+                      <th style={{ padding: '6px 10px', width: 140 }}>Alert Status</th>
+                      <th style={{ padding: '6px 10px', textAlign: 'center', width: 100 }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedExpiryAlerts.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: '16px', color: '#94a3b8' }}>
+                          No alerts matching this filter.
+                        </td>
+                      </tr>
+                    ) : (
+                      displayedExpiryAlerts.map((alert, idx) => {
+                        const isExp = alert.isExpired
+                        return (
+                          <tr
+                            key={alert.unit.id}
+                            style={{
+                              borderBottom: '1px solid #f8fafc',
+                              background: idx % 2 === 0 ? '#ffffff' : '#fafafa',
+                            }}
+                          >
+                            <td style={{ padding: '6px 10px', color: '#94a3b8' }}>{idx + 1}</td>
+                            <td style={{ padding: '6px 10px', fontWeight: 700, color: '#0f172a' }}>
+                              <span style={{ color: '#475569', fontWeight: 600, marginRight: 4 }}>
+                                Type {alert.unit.houseType}
+                              </span>
+                              {alert.unit.houseNo}
+                            </td>
+                            <td style={{ padding: '6px 10px' }}>
+                              <div style={{ fontWeight: 600, color: '#0f172a' }}>{alert.occupant.occupantName}</div>
+                              <div style={{ fontSize: 10.5, color: '#64748b' }}>{alert.occupant.designation || '—'}</div>
+                            </td>
+                            <td style={{ padding: '6px 10px', fontFamily: 'monospace', color: '#334155' }}>
+                              {alert.occupant.emplCode || '—'}
+                            </td>
+                            <td style={{ padding: '6px 10px', color: '#475569' }}>
+                              {alert.dateOfExpiry}
+                            </td>
+                            <td style={{ padding: '6px 10px' }}>
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '2px 8px',
+                                  borderRadius: 4,
+                                  fontSize: 10.5,
+                                  fontWeight: 700,
+                                  background: isExp ? '#fef2f2' : '#fffbeb',
+                                  color: isExp ? '#991b1b' : '#92400e',
+                                  border: isExp ? '1px solid #fecaca' : '1px solid #fde68a',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {alert.badgeText || (isExp ? 'Expired' : 'Expiring Soon')}
+                              </span>
+                            </td>
+                            <td style={{ padding: '6px 10px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (activeSubTab !== 'register') {
+                                    setActiveSubTab('register')
+                                  }
+                                  setSelectedType('all')
+                                  setSelectedHouseFilter('all')
+                                  setQuery(alert.unit.houseNo)
+                                  setTimeout(() => {
+                                    const row = document.getElementById(`house-row-${alert.unit.id}`)
+                                    if (row) {
+                                      row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                      row.dataset.highlighted = 'true'
+                                      row.style.background = '#fef3c7'
+                                      setTimeout(() => {
+                                        delete row.dataset.highlighted
+                                        row.style.background = 'transparent'
+                                      }, 3000)
+                                    }
+                                  }, 200)
+                                }}
+                                style={{
+                                  padding: '2px 8px',
+                                  borderRadius: 4,
+                                  border: '1px solid #cbd5e1',
+                                  background: '#ffffff',
+                                  color: '#1e293b',
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                }}
+                                title="Filter and highlight this house in register"
+                              >
+                                Locate
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -791,12 +1169,21 @@ export default function HousingTab({
                   return (
                     <tr
                       key={u.id}
+                      id={`house-row-${u.id}`}
                       style={{
                         borderBottom: '1px solid #f1f5f9',
-                        transition: 'background 0.12s ease',
+                        transition: 'background 0.25s ease',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      onMouseEnter={(e) => {
+                        if (!e.currentTarget.dataset.highlighted) {
+                          e.currentTarget.style.background = '#f8fafc'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!e.currentTarget.dataset.highlighted) {
+                          e.currentTarget.style.background = 'transparent'
+                        }
+                      }}
                     >
                       {/* SL# */}
                       <td style={{ padding: '10px 12px', color: '#64748b' }}>{idx + 1}</td>
@@ -962,6 +1349,22 @@ export default function HousingTab({
                                 {expiryInfo.badgeText}
                               </div>
                             )}
+                            {expiryInfo?.isExpiringSoon && (
+                              <div
+                                style={{
+                                  display: 'inline-block',
+                                  marginTop: 3,
+                                  padding: '1px 6px',
+                                  borderRadius: 4,
+                                  background: '#fffbeb',
+                                  color: '#d97706',
+                                  fontSize: 10.5,
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {expiryInfo.badgeText}
+                              </div>
+                            )}
                           </div>
                         ) : null}
                       </td>
@@ -1052,24 +1455,6 @@ export default function HousingTab({
                             </>
                           ) : (
                             <>
-                              {!isReadOnly && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenAllot(u)}
-                                  style={{
-                                    padding: '3px 14px',
-                                    borderRadius: 14,
-                                    border: 'none',
-                                    background: '#164e3f',
-                                    color: '#ffffff',
-                                    fontSize: 11.5,
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  Allot
-                                </button>
-                              )}
                               <button
                                 type="button"
                                 onClick={() => handleOpenHistory({ houseType: u.houseType, houseNo: u.houseNo, unitId: u.id })}
@@ -1405,24 +1790,6 @@ export default function HousingTab({
                     </td>
                     <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                        {!isReadOnly && (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenAllot(u)}
-                            style={{
-                              padding: '3px 12px',
-                              borderRadius: 14,
-                              border: 'none',
-                              background: '#164e3f',
-                              color: '#ffffff',
-                              fontSize: 11.5,
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Allot
-                          </button>
-                        )}
                         <button
                           type="button"
                           onClick={() => handleOpenHistory({ houseType: u.houseType, houseNo: u.houseNo, unitId: u.id })}
@@ -1543,6 +1910,7 @@ export default function HousingTab({
           handleOpenHistory(target)
         }}
         onSuccess={handleSuccessReload}
+        isReadOnly={isReadOnly}
       />
 
       {/* MODAL 3: Allot House Modal */}
@@ -1583,6 +1951,7 @@ export default function HousingTab({
           setIsHistoryOpen(false)
           handleOpenAllot(target)
         }}
+        isReadOnly={isReadOnly}
       />
     </div>
   )

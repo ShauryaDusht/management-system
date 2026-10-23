@@ -20,7 +20,7 @@ export default function EstatePage() {
   const isHK = user?.role === 'hk_inventory_manager' || user?.role === 'supervisor' || user?.role === 'caretaker'
   const isDeptUser = isCivil || isElectrical || isHK
 
-  const [adminEditEnabled, setAdminEditEnabled] = useState(true)
+  const [adminEditEnabled, setAdminEditEnabled] = useState(false)
   const isReadOnly = isAdmin ? !adminEditEnabled : (user?.role !== 'estate_office')
 
   const defaultTab = isDeptUser || isHK ? 'housing_status' : 'shops'
@@ -95,6 +95,9 @@ export default function EstatePage() {
     try {
       const res = await estateApi.patchShop(id, data)
       setShops((prev) => prev.map((s) => (s.id === id ? res.data : s)))
+      if (data.isCancelled !== undefined || data.is_cancelled !== undefined) {
+        loadCycleData(selectedCycle)
+      }
     } catch (err) {
       console.error('Failed to patch shop:', err)
       loadCycleData(selectedCycle)
@@ -352,13 +355,36 @@ export default function EstatePage() {
           )}
 
           {isAdmin && (
-            <Btn
-              size="sm"
-              variant={adminEditEnabled ? 'secondary' : 'primary'}
+            <button
+              type="button"
               onClick={() => setAdminEditEnabled((prev) => !prev)}
+              title={adminEditEnabled ? 'Switch to View-Only Mode' : 'Switch to Edit Mode'}
+              style={{
+                width: 34,
+                height: 34,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 8,
+                border: adminEditEnabled ? '1.5px solid var(--green-800)' : '1.5px solid var(--border)',
+                background: adminEditEnabled ? 'var(--green-900)' : 'var(--surface)',
+                color: adminEditEnabled ? '#ffffff' : 'var(--text-2)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
             >
-              {adminEditEnabled ? 'View-Only' : 'Edit'}
-            </Btn>
+              {adminEditEnabled ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+              )}
+            </button>
           )}
 
           {!isDeptUser && (activeTab === 'shops' || activeTab === 'electricity') && (
@@ -492,6 +518,7 @@ export default function EstatePage() {
             {activeTab === 'housing_status' && (
               <HousingStatusTab
                 onReloadHousing={loadHousingData}
+                isReadOnly={isReadOnly}
               />
             )}
           </>

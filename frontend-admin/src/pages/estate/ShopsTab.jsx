@@ -17,7 +17,6 @@ export default function ShopsTab({
   const [query, setQuery] = useState('')
   const [bulkDate, setBulkDate] = useState('')
   const [bulkMonth, setBulkMonth] = useState('')
-  const [bulkMonthTo, setBulkMonthTo] = useState('')
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [newShop, setNewShop] = useState({ name: '', address: '', fixed: false, rate: '9.55', water: '320', expiryDate: '' })
   const [adding, setAdding] = useState(false)
@@ -40,22 +39,17 @@ export default function ShopsTab({
     if (records && records.length > 0) {
       const firstDate = records.find((r) => r.date)?.date || ''
       const firstMonth = records.find((r) => r.month)?.month || ''
-      const firstMonthTo = records.find((r) => r.monthTo || r.month_to)
-      const valMonthTo = firstMonthTo?.monthTo || firstMonthTo?.month_to || ''
-
       if (firstDate) setBulkDate(firstDate)
       if (firstMonth) setBulkMonth(firstMonth)
-      setBulkMonthTo(valMonthTo)
     } else if (cycleMonth) {
       setBulkDate(todayISO())
       setBulkMonth(prevMonthOf(cycleMonth))
-      setBulkMonthTo('')
     }
   }, [cycleMonth, records])
 
   const q = query.trim().toLowerCase()
   const filtered = records.filter((r) => !q || r.name.toLowerCase().includes(q))
-  const filledCount = records.filter((r) => r.fixed || String(r.units || '').trim() !== '').length
+  const filledCount = records.filter((r) => !r.isCancelled && !r.is_cancelled && (r.fixed || String(r.units || '').trim() !== '')).length
 
   const handleApplyDate = (d) => {
     setBulkDate(d)
@@ -65,11 +59,6 @@ export default function ShopsTab({
   const handleApplyMonth = (m) => {
     setBulkMonth(m)
     if (m) onPatchAll({ month: m })
-  }
-
-  const handleApplyMonthTo = (m) => {
-    setBulkMonthTo(m)
-    onPatchAll({ monthTo: m })
   }
 
   const handleAddSubmit = async (e) => {
@@ -109,7 +98,7 @@ export default function ShopsTab({
       const bMonth = (r.monthTo || r.month_to)
         ? monthRange(r.month, r.monthTo || r.month_to)
         : (monthLabel(r.month) || r.month || '')
-      const unitsVal = r.fixed ? 'Fixed' : (r.units !== undefined && r.units !== null && r.units !== '' ? r.units : '0')
+      const unitsVal = (r.isCancelled || r.is_cancelled) ? 'Cancelled' : r.fixed ? 'Fixed' : (r.units !== undefined && r.units !== null && r.units !== '' ? r.units : '0')
       const recAmt = calc.total
 
       return [
@@ -205,25 +194,7 @@ export default function ShopsTab({
                 disabled={isReadOnly}
                 value={bulkMonth}
                 onChange={(e) => handleApplyMonth(e.target.value)}
-                title="Billing Month (From)"
-                style={{
-                  padding: '5px 7px',
-                  borderRadius: 8,
-                  border: '1.5px solid var(--border)',
-                  fontSize: 12,
-                  background: 'var(--surface)',
-                  fontFamily: 'inherit',
-                  opacity: isReadOnly ? 0.75 : 1,
-                }}
-              />
-              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>to</span>
-              <input
-                type="month"
-                disabled={isReadOnly}
-                value={bulkMonthTo}
-                onChange={(e) => handleApplyMonthTo(e.target.value)}
-                placeholder="Optional"
-                title="Optional Billing Month (To)"
+                title="Billing Month"
                 style={{
                   padding: '5px 7px',
                   borderRadius: 8,
@@ -337,7 +308,7 @@ export default function ShopsTab({
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
           <thead>
             <tr style={{ background: 'var(--surface-2)', borderBottom: '2px solid var(--border)' }}>
-              <th style={{ padding: '10px 14px', width: 44, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)' }}>#</th>
+              <th style={{ padding: '10px 14px', width: 65, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', whiteSpace: 'nowrap' }}>Sl No.</th>
               <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', minWidth: 200 }}>Name of Shop</th>
               <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', width: 160 }}>Note No.</th>
               <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', width: 100 }}>Date</th>
@@ -349,18 +320,20 @@ export default function ShopsTab({
           </thead>
           <tbody>
             {filtered.map((r, i) => {
+              const isCancelled = Boolean(r.isCancelled || r.is_cancelled)
               const c = calcNote(r)
-              const empty = !r.fixed && (!r.units || r.units.trim() === '')
+              const empty = !isCancelled && !r.fixed && (!r.units || r.units.trim() === '')
               return (
                 <tr
                   key={r.id}
                   style={{
                     borderBottom: '1px solid var(--border)',
-                    background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface-2)',
+                    background: isCancelled ? '#fee2e225' : i % 2 === 0 ? 'var(--surface)' : 'var(--surface-2)',
+                    opacity: isCancelled ? 0.8 : 1,
                   }}
                   className="ui-data-row"
                 >
-                  <td style={{ padding: '10px 14px', color: 'var(--text-3)' }}>{r.sl || i + 1}</td>
+                  <td style={{ padding: '10px 14px', color: 'var(--text-3)' }}>{i + 1}</td>
                   <td style={{ padding: '10px 14px' }}>
                     <div
                       onClick={() => onOpenEditor(r.id)}
@@ -371,8 +344,23 @@ export default function ShopsTab({
                         cursor: 'pointer',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: 'var(--green-900)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: isCancelled ? 'var(--text-2)' : 'var(--green-900)' }}>
                         <span>{r.name}</span>
+                        {isCancelled && (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: '1px 6px',
+                              borderRadius: 4,
+                              background: '#fee2e2',
+                              color: '#b91c1c',
+                              border: '1px solid #fca5a5',
+                            }}
+                          >
+                            CANCELLED
+                          </span>
+                        )}
                       </div>
 
                       {/* Expiry alert badge */}
@@ -451,7 +439,13 @@ export default function ShopsTab({
                     </div>
                   </td>
                   <td style={{ padding: '10px 14px', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
-                    {r.noteNo}
+                    {isCancelled ? (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', background: '#fee2e2', padding: '2px 7px', borderRadius: 4, border: '1px solid #fca5a5' }}>
+                        CANCELLED
+                      </span>
+                    ) : (
+                      r.noteNo
+                    )}
                   </td>
                   <td style={{ padding: '10px 14px', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
                     {formatDMY(r.date)}
@@ -460,32 +454,29 @@ export default function ShopsTab({
                     {monthRange(r.month, r.monthTo, ' ', ' to ')}
                   </td>
                   <td style={{ padding: '6px 14px', textAlign: 'center' }}>
-                    {r.fixed ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase' }}>Fixed</span>
-                        {isReadOnly ? (
-                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>₹ {r.water}</span>
-                        ) : (
-                          <input
-                            type="number"
-                            value={r.water}
-                            onChange={(e) => onPatch(r.id, { water: e.target.value })}
-                            style={{
-                              width: 95,
-                              padding: '5px 8px',
-                              textAlign: 'center',
-                              borderRadius: 6,
-                              border: '1.5px solid var(--border)',
-                              background: 'var(--surface)',
-                              fontSize: 12.5,
-                              fontWeight: 600,
-                              color: 'var(--text)',
-                              outline: 'none',
-                              fontFamily: 'inherit',
-                            }}
-                          />
-                        )}
-                      </div>
+                    {isCancelled ? (
+                      <span style={{ fontSize: 11.5, color: 'var(--text-3)', fontStyle: 'italic' }}>
+                        — (Closed)
+                      </span>
+                    ) : r.fixed ? (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '3px 10px',
+                          borderRadius: 6,
+                          fontSize: 11.5,
+                          fontWeight: 700,
+                          color: '#b45309',
+                          background: '#fef3c7',
+                          border: '1px solid #fde68a',
+                          letterSpacing: '0.02em',
+                        }}
+                        title="Fixed charge (no unit consumption)"
+                      >
+                        Fixed Charge
+                      </span>
                     ) : isReadOnly ? (
                       <span style={{ fontSize: 13, fontWeight: 700, color: r.units ? 'var(--text-1)' : 'var(--text-3)' }}>
                         {r.units ? `${r.units} units` : '—'}
@@ -512,8 +503,8 @@ export default function ShopsTab({
                       />
                     )}
                   </td>
-                  <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: empty ? 'var(--text-3)' : 'var(--green-900)' }}>
-                    {empty ? <span style={{ color: 'var(--text-3)' }}>—</span> : `₹ ${inr(c.total)}`}
+                  <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: isCancelled ? 'var(--text-3)' : empty ? 'var(--text-3)' : 'var(--green-900)' }}>
+                    {isCancelled ? <span style={{ color: 'var(--text-3)' }}>₹ 0.00</span> : empty ? <span style={{ color: 'var(--text-3)' }}>—</span> : `₹ ${inr(c.total)}`}
                   </td>
                   <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                     <Btn

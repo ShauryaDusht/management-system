@@ -164,6 +164,7 @@ class ShopDemandNote(models.Model):
     fixed = models.BooleanField(default=False)
     extras = models.JSONField(default=list)  # list of {"label": str, "amount": str}
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    is_cancelled = models.BooleanField(default=False, help_text="True if this shop's demand note was cancelled/skipped for this cycle")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
