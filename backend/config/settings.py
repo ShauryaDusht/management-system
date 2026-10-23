@@ -4,6 +4,13 @@ from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / '.env')
+    load_dotenv(BASE_DIR.parent / '.env')
+except ImportError:
+    pass
+
 
 def env(name, default=None):
     value = os.getenv(name, default)
@@ -55,6 +62,7 @@ INSTALLED_APPS = [
     'apps.housekeeping',
     'apps.horticulture',
     'apps.geo_tracker',
+    'apps.estate_billing',
 ]
 
 MIDDLEWARE = [
@@ -88,16 +96,28 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-DATABASES = {
-    "default": {
-        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
-        "NAME": os.getenv("DB_NAME", "inventory_db"),
-        "USER": os.getenv("DB_USER", "postgres"),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", "db"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+db_engine = os.getenv("DB_ENGINE", "django.db.backends.postgresql")
+if "sqlite" in db_engine:
+    db_name = os.getenv("DB_NAME", "db.sqlite3")
+    db_path = BASE_DIR / db_name if not os.path.isabs(db_name) else Path(db_name)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": db_path,
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": db_engine,
+            "NAME": os.getenv("DB_NAME", "inventory_db"),
+            "USER": os.getenv("DB_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "db"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
+    }
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -138,9 +158,15 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS')
+CORS_ALLOWED_ORIGINS = env_list(
+    'CORS_ALLOWED_ORIGINS',
+    'http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000'
+)
 
-CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
+CSRF_TRUSTED_ORIGINS = env_list(
+    'CSRF_TRUSTED_ORIGINS',
+    'http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000'
+)
 
 LOGIN_URL = '/portal/login/'
 ADMIN_URL = 'manage/iitgn-staff/'
@@ -191,3 +217,20 @@ LOGGING = {
         },
     },
 }
+
+# Email Configuration (Gmail SMTP & No-Reply System)
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'IITGN Estate Office <noreply@iitgn.ac.in>')
+SERVER_EMAIL = os.getenv('SERVER_EMAIL', 'noreply@iitgn.ac.in')
+NO_REPLY_EMAIL = os.getenv('NO_REPLY_EMAIL', 'noreply@iitgn.ac.in')
+
+# Department Clearance Handover Alert Recipients
+CIVIL_ALERT_EMAIL = os.getenv('CIVIL_ALERT_EMAIL', '')
+ELECTRICAL_ALERT_EMAIL = os.getenv('ELECTRICAL_ALERT_EMAIL', '')
+HK_ALERT_EMAIL = os.getenv('HK_ALERT_EMAIL', '')
+ESTATE_ALERT_EMAIL = os.getenv('ESTATE_ALERT_EMAIL', '')

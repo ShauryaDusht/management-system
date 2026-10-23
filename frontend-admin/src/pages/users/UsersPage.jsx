@@ -22,6 +22,9 @@ import { useAuth } from '../../context/AuthContext'
 
 const ROLES = [
   'admin',
+  'estate_office',
+  'civil_team',
+  'electrical_team',
   'hk_inventory_manager',
   'hostel_office',
   'horticulture_manager',
@@ -31,12 +34,26 @@ const ROLES = [
 const HK_ROLES = ['supervisor', 'caretaker']
 const ROLE_FILTERS = [
   { key: 'admin', label: 'Admin' },
+  { key: 'estate_office', label: 'Estate Office' },
+  { key: 'civil_team', label: 'Civil Team' },
+  { key: 'electrical_team', label: 'Electrical Team' },
   { key: 'hk_inventory_manager', label: 'HK / Inventory Manager' },
   { key: 'hostel_office', label: 'Hostel Office' },
   { key: 'horticulture_manager', label: 'Horticulture Manager' },
   { key: 'supervisor', label: 'Supervisor' },
   { key: 'caretaker', label: 'Caretaker' },
 ]
+const ROLE_LABELS = {
+  admin: 'Admin',
+  estate_office: 'Estate Office',
+  civil_team: 'Civil Team',
+  electrical_team: 'Electrical Team',
+  hk_inventory_manager: 'HK / Inventory Manager',
+  hostel_office: 'Hostel Office',
+  horticulture_manager: 'Horticulture Manager',
+  supervisor: 'Supervisor',
+  caretaker: 'Caretaker',
+}
 const DEPRECATED_MANAGER_USERNAMES = new Set(['inventory.manager', 'housekeeping.manager', 'hostel.manager'])
 const EMPTY = {
   username: '',
@@ -244,6 +261,7 @@ export default function UsersPage() {
   const roleCounts = useMemo(() => {
     const counts = {
       admin: 0,
+      estate_office: 0,
       hk_inventory_manager: 0,
       hostel_office: 0,
       horticulture_manager: 0,
@@ -471,7 +489,7 @@ export default function UsersPage() {
           >
             {editableRoles.map((r) => (
               <option key={r} value={r}>
-                {r.replace('_', ' ')}
+                {ROLE_LABELS[r] || r.replace('_', ' ')}
               </option>
             ))}
           </SelectField>

@@ -5,6 +5,10 @@ import { useAuth } from '../context/AuthContext'
 import { APP_LOGO_PATH, APP_NAME, APP_TAGLINE } from '../shared/constants'
 
 function getLandingRoute(user) {
+  const role = user?.role
+  if (role === 'civil_team' || role === 'electrical_team') {
+    return '/estate'
+  }
   return '/dashboard'
 }
 
@@ -92,7 +96,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="auth-form">
             <label>
-              Username
+              Username or Email
               <input
                 type="text"
                 name="username"
@@ -100,7 +104,7 @@ export default function LoginPage() {
                 onChange={handleChange}
                 required
                 autoFocus
-                placeholder="Enter username"
+                placeholder="Enter username or email"
               />
             </label>
 

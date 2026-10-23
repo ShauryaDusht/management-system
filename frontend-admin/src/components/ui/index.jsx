@@ -98,6 +98,7 @@ export function Badge({ value, style }) {
     horticulture_manager: { bg: '#dcfce7', color: '#166534', text: 'Horti Manager' },
     supervisor: { bg: '#d1fae5', color: '#065f46', text: 'Supervisor' },
     caretaker: { bg: '#fff7ed', color: '#c2410c', text: 'Caretaker' },
+    estate_office: { bg: '#fef3c7', color: '#92400e', text: 'Estate Office' },
     urgent: { bg: '#fee2e2', color: '#991b1b', text: '⚡ Urgent' },
   }
   const m =
@@ -234,6 +235,7 @@ const ICON_PATHS = {
   stockAdded: 'M12 5v14M5 12h14M4 4h16v16H4V4Z',
   photos: 'M4 7h3l2-3h6l2 3h3v14H4V7Zm8 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z',
   visible: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
+  estate: 'M3 21h18M5 21V7l8-4v18M13 21V3l6 4v14M9 9h1M9 13h1M9 17h1M16 10h1M16 14h1',
 }
 
 export function IconMark({ icon, label, color = 'var(--green-800)', size = 52, style }) {
@@ -561,41 +563,41 @@ export function Tabs({ tabs, active, onChange }) {
         const isActive = active === tab.key
         const countStyle = toneCountStyle(tab.countTone) || defaultCountStyle(isActive)
         return (
-        <button
-          key={tab.key}
-          onClick={() => onChange(tab.key)}
-          style={{
-            padding: '7px 16px',
-            borderRadius: 8,
-            fontSize: 13,
-            fontWeight: 600,
-            background: isActive ? 'var(--green-800)' : 'transparent',
-            color: isActive ? '#fff' : 'var(--text-3)',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            flexShrink: 0,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {tab.label}
-          {tab.count != null && (
-            <span
-              style={{
-                ...countStyle,
-                borderRadius: 99,
-                padding: '1px 6px',
-                fontSize: 11,
-                fontWeight: 700,
-              }}
-            >
-              {tab.count}
-            </span>
-          )}
-        </button>
+          <button
+            key={tab.key}
+            onClick={() => onChange(tab.key)}
+            style={{
+              padding: '7px 16px',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              background: isActive ? 'var(--green-800)' : 'transparent',
+              color: isActive ? '#fff' : 'var(--text-3)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {tab.label}
+            {tab.count != null && (
+              <span
+                style={{
+                  ...countStyle,
+                  borderRadius: 99,
+                  padding: '1px 6px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              >
+                {tab.count}
+              </span>
+            )}
+          </button>
         )
       })}
     </div>
