@@ -343,7 +343,7 @@
 
     <!-- Water Meters -->
     <div style="font-size:11px;font-weight:800;color:#716b66;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Water Meters (kL)</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(95px, 1fr));gap:8px">
       {% for wm in water_data %}
         <div style="background:#faf8f5;border:1px solid #e5e1d8;border-radius:8px;padding:8px 10px">
           <label style="font-size:11px;color:#0369a1">{{ wm.name }}</label>

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   TIME_SLOTS,
   CHILLERS,
@@ -10,6 +10,7 @@ import {
   LABELS,
   deriveLogValues,
   shiftKey,
+  PUMP_RATED_LIMITS,
 } from '../config';
 import HvacApi from '../hvacApi';
 import ExportDropdown from '../../../components/ui/ExportDropdown';
@@ -18,7 +19,9 @@ export default function FlashReport({
   logs = [],
   selectedDate,
   onDateChange,
+  isSupervisorOrEngineer = true,
 }) {
+
   // Map of slot index -> log entry
   const slotMap = useMemo(() => {
     const map = {};
@@ -118,7 +121,7 @@ export default function FlashReport({
         group: 'Water Meters',
         param: `${nm} Reading kL`,
         key: `${k}_kl`,
-        values: TIME_SLOTS.map((_, idx) => slotMap[idx]?.v[`${k}_kl`] ?? ''),
+        values: TIME_SLOTS.map((_, idx) => slotMap[idx]?.v[`${k}_kl`] ?? (k === 'wm3' ? slotMap[idx]?.v.wm_chilled_kl : undefined) ?? ''),
       });
     });
 
@@ -177,7 +180,7 @@ export default function FlashReport({
             </span>
           </div>
 
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <ExportDropdown
               label="Export Flash Sheet"
               onExportCsv={handleExportCsv}
@@ -250,11 +253,30 @@ export default function FlashReport({
                       )}
                       <tr>
                         <td style={{ paddingLeft: 18 }}>{r.param}</td>
-                        {r.values.map((val, vIdx) => (
-                          <td key={vIdx} style={{ color: val === '' ? '#94a3b8' : 'inherit' }}>
-                            {val === '' ? '–' : val}
-                          </td>
-                        ))}
+                        {r.values.map((val, vIdx) => {
+                          const isPumpA = r.key?.endsWith('_a');
+                          const isPumpV = r.key?.endsWith('_v');
+                          const baseKey = isPumpA ? r.key.slice(0, -2) : (isPumpV ? r.key.slice(0, -2) : null);
+                          const limit = baseKey ? PUMP_RATED_LIMITS[baseKey] : null;
+                          const isExceeded = isSupervisorOrEngineer && limit && (
+                            (isPumpA && val !== '' && !isNaN(val) && Number(val) > limit.maxA) ||
+                            (isPumpV && val !== '' && !isNaN(val) && Number(val) > limit.maxV)
+                          );
+
+                          return (
+                            <td
+                              key={vIdx}
+                              title={isExceeded ? `⚠️ Exceeds rated limit (${isPumpA ? `${limit.maxA} A` : `${limit.maxV} V`})` : undefined}
+                              style={{
+                                color: isExceeded ? '#b91c1c' : (val === '' ? '#94a3b8' : 'inherit'),
+                                background: isExceeded ? '#fee2e2' : 'inherit',
+                                fontWeight: isExceeded ? 800 : 'inherit',
+                              }}
+                            >
+                              {val === '' ? '–' : val}
+                            </td>
+                          );
+                        })}
                       </tr>
                     </React.Fragment>
                   );

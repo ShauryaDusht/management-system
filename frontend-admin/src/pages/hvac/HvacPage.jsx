@@ -166,6 +166,7 @@ export default function HvacPage({ defaultTab }) {
                 logs={logs}
                 onSaved={loadData}
                 isOperator={isOperator}
+                isSupervisorOrEngineer={isSupervisorOrEngineer || canEdit}
                 user={authUser}
               />
             )}
@@ -176,6 +177,7 @@ export default function HvacPage({ defaultTab }) {
                 selectedDate={selectedDate}
                 onDateChange={setSelectedDate}
                 isSupervisor={canEdit}
+                isSupervisorOrEngineer={isSupervisorOrEngineer || canEdit}
                 onNavigateToEdit={handleNavigateToEdit}
               />
             )}
@@ -185,6 +187,7 @@ export default function HvacPage({ defaultTab }) {
                 logs={logs}
                 selectedDate={selectedDate}
                 onDateChange={setSelectedDate}
+                isSupervisorOrEngineer={isSupervisorOrEngineer || canEdit}
               />
             )}
 

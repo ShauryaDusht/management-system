@@ -6,6 +6,7 @@ import {
   COOLING_TOWERS,
   PANELS,
   WATER_METERS,
+  evaluateAlerts,
 } from '../config';
 import HvacApi from '../hvacApi';
 
@@ -16,6 +17,7 @@ export default function EditReadingTab({
   logs = [],
   onSaved,
   isOperator = false,
+  isSupervisorOrEngineer = false,
   user = null,
 }) {
   const [slot, setSlot] = useState(initialSlot);
@@ -44,6 +46,11 @@ export default function EditReadingTab({
     return map;
   }, [logs]);
 
+  // Telemetry and pump alerts for active slot (Supervisor & Engineer)
+  const currentSlotAlerts = useMemo(() => {
+    return evaluateAlerts(values, isSupervisorOrEngineer);
+  }, [values, isSupervisorOrEngineer]);
+
   // When selectedDate or slot changes, populate form with existing data if present
   useEffect(() => {
     const existing = slotLogsMap[slot];
@@ -65,8 +72,10 @@ export default function EditReadingTab({
       const copy = { ...prev };
       if (val === '' || val === null || val === undefined) {
         delete copy[key];
+        if (key === 'wm3_kl') delete copy['wm_chilled_kl'];
       } else {
         copy[key] = val;
+        if (key === 'wm3_kl') copy['wm_chilled_kl'] = val;
       }
       return copy;
     });
@@ -218,6 +227,28 @@ export default function EditReadingTab({
           }}
         >
           {msg.text}
+        </div>
+      )}
+
+      {/* Active Alerts for this Slot (Supervisor & Engineer Portal Only) */}
+      {currentSlotAlerts.length > 0 && isSupervisorOrEngineer && (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 8,
+            background: '#fff1f2',
+            border: '1.5px solid #fecdd3',
+          }}
+        >
+          <div style={{ fontWeight: 800, color: '#be123c', fontSize: 13, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>⚠️</span>
+            <span>Active Telemetry &amp; Pump Rated Limit Warnings ({currentSlotAlerts.length})</span>
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18, color: '#9f1239', fontSize: 12, lineHeight: 1.5 }}>
+            {currentSlotAlerts.map((a, idx) => (
+              <li key={idx}>{a}</li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -638,7 +669,7 @@ export default function EditReadingTab({
                     <input
                       type="number"
                       step="any"
-                      value={values[`${wmKey}_kl`] ?? ''}
+                      value={values[`${wmKey}_kl`] ?? (wmKey === 'wm3' ? (values.wm_chilled_kl ?? '') : '')}
                       onChange={(e) => handleValChange(`${wmKey}_kl`, e.target.value)}
                       placeholder="e.g. 8945.0"
                       style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}

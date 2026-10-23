@@ -9,15 +9,18 @@ import {
   evaluateAlerts,
   deriveLogValues,
   shiftKey,
+  PUMP_RATED_LIMITS,
 } from '../config';
 import HvacApi from '../hvacApi';
 import ExportDropdown from '../../../components/ui/ExportDropdown';
+import DailyPumpIconBar from './DailyPumpIconBar';
 
 export default function DailyPlantStatus({
   logs = [],
   selectedDate,
   onDateChange,
   isSupervisor = false,
+  isSupervisorOrEngineer = true,
   onNavigateToEdit,
 }) {
   const [shiftFilter, setShiftFilter] = useState('');
@@ -39,12 +42,12 @@ export default function DailyPlantStatus({
   const latestLog = dayLogs.length ? dayLogs[dayLogs.length - 1] : null;
   const running = latestLog ? runningChillers(latestLog.v) : [];
 
-  // Alerts
+  // Alerts (includes pump rated limit alerts for Supervisor and Engineer)
   const allAlerts = useMemo(() => {
     return dayLogs.flatMap((l) =>
-      evaluateAlerts(l.v).map((msg) => ({ time: l.time, slot: l.slot, msg }))
+      evaluateAlerts(l.v, isSupervisorOrEngineer).map((msg) => ({ time: l.time, slot: l.slot, msg }))
     );
-  }, [dayLogs]);
+  }, [dayLogs, isSupervisorOrEngineer]);
 
   // Available metrics for the chart
   const availableMetrics = useMemo(() => {
@@ -121,16 +124,18 @@ export default function DailyPlantStatus({
   // Calculations: Water Report
   const waterReport = useMemo(() => {
     const f2 = (x) => (x == null || isNaN(x) ? '–' : Number(x).toFixed(2));
+    const getVal = (v, k) => v[`${k}_kl`] ?? (k === 'wm3' ? v.wm_chilled_kl : undefined);
+
     const metersData = WATER_METERS.map(([k, nm]) => {
-      const records = dayLogs.filter((r) => r.v[`${k}_kl`] !== undefined);
+      const records = dayLogs.filter((r) => getVal(r.v, k) !== undefined);
       if (!records.length) {
         return { name: nm, empty: true };
       }
-      const open = records[0].v[`${k}_kl`];
-      const close = records[records.length - 1].v[`${k}_kl`];
-      const cons = Math.max(0, close - open);
+      const open = getVal(records[0].v, k);
+      const close = getVal(records[records.length - 1].v, k);
+      const cons = (close != null && open != null) ? Math.max(0, close - open) : null;
       const hrs = records[records.length - 1].slot - records[0].slot;
-      const avgRate = hrs > 0 ? cons / hrs : null;
+      const avgRate = hrs > 0 && cons != null ? cons / hrs : null;
 
       return {
         key: k,
@@ -148,14 +153,14 @@ export default function DailyPlantStatus({
 
     const shiftData = [1, 2, 3].map((s) => {
       const sLogs = dayLogs.filter((r) => shiftKey(r) === String(s));
-      const w1Cons = sLogs.length && sLogs[sLogs.length - 1].v.wm1_kl != null && sLogs[0].v.wm1_kl != null
-        ? Math.max(0, sLogs[sLogs.length - 1].v.wm1_kl - sLogs[0].v.wm1_kl)
-        : null;
-      const w2Cons = sLogs.length && sLogs[sLogs.length - 1].v.wm2_kl != null && sLogs[0].v.wm2_kl != null
-        ? Math.max(0, sLogs[sLogs.length - 1].v.wm2_kl - sLogs[0].v.wm2_kl)
-        : null;
-      const sTot = (w1Cons || 0) + (w2Cons || 0);
-      return { shift: `Shift ${s}`, w1: f2(w1Cons), w2: f2(w2Cons), total: f2(sTot) };
+      let sTot = 0;
+      WATER_METERS.forEach(([k]) => {
+        const cons = sLogs.length && getVal(sLogs[sLogs.length - 1].v, k) != null && getVal(sLogs[0].v, k) != null
+          ? Math.max(0, getVal(sLogs[sLogs.length - 1].v, k) - getVal(sLogs[0].v, k))
+          : null;
+        if (cons != null) sTot += cons;
+      });
+      return { shift: `Shift ${s}`, total: f2(sTot) };
     });
 
     return { meters: metersData, totalWater: f2(totalWater), shifts: shiftData };
@@ -165,7 +170,7 @@ export default function DailyPlantStatus({
   const handleExportCsv = () => {
     const rows = [
       ['Date', selectedDate],
-      ['Time', 'Shift', 'Operator', 'Set Point °C', 'Chillers On', 'Panel 1 MWh', 'Panel 2 MWh', 'Water 1 kL', 'Water 2 kL', 'Alerts Count'],
+      ['Time', 'Shift', 'Operator', 'Set Point °C', 'Chillers On', 'Panel 1 MWh', 'Panel 2 MWh', 'Old Water kL', 'New Water kL', 'Chilled Water kL', 'Alerts Count'],
       ...dayLogs.map((l) => [
         l.time,
         `Shift ${shiftKey(l)}`,
@@ -176,7 +181,8 @@ export default function DailyPlantStatus({
         l.v.pn2_mwh ?? '',
         l.v.wm1_kl ?? '',
         l.v.wm2_kl ?? '',
-        evaluateAlerts(l.v).length,
+        l.v.wm3_kl ?? l.v.wm_chilled_kl ?? '',
+        evaluateAlerts(l.v, isSupervisorOrEngineer).length,
       ]),
     ];
     HvacApi.exportCsv(`hvac_daily_log_${selectedDate}.csv`, rows);
@@ -184,7 +190,7 @@ export default function DailyPlantStatus({
 
   const handleExportPdf = () => {
     const rows = [
-      ['Time', 'Shift', 'Operator', 'SP °C', 'Chillers On', 'P1 MWh', 'P2 MWh', 'W1 kL', 'W2 kL', 'Alerts'],
+      ['Time', 'Shift', 'Operator', 'SP °C', 'Chillers On', 'P1 MWh', 'P2 MWh', 'Old kL', 'New kL', 'Chilled kL', 'Alerts'],
       ...dayLogs.map((l) => [
         l.time,
         `Shift ${shiftKey(l)}`,
@@ -195,7 +201,8 @@ export default function DailyPlantStatus({
         l.v.pn2_mwh != null ? String(l.v.pn2_mwh) : '–',
         l.v.wm1_kl != null ? String(l.v.wm1_kl) : '–',
         l.v.wm2_kl != null ? String(l.v.wm2_kl) : '–',
-        String(evaluateAlerts(l.v).length),
+        l.v.wm3_kl != null ? String(l.v.wm3_kl) : (l.v.wm_chilled_kl != null ? String(l.v.wm_chilled_kl) : '–'),
+        String(evaluateAlerts(l.v, isSupervisorOrEngineer).length),
       ]),
     ];
     HvacApi.exportPdf(`hvac_daily_log_${selectedDate}.pdf`, rows, `HVAC Plant Daily Log Report - ${selectedDate}`);
@@ -383,20 +390,6 @@ export default function DailyPlantStatus({
           })}
         </div>
       </div>
-
-      {/* Operational Alerts if any */}
-      {allAlerts.length > 0 && (
-        <div className="hvac-alert-box">
-          <h4>Active Operational Alerts for {selectedDate} ({allAlerts.length})</h4>
-          <ul>
-            {allAlerts.map((a, i) => (
-              <li key={i}>
-                <b>{a.time}</b> &mdash; {a.msg}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {/* Trend Through The Day (Custom SVG Chart) */}
       <div className="hvac-card">
@@ -649,6 +642,20 @@ export default function DailyPlantStatus({
         </div>
       </div>
 
+      {/* Pumps Operational & Rated Limit Status Daily Icon Bar (Supervisor & Engineer) */}
+      {isSupervisorOrEngineer && (
+        <DailyPumpIconBar
+          dayLogs={dayLogs}
+          selectedDate={selectedDate}
+          isSupervisorOrEngineer={isSupervisorOrEngineer}
+          onInspectSlot={(slot) => {
+            const found = dayLogs.find((l) => l.slot === slot);
+            if (found) setModalLog(found);
+          }}
+          onNavigateToEdit={onNavigateToEdit}
+        />
+      )}
+
       {/* Hourly Log Sheet Table */}
       <div className="hvac-card">
         <div className="hvac-card-header">
@@ -676,7 +683,7 @@ export default function DailyPlantStatus({
             <tbody>
               {filteredLogs.map((l) => {
                 const runChillers = runningChillers(l.v);
-                const logAlerts = evaluateAlerts(l.v);
+                const logAlerts = evaluateAlerts(l.v, isSupervisorOrEngineer);
                 return (
                   <tr
                     key={l.id}
@@ -791,15 +798,49 @@ export default function DailyPlantStatus({
               </button>
             </div>
 
+            {/* Modal Slot Alerts */}
+            {evaluateAlerts(modalLog.v, isSupervisorOrEngineer).length > 0 && (
+              <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: 8, padding: 12, marginTop: 12 }}>
+                <div style={{ fontWeight: 800, color: '#be123c', fontSize: 12.5, marginBottom: 6 }}>
+                  ⚠️ Telemetry &amp; Pump Overload Alerts ({evaluateAlerts(modalLog.v, isSupervisorOrEngineer).length}):
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 18, color: '#9f1239', fontSize: 12, lineHeight: 1.5 }}>
+                  {evaluateAlerts(modalLog.v, isSupervisorOrEngineer).map((a, idx) => (
+                    <li key={idx}>{a}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div style={{ marginTop: 14 }}>
               <table style={{ width: '100%', fontSize: 12.5, borderCollapse: 'collapse' }}>
                 <tbody>
-                  {Object.entries(modalLog.v).map(([k, val]) => (
-                    <tr key={k} style={{ borderBottom: '1px solid var(--hvac-line)' }}>
-                      <td style={{ padding: '6px 8px', color: 'var(--hvac-muted)', fontWeight: 600 }}>{LABELS[k] || k}</td>
-                      <td style={{ padding: '6px 8px', fontWeight: 800, textAlign: 'right' }}>{String(val)}</td>
-                    </tr>
-                  ))}
+                  {Object.entries(modalLog.v).map(([k, val]) => {
+                    const isPumpA = k.endsWith('_a');
+                    const isPumpV = k.endsWith('_v');
+                    const baseKey = isPumpA ? k.slice(0, -2) : (isPumpV ? k.slice(0, -2) : null);
+                    const limit = baseKey ? PUMP_RATED_LIMITS[baseKey] : null;
+                    const isExceeded = limit && (
+                      (isPumpA && Number(val) > limit.maxA) ||
+                      (isPumpV && Number(val) > limit.maxV)
+                    );
+
+                    return (
+                      <tr key={k} style={{ borderBottom: '1px solid var(--hvac-line)', background: isExceeded ? '#fff1f2' : 'transparent' }}>
+                        <td style={{ padding: '6px 8px', color: isExceeded ? '#be123c' : 'var(--hvac-muted)', fontWeight: isExceeded ? 700 : 600 }}>
+                          {LABELS[k] || k}
+                        </td>
+                        <td style={{ padding: '6px 8px', fontWeight: 800, textAlign: 'right', color: isExceeded ? '#e11d48' : '#0c2535' }}>
+                          {String(val)}
+                          {isExceeded && (
+                            <span style={{ fontSize: 10.5, fontWeight: 700, marginLeft: 6, color: '#be123c' }}>
+                              (Exceeds {isPumpA ? `${limit.maxA} A` : `${limit.maxV} V`} rated limit)
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

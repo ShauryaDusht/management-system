@@ -6,6 +6,7 @@ from .views import (
     HvacLogDetailView,
     HvacOverviewView,
     HvacSupervisorLogView,
+    HvacPumpRatingsView,
 )
 
 urlpatterns = [
@@ -15,4 +16,5 @@ urlpatterns = [
     path('logs/<str:log_id>/', HvacLogDetailView.as_view(), name='hvac-log-detail'),
     path('overview/', HvacOverviewView.as_view(), name='hvac-overview'),
     path('supervisor/', HvacSupervisorLogView.as_view(), name='hvac-supervisor-log'),
+    path('pump-ratings/', HvacPumpRatingsView.as_view(), name='hvac-pump-ratings'),
 ]

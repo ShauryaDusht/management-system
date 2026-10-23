@@ -58,6 +58,7 @@ class Command(BaseCommand):
             base_mwh2 = 6987.77 if g_idx == 0 else 8512.40
             base_wm1 = 15200.0 if g_idx == 0 else 18450.0
             base_wm2 = 9800.0 if g_idx == 0 else 11240.0
+            base_wm3 = 4500.0 if g_idx == 0 else 6200.0
 
             for d_idx, d_str in enumerate(dates):
                 for b in base_slots:
@@ -79,6 +80,8 @@ class Command(BaseCommand):
                     v['pn2_mwh'] = r2(base_mwh2 + d_idx * 118.2 + slot * 4.92)
                     v['wm1_kl'] = r2(base_wm1 + d_idx * 210.0 + slot * 8.75)
                     v['wm2_kl'] = r2(base_wm2 + d_idx * 95.0 + slot * 3.42)
+                    v['wm3_kl'] = r2(base_wm3 + d_idx * 45.0 + slot * 1.85)
+                    v['wm_chilled_kl'] = v['wm3_kl']
 
                     # Ensure chiller running status is clean
                     if v.get('c5_evapIn') is not None and v.get('c5_evapOut') is not None:

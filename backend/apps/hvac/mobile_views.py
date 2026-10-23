@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from apps.users.models import User, unique_standard_username
 
-from .models import HvacLog, HvacSupervisorLog, CHILLERS, derive_values
+from .models import HvacLog, HvacSupervisorLog, CHILLERS, derive_values, check_alerts, PUMP_RATED_LIMITS
 from .views import TIME_SLOTS
 
 
@@ -98,7 +98,7 @@ def mobile_dashboard(request):
 
     total_energy = round((p1_cons or 0) + (p2_cons or 0), 2) if (p1_cons is not None or p2_cons is not None) else None
 
-    # Water calculations
+    # Water calculations (Old, New, Chilled)
     wm1_open = logs[0].values.get('wm1_kl') if logs and logs[0].values.get('wm1_kl') is not None else None
     wm1_close = logs[-1].values.get('wm1_kl') if logs and logs[-1].values.get('wm1_kl') is not None else None
     wm1_cons = max(0, round(float(wm1_close) - float(wm1_open), 2)) if (wm1_open is not None and wm1_close is not None) else None
@@ -107,7 +107,99 @@ def mobile_dashboard(request):
     wm2_close = logs[-1].values.get('wm2_kl') if logs and logs[-1].values.get('wm2_kl') is not None else None
     wm2_cons = max(0, round(float(wm2_close) - float(wm2_open), 2)) if (wm2_open is not None and wm2_close is not None) else None
 
-    total_water = round((wm1_cons or 0) + (wm2_cons or 0), 2) if (wm1_cons is not None or wm2_cons is not None) else None
+    wm3_open = (logs[0].values.get('wm3_kl') if logs[0].values.get('wm3_kl') is not None else logs[0].values.get('wm_chilled_kl')) if logs else None
+    wm3_close = (logs[-1].values.get('wm3_kl') if logs[-1].values.get('wm3_kl') is not None else logs[-1].values.get('wm_chilled_kl')) if logs else None
+    wm3_cons = max(0, round(float(wm3_close) - float(wm3_open), 2)) if (wm3_open is not None and wm3_close is not None) else None
+
+    total_water = round((wm1_cons or 0) + (wm2_cons or 0) + (wm3_cons or 0), 2) if (wm1_cons is not None or wm2_cons is not None or wm3_cons is not None) else None
+
+    # Pump rated limits daily analysis (Supervisor & Engineer Portals)
+    pumps_daily = []
+    pumps_reached_count = 0
+    slot_pump_alerts = {s: [] for s in range(24)}
+
+    if is_supervisor:
+        for p_key, limit in PUMP_RATED_LIMITS.items():
+            peak_a = None
+            peak_v = None
+            reached_events = []
+
+            for l in logs:
+                vals = l.values or {}
+                a_val = vals.get(f'{p_key}_a')
+                v_val = vals.get(f'{p_key}_v')
+
+                if a_val is not None and a_val != '':
+                    try:
+                        num_a = float(a_val)
+                        if peak_a is None or num_a > peak_a:
+                            peak_a = num_a
+                        if num_a >= limit['max_a']:
+                            diff = round(num_a - limit['max_a'], 2)
+                            reached_events.append({
+                                'slot': l.slot,
+                                'time': l.time,
+                                'val': num_a,
+                                'limit': limit['max_a'],
+                                'diff': diff,
+                                'type': 'Current',
+                            })
+                            slot_pump_alerts[l.slot].append({
+                                'pump_name': limit['name'],
+                                'pump_key': p_key,
+                                'msg': f"Current ({num_a} A) reached rated max ({limit['max_a']} A)",
+                            })
+                    except (ValueError, TypeError):
+                        pass
+
+                if v_val is not None and v_val != '':
+                    try:
+                        num_v = float(v_val)
+                        if peak_v is None or num_v > peak_v:
+                            peak_v = num_v
+                        if num_v >= limit['max_v']:
+                            diff = round(num_v - limit['max_v'], 2)
+                            reached_events.append({
+                                'slot': l.slot,
+                                'time': l.time,
+                                'val': num_v,
+                                'limit': limit['max_v'],
+                                'diff': diff,
+                                'type': 'Voltage',
+                            })
+                            slot_pump_alerts[l.slot].append({
+                                'pump_name': limit['name'],
+                                'pump_key': p_key,
+                                'msg': f"Voltage ({num_v} V) reached rated max ({limit['max_v']} V)",
+                            })
+                    except (ValueError, TypeError):
+                        pass
+
+            has_reached = len(reached_events) > 0
+            if has_reached:
+                pumps_reached_count += 1
+
+            group_code = 'PRI' if p_key.startswith('pri') else ('SEC' if p_key.startswith('sec') else 'CON')
+            group_name = 'Primary' if p_key.startswith('pri') else ('Secondary' if p_key.startswith('sec') else 'Condenser')
+            pct = round((peak_a / limit['max_a']) * 100) if (peak_a is not None and limit['max_a'] > 0) else 0
+
+            pumps_daily.append({
+                'key': p_key,
+                'name': limit['name'],
+                'short_name': limit['name'].split(' (')[0],
+                'group': group_name,
+                'group_code': group_code,
+                'max_a': limit['max_a'],
+                'max_v': limit['max_v'],
+                'range_a': limit.get('range_a', ''),
+                'range_v': limit.get('range_v', ''),
+                'peak_a': peak_a,
+                'peak_v': peak_v,
+                'pct': pct,
+                'has_reached': has_reached,
+                'status': 'ALERT' if has_reached else ('NORMAL' if peak_a and peak_a > 0 else 'STANDBY'),
+                'reached_events': reached_events,
+            })
 
     # Hourly slot entries list
     slot_cards = []
@@ -133,14 +225,15 @@ def mobile_dashboard(request):
             'operator': log_entry.operator if log_entry else None,
             'setpoint': log_entry.setpoint if log_entry else None,
             'running_chillers': running_names,
-            'alerts_count': len(log_entry.alerts) if log_entry else 0,
+            'alerts_count': len(check_alerts(log_entry.values, include_pumps=is_supervisor)) if log_entry else 0,
+            'pump_alerts': slot_pump_alerts.get(idx, []) if is_supervisor else [],
             'is_current': idx == active_slot,
         })
 
-    # Active alerts
+    # Active alerts (Supervisor and Engineer portals see pump overload alerts; operators see only chiller alerts)
     alerts = []
     for l in logs:
-        for a in l.alerts:
+        for a in check_alerts(l.values, include_pumps=is_supervisor):
             alerts.append({'time': l.time, 'msg': a})
 
     active_slot_logged = active_slot in slots_map
@@ -161,12 +254,16 @@ def mobile_dashboard(request):
         'total_slots': 24,
         'slot_cards': slot_cards,
         'chillers_status': chillers_status,
+        'pumps_daily': pumps_daily,
+        'pumps_reached_count': pumps_reached_count,
+        'slot_pump_alerts': slot_pump_alerts,
         'total_energy': total_energy,
         'p1_cons': p1_cons,
         'p2_cons': p2_cons,
         'total_water': total_water,
         'wm1_cons': wm1_cons,
         'wm2_cons': wm2_cons,
+        'wm3_cons': wm3_cons,
         'alerts': alerts,
         'user': request.user,
         'is_operator': is_operator,
@@ -237,6 +334,12 @@ def mobile_entry(request):
             if f'{p}vca' in v and f'{p}v3' not in v:
                 v[f'{p}v3'] = v[f'{p}vca']
 
+        # Water meter alias compatibility for chilled meter
+        if 'wm3_kl' in v and 'wm_chilled_kl' not in v:
+            v['wm_chilled_kl'] = v['wm3_kl']
+        elif 'wm_chilled_kl' in v and 'wm3_kl' not in v:
+            v['wm3_kl'] = v['wm_chilled_kl']
+
         HvacLog.objects.update_or_create(
             id=log_id,
             defaults={
@@ -301,7 +404,7 @@ def mobile_entry(request):
     # Pumps groups configuration
     pumps_config = [
         ('pri', 'Primary Chilled Water Pumps', ['1', '2', '3', '4', '5', '6', 'NA 1', 'NA 2', 'NA 3', 'NA 4']),
-        ('sec', 'Secondary Chilled Water Pumps', ['1', '2', '3', '4', '5', '7', 'NA 1', 'NA 2', 'NA 3', 'NA 4']),
+        ('sec', 'Secondary Chilled Water Pumps', ['1', '2', '3', '4', '5', '6', '7', 'NA 1', 'NA 2', 'NA 3', 'NA 4']),
         ('con', 'Condenser Water Pumps', ['1', '2', '3', '4', '5', '6', 'NA 1', 'NA 2', 'NA 3', 'NA 4']),
     ]
     pumps_data = []
@@ -364,10 +467,11 @@ def mobile_entry(request):
         },
     ]
 
-    # Water Meters: Meter 1, Meter 2
+    # Water Meters: Old, New, Chilled
     water_data = [
-        {'num': 1, 'name': 'Water Meter 1 (kL)', 'key': 'wm1_kl', 'val': vals.get('wm1_kl', '')},
-        {'num': 2, 'name': 'Water Meter 2 (kL)', 'key': 'wm2_kl', 'val': vals.get('wm2_kl', '')},
+        {'num': 1, 'name': 'Old', 'key': 'wm1_kl', 'val': vals.get('wm1_kl', '')},
+        {'num': 2, 'name': 'New', 'key': 'wm2_kl', 'val': vals.get('wm2_kl', '')},
+        {'num': 3, 'name': 'Chilled', 'key': 'wm3_kl', 'val': vals.get('wm3_kl', vals.get('wm_chilled_kl', ''))},
     ]
 
     return render(request, 'hvac/mobile/entry.html', {
@@ -415,8 +519,15 @@ def mobile_flash(request):
 
     logs = list(HvacLog.objects.filter(date=date_str).order_by('slot'))
 
-    # Decorate logs with running chillers
+    user_role = getattr(request.user, 'role', '')
+    is_operator = user_role in ['hvac_operator', 'operator']
+    is_supervisor = user_role in ['hvac_engineer', 'hvac_supervisor', 'supervisor', 'admin'] or request.user.is_superuser
+
+    # Decorate logs with running chillers and portal alerts
     for l in logs:
+        if isinstance(l.values, dict) and 'wm3_kl' not in l.values and 'wm_chilled_kl' in l.values:
+            l.values['wm3_kl'] = l.values['wm_chilled_kl']
+        l.portal_alerts = check_alerts(l.values, include_pumps=is_supervisor)
         rc = []
         for num, name, _ in CHILLERS:
             c_st = l.values.get(f'c{num}_st')
@@ -424,6 +535,35 @@ def mobile_flash(request):
             if c_st == 'on' or (c_st is None and c_out is not None):
                 rc.append(name)
         l.running_names = ", ".join(rc) if rc else "None"
+
+    # Pump analysis for supervisor in flash report
+    pumps_daily = []
+    pumps_reached_count = 0
+    if is_supervisor:
+        for p_key, limit in PUMP_RATED_LIMITS.items():
+            peak_a = None
+            has_reached = False
+            for l in logs:
+                vals = l.values or {}
+                a_val = vals.get(f'{p_key}_a')
+                if a_val is not None and a_val != '':
+                    try:
+                        num_a = float(a_val)
+                        if peak_a is None or num_a > peak_a:
+                            peak_a = num_a
+                        if num_a >= limit['max_a']:
+                            has_reached = True
+                    except (ValueError, TypeError):
+                        pass
+            if has_reached:
+                pumps_reached_count += 1
+                pumps_daily.append({
+                    'key': p_key,
+                    'name': limit['name'],
+                    'peak_a': peak_a,
+                    'max_a': limit['max_a'],
+                    'has_reached': True,
+                })
 
     p1_open = logs[0].values.get('pn1_mwh') if logs and logs[0].values.get('pn1_mwh') is not None else None
     p1_close = logs[-1].values.get('pn1_mwh') if logs and logs[-1].values.get('pn1_mwh') is not None else None
@@ -443,7 +583,11 @@ def mobile_flash(request):
     wm2_close = logs[-1].values.get('wm2_kl') if logs and logs[-1].values.get('wm2_kl') is not None else None
     wm2_cons = max(0, round(float(wm2_close) - float(wm2_open), 2)) if (wm2_open is not None and wm2_close is not None) else None
 
-    total_water = round((wm1_cons or 0) + (wm2_cons or 0), 2) if (wm1_cons is not None or wm2_cons is not None) else None
+    wm3_open = (logs[0].values.get('wm3_kl') if logs[0].values.get('wm3_kl') is not None else logs[0].values.get('wm_chilled_kl')) if logs else None
+    wm3_close = (logs[-1].values.get('wm3_kl') if logs[-1].values.get('wm3_kl') is not None else logs[-1].values.get('wm_chilled_kl')) if logs else None
+    wm3_cons = max(0, round(float(wm3_close) - float(wm3_open), 2)) if (wm3_open is not None and wm3_close is not None) else None
+
+    total_water = round((wm1_cons or 0) + (wm2_cons or 0) + (wm3_cons or 0), 2) if (wm1_cons is not None or wm2_cons is not None or wm3_cons is not None) else None
 
     return render(request, 'hvac/mobile/flash.html', {
         'date': date_str,
@@ -459,7 +603,12 @@ def mobile_flash(request):
         'total_water': total_water,
         'wm1_cons': wm1_cons,
         'wm2_cons': wm2_cons,
+        'wm3_cons': wm3_cons,
         'slots': TIME_SLOTS,
+        'pumps_daily': pumps_daily,
+        'pumps_reached_count': pumps_reached_count,
+        'is_supervisor': is_supervisor,
+        'is_operator': is_operator,
         'user': request.user,
         'active_nav': 'flash',
     })

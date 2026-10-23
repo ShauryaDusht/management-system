@@ -150,7 +150,7 @@
       {% if total_water is not None %}{{ total_water }}{% else %}–{% endif %}
     </div>
     <div style="font-size:10.5px;color:#716b66;margin-top:4px">
-      W1: {{ wm1_cons|default:"–" }} &middot; W2: {{ wm2_cons|default:"–" }}
+      Old: {{ wm1_cons|default:"–" }} &middot; New: {{ wm2_cons|default:"–" }} &middot; Chilled: {{ wm3_cons|default:"–" }}
     </div>
   </div>
 </div>
@@ -201,20 +201,90 @@
   </div>
 </div>
 
-<!-- Active Operational Alerts (if any) -->
-{% if alerts %}
-<div class="card" style="border-left:4px solid #ef4444;background:#fff5f5">
+{% if is_supervisor %}
+<!-- Pumps Rated Status · Daily Icon Bar (Supervisor & Engineer) -->
+<div class="card" {% if pumps_reached_count > 0 %}style="border-left:4px solid #ef4444;background:linear-gradient(180deg,#fff5f5 0%,#ffffff 90px)"{% endif %}>
   <div class="card-header" style="margin-bottom:6px">
-    <div class="card-title" style="color:#b91c1c">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      <span>Operational Alerts ({{ alerts|length }})</span>
+    <div class="card-title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{% if pumps_reached_count > 0 %}#dc2626{% else %}#0f766e{% endif %}" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/></svg>
+      <span>Pumps Rated Status &middot; Daily Icon Bar</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button type="button" onclick="document.getElementById('mobileRatingModal').style.display='flex'" style="background:#0284c7;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:10.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:3px">
+        <span>⚙️</span>
+        <span>Set Rating</span>
+      </button>
+      {% if pumps_reached_count > 0 %}
+        <span class="pill pill-red" style="font-size:10.5px;padding:3px 8px;font-weight:800">
+          🚨 {{ pumps_reached_count }} Over Rated Value
+        </span>
+      {% else %}
+        <span class="pill pill-green" style="font-size:10.5px;padding:3px 8px">
+          &check; All Within Rated Range
+        </span>
+      {% endif %}
     </div>
   </div>
-  <ul style="padding-left:18px;font-size:12px;color:#991b1b;line-height:1.6">
-    {% for a in alerts %}
-      <li><b>{{ a.time }}</b>: {{ a.msg }}</li>
+
+  <div style="font-size:11.5px;color:#64748b;margin-bottom:10px">
+    Continuous surveillance of 31 Primary, Secondary &amp; Condenser pumps for {{ formatted_date }}.
+  </div>
+
+  <!-- Horizontal Scrollable Pump Icon Bar -->
+  <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;">
+    {% for p in pumps_daily %}
+      <div style="min-width:145px;flex-shrink:0;background:{% if p.has_reached %}#fee2e2{% elif p.status == 'NORMAL' %}#ffffff{% else %}#f8fafc{% endif %};border:1.5px solid {% if p.has_reached %}#ef4444{% elif p.status == 'NORMAL' %}#94a3b8{% else %}#e2e8f0{% endif %};border-radius:10px;padding:8px 10px;box-shadow:0 1px 3px rgba(0,0,0,0.03)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+          <span style="font-size:9.5px;font-weight:800;color:{% if p.has_reached %}#991b1b{% elif p.group_code == 'PRI' %}#0369a1{% elif p.group_code == 'SEC' %}#6d28d9{% else %}#b45309{% endif %};background:{% if p.has_reached %}#fecdd3{% elif p.group_code == 'PRI' %}#e0f2fe{% elif p.group_code == 'SEC' %}#ede9fe{% else %}#fef3c7{% endif %};padding:1px 5px;border-radius:4px">
+            {{ p.group_code }}
+          </span>
+          {% if p.has_reached %}
+            <span style="font-size:12px">🚨</span>
+          {% elif p.status == 'NORMAL' %}
+            <span style="width:6px;height:6px;border-radius:50%;background:#10b981;display:inline-block"></span>
+          {% else %}
+            <span style="font-size:9px;color:#94a3b8">Off</span>
+          {% endif %}
+        </div>
+        <div style="font-size:12px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="{{ p.name }}">
+          {{ p.short_name }}
+        </div>
+        <div style="font-size:10px;color:#64748b;margin-top:2px">
+          Max: <b>{{ p.max_a }}A</b> &middot; {{ p.max_v }}V
+        </div>
+        <div style="font-size:11px;font-weight:800;color:{% if p.has_reached %}#dc2626{% elif p.status == 'NORMAL' %}#0c2535{% else %}#94a3b8{% endif %};font-family:'DM Mono',monospace;margin-top:2px">
+          Peak: {{ p.peak_a|default:"–" }}A
+          {% if p.peak_a %}
+            <span style="font-size:9.5px;font-weight:700;color:{% if p.has_reached %}#b91c1c{% else %}#64748b{% endif %}">
+              ({{ p.pct }}%)
+            </span>
+          {% endif %}
+        </div>
+        {% if p.has_reached and p.reached_events %}
+          <div style="font-size:9px;color:#991b1b;margin-top:4px;font-weight:700">
+            At: {% for ev in p.reached_events|slice:":2" %}{{ ev.time }}{% if not forloop.last %}, {% endif %}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
     {% endfor %}
-  </ul>
+  </div>
+
+  {% if pumps_reached_count > 0 %}
+    <div style="margin-top:8px;padding:8px 10px;background:#ffffff;border:1px solid #fecdd3;border-radius:8px">
+      <div style="font-size:11px;font-weight:800;color:#be123c;margin-bottom:4px">
+        ⚠️ Pumps Reached Rated Limits Today:
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        {% for p in pumps_daily %}
+          {% if p.has_reached %}
+            <span style="font-size:10px;font-weight:700;color:#991b1b;background:#fee2e2;border:1px solid #fca5a5;padding:2px 7px;border-radius:6px">
+              🚨 {{ p.name }}: {{ p.peak_a }}A (Max {{ p.max_a }}A)
+            </span>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
 </div>
 {% endif %}
 
@@ -244,6 +314,11 @@
               {% if sc.running_chillers %}
                 <div style="font-size:10.5px;color:#15803d;margin-top:2px;font-weight:600">
                   ❄️ {{ sc.running_chillers|join:", " }}
+                </div>
+              {% endif %}
+              {% if sc.pump_alerts and is_supervisor %}
+                <div style="font-size:10.5px;color:#dc2626;margin-top:2px;font-weight:700">
+                  🚨 Reached Rated: {% for pa in sc.pump_alerts %}{{ pa.pump_name|slice:":18" }}{% if not forloop.last %}, {% endif %}{% endfor %}
                 </div>
               {% endif %}
             {% else %}
@@ -277,4 +352,83 @@
     {% endfor %}
   </div>
 </div>
+
+{% if is_supervisor %}
+<!-- Mobile Modal to Set Pump Rating -->
+<div id="mobileRatingModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.65);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:14px;max-width:380px;width:100%;padding:18px;box-shadow:0 12px 30px rgba(0,0,0,0.25);" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e2e8f0;padding-bottom:10px;margin-bottom:12px">
+      <div style="font-weight:800;font-size:14px;color:#0f172a;display:flex;align-items:center;gap:6px">
+        <span>⚙️</span>
+        <span>Set Pump Rated Limits</span>
+      </div>
+      <button type="button" onclick="document.getElementById('mobileRatingModal').style.display='none'" style="background:none;border:none;font-size:18px;font-weight:800;color:#64748b;cursor:pointer">✕</button>
+    </div>
+
+    <form id="mobileRatingForm" onsubmit="handleMobileRatingSubmit(event)" style="display:flex;flex-direction:column;gap:10px">
+      <div>
+        <label style="font-size:11px;font-weight:800;color:#334155;display:block;margin-bottom:4px">Select Pump:</label>
+        <select id="mPumpSelect" onchange="handleMPumpChange(this.value)" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #cbd5e1;font-size:12px;font-weight:700">
+          {% for p in pumps_daily %}
+            <option value="{{ p.key }}" data-maxa="{{ p.max_a }}" data-maxv="{{ p.max_v }}">
+              {{ p.name }} (Max {{ p.max_a }}A)
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <label style="font-size:11px;font-weight:800;color:#334155;display:block;margin-bottom:4px">Max Current (A):</label>
+          <input type="number" step="0.1" id="mMaxA" required style="width:100%;padding:7px 10px;border-radius:8px;border:1.5px solid #cbd5e1;font-weight:800;font-family:'DM Mono',monospace;font-size:13px" />
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:800;color:#334155;display:block;margin-bottom:4px">Max Voltage (V):</label>
+          <input type="number" step="1" id="mMaxV" required style="width:100%;padding:7px 10px;border-radius:8px;border:1.5px solid #cbd5e1;font-weight:800;font-family:'DM Mono',monospace;font-size:13px" />
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+        <button type="button" onclick="document.getElementById('mobileRatingModal').style.display='none'" style="padding:6px 12px;border-radius:6px;border:1px solid #cbd5e1;background:#f8fafc;font-size:12px;font-weight:700">Cancel</button>
+        <button type="submit" style="padding:6px 14px;border-radius:6px;border:none;background:#0284c7;color:#fff;font-size:12px;font-weight:800;cursor:pointer">Save Rating</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function handleMPumpChange(val) {
+  const opt = document.querySelector('#mPumpSelect option[value="' + val + '"]');
+  if (opt) {
+    document.getElementById('mMaxA').value = opt.getAttribute('data-maxa') || '';
+    document.getElementById('mMaxV').value = opt.getAttribute('data-maxv') || '';
+  }
+}
+document.addEventListener('DOMContentLoaded', function() {
+  const sel = document.getElementById('mPumpSelect');
+  if (sel && sel.value) handleMPumpChange(sel.value);
+});
+
+async function handleMobileRatingSubmit(e) {
+  e.preventDefault();
+  const pumpKey = document.getElementById('mPumpSelect').value;
+  const maxA = parseFloat(document.getElementById('mMaxA').value);
+  const maxV = parseFloat(document.getElementById('mMaxV').value);
+  try {
+    const res = await fetch('/api/hvac/pump-ratings/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': 'IITGN@2025' },
+      body: JSON.stringify({ pump_key: pumpKey, max_a: maxA, max_v: maxV })
+    });
+    if (res.ok) {
+      window.location.reload();
+    } else {
+      alert('Failed to save rating. Check credentials.');
+    }
+  } catch (err) {
+    alert('Error connecting to server.');
+  }
+}
+</script>
+{% endif %}
 {% endblock %}

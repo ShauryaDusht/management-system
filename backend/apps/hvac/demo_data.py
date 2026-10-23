@@ -73,6 +73,7 @@ def ensure_hvac_demo_data(target_date=None):
     base_mwh2 = 8512.40 + day_offset * 118.2
     base_wm1 = 18450.0 + day_offset * 210.0
     base_wm2 = 11240.0 + day_offset * 95.0
+    base_wm3 = 6200.0 + day_offset * 45.0
 
     seeded = 0
     for b in templates:
@@ -94,6 +95,8 @@ def ensure_hvac_demo_data(target_date=None):
         v['pn2_mwh'] = r2(base_mwh2 + slot * 4.92)
         v['wm1_kl'] = r2(base_wm1 + slot * 8.75)
         v['wm2_kl'] = r2(base_wm2 + slot * 3.42)
+        v['wm3_kl'] = r2(base_wm3 + slot * 1.85)
+        v['wm_chilled_kl'] = v['wm3_kl']
 
         # Chiller 5 or 6 active based on template or daytime
         if v.get('c5_evapIn') is not None and v.get('c5_evapOut') is not None:

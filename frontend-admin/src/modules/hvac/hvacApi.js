@@ -37,6 +37,21 @@ export const HvacApi = {
     return res.data;
   },
 
+  getPumpRatings: async () => {
+    const res = await api.get('/hvac/pump-ratings/');
+    return res.data;
+  },
+
+  savePumpRatings: async (body) => {
+    const res = await api.post('/hvac/pump-ratings/', body);
+    return res.data;
+  },
+
+  resetPumpRatings: async (pumpKey = null) => {
+    const res = await api.post('/hvac/pump-ratings/', { action: 'reset', pump_key: pumpKey });
+    return res.data;
+  },
+
   exportCsv: (filename, rows) => {
     if (!rows || !rows.length) return;
     const csvContent = rows

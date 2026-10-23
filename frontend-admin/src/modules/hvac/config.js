@@ -43,9 +43,48 @@ export const CHILLER_FIELDS = [
 
 export const PUMP_GROUPS = [
   ['pri', 'Primary', ['1', '2', '3', '4', '5', '6', 'NA 1', 'NA 2', 'NA 3', 'NA 4']],
-  ['sec', 'Secondary', ['1', '2', '3', '4', '5', '7', 'NA 1', 'NA 2', 'NA 3', 'NA 4']],
+  ['sec', 'Secondary', ['1', '2', '3', '4', '5', '6', '7', 'NA 1', 'NA 2', 'NA 3', 'NA 4']],
   ['con', 'Condenser', ['1', '2', '3', '4', '5', '6', 'NA 1', 'NA 2', 'NA 3', 'NA 4']],
 ];
+
+export const PUMP_RATED_LIMITS = {
+  // Primary Chilled Water Pumps
+  pri1: { name: 'Primary Pump 1 (Trane)', maxV: 410, maxA: 21.5, ratedV: '390-410V', ratedA: '19-21.5A' },
+  pri2: { name: 'Primary Pump 2 (Trane)', maxV: 410, maxA: 21.5, ratedV: '390-410V', ratedA: '19-21.5A' },
+  pri3: { name: 'Primary Pump 3 (Trane)', maxV: 410, maxA: 21.5, ratedV: '390-410V', ratedA: '19-21.5A' },
+  pri4: { name: 'Primary Pump 4 (Trane)', maxV: 410, maxA: 21.5, ratedV: '390-410V', ratedA: '19-21.5A' },
+  pri5: { name: 'Primary Pump 5 (Carrier)', maxV: 425, maxA: 17.0, ratedV: '405-425V', ratedA: '15-17A' },
+  pri6: { name: 'Primary Pump 6 (Carrier)', maxV: 425, maxA: 17.0, ratedV: '405-425V', ratedA: '15-17A' },
+  priNA1: { name: 'Primary Pump NA 1', maxV: 416, maxA: 18.5, ratedV: '414-416V', ratedA: '18.5A' },
+  priNA2: { name: 'Primary Pump NA 2', maxV: 416, maxA: 17.5, ratedV: '414-416V', ratedA: '17.5A' },
+  priNA3: { name: 'Primary Pump NA 3 (Daikin)', maxV: 430, maxA: 19.0, ratedV: '410-430V', ratedA: '17-19A' },
+  priNA4: { name: 'Primary Pump NA 4 (Daikin)', maxV: 430, maxA: 19.0, ratedV: '411-430V', ratedA: '18-19A' },
+
+  // Secondary Chilled Water Pumps
+  sec1: { name: 'Secondary Pump 1 (Trane)', maxV: 410, maxA: 50.0, ratedV: '400-410V', ratedA: '47-50A' },
+  sec2: { name: 'Secondary Pump 2 (Trane)', maxV: 410, maxA: 50.0, ratedV: '401-410V', ratedA: '48-50A' },
+  sec3: { name: 'Secondary Pump 3 (Trane)', maxV: 410, maxA: 50.0, ratedV: '402-410V', ratedA: '49-50A' },
+  sec4: { name: 'Secondary Pump 4 (Trane)', maxV: 410, maxA: 50.0, ratedV: '403-410V', ratedA: '50A' },
+  sec5: { name: 'Secondary Pump 5 (Hostel)', maxV: 420, maxA: 55.0, ratedV: '410-420V', ratedA: '45-55A' },
+  sec6: { name: 'Secondary Pump 6 (Hostel)', maxV: 420, maxA: 55.0, ratedV: '410-420V', ratedA: '45-55A' },
+  sec7: { name: 'Secondary Pump 7 (Hostel)', maxV: 420, maxA: 55.0, ratedV: '410-420V', ratedA: '45-55A' },
+  secNA1: { name: 'Secondary Pump NA 1', maxV: 416, maxA: 65.5, ratedV: '414-416V', ratedA: '65.5A' },
+  secNA2: { name: 'Secondary Pump NA 2', maxV: 416, maxA: 65.5, ratedV: '414-416V', ratedA: '65.5A' },
+  secNA3: { name: 'Secondary Pump NA 3 (Daikin)', maxV: 430, maxA: 70.0, ratedV: '410-430V', ratedA: '62-70A' },
+  secNA4: { name: 'Secondary Pump NA 4 (Daikin)', maxV: 430, maxA: 70.0, ratedV: '410-430V', ratedA: '62-70A' },
+
+  // Condenser Water Pumps
+  con1: { name: 'Condenser Pump 1 (Trane)', maxV: 415, maxA: 33.0, ratedV: '400-415V', ratedA: '29-33A' },
+  con2: { name: 'Condenser Pump 2 (Trane)', maxV: 415, maxA: 33.0, ratedV: '400-415V', ratedA: '29-33A' },
+  con3: { name: 'Condenser Pump 3 (Trane)', maxV: 415, maxA: 33.0, ratedV: '400-415V', ratedA: '29-33A' },
+  con4: { name: 'Condenser Pump 4 (Trane)', maxV: 415, maxA: 33.0, ratedV: '400-415V', ratedA: '29-33A' },
+  con5: { name: 'Condenser Pump 5 (Carrier)', maxV: 420, maxA: 47.0, ratedV: '410-420V', ratedA: '41-47A' },
+  con6: { name: 'Condenser Pump 6 (Carrier)', maxV: 420, maxA: 47.0, ratedV: '410-420V', ratedA: '41-47A' },
+  conNA1: { name: 'Condenser Pump NA 1', maxV: 416, maxA: 50.5, ratedV: '414-416V', ratedA: '50.4A' },
+  conNA2: { name: 'Condenser Pump NA 2', maxV: 416, maxA: 50.4, ratedV: '414-416V', ratedA: '50.3A' },
+  conNA3: { name: 'Condenser Pump NA 3 (Daikin)', maxV: 430, maxA: 52.0, ratedV: '410-430V', ratedA: '47-52A' },
+  conNA4: { name: 'Condenser Pump NA 4 (Daikin)', maxV: 430, maxA: 52.0, ratedV: '410-430V', ratedA: '47-52A' },
+};
 
 export const COOLING_TOWERS = [
   ['ct1', 'Cooling tower 1', 2],
@@ -63,8 +102,9 @@ export const PANELS = [
 ];
 
 export const WATER_METERS = [
-  ['wm1', 'Water Meter 1'],
-  ['wm2', 'Water Meter 2'],
+  ['wm1', 'Old'],
+  ['wm2', 'New'],
+  ['wm3', 'Chilled'],
 ];
 
 export const LABELS = {};
@@ -111,23 +151,100 @@ export const runningChillers = (v = {}) => {
   });
 };
 
-export const evaluateAlerts = (v = {}) => {
-  const al = [];
-  runningChillers(v).forEach(([n, nm]) => {
-    const ein = v[`c${n}_evapIn`];
-    const eout = v[`c${n}_evapOut`];
-    const cin = v[`c${n}_condIn`];
-    const oil = v[`c${n}_oilL`];
-    if (ein != null && eout != null) {
-      const dt = +(Number(ein) - Number(eout)).toFixed(2);
-      if (dt > 4.0) {
-        al.push(`${nm}: Delta T (${dt}°C) is high (> 4°C) [Entering: ${ein}°C, Leaving: ${eout}°C]`);
+// 2. Pump Overload & Voltage Rated Limits (HVAC Supervisor and Engineer Portal ONLY)
+export const getActivePumpLimits = () => {
+  try {
+    const saved = localStorage.getItem('hvac_custom_pump_ratings');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      const merged = {};
+      Object.entries(PUMP_RATED_LIMITS).forEach(([k, v]) => {
+        merged[k] = { ...v, ...(parsed[k] || {}) };
+      });
+      return merged;
+    }
+  } catch (e) {
+    console.error('Error loading custom pump ratings:', e);
+  }
+  return { ...PUMP_RATED_LIMITS };
+};
+
+export const saveCustomPumpLimits = (ratings) => {
+  try {
+    localStorage.setItem('hvac_custom_pump_ratings', JSON.stringify(ratings));
+    window.dispatchEvent(new CustomEvent('hvac_pump_ratings_changed', { detail: ratings }));
+  } catch (e) {
+    console.error('Error saving custom pump ratings:', e);
+  }
+};
+
+export const resetCustomPumpLimits = (key = null) => {
+  try {
+    if (!key) {
+      localStorage.removeItem('hvac_custom_pump_ratings');
+    } else {
+      const saved = localStorage.getItem('hvac_custom_pump_ratings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        delete parsed[key];
+        localStorage.setItem('hvac_custom_pump_ratings', JSON.stringify(parsed));
       }
     }
-    if (eout != null && eout > 9) al.push(`${nm}: evaporator leaving ${eout}°C is high (> 9°C)`);
-    if (cin != null && cin > 33) al.push(`${nm}: condenser entering ${cin}°C is high (> 33°C)`);
-    if (oil && oil !== 'wet') al.push(`${nm}: oil level sensor reads ${oil} (abnormal)`);
+    window.dispatchEvent(new CustomEvent('hvac_pump_ratings_changed', { detail: null }));
+  } catch (e) {
+    console.error('Error resetting custom pump ratings:', e);
+  }
+};
+
+export const evaluateAlerts = (v = {}, isSupervisorOrEngineer = true, customLimits = null) => {
+  const al = [];
+
+  // 1. Chiller Delta-T & Operating Alerts
+  CHILLERS.forEach(([n, nm]) => {
+    const on = v[`c${n}_st`] === 'on' || (v[`c${n}_st`] === undefined && v[`c${n}_evapOut`] !== undefined);
+    if (!on) return;
+    const ein = v[`c${n}_evapIn`];
+    const eout = v[`c${n}_evapOut`];
+    if (ein != null && eout != null) {
+      const dt = +(ein - eout).toFixed(2);
+      if (dt > 4.0) {
+        al.push(`${nm}: Evaporator ΔT (${dt} °C) is high (> 4.0 °C)`);
+      }
+    }
+    if (eout != null && eout > 9.0) {
+      al.push(`${nm}: Evaporator leaving temp (${eout} °C) is high (> 9 °C)`);
+    }
+    const cin = v[`c${n}_condIn`];
+    if (cin != null && cin > 33.0) {
+      al.push(`${nm}: Condenser entering temp (${cin} °C) is high (> 33 °C)`);
+    }
+    const ol = v[`c${n}_oilL`];
+    if (ol && String(ol).toLowerCase() !== 'wet') {
+      al.push(`${nm}: Oil level sensor status is "${ol}"`);
+    }
   });
+
+  // 2. Pump Rated Limit Alerts (Supervisor & Engineer Portals Only)
+  if (isSupervisorOrEngineer) {
+    const limits = customLimits || getActivePumpLimits();
+    Object.entries(limits).forEach(([pKey, limit]) => {
+      const aVal = v[`${pKey}_a`];
+      if (aVal != null && aVal !== '' && !isNaN(aVal)) {
+        const numA = Number(aVal);
+        if (numA >= limit.maxA) {
+          al.push(`${limit.name}: Current (${numA} A) reached/exceeds rated maximum (${limit.maxA} A)`);
+        }
+      }
+      const vVal = v[`${pKey}_v`];
+      if (vVal != null && vVal !== '' && !isNaN(vVal)) {
+        const numV = Number(vVal);
+        if (numV >= limit.maxV) {
+          al.push(`${limit.name}: Voltage (${numV} V) reached/exceeds rated maximum (${limit.maxV} V)`);
+        }
+      }
+    });
+  }
+
   return al;
 };
 

@@ -5,7 +5,16 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import HvacLog, HvacSupervisorLog, CHILLERS, derive_values, check_alerts
+from .models import (
+    HvacLog,
+    HvacSupervisorLog,
+    CHILLERS,
+    derive_values,
+    check_alerts,
+    PUMP_RATED_LIMITS,
+    CUSTOM_PUMP_RATINGS,
+    get_active_pump_ratings,
+)
 
 
 TIME_SLOTS = [
@@ -340,3 +349,70 @@ class HvacSupervisorLogView(APIView):
             }
         )
         return Response({'ok': True, 'log': log_obj.to_dict()})
+
+
+class HvacPumpRatingsView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        return Response({
+            'ok': True,
+            'ratings': get_active_pump_ratings(),
+            'defaults': PUMP_RATED_LIMITS,
+            'customOverrides': CUSTOM_PUMP_RATINGS,
+        })
+
+    def post(self, request):
+        if not is_hvac_authorized(request):
+            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        data = request.data or {}
+        action = data.get('action', 'save')
+
+        if action == 'reset':
+            pump_key = data.get('pump_key')
+            if pump_key:
+                CUSTOM_PUMP_RATINGS.pop(pump_key, None)
+            else:
+                CUSTOM_PUMP_RATINGS.clear()
+            return Response({
+                'ok': True,
+                'ratings': get_active_pump_ratings(),
+                'message': 'Ratings reset to defaults',
+            })
+
+        # Save single or batch ratings
+        ratings = data.get('ratings', {})
+        # If single rating payload provided: { pump_key: 'pri1', max_a: 22, ... }
+        if 'pump_key' in data:
+            pk = data['pump_key']
+            if pk in PUMP_RATED_LIMITS:
+                curr = CUSTOM_PUMP_RATINGS.get(pk, dict(PUMP_RATED_LIMITS[pk]))
+                if 'max_a' in data and data['max_a'] is not None:
+                    curr['max_a'] = float(data['max_a'])
+                if 'max_v' in data and data['max_v'] is not None:
+                    curr['max_v'] = float(data['max_v'])
+                if 'range_a' in data:
+                    curr['range_a'] = str(data['range_a'])
+                if 'range_v' in data:
+                    curr['range_v'] = str(data['range_v'])
+                CUSTOM_PUMP_RATINGS[pk] = curr
+
+        for pk, vals in ratings.items():
+            if pk in PUMP_RATED_LIMITS and isinstance(vals, dict):
+                curr = CUSTOM_PUMP_RATINGS.get(pk, dict(PUMP_RATED_LIMITS[pk]))
+                if 'max_a' in vals and vals['max_a'] is not None:
+                    curr['max_a'] = float(vals['max_a'])
+                if 'max_v' in vals and vals['max_v'] is not None:
+                    curr['max_v'] = float(vals['max_v'])
+                if 'range_a' in vals:
+                    curr['range_a'] = str(vals['range_a'])
+                if 'range_v' in vals:
+                    curr['range_v'] = str(vals['range_v'])
+                CUSTOM_PUMP_RATINGS[pk] = curr
+
+        return Response({
+            'ok': True,
+            'ratings': get_active_pump_ratings(),
+            'message': 'Pump ratings updated successfully',
+        })

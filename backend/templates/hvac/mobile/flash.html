@@ -72,7 +72,7 @@
       {% if total_water is not None %}{{ total_water }} kL{% else %}–{% endif %}
     </div>
     <div style="font-size:10.5px;color:#716b66;margin-top:2px">
-      W1: {{ wm1_cons|default:"–" }} &middot; W2: {{ wm2_cons|default:"–" }}
+      Old: {{ wm1_cons|default:"–" }} &middot; New: {{ wm2_cons|default:"–" }} &middot; Chilled: {{ wm3_cons|default:"–" }}
     </div>
   </div>
 </div>
@@ -89,9 +89,9 @@
           <th style="padding:9px 10px;text-align:right;white-space:nowrap">SP &deg;C</th>
           <th style="padding:9px 10px;text-align:left;white-space:nowrap">Chillers Running</th>
           <th style="padding:9px 10px;text-align:right;white-space:nowrap">P1 MWh</th>
-          <th style="padding:9px 10px;text-align:right;white-space:nowrap">P2 MWh</th>
-          <th style="padding:9px 10px;text-align:right;white-space:nowrap">W1 kL</th>
-          <th style="padding:9px 10px;text-align:right;white-space:nowrap">W2 kL</th>
+          <th style="padding:9px 10px;text-align:right;white-space:nowrap">Old kL</th>
+          <th style="padding:9px 10px;text-align:right;white-space:nowrap">New kL</th>
+          <th style="padding:9px 10px;text-align:right;white-space:nowrap">Chilled kL</th>
           <th style="padding:9px 10px;text-align:center;white-space:nowrap">Alerts</th>
         </tr>
       </thead>
@@ -111,9 +111,10 @@
             <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.pn2_mwh|default:"–" }}</td>
             <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.wm1_kl|default:"–" }}</td>
             <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.wm2_kl|default:"–" }}</td>
+            <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.wm3_kl|default:"–" }}</td>
             <td style="padding:8px 10px;text-align:center">
-              {% if l.alerts %}
-                <span class="pill pill-red" style="font-size:10px">{{ l.alerts|length }}</span>
+              {% if l.portal_alerts %}
+                <span class="pill pill-red" style="font-size:10px">{{ l.portal_alerts|length }}</span>
               {% else %}
                 <span style="color:#15803d;font-weight:800">&check;</span>
               {% endif %}
@@ -121,7 +122,7 @@
           </tr>
         {% empty %}
           <tr>
-            <td colspan="10" style="padding:28px 16px;text-align:center;color:#716b66">
+            <td colspan="11" style="padding:28px 16px;text-align:center;color:#716b66">
               No entries logged for {{ date }}.
               <div style="margin-top:8px">
                 <a href="/hvac/entry/?date={{ date }}" class="btn-primary" style="display:inline-block;width:auto;padding:8px 16px">
