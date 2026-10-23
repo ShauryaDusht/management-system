@@ -267,10 +267,9 @@ def send_handover_alert(clearance, event_type, actor=None, custom_remarks=None):
             if estate_email:
                 recipients.append(estate_email)
         elif event_type == EVENT_ESTATE_ALLOTTED:
-            if estate_email:
-                recipients.append(estate_email)
-            if clearance.email:
-                recipients.append(clearance.email.strip())
+            # Quarter is officially allotted; no further handover email alert is sent
+            logger.info(f"[Clearance Email Alert] Quarter {clearance.house_no} officially allotted. No alert email required.")
+            return
 
     # Filter out empty or placeholder entries
     recipients = [r for r in recipients if r and '@' in r]
