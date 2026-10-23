@@ -96,7 +96,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="auth-form">
             <label>
-              Username
+              Username or Email
               <input
                 type="text"
                 name="username"
@@ -104,7 +104,7 @@ export default function LoginPage() {
                 onChange={handleChange}
                 required
                 autoFocus
-                placeholder="Enter username"
+                placeholder="Enter username or email"
               />
             </label>
 

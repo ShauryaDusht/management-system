@@ -254,25 +254,33 @@ def send_handover_alert(clearance, event_type, actor=None, custom_remarks=None):
         hk_email = getattr(settings, 'HK_ALERT_EMAIL', '').strip() or getattr(estate_settings, 'hk_alert_email', '').strip()
         estate_email = getattr(settings, 'ESTATE_ALERT_EMAIL', '').strip() or getattr(estate_settings, 'estate_alert_email', '').strip()
 
+        def _parse_emails(val):
+            if not val:
+                return []
+            return [e.strip() for e in str(val).split(',') if e.strip() and '@' in e]
+
         if event_type == EVENT_ESTATE_TO_CIVIL:
-            if civil_email:
-                recipients.append(civil_email)
+            recipients.extend(_parse_emails(civil_email))
         elif event_type == EVENT_CIVIL_TO_ELECTRICAL:
-            if elec_email:
-                recipients.append(elec_email)
+            recipients.extend(_parse_emails(elec_email))
         elif event_type == EVENT_ELECTRICAL_TO_HK:
-            if hk_email:
-                recipients.append(hk_email)
+            recipients.extend(_parse_emails(hk_email))
         elif event_type == EVENT_HK_TO_ESTATE:
-            if estate_email:
-                recipients.append(estate_email)
+            recipients.extend(_parse_emails(estate_email))
         elif event_type == EVENT_ESTATE_ALLOTTED:
             # Quarter is officially allotted; no further handover email alert is sent
             logger.info(f"[Clearance Email Alert] Quarter {clearance.house_no} officially allotted. No alert email required.")
             return
 
-    # Filter out empty or placeholder entries
-    recipients = [r for r in recipients if r and '@' in r]
+    # Filter out empty or placeholder entries and deduplicate
+    seen = set()
+    cleaned_recipients = []
+    for r in recipients:
+        r_clean = r.strip()
+        if r_clean and '@' in r_clean and r_clean.lower() not in seen:
+            seen.add(r_clean.lower())
+            cleaned_recipients.append(r_clean)
+    recipients = cleaned_recipients
     if not recipients:
         logger.info(f"[Clearance Email Alert] No valid recipient email configured for event '{event_type}'. Skipping.")
         return

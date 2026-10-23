@@ -99,16 +99,18 @@ class Command(BaseCommand):
         hostel_office.is_superuser = False
         hostel_office.save()
 
+        civil_email = 'je1.civil@iitgn.ac.in'
         civil_team, civil_created = User.objects.get_or_create(
             username='civil.team',
             defaults={
                 'first_name': 'Civil',
                 'last_name': 'Engineering Team',
-                'email': 'civil@iitgn.ac.in',
+                'email': civil_email,
                 'phone': '07923951160',
                 'role': User.Role.CIVIL_TEAM,
             },
         )
+        civil_team.email = civil_email
         if civil_created:
             civil_team.set_password(DEFAULT_PASSWORD)
         civil_team.role = User.Role.CIVIL_TEAM
@@ -116,16 +118,18 @@ class Command(BaseCommand):
         civil_team.is_staff = True
         civil_team.save()
 
+        elec_email = 'je1.electrical@iitgn.ac.in'
         electrical_team, elec_created = User.objects.get_or_create(
             username='electrical.team',
             defaults={
                 'first_name': 'Electrical',
                 'last_name': 'Engineering Team',
-                'email': 'electrical@iitgn.ac.in',
+                'email': elec_email,
                 'phone': '07923951170',
                 'role': User.Role.ELECTRICAL_TEAM,
             },
         )
+        electrical_team.email = elec_email
         if elec_created:
             electrical_team.set_password(DEFAULT_PASSWORD)
         electrical_team.role = User.Role.ELECTRICAL_TEAM
@@ -143,6 +147,7 @@ class Command(BaseCommand):
                 'role': User.Role.ESTATE_OFFICE,
             },
         )
+        estate_office.email = 'estateoffice@iitgn.ac.in'
         if estate_created:
             estate_office.set_password(DEFAULT_PASSWORD)
         estate_office.role = User.Role.ESTATE_OFFICE
