@@ -9,6 +9,9 @@ function getLandingRoute(user) {
   if (role === 'civil_team' || role === 'electrical_team') {
     return '/estate'
   }
+  if (role === 'engineer') {
+    return '/lifts'
+  }
   if (
     role === 'plant_engineer' ||
     role === 'electrical_supervisor' ||

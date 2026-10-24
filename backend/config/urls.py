@@ -41,6 +41,7 @@ def api_root(_request):
             'hvac': '/api/hvac/',
             'reports': '/api/reports/',
             'estate': '/api/estate/',
+            'lifts': '/api/lifts/',
         }
     )
 
@@ -92,6 +93,7 @@ urlpatterns = [
     path('api/substation/', include('apps.substation.urls')),
     path('api/wtp/', include('apps.wtp_stp.urls')),
     path('api/hvac/', include('apps.hvac.urls')),
+    path('api/lifts/', include('apps.lift_license.urls')),
     path('geo/', include((geo_public_urlpatterns, 'geo_tracker_public'))),
     path('api/geo-tracker/', include('apps.geo_tracker.urls')),
     path('api/admin/gallery/', hk_api_views.HKAdminGalleryView.as_view(), name='api-admin-gallery'),
@@ -114,6 +116,8 @@ urlpatterns = [
     path('insights/', admin_spa_section_redirect('insights')),
     path('users', admin_spa_section_redirect('users')),
     path('users/', admin_spa_section_redirect('users')),
+    path('lifts', admin_spa_section_redirect('lifts')),
+    path('lifts/', admin_spa_section_redirect('lifts')),
     path('horticulture', admin_spa_section_redirect('horticulture')),
     path('horticulture/', include((horticulture_mobile_urlpatterns, 'horticulture_mobile'))),
     path('substation', admin_spa_section_redirect('substation')),

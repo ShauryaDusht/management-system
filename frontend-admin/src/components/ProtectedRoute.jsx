@@ -9,6 +9,9 @@ function getLandingRoute(user) {
   if (['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'estate_office'].includes(role)) {
     return '/dashboard'
   }
+  if (role === 'engineer') {
+    return '/lifts'
+  }
   if (['plant_engineer', 'electrical_supervisor', 'supervisor', 'electrical_operator', 'operator'].includes(role)) {
     return '/substation'
   }

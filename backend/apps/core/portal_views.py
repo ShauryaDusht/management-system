@@ -49,6 +49,8 @@ def get_portal_redirect(user):
         return '/wtp/dashboard/'
     if role in ['hvac_engineer', 'hvac_supervisor', 'hvac_operator']:
         return '/hvac/dashboard/'
+    if role == 'engineer':
+        return '/admin/lifts'
     if role in ['inventory_manager', 'hk_inventory_manager', 'hostel_office', 'estate_office', 'civil_team', 'electrical_team']:
         return '/admin/login/'
     if role == 'supervisor':
@@ -115,8 +117,8 @@ def portal_login(request):
         )
         if user and user.is_active:
             user = _repair_hostel_office_user(user)
-            if user.role in ['admin', 'inventory_manager', 'hk_inventory_manager', 'hostel_office']:
-                return redirect(get_react_admin_url(request))
+            if user.role in ['admin', 'inventory_manager', 'hk_inventory_manager', 'hostel_office', 'engineer']:
+                return redirect(get_portal_redirect(user) if user.role == 'engineer' else get_react_admin_url(request))
             auth_login(request, user)
             return redirect(get_portal_redirect(user))
         else:
