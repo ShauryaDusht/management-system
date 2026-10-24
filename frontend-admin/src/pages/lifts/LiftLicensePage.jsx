@@ -2025,7 +2025,7 @@ export default function LiftLicensePage() {
       <Modal
         open={docsModalOpen}
         onClose={() => setDocsModalOpen(false)}
-        title="Lift Renewal Certificates & Document Archive"
+        title={isEngineer ? "Lift Renewal Certificates & Document Archive" : "Lift Renewal Certificates (View & Download)"}
         width={780}
       >
         {docsLift && (
@@ -2140,25 +2140,27 @@ export default function LiftLicensePage() {
                 </span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => setDocsTab('upload')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px 8px 0 0',
-                  border: 'none',
-                  background: docsTab === 'upload' ? 'var(--green-800)' : 'transparent',
-                  color: docsTab === 'upload' ? '#fff' : 'var(--text-2)',
-                  fontWeight: 700,
-                  fontSize: 13,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <span>📤 + Upload Certificate</span>
-              </button>
+              {isEngineer && (
+                <button
+                  type="button"
+                  onClick={() => setDocsTab('upload')}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px 8px 0 0',
+                    border: 'none',
+                    background: docsTab === 'upload' ? 'var(--green-800)' : 'transparent',
+                    color: docsTab === 'upload' ? '#fff' : 'var(--text-2)',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <span>📤 + Upload Certificate</span>
+                </button>
+              )}
             </div>
 
             {/* Tab 1: Certificate Timeline & Archive */}
@@ -2315,25 +2317,31 @@ export default function LiftLicensePage() {
                               Upload the current renewal certificate so engineers and safety inspectors can verify compliance directly.
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleSwitchUploadMode('renewal')
-                              setDocsTab('upload')
-                            }}
-                            style={{
-                              background: '#ca8a04',
-                              color: '#fff',
-                              border: 'none',
-                              padding: '6px 14px',
-                              borderRadius: 6,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            + Upload Active PDF
-                          </button>
+                          {isEngineer ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleSwitchUploadMode('renewal')
+                                setDocsTab('upload')
+                              }}
+                              style={{
+                                background: '#ca8a04',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '6px 14px',
+                                borderRadius: 6,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              + Upload Active PDF
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: 12, color: '#854d0e', fontWeight: 600 }}>
+                              Pending upload by Lift Engineer
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2441,41 +2449,43 @@ export default function LiftLicensePage() {
                                 >
                                   ⬇️ Download
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleSetDocAsCurrent(doc)}
-                                  title="Make this the current active certificate"
-                                  style={{
-                                    background: '#eff6ff',
-                                    color: '#1d4ed8',
-                                    border: '1px solid #bfdbfe',
-                                    padding: '5px 10px',
-                                    borderRadius: 6,
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  🔄 Make Active
-                                </button>
-                                {!isEngineer && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteDoc(doc)}
-                                    title="Delete certificate permanently"
-                                    style={{
-                                      background: '#fff1f2',
-                                      color: '#b91c1c',
-                                      border: '1px solid #fecaca',
-                                      padding: '5px 8px',
-                                      borderRadius: 6,
-                                      fontSize: 11,
-                                      fontWeight: 600,
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    🗑️
-                                  </button>
+                                {isEngineer && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetDocAsCurrent(doc)}
+                                      title="Make this the current active certificate"
+                                      style={{
+                                        background: '#eff6ff',
+                                        color: '#1d4ed8',
+                                        border: '1px solid #bfdbfe',
+                                        padding: '5px 10px',
+                                        borderRadius: 6,
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      🔄 Make Active
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteDoc(doc)}
+                                      title="Delete certificate permanently"
+                                      style={{
+                                        background: '#fff1f2',
+                                        color: '#b91c1c',
+                                        border: '1px solid #fecaca',
+                                        padding: '5px 8px',
+                                        borderRadius: 6,
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      🗑️
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -2503,7 +2513,7 @@ export default function LiftLicensePage() {
             )}
 
             {/* Tab 2: Upload Certificate (New Renewal or Older Expired) */}
-            {docsTab === 'upload' && (
+            {isEngineer && docsTab === 'upload' && (
               <form onSubmit={handleUploadDoc} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {/* Upload Mode Selector */}
                 <div
