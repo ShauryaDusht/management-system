@@ -102,9 +102,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-
 DB_ENGINE = os.getenv("DB_ENGINE", "django.db.backends.postgresql")
-
 
 if "sqlite" in DB_ENGINE:
     db_name = os.getenv("DB_NAME", "db.sqlite3")
@@ -177,11 +175,6 @@ CSRF_TRUSTED_ORIGINS = env_list(
     'CSRF_TRUSTED_ORIGINS',
     'http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000',
 )
-
-
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-
 
 LOGIN_URL = '/portal/login/'
 ADMIN_URL = 'manage/iitgn-staff/'

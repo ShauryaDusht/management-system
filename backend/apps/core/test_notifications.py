@@ -1,5 +1,8 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
+from unittest import mock
+from zoneinfo import ZoneInfo
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from django.utils import timezone
@@ -205,16 +208,23 @@ class InAppNotificationSystemTests(TestCase):
             logged_by=self.supervisor,
         )
 
-        # 1. Before 5 PM without force: no reminders sent
-        created = check_and_send_usage_reminders(force_time=False, target_date=date.today())
-        # Current local time test: if run locally before 17:00, count is 0
-        now_local = timezone.localtime(timezone.now())
-        if now_local.hour < 17:
-            self.assertEqual(created, 0)
+        # The clock is pinned (IST) so this test gives the same result at any time of day.
+        today = date(2031, 3, 10)
 
-        # 2. After 5 PM (or force_time=True): creates reminder
-        today = date.today()
-        count = check_and_send_usage_reminders(force_time=True, target_date=today)
+        def at_ist(hour):
+            return mock.patch(
+                'apps.core.notifications.timezone.now',
+                return_value=datetime(2031, 3, 10, hour, 0, tzinfo=ZoneInfo('Asia/Kolkata')),
+            )
+
+        # 1. Before 5 PM without force: no reminders sent
+        with at_ist(10):
+            created = check_and_send_usage_reminders(force_time=False, target_date=today)
+        self.assertEqual(created, 0)
+
+        # 2. After 5 PM, without force: creates the reminder
+        with at_ist(18):
+            count = check_and_send_usage_reminders(force_time=False, target_date=today)
         self.assertGreaterEqual(count, 1)
 
         notif = Notification.objects.filter(

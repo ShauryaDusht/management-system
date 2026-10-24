@@ -302,4 +302,4 @@ class CampusAreaConfig(models.Model):
         ordering = ['label']
 
     def __str__(self):
-        return f"{self.label} ({self.code})"
+        return f"{self.label} ({self.code})"

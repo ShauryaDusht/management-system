@@ -3520,8 +3520,10 @@ def hk_assign_reliever(request):
     today = timezone.localdate()
 
     with transaction.atomic():
+        # of=('self',): HKWorker.Meta.ordering joins the nullable `area` FK, and PostgreSQL
+        # refuses FOR UPDATE on the nullable side of an outer join.
         original = get_object_or_404(
-            HKWorker.objects.select_for_update(),
+            HKWorker.objects.select_for_update(of=('self',)),
             pk=request.POST.get("original_worker_id")
         )
         if area and original.id not in display_worker_ids_for_area(area):
@@ -3530,7 +3532,7 @@ def hk_assign_reliever(request):
             return HttpResponseBadRequest("Reliever workers cannot receive another reliever.")
 
         reliever_id = request.POST.get("reliever_id")
-        reliever = HKWorker.objects.select_for_update().filter(pk=reliever_id, is_active=True).first()
+        reliever = HKWorker.objects.select_for_update(of=('self',)).filter(pk=reliever_id, is_active=True).first()
         if not reliever:
             return HttpResponseBadRequest("Selected worker is not a valid reliever.")
 

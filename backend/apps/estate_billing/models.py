@@ -428,3 +428,6 @@ class HousingClearance(models.Model):
 
     def __str__(self):
         return f"{self.sr_no}. {self.house_type} {self.house_no} - {self.allottee_name or 'Pending Allottee'}"
+
+
+
