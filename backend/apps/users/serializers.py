@@ -4,7 +4,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from apps.core.image_urls import image_field_url
 from apps.core.portal_views import get_portal_redirect
 
-from .models import User, is_standard_username, normalize_username_value, unique_standard_username
+from .models import User, is_standard_username, normalize_username_value, resolve_username_alias, unique_standard_username
 
 STAFF_HIDDEN_AREA_NAMES = {'Hostels Reliever', 'Old Academic Reliever', 'New Academic Reliever'}
 REMOVED_ROLES = {'housekeeping_manager'}
@@ -70,19 +70,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return user
 
     def validate(self, attrs):
-        raw_val = normalize_username_value(attrs.get('username'))
-        if not User.objects.filter(username=raw_val).exists():
-            matched_user = User.objects.filter(email__iexact=raw_val).first()
-            if not matched_user and '@' in raw_val:
-                from django.conf import settings
-                civil_emails = [e.strip().lower() for e in getattr(settings, 'CIVIL_ALERT_EMAIL', '').split(',') if e.strip()]
-                elec_emails = [e.strip().lower() for e in getattr(settings, 'ELECTRICAL_ALERT_EMAIL', '').split(',') if e.strip()]
-                if raw_val.lower() in civil_emails:
-                    matched_user = User.objects.filter(username='civil.team').first()
-                elif raw_val.lower() in elec_emails:
-                    matched_user = User.objects.filter(username='electrical.team').first()
-            if matched_user:
-                raw_val = matched_user.username
+        raw_val = resolve_username_alias(attrs.get('username'))
         attrs['username'] = raw_val
         data = super().validate(attrs)
         user = self._repair_portal_user(self.user)

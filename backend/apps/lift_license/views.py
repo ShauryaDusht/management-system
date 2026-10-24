@@ -280,8 +280,6 @@ class LiftLicenseDocumentDetailView(APIView):
         return Response(serializer.data)
 
     def delete(self, request, pk):
-        if getattr(request.user, 'role', '') == 'engineer':
-            return Response({'error': 'Engineers are not permitted to delete certificate records. Contact administrator.'}, status=status.HTTP_403_FORBIDDEN)
         doc = self.get_object(pk)
         if not doc:
             return Response({'error': 'Document not found'}, status=status.HTTP_404_NOT_FOUND)

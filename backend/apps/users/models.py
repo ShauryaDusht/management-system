@@ -218,3 +218,80 @@ class User(AbstractUser):
     def is_electrical_team(self):
         return self.role == self.Role.ELECTRICAL_TEAM
 
+
+def resolve_username_alias(raw_val):
+    raw_val = normalize_username_value(raw_val)
+    if not raw_val:
+        return ''
+
+    # 1. Direct username match
+    if User.objects.filter(username=raw_val).exists():
+        return raw_val
+
+    # 2. Direct exact email match
+    user = User.objects.filter(email__iexact=raw_val).first()
+    if user:
+        return user.username
+
+    # 3. Match email prefix without '@', e.g. 'je1.electrical' -> 'je1.electrical@iitgn.ac.in'
+    if '@' not in raw_val:
+        user = User.objects.filter(email__iexact=f'{raw_val}@iitgn.ac.in').first()
+        if user:
+            return user.username
+
+    # 4. Common human aliases for engineering, lift, admin, and management roles
+    alias_map = {
+        'engineer': 'engineer',
+        'lift': 'engineer',
+        'lifts': 'engineer',
+        'lift_engineer': 'engineer',
+        'lift.engineer': 'engineer',
+        'lift-engineer': 'engineer',
+        'je1.electrical': 'engineer',
+        'je2.electrical': 'engineer',
+        'je1.electrical@iitgn.ac.in': 'engineer',
+        'je2.electrical@iitgn.ac.in': 'engineer',
+        'electrical': 'electrical.team',
+        'electrical_team': 'electrical.team',
+        'electrical.team': 'electrical.team',
+        'civil': 'civil.team',
+        'civil_team': 'civil.team',
+        'civil.team': 'civil.team',
+        'je1.civil': 'civil.team',
+        'je1.civil@iitgn.ac.in': 'civil.team',
+        'je2.civil': 'civil.team',
+        'je2.civil@iitgn.ac.in': 'civil.team',
+        'estate': 'estate.office',
+        'estate_office': 'estate.office',
+        'estate.office': 'estate.office',
+        'hostel': 'hostel.office',
+        'hostel_office': 'hostel.office',
+        'hostel.office': 'hostel.office',
+        'admin': 'super.admin',
+        'super_admin': 'super.admin',
+        'superadmin': 'super.admin',
+    }
+    if raw_val in alias_map:
+        target = alias_map[raw_val]
+        if User.objects.filter(username=target).exists():
+            return target
+
+    from django.conf import settings
+    civil_emails = [e.strip().lower() for e in getattr(settings, 'CIVIL_ALERT_EMAIL', '').split(',') if e.strip()]
+    elec_emails = [e.strip().lower() for e in getattr(settings, 'ELECTRICAL_ALERT_EMAIL', '').split(',') if e.strip()]
+    lift_emails = [e.strip().lower() for e in getattr(settings, 'LIFT_ALERT_EMAIL', '').split(',') if e.strip()]
+
+    target_email = raw_val if '@' in raw_val else f'{raw_val}@iitgn.ac.in'
+    if target_email in lift_emails:
+        if User.objects.filter(username='engineer').exists():
+            return 'engineer'
+    if target_email in elec_emails:
+        if User.objects.filter(username='electrical.team').exists():
+            return 'electrical.team'
+    if target_email in civil_emails:
+        if User.objects.filter(username='civil.team').exists():
+            return 'civil.team'
+
+    return raw_val
+
+
