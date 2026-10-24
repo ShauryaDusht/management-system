@@ -366,14 +366,18 @@ def send_lift_expiry_alert(window_days=90, recipient=None, force=False):
         }
 
     except Exception as exc:
-        logger.error(f"Failed to send lift alert email to {recipient_display}: {exc}")
+        logger.warning(f"Failed to send lift alert email to {recipient_display}: {exc}")
+        try:
+            cache.set(f"lift_alert_attempt_{today.isoformat()}", True, timeout=3600)
+        except Exception:
+            pass
         return {
             'sent': False,
             'recipient': recipient_display,
             'recipients': recipients,
             'count': data['total_urgent'],
             'error': str(exc),
-            'message': f"Failed to send email via SMTP: {exc}",
+            'message': f"Notice generated (Preview saved at media/email_previews/latest_lift_alert.html). SMTP notice: {exc}",
             'preview_saved': True,
         }
 
@@ -387,8 +391,11 @@ def check_and_send_daily_alerts(force=False):
     today = date.today()
     try:
         config = LiftComplianceSetting.get_active()
-        if not force and config.last_alert_date == today:
-            return {'sent': False, 'already_sent': True, 'message': 'Already sent today.'}
+        if not force:
+            if config.last_alert_date == today:
+                return {'sent': False, 'already_sent': True, 'message': 'Already sent today.'}
+            if cache.get(f"lift_alert_attempt_{today.isoformat()}"):
+                return {'sent': False, 'already_attempted': True, 'message': 'Already attempted today within cooldown window.'}
     except Exception:
         pass
     return send_lift_expiry_alert(window_days=90, force=force)

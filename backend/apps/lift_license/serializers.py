@@ -11,23 +11,24 @@ def parse_date_flexibly(value):
     val_str = str(value).strip()
     if not val_str:
         return None
-    # Try DD.MM.YYYY
-    if '.' in val_str:
-        try:
-            return datetime.strptime(val_str, '%d.%m.%Y').date()
-        except ValueError:
-            pass
-    # Try YYYY-MM-DD
-    if '-' in val_str:
+    # Try ISO YYYY-MM-DD or ISO timestamp (e.g. 2026-10-24T... or 2026-10-24 00:00:00)
+    if len(val_str) >= 10 and val_str[4] == '-' and val_str[7] == '-':
         try:
             return datetime.strptime(val_str[:10], '%Y-%m-%d').date()
         except ValueError:
             pass
+    # Try DD.MM.YYYY
+    if '.' in val_str:
+        try:
+            return datetime.strptime(val_str[:10], '%d.%m.%Y').date()
+        except ValueError:
+            pass
     # Try DD-MM-YYYY
-    try:
-        return datetime.strptime(val_str, '%d-%m-%Y').date()
-    except ValueError:
-        pass
+    if '-' in val_str:
+        try:
+            return datetime.strptime(val_str[:10], '%d-%m-%Y').date()
+        except ValueError:
+            pass
     raise serializers.ValidationError(f"Invalid date format '{val_str}'. Use DD.MM.YYYY or YYYY-MM-DD.")
 
 
@@ -192,10 +193,15 @@ class LiftLicenseSerializer(serializers.ModelSerializer):
         return ret
 
     def validate(self, attrs):
-        if not attrs.get('eng') or not str(attrs.get('eng')).strip():
+        if 'eng' in attrs:
+            val = attrs.get('eng')
+            if not val or not str(val).strip():
+                attrs['eng'] = 'Mr. Naveen Rai'
+        elif self.instance is None and not attrs.get('eng'):
             attrs['eng'] = 'Mr. Naveen Rai'
-        frm = attrs.get('frm')
-        till = attrs.get('till')
+
+        frm = attrs.get('frm', getattr(self.instance, 'frm', None))
+        till = attrs.get('till', getattr(self.instance, 'till', None))
         if frm and till and till < frm:
             raise serializers.ValidationError({"till": "Valid till date must be after valid from date."})
         return attrs

@@ -215,7 +215,12 @@ class LiftLicenseDocumentsListView(APIView):
                 lift.till = valid_till
             if valid_from:
                 lift.frm = valid_from
-            if license_no:
+            if license_no and license_no != lift.no:
+                if LiftLicense.objects.exclude(pk=lift.pk).filter(no=license_no).exists():
+                    return Response(
+                        {'error': f"License number '{license_no}' is already assigned to another lift."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
                 lift.no = license_no
             # Reset renewal application when new certificate is active
             lift.is_applied = False
@@ -258,8 +263,9 @@ class LiftLicenseDocumentDetailView(APIView):
                     doc.lift.till = doc.valid_till
                 if doc.valid_from:
                     doc.lift.frm = doc.valid_from
-                if doc.license_no:
-                    doc.lift.no = doc.license_no
+                if doc.license_no and doc.license_no != doc.lift.no:
+                    if not LiftLicense.objects.exclude(pk=doc.lift.pk).filter(no=doc.license_no).exists():
+                        doc.lift.no = doc.license_no
                 doc.lift.save()
             else:
                 doc.is_current = False
@@ -295,11 +301,15 @@ class LiftLicenseStatsView(APIView):
         except (ValueError, TypeError):
             threshold = 90
 
-        # Background automated check: dispatch today's alert if not yet sent
-        import threading
+        # Background automated check: dispatch today's alert if not yet sent or attempted
         try:
-            from .email_service import check_and_send_daily_alerts
-            threading.Thread(target=check_and_send_daily_alerts, kwargs={'force': False}, daemon=True).start()
+            from django.core.cache import cache
+            today = date.today()
+            check_key = f"lift_alert_checked_{today.isoformat()}"
+            if not cache.get(check_key) and setting.last_alert_date != today:
+                cache.set(check_key, True, timeout=3600)  # Check at most once per hour
+                from .email_service import check_and_send_daily_alerts
+                threading.Thread(target=check_and_send_daily_alerts, kwargs={'force': False}, daemon=True).start()
         except Exception:
             pass
 

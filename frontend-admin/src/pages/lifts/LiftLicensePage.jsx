@@ -69,20 +69,20 @@ function formatDaysLeft(days) {
 function toIsoDate(val) {
   if (!val) return ''
   const s = String(val).trim()
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
-  if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) {
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10)
+  if (/^\d{2}\.\d{2}\.\d{4}/.test(s)) {
     const [d, m, y] = s.split('.')
-    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+    return `${y.slice(0, 4)}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
   }
-  if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
+  if (/^\d{2}-\d{2}-\d{4}/.test(s)) {
     const [d, m, y] = s.split('-')
-    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+    return `${y.slice(0, 4)}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
   }
   return ''
 }
 
 export default function LiftLicensePage() {
-  const { isEngineer } = useAuth()
+  const { isEngineer, isAdmin } = useAuth()
   const [lifts, setLifts] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -349,6 +349,8 @@ export default function LiftLicensePage() {
         setNoticeFeedback(`Alert email dispatched for 30, 60 & 90 days expiring lifts to ${targetMail}`)
       } else if (res?.data?.already_sent) {
         setNoticeFeedback(`Alert already sent today to ${targetMail}`)
+      } else if (res?.data?.error) {
+        setNoticeFeedback(`Notice generated (Preview saved). SMTP: ${res.data.error}`)
       } else {
         setNoticeFeedback(res?.data?.message || 'Email alert processed.')
       }
@@ -362,9 +364,8 @@ export default function LiftLicensePage() {
     }
   }
 
-  // Open Renewal Application Modal (Engineer only)
+  // Open Renewal Application Modal
   const handleOpenApplyModal = (lift) => {
-    if (!isEngineer) return
     setApplyLift(lift)
     setApplyError(null)
     setApplyFormValues({
@@ -375,10 +376,10 @@ export default function LiftLicensePage() {
     setApplyModalOpen(true)
   }
 
-  // Save Renewal Application Status (Engineer only)
+  // Save Renewal Application Status
   const handleSaveApply = async (e) => {
     e?.preventDefault()
-    if (!isEngineer || !applyLift) return
+    if (!applyLift) return
     if (!applyFormValues.applied_date) {
       setApplyError('Please enter the date when the renewal was applied.')
       return
@@ -404,9 +405,9 @@ export default function LiftLicensePage() {
     }
   }
 
-  // Revert / Unmark Renewal Application (Engineer only)
+  // Revert / Unmark Renewal Application
   const handleUnmarkApply = async () => {
-    if (!isEngineer || !applyLift) return
+    if (!applyLift) return
     try {
       setSavingApply(true)
       setApplyError(null)
@@ -1054,39 +1055,39 @@ export default function LiftLicensePage() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                {/* Filter Pills */}
+                <div style={{ display: 'flex', background: '#fff', border: '1px solid #fca5a5', borderRadius: 8, padding: 2, gap: 2, flexWrap: 'wrap' }}>
+                  {[
+                    { id: 'all', label: `All (${alerts.length})` },
+                    { id: '30', label: `≤30d (${alerts.filter((a) => a.tier === '30' && !a.is_applied).length})` },
+                    { id: '60', label: `60d (${alerts.filter((a) => a.tier === '60' && !a.is_applied).length})` },
+                    { id: '90', label: `90d (${alerts.filter((a) => a.tier === '90' && !a.is_applied).length})` },
+                    { id: 'expired', label: `Expired (${alerts.filter((a) => a.tier === 'expired' && !a.is_applied).length})` },
+                    { id: 'applied', label: `⏳ Applied (${alerts.filter((a) => a.is_applied).length})` },
+                  ].map((btn) => (
+                    <button
+                      key={btn.id}
+                      type="button"
+                      onClick={() => setAlertTierFilter(btn.id)}
+                      style={{
+                        border: 'none',
+                        background: alertTierFilter === btn.id ? '#991b1b' : 'transparent',
+                        color: alertTierFilter === btn.id ? '#fff' : '#7f1d1d',
+                        fontWeight: 700,
+                        fontSize: 11,
+                        padding: '4px 8px',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+
                 {!isEngineer && (
                   <>
-                    {/* Filter Pills */}
-                    <div style={{ display: 'flex', background: '#fff', border: '1px solid #fca5a5', borderRadius: 8, padding: 2, gap: 2 }}>
-                      {[
-                        { id: 'all', label: `All (${alerts.length})` },
-                        { id: '30', label: `≤30d (${alerts.filter((a) => a.tier === '30' && !a.is_applied).length})` },
-                        { id: '60', label: `60d (${alerts.filter((a) => a.tier === '60' && !a.is_applied).length})` },
-                        { id: '90', label: `90d (${alerts.filter((a) => a.tier === '90' && !a.is_applied).length})` },
-                        { id: 'expired', label: `Expired (${alerts.filter((a) => a.tier === 'expired' && !a.is_applied).length})` },
-                        { id: 'applied', label: `⏳ Applied (${alerts.filter((a) => a.is_applied).length})` },
-                      ].map((btn) => (
-                        <button
-                          key={btn.id}
-                          type="button"
-                          onClick={() => setAlertTierFilter(btn.id)}
-                          style={{
-                            border: 'none',
-                            background: alertTierFilter === btn.id ? '#991b1b' : 'transparent',
-                            color: alertTierFilter === btn.id ? '#fff' : '#7f1d1d',
-                            fontWeight: 700,
-                            fontSize: 11,
-                            padding: '4px 8px',
-                            borderRadius: 6,
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          {btn.label}
-                        </button>
-                      ))}
-                    </div>
-
                     {/* Direct Send Alert Button */}
                     <button
                       type="button"
@@ -1252,29 +1253,27 @@ export default function LiftLicensePage() {
                       </div>
 
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        {isEngineer && (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenApplyModal(item)}
-                            style={{
-                              background: isApplied ? '#f5f3ff' : '#ede9fe',
-                              color: '#6d28d9',
-                              border: '1px solid #c4b5fd',
-                              borderRadius: 6,
-                              padding: '6px 10px',
-                              fontSize: 11,
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              whiteSpace: 'nowrap',
-                            }}
-                            title={isApplied ? 'Update renewal application details' : 'Record that renewal application was submitted'}
-                          >
-                            <span>{isApplied ? '📝 Applied ✎' : '📝 Mark as Applied'}</span>
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenApplyModal(item)}
+                          style={{
+                            background: isApplied ? '#f5f3ff' : '#ede9fe',
+                            color: '#6d28d9',
+                            border: '1px solid #c4b5fd',
+                            borderRadius: 6,
+                            padding: '6px 10px',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={isApplied ? 'Update renewal application details' : 'Record that renewal application was submitted'}
+                        >
+                          <span>{isApplied ? '📝 Applied ✎' : '📝 Mark as Applied'}</span>
+                        </button>
                         <Btn size="sm" variant="secondary" onClick={() => handleOpenEdit(item)}>
                           Update
                         </Btn>
@@ -1766,8 +1765,28 @@ export default function LiftLicensePage() {
                           <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                             <button
                               type="button"
+                              onClick={() => handleOpenApplyModal(item)}
+                              title={item.is_applied ? 'Update renewal application details' : 'Record that renewal application was submitted'}
+                              style={{
+                                padding: '5px 9px',
+                                borderRadius: 6,
+                                border: item.is_applied ? '1px solid #c4b5fd' : '1px solid var(--border)',
+                                background: item.is_applied ? '#f5f3ff' : 'var(--surface)',
+                                color: item.is_applied ? '#6d28d9' : 'var(--text)',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                            >
+                              <span>{item.is_applied ? '⏳ Applied ✎' : '📝 Apply'}</span>
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handleOpenDocuments(item)}
-                              title={isEngineer ? "Renewal Certificates & Document History" : "View & Download Certificates uploaded by Engineer"}
+                              title="Renewal Certificates & Document History"
                               style={{
                                 padding: '5px 10px',
                                 borderRadius: 6,
@@ -1784,7 +1803,7 @@ export default function LiftLicensePage() {
                               }}
                             >
                               <span>📄</span>
-                              <span>{isEngineer ? 'Certificates' : 'View Certificates'}</span>
+                              <span>Certificates</span>
                               {item.documents_count > 0 && (
                                 <span
                                   style={{
@@ -1986,55 +2005,53 @@ export default function LiftLicensePage() {
             </Field>
           </div>
 
-          {/* Renewal Application Section in Edit Modal (Engineer only) */}
-          {isEngineer && (
-            <div
-              style={{
-                padding: '12px 14px',
-                borderRadius: 8,
-                background: formValues.is_applied ? '#f5f3ff' : 'var(--surface-2)',
-                border: formValues.is_applied ? '1px solid #c4b5fd' : '1px solid var(--border)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-              }}
-            >
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: formValues.is_applied ? '#6d28d9' : 'var(--text)' }}>
-                <input
-                  type="checkbox"
-                  checked={formValues.is_applied}
-                  onChange={(e) =>
-                    setFormValues({
-                      ...formValues,
-                      is_applied: e.target.checked,
-                      applied_date: e.target.checked ? (formValues.applied_date || new Date().toISOString().slice(0, 10)) : '',
-                    })
-                  }
-                />
-                <span>⏳ Mark Renewal Form as Applied (In Process)</span>
-              </label>
+          {/* Renewal Application Section in Edit Modal */}
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: 8,
+              background: formValues.is_applied ? '#f5f3ff' : 'var(--surface-2)',
+              border: formValues.is_applied ? '1px solid #c4b5fd' : '1px solid var(--border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+            }}
+          >
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: formValues.is_applied ? '#6d28d9' : 'var(--text)' }}>
+              <input
+                type="checkbox"
+                checked={formValues.is_applied}
+                onChange={(e) =>
+                  setFormValues({
+                    ...formValues,
+                    is_applied: e.target.checked,
+                    applied_date: e.target.checked ? (formValues.applied_date || new Date().toISOString().slice(0, 10)) : '',
+                  })
+                }
+              />
+              <span>⏳ Mark Renewal Form as Applied (In Process)</span>
+            </label>
 
-              {formValues.is_applied && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 4 }}>
-                  <Field label="Applied Date *" hint="Date form was submitted">
-                    <Input
-                      type="date"
-                      value={formValues.applied_date}
-                      onChange={(e) => setFormValues({ ...formValues, applied_date: e.target.value })}
-                      required={formValues.is_applied}
-                    />
-                  </Field>
-                  <Field label="Application / Challan Ref #" hint="Government ref or receipt number">
-                    <Input
-                      value={formValues.application_no}
-                      onChange={(e) => setFormValues({ ...formValues, application_no: e.target.value })}
-                      placeholder="e.g. APP/2026/LIFT/892"
-                    />
-                  </Field>
-                </div>
-              )}
-            </div>
-          )}
+            {formValues.is_applied && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 4 }}>
+                <Field label="Applied Date *" hint="Date form was submitted">
+                  <Input
+                    type="date"
+                    value={formValues.applied_date}
+                    onChange={(e) => setFormValues({ ...formValues, applied_date: e.target.value })}
+                    required={formValues.is_applied}
+                  />
+                </Field>
+                <Field label="Application / Challan Ref #" hint="Government ref or receipt number">
+                  <Input
+                    value={formValues.application_no}
+                    onChange={(e) => setFormValues({ ...formValues, application_no: e.target.value })}
+                    placeholder="e.g. APP/2026/LIFT/892"
+                  />
+                </Field>
+              </div>
+            )}
+          </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
             <Btn variant="secondary" onClick={() => setEditModalOpen(false)}>
@@ -2076,7 +2093,7 @@ export default function LiftLicensePage() {
       <Modal
         open={docsModalOpen}
         onClose={() => setDocsModalOpen(false)}
-        title={isEngineer ? "Lift Renewal Certificates & Document Archive" : "Lift Renewal Certificates (View & Download)"}
+        title="Lift Renewal Certificates & Document Archive"
         width={780}
       >
         {docsLift && (
@@ -2191,27 +2208,25 @@ export default function LiftLicensePage() {
                 </span>
               </button>
 
-              {isEngineer && (
-                <button
-                  type="button"
-                  onClick={() => setDocsTab('upload')}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '8px 8px 0 0',
-                    border: 'none',
-                    background: docsTab === 'upload' ? 'var(--green-800)' : 'transparent',
-                    color: docsTab === 'upload' ? '#fff' : 'var(--text-2)',
-                    fontWeight: 700,
-                    fontSize: 13,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
-                >
-                  <span>📤 + Upload Certificate</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setDocsTab('upload')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px 8px 0 0',
+                  border: 'none',
+                  background: docsTab === 'upload' ? 'var(--green-800)' : 'transparent',
+                  color: docsTab === 'upload' ? '#fff' : 'var(--text-2)',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <span>📤 + Upload Certificate</span>
+              </button>
             </div>
 
             {/* Tab 1: Certificate Timeline & Archive */}
@@ -2368,31 +2383,25 @@ export default function LiftLicensePage() {
                               Upload the current renewal certificate so engineers and safety inspectors can verify compliance directly.
                             </div>
                           </div>
-                          {isEngineer ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleSwitchUploadMode('renewal')
-                                setDocsTab('upload')
-                              }}
-                              style={{
-                                background: '#ca8a04',
-                                color: '#fff',
-                                border: 'none',
-                                padding: '6px 14px',
-                                borderRadius: 6,
-                                fontSize: 12,
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              + Upload Active PDF
-                            </button>
-                          ) : (
-                            <span style={{ fontSize: 12, color: '#854d0e', fontWeight: 600 }}>
-                              Pending upload by Lift Engineer
-                            </span>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSwitchUploadMode('renewal')
+                              setDocsTab('upload')
+                            }}
+                            style={{
+                              background: '#ca8a04',
+                              color: '#fff',
+                              border: 'none',
+                              padding: '6px 14px',
+                              borderRadius: 6,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            + Upload Active PDF
+                          </button>
                         </div>
                       )}
                     </div>
@@ -2500,25 +2509,23 @@ export default function LiftLicensePage() {
                                 >
                                   ⬇️ Download
                                 </button>
-                                {isEngineer && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSetDocAsCurrent(doc)}
-                                    title="Make this the current active certificate"
-                                    style={{
-                                      background: '#eff6ff',
-                                      color: '#1d4ed8',
-                                      border: '1px solid #bfdbfe',
-                                      padding: '5px 10px',
-                                      borderRadius: 6,
-                                      fontSize: 11,
-                                      fontWeight: 700,
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    🔄 Make Active
-                                  </button>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetDocAsCurrent(doc)}
+                                  title="Make this the current active certificate"
+                                  style={{
+                                    background: '#eff6ff',
+                                    color: '#1d4ed8',
+                                    border: '1px solid #bfdbfe',
+                                    padding: '5px 10px',
+                                    borderRadius: 6,
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  🔄 Make Active
+                                </button>
                                 {!isEngineer && (
                                   <button
                                     type="button"
