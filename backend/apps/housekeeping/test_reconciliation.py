@@ -92,92 +92,82 @@ class StockReconciliationRegressionTests(TestCase):
         item.refresh_from_db()
         return hk_req, inv_req, issue
 
-    def test_scenario_1_issued_2_used_1_request_1_fully_covered(self):
-        """
-        Scenario 1:
-        Supervisor has 2 units issued, reports using 1, and requests 1 more.
-        Must fulfill entirely from outstanding stock:
-        - hk_req.status == 'issued'
-        - hk_req.covered_quantity == 1
-        - No manager approval task created (no pending ItemRequest)
-        - No warehouse issue or stock deduction
-        """
-        self._create_approved_and_issued_stock(self.supervisor, self.area_a, self.item, 2)
-        issue = ItemIssue.objects.filter(request__requested_by=self.supervisor).first()
+    BLOCK_MSG = "usage report must be completed"
 
-        # Log 1 unit used
+    def _post_stock_request(self, quantity, reason, item=None, area=None):
+        return self.client.post(
+            "/housekeeping/stock/request/",
+            data={
+                "area_id": (area or self.area_a).id,
+                "inventory_item_id": (item or self.item).id,
+                "quantity": quantity,
+                "reason": reason,
+            },
+        )
+
+    def _report_usage(self, issue, quantity, purpose="Reported usage"):
         ItemUsageLog.objects.create(
             issue=issue,
-            quantity_used=Decimal("1.00"),
-            purpose="Cleaned block A floor",
+            quantity_used=Decimal(quantity),
+            purpose=purpose,
             logged_by=self.supervisor,
         )
 
-        initial_warehouse_avail = self.item.available_quantity
+    def _assert_blocked(self, response, pending, reason):
+        """The form is shown again with the block message, naming the unreported quantity, and nothing is created."""
+        self.assertEqual(response.status_code, 200)
+        error = response.context["form_error"]
+        self.assertIn(self.BLOCK_MSG, error)
+        self.assertIn(f"{pending} liters pending", error)
+        self.assertFalse(HKStockRequest.objects.filter(reason=reason).exists())
+
+    def test_scenario_1_partially_reported_usage_blocks_new_request_until_fully_reported(self):
+        """
+        Scenario 1:
+        Supervisor has 2 units issued and reports using only 1.
+        A new request for the same item is blocked while 1 unit of usage is still unreported.
+        Once the remaining unit is reported, the request goes through the normal manager
+        approval workflow for the full quantity.
+        """
+        _, _, issue = self._create_approved_and_issued_stock(self.supervisor, self.area_a, self.item, 2)
+        self._report_usage(issue, "1.00", "Cleaned block A floor")
+        self.item.refresh_from_db()
+        warehouse_before = self.item.available_quantity
         self.client.force_login(self.supervisor)
 
-        response = self.client.post(
-            "/housekeeping/stock/request/",
-            data={
-                "area_id": self.area_a.id,
-                "inventory_item_id": self.item.id,
-                "quantity": 1,
-                "reason": "Need cleaner for daily mop",
-            },
+        blocked = self._post_stock_request(1, "Need cleaner for daily mop")
+        self._assert_blocked(blocked, "1.00", "Need cleaner for daily mop")
+        self.assertFalse(
+            ItemRequest.objects.filter(requested_by=self.supervisor, status=ItemRequest.Status.PENDING).exists()
         )
-        self.assertEqual(response.status_code, 302)
 
-        new_hk_req = HKStockRequest.objects.filter(
-            requested_by=self.supervisor, area=self.area_a, reason="Need cleaner for daily mop"
-        ).first()
-        self.assertIsNotNone(new_hk_req)
-        self.assertEqual(new_hk_req.covered_quantity, 1)
-        self.assertEqual(new_hk_req.status, "issued")
-        self.assertIsNone(new_hk_req.inventory_request)
+        # Report the remaining unit -> the item can be requested again
+        self._report_usage(issue, "1.00", "Cleaned block B floor")
+        allowed = self._post_stock_request(1, "Need cleaner for daily mop")
+        self.assertEqual(allowed.status_code, 302)
 
-        # Verify warehouse stock was not deducted
+        new_hk_req = HKStockRequest.objects.get(requested_by=self.supervisor, reason="Need cleaner for daily mop")
+        self.assertEqual(new_hk_req.status, "pending")
+        self.assertEqual(new_hk_req.covered_quantity, 0)
+        self.assertEqual(new_hk_req.inventory_request.quantity_requested, 1)
+
+        # Submitting a request never touches warehouse stock
         self.item.refresh_from_db()
-        self.assertEqual(self.item.available_quantity, initial_warehouse_avail)
+        self.assertEqual(self.item.available_quantity, warehouse_before)
 
-        # Verify no pending inventory request was created for manager
-        pending_mgr_reqs = ItemRequest.objects.filter(
-            requested_by=self.supervisor, status=ItemRequest.Status.PENDING
-        )
-        self.assertEqual(pending_mgr_reqs.count(), 0)
-
-    def test_scenario_2_outstanding_1_request_3_partially_covered(self):
+    def test_scenario_2_outstanding_stock_blocks_larger_request(self):
         """
         Scenario 2:
-        Supervisor has 1 unit outstanding, requests 3.
-        Must cover 1 from outstanding stock, require approval only for uncovered 2:
-        - hk_req.quantity == 3
-        - hk_req.covered_quantity == 1
-        - hk_req.status == 'pending'
-        - inv_req.quantity_requested == 2
+        Supervisor holds 1 unreported unit and asks for 3.
+        The whole request is blocked; it is not split into a covered part and an approval part.
         """
         self._create_approved_and_issued_stock(self.supervisor, self.area_a, self.item, 1)
 
         self.client.force_login(self.supervisor)
-        response = self.client.post(
-            "/housekeeping/stock/request/",
-            data={
-                "area_id": self.area_a.id,
-                "inventory_item_id": self.item.id,
-                "quantity": 3,
-                "reason": "Deep clean week",
-            },
+        self._assert_blocked(self._post_stock_request(3, "Deep clean week"), "1.00", "Deep clean week")
+        self.assertFalse(
+            ItemRequest.objects.filter(requested_by=self.supervisor, status=ItemRequest.Status.PENDING).exists()
         )
-        self.assertEqual(response.status_code, 302)
-
-        new_hk_req = HKStockRequest.objects.filter(
-            requested_by=self.supervisor, area=self.area_a, reason="Deep clean week"
-        ).first()
-        self.assertIsNotNone(new_hk_req)
-        self.assertEqual(new_hk_req.quantity, 3)
-        self.assertEqual(new_hk_req.covered_quantity, 1)
-        self.assertEqual(new_hk_req.status, "pending")
-        self.assertIsNotNone(new_hk_req.inventory_request)
-        self.assertEqual(new_hk_req.inventory_request.quantity_requested, 2)
 
     def test_scenario_3_all_previously_issued_stock_used(self):
         """
@@ -218,168 +208,85 @@ class StockReconciliationRegressionTests(TestCase):
     def test_scenario_4_multiple_previous_issues_and_usage_reports(self):
         """
         Scenario 4:
-        Multiple issues (5 units, 4 units) and multiple usage reports (2 units used, 1 unit used).
-        Total outstanding = (5 - 2) + (4 - 1) = 6 units.
-        First request for 4 units is fully covered (covered = 4).
-        Second request for 3 units covers remaining 2, requires approval for 1.
+        Two issues (5 and 4 units) with usage reports of 2 and 1 units.
+        Unreported usage across both issues = (5 - 2) + (4 - 1) = 6 units, so the item stays
+        blocked until every issue has been fully reported.
         """
         _, _, issue1 = self._create_approved_and_issued_stock(self.supervisor, self.area_a, self.item, 5)
         _, _, issue2 = self._create_approved_and_issued_stock(self.supervisor, self.area_a, self.item, 4)
-
-        ItemUsageLog.objects.create(
-            issue=issue1,
-            quantity_used=Decimal("2.00"),
-            purpose="Routine cleaning",
-            logged_by=self.supervisor,
-        )
-        ItemUsageLog.objects.create(
-            issue=issue2,
-            quantity_used=Decimal("1.00"),
-            purpose="Routine cleaning 2",
-            logged_by=self.supervisor,
-        )
+        self._report_usage(issue1, "2.00", "Routine cleaning")
+        self._report_usage(issue2, "1.00", "Routine cleaning 2")
 
         self.client.force_login(self.supervisor)
+        self._assert_blocked(self._post_stock_request(4, "Batch cleaning"), "6.00", "Batch cleaning")
 
-        # Request 4 units -> fully covered
-        self.client.post(
-            "/housekeeping/stock/request/",
-            data={
-                "area_id": self.area_a.id,
-                "inventory_item_id": self.item.id,
-                "quantity": 4,
-                "reason": "Batch cleaning 1",
-            },
-        )
-        req1 = HKStockRequest.objects.filter(reason="Batch cleaning 1").first()
-        self.assertEqual(req1.covered_quantity, 4)
-        self.assertEqual(req1.status, "issued")
+        # Reporting only the first issue is not enough
+        self._report_usage(issue1, "3.00", "Finished issue 1")
+        self._assert_blocked(self._post_stock_request(4, "Batch cleaning"), "3.00", "Batch cleaning")
 
-        # Request 3 units -> only 2 remaining unallocated, so cover 2 and require approval for 1
-        self.client.post(
-            "/housekeeping/stock/request/",
-            data={
-                "area_id": self.area_a.id,
-                "inventory_item_id": self.item.id,
-                "quantity": 3,
-                "reason": "Batch cleaning 2",
-            },
-        )
-        req2 = HKStockRequest.objects.filter(reason="Batch cleaning 2").first()
-        self.assertEqual(req2.covered_quantity, 2)
-        self.assertEqual(req2.status, "pending")
-        self.assertEqual(req2.inventory_request.quantity_requested, 1)
+        # Reporting the second issue as well unblocks the item
+        self._report_usage(issue2, "3.00", "Finished issue 2")
+        allowed = self._post_stock_request(4, "Batch cleaning")
+        self.assertEqual(allowed.status_code, 302)
+        req = HKStockRequest.objects.get(reason="Batch cleaning")
+        self.assertEqual(req.covered_quantity, 0)
+        self.assertEqual(req.status, "pending")
+        self.assertEqual(req.inventory_request.quantity_requested, 4)
 
-    def test_scenario_5_multiple_requests_before_usage_reported(self):
+    def test_scenario_5_repeated_requests_stay_blocked_until_usage_reported(self):
         """
         Scenario 5:
-        Outstanding stock = 2.
-        Multiple requests submitted before usage is reported.
-        Request 1 (1 unit) -> covered = 1.
-        Request 2 (1 unit) -> covered = 1.
-        Request 3 (1 unit) -> unallocated is 0, so covered = 0 and requires approval for 1.
-        Prevents double-allocation of the same outstanding stock.
+        Unreported stock = 2.
+        Every new request for the item is blocked until usage is reported:
+        nothing is queued and nothing is allocated twice.
         """
-        self._create_approved_and_issued_stock(self.supervisor, self.area_a, self.item, 2)
+        _, _, issue = self._create_approved_and_issued_stock(self.supervisor, self.area_a, self.item, 2)
         self.client.force_login(self.supervisor)
 
-        self.client.post(
-            "/housekeeping/stock/request/",
-            data={
-                "area_id": self.area_a.id,
-                "inventory_item_id": self.item.id,
-                "quantity": 1,
-                "reason": "Request 1",
-            },
-        )
-        r1 = HKStockRequest.objects.filter(reason="Request 1").first()
-        self.assertEqual(r1.covered_quantity, 1)
-        self.assertEqual(r1.status, "issued")
+        for n in (1, 2, 3):
+            self._assert_blocked(self._post_stock_request(1, f"Request {n}"), "2.00", f"Request {n}")
+        # Only the original issued request exists
+        self.assertEqual(HKStockRequest.objects.filter(requested_by=self.supervisor).count(), 1)
 
-        self.client.post(
-            "/housekeeping/stock/request/",
-            data={
-                "area_id": self.area_a.id,
-                "inventory_item_id": self.item.id,
-                "quantity": 1,
-                "reason": "Request 2",
-            },
-        )
-        r2 = HKStockRequest.objects.filter(reason="Request 2").first()
-        self.assertEqual(r2.covered_quantity, 1)
-        self.assertEqual(r2.status, "issued")
+        # Partial report is still blocked
+        self._report_usage(issue, "1.00")
+        self._assert_blocked(self._post_stock_request(1, "Request 4"), "1.00", "Request 4")
 
-        self.client.post(
-            "/housekeeping/stock/request/",
-            data={
-                "area_id": self.area_a.id,
-                "inventory_item_id": self.item.id,
-                "quantity": 1,
-                "reason": "Request 3",
-            },
-        )
-        r3 = HKStockRequest.objects.filter(reason="Request 3").first()
-        self.assertEqual(r3.covered_quantity, 0)
-        self.assertEqual(r3.status, "pending")
-        self.assertEqual(r3.inventory_request.quantity_requested, 1)
+        # Full report unblocks
+        self._report_usage(issue, "1.00")
+        allowed = self._post_stock_request(1, "Request 5")
+        self.assertEqual(allowed.status_code, 302)
+        r5 = HKStockRequest.objects.get(reason="Request 5")
+        self.assertEqual(r5.covered_quantity, 0)
+        self.assertEqual(r5.status, "pending")
+        self.assertEqual(r5.inventory_request.quantity_requested, 1)
 
-    def test_scenario_6_pending_and_approved_requests_and_rejection(self):
+    def test_scenario_6_approved_unissued_request_blocks_until_rejected(self):
         """
         Scenario 6:
-        Pending requests allocate unallocated quantity.
-        If a pending request is rejected by manager, its allocation is released.
+        An approved request that the manager has not issued yet counts as outstanding, so it blocks a
+        new request for the same item. If that request is rejected, the block is released.
         """
-        self._create_approved_and_issued_stock(self.supervisor, self.area_a, self.item, 2)
+        approved_unissued = ItemRequest.objects.create(
+            item=self.item,
+            requested_by=self.supervisor,
+            quantity_requested=3,
+            purpose=f"[HK - {self.area_a.name}] Big request",
+            status=ItemRequest.Status.APPROVED,
+        )
         self.client.force_login(self.supervisor)
 
-        # Request 1 for 3 units: covers 2, requires approval for 1
-        self.client.post(
-            "/housekeeping/stock/request/",
-            data={
-                "area_id": self.area_a.id,
-                "inventory_item_id": self.item.id,
-                "quantity": 3,
-                "reason": "Big request",
-            },
-        )
-        r1 = HKStockRequest.objects.filter(reason="Big request").first()
-        self.assertEqual(r1.covered_quantity, 2)
-        self.assertEqual(r1.status, "pending")
+        self._assert_blocked(self._post_stock_request(1, "Concurrent request"), "3.00", "Concurrent request")
 
-        # While r1 is pending, r2 for 1 unit has 0 unallocated stock
-        self.client.post(
-            "/housekeeping/stock/request/",
-            data={
-                "area_id": self.area_a.id,
-                "inventory_item_id": self.item.id,
-                "quantity": 1,
-                "reason": "Concurrent request",
-            },
-        )
-        r2 = HKStockRequest.objects.filter(reason="Concurrent request").first()
-        self.assertEqual(r2.covered_quantity, 0)
+        approved_unissued.status = ItemRequest.Status.REJECTED
+        approved_unissued.save()
 
-        # Manager rejects r1
-        r1.status = "rejected"
-        r1.save()
-        if r1.inventory_request:
-            r1.inventory_request.status = ItemRequest.Status.REJECTED
-            r1.inventory_request.save()
-
-        # Now r1's allocation of 2 is released!
-        # Next request for 2 units should be fully covered!
-        self.client.post(
-            "/housekeeping/stock/request/",
-            data={
-                "area_id": self.area_a.id,
-                "inventory_item_id": self.item.id,
-                "quantity": 2,
-                "reason": "After rejection request",
-            },
-        )
-        r3 = HKStockRequest.objects.filter(reason="After rejection request").first()
-        self.assertEqual(r3.covered_quantity, 2)
-        self.assertEqual(r3.status, "issued")
+        allowed = self._post_stock_request(2, "After rejection request")
+        self.assertEqual(allowed.status_code, 302)
+        r = HKStockRequest.objects.get(reason="After rejection request")
+        self.assertEqual(r.covered_quantity, 0)
+        self.assertEqual(r.status, "pending")
+        self.assertEqual(r.inventory_request.quantity_requested, 2)
 
     def test_scenario_7_different_requesters_and_different_areas(self):
         """
@@ -421,12 +328,12 @@ class StockReconciliationRegressionTests(TestCase):
         self.assertEqual(r_ab.covered_quantity, 0)
         self.assertEqual(r_ab.status, "pending")
 
-    def test_scenario_8_batch_multi_item_request(self):
+    def test_scenario_8_blocked_item_does_not_block_other_items(self):
         """
         Scenario 8:
-        Batch request containing multiple items.
-        Item 1 has outstanding stock -> covered.
-        Item 2 has no outstanding stock -> requires approval.
+        Item 1 has unreported usage, item 2 does not.
+        - A batch that contains the blocked item is rejected as a whole.
+        - Item 2 on its own can still be requested.
         """
         item2 = Item.objects.create(
             name="Garbage Bags",
@@ -445,7 +352,6 @@ class StockReconciliationRegressionTests(TestCase):
             {"inventory_item_id": self.item.id, "quantity": 2},
             {"inventory_item_id": item2.id, "quantity": 10},
         ])
-
         response = self.client.post(
             "/housekeeping/stock/request/",
             data={
@@ -454,19 +360,17 @@ class StockReconciliationRegressionTests(TestCase):
                 "reason": "Hostel supplies batch",
             },
         )
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(self.BLOCK_MSG, response.context["form_error"])
+        self.assertIn("Floor Cleaner", response.context["form_error"])
+        self.assertFalse(HKStockRequest.objects.filter(reason="Hostel supplies batch").exists())
 
-        hk_item1 = HKStockRequest.objects.filter(item=self.item, reason="Hostel supplies batch").first()
-        self.assertIsNotNone(hk_item1)
-        self.assertEqual(hk_item1.covered_quantity, 2)
-        self.assertEqual(hk_item1.status, "issued")
-        self.assertIsNone(hk_item1.inventory_request)
-
-        hk_item2 = HKStockRequest.objects.filter(item=item2, reason="Hostel supplies batch").first()
-        self.assertIsNotNone(hk_item2)
+        # The other item is not affected
+        allowed = self._post_stock_request(10, "Garbage bags only", item=item2)
+        self.assertEqual(allowed.status_code, 302)
+        hk_item2 = HKStockRequest.objects.get(item=item2, reason="Garbage bags only")
         self.assertEqual(hk_item2.covered_quantity, 0)
         self.assertEqual(hk_item2.status, "pending")
-        self.assertIsNotNone(hk_item2.inventory_request)
         self.assertEqual(hk_item2.inventory_request.quantity_requested, 10)
 
     def test_scenario_9_concurrent_requests_atomic_reconciliation(self):
@@ -500,9 +404,8 @@ class StockReconciliationRegressionTests(TestCase):
         """
         Scenario 10:
         Warehouse stock is deducted exactly once per actual issue:
+        - A blocked request does not deduct warehouse stock.
         - Request submission does not deduct warehouse stock.
-        - Approval does not deduct warehouse stock.
-        - Fulfillment from outstanding stock does not deduct warehouse stock.
         - Actual warehouse issuance deducts warehouse stock exactly once.
         """
         initial_wh_stock = self.item.available_quantity  # 100
@@ -513,72 +416,50 @@ class StockReconciliationRegressionTests(TestCase):
         self.assertEqual(self.item.available_quantity, initial_wh_stock - 2)
         current_wh = self.item.available_quantity
 
-        # Request 1 unit (fully covered from outstanding)
         self.client.force_login(self.supervisor)
-        self.client.post(
-            "/housekeeping/stock/request/",
-            data={
-                "area_id": self.area_a.id,
-                "inventory_item_id": self.item.id,
-                "quantity": 1,
-                "reason": "Covered request",
-            },
-        )
+
+        # Usage not reported yet -> blocked, no deduction
+        self._assert_blocked(self._post_stock_request(3, "Too early"), "2.00", "Too early")
         self.item.refresh_from_db()
-        # Must NOT deduct warehouse stock!
         self.assertEqual(self.item.available_quantity, current_wh)
 
-        # Request 3 units (1 covered, 2 requires approval)
-        self.client.post(
-            "/housekeeping/stock/request/",
-            data={
-                "area_id": self.area_a.id,
-                "inventory_item_id": self.item.id,
-                "quantity": 3,
-                "reason": "Partially covered request",
-            },
-        )
+        # Report all usage, then request 3 units: submission must NOT deduct warehouse stock
+        self._report_usage(issue, "2.00")
+        allowed = self._post_stock_request(3, "Replenish request")
+        self.assertEqual(allowed.status_code, 302)
         self.item.refresh_from_db()
-        # Request submission does NOT deduct warehouse stock!
         self.assertEqual(self.item.available_quantity, current_wh)
 
-        part_req = HKStockRequest.objects.filter(reason="Partially covered request").first()
-        inv_req = part_req.inventory_request
-        self.assertEqual(inv_req.quantity_requested, 2)
+        hk_req = HKStockRequest.objects.get(reason="Replenish request")
+        inv_req = hk_req.inventory_request
+        self.assertEqual(inv_req.quantity_requested, 3)
 
-        # Manager issues the uncovered 2 units via mobile issue endpoint
+        # Manager issues the 3 units via the mobile issue endpoint
         self.client.force_login(self.inv_manager)
         issue_resp = self.client.post(
             f"/inventory/mobile/issue/{inv_req.id}/",
-            data={"quantity": 2},
+            data={"quantity": 3},
         )
         self.assertEqual(issue_resp.status_code, 302)
 
         self.item.refresh_from_db()
-        # Warehouse stock deducted by EXACTLY 2!
-        self.assertEqual(self.item.available_quantity, current_wh - 2)
+        # Warehouse stock deducted by EXACTLY 3
+        self.assertEqual(self.item.available_quantity, current_wh - 3)
 
-        part_req.refresh_from_db()
-        self.assertEqual(part_req.status, "issued")
+        hk_req.refresh_from_db()
+        self.assertEqual(hk_req.status, "issued")
 
     def test_scenario_11_manager_and_staff_portal_views(self):
         """
         Scenario 11:
         Consistent quantities and statuses in manager and staff interfaces.
         """
-        self._create_approved_and_issued_stock(self.supervisor, self.area_a, self.item, 1)
+        _, _, issue = self._create_approved_and_issued_stock(self.supervisor, self.area_a, self.item, 1)
+        self._report_usage(issue, "1.00")
 
         self.client.force_login(self.supervisor)
-        # Request 3 units (1 covered, 2 requires approval)
-        self.client.post(
-            "/housekeeping/stock/request/",
-            data={
-                "area_id": self.area_a.id,
-                "inventory_item_id": self.item.id,
-                "quantity": 3,
-                "reason": "Portal test",
-            },
-        )
+        # Request 3 units: the full quantity needs manager approval
+        self.assertEqual(self._post_stock_request(3, "Portal test").status_code, 302)
 
         # Staff portal view
         resp_staff = self.client.get(f"/housekeeping/stock/?area={self.area_a.id}")
@@ -586,18 +467,18 @@ class StockReconciliationRegressionTests(TestCase):
         active_reqs = resp_staff.context["active_requests"]
         self.assertEqual(len(active_reqs), 1)
         self.assertEqual(active_reqs[0].quantity, 3)
-        self.assertEqual(active_reqs[0].covered_quantity, 1)
-        self.assertEqual(active_reqs[0].approval_required_quantity, 2)
-        self.assertContains(resp_staff, "1 liters covered from existing stock")
-        self.assertContains(resp_staff, "2 liters awaiting manager issue")
+        self.assertEqual(active_reqs[0].covered_quantity, 0)
+        self.assertEqual(active_reqs[0].approval_required_quantity, 3)
+        self.assertNotContains(resp_staff, "covered from existing stock")
+        self.assertContains(resp_staff, "Requested: 3 liters")
+        self.assertContains(resp_staff, "Stock not issued yet")
 
         # Manager portal view (mobile manager requests)
         self.client.force_login(self.inv_manager)
         resp_mgr = self.client.get("/inventory/mobile/manager-requests/")
         self.assertEqual(resp_mgr.status_code, 200)
-        # Manager only sees the uncovered quantity (2)
         pending_reqs = resp_mgr.context["requests"]
-        self.assertTrue(any(r.quantity_requested == 2 for r in pending_reqs))
+        self.assertTrue(any(r.quantity_requested == 3 for r in pending_reqs))
 
     def test_scenario_12_existing_permissions_and_unrelated_functionality(self):
         """
