@@ -350,6 +350,8 @@ class HvacSupervisorLogView(APIView):
                 'supervisor_name': data.get('supervisorName') or getattr(request.user, 'username', 'Supervisor'),
             }
         )
+        # On create, `date` is still the raw request string; reload so to_dict() gets a date.
+        log_obj.refresh_from_db()
         return Response({'ok': True, 'log': log_obj.to_dict()})
 
 
