@@ -41,9 +41,7 @@ export const inventoryAPI = {
   createPurchaseRequest: (data) => api.post('/inventory/purchase-requests/', data),
   decidePurchaseRequest: (id, data) => api.post(`/inventory/purchase-requests/${id}/decision/`, data),
 
-  // approve / reject use the /api/ legacy routes because those are the ones
-  // the frontend has always called and they work correctly after BUG-05 was fixed.
-  approveRequest: (id) => api.post(`/inventory/api/requests/${id}/approve/`),
+  // reject and markUrgent use the /api/ legacy routes
   rejectRequest: (id, reason) =>
     api.post(`/inventory/api/requests/${id}/reject/`, { rejection_reason: reason }),
   markUrgent: (id, isUrgent) =>
@@ -51,6 +49,8 @@ export const inventoryAPI = {
 
   // ── Issues ─────────────────────────────────────────────────────────────────
   getIssues: (params = {}) => api.get('/inventory/issues/', { params: { page_size: 200, ...params } }),
+  adjustIssue: (issueId, data) => api.post(`/inventory/issues/${issueId}/adjust/`, data),
+  getIssueAdjustments: (issueId) => api.get(`/inventory/issues/${issueId}/adjustments/`),
 
   // Return asset (manager)
   returnAsset: (issueId, data) => api.post(`/inventory/issues/${issueId}/return/`, data),

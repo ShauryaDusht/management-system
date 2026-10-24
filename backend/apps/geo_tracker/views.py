@@ -1,3 +1,5 @@
+import json
+from decimal import Decimal
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
 from django.shortcuts import render, get_object_or_404
@@ -11,7 +13,9 @@ from rest_framework.views import APIView
 
 from apps.users.permissions import IsAdminOrHKInventoryOrHorticultureManager
 
-from .models import CampusArea, PlantRecord, PlantVariety, CampusAreaConfig
+from .models import (
+    CampusArea, PlantRecord, PlantVariety, CampusAreaConfig,
+)
 from .serializers import (
     PlantRecordSerializer,
     PlantRecordCreateSerializer,
@@ -132,6 +136,7 @@ class GeoTrackerRecordDetailView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
+        record.refresh_from_db()
 
         return Response(PlantRecordSerializer(record, context={'request': request}).data)
 
@@ -196,10 +201,22 @@ class GeoTrackerVarietyDetailView(APIView):
     permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
 
     def put(self, request, pk):
+        return self._save(request, pk, partial=False)
+
+    def patch(self, request, pk):
+        return self._save(request, pk, partial=True)
+
+    def _save(self, request, pk, partial=False):
         variety = get_object_or_404(PlantVariety, pk=pk)
-        serializer = PlantVarietySerializer(variety, data=request.data)
+        serializer = PlantVarietySerializer(variety, data=request.data, partial=partial)
         if serializer.is_valid():
-            serializer.save()
+            saved_variety = serializer.save()
+            if request.data.get('sync_records', True):
+                PlantRecord.objects.filter(variety=saved_variety).update(
+                    local_name=saved_variety.name,
+                    scientific_name=saved_variety.scientific_name,
+                    plant_type=saved_variety.plant_type,
+                )
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -233,11 +250,13 @@ class GeoTrackerStatsView(APIView):
         trees = PlantRecord.objects.filter(plant_type='tree').count()
         plants = PlantRecord.objects.filter(plant_type='plant').count()
         creepers = PlantRecord.objects.filter(plant_type='creeper').count()
+        shrubs = PlantRecord.objects.filter(plant_type='shrub').count()
         return Response({
             'total': total,
             'trees': trees,
             'plants': plants,
             'creepers': creepers,
+            'shrubs': shrubs,
         })
 
 class GeoTrackerAreasView(APIView):

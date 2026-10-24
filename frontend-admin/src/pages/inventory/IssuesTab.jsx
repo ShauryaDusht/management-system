@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { inventoryAPI, reportsAPI } from '../../api/inventory'
-import { Alert, Badge, Btn, Card, DataTable, Field, Input, Modal, SelectField, ExportDropdown } from '../../components/ui'
+import { Alert, Badge, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal, SelectField } from '../../components/ui'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
+import { exportReport } from '../../shared/exportHelper'
 import { asList, todayISO, triggerDownload } from '../../shared/utils'
+import UndoAdjustIssueModal from './UndoAdjustIssueModal'
 
 const AREA_CLASS_LABELS = {
   all: 'All Areas',
@@ -55,8 +57,9 @@ function isIssueInMonth(issue, month, year) {
   )
 }
 
-export default function IssuesTab({ userRole }) {
+export default function IssuesTab({ userRole, categoryScope = null, excludeCategoryScope = null }) {
   const [issues, setIssues] = useState([])
+  const [undoModalIssue, setUndoModalIssue] = useState(null)
 
   const [actionModal, setActionModal] = useState(null)
   const [form, setForm] = useState({
@@ -84,14 +87,17 @@ export default function IssuesTab({ userRole }) {
   const [reportData, setReportData] = useState(null)
   const [reportModal, setReportModal] = useState(false)
 
-  const canManager = ['admin', 'inventory_manager', 'hk_inventory_manager'].includes(userRole)
+  const canManager = ['admin', 'inventory_manager', 'hk_inventory_manager', 'horticulture_manager'].includes(userRole)
 
   const { run: runAction, error: actionError, clearError } = useAsyncAction()
   const { loading, error: loadError, reload } = useAsyncLoad(async () => {
-    const { data } = await inventoryAPI.getIssues()
+    const params = {}
+    if (categoryScope) params.category = categoryScope
+    if (excludeCategoryScope) params.exclude_category = excludeCategoryScope
+    const { data } = await inventoryAPI.getIssues(params)
     setIssues(asList(data))
     return null
-  }, [], 'Failed to load issued items.')
+  }, [categoryScope, excludeCategoryScope], 'Failed to load issued items.')
 
   const error = actionError || loadError
 
@@ -139,6 +145,23 @@ export default function IssuesTab({ userRole }) {
 
   const filtered = useMemo(() => {
     let list = [...issues]
+    if (categoryScope) {
+      list = list.filter((issue) => {
+        const cat = issue.category_name || issue.item_category || ''
+        return String(cat).trim().toLowerCase() === String(categoryScope).trim().toLowerCase()
+          || String(cat).toLowerCase().includes('horticulture')
+          || String(issue.purpose || '').toLowerCase().includes('[horticulture')
+      })
+    }
+    if (excludeCategoryScope) {
+      list = list.filter((issue) => {
+        const cat = issue.category_name || issue.item_category || ''
+        const isExcluded = String(cat).trim().toLowerCase() === String(excludeCategoryScope).trim().toLowerCase()
+          || String(cat).toLowerCase().includes('horticulture')
+          || String(issue.purpose || '').toLowerCase().includes('[horticulture')
+        return !isExcluded
+      })
+    }
     if (!dateFrom && !dateTo) {
       list = list.filter((issue) => isIssueInMonth(issue, reportMonth, reportYear))
     }
@@ -171,7 +194,7 @@ export default function IssuesTab({ userRole }) {
       })
     }
     return list
-  }, [issues, areaClass, selectedArea, reportMonth, reportYear, personFilter, itemFilter, dateFrom, dateTo])
+  }, [issues, categoryScope, excludeCategoryScope, areaClass, selectedArea, reportMonth, reportYear, personFilter, itemFilter, dateFrom, dateTo])
 
   const totals = useMemo(() => {
     const total = filtered.length
@@ -266,27 +289,69 @@ export default function IssuesTab({ userRole }) {
     }
   }
 
-  const downloadMonthlyReportCsv = async () => {
+  const handleExportIssues = async (format) => {
     setDownloadingReport(true)
     clearError()
     try {
-      await runAction(async () => {
-        const params = {
-          month: reportMonth,
-          year: reportYear,
-        }
-        if (areaClass !== 'all') params.area_class = areaClass
-        if (selectedArea !== 'all') params.area_name = selectedArea
+      const params = {
+        month: reportMonth,
+        year: reportYear,
+      }
+      if (areaClass !== 'all') params.area_class = areaClass
+      if (selectedArea !== 'all') params.area_name = selectedArea
 
-        const response = await reportsAPI.downloadAreaIssuesCSV(params)
-        const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
-        const disposition = response.headers?.['content-disposition'] || ''
-        const match = disposition.match(/filename=\"?([^\"]+)\"?/)
-        const filename =
-          match?.[1] ||
-          `area_issues_${reportYear}_${String(reportMonth).padStart(2, '0')}.csv`
-        triggerDownload(blob, filename)
-      }, 'Failed to download report CSV.')
+      if (format === 'csv') {
+        await runAction(async () => {
+          const response = await reportsAPI.downloadAreaIssuesCSV(params)
+          const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
+          const disposition = response.headers?.['content-disposition'] || ''
+          const match = disposition.match(/filename=\"?([^\"]+)\"?/)
+          const filename =
+            match?.[1] ||
+            `area_issues_${reportYear}_${String(reportMonth).padStart(2, '0')}.csv`
+          triggerDownload(blob, filename)
+        }, 'Failed to download report CSV.')
+        return
+      }
+
+      await runAction(async () => {
+        let data = reportData
+        if (!data || data.month !== Number(reportMonth) || data.year !== Number(reportYear)) {
+          const res = await reportsAPI.getAreaIssuesReport(params)
+          data = res.data
+        }
+        const issuesRows = data?.rows || []
+        const exportData = {
+          filename: `area_issues_${reportYear}_${String(reportMonth).padStart(2, '0')}`,
+          module: 'Inventory Management',
+          title: 'Area-wise Issued Items Report',
+          subtitle: `Period: ${MONTHS[reportMonth - 1]} ${reportYear} • Area: ${reportFilterLabel}`,
+          metadata: [
+            { label: 'Month / Year', value: `${MONTHS[reportMonth - 1]} ${reportYear}` },
+            { label: 'Area Filter', value: reportFilterLabel },
+            { label: 'Total Issues', value: data?.total_issues ?? issuesRows.length },
+          ],
+          stats: [
+            { label: 'Total Issues', value: data?.total_issues ?? 0 },
+            { label: 'Total Records', value: issuesRows.length },
+          ],
+          headers: ['Area', 'Area Type', 'Item', 'Item Type', 'Unit', 'Requested By', 'Qty Req', 'Qty Issued', 'Issued At', 'Issued By', 'Status'],
+          rows: issuesRows.map((r) => [
+            r.area_name || '-',
+            r.area_type || '-',
+            r.item_name || '-',
+            r.item_type || '-',
+            r.item_unit || '-',
+            r.requested_by || '-',
+            r.quantity_requested ?? 0,
+            r.quantity_issued ?? 0,
+            r.issued_at ? String(r.issued_at).replace('T', ' ').slice(0, 16) : '-',
+            r.issued_by || '-',
+            r.status || '-',
+          ]),
+        }
+        await exportReport(format, exportData)
+      }, 'Failed to generate report export.')
     } finally {
       setDownloadingReport(false)
     }
@@ -442,9 +507,9 @@ export default function IssuesTab({ userRole }) {
             {generatingReport ? 'Generating...' : 'View Report'}
           </Btn>
           <ExportDropdown
-            getData={fetchAreaIssuesReportData}
+            label="Download Report"
+            onExport={handleExportIssues}
             disabled={generatingReport || downloadingReport}
-            style={{ flex: '0 0 auto' }}
           />
         </div>
 
@@ -611,27 +676,39 @@ export default function IssuesTab({ userRole }) {
                 ? new Date(issue.issued_at).toLocaleDateString('en-IN')
                 : '-',
               <Badge key={`status-${issue.id}`} value={status} />,
-              issue.item_type === 'asset' && canManager && !issue.returned_at ? (
-                <Btn
-                  key={`return-${issue.id}`}
-                  size="sm"
-                  variant="orange"
-                  onClick={() => setActionModal({ id: issue.id, type: 'asset', item: issue })}
-                >
-                  Return
-                </Btn>
-              ) : issue.item_type === 'consumable' ? (
-                <Btn
-                  key={`usage-${issue.id}`}
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => openUsageModal(issue)}
-                >
-                  View Usage
-                </Btn>
-              ) : (
-                '-'
-              ),
+              <div key={`act-wrap-${issue.id}`} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                {issue.item_type === 'asset' && canManager && !issue.returned_at && (
+                  <Btn
+                    key={`return-${issue.id}`}
+                    size="sm"
+                    variant="orange"
+                    onClick={() => setActionModal({ id: issue.id, type: 'asset', item: issue })}
+                  >
+                    Return
+                  </Btn>
+                )}
+                {issue.item_type === 'consumable' && (
+                  <Btn
+                    key={`usage-${issue.id}`}
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => openUsageModal(issue)}
+                  >
+                    View Usage
+                  </Btn>
+                )}
+                {canManager && !issue.returned_at && !issue.usage_finalized && !issue.is_reversed && (
+                  <Btn
+                    key={`undo-${issue.id}`}
+                    size="sm"
+                    variant="ghost"
+                    style={{ color: '#b91c1c', borderColor: '#fca5a5' }}
+                    onClick={() => setUndoModalIssue(issue)}
+                  >
+                    Undo / Adjust
+                  </Btn>
+                )}
+              </div>,
             ]
           })}
           emptyMsg="No issued items for selected filters."
@@ -648,7 +725,8 @@ export default function IssuesTab({ userRole }) {
               Close
             </Btn>
             <ExportDropdown
-              getData={fetchAreaIssuesReportData}
+              label="Download Report"
+              onExport={handleExportIssues}
               disabled={downloadingReport}
             />
           </>
@@ -780,6 +858,13 @@ export default function IssuesTab({ userRole }) {
           />
         </Field>
       </Modal>
+
+      <UndoAdjustIssueModal
+        open={Boolean(undoModalIssue)}
+        issue={undoModalIssue}
+        onClose={() => setUndoModalIssue(null)}
+        onSuccess={() => reload()}
+      />
     </div>
   )
 }

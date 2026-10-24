@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
 import { Alert, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
+import { exportReport } from '../../shared/exportHelper'
 import { asList, getErrorMessage, triggerDownload } from '../../shared/utils'
 import { formatDate, getZoneTone, taskChipStyle } from './helpers'
 
@@ -287,7 +288,7 @@ export default function ZonesTab() {
     [visibleTaskTypes.length]
   )
 
-  const downloadAreaTaskCsv = () => {
+  const handleExportAreaTasks = async (format) => {
     if (!detail || !areas.length) return
     const headers = ['Zone', 'Area', 'Area Number', ...visibleTaskTypes.map((taskType) => taskType.name)]
     const rows = areas.map((area) => {
@@ -303,15 +304,29 @@ export default function ZonesTab() {
         }),
       ]
     })
-    const csv = [headers, ...rows].map((row) => row.map((cell) => csvValue(cell)).join(',')).join('\n')
     const zoneName = String(detail.zone_name || selectedZone?.name || 'zone')
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '_')
       .replace(/^_+|_+$/g, '')
-    triggerDownload(
-      new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }),
-      `horticulture_area_task_report_${zoneName || 'zone'}_${frequencyFilter}.csv`
-    )
+
+    await exportReport(format, {
+      title: `Horticulture Zone Task Status - ${detail.zone_name || selectedZone?.name || 'Zone'}`,
+      subtitle: `Frequency Filter: ${frequencyFilter} (${visibleTaskTypes.length} task types, ${areas.length} areas)`,
+      filename: `horticulture_area_task_report_${zoneName || 'zone'}_${frequencyFilter}`,
+      headers,
+      rows,
+      kpis: [
+        { label: 'Zone', value: detail.zone_name || selectedZone?.name || '-' },
+        { label: 'Total Areas', value: areas.length },
+        { label: 'Visible Tasks', value: visibleTaskTypes.length },
+        { label: 'Season', value: detail?.season || '-' },
+      ],
+      metadata: {
+        'Zone': detail.zone_name || selectedZone?.name || 'Zone',
+        'Frequency Filter': frequencyFilter,
+        'Export Date': new Date().toLocaleString(),
+      },
+    })
   }
 
   const openAddArea = () => {
@@ -571,26 +586,9 @@ export default function ZonesTab() {
                   Showing {visibleTaskTypes.length} of {taskTypes.length} task types
                 </div>
                 <ExportDropdown
-                  size="sm"
-                  headers={['Zone', 'Area', 'Area Number', ...visibleTaskTypes.map((taskType) => taskType.name)]}
-                  data={areas.map((area) => {
-                    const taskMap = new Map(asList(area.tasks).map((task) => [String(task.task_type_id), task]))
-                    return [
-                      detail?.zone_name || selectedZone?.name || '',
-                      area.name || '',
-                      area.area_number || '',
-                      ...visibleTaskTypes.map((taskType) => {
-                        const task = taskMap.get(String(taskType.id))
-                        const presentation = getTaskPresentation(task, taskType.threshold)
-                        return `${presentation.label} - ${presentation.detail}`
-                      }),
-                    ]
-                  })}
-                  title={`Horticulture Area Task Status - ${detail?.zone_name || selectedZone?.name || 'Zone'} (${frequencyFilter})`}
-                  filename={`horticulture_area_task_report_${String(detail?.zone_name || selectedZone?.name || 'zone').toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${frequencyFilter}`}
+                  label="Download Tasks"
+                  onExport={handleExportAreaTasks}
                   disabled={detailLoading || !areas.length || !visibleTaskTypes.length}
-                  buttonText="Download Report"
-                  align="right"
                 />
               </div>
 

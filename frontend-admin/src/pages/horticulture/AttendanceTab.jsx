@@ -4,6 +4,7 @@ import { horticultureAPI } from '../../api/horticulture'
 import { Alert, Btn, Card, DataTable, ExportDropdown, Input, Spinner, StatCard } from '../../components/ui'
 import { BarGroupChart } from '../../components/ui/Charts'
 import { asList, getErrorMessage, todayISO, triggerDownload } from '../../shared/utils'
+import { exportHorticultureReport } from './exportHelper'
 
 function csvValue(value) {
   if (value === null || value === undefined) return ''
@@ -24,28 +25,28 @@ export default function AttendanceTab() {
 
   useEffect(() => {
     let mounted = true
-    ;(async () => {
-      setLoading(true)
-      setError('')
-      try {
-        const [summaryRes, workerRes, recordRes, staffRes] = await Promise.all([
-          horticultureAPI.getAttendanceSummary(date),
-          horticultureAPI.getWorkers(),
-          horticultureAPI.getAttendanceRecords(date),
-          horticultureAPI.getAttendance(date),
-        ])
-        if (mounted) {
-          setRows(asList(summaryRes.data))
-          setWorkers(asList(workerRes.data?.workers))
-          setRecords(asList(recordRes.data))
-          setStaffRows(asList(staffRes.data?.supervisors))
+      ; (async () => {
+        setLoading(true)
+        setError('')
+        try {
+          const [summaryRes, workerRes, recordRes, staffRes] = await Promise.all([
+            horticultureAPI.getAttendanceSummary(date),
+            horticultureAPI.getWorkers(),
+            horticultureAPI.getAttendanceRecords(date),
+            horticultureAPI.getAttendance(date),
+          ])
+          if (mounted) {
+            setRows(asList(summaryRes.data))
+            setWorkers(asList(workerRes.data?.workers))
+            setRecords(asList(recordRes.data))
+            setStaffRows(asList(staffRes.data?.supervisors))
+          }
+        } catch (err) {
+          if (mounted) setError(getErrorMessage(err, 'Failed to load horticulture worker attendance.'))
+        } finally {
+          if (mounted) setLoading(false)
         }
-      } catch (err) {
-        if (mounted) setError(getErrorMessage(err, 'Failed to load horticulture worker attendance.'))
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    })()
+      })()
     return () => {
       mounted = false
     }
@@ -107,59 +108,74 @@ export default function AttendanceTab() {
     return String(record.status).replace('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase())
   }
 
-  const downloadAttendanceCsv = () => {
-    const summaryRows = [
-      ['Report Title', 'Horticulture Worker Attendance Report'],
-      ['Date', date],
-      ['Zone Filter', zoneFilter === 'all' ? 'All zones' : zoneFilter],
-      [],
-      ['Staff Attendance by Zone'],
-      ['Staff Name', 'Pay Code', 'Role', 'Zones', 'Status', 'Submitted At', 'Workers', 'Present', 'Absent', 'Half Day'],
-      ...visibleStaffRows.map((row) => [
-        row.supervisor_name || '',
-        row.pay_code || '',
-        row.role || 'supervisor',
-        asList(row.zone_names).join(', '),
-        row.submitted ? 'Present' : 'Absent',
-        row.submitted_at || '',
-        row.total_workers || 0,
-        row.present_count || 0,
-        row.absent_count || 0,
-        row.half_day_count || 0,
-      ]),
-      [],
-      ['Area Attendance Summary'],
-      ['Area', 'Zone', 'Total', 'Present', 'Absent', 'Late', 'Leave', 'Attendance %'],
-      ...visibleRows.map((row) => {
-        const pct = row.total_workers ? Math.round((Number(row.present || 0) / Number(row.total_workers || 1)) * 100) : 0
-        return [
-          row.area_name,
-          row.zone_name || '',
-          row.total_workers,
-          row.present,
-          row.absent,
-          row.late || 0,
-          row.leave || 0,
-          `${pct}%`,
-        ]
-      }),
-      [],
-      ['Worker Attendance Marked by Supervisors'],
-      ['Worker', 'Areas', 'Pay Code', 'First Half', 'Second Half'],
-      ...workers.map((worker) => {
-        const first = recordMap.get(`${worker.id}-first`)
-        const second = recordMap.get(`${worker.id}-second`)
-        return [
-          worker.name,
-          asList(worker.area_names).join(', ') || '',
-          worker.pay_code || '',
-          statusText(first),
-          statusText(second),
-        ]
-      }),
-    ]
-    const csv = summaryRows.map((row) => row.map((cell) => csvValue(cell)).join(',')).join('\n')
-    triggerDownload(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), `horticulture_attendance_${date}.csv`)
+  const handleExportAttendance = async (format) => {
+    const exportData = {
+      filename: `horticulture_attendance_${date}`,
+      title: 'Horticulture Worker & Staff Attendance Report',
+      subtitle: `Daily attendance logs for IITGN Horticulture operations on ${date}`,
+      metadata: [
+        { label: 'Date', value: date },
+        { label: 'Zone Filter', value: zoneFilter === 'all' ? 'All zones' : zoneFilter },
+      ],
+      stats: [
+        { label: 'Total Workers', value: totals.total },
+        { label: 'Present', value: totals.present },
+        { label: 'Absent', value: totals.absent },
+        { label: 'Staff Present', value: staffTotals.present },
+        { label: 'Staff Absent', value: staffTotals.absent },
+      ],
+      sections: [
+        {
+          title: 'Staff Attendance by Zone',
+          headers: ['Staff Name', 'Pay Code', 'Role', 'Zones', 'Status', 'Submitted At', 'Workers', 'Present', 'Absent', 'Half Day'],
+          rows: visibleStaffRows.map((row) => [
+            row.supervisor_name || '',
+            row.pay_code || '',
+            row.role || 'supervisor',
+            asList(row.zone_names).join(', '),
+            row.submitted ? 'Present' : 'Absent',
+            row.submitted_at || '',
+            row.total_workers || 0,
+            row.present_count || 0,
+            row.absent_count || 0,
+            row.half_day_count || 0,
+          ]),
+        },
+        {
+          title: 'Area Attendance Summary',
+          headers: ['Area', 'Zone', 'Total', 'Present', 'Absent', 'Late', 'Leave', 'Attendance %'],
+          rows: visibleRows.map((row) => {
+            const pct = row.total_workers ? Math.round((Number(row.present || 0) / Number(row.total_workers || 1)) * 100) : 0
+            return [
+              row.area_name,
+              row.zone_name || '',
+              row.total_workers,
+              row.present,
+              row.absent,
+              row.late || 0,
+              row.leave || 0,
+              `${pct}%`,
+            ]
+          }),
+        },
+        {
+          title: 'Worker Attendance Marked by Supervisors',
+          headers: ['Worker', 'Areas', 'Pay Code', 'First Half', 'Second Half'],
+          rows: workers.map((worker) => {
+            const first = recordMap.get(`${worker.id}-first`)
+            const second = recordMap.get(`${worker.id}-second`)
+            return [
+              worker.name,
+              asList(worker.area_names).join(', ') || '',
+              worker.pay_code || '',
+              statusText(first),
+              statusText(second),
+            ]
+          }),
+        },
+      ],
+    }
+    await exportHorticultureReport(format, exportData)
   }
 
   const getAttendanceExportData = async (format) => {
@@ -198,13 +214,11 @@ export default function AttendanceTab() {
           <div style={{ fontSize: 12, color: 'var(--text-3)', minWidth: 40 }}>Date</div>
           <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
         </Card>
-        <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible', position: 'relative', zIndex: 40 }}>
           <ExportDropdown
-            size="sm"
-            getData={getAttendanceExportData}
+            label="Download Attendance"
+            onExport={handleExportAttendance}
             disabled={loading || (!visibleRows.length && !workers.length)}
-            buttonText="Download Report"
-            align="right"
           />
         </Card>
       </div>

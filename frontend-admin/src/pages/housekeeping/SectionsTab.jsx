@@ -5,6 +5,7 @@ import { usersAPI } from '../../api/users'
 import { Alert, Btn, Card, DataTable, ExportDropdown, Input, Modal, SelectField, Spinner } from '../../components/ui'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import { getAreaGroup, todayISO, triggerDownload } from '../../shared/utils'
+import { exportReport } from '../../shared/exportHelper'
 
 const HIDDEN_STAFF_AREA_NAMES = new Set(['hostels reliever', 'old academic reliever', 'new academic reliever'])
 
@@ -255,52 +256,37 @@ export default function SectionsTab({ hostelOnly = false }) {
     triggerDownload(blob, filename)
   }
 
-  const downloadAreaInchargeReport = async () => {
-    if (!filteredRows.length) {
-      await runAction(async () => {
-        throw new Error('No rows available to generate report for selected segment.')
-      })
-      return
+  const handleExportAreaReport = async (format) => {
+    if (!filteredRows.length) return
+    const now = new Date()
+    const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+    const exportData = {
+      filename: `area_incharge_report_${areaClassFilter}_${stamp}`,
+      module: 'Housekeeping Operations',
+      title: 'Area Incharge & Supervisor Assignments Report',
+      subtitle: `Segment: ${areaClassFilter.toUpperCase()} | Generated: ${now.toLocaleDateString('en-IN')}`,
+      metadata: [
+        { label: 'Segment', value: areaClassFilter.toUpperCase() },
+        { label: 'Total Areas', value: filteredRows.length },
+      ],
+      stats: [
+        { label: 'Total Areas', value: filteredRows.length },
+        { label: 'Assigned', value: filteredRows.filter((r) => r.role !== '-').length },
+        { label: 'Unassigned', value: filteredRows.filter((r) => r.role === '-').length },
+        { label: 'Total Workers', value: filteredRows.reduce((acc, r) => acc + (Number(r.workerCount) || 0), 0) },
+      ],
+      headers: ['Area Name', 'Caretaker / Supervisor', 'Pay Code', 'Username', 'Phone No', 'Worker Count', 'Status'],
+      rows: filteredRows.map((row) => [
+        row.areaName || '-',
+        row.role === '-' ? '-' : `${row.assignedTo} (${row.role})`,
+        row.pay_code || '-',
+        row.username || '-',
+        row.phone || '-',
+        row.workerCount ?? 0,
+        row.role === '-' ? 'Unassigned' : row.isActive ? 'Active' : 'Inactive',
+      ]),
     }
-
-    setDownloadingReport(true)
-    clearError()
-    setSuccess('')
-    try {
-      await runAction(async () => {
-        const headers = [
-          'Area Name',
-          'Caretaker / Supervisor',
-          'Pay Code',
-          'Username',
-          'Phone No',
-          'Worker Count',
-          'Status',
-          'Change Supervisor/Caretaker',
-        ]
-        const rows = filteredRows.map((row) => [
-          row.areaName,
-          row.role === '-' ? '-' : `${row.assignedTo} (${row.role})`,
-          row.pay_code || '-',
-          row.username,
-          row.phone,
-          row.workerCount,
-          row.role === '-' ? 'Unassigned' : row.isActive ? 'Active' : 'Inactive',
-          row.userId ? 'Change' : 'Assign',
-        ])
-        const csvBody = [headers, ...rows]
-          .map((r) => r.map((cell) => toCsvValue(cell)).join(','))
-          .join('\n')
-
-        const now = new Date()
-        const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-        const filename = `area_incharge_report_${areaClassFilter}_${stamp}.csv`
-        triggerCsvDownload(csvBody, filename)
-        setSuccess('Area-wise incharge report generated.')
-      }, 'Failed to generate area-wise incharge report.')
-    } finally {
-      setDownloadingReport(false)
-    }
+    await exportReport(format, exportData)
   }
 
   return (
@@ -355,30 +341,9 @@ export default function SectionsTab({ hostelOnly = false }) {
             )}
             {!hostelOnly && (
               <ExportDropdown
-                size="sm"
-                headers={[
-                  'Area Name',
-                  'Caretaker / Supervisor',
-                  'Pay Code',
-                  'Username',
-                  'Phone No',
-                  'Worker Count',
-                  'Status',
-                ]}
-                data={filteredRows.map((row) => [
-                  row.areaName || '-',
-                  row.role === '-' ? '-' : `${row.assignedTo} (${row.role})`,
-                  row.pay_code || '-',
-                  row.username || '-',
-                  row.phone || '-',
-                  row.workerCount ?? 0,
-                  row.role === '-' ? 'Unassigned' : row.isActive ? 'Active' : 'Inactive',
-                ])}
-                title={`Housekeeping Area Incharge Report (${areaClassFilter.toUpperCase()})`}
-                filename={`area_incharge_report_${areaClassFilter}_${new Date().toISOString().slice(0, 10)}`}
+                label="Area Report"
+                onExport={handleExportAreaReport}
                 disabled={!filteredRows.length}
-                buttonText="Download Report"
-                align="right"
               />
             )}
           </div>

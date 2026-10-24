@@ -27,13 +27,47 @@
   --urgent: #dc2626;
   --low-stock: #f59e0b;
 
-  /* Sidebar */
+  /* Desktop Dimensions (>= 1440px) */
   --sidebar-w: 220px;
-  --header-h: 60px;
+  --header-h: 64px;
+  --content-max-w: 1680px;
+  --header-pad: 16px 28px;
+  --content-pad: 20px 28px 40px;
 
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 14px;
   color: var(--text);
+}
+
+/* Standard Laptop Screens (1200px - 1439px, e.g. 1366x768, 1440x900, 1080p @ 125%) */
+@media screen and (max-width: 1439px) {
+  :root {
+    --sidebar-w: 205px;
+    --header-h: 58px;
+    --header-pad: 14px 20px;
+    --content-pad: 16px 20px 32px;
+    font-size: 13.5px;
+  }
+}
+
+/* Compact Laptops & Small Desktops (1024px - 1199px) */
+@media screen and (max-width: 1199px) {
+  :root {
+    --sidebar-w: 195px;
+    --header-h: 54px;
+    --header-pad: 12px 16px;
+    --content-pad: 14px 16px 28px;
+    font-size: 13px;
+  }
+}
+
+/* Tablets / Very Small Screens (< 1024px) */
+@media screen and (max-width: 1023px) {
+  :root {
+    --sidebar-w: 68px;
+    --header-pad: 10px 14px;
+    --content-pad: 12px 14px 24px;
+  }
 }
 
 * {
@@ -42,8 +76,19 @@
   padding: 0;
 }
 
-body {
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
   background: var(--bg);
+}
+
+/* Responsive Table Wrapper */
+.table-responsive,
+.ui-table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 a {

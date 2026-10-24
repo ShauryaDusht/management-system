@@ -193,7 +193,7 @@ class ItemRequest(models.Model):
     )
     # Enforce minimum quantity of 1
     quantity_requested = models.PositiveIntegerField(
-        validators=[MinValueValidator(1)]
+        validators=[MinValueValidator(0)]
     )
 
     units_remaining = models.PositiveIntegerField(
@@ -372,13 +372,75 @@ class ItemIssue(models.Model):
     usage_finalized = models.BooleanField(default=False)
     usage_finalized_at = models.DateTimeField(null=True, blank=True)
 
+    # ── Reversal and adjustment tracking ──────────────────────
+    original_quantity = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Original issued quantity before any adjustments or reversal.',
+    )
+    is_reversed = models.BooleanField(default=False)
+    reversed_at = models.DateTimeField(null=True, blank=True)
+    reversed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='issues_reversed',
+    )
+    reversal_reason = models.TextField(blank=True)
+
     notes = models.TextField(blank=True)
 
     class Meta:
         ordering = ['-issued_at']
 
     def __str__(self):
-        return f"Issue #{self.id} — {self.request.item.name} x{self.issued_quantity}"
+        status_suffix = " [REVERSED]" if self.is_reversed else ""
+        return f"Issue #{self.id} — {self.request.item.name} x{self.issued_quantity}{status_suffix}"
+
+
+class ItemIssueAdjustment(models.Model):
+    """
+    Audit log of all reversals and quantity corrections performed on an ItemIssue.
+    """
+    class ActionType(models.TextChoices):
+        REVERSAL = 'reversal', 'Undo Entire Approval'
+        ADJUSTMENT = 'adjustment', 'Quantity Adjustment'
+
+    issue = models.ForeignKey(
+        ItemIssue,
+        on_delete=models.CASCADE,
+        related_name='adjustments',
+    )
+    action_type = models.CharField(
+        max_length=20,
+        choices=ActionType.choices,
+        default=ActionType.ADJUSTMENT,
+    )
+    previous_quantity = models.PositiveIntegerField()
+    new_quantity = models.PositiveIntegerField()
+    quantity_returned_to_stock = models.PositiveIntegerField(
+        default=0,
+        help_text='Quantity added back to warehouse available stock.'
+    )
+    reason = models.TextField()
+    adjusted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='issue_adjustments',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return (
+            f"Adjustment #{self.id} on Issue #{self.issue_id}: "
+            f"{self.previous_quantity} -> {self.new_quantity} ({self.action_type})"
+        )
 
 
 class ItemUsageLog(models.Model):

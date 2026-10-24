@@ -132,6 +132,95 @@ def notify_inventory_rejected(item_request, rejection_reason=''):
     )
 
 
+def notify_inventory_approval_undone(item_request, reason='', manager=None):
+    """
+    Notifies supervisor or caretaker when their inventory approval is undone
+    and the request is restored to Pending status.
+    """
+    if not item_request or not item_request.requested_by:
+        return None
+
+    user = item_request.requested_by
+    item = item_request.item
+    item_name = item.name if item else 'Requested Item'
+    unit = item.unit if item else 'units'
+    qty = item_request.quantity_requested
+
+    link = '/housekeeping/stock/'
+    try:
+        from apps.housekeeping.models import HKStockRequest
+        hk_req = HKStockRequest.objects.filter(inventory_request=item_request).first()
+        if hk_req and hk_req.area_id:
+            link = f'/housekeeping/stock/?area={hk_req.area_id}'
+    except Exception:
+        pass
+
+    manager_name = (manager.get_full_name() or manager.username) if manager else 'Manager'
+    reason_str = f" Reason: {reason.strip()}" if reason and reason.strip() else ""
+    title = "Inventory Approval Undone"
+    message = (
+        f"Previous approval for {qty} {unit} of {item_name} was undone by {manager_name}. "
+        f"The request has been restored to Pending status.{reason_str}"
+    )
+    status_label = "Pending"
+    import time
+    dedup_key = f"user:{user.id}:inv_undone:{item_request.id}:{int(time.time())}"
+
+    from apps.core.models import Notification
+    return create_notification(
+        user=user,
+        title=title,
+        message=message,
+        notification_type=Notification.NotificationType.INVENTORY_REJECTED,
+        status_label=status_label,
+        link=link,
+        dedup_key=dedup_key,
+    )
+
+
+def notify_inventory_quantity_adjusted(item_request, old_qty, new_qty, reason='', manager=None):
+    """
+    Notifies supervisor or caretaker when the issued quantity of their request is adjusted.
+    """
+    if not item_request or not item_request.requested_by:
+        return None
+
+    user = item_request.requested_by
+    item = item_request.item
+    item_name = item.name if item else 'Requested Item'
+    unit = item.unit if item else 'units'
+
+    link = '/housekeeping/stock/'
+    try:
+        from apps.housekeeping.models import HKStockRequest
+        hk_req = HKStockRequest.objects.filter(inventory_request=item_request).first()
+        if hk_req and hk_req.area_id:
+            link = f'/housekeeping/stock/?area={hk_req.area_id}'
+    except Exception:
+        pass
+
+    manager_name = (manager.get_full_name() or manager.username) if manager else 'Manager'
+    reason_str = f" Reason: {reason.strip()}" if reason and reason.strip() else ""
+    title = "Issued Inventory Quantity Adjusted"
+    message = (
+        f"Issued quantity for {item_name} was adjusted from {old_qty} to {new_qty} {unit} by {manager_name}.{reason_str}"
+    )
+    status_label = "Adjusted"
+    import time
+    dedup_key = f"user:{user.id}:inv_adjusted:{item_request.id}:{int(time.time())}"
+
+    from apps.core.models import Notification
+    return create_notification(
+        user=user,
+        title=title,
+        message=message,
+        notification_type=Notification.NotificationType.INVENTORY_APPROVED,
+        status_label=status_label,
+        link=link,
+        dedup_key=dedup_key,
+    )
+
+
 def notify_leave_decision(user, leave_date, decision, area_name='', note='', leave_id=None):
     """
     Notifies requester when manager approves or rejects their leave request.

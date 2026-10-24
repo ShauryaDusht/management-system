@@ -9,15 +9,16 @@ import {
   Btn,
   Card,
   DataTable,
+  ExportDropdown,
   Field,
   Input,
   Modal,
   SelectField,
   Spinner,
-  ExportDropdown,
 } from '../../components/ui'
 import WorkerReportModal from './WorkerReportModal'
 import ConfirmModal from '../../shared/components/ConfirmModal'
+import { exportReport } from '../../shared/exportHelper'
 
 const EMPTY_FORM = {
   first_name: '',
@@ -189,10 +190,38 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
     [visibleWorkers]
   )
 
-  const downloadCsv = () => {
+  const handleExportWorkers = async (format) => {
     const selectedAreaName = selectedArea ? areaById.get(Number(selectedArea))?.name : ''
     const scope = selectedAreaName || `${areaClassFilter === 'all' ? 'all_areas' : areaClassFilter}_areas`
-    exportCsv(csvRows, `housekeeping_workers_${safeFilePart(scope)}_${todayISO()}.csv`)
+    const exportData = {
+      filename: `housekeeping_workers_${safeFilePart(scope)}_${todayISO()}`,
+      module: 'Housekeeping Operations',
+      title: 'Housekeeping Workers Directory',
+      subtitle: `Scope: ${selectedAreaName || (areaClassFilter === 'all' ? 'All Areas' : areaClassFilter.toUpperCase())}`,
+      metadata: [
+        { label: 'Date', value: todayISO() },
+        { label: 'Selected Area', value: selectedAreaName || 'All' },
+        ...(search.trim() ? [{ label: 'Search Query', value: search.trim() }] : []),
+      ],
+      stats: [
+        { label: 'Total Workers', value: visibleWorkers.length },
+        { label: 'Active', value: visibleWorkers.filter((w) => w.is_active !== false).length },
+        { label: 'Relievers', value: visibleWorkers.filter((w) => w.is_reliever).length },
+      ],
+      headers: ['Area', 'Worker Name', 'Type', 'Shift', 'Supervisor', 'Phone', 'Pay Code', 'Reliever', 'Status'],
+      rows: visibleWorkers.map((worker) => [
+        areaById.get(Number(worker.area))?.name || worker.area_name || '-',
+        worker.name || '-',
+        String(worker.worker_type || '').replace(/_/g, ' '),
+        worker.shift || '-',
+        worker.supervisor_name || '-',
+        worker.phone || '-',
+        worker.pay_code || '-',
+        worker.is_reliever ? 'Yes' : 'No',
+        worker.is_active === false ? 'Inactive' : 'Active',
+      ]),
+    }
+    await exportReport(format, exportData)
   }
 
   const openCreate = () => {
@@ -323,22 +352,8 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
               ))}
             </SelectField>
             <ExportDropdown
-              size="sm"
-              filename={`housekeeping_workers_${safeFilePart(selectedArea ? areaById.get(Number(selectedArea))?.name : `${areaClassFilter === 'all' ? 'all_areas' : areaClassFilter}_areas`)}_${todayISO()}`}
-              title="Housekeeping Workers Directory"
-              subtitle={`Filter: ${selectedArea ? areaById.get(Number(selectedArea))?.name : areaClassFilter} | Total: ${csvRows.length}`}
-              headers={['Area', 'Worker Name', 'Type', 'Shift', 'Supervisor', 'Phone', 'Pay Code', 'Reliever', 'Status']}
-              rows={csvRows.map((w) => [
-                w['Area'],
-                w['Worker Name'],
-                w['Type'],
-                w['Shift'],
-                w['Supervisor'],
-                w['Phone'],
-                w['Pay Code'],
-                w['Reliever'],
-                w['Status'],
-              ])}
+              label="Download Workers"
+              onExport={handleExportWorkers}
               disabled={loading || csvRows.length === 0}
             />
             {!readOnly && <Btn size="sm" onClick={openCreate}>+ Add Worker</Btn>}

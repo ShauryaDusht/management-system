@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.core.files.uploadedfile import UploadedFile
 from django.db import models
 from django.utils import timezone
@@ -98,6 +99,7 @@ PLANT_TYPE_PREFIXES = {
     'tree':    'T',
     'plant':   'P',
     'creeper': 'C',
+    'shrub':   'S',
 }
 
 
@@ -105,6 +107,7 @@ class PlantType(models.TextChoices):
     TREE    = 'tree',    'Tree'
     PLANT   = 'plant',   'Plant'
     CREEPER = 'creeper', 'Creeper / Climber'
+    SHRUB   = 'shrub',   'Shrub'
 
 
 class CampusArea(models.TextChoices):
@@ -192,6 +195,14 @@ class PlantRecord(models.Model):
     canopy_area_m = models.DecimalField(
         max_digits=6, decimal_places=2, null=True, blank=True,
         help_text='Canopy span in metres',
+    )
+    length_m = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        help_text='Length in metres',
+    )
+    width_m = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        help_text='Width in metres',
     )
 
     CONDITION_CHOICES = [

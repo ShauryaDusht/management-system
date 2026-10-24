@@ -2,7 +2,10 @@ from django.db import transaction
 from django.db.models import Sum, Value, DecimalField
 from django.db.models.functions import Coalesce
 from rest_framework import serializers
-from .models import Category, Item, ItemRequest, ItemRequestBatch, ItemIssue, ItemUsageLog, PurchaseRequest, RequisitionItem, StockEntry
+from .models import (
+    Category, Item, ItemRequest, ItemRequestBatch, ItemIssue,
+    ItemIssueAdjustment, ItemUsageLog, PurchaseRequest, RequisitionItem, StockEntry
+)
 from .request_permissions import (
     EXCESSIVE_QUANTITY_MESSAGE,
     REPEAT_REQUEST_BLOCKED_MESSAGE,
@@ -105,11 +108,14 @@ class StockEntrySerializer(serializers.ModelSerializer):
     item_name = serializers.CharField(source='item.name', read_only=True)
     item_code = serializers.CharField(source='item.item_code', read_only=True)
     item_unit = serializers.CharField(source='item.unit', read_only=True)
+    category_id = serializers.IntegerField(source='item.category_id', read_only=True)
+    category_name = serializers.CharField(source='item.category.name', read_only=True)
 
     class Meta:
         model = StockEntry
         fields = [
             'id', 'item', 'item_name', 'item_code', 'item_unit',
+            'category_id', 'category_name',
             'quantity_added', 'added_by', 'added_by_name',
             'added_at', 'notes',
         ]
@@ -148,6 +154,9 @@ class ItemRequestSerializer(serializers.ModelSerializer):
     requester_role = serializers.CharField(source='requested_by.role', read_only=True)
     item_name = serializers.CharField(source='item.name', read_only=True)
     item_code = serializers.CharField(source='item.item_code', read_only=True)
+    item_category = serializers.CharField(source='item.category.name', read_only=True)
+    category_name = serializers.CharField(source='item.category.name', read_only=True)
+    category_id = serializers.IntegerField(source='item.category.id', read_only=True)
     item_available = serializers.IntegerField(source='item.available_quantity', read_only=True)
     item_reserved = serializers.IntegerField(source='item.reserved_quantity', read_only=True)
     item_available_to_request = serializers.SerializerMethodField()
@@ -168,6 +177,16 @@ class ItemRequestSerializer(serializers.ModelSerializer):
     reason = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(source='requested_at', read_only=True)
     updated_at = serializers.SerializerMethodField()
+    issue_id = serializers.SerializerMethodField()
+    issue_is_reversed = serializers.SerializerMethodField()
+
+    def get_issue_id(self, obj):
+        issue = getattr(obj, 'issue', None)
+        return issue.id if issue else None
+
+    def get_issue_is_reversed(self, obj):
+        issue = getattr(obj, 'issue', None)
+        return getattr(issue, 'is_reversed', False) if issue else False
 
     def to_internal_value(self, data):
         payload = data.copy()
@@ -406,6 +425,31 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
         return float(val) if val is not None else None
 
 
+class ItemIssueAdjustmentSerializer(serializers.ModelSerializer):
+    adjusted_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ItemIssueAdjustment
+        fields = [
+            'id',
+            'issue',
+            'action_type',
+            'previous_quantity',
+            'new_quantity',
+            'quantity_returned_to_stock',
+            'reason',
+            'adjusted_by',
+            'adjusted_by_name',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_adjusted_by_name(self, obj):
+        if obj.adjusted_by:
+            return obj.adjusted_by.get_full_name() or obj.adjusted_by.username
+        return None
+
+
 class ItemIssueSerializer(serializers.ModelSerializer):
     issued_by_name = serializers.CharField(source='issued_by.get_full_name', read_only=True)
     item_name = serializers.CharField(source='request.item.name', read_only=True)
@@ -414,9 +458,15 @@ class ItemIssueSerializer(serializers.ModelSerializer):
     item_unit = serializers.CharField(source='request.item.unit', read_only=True)
     requested_by_name = serializers.CharField(source='request.requested_by.get_full_name', read_only=True)
     return_recorded_by_name = serializers.CharField(source='return_recorded_by.get_full_name', read_only=True)
+    reversed_by_name = serializers.CharField(source='reversed_by.get_full_name', read_only=True)
+    item_available_quantity = serializers.IntegerField(source='request.item.available_quantity', read_only=True)
     area_name = serializers.SerializerMethodField()
     area_type = serializers.SerializerMethodField()
     total_consumed = serializers.SerializerMethodField()
+    can_reverse = serializers.SerializerMethodField()
+    can_adjust = serializers.SerializerMethodField()
+    cannot_reverse_reason = serializers.SerializerMethodField()
+    adjustments = ItemIssueAdjustmentSerializer(many=True, read_only=True)
 
     def get_area_name(self, obj):
         try:
@@ -459,12 +509,52 @@ class ItemIssueSerializer(serializers.ModelSerializer):
             )
         )['total']
 
+    def get_can_reverse(self, obj):
+        if obj.is_reversed:
+            return False
+        if obj.returned_at or (obj.returned_quantity is not None and obj.returned_quantity > 0):
+            return False
+        if obj.usage_finalized:
+            return False
+        consumed = self.get_total_consumed(obj)
+        if consumed > 0:
+            return False
+        return True
+
+    def get_can_adjust(self, obj):
+        if obj.is_reversed:
+            return False
+        if obj.returned_at or (obj.returned_quantity is not None and obj.returned_quantity > 0):
+            return False
+        if obj.usage_finalized:
+            return False
+        consumed = self.get_total_consumed(obj)
+        if obj.issued_quantity <= consumed:
+            return False
+        return True
+
+    def get_cannot_reverse_reason(self, obj):
+        if obj.is_reversed:
+            return 'This transaction has already been reversed.'
+        if obj.returned_at or (obj.returned_quantity is not None and obj.returned_quantity > 0):
+            return 'Cannot reverse or adjust: asset return has already been recorded.'
+        if obj.usage_finalized:
+            return 'Cannot reverse or adjust: consumable usage has already been finalized.'
+        consumed = self.get_total_consumed(obj)
+        if consumed > 0:
+            unit = getattr(getattr(obj.request, 'item', None), 'unit', '') or ''
+            return f"Cannot fully reverse: {consumed} {unit} has already been logged as consumed in downstream reports."
+        return ''
+
     class Meta:
         model = ItemIssue
         fields = [
             'id', 'request', 'item_name', 'item_code', 'item_type', 'item_unit',
             'requested_by_name', 'area_name', 'area_type', 'issued_by', 'issued_by_name',
-            'issued_quantity', 'issued_at',
+            'issued_quantity', 'original_quantity', 'issued_at',
+            'is_reversed', 'reversed_at', 'reversed_by', 'reversed_by_name', 'reversal_reason',
+            'item_available_quantity', 'can_reverse', 'can_adjust', 'cannot_reverse_reason',
+            'adjustments',
             'expected_return_date', 'returned_quantity', 'returned_at',
             'condition_on_return', 'return_recorded_by', 'return_recorded_by_name',
             'actual_quantity_used', 'usage_finalized', 'usage_finalized_at',
@@ -472,6 +562,7 @@ class ItemIssueSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id', 'issued_by', 'issued_at',
+            'original_quantity', 'is_reversed', 'reversed_at', 'reversed_by',
             'returned_at', 'return_recorded_by',
             'usage_finalized_at',
         ]

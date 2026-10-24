@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { Alert, Btn, Card, DataTable, Modal, SelectField, Spinner, ExportDropdown } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Modal, SelectField, Spinner } from '../../components/ui'
 import { triggerDownload } from '../../shared/utils'
+import { exportReport } from '../../shared/exportHelper'
 
 const MONTH_NAMES = [
   'January',
@@ -121,35 +122,69 @@ export default function WorkerReportModal({ open, worker, onClose }) {
     }
   }, [open, worker?.id, selectedPeriod])
 
-  const getWorkerExportData = async (format) => {
-    if (!worker?.id || !selectedPeriod) throw new Error('Worker report not available.')
+  const handleExportReport = async (format) => {
+    if (!worker?.id || !selectedPeriod) return
+
     if (format === 'csv') {
-      const response = await hkAPI.downloadWorkerReportCSV(worker.id, selectedPeriod.month, selectedPeriod.year)
-      const blob = new Blob([response.data], { type: 'text/csv' })
-      triggerDownload(
-        blob,
-        `worker_${toSafeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}.csv`,
-      )
-      return null
+      try {
+        const response = await hkAPI.downloadWorkerReportCSV(worker.id, selectedPeriod.month, selectedPeriod.year)
+        const blob = new Blob([response.data], { type: 'text/csv' })
+        triggerDownload(
+          blob,
+          `worker_${toSafeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}.csv`
+        )
+        return
+      } catch (e) {
+        // Fallback to client generation
+      }
     }
-    const rows = (snap.task_details || []).map((t) => [
-      formatDate(t.date),
-      t.area_name || '-',
-      t.task_name || '-',
-      toLabel(t.status),
-      formatDateTime(t.assigned_at),
-      formatDateTime(t.completed_at),
-      t.assigned_by || '-',
-      t.completed_by || '-',
-      t.remarks || '-',
-    ])
-    return {
-      title: `Worker Performance Report — ${worker.name}`,
-      subtitle: `Period: ${MONTH_NAMES[(selectedPeriod.month || 1) - 1]} ${selectedPeriod.year} | Area: ${worker.area_name || '-'} | Attendance: ${attendance.attendance_pct || 0}% | Completion: ${tasks.completion_pct || 0}%`,
-      filename: `worker_${toSafeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}`,
-      headers: ['Date', 'Area', 'Task', 'Status', 'Assigned At', 'Completed At', 'Assigned By', 'Completed By', 'Remarks'],
-      rows,
+
+    const exportData = {
+      filename: `housekeeping_worker_${toSafeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}`,
+      module: 'Housekeeping Operations',
+      title: `${worker.name || 'Worker'} - Performance Report`,
+      subtitle: `Period: ${selectedPeriod.label} | Area: ${snap?.worker?.area_name || worker?.area_name || '-'}`,
+      metadata: [
+        { label: 'Worker', value: worker.name || '-' },
+        { label: 'Pay Code', value: worker.pay_code || '-' },
+        { label: 'Area', value: snap?.worker?.area_name || worker?.area_name || '-' },
+        { label: 'Shift', value: worker.shift || '-' },
+      ],
+      stats: [
+        { label: 'Attendance', value: `${Number(attendance.attendance_pct ?? 0).toFixed(1)}%` },
+        { label: 'Present', value: attendance.days_present ?? 0 },
+        { label: 'Absent', value: attendance.days_absent ?? 0 },
+        { label: 'Task %', value: `${Number(tasks.completion_pct ?? 0).toFixed(1)}%` },
+        { label: 'Tasks Done', value: `${tasks.tasks_completed ?? 0}/${tasks.tasks_assigned ?? 0}` },
+      ],
+      sections: [
+        {
+          title: 'Daily Attendance Breakdown',
+          headers: ['Date', 'First Half', 'Second Half', 'Tasks Assigned', 'Tasks Completed', 'Supervisor'],
+          rows: (snap.daily_breakdown || []).map((d) => [
+            d.date || '-',
+            d.first_half || '-',
+            d.second_half || '-',
+            d.tasks_assigned ?? 0,
+            d.tasks_completed ?? 0,
+            d.supervisor_name || '-',
+          ]),
+        },
+        {
+          title: 'Task Execution Details',
+          headers: ['Date', 'Task', 'Session', 'Status', 'Supervisor', 'Remarks'],
+          rows: (taskDetails || []).map((t) => [
+            t.date || '-',
+            t.task_name || '-',
+            t.session || '-',
+            t.status || '-',
+            t.supervisor_name || '-',
+            t.remarks || '-',
+          ]),
+        },
+      ],
     }
+    await exportReport(format, exportData)
   }
 
   const snap = report?.snapshot || {}
@@ -195,8 +230,8 @@ export default function WorkerReportModal({ open, worker, onClose }) {
           </div>
         </div>
         <ExportDropdown
-          size="sm"
-          getData={getWorkerExportData}
+          label="Download Report"
+          onExport={handleExportReport}
           disabled={loading || downloading || !worker}
         />
       </div>

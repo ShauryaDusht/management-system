@@ -38,6 +38,8 @@ def get_requester_area_issues_qs(user, area, item):
         (Q(request__item=item) | Q(request__requisition_items__inventory_item=item))
     ).exclude(
         Q(request__item__item_type=Item.ItemType.ASSET) & Q(returned_at__isnull=False)
+    ).exclude(
+        is_reversed=True
     ).distinct()
     return qs
 

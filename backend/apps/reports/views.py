@@ -50,7 +50,12 @@ class InventoryReportView(APIView):
     def get(self, request):
         status_filter = (request.query_params.get('status') or '').strip().lower() or None
         item_type_filter = (request.query_params.get('item_type') or '').strip().lower() or None
-        data = generate_inventory_report(status_filter=status_filter, item_type_filter=item_type_filter)
+        category_filter = (request.query_params.get('category') or '').strip() or None
+        data = generate_inventory_report(
+            status_filter=status_filter,
+            item_type_filter=item_type_filter,
+            category_filter=category_filter,
+        )
         return Response(data)
 
 
@@ -60,7 +65,14 @@ class RequestsReportView(APIView):
     def get(self, request):
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
-        data = generate_requests_report(date_from, date_to)
+        category_filter = (request.query_params.get('category') or '').strip() or None
+        exclude_category_filter = (request.query_params.get('exclude_category') or '').strip() or None
+        data = generate_requests_report(
+            date_from,
+            date_to,
+            category_filter=category_filter,
+            exclude_category_filter=exclude_category_filter,
+        )
         return Response(data)
 
 

@@ -332,10 +332,11 @@ class InAppNotificationSystemTests(TestCase):
 
         token = str(RefreshToken.for_user(self.manager).access_token)
         res = self.client.post(
-            f'/api/inventory/api/requests/{req.id}/approve/',
+            f'/api/inventory/requests/{req.id}/issue/',
+            {'issued_quantity': 3},
             HTTP_AUTHORIZATION=f'Bearer {token}',
         )
-        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.status_code, 201)
 
         # Verify supervisor received notification
         notif = Notification.objects.filter(

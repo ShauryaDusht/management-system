@@ -1,0 +1,38 @@
+from django.urls import path
+from .views import (
+    ShopListCreateView,
+    ShopDetailView,
+    ContractorListCreateView,
+    ContractorDetailView,
+    SettingsView,
+    SettingsTestEmailView,
+    BillingCycleListView,
+    HousingUnitListView,
+    HousingListCreateView,
+    HousingDetailView,
+    HousingVacateView,
+    HousingRelocateView,
+    HousingHistoryView,
+    HousingClearanceListCreateView,
+    HousingClearanceDetailView,
+    ToggleClearanceAlertsView,
+)
+
+urlpatterns = [
+    path('shops/', ShopListCreateView.as_view(), name='estate-shops'),
+    path('shops/<int:pk>/', ShopDetailView.as_view(), name='estate-shop-detail'),
+    path('contractors/', ContractorListCreateView.as_view(), name='estate-contractors'),
+    path('contractors/<int:pk>/', ContractorDetailView.as_view(), name='estate-contractor-detail'),
+    path('housing/units/', HousingUnitListView.as_view(), name='estate-housing-units'),
+    path('housing/history/', HousingHistoryView.as_view(), name='estate-housing-history'),
+    path('housing/clearances/', HousingClearanceListCreateView.as_view(), name='estate-housing-clearances'),
+    path('housing/clearances/<int:pk>/', HousingClearanceDetailView.as_view(), name='estate-housing-clearance-detail'),
+    path('housing/clearances/toggle-alerts/', ToggleClearanceAlertsView.as_view(), name='estate-clearance-toggle-alerts'),
+    path('housing/', HousingListCreateView.as_view(), name='estate-housing'),
+    path('housing/<int:pk>/', HousingDetailView.as_view(), name='estate-housing-detail'),
+    path('housing/<int:pk>/vacate/', HousingVacateView.as_view(), name='estate-housing-vacate'),
+    path('housing/<int:pk>/relocate/', HousingRelocateView.as_view(), name='estate-housing-relocate'),
+    path('settings/', SettingsView.as_view(), name='estate-settings'),
+    path('settings/test-email/', SettingsTestEmailView.as_view(), name='estate-settings-test-email'),
+    path('cycles/', BillingCycleListView.as_view(), name='estate-cycles'),
+]

@@ -33,6 +33,8 @@ def api_root(_request):
             'horticulture': '/api/horticulture/',
             'reports': '/api/reports/',
             'notifications': '/api/notifications/',
+            'estate': '/api/estate/',
+            'lifts': '/api/lifts/',
         }
     )
 
@@ -60,10 +62,12 @@ urlpatterns = [
     path('api/', api_root),
     path(settings.ADMIN_URL, admin_site.urls),
     path('api/auth/', include('apps.users.urls')),
+    path('api/estate/', include('apps.estate_billing.urls')),
     path('api/inventory/', include('apps.inventory.urls')),
     path('api/reports/', include('apps.reports.urls')),
     path('api/horticulture/', include('apps.horticulture.urls')),
     path('api/housekeeping/', include('apps.housekeeping.urls')),
+    path('api/lifts/', include('apps.lift_license.urls')),
     path('geo/', include((geo_public_urlpatterns, 'geo_tracker_public'))),
     path('api/geo-tracker/', include('apps.geo_tracker.urls')),
     path('api/admin/gallery/', hk_api_views.HKAdminGalleryView.as_view(), name='api-admin-gallery'),
@@ -86,6 +90,8 @@ urlpatterns = [
     path('insights/', admin_spa_section_redirect('insights')),
     path('users', admin_spa_section_redirect('users')),
     path('users/', admin_spa_section_redirect('users')),
+    path('lifts', admin_spa_section_redirect('lifts')),
+    path('lifts/', admin_spa_section_redirect('lifts')),
     path('horticulture', admin_spa_section_redirect('horticulture')),
     path('horticulture/', include((horticulture_mobile_urlpatterns, 'horticulture_mobile'))),
     path('portal/', portal_root),

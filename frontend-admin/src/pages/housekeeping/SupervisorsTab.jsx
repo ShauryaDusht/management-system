@@ -5,6 +5,7 @@ import { inventoryAPI } from '../../api/inventory'
 import { usersAPI } from '../../api/users'
 import { Alert, Badge, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
 import { getAreaGroup, triggerDownload } from '../../shared/utils'
+import { exportReport } from '../../shared/exportHelper'
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
 import { useMonthYear } from '../../shared/hooks/useMonthYear'
 
@@ -104,52 +105,53 @@ function SupervisorReportModal({ open, supervisor, onClose }) {
     }
   }
 
-  const getSupervisorExportData = async (format) => {
-    if (!supervisor?.id) throw new Error('Supervisor report not available.')
+  const handleExportSupervisorReport = async (format) => {
+    if (!supervisor?.id) return
+
     if (format === 'csv') {
-      const response = await hkAPI.downloadSupervisorReportCSV(supervisor.id, month, year)
-      const blob = new Blob([response.data], { type: 'text/csv' })
-      const safeUsername = toCsvSafe(supervisor.username, String(supervisor.id))
-      triggerDownload(blob, `supervisor_${safeUsername}_${String(month).padStart(2, '0')}_${year}.csv`)
-      return null
+      try {
+        const response = await hkAPI.downloadSupervisorReportCSV(supervisor.id, month, year)
+        const blob = new Blob([response.data], { type: 'text/csv' })
+        const safeUsername = toCsvSafe(supervisor.username, String(supervisor.id))
+        triggerDownload(blob, `supervisor_${safeUsername}_${String(month).padStart(2, '0')}_${year}.csv`)
+        return
+      } catch (e) {
+        // fallback
+      }
     }
 
-    let headers = ['Date', 'Tasks Assigned', 'Tasks Completed', 'Attendance Submissions', 'Extra Work Logged']
-    let rows = dailyRows.map((row) => [
-      formatDate(row.date),
-      row.tasks_assigned || 0,
-      row.tasks_completed || 0,
-      row.attendance_submissions || 0,
-      row.extra_work_logged || 0,
-    ])
-    let titleSuffix = 'Daily Activity'
-    if (activeSection === 'extra') {
-      titleSuffix = 'Extra Work'
-      headers = ['Date', 'Task Name', 'Area', 'Verified']
-      rows = (extraWork.list || []).map((row) => [
-        formatDate(row.date),
-        row.task_name || '-',
-        row.area_name || '-',
-        row.is_verified ? 'Yes' : 'No',
-      ])
-    } else if (activeSection === 'stock') {
-      titleSuffix = 'Stock Requests'
-      headers = ['Item', 'Qty', 'Status', 'Urgent', 'Date']
-      rows = (stock.list || []).map((row) => [
-        row.item_name || '-',
-        row.quantity || 0,
-        row.status || 'pending',
-        row.is_urgent ? 'Yes' : 'No',
-        formatDate(row.created_at),
-      ])
+    const exportData = {
+      filename: `housekeeping_supervisor_${toCsvSafe(supervisor.username, String(supervisor.id))}_${String(month).padStart(2, '0')}_${year}`,
+      module: 'Housekeeping Operations',
+      title: `${toDisplayName(supervisor)} - Supervisor Performance Report`,
+      subtitle: `Period: ${String(month).padStart(2, '0')}/${year} | Pay Code: ${supervisor.pay_code || '-'}`,
+      metadata: [
+        { label: 'Supervisor', value: toDisplayName(supervisor) },
+        { label: 'Pay Code', value: supervisor.pay_code || '-' },
+        { label: 'Username', value: supervisor.username || '-' },
+        { label: 'Period', value: `${String(month).padStart(2, '0')}/${year}` },
+      ],
+      stats: [
+        { label: 'Tasks Checked', value: taskOversight.tasks_checked_total ?? 0 },
+        { label: 'Workers', value: attendance.workers_managed_count ?? 0 },
+        { label: 'Extra Work', value: extraWork.extra_work_approved_count ?? 0 },
+        { label: 'Stock Reqs', value: stock.stock_requests_submitted_count ?? 0 },
+      ],
+      sections: [
+        {
+          title: 'Daily Activity Breakdown',
+          headers: ['Date', 'Workers Present', 'Workers Absent', 'Tasks Checked', 'Notes'],
+          rows: (dailyRows || []).map((d) => [
+            d.date || '-',
+            d.workers_present ?? 0,
+            d.workers_absent ?? 0,
+            d.tasks_checked ?? 0,
+            d.notes || '-',
+          ]),
+        },
+      ],
     }
-    const safeUsername = toCsvSafe(supervisor.username, String(supervisor.id))
-    return {
-      title: `${toDisplayName(supervisor)} - ${titleSuffix} (${String(month).padStart(2, '0')}/${year})`,
-      filename: `supervisor_${safeUsername}_${titleSuffix.toLowerCase().replace(/\s+/g, '_')}_${String(month).padStart(2, '0')}_${year}`,
-      headers,
-      rows,
-    }
+    await exportReport(format, exportData)
   }
 
   const snapshot = report?.snapshot || {}
@@ -193,10 +195,9 @@ function SupervisorReportModal({ open, supervisor, onClose }) {
           </Btn>
         </div>
         <ExportDropdown
-          getData={getSupervisorExportData}
+          label="Download Report"
+          onExport={handleExportSupervisorReport}
           disabled={loading || downloading || !supervisor}
-          buttonText="Download Report"
-          align="right"
         />
       </div>
 
@@ -383,29 +384,32 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
     }
   }
 
-  const getInventoryUsageExportData = () => {
-    if (!usageItems.length) throw new Error('No usage data available.')
+  const handleExportInventoryUsage = async (format) => {
+    if (!usageItems.length) return
     const safeUsername = toCsvSafe(supervisor?.username, String(supervisor?.id || 'supervisor'))
-    const filename = `supervisor_inventory_usage_${safeUsername}_${String(month).padStart(2, '0')}_${year}`
-    const headers = ['Item', 'Issued Qty', 'Total Used', 'Remaining', 'Usage Logs']
-    const exportRows = usageItems.map((item) => {
-      const logsStr = (item.logs || [])
-        .map((log) => `${formatDate(log.date)}: ${log.quantity_used || 0} ${item.unit || ''} (${log.purpose || 'No purpose'})`)
-        .join('; ')
-      return [
+    const exportData = {
+      filename: `supervisor_inventory_usage_${safeUsername}_${String(month).padStart(2, '0')}_${year}`,
+      module: 'Housekeeping Operations',
+      title: `${toDisplayName(supervisor)} - Inventory Usage Report`,
+      subtitle: `Issued and consumed inventory items for period ${String(month).padStart(2, '0')}/${year}`,
+      metadata: [
+        { label: 'Supervisor', value: toDisplayName(supervisor) },
+        { label: 'Pay Code', value: supervisor?.pay_code || '-' },
+        { label: 'Period', value: `${String(month).padStart(2, '0')}/${year}` },
+      ],
+      stats: [
+        { label: 'Total Items', value: usageItems.length },
+        { label: 'With Usage', value: usageItems.filter((i) => Number(i.total_used || 0) > 0).length },
+      ],
+      headers: ['Item Name', 'Issued Quantity', 'Used Quantity', 'Remaining'],
+      rows: usageItems.map((item) => [
         item.item_name || '-',
-        `${item.issued_quantity || 0} ${item.unit || ''}`,
-        `${item.total_used || 0} ${item.unit || ''}`,
-        `${item.remaining || 0} ${item.unit || ''}`,
-        logsStr || 'No logs',
-      ]
-    })
-    return {
-      title: `${toDisplayName(supervisor)} - Inventory Usage Report (${String(month).padStart(2, '0')}/${year})`,
-      filename,
-      headers,
-      rows: exportRows,
+        `${item.issued_quantity || 0} ${item.unit || ''}`.trim(),
+        `${item.total_used || 0} ${item.unit || ''}`.trim(),
+        `${item.remaining || 0} ${item.unit || ''}`.trim(),
+      ]),
     }
+    await exportReport(format, exportData)
   }
 
   const toggleExpanded = (issueId) => {
@@ -487,10 +491,9 @@ function SupervisorInventoryUsageModal({ open, supervisor, onClose }) {
           </Btn>
         </div>
         <ExportDropdown
-          getData={getInventoryUsageExportData}
+          label="Download Usage"
+          onExport={handleExportInventoryUsage}
           disabled={loading || !usageItems.length}
-          buttonText="Download Report"
-          align="right"
         />
       </div>
 

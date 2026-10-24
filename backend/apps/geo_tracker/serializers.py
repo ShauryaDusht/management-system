@@ -30,7 +30,7 @@ class PlantRecordSerializer(serializers.ModelSerializer):
             'variety', 'variety_name',
             'latitude', 'longitude', 'lat', 'lng',
             'zone', 'zone_display',
-            'height_m', 'girth_cm', 'canopy_area_m',
+            'height_m', 'girth_cm', 'length_m', 'width_m', 'canopy_area_m',
             'condition', 'condition_display',
             'photo_url',
             'notes', 'gps_accuracy_m',
@@ -48,20 +48,37 @@ class PlantRecordSerializer(serializers.ModelSerializer):
 
 
 class PlantRecordUpdateSerializer(serializers.ModelSerializer):
-    """Admin detail panel — edits survey/characteristics fields only."""
+    """Admin detail panel — edits survey/characteristics and plant identity fields."""
 
     class Meta:
         model = PlantRecord
         fields = [
+            'plant_type', 'variety', 'local_name', 'scientific_name',
             'zone', 'condition',
-            'height_m', 'girth_cm', 'canopy_area_m', 'gps_accuracy_m',
+            'height_m', 'girth_cm', 'length_m', 'width_m', 'canopy_area_m', 'gps_accuracy_m',
             'notes',
         ]
         extra_kwargs = {
-            'zone':      {'required': False, 'allow_blank': True},
-            'condition': {'required': False},
-            'notes':     {'required': False, 'allow_blank': True},
+            'plant_type':      {'required': False},
+            'variety':         {'required': False, 'allow_null': True},
+            'local_name':      {'required': False, 'allow_blank': True},
+            'scientific_name': {'required': False, 'allow_blank': True},
+            'zone':            {'required': False, 'allow_blank': True},
+            'condition':       {'required': False},
+            'notes':           {'required': False, 'allow_blank': True},
         }
+
+    def update(self, instance, validated_data):
+        variety = validated_data.get('variety')
+        if 'variety' in validated_data and variety is not None:
+            if not validated_data.get('local_name'):
+                validated_data['local_name'] = variety.name
+            if 'scientific_name' not in validated_data:
+                validated_data['scientific_name'] = variety.scientific_name
+            if 'plant_type' not in validated_data:
+                validated_data['plant_type'] = variety.plant_type
+        return super().update(instance, validated_data)
+
 
 
 class PlantRecordCreateSerializer(serializers.ModelSerializer):
@@ -72,7 +89,7 @@ class PlantRecordCreateSerializer(serializers.ModelSerializer):
         fields = [
             'plant_type', 'local_name', 'scientific_name', 'variety',
             'latitude', 'longitude', 'zone',
-            'height_m', 'girth_cm', 'canopy_area_m',
+            'height_m', 'girth_cm', 'length_m', 'width_m', 'canopy_area_m',
             'condition', 'photo', 'notes', 'gps_accuracy_m',
         ]
         read_only_fields = ['plant_type', 'local_name', 'scientific_name']
@@ -117,7 +134,7 @@ def records_to_csv(queryset):
     writer.writerow([
         'ID', 'Type', 'Local Name', 'Scientific Name', 'Variety',
         'Latitude', 'Longitude', 'Campus Area',
-        'Height (m)', 'Girth (cm)', 'Canopy Span (m)',
+        'Height (m)', 'Girth (cm)', 'Length (m)', 'Width (m)', 'Canopy Span (m)',
         'Condition', 'Notes', 'GPS Accuracy (m)', 'Submitted At',
     ])
     for r in queryset:
@@ -132,6 +149,8 @@ def records_to_csv(queryset):
             r.get_zone_display() if r.zone else '',
             r.height_m or '',
             r.girth_cm or '',
+            r.length_m or '',
+            r.width_m or '',
             r.canopy_area_m or '',
             r.get_condition_display(),
             r.notes,

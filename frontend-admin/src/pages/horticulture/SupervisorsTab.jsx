@@ -6,6 +6,7 @@ import { Alert, Badge, Btn, Card, DataTable, ExportDropdown, Modal, Spinner } fr
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
 import { useMonthYear } from '../../shared/hooks/useMonthYear'
 import { asList, getErrorMessage, triggerDownload } from '../../shared/utils'
+import { exportHorticultureReport } from './exportHelper'
 import { formatDateTime } from './helpers'
 
 function toDisplayName(user) {
@@ -29,29 +30,29 @@ function toCsvValue(value) {
 }
 
 function HorticultureReportModal({ open, supervisor, onClose }) {
-  const downloadCsv = () => {
+  const handleExport = async (format) => {
     if (!supervisor) return
-    const rows = [
-      ['Report Title', 'Horticulture Staff Report'],
-      ['Name', toDisplayName(supervisor)],
-      ['Username', supervisor.username || '-'],
-      ['Pay Code', supervisor.pay_code || '-'],
-      ['Phone', supervisor.phone || '-'],
-      ['Workers', supervisor.workers_count ?? 0],
-      ['Tasks This Week', supervisor.tasks_logged_this_week ?? 0],
-      ['Last Login', formatDateTime(supervisor.last_login, 'Never')],
-      [],
-      ['Zones', 'Assigned Areas'],
-      [
-        asList(supervisor.zone_names).join(', ') || '-',
-        asList(supervisor.area_names).join(', ') || '-',
+    const exportData = {
+      filename: `horticulture_staff_${toCsvSafe(supervisor.username || supervisor.id)}`,
+      title: `${toDisplayName(supervisor)} - Horticulture Staff Report`,
+      subtitle: 'Staff responsibilities, assigned zones, and team overview',
+      metadata: [
+        { label: 'Username', value: supervisor.username || '-' },
+        { label: 'Pay Code', value: supervisor.pay_code || '-' },
+        { label: 'Phone', value: supervisor.phone || '-' },
+        { label: 'Last Login', value: formatDateTime(supervisor.last_login, 'Never') },
       ],
-    ]
-    const csv = rows.map((row) => row.map((cell) => toCsvValue(cell)).join(',')).join('\n')
-    triggerDownload(
-      new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }),
-      `horticulture_staff_${toCsvSafe(supervisor.username || supervisor.id)}.csv`
-    )
+      stats: [
+        { label: 'Workers', value: supervisor?.workers_count ?? 0 },
+        { label: 'Tasks This Week', value: supervisor?.tasks_logged_this_week ?? 0 },
+      ],
+      headers: ['Assigned Zones', 'Assigned Areas'],
+      rows: [[
+        asList(supervisor?.zone_names).join(', ') || '-',
+        asList(supervisor?.area_names).join(', ') || '-',
+      ]],
+    }
+    await exportHorticultureReport(format, exportData)
   }
 
   const getSupervisorReportExportData = (format) => {
@@ -86,11 +87,7 @@ function HorticultureReportModal({ open, supervisor, onClose }) {
       width={760}
       footer={(
         <>
-          <ExportDropdown
-            getData={getSupervisorReportExportData}
-            disabled={!supervisor}
-            buttonText="Download Report"
-          />
+          <ExportDropdown label="Download Report" onExport={handleExport} disabled={!supervisor} />
           <Btn variant="ghost" onClick={onClose}>Close</Btn>
         </>
       )}
@@ -161,24 +158,30 @@ function InventoryUsageModal({ open, supervisor, onClose }) {
     }
   }
 
-  const downloadCsv = () => {
+  const handleExport = async (format) => {
     if (!items.length) return
-    const rows = [
-      ['Report Title', 'Horticulture Supervisor Inventory Usage Report'],
-      ['Supervisor', toDisplayName(supervisor)],
-      ['Pay Code', supervisor?.pay_code || '-'],
-      ['Period', `${String(month).padStart(2, '0')}/${year}`],
-      [],
-      ['Item', 'Issued', 'Used', 'Remaining'],
-      ...items.map((item) => [
+    const exportData = {
+      filename: `horticulture_inventory_usage_${toCsvSafe(supervisor?.username)}_${month}_${year}`,
+      title: `${toDisplayName(supervisor)} - Inventory Usage Report`,
+      subtitle: `Material and equipment consumption for period ${String(month).padStart(2, '0')}/${year}`,
+      metadata: [
+        { label: 'Supervisor', value: toDisplayName(supervisor) },
+        { label: 'Pay Code', value: supervisor?.pay_code || '-' },
+        { label: 'Period', value: `${String(month).padStart(2, '0')}/${year}` },
+      ],
+      stats: [
+        { label: 'Total Items', value: items.length },
+        { label: 'With Usage', value: items.filter((i) => Number(i.total_used || 0) > 0).length },
+      ],
+      headers: ['Item', 'Issued', 'Used', 'Remaining'],
+      rows: items.map((item) => [
         item.item_name || '',
-        `${item.issued_quantity || 0} ${item.unit || ''}`,
-        `${item.total_used || 0} ${item.unit || ''}`,
-        `${item.remaining || 0} ${item.unit || ''}`,
+        `${item.issued_quantity || 0} ${item.unit || ''}`.trim(),
+        `${item.total_used || 0} ${item.unit || ''}`.trim(),
+        `${item.remaining || 0} ${item.unit || ''}`.trim(),
       ]),
-    ]
-    const csv = rows.map((row) => row.map((cell) => toCsvValue(cell)).join(',')).join('\n')
-    triggerDownload(new Blob([`\uFEFF${csv}`], { type: 'text/csv' }), `horticulture_inventory_usage_${toCsvSafe(supervisor?.username)}_${month}_${year}.csv`)
+    }
+    await exportHorticultureReport(format, exportData)
   }
 
   const getUsageExportData = (format) => {
@@ -215,10 +218,9 @@ function InventoryUsageModal({ open, supervisor, onClose }) {
           <Btn onClick={load} disabled={loading}>{loading ? 'Loading...' : 'Load Usage'}</Btn>
         </div>
         <ExportDropdown
-          getData={getUsageExportData}
+          label="Download Usage"
+          onExport={handleExport}
           disabled={loading || !items.length}
-          buttonText="Download Report"
-          align="right"
         />
       </div>
 
@@ -274,10 +276,23 @@ export default function SupervisorsTab() {
     }
   }, [])
 
-  const downloadStaffCsv = () => {
-    const csvRows = [
-      ['Role', 'Name', 'Pay Code', 'Email', 'Username', 'Phone', 'Assigned Areas', 'Zones', 'Workers', 'Tasks This Week', 'Status'],
-      ...rows.map((row) => [
+  const handleExportStaff = async (format) => {
+    const exportData = {
+      filename: 'horticulture_staff',
+      title: 'Horticulture Staff & Supervisors Directory',
+      subtitle: 'Supervisor assignments, contact details, and weekly activity',
+      metadata: [
+        { label: 'Total Supervisors', value: rows.length },
+        { label: 'Active Supervisors', value: rows.filter((r) => r.is_active).length },
+      ],
+      stats: [
+        { label: 'Total Staff', value: rows.length },
+        { label: 'Active Staff', value: rows.filter((r) => r.is_active).length },
+        { label: 'Total Workers', value: rows.reduce((acc, r) => acc + (r.workers_count || 0), 0) },
+        { label: 'Tasks This Week', value: rows.reduce((acc, r) => acc + (r.tasks_logged_this_week || 0), 0) },
+      ],
+      headers: ['Role', 'Name', 'Pay Code', 'Email', 'Username', 'Phone', 'Assigned Areas', 'Zones', 'Workers', 'Tasks This Week', 'Status'],
+      rows: rows.map((row) => [
         row.role || 'supervisor',
         toDisplayName(row),
         row.pay_code || '',
@@ -290,9 +305,8 @@ export default function SupervisorsTab() {
         row.tasks_logged_this_week ?? 0,
         row.is_active ? 'Active' : 'Inactive',
       ]),
-    ]
-    const csv = csvRows.map((row) => row.map((cell) => toCsvValue(cell)).join(',')).join('\n')
-    triggerDownload(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), 'horticulture_staff.csv')
+    }
+    await exportHorticultureReport(format, exportData)
   }
 
   return (
@@ -303,25 +317,9 @@ export default function SupervisorsTab() {
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ fontWeight: 700 }}>Supervisor List</div>
           <ExportDropdown
-            size="sm"
-            headers={['Name', 'Pay Code', 'Email', 'Username', 'Phone', 'Assigned Areas', 'Zones', 'Workers', 'Tasks This Week', 'Status']}
-            data={rows.map((row) => [
-              toDisplayName(row),
-              row.pay_code || '-',
-              row.email || '-',
-              row.username || '-',
-              row.phone || '-',
-              asList(row.area_names).join(', ') || '-',
-              asList(row.zone_names).join(', ') || '-',
-              row.workers_count ?? 0,
-              row.tasks_logged_this_week ?? 0,
-              row.is_active ? 'Active' : 'Inactive',
-            ])}
-            title="Horticulture Supervisors Directory"
-            filename="horticulture_supervisors_list"
+            label="Download Staff"
+            onExport={handleExportStaff}
             disabled={loading || !rows.length}
-            buttonText="Download Report"
-            align="right"
           />
         </div>
 

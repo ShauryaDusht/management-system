@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { hkAPI } from '../../api/housekeeping'
 import { Alert, Btn, Card, DataTable, ExportDropdown, Input, Spinner } from '../../components/ui'
 import { todayISO, triggerDownload } from '../../shared/utils'
+import { exportReport } from '../../shared/exportHelper'
 
 const STATUS_META = {
   present: { label: 'Present', color: '#166534', bg: '#dcfce7' },
@@ -83,27 +84,75 @@ export default function StaffAttendanceTab() {
     [rows],
   )
 
-  const getAbsentExportData = async (format) => {
-    if (format === 'csv') {
-      const response = await hkAPI.downloadAbsentAttendanceCSV(date, 'staff')
-      const blob = new Blob([response.data], { type: 'text/csv' })
-      triggerDownload(blob, `housekeeping_absent_staff_${date}.csv`)
-      return null
-    }
-    const absentRows = rows.filter((r) => r.status === 'absent')
-    return {
-      title: `Absent Staff Report (${date})`,
-      filename: `housekeeping_absent_staff_${date}`,
+  const handleExportAttendance = async (format) => {
+    if (!rows.length) return
+    const exportData = {
+      filename: `housekeeping_staff_attendance_${date}`,
+      module: 'Housekeeping Operations',
+      title: 'Housekeeping Staff Attendance Report',
+      subtitle: `Daily staff attendance records for ${date}`,
+      metadata: [
+        { label: 'Date', value: date },
+        { label: 'Total Staff', value: totals.total },
+      ],
+      stats: [
+        { label: 'Total Staff', value: totals.total },
+        { label: 'Present', value: totals.present },
+        { label: 'Absent', value: totals.absent },
+        { label: 'On Leave', value: totals.leave },
+      ],
       headers: ['Staff Name', 'Pay Code', 'Area', 'Role', 'Date', 'Status'],
-      rows: absentRows.map((r) => [
+      rows: rows.map((r) => [
         r.staff_name || '-',
         r.staff_pay_code || '-',
         Array.isArray(r.staff_areas) && r.staff_areas.length ? r.staff_areas.join('; ') : '-',
         r.staff_role || '-',
         r.date || date,
-        r.status || 'absent',
+        STATUS_META[r.status]?.label || r.status || '-',
       ]),
     }
+    await exportReport(format, exportData)
+  }
+
+  const handleExportAbsent = async (format) => {
+    const absentRows = rows.filter((r) => r.status === 'absent')
+    if (format === 'csv') {
+      try {
+        setExportingAbsent(true)
+        const response = await hkAPI.downloadAbsentAttendanceCSV(date, 'staff')
+        const blob = new Blob([response.data], { type: 'text/csv' })
+        triggerDownload(blob, `housekeeping_absent_staff_${date}.csv`)
+        return
+      } catch (e) {
+        // fallback to client generation
+      } finally {
+        setExportingAbsent(false)
+      }
+    }
+
+    const exportData = {
+      filename: `housekeeping_absent_staff_${date}`,
+      module: 'Housekeeping Operations',
+      title: 'Housekeeping Absent Staff Report',
+      subtitle: `List of absent staff on ${date}`,
+      metadata: [
+        { label: 'Date', value: date },
+        { label: 'Total Absent', value: totals.absent },
+      ],
+      stats: [
+        { label: 'Total Staff', value: totals.total },
+        { label: 'Absent Count', value: totals.absent },
+      ],
+      headers: ['Staff Name', 'Pay Code', 'Area', 'Role', 'Status'],
+      rows: (absentRows.length ? absentRows : rows.filter((r) => r.status === 'absent')).map((r) => [
+        r.staff_name || '-',
+        r.staff_pay_code || '-',
+        Array.isArray(r.staff_areas) && r.staff_areas.length ? r.staff_areas.join('; ') : '-',
+        r.staff_role || '-',
+        'Absent',
+      ]),
+    }
+    await exportReport(format, exportData)
   }
 
   return (
@@ -117,21 +166,9 @@ export default function StaffAttendanceTab() {
             <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.total}</div>
           </div>
           <ExportDropdown
-            size="sm"
-            headers={['Staff Name', 'Pay Code', 'Area', 'Role', 'Date', 'Status']}
-            data={rows.map((r) => [
-              r.staff_name || '-',
-              r.staff_pay_code || '-',
-              Array.isArray(r.staff_areas) && r.staff_areas.length ? r.staff_areas.join('; ') : '-',
-              r.staff_role || '-',
-              r.date || date,
-              r.status || '-',
-            ])}
-            title={`Staff Attendance Report (${date})`}
-            filename={`staff_attendance_${date}`}
+            label="Download"
+            onExport={handleExportAttendance}
             disabled={!rows.length}
-            buttonText="Export"
-            align="right"
           />
         </Card>
         <Card>
@@ -144,11 +181,9 @@ export default function StaffAttendanceTab() {
             <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.absent}</div>
           </div>
           <ExportDropdown
-            size="sm"
-            getData={getAbsentExportData}
-            disabled={totals.absent === 0}
-            buttonText="Absent"
-            align="right"
+            label="Absent"
+            onExport={handleExportAbsent}
+            disabled={exportingAbsent || !totals.absent}
           />
         </Card>
         <Card>

@@ -8,21 +8,25 @@ import {
   Btn,
   Card,
   DataTable,
+  ExportDropdown,
   Field,
   Input,
   Modal,
   SelectField,
   Spinner,
-  ExportDropdown,
 } from '../../components/ui'
 import AdminLayout from '../../layout/AdminLayout'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
-import { exportCsv, todayISO } from '../../shared/utils'
+import { exportReport } from '../../shared/exportHelper'
+import { todayISO } from '../../shared/utils'
 import { useAuth } from '../../context/AuthContext'
 
 const ROLES = [
   'admin',
+  'estate_office',
+  'civil_team',
+  'electrical_team',
   'hk_inventory_manager',
   'hostel_office',
   'horticulture_manager',
@@ -32,12 +36,26 @@ const ROLES = [
 const HK_ROLES = ['supervisor', 'caretaker']
 const ROLE_FILTERS = [
   { key: 'admin', label: 'Admin' },
+  { key: 'estate_office', label: 'Estate Office' },
+  { key: 'civil_team', label: 'Civil Team' },
+  { key: 'electrical_team', label: 'Electrical Team' },
   { key: 'hk_inventory_manager', label: 'HK / Inventory Manager' },
   { key: 'hostel_office', label: 'Hostel Office' },
   { key: 'horticulture_manager', label: 'Horticulture Manager' },
   { key: 'supervisor', label: 'Supervisor' },
   { key: 'caretaker', label: 'Caretaker' },
 ]
+const ROLE_LABELS = {
+  admin: 'Admin',
+  estate_office: 'Estate Office',
+  civil_team: 'Civil Team',
+  electrical_team: 'Electrical Team',
+  hk_inventory_manager: 'HK / Inventory Manager',
+  hostel_office: 'Hostel Office',
+  horticulture_manager: 'Horticulture Manager',
+  supervisor: 'Supervisor',
+  caretaker: 'Caretaker',
+}
 const DEPRECATED_MANAGER_USERNAMES = new Set(['inventory.manager', 'housekeeping.manager', 'hostel.manager'])
 const EMPTY = {
   username: '',
@@ -237,14 +255,10 @@ export default function UsersPage() {
     [filtered]
   )
 
-  const downloadCsv = () => {
-    const scope = roleFilter === 'all' ? 'all_roles' : roleFilter
-    exportCsv(csvRows, `manage_users_${safeFilePart(scope)}_${todayISO()}.csv`)
-  }
-
   const roleCounts = useMemo(() => {
     const counts = {
       admin: 0,
+      estate_office: 0,
       hk_inventory_manager: 0,
       hostel_office: 0,
       horticulture_manager: 0,
@@ -262,6 +276,39 @@ export default function UsersPage() {
     }
   }, [users])
 
+  const handleExportUsers = async (format) => {
+    const scope = roleFilter === 'all' ? 'All Roles' : (ROLE_FILTERS.find((r) => r.key === roleFilter)?.label || roleFilter)
+    const exportData = {
+      filename: `manage_users_${safeFilePart(roleFilter)}_${todayISO()}`,
+      module: 'User Administration',
+      title: 'Staff & User Directory Report',
+      subtitle: `Role Filter: ${scope} • Total Users: ${filtered.length}`,
+      metadata: [
+        { label: 'Role Filter', value: scope },
+        { label: 'Export Date', value: todayISO() },
+        { label: 'Total Users Listed', value: filtered.length },
+      ],
+      stats: [
+        { label: 'Total Users', value: filtered.length },
+        { label: 'Admins', value: roleCounts.admin || 0 },
+        { label: 'Supervisors', value: roleCounts.supervisor || 0 },
+        { label: 'Caretakers', value: roleCounts.caretaker || 0 },
+      ],
+      headers: ['Name', 'Username', 'Pay Code', 'Email', 'Phone', 'Role', 'Area Incharge', 'Status'],
+      rows: filtered.map((u) => [
+        userDisplayName(u),
+        u.username || '-',
+        u.pay_code || '-',
+        u.email || '-',
+        u.phone || '-',
+        String(u.role || '-').replace(/_/g, ' ').toUpperCase(),
+        areaInchargeText(u) || '-',
+        u.is_active ? 'Active' : 'Inactive',
+      ]),
+    }
+    await exportReport(format, exportData)
+  }
+
   return (
     <AdminLayout
       title="Manage Users"
@@ -277,9 +324,9 @@ export default function UsersPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(115px, 11vw, 160px), 1fr))',
           gap: 10,
-          marginBottom: 20,
+          marginBottom: 16,
         }}
       >
         <Card
@@ -361,21 +408,9 @@ export default function UsersPage() {
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, color: 'var(--text-3)' }}>{filtered.length} users</span>
             <ExportDropdown
-              filename={`manage_users_${safeFilePart(roleFilter === 'all' ? 'all_roles' : roleFilter)}_${todayISO()}`}
-              title="Users & Roles Directory"
-              subtitle={`Filter: ${roleFilter === 'all' ? 'All Roles' : roleFilter} | Total: ${csvRows.length}`}
-              headers={['Name', 'Username', 'Pay Code', 'Email', 'Phone', 'Role', 'Area Incharge', 'Status']}
-              rows={csvRows.map((u) => [
-                u['Name'],
-                u['Username'],
-                u['Pay Code'],
-                u['Email'],
-                u['Phone'],
-                u['Role'],
-                u['Area Incharge'],
-                u['Status'],
-              ])}
-              disabled={loading || csvRows.length === 0}
+              label="Download Users"
+              onExport={handleExportUsers}
+              disabled={loading || filtered.length === 0}
             />
           </div>
         </div>
@@ -486,7 +521,7 @@ export default function UsersPage() {
           >
             {editableRoles.map((r) => (
               <option key={r} value={r}>
-                {r.replace('_', ' ')}
+                {ROLE_LABELS[r] || r.replace('_', ' ')}
               </option>
             ))}
           </SelectField>
