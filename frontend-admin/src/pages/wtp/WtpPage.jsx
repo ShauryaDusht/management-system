@@ -55,6 +55,7 @@ export default function WtpPage() {
     // Admin (no Edit option, Engineer section only)
     return [
       { key: 'meters', label: 'Meter Readings', icon: '💧' },
+      { key: 'gwssb', label: 'GWSSB Bill', icon: '💰' },
       { key: 'jm', label: 'Jalmandapam Tanks', icon: '🚰' },
       { key: 'chem', label: 'Chlorination & Alum', icon: '🧪' },
       { key: 'blocks', label: 'Block Meters', icon: '🏢' },
@@ -214,8 +215,8 @@ export default function WtpPage() {
             )}
 
 
-            {/* GWSSB Monthly Water Bill (Supervisor only - hidden from Admin) */}
-            {activeTab === 'gwssb' && isSupervisor && (
+            {/* GWSSB Monthly Water Bill */}
+            {activeTab === 'gwssb' && !isOperator && (
               <GwssbReport
                 user={user}
               />

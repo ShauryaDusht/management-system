@@ -9,17 +9,29 @@ const autoTable = typeof autoTableModule === 'function' ? autoTableModule : (aut
  * @param {Array<Array<any>>} rows - 2D table array [headers, ...dataRows]
  * @param {string} [title] - Report title header
  */
-export function downloadPdf(filename, rows, title = '') {
+export function downloadPdf(filename, rows, title = '', maybeSubtitle = '') {
   if (!rows || !rows.length) return;
 
-  const pdfFilename = filename.endsWith('.csv')
-    ? filename.replace(/\.csv$/, '.pdf')
-    : filename.endsWith('.pdf')
-    ? filename
-    : `${filename}.pdf`;
+  // Support both:
+  // 1. downloadPdf(filename, [headers, ...dataRows], title)
+  // 2. downloadPdf(filename, headers, dataRows, title)
+  let allRows = rows;
+  let reportTitle = title;
+  let pdfFilename = filename;
 
-  const headers = rows[0] || [];
-  const body = rows.slice(1) || [];
+  if (Array.isArray(rows) && Array.isArray(title)) {
+    allRows = [rows, ...title];
+    reportTitle = typeof maybeSubtitle === 'string' && maybeSubtitle ? maybeSubtitle : filename;
+  }
+
+  const cleanPdfFilename = pdfFilename.endsWith('.csv')
+    ? pdfFilename.replace(/\.csv$/, '.pdf')
+    : pdfFilename.endsWith('.pdf')
+    ? pdfFilename
+    : `${pdfFilename}.pdf`;
+
+  const headers = allRows[0] || [];
+  const body = allRows.slice(1) || [];
 
   // Use landscape if more than 5 columns
   const isLandscape = headers.length > 5;
@@ -32,7 +44,9 @@ export function downloadPdf(filename, rows, title = '') {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  const cleanTitle = title || pdfFilename.replace(/\.pdf$/, '').replace(/[-_]/g, ' ').toUpperCase();
+  const cleanTitle = (typeof reportTitle === 'string' && reportTitle)
+    ? reportTitle
+    : cleanPdfFilename.replace(/\.pdf$/, '').replace(/[-_]/g, ' ').toUpperCase();
 
   // Header background bar (IITGN forest dark green)
   doc.setFillColor(30, 58, 48);

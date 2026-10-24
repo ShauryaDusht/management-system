@@ -157,6 +157,7 @@ export default function GwssbReport({ user }) {
 
   // Exports
   const handleExportCsv = () => {
+    if (!bills || bills.length === 0) return;
     const headers = [
       'Month',
       'Bill No',
@@ -185,10 +186,27 @@ export default function GwssbReport({ user }) {
       b.status || '-',
       b.by || '-',
     ]);
-    downloadCsv(`GWSSB_Water_Bills_${currentMonthStr}`, headers, rows);
+
+    const totalRow = [
+      'TOTAL',
+      `${bills.length} Months`,
+      '-',
+      '-',
+      '-',
+      totalConsumptionAllTime,
+      '-',
+      totalBilledAllTime,
+      totalActualAllTime,
+      totalActualAllTime - totalBilledAllTime,
+      '-',
+      '-',
+    ];
+
+    downloadCsv(`GWSSB_Water_Bills_${currentMonthStr}.csv`, [headers, ...rows, totalRow]);
   };
 
   const handleExportPdf = () => {
+    if (!bills || bills.length === 0) return;
     const headers = ['Month', 'Bill No', 'Init', 'Final', 'Diff', 'Net CUM', 'Calc (Rs)', 'Actual (Rs)', 'Variance (Rs)', 'Status'];
     const rows = bills.map((b) => [
       b.month,
@@ -202,7 +220,25 @@ export default function GwssbReport({ user }) {
       b.variance != null ? `Rs ${fmt(b.variance, 2)}` : '-',
       b.status || '-',
     ]);
-    downloadPdf('GWSSB Water Bill & Monthly Consumption Report', headers, rows, `IIT Gandhinagar — Water Treatment Operations (${currentMonthStr})`);
+
+    const totalRow = [
+      'TOTAL',
+      `${bills.length} Months`,
+      '-',
+      '-',
+      '-',
+      fmt(totalConsumptionAllTime, 2),
+      `Rs ${fmt(totalBilledAllTime, 2)}`,
+      `Rs ${fmt(totalActualAllTime, 2)}`,
+      `Rs ${fmt(totalActualAllTime - totalBilledAllTime, 2)}`,
+      '-',
+    ];
+
+    downloadPdf(
+      `GWSSB_Water_Bills_${currentMonthStr}.pdf`,
+      [headers, ...rows, totalRow],
+      `GWSSB Water Bill & Monthly Consumption Report (${currentMonthStr})`
+    );
   };
 
   return (
@@ -753,9 +789,14 @@ export default function GwssbReport({ user }) {
               {bills.length} billing month(s) recorded
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '16px', fontSize: '12.5px', fontWeight: 700 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '12.5px', fontWeight: 700, flexWrap: 'wrap' }}>
             <span style={{ color: '#15803d' }}>Calculated Total: ₹ {fmt(totalBilledAllTime, 2)}</span>
             <span style={{ color: '#0e6f8f' }}>Actual Total: ₹ {fmt(totalActualAllTime, 2)}</span>
+            <ExportDropdown
+              onExportCsv={handleExportCsv}
+              onExportPdf={handleExportPdf}
+              disabled={bills.length === 0}
+            />
           </div>
         </div>
 
