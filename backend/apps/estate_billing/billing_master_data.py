@@ -483,76 +483,12 @@ CONTRACTOR_DEFAULT_METERS = {
 }
 
 
-def ensure_master_shops_and_contractors(force=False):
-    """
-    Auto-seeds and reconciles master shops and contractors:
-    1. Removes any rogue contractor records mistakenly put in the Shop table from old commits.
-    2. Ensures exactly the 29 official campus shops exist.
-    3. Ensures exactly the 6 official contractors exist.
-    4. Populates real baseline billing readings for cycle 2026-10 if notes are empty or 0.
-    """
-    from .models import Shop, Contractor, EstateSettings, BillingCycle, ShopDemandNote, ContractorDemandNote
+def _seed_user_and_settings():
+    from .models import EstateSettings
 
-    # Ensure EstateSettings exist
-    settings = EstateSettings.get_settings()
-    if force and settings.first_note_no == 259:
-        settings.first_note_no = 230
-        settings.save(update_fields=['first_note_no'])
+    EstateSettings.get_settings()
 
-    # Detect and clean up only rogue contractors mistakenly saved into the Shop table in commit 21b3e6a
-    CONTRACTOR_NAMES_IN_SHOPS = [
-        'Globe Civil Projects',
-        'ADANI NEW INDUSTRIES',
-        'New Age Education',
-        'Summit Digital',
-        'Haier Smart Solution',
-    ]
-    for cname in CONTRACTOR_NAMES_IN_SHOPS:
-        Shop.objects.filter(name__icontains=cname).delete()
-
-    # 1. Reconcile / Seed Shops (never deleting new shops created with sl > 29)
-    for data in MASTER_SHOPS_DATA:
-        shop, created = Shop.objects.get_or_create(
-            sl=data['sl'],
-            defaults={
-                'name': data['name'],
-                'address': data.get('address', DEFAULT_ADDRESS),
-                'fixed': data.get('fixed', False),
-                'default_rate': data.get('rate', Decimal('9.55')),
-                'default_water': data.get('water', Decimal('320.00')),
-                'is_active': True,
-            }
-        )
-        if not created and force:
-            shop.name = data['name']
-            shop.address = data.get('address', DEFAULT_ADDRESS)
-            shop.fixed = data.get('fixed', False)
-            shop.default_rate = data.get('rate', Decimal('9.55'))
-            shop.default_water = data.get('water', Decimal('320.00'))
-            shop.is_active = True
-            shop.save()
-
-    # 2. Reconcile / Seed Contractors (never deleting new contractors created with sl > 6)
-    for data in MASTER_CONTRACTORS_DATA:
-        c, created = Contractor.objects.get_or_create(
-            sl=data['sl'],
-            defaults={
-                'name': data['name'],
-                'to_line': data.get('to_line', ''),
-                'address': data.get('address', CONTRACTOR_ADDRESS),
-                'intro': data.get('intro', CONTRACTOR_INTRO),
-                'is_active': True,
-            }
-        )
-        if not created and force:
-            c.name = data['name']
-            c.to_line = data.get('to_line', '')
-            c.address = data.get('address', CONTRACTOR_ADDRESS)
-            c.intro = data.get('intro', CONTRACTOR_INTRO)
-            c.is_active = True
-            c.save()
-
-    # 3. Ensure portal user estate.office exists
+    # Portal user estate.office (password is only set when the user is first created)
     try:
         User = get_user_model()
         estate_user, created = User.objects.get_or_create(
@@ -572,81 +508,163 @@ def ensure_master_shops_and_contractors(force=False):
     except Exception:
         pass
 
-    # 4. Populate baseline demand note data for cycle 2026-10 so users don't see empty 0s
-    primary_cycle = '2026-10'
-    BillingCycle.objects.get_or_create(month=primary_cycle, defaults={'label': primary_cycle, 'is_active': True})
 
-    prefix = settings.get_effective_prefix(primary_cycle)
-    first_no = settings.first_note_no
+def _create_master_shop(data):
+    from django.db.models import Max
+    from .models import Shop
 
-    # Populate shops demand notes
+    sl = data['sl']
+    # `sl` is re-sequenced when shops are deleted and is not unique, so never reuse one that is taken.
+    if Shop.objects.filter(is_active=True, sl=sl).exists():
+        sl = (Shop.objects.aggregate(m=Max('sl'))['m'] or 0) + 1
+    return Shop.objects.create(
+        sl=sl,
+        name=data['name'],
+        address=data.get('address', DEFAULT_ADDRESS),
+        fixed=data.get('fixed', False),
+        default_rate=data.get('rate', Decimal('9.55')),
+        default_water=data.get('water', Decimal('320.00')),
+        is_active=True,
+    )
+
+
+def _create_master_contractor(data):
+    from django.db.models import Max
+    from .models import Contractor
+
+    sl = data['sl']
+    if Contractor.objects.filter(is_active=True, sl=sl).exists():
+        sl = (Contractor.objects.aggregate(m=Max('sl'))['m'] or 0) + 1
+    return Contractor.objects.create(
+        sl=sl,
+        name=data['name'],
+        to_line=data.get('to_line', ''),
+        address=data.get('address', CONTRACTOR_ADDRESS),
+        intro=data.get('intro', CONTRACTOR_INTRO),
+        is_active=True,
+    )
+
+
+def ensure_master_shops_and_contractors():
+    """
+    Safe first-run seed. It is called from the estate pages, so it must never change data the
+    estate office has already worked on.
+
+    - The 29 official shops are created only while the shop table is completely EMPTY, and the 6
+      official contractors only while the contractor table is completely EMPTY.
+    - Once any row exists (active or deleted) nothing is edited, deleted or re-created, so deleting
+      or renaming a shop sticks.
+    - Rows are matched by NAME, never by `sl` (`sl` is re-sequenced on delete and can repeat).
+    - Demand notes / bills are never touched here.
+    """
+    from django.db import transaction
+    from .models import Shop, Contractor
+
+    _seed_user_and_settings()
+
+    if not Shop.objects.exists():
+        with transaction.atomic():
+            existing = set(Shop.objects.values_list('name', flat=True))
+            for data in MASTER_SHOPS_DATA:
+                if data['name'] not in existing:
+                    _create_master_shop(data)
+
+    if not Contractor.objects.exists():
+        with transaction.atomic():
+            existing = set(Contractor.objects.values_list('name', flat=True))
+            for data in MASTER_CONTRACTORS_DATA:
+                if data['name'] not in existing:
+                    _create_master_contractor(data)
+
+
+# Contractors that an old commit (21b3e6a) saved into the Shop table by mistake.
+ROGUE_CONTRACTOR_NAME_FRAGMENTS = [
+    'Globe Civil Projects',
+    'ADANI NEW INDUSTRIES',
+    'New Age Education',
+    'Summit Digital',
+    'Haier Smart Solution',
+]
+
+
+def reconcile_master_data():
+    """
+    Explicit repair, run by an operator: `seed_estate_billing --reconcile`. Never runs automatically.
+
+    - Removes contractors that were mistakenly saved as shops.
+    - Adds any official shop / contractor that is missing (matched by name). A shop or contractor
+      that was deleted on purpose exists as an inactive row with the same name, so it is NOT brought back.
+    - Does not edit existing rows and does not touch demand notes.
+
+    Returns a summary dict.
+    """
+    from .models import Shop, Contractor
+
+    summary = {'removed_rogue_shops': [], 'created_shops': [], 'created_contractors': []}
+
+    for fragment in ROGUE_CONTRACTOR_NAME_FRAGMENTS:
+        for shop in Shop.objects.filter(name__icontains=fragment):
+            summary['removed_rogue_shops'].append(shop.name)
+            shop.delete()
+
     for data in MASTER_SHOPS_DATA:
-        shop = Shop.objects.filter(sl=data['sl']).first()
-        if not shop:
-            continue
-        note_no = f"{prefix}{first_no + shop.sl - 1}"
-        note, created = ShopDemandNote.objects.get_or_create(
-            shop=shop,
-            cycle_month=primary_cycle,
-            defaults={
-                'note_no': note_no,
-                'date': data.get('date', '2026-11-03'),
-                'month': data.get('month', '2026-10'),
-                'month_to': data.get('month_to', ''),
-                'units': data.get('units', ''),
-                'rate': data.get('rate', Decimal('9.55')),
-                'water': data.get('water', Decimal('320.00')),
-                'fixed': data.get('fixed', False),
-                'extras': [],
-                'total_amount': data.get('total_amount', Decimal('0.00')),
-                'expiry_date': '',
-            }
-        )
-        if not created and (force or not note.units and not note.fixed or note.total_amount == Decimal('0.00')):
-            # If note was created empty, populate with real numbers
-            note.units = data.get('units', '')
-            note.date = data.get('date', '2026-11-03')
-            note.month = data.get('month', '2026-10')
-            note.month_to = data.get('month_to', '')
-            note.rate = data.get('rate', Decimal('9.55'))
-            note.water = data.get('water', Decimal('320.00'))
-            note.fixed = data.get('fixed', False)
-            note.total_amount = data.get('total_amount', Decimal('0.00'))
-            note.save()
+        if not Shop.objects.filter(name=data['name']).exists():
+            summary['created_shops'].append(_create_master_shop(data).name)
 
-    # Populate contractors demand notes
-    contractor_note_nos = {
-        1: f"{prefix}228",
-        2: f"{prefix}229",
-        3: f"{prefix}233",
-        4: f"{prefix}260",
-        5: f"{prefix}261",
-        6: f"{prefix}262",
-    }
     for data in MASTER_CONTRACTORS_DATA:
-        contractor = Contractor.objects.filter(sl=data['sl']).first()
-        if not contractor:
+        if not Contractor.objects.filter(name=data['name']).exists():
+            summary['created_contractors'].append(_create_master_contractor(data).name)
+
+    return summary
+
+
+def populate_baseline_bills(cycle_month='2026-10'):
+    """
+    OPT-IN: `seed_estate_billing --with-baseline-bills`. Never runs automatically.
+
+    Copies the baseline figures in MASTER_SHOPS_DATA / MASTER_CONTRACTORS_DATA into the demand notes
+    of one cycle. Only notes that are still EMPTY are filled; a note that already has units, meter
+    readings or a total is never modified, and note numbers are left as the app assigned them.
+    The notes must already exist (run ensure_cycle_notes first).
+
+    Returns a summary dict.
+    """
+    from .models import Shop, Contractor, ShopDemandNote, ContractorDemandNote
+
+    summary = {'shop_notes_filled': 0, 'shop_notes_skipped': 0,
+               'contractor_notes_filled': 0, 'contractor_notes_skipped': 0}
+
+    for data in MASTER_SHOPS_DATA:
+        shop = Shop.objects.filter(name=data['name'], is_active=True).first()
+        note = ShopDemandNote.objects.filter(shop=shop, cycle_month=cycle_month).first() if shop else None
+        if not note or note.units or note.fixed or note.total_amount:
+            summary['shop_notes_skipped'] += 1
             continue
-        c_note_no = contractor_note_nos.get(data['sl'], '')
-        cnote, created = ContractorDemandNote.objects.get_or_create(
-            contractor=contractor,
-            cycle_month=primary_cycle,
-            defaults={
-                'note_no': c_note_no,
-                'date': data.get('date', '2026-11-03'),
-                'month': data.get('month', '2026-10'),
-                'month_to': data.get('month_to', ''),
-                'period_type': data.get('period_type', 'month'),
-                'meters': data.get('meters', []),
-                'total_amount': data.get('total_amount', Decimal('0.00')),
-            }
-        )
-        if not created and (force or not cnote.total_amount or not cnote.note_no or not cnote.meters):
-            cnote.note_no = c_note_no
-            cnote.date = data.get('date', '2026-11-03')
-            cnote.month = data.get('month', '2026-10')
-            cnote.month_to = data.get('month_to', '')
-            cnote.period_type = data.get('period_type', 'month')
-            cnote.meters = data.get('meters', [])
-            cnote.total_amount = data.get('total_amount', Decimal('0.00'))
-            cnote.save()
+        note.units = data.get('units', '')
+        note.date = data.get('date', '')
+        note.month = data.get('month', cycle_month)
+        note.month_to = data.get('month_to', '')
+        note.rate = data.get('rate', Decimal('9.55'))
+        note.water = data.get('water', Decimal('320.00'))
+        note.fixed = data.get('fixed', False)
+        note.total_amount = data.get('total_amount', Decimal('0.00'))
+        note.save()
+        summary['shop_notes_filled'] += 1
+
+    for data in MASTER_CONTRACTORS_DATA:
+        contractor = Contractor.objects.filter(name=data['name'], is_active=True).first()
+        note = ContractorDemandNote.objects.filter(contractor=contractor, cycle_month=cycle_month).first() if contractor else None
+        has_readings = bool(note) and any((m.get('current') or m.get('previous')) for m in (note.meters or []))
+        if not note or has_readings or note.total_amount:
+            summary['contractor_notes_skipped'] += 1
+            continue
+        note.date = data.get('date', '')
+        note.month = data.get('month', cycle_month)
+        note.month_to = data.get('month_to', '')
+        note.period_type = data.get('period_type', 'month')
+        note.meters = data.get('meters', [])
+        note.total_amount = data.get('total_amount', Decimal('0.00'))
+        note.save()
+        summary['contractor_notes_filled'] += 1
+
+    return summary
