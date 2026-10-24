@@ -1,9 +1,10 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-import { Alert, Badge, Btn, Card, Spinner } from '../../components/ui'
+import { Alert, Badge, Btn, Card, ExportDropdown, Spinner } from '../../components/ui'
 import { TrendArea } from '../../components/ui/Charts'
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
 import { useMonthYear } from '../../shared/hooks/useMonthYear'
+import { exportReport } from '../../shared/exportHelper'
 import { triggerDownload } from '../../shared/utils'
 import {
   downloadPurchasePlanCSV,
@@ -223,7 +224,7 @@ export default function PurchasePlannerPanel() {
     }
   }
 
-  const handleExport = async () => {
+  const handleExport = async (format) => {
     let latest = plan
     if (dirty) {
       latest = await handleSave({ silent: true })
@@ -235,11 +236,46 @@ export default function PurchasePlannerPanel() {
         setError('No visible rows to export.')
         return
       }
-      const resp = await downloadPurchasePlanCSV(month, year, visibleItemIds)
       const suffix = hasActiveFilters ? '_filtered' : ''
-      triggerDownload(resp.data, `purchase_plan_${year}_${String(month).padStart(2, '0')}${suffix}.csv`)
+
+      if (format === 'csv') {
+        const resp = await downloadPurchasePlanCSV(month, year, visibleItemIds)
+        triggerDownload(resp.data, `purchase_plan_${year}_${String(month).padStart(2, '0')}${suffix}.csv`)
+        return
+      }
+
+      const exportData = {
+        filename: `purchase_plan_${year}_${String(month).padStart(2, '0')}${suffix}`,
+        module: 'Inventory Procurement',
+        title: 'Monthly Purchase Plan Worksheet',
+        subtitle: `Period: ${shortTitleFor(month, year)} • Items: ${filteredRows.length}`,
+        metadata: [
+          { label: 'Period', value: shortTitleFor(month, year) },
+          { label: 'Category Filter', value: category || 'All Categories' },
+          { label: 'Type Filter', value: type || 'All Types' },
+          { label: 'Total Items In Plan', value: filteredRows.length },
+        ],
+        stats: [
+          { label: 'Items To Purchase', value: filteredSummary.purchase_items_count },
+          { label: 'Total Purchase Qty', value: filteredSummary.total_purchase_quantity },
+          { label: 'Total Estimated Cost', value: inr(visibleEstimatedCost) },
+        ],
+        headers: ['Code', 'Item Name', 'Category', 'Type', 'Unit', 'Available', 'Purchase Price', 'Purchase Qty', 'Estimated Cost (INR)'],
+        rows: filteredRows.map((row) => [
+          row.item_code || '-',
+          row.item_name || '-',
+          row.category || '-',
+          String(row.item_type || '-').toUpperCase(),
+          row.unit || '-',
+          row.available_quantity ?? 0,
+          Number(row.unit_cost ?? row.current_unit_cost ?? 0).toFixed(2),
+          row.purchase_quantity ?? 0,
+          Number(row.estimated_cost ?? 0).toFixed(2),
+        ]),
+      }
+      await exportReport(format, exportData)
     } catch {
-      setError('CSV export failed.')
+      setError('Export failed.')
     }
   }
 
@@ -385,9 +421,13 @@ export default function PurchasePlannerPanel() {
             <Btn onClick={() => handleSave()} disabled={loading || saving || !plan} style={{ marginBottom: 14 }}>
               {saving ? 'Saving...' : dirty ? 'Save & Update Stock' : 'Saved'}
             </Btn>
-            <Btn variant="secondary" onClick={handleExport} disabled={loading || saving || !plan} style={{ marginBottom: 14 }}>
-              Export Visible CSV
-            </Btn>
+            <div style={{ marginBottom: 14 }}>
+              <ExportDropdown
+                label="Export Plan"
+                onExport={handleExport}
+                disabled={loading || saving || !plan || !filteredRows.length}
+              />
+            </div>
           </div>
         </div>
 

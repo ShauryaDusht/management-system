@@ -192,7 +192,7 @@ class ItemRequest(models.Model):
     )
     # Enforce minimum quantity of 1
     quantity_requested = models.PositiveIntegerField(
-        validators=[MinValueValidator(1)]
+        validators=[MinValueValidator(0)]
     )
 
     units_remaining = models.PositiveIntegerField(

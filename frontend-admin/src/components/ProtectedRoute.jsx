@@ -3,7 +3,10 @@ import { useAuth } from '../context/AuthContext'
 
 function getLandingRoute(user) {
   const role = getEffectiveRole(user)
-  if (['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office'].includes(role)) {
+  if (role === 'civil_team' || role === 'electrical_team') {
+    return '/estate'
+  }
+  if (['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'estate_office'].includes(role)) {
     return '/dashboard'
   }
   if (role === 'engineer') {

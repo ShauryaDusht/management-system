@@ -589,8 +589,9 @@ class Command(BaseCommand):
                     f"Supervisor/caretaker {username} not found; keeping existing assignment when possible."
                 )
 
+        beauki = HKArea.objects.filter(name__in=["Beauki", "Beuaki"]).first()
         areas = {
-            name: HKArea.objects.filter(name=name).first()
+            name: (beauki if name in {"Beauki", "Beuaki"} else HKArea.objects.filter(name=name).first())
             for name in {spec["area"] for spec in full_roster}
         }
         missing_areas = sorted(name for name, area in areas.items() if area is None)

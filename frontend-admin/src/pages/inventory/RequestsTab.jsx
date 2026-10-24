@@ -19,8 +19,10 @@ import {
   Tabs,
 } from '../../components/ui'
 
-export default function RequestsTab({ userRole }) {
-  const { isSupervisor, isCaretaker } = useAuth()
+export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, isCaretaker: isCaretakerProp, categoryScope = null, excludeCategoryScope = null }) {
+  const { isSupervisor: authSupervisor, isCaretaker: authCaretaker } = useAuth()
+  const isSupervisor = isSupervisorProp !== undefined ? isSupervisorProp : authSupervisor
+  const isCaretaker = isCaretakerProp !== undefined ? isCaretakerProp : authCaretaker
   const { refresh: refreshBadges } = useNotifications()
   const [success, setSuccess] = useState('')
   const [requests, setRequests] = useState([])
@@ -65,13 +67,16 @@ export default function RequestsTab({ userRole }) {
   })
 
   const canCreate = isSupervisor || isCaretaker
-  const canReview = userRole === 'admin' || userRole === 'hk_inventory_manager'
-  const canCreatePurchase = userRole === 'admin' || userRole === 'hk_inventory_manager'
+  const canReview = userRole === 'admin' || userRole === 'hk_inventory_manager' || userRole === 'horticulture_manager' || userRole === 'inventory_manager'
+  const canCreatePurchase = userRole === 'admin' || userRole === 'hk_inventory_manager' || userRole === 'horticulture_manager' || userRole === 'inventory_manager'
 
   const { run: runAction, error: actionError, clearError } = useAsyncAction()
   const { loading, error: loadError, reload } = useAsyncLoad(async () => {
+    const params = {}
+    if (categoryScope) params.category = categoryScope
+    if (excludeCategoryScope) params.exclude_category = excludeCategoryScope
     const [reqRes, itemsRes, catRes] = await Promise.all([
-      inventoryAPI.getRequests(),
+      inventoryAPI.getRequests(params),
       inventoryAPI.getItems(),
       inventoryAPI.getCategories(),
     ])
@@ -79,9 +84,44 @@ export default function RequestsTab({ userRole }) {
     setItems(asList(itemsRes.data))
     setCategories(asList(catRes.data))
     return null
-  }, [], 'Failed to load requests.')
+  }, [categoryScope, excludeCategoryScope], 'Failed to load requests.')
 
   const error = actionError || loadError
+
+  const requestableItems = useMemo(() => {
+    let list = items
+    if (categoryScope) {
+      list = list.filter((it) => String(it.category_name || '').trim().toLowerCase() === String(categoryScope).trim().toLowerCase())
+    }
+    if (excludeCategoryScope) {
+      list = list.filter((it) => String(it.category_name || '').trim().toLowerCase() !== String(excludeCategoryScope).trim().toLowerCase())
+    }
+    return list
+  }, [items, categoryScope, excludeCategoryScope])
+
+  const scopedRequests = useMemo(() => {
+    let list = requests
+    if (categoryScope) {
+      list = list.filter((r) => {
+        const itemObj = items.find((it) => Number(it.id) === Number(r.item?.id || r.item))
+        const cat = r.category_name || r.item_category || itemObj?.category_name || ''
+        return String(cat).trim().toLowerCase() === String(categoryScope).trim().toLowerCase()
+          || String(cat).toLowerCase().includes('horticulture')
+          || String(r.purpose || '').toLowerCase().includes('[horticulture')
+      })
+    }
+    if (excludeCategoryScope) {
+      list = list.filter((r) => {
+        const itemObj = items.find((it) => Number(it.id) === Number(r.item?.id || r.item))
+        const cat = r.category_name || r.item_category || itemObj?.category_name || ''
+        const isExcluded = String(cat).trim().toLowerCase() === String(excludeCategoryScope).trim().toLowerCase()
+          || String(cat).toLowerCase().includes('horticulture')
+          || String(r.purpose || '').toLowerCase().includes('[horticulture')
+        return !isExcluded
+      })
+    }
+    return list
+  }, [requests, items, categoryScope, excludeCategoryScope])
 
   const selectedItems = useMemo(
     () =>
@@ -93,18 +133,28 @@ export default function RequestsTab({ userRole }) {
   )
 
   const pending = useMemo(
-    () => requests.filter((r) => r.status === 'pending'),
-    [requests]
+    () => scopedRequests.filter((r) => r.status === 'pending'),
+    [scopedRequests]
   )
   const approved = useMemo(
-    () => requests.filter((r) => r.status === 'approved'),
-    [requests]
+    () => scopedRequests.filter((r) => r.status === 'approved'),
+    [scopedRequests]
   )
 
   const filtered = useMemo(() => {
-    if (filter === 'all') return requests
-    return requests.filter((r) => r.status === filter)
-  }, [requests, filter])
+    if (filter === 'all') return scopedRequests
+    return scopedRequests.filter((r) => r.status === filter)
+  }, [scopedRequests, filter])
+
+  const openPurchaseModal = () => {
+    let catId = ''
+    if (categoryScope) {
+      const match = categories.find((c) => String(c.name || '').trim().toLowerCase() === String(categoryScope).trim().toLowerCase())
+      if (match) catId = String(match.id)
+    }
+    setPurchaseForm((p) => ({ ...p, category: catId || p.category }))
+    setPurchaseModal(true)
+  }
 
   const reviewRequest = async (id, _action, reason = '') => {
     setActingId(id)
@@ -260,7 +310,7 @@ export default function RequestsTab({ userRole }) {
           <div style={{ fontWeight: 700 }}>Pending Requests</div>
           <div style={{ display: 'flex', gap: 8 }}>
             {canCreatePurchase && (
-              <Btn variant="orange" onClick={() => setPurchaseModal(true)}>
+              <Btn variant="orange" onClick={openPurchaseModal}>
                 + Purchase Request
               </Btn>
             )}
@@ -524,7 +574,7 @@ export default function RequestsTab({ userRole }) {
                       }
                     >
                       <option value="">Select item</option>
-                      {items.map((it) => (
+                      {requestableItems.map((it) => (
                         <option key={it.id} value={it.id}>
                           {it.name} ({it.available_quantity} {it.unit})
                         </option>

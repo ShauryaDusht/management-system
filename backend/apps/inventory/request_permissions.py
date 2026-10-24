@@ -10,6 +10,8 @@ def can_request_assets(user):
         return False
     if getattr(user, "can_manage_inventory", False):
         return True
+    if getattr(user, "is_hk_staff", False) or getattr(user, "role", "") in {"supervisor", "caretaker"}:
+        return True
 
     try:
         from apps.horticulture.services import get_supervisor_zones

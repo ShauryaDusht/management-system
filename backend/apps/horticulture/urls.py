@@ -6,6 +6,7 @@ from .views import (
     AdminHorticultureAttendanceRecordListCreateAPIView,
     AdminHorticultureAttendanceSummaryAPIView,
     AdminHorticultureAreasAPIView,
+    AdminHorticultureAreaStocksAPIView,
     AdminHorticultureAreaDetailAPIView,
     AdminHorticultureAreaTaskAssignmentDetailAPIView,
     AdminHorticultureAreaTaskAssignmentListCreateAPIView,
@@ -46,6 +47,7 @@ from .views import (
 
 urlpatterns = [
     path('admin/summary/', AdminHorticultureSummaryAPIView.as_view(), name='horti-admin-summary'),
+    path('admin/stocks/', AdminHorticultureAreaStocksAPIView.as_view(), name='horti-admin-stocks'),
     path('admin/zone/<int:zone_id>/', AdminHorticultureZoneDetailAPIView.as_view(), name='horti-admin-zone-detail'),
     path('admin/areas/', AdminHorticultureAreasAPIView.as_view(), name='horti-admin-areas'),
     path('admin/areas/<int:area_id>/', AdminHorticultureAreaDetailAPIView.as_view(), name='horti-admin-area-detail'),

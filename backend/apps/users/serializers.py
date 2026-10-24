@@ -70,7 +70,20 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return user
 
     def validate(self, attrs):
-        attrs['username'] = normalize_username_value(attrs.get('username'))
+        raw_val = normalize_username_value(attrs.get('username'))
+        if not User.objects.filter(username=raw_val).exists():
+            matched_user = User.objects.filter(email__iexact=raw_val).first()
+            if not matched_user and '@' in raw_val:
+                from django.conf import settings
+                civil_emails = [e.strip().lower() for e in getattr(settings, 'CIVIL_ALERT_EMAIL', '').split(',') if e.strip()]
+                elec_emails = [e.strip().lower() for e in getattr(settings, 'ELECTRICAL_ALERT_EMAIL', '').split(',') if e.strip()]
+                if raw_val.lower() in civil_emails:
+                    matched_user = User.objects.filter(username='civil.team').first()
+                elif raw_val.lower() in elec_emails:
+                    matched_user = User.objects.filter(username='electrical.team').first()
+            if matched_user:
+                raw_val = matched_user.username
+        attrs['username'] = raw_val
         data = super().validate(attrs)
         user = self._repair_portal_user(self.user)
         response_role = User.Role.HK_INVENTORY_MANAGER if user.username == 'hostel.office' else user.role

@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
 import { reportsAPI } from '../../api/inventory'
-import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
 import { TrendArea } from '../../components/ui/Charts'
+import { exportReport } from '../../shared/exportHelper'
 import { getAreaGroup, todayISO } from '../../shared/utils'
 
 const HIDDEN_STAFF_AREA_NAMES = new Set(['hostels reliever', 'old academic reliever', 'new academic reliever'])
@@ -298,6 +299,36 @@ export default function OverviewTab({ readOnly = false, hostelOnly = false }) {
     [visibleRows],
   )
 
+  const handleExportOverviewReport = async (format) => {
+    const headers = ['Area', 'Assigned Supervisor / Caretaker', 'Total Tasks', 'Pending Tasks', 'Skipped Tasks', 'Completed Tasks']
+    const reportRows = visibleRows.map((r) => [
+      r.area || '—',
+      r.supervisor_caretaker || '—',
+      r.total ?? 0,
+      r.pending ?? 0,
+      r.skipped ?? 0,
+      r.completed ?? 0,
+    ])
+    await exportReport(format, {
+      title: 'IITGN Campus Housekeeping Daily Overview Report',
+      subtitle: `Classification: ${areaClassFilter.toUpperCase()} | Date: ${todayISO()}`,
+      filename: `housekeeping_daily_overview_${todayISO()}`,
+      headers,
+      rows: reportRows,
+      kpis: [
+        { label: 'Total Tasks', value: totals.total },
+        { label: 'Completed', value: totals.completed },
+        { label: 'Pending', value: totals.pending },
+        { label: 'Skipped', value: totals.skipped },
+      ],
+      metadata: {
+        'Date': todayISO(),
+        'Classification': areaClassFilter,
+        'Export Date': new Date().toLocaleString(),
+      },
+    })
+  }
+
   return (
     <div>
       <Alert message={error} />
@@ -461,7 +492,11 @@ export default function OverviewTab({ readOnly = false, hostelOnly = false }) {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn variant="secondary">Share Daily Tasks</Btn>
-            <Btn variant="orange">Export Report</Btn>
+            <ExportDropdown
+              label="Export Report"
+              onExport={handleExportOverviewReport}
+              disabled={loading || visibleRows.length === 0}
+            />
           </div>
         </div>
       </Card>

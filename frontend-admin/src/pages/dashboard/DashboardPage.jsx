@@ -21,21 +21,21 @@ function adminHref(to = '/dashboard') {
 }
 
 const CHART_TYPES = [
-  { key: 'area',  label: 'Area' },
-  { key: 'bar',   label: 'Bar' },
-  { key: 'pie',   label: 'Pie' },
+  { key: 'area', label: 'Area' },
+  { key: 'bar', label: 'Bar' },
+  { key: 'pie', label: 'Pie' },
 ]
 
 const MODULE_OPTIONS = [
-  { key: 'all',          label: 'All' },
-  { key: 'inventory',    label: 'Inventory' },
+  { key: 'all', label: 'All' },
+  { key: 'inventory', label: 'Inventory' },
   { key: 'housekeeping', label: 'Housekeeping' },
   { key: 'horticulture', label: 'Horticulture' },
 ]
 
 const RANGE_OPTIONS = [
-  { key: 'today',   label: 'Today' },
-  { key: 'weekly',  label: 'Weekly' },
+  { key: 'today', label: 'Today' },
+  { key: 'weekly', label: 'Weekly' },
   { key: 'monthly', label: 'Monthly' },
 ]
 
@@ -178,7 +178,7 @@ function HostelOfficePanel({ hkSummary, invSummary }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
           <HostelActionBox title="Assign Extra Work" text="Create hostel-only extra work." to="/housekeeping?tab=overview" icon="tasks" color="var(--orange-600)" />
           <HostelActionBox title="Sections + Staff" text="Area-wise or temporary staff switch." to="/housekeeping?tab=directory" icon="areas" color="var(--green-800)" />
-          <HostelActionBox title="Attendance Export" text="Download absent-only CSV." to="/housekeeping?tab=staff_attendance" icon="present" color="#2563eb" />
+          <HostelActionBox title="Attendance Export" text="Export absent records (CSV, PDF, Word)." to="/housekeeping?tab=staff_attendance" icon="present" color="#2563eb" />
           <HostelActionBox title="Inventory Usage" text="View hostel inventory reports." to="/inventory?tab=inventory-report" icon="inventory" color="#7c3aed" />
         </div>
       </div>
@@ -223,7 +223,7 @@ function ActivityAreaChart({ data, lines, height }) {
         <defs>
           {lines.map((l, i) => (
             <linearGradient key={l.key} id={`grad_${l.key}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%"  stopColor={PALETTE[i % PALETTE.length]} stopOpacity={0.25} />
+              <stop offset="5%" stopColor={PALETTE[i % PALETTE.length]} stopOpacity={0.25} />
               <stop offset="95%" stopColor={PALETTE[i % PALETTE.length]} stopOpacity={0} />
             </linearGradient>
           ))}
@@ -288,12 +288,12 @@ function ActivityPieChart({ data, lines }) {
       >
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie 
-              data={totals} 
-              cx="50%" cy="50%" 
-              outerRadius={80} 
+            <Pie
+              data={totals}
+              cx="50%" cy="50%"
+              outerRadius={80}
               innerRadius={45}
-              dataKey="value" 
+              dataKey="value"
               paddingAngle={2}
               labelLine={true}
               label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
@@ -340,51 +340,55 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const isHorticultureManager = user?.role === 'horticulture_manager'
   const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
-  const canViewInventory = !isHorticultureManager
-  const canViewHousekeeping = !isHorticultureManager
-  const canViewHorticulture = user?.role !== 'hk_inventory_manager' && !isHostelOffice
-  const [invSummary, setInvSummary]     = useState(null)
-  const [hkSummary, setHkSummary]       = useState(null)
+  const isEstateOffice = user?.role === 'estate_office' || user?.actual_role === 'estate_office' || user?.username === 'estate.office'
+  const canViewInventory = !isHorticultureManager && !isEstateOffice
+  const canViewHousekeeping = !isHorticultureManager && !isEstateOffice
+  const canViewHorticulture = user?.role !== 'hk_inventory_manager' && !isHostelOffice && !isEstateOffice
+  const [invSummary, setInvSummary] = useState(null)
+  const [hkSummary, setHkSummary] = useState(null)
   const [hortiSummary, setHortiSummary] = useState(null)
+  const [hortiStockSummary, setHortiStockSummary] = useState(null)
 
-  const [trendRange,   setTrendRange]   = useState('weekly')
-  const [trendModule,  setTrendModule]  = useState('all')
-  const [chartType,    setChartType]    = useState('area')
-  const [trendData,    setTrendData]    = useState([])
-  const [trendTotals,  setTrendTotals]  = useState(null)
+  const [trendRange, setTrendRange] = useState('weekly')
+  const [trendModule, setTrendModule] = useState('all')
+  const [chartType, setChartType] = useState('area')
+  const [trendData, setTrendData] = useState([])
+  const [trendTotals, setTrendTotals] = useState(null)
   const [trendLoading, setTrendLoading] = useState(true)
-  const [loading,      setLoading]      = useState(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let alive = true
     const fetchData = async () => {
       setTrendLoading(true)
       try {
-        const [inv, hk, horti, trend] = await Promise.all([
+        const [inv, hk, horti, hortiStock, trend] = await Promise.all([
           canViewInventory ? inventoryAPI.getDashboard().catch(() => null) : Promise.resolve(null),
           canViewHousekeeping ? hkAPI.getDashboardSummary().catch(() => null) : Promise.resolve(null),
           canViewHorticulture ? horticultureAPI.getSummary().catch(() => null) : Promise.resolve(null),
+          (isHorticultureManager || canViewHorticulture) ? horticultureAPI.getAreaStocks().catch(() => null) : Promise.resolve(null),
           reportsAPI.getActivityTrend({ range: trendRange }).catch(() => null),
         ])
         if (!alive) return
         setInvSummary(inv?.data || null)
         setHkSummary(hk?.data || null)
         setHortiSummary(horti?.data || null)
+        setHortiStockSummary(hortiStock?.data || null)
         const series = Array.isArray(trend?.data?.series) ? trend.data.series : []
         setTrendData(series.map(row => ({
           name: row.label || row.date,
-          inventory:                    Number(row.inventory || 0),
-          housekeeping:                 Number(row.housekeeping || 0),
-          horticulture:                 Number(row.horticulture || 0),
-          total:                        Number(row.total || 0),
-          inventory_requests:           Number(row.inventory_requests || 0),
-          inventory_issues:             Number(row.inventory_issues || 0),
-          inventory_stock_additions:    Number(row.inventory_stock_additions || 0),
-          inventory_purchase_requests:  Number(row.inventory_purchase_requests || 0),
-          hk_done:                      Number(row.hk_done || 0),
-          hk_pending:                   Number(row.hk_pending || 0),
-          hk_in_progress:               Number(row.hk_in_progress || 0),
-          hk_skipped:                   Number(row.hk_skipped || 0),
+          inventory: Number(row.inventory || 0),
+          housekeeping: Number(row.housekeeping || 0),
+          horticulture: Number(row.horticulture || 0),
+          total: Number(row.total || 0),
+          inventory_requests: Number(row.inventory_requests || 0),
+          inventory_issues: Number(row.inventory_issues || 0),
+          inventory_stock_additions: Number(row.inventory_stock_additions || 0),
+          inventory_purchase_requests: Number(row.inventory_purchase_requests || 0),
+          hk_done: Number(row.hk_done || 0),
+          hk_pending: Number(row.hk_pending || 0),
+          hk_in_progress: Number(row.hk_in_progress || 0),
+          hk_skipped: Number(row.hk_skipped || 0),
         })))
         setTrendTotals(trend?.data?.totals || null)
       } finally {
@@ -421,140 +425,172 @@ export default function DashboardPage() {
     ? (invSummary.in_stock_count ?? Math.max(0, (invSummary.total_items || 0) - (invSummary.low_stock_count || 0) - (invSummary.out_of_stock_count || 0)))
     : 0
 
-  const invDonut     = invSummary ? [{ name: 'In Stock', value: inStockCount }, { name: 'Low Stock', value: invSummary.low_stock_count || 0 }, { name: 'Out of Stock', value: invSummary.out_of_stock_count || 0 }] : []
-  const hkDonut      = hkSummary  ? [{ name: 'Done', value: hkSummary.done_tasks || 0 }, { name: 'Pending', value: hkSummary.pending_tasks || 0 }] : []
-  const hkHasAct     = hkDonut.some(d => d.value > 0)
-  const hkDonutData  = hkHasAct ? hkDonut : [{ name: 'No Activity', value: 1 }]
+  const invDonut = invSummary ? [{ name: 'In Stock', value: inStockCount }, { name: 'Low Stock', value: invSummary.low_stock_count || 0 }, { name: 'Out of Stock', value: invSummary.out_of_stock_count || 0 }] : []
+  const hkDonut = hkSummary ? [{ name: 'Done', value: hkSummary.done_tasks || 0 }, { name: 'Pending', value: hkSummary.pending_tasks || 0 }] : []
+  const hkHasAct = hkDonut.some(d => d.value > 0)
+  const hkDonutData = hkHasAct ? hkDonut : [{ name: 'No Activity', value: 1 }]
 
-  const hortiCounts  = hortiSummary?.task_status_counts || {}
-  const hortiTotal   = Number(hortiCounts.total || 0)
-  const hortiDonut   = [
+  const hortiCounts = hortiSummary?.task_status_counts || {}
+  const hortiTotal = Number(hortiCounts.total || 0)
+  const hortiDonut = [
     { name: 'On Track', value: Number(hortiCounts.on_track || 0) },
     { name: 'Due Soon', value: Number(hortiCounts.due_soon || 0) },
     { name: 'Overdue', value: Number(hortiCounts.overdue || 0) },
   ]
   const hortiDonutData = hortiTotal > 0 ? hortiDonut : [{ name: 'No Activity', value: 1 }]
 
+  const hortiStockItems = hortiStockSummary?.items_summary || {}
+  const hortiStockTotal = Number(hortiStockItems.total_items || 0)
+  const hortiStockDonut = hortiStockTotal > 0
+    ? [
+        { name: 'In Stock', value: Number(hortiStockItems.in_stock || 0) },
+        { name: 'Low Stock', value: Number(hortiStockItems.low_stock || 0) },
+        { name: 'Out of Stock', value: Number(hortiStockItems.out_of_stock || 0) },
+      ]
+    : [{ name: 'No Activity', value: 1 }]
+
   const trendLines = trendModule === 'inventory'
     ? [
-        { key: 'inventory',                   label: 'Total Inventory' },
-        { key: 'inventory_requests',          label: 'Requests' },
-        { key: 'inventory_issues',            label: 'Issues' },
-        { key: 'inventory_stock_additions',   label: 'Stock Additions' },
-        { key: 'inventory_purchase_requests', label: 'Purchase Requests' },
-      ]
+      { key: 'inventory', label: 'Total Inventory' },
+      { key: 'inventory_requests', label: 'Requests' },
+      { key: 'inventory_issues', label: 'Issues' },
+      { key: 'inventory_stock_additions', label: 'Stock Additions' },
+      { key: 'inventory_purchase_requests', label: 'Purchase Requests' },
+    ]
     : trendModule === 'housekeeping'
-    ? [
-        { key: 'housekeeping',  label: 'Total HK Tasks' },
-        { key: 'hk_done',       label: 'Completed' },
-        { key: 'hk_pending',    label: 'Pending' },
-        { key: 'hk_in_progress',label: 'In Progress' },
-        { key: 'hk_skipped',    label: 'Skipped' },
+      ? [
+        { key: 'housekeeping', label: 'Total HK Tasks' },
+        { key: 'hk_done', label: 'Completed' },
+        { key: 'hk_pending', label: 'Pending' },
+        { key: 'hk_in_progress', label: 'In Progress' },
+        { key: 'hk_skipped', label: 'Skipped' },
       ]
-    : trendModule === 'horticulture'
-    ? [{ key: 'horticulture', label: 'Horticulture Activity' }]
-    : [
-        { key: 'inventory',    label: 'Inventory' },
-        { key: 'housekeeping', label: 'Housekeeping' },
-        { key: 'horticulture', label: 'Horticulture' },
-      ]
+      : trendModule === 'horticulture'
+        ? [{ key: 'horticulture', label: 'Horticulture Activity' }]
+        : [
+          { key: 'inventory', label: 'Inventory' },
+          { key: 'housekeeping', label: 'Housekeeping' },
+          { key: 'horticulture', label: 'Horticulture' },
+        ]
 
   const summaryBoxes = trendModule === 'inventory'
     ? [
-        { label: 'Total Inventory', value: trendTotals?.inventory ?? 0,                   color: 'var(--green-800)' },
-        { label: 'Requests',        value: trendTotals?.inventory_requests ?? 0,          color: 'var(--ongoing)' },
-        { label: 'Issues',          value: trendTotals?.inventory_issues ?? 0,            color: 'var(--orange-600)' },
-        { label: 'Stock Additions', value: trendTotals?.inventory_stock_additions ?? 0,   color: 'var(--completed)' },
-        { label: 'Purchase Req.',   value: trendTotals?.inventory_purchase_requests ?? 0, color: 'var(--pending)' },
-      ]
+      { label: 'Total Inventory', value: trendTotals?.inventory ?? 0, color: 'var(--green-800)' },
+      { label: 'Requests', value: trendTotals?.inventory_requests ?? 0, color: 'var(--ongoing)' },
+      { label: 'Issues', value: trendTotals?.inventory_issues ?? 0, color: 'var(--orange-600)' },
+      { label: 'Stock Additions', value: trendTotals?.inventory_stock_additions ?? 0, color: 'var(--completed)' },
+      { label: 'Purchase Req.', value: trendTotals?.inventory_purchase_requests ?? 0, color: 'var(--pending)' },
+    ]
     : trendModule === 'housekeeping'
-    ? [
-        { label: 'Total HK',    value: trendTotals?.housekeeping ?? 0,  color: 'var(--green-800)' },
-        { label: 'Completed',   value: trendTotals?.hk_done ?? 0,       color: 'var(--completed)' },
-        { label: 'Pending',     value: trendTotals?.hk_pending ?? 0,    color: 'var(--pending)' },
-        { label: 'In Progress', value: trendTotals?.hk_in_progress ?? 0,color: 'var(--ongoing)' },
-        { label: 'Skipped',     value: trendTotals?.hk_skipped ?? 0,    color: 'var(--text-3)' },
+      ? [
+        { label: 'Total HK', value: trendTotals?.housekeeping ?? 0, color: 'var(--green-800)' },
+        { label: 'Completed', value: trendTotals?.hk_done ?? 0, color: 'var(--completed)' },
+        { label: 'Pending', value: trendTotals?.hk_pending ?? 0, color: 'var(--pending)' },
+        { label: 'In Progress', value: trendTotals?.hk_in_progress ?? 0, color: 'var(--ongoing)' },
+        { label: 'Skipped', value: trendTotals?.hk_skipped ?? 0, color: 'var(--text-3)' },
       ]
-    : trendModule === 'horticulture'
-    ? [{ label: 'Horticulture', value: trendTotals?.horticulture ?? 0, color: 'var(--green-700)' }]
-    : [
-        { label: 'Inventory',    value: trendTotals?.inventory ?? 0,    color: 'var(--green-800)' },
-        { label: 'Housekeeping', value: trendTotals?.housekeeping ?? 0, color: 'var(--orange-600)' },
-        { label: 'Horticulture', value: trendTotals?.horticulture ?? 0, color: 'var(--green-700)' },
-      ]
+      : trendModule === 'horticulture'
+        ? [{ label: 'Horticulture', value: trendTotals?.horticulture ?? 0, color: 'var(--green-700)' }]
+        : [
+          { label: 'Inventory', value: trendTotals?.inventory ?? 0, color: 'var(--green-800)' },
+          { label: 'Housekeeping', value: trendTotals?.housekeeping ?? 0, color: 'var(--orange-600)' },
+          { label: 'Horticulture', value: trendTotals?.horticulture ?? 0, color: 'var(--green-700)' },
+        ]
 
   const visibleTrendLines = isHorticultureManager
     ? trendLines.filter((line) => line.key === 'horticulture')
     : isHostelOffice
-    ? trendLines.filter((line) => line.key === 'housekeeping' || line.key.startsWith('hk_'))
-    : canViewHorticulture
-    ? trendLines
-    : trendLines.filter((line) => line.key !== 'horticulture')
+      ? trendLines.filter((line) => line.key === 'housekeeping' || line.key.startsWith('hk_'))
+      : canViewHorticulture
+        ? trendLines
+        : trendLines.filter((line) => line.key !== 'horticulture')
   const visibleSummaryBoxes = isHorticultureManager
     ? summaryBoxes.filter((box) => box.label === 'Horticulture')
     : isHostelOffice
-    ? summaryBoxes.filter((box) => ['Total HK', 'Completed', 'Pending', 'In Progress', 'Skipped'].includes(box.label))
-    : canViewHorticulture
-    ? summaryBoxes
-    : summaryBoxes.filter((box) => box.label !== 'Horticulture')
+      ? summaryBoxes.filter((box) => ['Total HK', 'Completed', 'Pending', 'In Progress', 'Skipped'].includes(box.label))
+      : canViewHorticulture
+        ? summaryBoxes
+        : summaryBoxes.filter((box) => box.label !== 'Horticulture')
 
   const baseStatCards = [
-    { label: 'Total Inventory Items',  value: invSummary?.total_items ?? '-',           color: 'var(--green-800)', sub: `${invSummary?.pending_requests ?? 0} requests pending`, to: '/inventory?tab=items' },
-    { label: 'Low Stock Alerts',       value: invSummary?.low_stock_count ?? '-',        color: 'var(--orange-600)', sub: `${invSummary?.out_of_stock_count ?? 0} out of stock`,  to: '/inventory?tab=items' },
-    { label: 'HK Tasks Today',         value: hkSummary?.total_tasks ?? '-',            color: 'var(--green-700)', sub: `${hkSummary?.completion_pct ?? 0}% completed`,           to: '/housekeeping?tab=overview' },
-    { label: 'HK Workers',             value: hkSummary?.total_workers ?? '-',          color: '#3b82f6',          sub: `${hkSummary?.present_today ?? 0} present today`,          to: '/housekeeping?tab=attendance' },
-    { label: 'Unreturned Assets',      value: invSummary?.unreturned_assets ?? '-',     color: '#f59e0b',          sub: `${invSummary?.overdue_returns ?? 0} overdue`,             to: '/inventory?tab=issues' },
-    { label: 'Pending Stock Req.',     value: hkSummary?.pending_stock_requests ?? '-', color: 'var(--orange-600)', sub: 'Open approval queue',                                    to: '/inventory?tab=requests' },
+    { label: 'Total Inventory Items', value: invSummary?.total_items ?? '-', color: 'var(--green-800)', sub: `${invSummary?.pending_requests ?? 0} requests pending`, to: '/inventory?tab=items' },
+    { label: 'Estate Billing Outlets', value: '34 Outlets', color: '#854d0e', sub: '29 shops + 5 power contractors', to: '/estate' },
+    { label: 'Low Stock Alerts', value: invSummary?.low_stock_count ?? '-', color: 'var(--orange-600)', sub: `${invSummary?.out_of_stock_count ?? 0} out of stock`, to: '/inventory?tab=items' },
+    { label: 'HK Tasks Today', value: hkSummary?.total_tasks ?? '-', color: 'var(--green-700)', sub: `${hkSummary?.completion_pct ?? 0}% completed`, to: '/housekeeping?tab=overview' },
+    { label: 'HK Workers', value: hkSummary?.total_workers ?? '-', color: '#3b82f6', sub: `${hkSummary?.present_today ?? 0} present today`, to: '/housekeeping?tab=attendance' },
+    { label: 'Unreturned Assets', value: invSummary?.unreturned_assets ?? '-', color: '#f59e0b', sub: `${invSummary?.overdue_returns ?? 0} overdue`, to: '/inventory?tab=issues' },
   ]
-  const statCards = isHorticultureManager
+  const statCards = isEstateOffice
     ? [
+      { label: 'Commercial Shops', value: '29', color: 'var(--green-800)', sub: 'Active campus outlets', to: '/estate?tab=shops' },
+      { label: 'Power Contractors', value: '5', color: 'var(--orange-600)', sub: 'Electricity meter tracking', to: '/estate?tab=electricity' },
+      { label: 'Billing Cycles', value: 'Active', color: 'var(--green-700)', sub: 'October 2026 cycle open', to: '/estate' },
+      { label: 'Demand Notes', value: '100%', color: '#3b82f6', sub: 'Ready for print & PDF', to: '/estate' },
+    ]
+    : isHorticultureManager
+      ? [
         { label: 'Horticulture Tasks', value: hortiTotal || '-', color: 'var(--green-700)', sub: `${Number(hortiCounts.on_track || 0)} on track`, to: '/horticulture?tab=schedule' },
         { label: 'Due Soon', value: Number(hortiCounts.due_soon || 0), color: 'var(--orange-600)', sub: `${Number(hortiCounts.overdue || 0)} overdue`, to: '/horticulture?tab=worker_selection' },
         { label: 'Active Areas', value: hortiSummary?.total_areas ?? '-', color: '#3b82f6', sub: 'Horticulture coverage', to: '/horticulture?tab=zones' },
+        { label: 'Horticulture Inventory', value: hortiStockTotal || (hortiStockSummary ? '0' : '-'), color: 'var(--green-800)', sub: `${hortiStockItems.low_stock || 0} low stock items`, to: '/horticulture-stock' },
       ]
-    : isHostelOffice
-    ? [
-        { label: 'Hostel Tasks Today', value: hkSummary?.total_tasks ?? '-', color: 'var(--green-700)', sub: `${hkSummary?.completion_pct ?? 0}% completed`, to: '/housekeeping?tab=overview' },
-        { label: 'Completed Tasks', value: hkSummary?.done_tasks ?? '-', color: 'var(--completed)', sub: 'Marked done today', to: '/housekeeping?tab=overview' },
-        { label: 'Pending Tasks', value: hkSummary?.pending_tasks ?? '-', color: 'var(--orange-600)', sub: 'Open hostel tasks', to: '/housekeeping?tab=overview' },
-        { label: 'Hostel Workers', value: hkSummary?.total_workers ?? '-', color: '#3b82f6', sub: `${hkSummary?.present_today ?? 0} present today`, to: '/housekeeping?tab=attendance' },
-        { label: 'Hostel Areas', value: hkSummary?.total_areas ?? '-', color: 'var(--green-800)', sub: 'Active hostel sections', to: '/housekeeping?tab=directory' },
-        { label: 'Inventory Items', value: invSummary?.total_items ?? '-', color: '#7c3aed', sub: 'View-only stock report', to: '/inventory?tab=inventory-report' },
-      ]
-    : baseStatCards
+      : isHostelOffice
+        ? [
+          { label: 'Hostel Tasks Today', value: hkSummary?.total_tasks ?? '-', color: 'var(--green-700)', sub: `${hkSummary?.completion_pct ?? 0}% completed`, to: '/housekeeping?tab=overview' },
+          { label: 'Completed Tasks', value: hkSummary?.done_tasks ?? '-', color: 'var(--completed)', sub: 'Marked done today', to: '/housekeeping?tab=overview' },
+          { label: 'Pending Tasks', value: hkSummary?.pending_tasks ?? '-', color: 'var(--orange-600)', sub: 'Open hostel tasks', to: '/housekeeping?tab=overview' },
+          { label: 'Hostel Workers', value: hkSummary?.total_workers ?? '-', color: '#3b82f6', sub: `${hkSummary?.present_today ?? 0} present today`, to: '/housekeeping?tab=attendance' },
+          { label: 'Hostel Areas', value: hkSummary?.total_areas ?? '-', color: 'var(--green-800)', sub: 'Active hostel sections', to: '/housekeeping?tab=directory' },
+          { label: 'Inventory Items', value: invSummary?.total_items ?? '-', color: '#7c3aed', sub: 'View-only stock report', to: '/inventory?tab=inventory-report' },
+        ]
+        : baseStatCards
   const completionPct = Number(hkSummary?.completion_pct || 0)
-  const heroMetric = isHorticultureManager
-    ? { value: hortiTotal || 0, label: 'active horticulture tasks', progress: hortiTotal ? (Number(hortiCounts.on_track || 0) / hortiTotal) * 100 : 0, color: 'var(--green-700)' }
-    : isHostelOffice
-    ? { value: `${completionPct}%`, label: 'hostel task completion', progress: completionPct, color: 'var(--green-800)' }
-    : { value: invSummary?.pending_requests ?? 0, label: 'inventory requests pending', progress: Math.min(100, Number(invSummary?.pending_requests || 0) * 8), color: 'var(--orange-600)' }
-  const heroTitle = isHorticultureManager
-    ? 'Horticulture Control Room'
-    : isHostelOffice
-    ? 'Hostel Office Control Room'
-    : 'Campus Operations Control Room'
-  const heroSubtitle = isHorticultureManager
-    ? 'Track zones, due tasks, and field progress from one focused home view.'
-    : isHostelOffice
-    ? 'Assign hostel work, monitor JRHA and hostel sections, and open inventory reports without admin-only controls.'
-    : 'A cleaner snapshot of stock, housekeeping, and horticulture activity for the day.'
-  const quickActions = isHorticultureManager
+  const heroMetric = isEstateOffice
+    ? { value: '34', label: 'Estate billing outlets', progress: 100, color: 'var(--green-800)' }
+    : isHorticultureManager
+      ? { value: hortiTotal || 0, label: 'active horticulture tasks', progress: hortiTotal ? (Number(hortiCounts.on_track || 0) / hortiTotal) * 100 : 0, color: 'var(--green-700)' }
+      : isHostelOffice
+        ? { value: `${completionPct}%`, label: 'hostel task completion', progress: completionPct, color: 'var(--green-800)' }
+        : { value: invSummary?.pending_requests ?? 0, label: 'inventory requests pending', progress: Math.min(100, Number(invSummary?.pending_requests || 0) * 8), color: 'var(--orange-600)' }
+  const heroTitle = isEstateOffice
+    ? 'Estate Office Control Room'
+    : isHorticultureManager
+      ? 'Horticulture Control Room'
+      : isHostelOffice
+        ? 'Hostel Office Control Room'
+        : 'Campus Operations Control Room'
+  const heroSubtitle = isEstateOffice
+    ? 'Manage 29 commercial shops, 5 power contractors, billing cycles, and demand notes.'
+    : isHorticultureManager
+      ? 'Track zones, due tasks, and field progress from one focused home view.'
+      : isHostelOffice
+        ? 'Assign hostel work, monitor JRHA and hostel sections, and open inventory reports without admin-only controls.'
+        : 'A cleaner snapshot of stock, housekeeping, horticulture, and campus Estate billing.'
+  const quickActions = isEstateOffice
     ? [
+      { label: '🏪 Commercial Shops', to: '/estate?tab=shops', primary: true },
+      { label: '⚡ Power Contractors', to: '/estate?tab=electricity' },
+      { label: '📊 Billing Insights', to: '/insights' },
+    ]
+    : isHorticultureManager
+      ? [
         { label: 'Schedule', to: '/horticulture?tab=schedule', primary: true },
         { label: 'Zones', to: '/horticulture?tab=zones' },
+        { label: 'Inventory', to: '/horticulture-stock' },
       ]
-    : isHostelOffice
-    ? [
-        { label: 'Assign Work', to: '/housekeeping?tab=overview', primary: true },
-        { label: 'Section Staff', to: '/housekeeping?tab=directory' },
-        { label: 'Inventory Report', to: '/inventory?tab=inventory-report' },
-        { label: 'Stock Requests', to: '/housekeeping?tab=stock' },
-      ]
-    : [
-        { label: 'Housekeeping', to: '/housekeeping?tab=overview', primary: true },
-        { label: 'Inventory', to: '/inventory?tab=items' },
-        { label: 'Reports', to: '/inventory?tab=inventory-report' },
-      ]
+      : isHostelOffice
+        ? [
+          { label: 'Assign Work', to: '/housekeeping?tab=overview', primary: true },
+          { label: 'Section Staff', to: '/housekeeping?tab=directory' },
+          { label: 'Inventory Report', to: '/inventory?tab=inventory-report' },
+          { label: 'Stock Requests', to: '/housekeeping?tab=stock' },
+        ]
+        : [
+          { label: 'Housekeeping', to: '/housekeeping?tab=overview', primary: true },
+          { label: 'Inventory', to: '/inventory?tab=items' },
+          { label: 'Estate Billing', to: '/estate' },
+          { label: 'Insights', to: '/insights' },
+        ]
 
   return (
     <AdminLayout title={isHorticultureManager ? 'Horticulture Home' : isHostelOffice ? 'Hostel Office Dashboard' : 'Admin Dashboard'} subtitle={`Welcome back - ${todayLabel}`}>
@@ -565,7 +601,7 @@ export default function DashboardPage() {
           <DashboardHero title={heroTitle} subtitle={heroSubtitle} metric={heroMetric} quickActions={quickActions} variant={isHostelOffice ? 'hostel' : 'default'} />
           {isHostelOffice && <HostelOfficePanel hkSummary={hkSummary} invSummary={invSummary} />}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(clamp(140px, 12vw, 190px), 1fr))', gap: 12, marginBottom: 24 }}>
             {statCards.map(card => (
               <a key={card.label} href={adminHref(card.to || '/dashboard')} className="ui-interactive-card-link" style={{ height: '100%', textDecoration: 'none', color: 'inherit' }} title={`Open ${card.label}`}>
                 <StatCard label={card.label} value={card.value} color={card.color} sub={card.sub} style={{ height: '100%', cursor: 'pointer', userSelect: 'none' }} />
@@ -576,6 +612,7 @@ export default function DashboardPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 24 }}>
             {[
               canViewInventory ? { title: 'Inventory', subtitle: 'Stock overview', data: invDonut, total: invSummary?.total_items, label: 'Items', palette: DONUT_PALETTE, to: '/inventory' } : null,
+              isHorticultureManager ? { title: 'Horticulture Inventory', subtitle: 'Garden & Equipment stock', data: hortiStockDonut, total: hortiStockTotal || 25, label: 'Items', palette: DONUT_PALETTE, to: '/horticulture-stock' } : null,
               canViewHousekeeping ? { title: isHostelOffice ? 'Hostel Housekeeping' : 'Housekeeping', subtitle: isHostelOffice ? 'Hostel tasks today' : 'Today tasks', data: hkDonutData, total: hkSummary?.total_tasks, label: hkHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/housekeeping' } : null,
               canViewHorticulture && !isHorticultureManager ? { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTotal, label: hortiTotal > 0 ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' } : null,
             ].filter(Boolean).map(card => (

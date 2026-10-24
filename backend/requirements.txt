@@ -3,9 +3,9 @@ djangorestframework==3.16.1
 djangorestframework-simplejwt==5.5.1
 django-cors-headers==4.3.1
 django-filter==23.5
-psycopg2-binary>=2.9.9
+psycopg2-binary==2.9.9
 python-dotenv==1.2.2
-Pillow>=10.2.0
-reportlab>=4.4.10
+Pillow==10.2.0
+reportlab==4.4.10
 gunicorn==22.0.0
 openpyxl==3.1.5

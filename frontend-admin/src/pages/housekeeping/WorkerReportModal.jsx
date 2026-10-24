@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { Alert, Btn, Card, DataTable, Modal, SelectField, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Modal, SelectField, Spinner } from '../../components/ui'
 import { triggerDownload } from '../../shared/utils'
+import { exportReport } from '../../shared/exportHelper'
 
 const MONTH_NAMES = [
   'January',
@@ -121,22 +122,69 @@ export default function WorkerReportModal({ open, worker, onClose }) {
     }
   }, [open, worker?.id, selectedPeriod])
 
-  const onDownloadCSV = async () => {
+  const handleExportReport = async (format) => {
     if (!worker?.id || !selectedPeriod) return
-    setDownloading(true)
-    setError('')
-    try {
-      const response = await hkAPI.downloadWorkerReportCSV(worker.id, selectedPeriod.month, selectedPeriod.year)
-      const blob = new Blob([response.data], { type: 'text/csv' })
-      triggerDownload(
-        blob,
-        `worker_${toSafeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}.csv`,
-      )
-    } catch (e) {
-      setError(e.response?.data?.detail || 'CSV download failed.')
-    } finally {
-      setDownloading(false)
+
+    if (format === 'csv') {
+      try {
+        const response = await hkAPI.downloadWorkerReportCSV(worker.id, selectedPeriod.month, selectedPeriod.year)
+        const blob = new Blob([response.data], { type: 'text/csv' })
+        triggerDownload(
+          blob,
+          `worker_${toSafeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}.csv`
+        )
+        return
+      } catch (e) {
+        // Fallback to client generation
+      }
     }
+
+    const exportData = {
+      filename: `housekeeping_worker_${toSafeName(worker.name, worker.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}`,
+      module: 'Housekeeping Operations',
+      title: `${worker.name || 'Worker'} - Performance Report`,
+      subtitle: `Period: ${selectedPeriod.label} | Area: ${snap?.worker?.area_name || worker?.area_name || '-'}`,
+      metadata: [
+        { label: 'Worker', value: worker.name || '-' },
+        { label: 'Pay Code', value: worker.pay_code || '-' },
+        { label: 'Area', value: snap?.worker?.area_name || worker?.area_name || '-' },
+        { label: 'Shift', value: worker.shift || '-' },
+      ],
+      stats: [
+        { label: 'Attendance', value: `${Number(attendance.attendance_pct ?? 0).toFixed(1)}%` },
+        { label: 'Present', value: attendance.days_present ?? 0 },
+        { label: 'Absent', value: attendance.days_absent ?? 0 },
+        { label: 'Task %', value: `${Number(tasks.completion_pct ?? 0).toFixed(1)}%` },
+        { label: 'Tasks Done', value: `${tasks.tasks_completed ?? 0}/${tasks.tasks_assigned ?? 0}` },
+      ],
+      sections: [
+        {
+          title: 'Daily Attendance Breakdown',
+          headers: ['Date', 'First Half', 'Second Half', 'Tasks Assigned', 'Tasks Completed', 'Supervisor'],
+          rows: (snap.daily_breakdown || []).map((d) => [
+            d.date || '-',
+            d.first_half || '-',
+            d.second_half || '-',
+            d.tasks_assigned ?? 0,
+            d.tasks_completed ?? 0,
+            d.supervisor_name || '-',
+          ]),
+        },
+        {
+          title: 'Task Execution Details',
+          headers: ['Date', 'Task', 'Session', 'Status', 'Supervisor', 'Remarks'],
+          rows: (taskDetails || []).map((t) => [
+            t.date || '-',
+            t.task_name || '-',
+            t.session || '-',
+            t.status || '-',
+            t.supervisor_name || '-',
+            t.remarks || '-',
+          ]),
+        },
+      ],
+    }
+    await exportReport(format, exportData)
   }
 
   const snap = report?.snapshot || {}
@@ -181,9 +229,11 @@ export default function WorkerReportModal({ open, worker, onClose }) {
             Area: <strong>{snap?.worker?.area_name || worker?.area_name || '-'}</strong>
           </div>
         </div>
-        <Btn size="sm" onClick={onDownloadCSV} disabled={loading || downloading || !worker}>
-          {downloading ? 'Downloading...' : 'Download CSV'}
-        </Btn>
+        <ExportDropdown
+          label="Download Report"
+          onExport={handleExportReport}
+          disabled={loading || !worker}
+        />
       </div>
 
       {isCurrentMonth && (

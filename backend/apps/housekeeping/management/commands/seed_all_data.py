@@ -30,7 +30,8 @@ class Command(BaseCommand):
 
         log('Starting full data bootstrap...')
 
-        call_command('loaddata', 'apps/inventory/fixtures/inventory.json', verbosity=0)
+        fixture_path = str(settings.BASE_DIR / 'apps' / 'inventory' / 'fixtures' / 'inventory.json')
+        call_command('loaddata', fixture_path, verbosity=0)
         log('  [OK] Inventory fixture loaded')
 
         call_command('seed_housekeeping', verbosity=0)
