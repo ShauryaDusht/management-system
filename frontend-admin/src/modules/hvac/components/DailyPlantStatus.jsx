@@ -250,47 +250,6 @@ export default function DailyPlantStatus({
         </div>
       </div>
 
-      {/* Demo Mode Notice Banner */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(14, 111, 143, 0.08), rgba(2, 132, 199, 0.12))',
-        border: '1.5px solid rgba(2, 132, 199, 0.3)',
-        borderRadius: 12,
-        padding: '12px 18px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: 12,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 20 }}>❄️</span>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: '#0369a1', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>HVAC Plant Simulation Running (Demo Mode Active)</span>
-              <span style={{
-                background: '#e0f2fe',
-                color: '#0369a1',
-                padding: '2px 8px',
-                borderRadius: 999,
-                fontSize: 10,
-                fontWeight: 800,
-                border: '1px solid #bae6fd',
-              }}>
-                LIVE TELEMETRY
-              </span>
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-              Active 24-hour continuous log dataset with 7 campus chillers (Trane 1-4, Carrier 5, Daikin 6-7), Panel 1 &amp; 2 energy, and water makeup meters.
-            </div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)' }}>
-            Demo Logins: <code style={{ color: '#0369a1', fontWeight: 800 }}>hvac.engineer</code> / <code style={{ color: '#0369a1', fontWeight: 800 }}>hvac.operator</code> (pwd: <code style={{ color: '#0369a1', fontWeight: 800 }}>IITGN@2025</code>)
-          </span>
-        </div>
-      </div>
-
       {/* KPI Summary Cards */}
       <div className="hvac-kpis">
         <div className="hvac-kpi-card">

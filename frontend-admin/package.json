@@ -4,8 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "node dev-server.js",
-    "dev:cli": "vite",
+    "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
