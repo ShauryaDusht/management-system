@@ -1765,26 +1765,6 @@ export default function LiftLicensePage() {
                           <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                             <button
                               type="button"
-                              onClick={() => handleOpenApplyModal(item)}
-                              title={item.is_applied ? 'Update renewal application details' : 'Record that renewal application was submitted'}
-                              style={{
-                                padding: '5px 9px',
-                                borderRadius: 6,
-                                border: item.is_applied ? '1px solid #c4b5fd' : '1px solid var(--border)',
-                                background: item.is_applied ? '#f5f3ff' : 'var(--surface)',
-                                color: item.is_applied ? '#6d28d9' : 'var(--text)',
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                              }}
-                            >
-                              <span>{item.is_applied ? '⏳ Applied ✎' : '📝 Apply'}</span>
-                            </button>
-                            <button
-                              type="button"
                               onClick={() => handleOpenDocuments(item)}
                               title="Renewal Certificates & Document History"
                               style={{
@@ -2003,54 +1983,6 @@ export default function LiftLicensePage() {
                 placeholder="e.g. AB-10 A, Mess Passenger"
               />
             </Field>
-          </div>
-
-          {/* Renewal Application Section in Edit Modal */}
-          <div
-            style={{
-              padding: '12px 14px',
-              borderRadius: 8,
-              background: formValues.is_applied ? '#f5f3ff' : 'var(--surface-2)',
-              border: formValues.is_applied ? '1px solid #c4b5fd' : '1px solid var(--border)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10,
-            }}
-          >
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: formValues.is_applied ? '#6d28d9' : 'var(--text)' }}>
-              <input
-                type="checkbox"
-                checked={formValues.is_applied}
-                onChange={(e) =>
-                  setFormValues({
-                    ...formValues,
-                    is_applied: e.target.checked,
-                    applied_date: e.target.checked ? (formValues.applied_date || new Date().toISOString().slice(0, 10)) : '',
-                  })
-                }
-              />
-              <span>⏳ Mark Renewal Form as Applied (In Process)</span>
-            </label>
-
-            {formValues.is_applied && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 4 }}>
-                <Field label="Applied Date *" hint="Date form was submitted">
-                  <Input
-                    type="date"
-                    value={formValues.applied_date}
-                    onChange={(e) => setFormValues({ ...formValues, applied_date: e.target.value })}
-                    required={formValues.is_applied}
-                  />
-                </Field>
-                <Field label="Application / Challan Ref #" hint="Government ref or receipt number">
-                  <Input
-                    value={formValues.application_no}
-                    onChange={(e) => setFormValues({ ...formValues, application_no: e.target.value })}
-                    placeholder="e.g. APP/2026/LIFT/892"
-                  />
-                </Field>
-              </div>
-            )}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
