@@ -205,10 +205,12 @@ function inferIconName(icon, label = '') {
   if (text.includes('pending') || text.includes('due')) return 'pending'
   if (text.includes('asset') || text.includes('return')) return 'assets'
   if (text.includes('photo') || text.includes('gallery')) return 'photos'
+  if (text.includes('lift') || text.includes('elevator') || text.includes('license')) return 'lift'
   return 'dashboard'
 }
 
 const ICON_PATHS = {
+  lift: 'M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm3 6 3-3 3 3m-6 6 3 3 3-3',
   home: 'M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z',
   dashboard: 'M4 5h7v7H4V5Zm9 0h7v4h-7V5ZM4 14h7v5H4v-5Zm9-3h7v8h-7v-8Z',
   insights: 'M4 19h18M7 16V9m5 7V5m5 11v-6',

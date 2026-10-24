@@ -61,84 +61,92 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
 
-  const navItems = user?.role === 'civil_team'
+  const navItems = user?.role === 'engineer'
+    ? [
+      { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : user?.role === 'civil_team'
     ? [
       { to: '/estate', icon: 'estate', label: 'Civil Clearances' },
       { to: '/profile', icon: 'users', label: 'Profile' },
     ]
     : user?.role === 'electrical_team'
-      ? [
-        { to: '/estate', icon: 'estate', label: 'Electrical Clearances' },
-        { to: '/profile', icon: 'users', label: 'Profile' },
-      ]
-      : user?.role === 'estate_office'
-        ? [
-          { to: '/dashboard', icon: 'estate', label: 'Dashboard' },
-          { to: '/insights', icon: 'insights', label: 'Insights' },
-          { to: '/profile', icon: 'users', label: 'Profile' },
-        ]
-        : user?.role === 'horticulture_manager'
-          ? [
-            { to: '/dashboard', icon: 'home', label: 'Home' },
-            { to: '/horticulture-stock', icon: 'inventory', label: 'Horticulture Inventory' },
-            { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
-            { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
-            { to: '/insights', icon: 'insights', label: 'Insights' },
-            { to: '/profile', icon: 'users', label: 'Profile' },
-          ]
-          : isHostelOffice
-            ? [
-              { to: '/dashboard', icon: 'home', label: 'Home' },
-              { to: '/housekeeping', icon: 'housekeeping', label: 'Hostel Office' },
-              { to: '/inventory', icon: 'inventory', label: 'Inventory Reports' },
-              { to: '/insights', icon: 'insights', label: 'Insights' },
-            ]
-            : user?.role === 'hk_inventory_manager'
-              ? [
-                { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
-                {
-                  to: '/inventory', icon: 'inventory', label: 'Inventory',
-                  badge: badges.inventory,
-                  badgeYellow: false,
-                  extraBadge: badges.lowStock,
-                  extraYellow: true,
-                  extraTitle: 'low stock items',
-                },
-                {
-                  to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
-                  badge: badges.housekeeping,
-                },
-                { to: '/estate', icon: 'estate', label: 'HK Clearances' },
-                { to: '/insights', icon: 'insights', label: 'Insights' },
-                { to: '/users', icon: 'users', label: 'Manage Users' },
-              ]
-              : [
-                { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
-                {
-                  to: '/inventory', icon: 'inventory', label: 'Inventory',
-                  badge: badges.inventory,
-                  badgeYellow: false,
-                  extraBadge: badges.lowStock,
-                  extraYellow: true,
-                  extraTitle: 'low stock items',
-                },
-                {
-                  to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
-                  badge: badges.housekeeping,
-                },
-                { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
-                {
-                  to: '/horticulture-stock',
-                  icon: 'inventory',
-                  label: 'Horticulture Inventory',
-                  badge: badges.horticultureInventory,
-                },
-                { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
-                { to: '/estate', icon: 'estate', label: 'Estate' },
-                { to: '/insights', icon: 'insights', label: 'Insights' },
-                { to: '/users', icon: 'users', label: 'Manage Users' },
-                { to: '/profile', icon: 'users', label: 'Profile' },
-              ]
+    ? [
+      { to: '/estate', icon: 'estate', label: 'Electrical Clearances' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : user?.role === 'estate_office'
+    ? [
+      { to: '/dashboard', icon: 'estate', label: 'Dashboard' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : user?.role === 'horticulture_manager'
+    ? [
+      { to: '/dashboard', icon: 'home', label: 'Home' },
+      { to: '/horticulture-stock', icon: 'inventory', label: 'Horticulture Inventory' },
+      { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
+      { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : isHostelOffice
+    ? [
+      { to: '/dashboard', icon: 'home', label: 'Home' },
+      { to: '/housekeeping', icon: 'housekeeping', label: 'Hostel Office' },
+      { to: '/inventory', icon: 'inventory', label: 'Inventory Reports' },
+      { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
+    ]
+    : user?.role === 'hk_inventory_manager'
+    ? [
+      { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+      {
+        to: '/inventory', icon: 'inventory', label: 'Inventory',
+        badge: badges.inventory,
+        badgeYellow: false,
+        extraBadge: badges.lowStock,
+        extraYellow: true,
+        extraTitle: 'low stock items',
+      },
+      {
+        to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
+        badge: badges.housekeeping,
+      },
+      { to: '/estate', icon: 'estate', label: 'HK Clearances' },
+      { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
+      { to: '/users', icon: 'users', label: 'Manage Users' },
+    ]
+    : [
+      { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+      {
+        to: '/inventory', icon: 'inventory', label: 'Inventory',
+        badge: badges.inventory,
+        badgeYellow: false,
+        extraBadge: badges.lowStock,
+        extraYellow: true,
+        extraTitle: 'low stock items',
+      },
+      {
+        to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
+        badge: badges.housekeeping,
+      },
+      { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
+      {
+        to: '/horticulture-stock',
+        icon: 'inventory',
+        label: 'Horticulture Inventory',
+        badge: badges.horticultureInventory,
+      },
+      { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
+      { to: '/estate', icon: 'estate', label: 'Estate' },
+      { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
+      { to: '/users', icon: 'users', label: 'Manage Users' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
 
   const handleLogout = async () => {
     await logout()
@@ -261,14 +269,14 @@ export default function Sidebar() {
               color: '#fff', fontWeight: 700, fontSize: 13, flexShrink: 0,
             }}
           >
-            {user?.full_name?.[0] || user?.username?.[0]?.toUpperCase() || 'A'}
+            {user?.role === 'engineer' ? 'L' : (user?.full_name?.[0] || user?.username?.[0]?.toUpperCase() || 'A')}
           </div>
           <div className="sidebar-user-text" style={{ overflow: 'hidden', minWidth: 0 }}>
             <div style={{ color: '#fff', fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user?.full_name || user?.username}
+              {user?.role === 'engineer' ? 'Lift Engineer' : (user?.full_name || user?.username)}
             </div>
             <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user?.role}
+              {user?.role === 'engineer' ? 'Electrical' : (user?.role || '').replace('_', ' ')}
             </div>
           </div>
         </div>

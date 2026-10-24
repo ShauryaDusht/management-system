@@ -28,7 +28,7 @@ def build_username_from_names(first_name, last_name):
 
 
 def is_standard_username(username):
-    if username == 'hk_inventory_manager':
+    if username in ('hk_inventory_manager', 'engineer'):
         return True
     return bool(USERNAME_RE.fullmatch(username or ''))
 
@@ -71,6 +71,7 @@ class User(AbstractUser):
         HK_INVENTORY_MANAGER = 'hk_inventory_manager', 'Housekeeping / Inventory Manager'
         HOSTEL_OFFICE = 'hostel_office', 'Hostel Office'
         HORTICULTURE_MANAGER = 'horticulture_manager', 'Horticulture Manager'
+        ENGINEER = 'engineer', 'Lift Engineer'
         SUPERVISOR = 'supervisor', 'Supervisor'
         CARETAKER = 'caretaker', 'Caretaker'
         ESTATE_OFFICE = 'estate_office', 'Estate Office'
@@ -113,6 +114,10 @@ class User(AbstractUser):
     @property
     def is_horticulture_manager(self):
         return self.role == self.Role.HORTICULTURE_MANAGER
+
+    @property
+    def is_engineer(self):
+        return self.role == self.Role.ENGINEER
 
     @property
     def is_any_manager(self):

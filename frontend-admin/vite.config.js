@@ -3,7 +3,22 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   base: '/admin/',
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'root-redirect',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url === '/' || req.url === '') {
+            res.writeHead(302, { Location: '/admin/' })
+            res.end()
+            return
+          }
+          next()
+        })
+      },
+    },
+  ],
   build: {
     outDir: 'dist',
     emptyOutDir: true,
