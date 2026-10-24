@@ -23,17 +23,34 @@ TIME_SLOTS = [
 ]
 
 
-def is_hvac_authorized(request):
-    # Allow if standard authenticated user (JWT or session)
-    if request.user and request.user.is_authenticated:
-        return True
-    if hasattr(request, 'session') and request.session.get('_auth_user_id'):
-        return True
-    # Or allow if x-admin-key matches admin key or 'admin123'
-    key = request.headers.get('x-admin-key') or request.META.get('HTTP_X_ADMIN_KEY') or request.GET.get('key')
-    if key in ['admin123', 'IITGN@2025', 'engineer123']:
-        return True
-    return False
+class IsHvacStaff(permissions.BasePermission):
+    """
+    Allows read and log-entry access to HVAC staff (operators, supervisors, engineers)
+    and plant engineers / admins.
+    Blocks unrelated roles like caretakers, hostel office, etc.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        user = request.user
+        if getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False):
+            return True
+        return getattr(user, 'role', '') in ('hvac_engineer', 'hvac_supervisor', 'hvac_operator')
+
+
+class IsHvacSupervisorOrAdmin(permissions.BasePermission):
+    """
+    Restricts update (PUT), delete (DELETE), supervisor logs, and pump ratings configuration
+    to HVAC supervisors, HVAC engineers, plant engineers, and admins.
+    Operators are strictly forbidden from modifying or deleting records.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        user = request.user
+        if getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False):
+            return True
+        return getattr(user, 'role', '') in ('hvac_engineer', 'hvac_supervisor')
 
 
 class HvacHealthView(APIView):
@@ -53,20 +70,16 @@ class HvacHealthView(APIView):
 
 
 class HvacAuthCheckView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsHvacStaff]
 
     def get(self, request):
-        if is_hvac_authorized(request):
-            return Response({'ok': True})
-        return Response({'error': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({'ok': True, 'role': getattr(request.user, 'role', '')})
 
 
 class HvacLogsListView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsHvacStaff]
 
     def get(self, request):
-        if not is_hvac_authorized(request):
-            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
 
         latest = request.query_params.get('latest')
         if latest in ['1', 'true', 'True']:
@@ -105,12 +118,12 @@ class HvacLogsListView(APIView):
         return self.save_log(request)
 
     def put(self, request):
+        user = request.user
+        if not (getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False) or getattr(user, 'role', '') in ('hvac_engineer', 'hvac_supervisor')):
+            return Response({'error': 'Only supervisors and engineers can edit logs'}, status=status.HTTP_403_FORBIDDEN)
         return self.save_log(request)
 
     def save_log(self, request):
-        if not is_hvac_authorized(request):
-            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
-
         b = request.data or {}
         date_val = b.get('date')
         time_val = b.get('time')
@@ -173,11 +186,9 @@ class HvacLogsListView(APIView):
 
 
 class HvacLogDetailView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsHvacStaff]
 
     def get(self, request, log_id):
-        if not is_hvac_authorized(request):
-            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
         try:
             log = HvacLog.objects.get(id=log_id)
             return Response(log.to_dict())
@@ -185,8 +196,9 @@ class HvacLogDetailView(APIView):
             return Response({'error': 'Log not found'}, status=status.HTTP_404_NOT_FOUND)
 
     def put(self, request, log_id):
-        if not is_hvac_authorized(request):
-            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        user = request.user
+        if not (getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False) or getattr(user, 'role', '') in ('hvac_engineer', 'hvac_supervisor')):
+            return Response({'error': 'Only supervisors and engineers can edit logs'}, status=status.HTTP_403_FORBIDDEN)
         b = request.data or {}
         # Ensure log_id matches or fallback
         date_val = b.get('date') or log_id.split('_')[0]
@@ -228,8 +240,9 @@ class HvacLogDetailView(APIView):
         return Response({'ok': True, 'log': log_obj.to_dict()})
 
     def delete(self, request, log_id):
-        if not is_hvac_authorized(request):
-            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        user = request.user
+        if not (getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False) or getattr(user, 'role', '') in ('hvac_engineer', 'hvac_supervisor')):
+            return Response({'error': 'Only supervisors and engineers can delete logs'}, status=status.HTTP_403_FORBIDDEN)
         try:
             log = HvacLog.objects.get(id=log_id)
             log.delete()
@@ -239,12 +252,9 @@ class HvacLogDetailView(APIView):
 
 
 class HvacOverviewView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsHvacStaff]
 
     def get(self, request):
-        if not is_hvac_authorized(request):
-            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
-
         date_str = request.query_params.get('date')
         if not date_str:
             date_str = date.today().isoformat()
@@ -311,18 +321,17 @@ class HvacOverviewView(APIView):
 
 
 class HvacSupervisorLogView(APIView):
-    permission_classes = [permissions.AllowAny]
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsHvacSupervisorOrAdmin()]
+        return [IsHvacStaff()]
 
     def get(self, request):
-        if not is_hvac_authorized(request):
-            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
         date_str = request.query_params.get('date') or date.today().isoformat()
         logs = HvacSupervisorLog.objects.filter(date=date_str)
         return Response([l.to_dict() for l in logs])
 
     def post(self, request):
-        if not is_hvac_authorized(request):
-            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
         data = request.data or {}
         date_str = data.get('date') or date.today().isoformat()
         shift = str(data.get('shift', '1'))
@@ -345,7 +354,10 @@ class HvacSupervisorLogView(APIView):
 
 
 class HvacPumpRatingsView(APIView):
-    permission_classes = [permissions.AllowAny]
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsHvacSupervisorOrAdmin()]
+        return [IsHvacStaff()]
 
     def get(self, request):
         return Response({
@@ -356,8 +368,6 @@ class HvacPumpRatingsView(APIView):
         })
 
     def post(self, request):
-        if not is_hvac_authorized(request):
-            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
 
         data = request.data or {}
         action = data.get('action', 'save')

@@ -26,6 +26,37 @@ def clean_reading_values(values):
     return clean
 
 
+class IsWtpStaff(permissions.BasePermission):
+    """
+    Allows read and reading entry access to WTP/STP operators, supervisors,
+    plant engineers, and admins.
+    Blocks unrelated roles like caretakers, hostel office, etc.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        user = request.user
+        if getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False):
+            return True
+        return getattr(user, 'role', '') in ('wtp_supervisor', 'wtp_operator')
+
+
+class IsWtpSupervisorOrAdmin(permissions.BasePermission):
+    """
+    Restricts destructive actions (DELETE), meter configurations, supervisor logs,
+    reading verifications, and GWSSB utility billing to WTP Supervisors,
+    Plant Engineers, and Admins.
+    Operators and non-plant users are forbidden.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        user = request.user
+        if getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False):
+            return True
+        return getattr(user, 'role', '') == 'wtp_supervisor'
+
+
 class WtpHealthView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -34,7 +65,7 @@ class WtpHealthView(APIView):
 
 
 class StationReadingsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsWtpStaff]
 
     def get(self, request):
         station = request.query_params.get('station')
@@ -108,7 +139,7 @@ class StationReadingsView(APIView):
 
 
 class StationReadingDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsWtpSupervisorOrAdmin]
 
     def delete(self, request, pk):
         try:
@@ -120,7 +151,10 @@ class StationReadingDetailView(APIView):
 
 
 class BlockMetersView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsWtpSupervisorOrAdmin()]
+        return [IsWtpStaff()]
 
     def get(self, request):
         meters = BlockMeter.objects.all().order_by('sr')
@@ -151,7 +185,7 @@ class BlockMetersView(APIView):
 
 
 class BlockMeterDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsWtpSupervisorOrAdmin]
 
     def delete(self, request, sr):
         try:
@@ -163,7 +197,10 @@ class BlockMeterDetailView(APIView):
 
 
 class BlockReadingsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == 'DELETE':
+            return [IsWtpSupervisorOrAdmin()]
+        return [IsWtpStaff()]
 
     def get(self, request):
         docs = BlockReading.objects.all().order_by('month')
@@ -220,7 +257,10 @@ class BlockReadingsView(APIView):
 
 
 class StationMetersView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsWtpSupervisorOrAdmin()]
+        return [IsWtpStaff()]
 
     def get(self, request):
         meters = StationMeter.objects.all().order_by('created_at')
@@ -260,7 +300,7 @@ class StationMetersView(APIView):
 
 
 class StationMeterDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsWtpSupervisorOrAdmin]
 
     def delete(self, request, pk):
         try:
@@ -272,7 +312,10 @@ class StationMeterDetailView(APIView):
 
 
 class SupervisorLogsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method in ('PUT', 'POST'):
+            return [IsWtpSupervisorOrAdmin()]
+        return [IsWtpStaff()]
 
     def get(self, request):
         date_param = request.query_params.get('date')
@@ -321,7 +364,7 @@ class SupervisorLogsView(APIView):
 
 
 class SupervisorVerifyView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsWtpSupervisorOrAdmin]
 
     def put(self, request):
         data = request.data or {}
@@ -366,7 +409,7 @@ class SupervisorVerifyView(APIView):
 
 
 class SupervisorOverviewView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsWtpStaff]
 
     def get(self, request):
         date_param = request.query_params.get('date') or str(timezone.localdate())
@@ -437,7 +480,7 @@ class SupervisorOverviewView(APIView):
 
 
 class WtpSummaryView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsWtpStaff]
 
     def get(self, request):
         today = timezone.localdate()
@@ -487,7 +530,10 @@ class WtpSummaryView(APIView):
 
 
 class GwssbBillsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method in ('PUT', 'POST', 'DELETE'):
+            return [IsWtpSupervisorOrAdmin()]
+        return [IsWtpStaff()]
 
     def get(self, request, month=None):
         if month:

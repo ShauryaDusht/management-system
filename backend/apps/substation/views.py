@@ -11,6 +11,35 @@ from rest_framework.views import APIView
 from .models import SubstationSheet, SubstationReading, SubstationConfigDoc
 
 
+class IsSubstationStaff(permissions.BasePermission):
+    """
+    Allows read and reading entry to Electrical Operators, Supervisors,
+    Plant Engineers, and Admins.
+    Blocks unrelated roles like caretakers, hostel office, etc.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        user = request.user
+        if getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False):
+            return True
+        return getattr(user, 'role', '') in ('electrical_supervisor', 'electrical_operator')
+
+
+class IsSubstationSupervisorOrAdmin(permissions.BasePermission):
+    """
+    Restricts sensitive configurations and administrative operations to
+    Electrical Supervisors, Plant Engineers, and Admins.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        user = request.user
+        if getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False):
+            return True
+        return getattr(user, 'role', '') == 'electrical_supervisor'
+
+
 class SubstationHealthView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -19,7 +48,7 @@ class SubstationHealthView(APIView):
 
 
 class SubstationSheetsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsSubstationStaff]
 
     def get(self, request):
         sheets = SubstationSheet.objects.filter(is_active=True).values(
@@ -29,7 +58,7 @@ class SubstationSheetsView(APIView):
 
 
 class SubstationQueryView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsSubstationStaff]
 
     def post(self, request):
         data = request.data or {}
@@ -108,7 +137,7 @@ class SubstationQueryView(APIView):
 
 
 class SubstationDocView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsSubstationStaff]
 
     def get(self, request, coll, doc_id):
         if coll in ('readings', 'readings_ht', 'readings_lt'):
@@ -178,6 +207,8 @@ class SubstationDocView(APIView):
             return Response({'ok': True, 'id': reading.doc_id})
 
         elif coll == 'config':
+            if not (getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False) or getattr(user, 'role', '') == 'electrical_supervisor'):
+                return Response({'error': 'Only electrical supervisors and admins can edit configurations'}, status=status.HTTP_403_FORBIDDEN)
             cfg, _ = SubstationConfigDoc.objects.update_or_create(
                 key=doc_id,
                 defaults={
@@ -191,7 +222,7 @@ class SubstationDocView(APIView):
 
 
 class SubstationSummaryView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsSubstationStaff]
 
     def get(self, request):
         today = timezone.now().date()
