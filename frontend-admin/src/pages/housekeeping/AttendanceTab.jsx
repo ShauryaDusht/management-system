@@ -171,9 +171,13 @@ export default function AttendanceTab({ hostelOnly = false }) {
       }
       const text = await blob.text()
       const lines = text.split(/\r?\n/).filter((l) => l.trim())
-      const headers = lines.length
-        ? lines[0].split(',').map((c) => c.replace(/^"|"$/g, '').trim())
-        : ['Worker Name', 'Area', 'Date']
+      const parsedHeaders = lines.length ? lines[0].split(',').map((c) => c.replace(/^"|"$/g, '').trim()) : []
+      const headers = parsedHeaders.length > 1
+        ? parsedHeaders
+        : [
+            'Record Type', 'Date', 'Area', 'Worker Name', 'Pay Code', 'Phone',
+            'Worker Type', 'Shift', 'Supervisor', 'First Half Status', 'Second Half Status', 'Absent Reason/Status',
+          ]
       const dataRows = lines.slice(1).map((l) => l.split(',').map((c) => c.replace(/^"|"$/g, '').trim()))
       const exportData = {
         filename: `housekeeping_absent_workers_${date}`,

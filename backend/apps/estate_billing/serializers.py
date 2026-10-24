@@ -609,6 +609,3 @@ class HousingClearanceSerializer(serializers.ModelSerializer):
             'createdAt',
             'updatedAt',
         ]
-
-
-

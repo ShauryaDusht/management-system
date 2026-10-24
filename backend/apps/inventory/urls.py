@@ -2,7 +2,7 @@ from django.urls import path
 
 from .api_views import (
     AdjustStockView,
-    ApproveRequestView, RejectRequestView, MarkUrgentView,
+    RejectRequestView, MarkUrgentView,
 )
 from .views import (
     CategoryListCreateView,
@@ -12,7 +12,7 @@ from .views import (
     ItemRequestListCreateView, ItemRequestBatchCreateView, ItemRequestDetailView,
     PurchaseRequestListCreateView, PurchaseRequestDecisionView,
     ReviewRequestView, IssueItemView,
-    ItemIssueListView,
+    ItemIssueListView, AdjustOrReverseIssueView, IssueAdjustmentHistoryView,
     ReturnAssetView, FinalizeConsumableView, IssueUsageLogView,
     UserActivityView,
     UserUsageLogsView,
@@ -34,7 +34,6 @@ from .views import (
 #
 # The /api/ routes below are KEPT because they have NO equivalent in views.py:
 #   - adjust-stock   → AdjustStockView   (no equivalent ItemAdjustView in views.py)
-#   - approve        → ApproveRequestView (separate from ReviewRequestView by design)
 #   - reject         → RejectRequestView
 #   - mark-urgent    → MarkUrgentView
 #
@@ -66,6 +65,8 @@ urlpatterns = [
 
     # ── Issues ───────────────────────────────────────────────────────────────
     path('issues/', ItemIssueListView.as_view(), name='issue-list'),
+    path('issues/<int:pk>/adjust/', AdjustOrReverseIssueView.as_view(), name='issue-adjust'),
+    path('issues/<int:pk>/adjustments/', IssueAdjustmentHistoryView.as_view(), name='issue-adjustments'),
     path('issues/<int:pk>/return/', ReturnAssetView.as_view(), name='issue-return'),
     path('issues/<int:pk>/finalize/', FinalizeConsumableView.as_view(), name='issue-finalize'),
     path('issues/<int:pk>/log-usage/', IssueUsageLogView.as_view(), name='issue-log-usage'),
@@ -81,7 +82,6 @@ urlpatterns = [
     # These endpoints have no counterpart in views.py and are still actively
     # used by the frontend. They are kept intentionally and are NOT duplicates.
     path('api/items/<int:pk>/adjust-stock/', AdjustStockView.as_view(), name='item-adjust-stock'),
-    path('api/requests/<int:pk>/approve/', ApproveRequestView.as_view(), name='api-request-approve'),
     path('api/requests/<int:pk>/reject/', RejectRequestView.as_view(), name='api-request-reject'),
     path('api/requests/<int:pk>/mark-urgent/', MarkUrgentView.as_view(), name='api-request-mark-urgent'),
 ]

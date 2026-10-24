@@ -55,6 +55,30 @@ function HorticultureReportModal({ open, supervisor, onClose }) {
     await exportHorticultureReport(format, exportData)
   }
 
+  const getSupervisorReportExportData = (format) => {
+    if (!supervisor) throw new Error('Supervisor data not available.')
+    if (format === 'csv') {
+      downloadCsv()
+      return null
+    }
+    return {
+      title: `${toDisplayName(supervisor)} - Horticulture Supervisor Report`,
+      filename: `horticulture_staff_${toCsvSafe(supervisor.username || supervisor.id)}`,
+      headers: ['Metric', 'Value'],
+      rows: [
+        ['Name', toDisplayName(supervisor)],
+        ['Username', supervisor.username || '-'],
+        ['Pay Code', supervisor.pay_code || '-'],
+        ['Phone', supervisor.phone || '-'],
+        ['Workers', String(supervisor.workers_count ?? 0)],
+        ['Tasks This Week', String(supervisor.tasks_logged_this_week ?? 0)],
+        ['Last Login', formatDateTime(supervisor.last_login, 'Never')],
+        ['Zones', asList(supervisor.zone_names).join(', ') || '-'],
+        ['Assigned Areas', asList(supervisor.area_names).join(', ') || '-'],
+      ],
+    }
+  }
+
   return (
     <Modal
       open={open}
@@ -158,6 +182,25 @@ function InventoryUsageModal({ open, supervisor, onClose }) {
       ]),
     }
     await exportHorticultureReport(format, exportData)
+  }
+
+  const getUsageExportData = (format) => {
+    if (!items.length) throw new Error('No usage data available.')
+    if (format === 'csv') {
+      downloadCsv()
+      return null
+    }
+    return {
+      title: `${toDisplayName(supervisor)} - Horticulture Inventory Usage (${String(month).padStart(2, '0')}/${year})`,
+      filename: `horticulture_inventory_usage_${toCsvSafe(supervisor?.username)}_${month}_${year}`,
+      headers: ['Item', 'Issued', 'Used', 'Remaining'],
+      rows: items.map((item) => [
+        item.item_name || '-',
+        `${item.issued_quantity || 0} ${item.unit || ''}`,
+        `${item.total_used || 0} ${item.unit || ''}`,
+        `${item.remaining || 0} ${item.unit || ''}`,
+      ]),
+    }
   }
 
   return (

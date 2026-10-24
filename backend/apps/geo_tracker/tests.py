@@ -142,4 +142,3 @@ class PublicSubmitWorkflowTests(TestCase):
         self.assertEqual(record.length_m, Decimal('3.00'))
         self.assertEqual(record.width_m, Decimal('2.00'))
         self.assertEqual(record.notes, 'Standard single shrub record')
-

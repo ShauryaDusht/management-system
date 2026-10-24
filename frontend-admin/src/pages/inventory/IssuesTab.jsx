@@ -5,6 +5,7 @@ import { Alert, Badge, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
 import { exportReport } from '../../shared/exportHelper'
 import { asList, todayISO, triggerDownload } from '../../shared/utils'
+import UndoAdjustIssueModal from './UndoAdjustIssueModal'
 
 const AREA_CLASS_LABELS = {
   all: 'All Areas',
@@ -58,6 +59,7 @@ function isIssueInMonth(issue, month, year) {
 
 export default function IssuesTab({ userRole, categoryScope = null, excludeCategoryScope = null }) {
   const [issues, setIssues] = useState([])
+  const [undoModalIssue, setUndoModalIssue] = useState(null)
 
   const [actionModal, setActionModal] = useState(null)
   const [form, setForm] = useState({
@@ -355,6 +357,52 @@ export default function IssuesTab({ userRole, categoryScope = null, excludeCateg
     }
   }
 
+  const fetchAreaIssuesReportData = async () => {
+    const params = {
+      month: reportMonth,
+      year: reportYear,
+    }
+    if (areaClass !== 'all') params.area_class = areaClass
+    if (selectedArea !== 'all') params.area_name = selectedArea
+
+    const { data } = await reportsAPI.getAreaIssuesReport(params)
+    const rows = (data?.rows || []).map((row) => [
+      row.area_name || '-',
+      row.area_type || '-',
+      row.item_name || '-',
+      row.item_type || '-',
+      row.item_unit || '-',
+      row.requested_by || '-',
+      row.quantity_requested ?? 0,
+      row.quantity_issued ?? 0,
+      row.issued_at || '-',
+      row.issued_by || '-',
+      row.status || '-',
+      (row.returned || row.usage_finalized) ? 'Yes' : 'No',
+    ])
+    const period = `${reportYear}_${String(reportMonth).padStart(2, '0')}`
+    return {
+      title: 'Area-Wise Issued Items Report',
+      subtitle: `Period: ${MONTHS[reportMonth - 1]} ${reportYear} | Filter: ${reportFilterLabel} | Total: ${rows.length}`,
+      filename: `area_issues_${period}`,
+      headers: [
+        'Area',
+        'Area Type',
+        'Item',
+        'Item Type',
+        'Unit',
+        'Requested By',
+        'Qty Requested',
+        'Qty Issued',
+        'Issued At',
+        'Issued By',
+        'Status',
+        'Returned/Finalized',
+      ],
+      rows,
+    }
+  }
+
   const years = Array.from(
     { length: 4 },
     (_, index) => new Date().getFullYear() - index
@@ -394,8 +442,7 @@ export default function IssuesTab({ userRole, categoryScope = null, excludeCateg
           style={{
             display: 'flex',
             gap: 8,
-            flexWrap: 'nowrap',
-            overflowX: 'auto',
+            flexWrap: 'wrap',
             alignItems: 'center',
             paddingBottom: 4,
           }}
@@ -629,27 +676,39 @@ export default function IssuesTab({ userRole, categoryScope = null, excludeCateg
                 ? new Date(issue.issued_at).toLocaleDateString('en-IN')
                 : '-',
               <Badge key={`status-${issue.id}`} value={status} />,
-              issue.item_type === 'asset' && canManager && !issue.returned_at ? (
-                <Btn
-                  key={`return-${issue.id}`}
-                  size="sm"
-                  variant="orange"
-                  onClick={() => setActionModal({ id: issue.id, type: 'asset', item: issue })}
-                >
-                  Return
-                </Btn>
-              ) : issue.item_type === 'consumable' ? (
-                <Btn
-                  key={`usage-${issue.id}`}
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => openUsageModal(issue)}
-                >
-                  View Usage
-                </Btn>
-              ) : (
-                '-'
-              ),
+              <div key={`act-wrap-${issue.id}`} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                {issue.item_type === 'asset' && canManager && !issue.returned_at && (
+                  <Btn
+                    key={`return-${issue.id}`}
+                    size="sm"
+                    variant="orange"
+                    onClick={() => setActionModal({ id: issue.id, type: 'asset', item: issue })}
+                  >
+                    Return
+                  </Btn>
+                )}
+                {issue.item_type === 'consumable' && (
+                  <Btn
+                    key={`usage-${issue.id}`}
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => openUsageModal(issue)}
+                  >
+                    View Usage
+                  </Btn>
+                )}
+                {canManager && !issue.returned_at && !issue.usage_finalized && !issue.is_reversed && (
+                  <Btn
+                    key={`undo-${issue.id}`}
+                    size="sm"
+                    variant="ghost"
+                    style={{ color: '#b91c1c', borderColor: '#fca5a5' }}
+                    onClick={() => setUndoModalIssue(issue)}
+                  >
+                    Undo / Adjust
+                  </Btn>
+                )}
+              </div>,
             ]
           })}
           emptyMsg="No issued items for selected filters."
@@ -799,6 +858,13 @@ export default function IssuesTab({ userRole, categoryScope = null, excludeCateg
           />
         </Field>
       </Modal>
+
+      <UndoAdjustIssueModal
+        open={Boolean(undoModalIssue)}
+        issue={undoModalIssue}
+        onClose={() => setUndoModalIssue(null)}
+        onSuccess={() => reload()}
+      />
     </div>
   )
 }

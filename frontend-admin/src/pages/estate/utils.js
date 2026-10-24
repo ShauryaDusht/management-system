@@ -372,4 +372,3 @@ export function calcHousingExpiry(expiryText, alertDays = 30) {
   }
   return null
 }
-

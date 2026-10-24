@@ -163,7 +163,7 @@ def render_license_alert_html(data):
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 24px;">
         <div style="max-width: 860px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
-            
+
             <!-- Header -->
             <div style="background: linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%); padding: 24px 28px; color: #ffffff;">
                 <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; opacity: 0.9; margin-bottom: 6px;">

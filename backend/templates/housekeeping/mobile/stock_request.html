@@ -26,6 +26,18 @@
   <form method="post" action="/housekeeping/stock/request/" class="stock-form" onsubmit="return beforeSubmit()">
     {% csrf_token %}
     {% if form_error %}<div class="stock-error">{{ form_error }}</div>{% endif %}
+    {% if unreported_stocks %}
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px;font-size:12px;color:#991b1b">
+      <div style="font-weight:700;margin-bottom:4px">Notice: Blocked Items with Pending Usage Reports</div>
+      <div style="color:#b91c1c;margin-bottom:6px">The following item(s) cannot be requested until previous issued quantity is fully accounted for in usage reports:</div>
+      <ul style="margin:0;padding-left:18px">
+        {% for st in unreported_stocks %}
+        <li><strong>{{ st.item_name }}</strong>: {{ st.outstanding_quantity }} {{ st.unit }} pending usage report</li>
+        {% endfor %}
+      </ul>
+      <div style="font-size:11px;color:#b91c1c;margin-top:6px">Submit your usage report under "Issued Items" on the Stock page to unlock new requests for these items.</div>
+    </div>
+    {% endif %}
     <div class="fg"><label>Requester</label><input type="text" value="{{ request.user.get_full_name|default:request.user.username }}" disabled style="background:#f3f4f6;color:#6b7280"></div>
 
     <div class="fg">
@@ -38,8 +50,8 @@
             data-name="{{ item.name }}"
             data-unit="{{ item.unit }}"
             data-unit-label="{{ item.get_unit_display }}"
-            {% if item.available_quantity <= 0 %}disabled{% endif %}>
-            {% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} - {% if item.available_quantity <= 0 %}Out of stock{% else %}In stock{% endif %}
+            {% if item.is_blocked or item.available_quantity <= 0 %}disabled{% endif %}>
+            {% if item.item_code %}[{{ item.item_code }}] {% endif %}{{ item.name }} - {% if item.is_blocked %}Blocked: Pending Usage Report ({{ item.outstanding_quantity }} {{ item.unit }}){% elif item.available_quantity <= 0 %}Out of stock{% else %}In stock{% endif %}
           </option>
           {% endfor %}
         </select>
@@ -57,10 +69,7 @@
     {% elif user_areas %}<input type="hidden" name="area_id" value="{{ user_areas.first.id }}">{% endif %}
 
     <div class="fg"><label>Reason *</label><textarea name="reason" rows="3" required placeholder="Why is this needed? For which task?"></textarea></div>
-    <label style="display:flex;align-items:center;gap:10px;margin-bottom:2px;font-weight:400;font-size:14px;cursor:pointer;min-height:42px">
-      <input type="checkbox" name="is_urgent" style="width:20px;height:20px"> Mark as Urgent
-    </label>
-    <div class="btn-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div class="btn-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
       <button type="submit" class="btn-s">Submit Request</button>
       <a href="/housekeeping/stock/" style="display:block"><button type="button" class="btn-g">Cancel</button></a>
     </div>

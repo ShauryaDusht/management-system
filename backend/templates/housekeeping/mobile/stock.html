@@ -4,8 +4,38 @@
 {% block n4 %}on{% endblock %}
 
 {% block content %}
+<style>
+  html, body {
+    overflow-x: hidden;
+  }
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(45,74,62,0.3) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(45,74,62,0.3);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(45,74,62,0.5);
+  }
+</style>
+
 {% if requested %}
-<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:11px;margin-bottom:10px;color:#065f46;font-weight:700">Request submitted. Inventory manager will see it.</div>
+  {% if fully_covered %}
+  <div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:11px;margin-bottom:10px;color:#065f46;font-weight:700">Request fulfilled using your existing outstanding stock. No warehouse issue needed.</div>
+  {% elif partially_covered %}
+  <div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:11px;margin-bottom:10px;color:#065f46;font-weight:700">Request partially covered from existing stock. Uncovered quantity sent to inventory manager.</div>
+  {% else %}
+  <div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:11px;margin-bottom:10px;color:#065f46;font-weight:700">Request submitted. Inventory manager will see it.</div>
+  {% endif %}
 {% endif %}
 
 {% if user_areas.count > 1 %}
@@ -20,26 +50,44 @@
   <button class="btn-p">Request Item</button>
 </a>
 
-<div class="card" style="background:linear-gradient(135deg,#2d4a3e,#1e3a30);color:#fff;border:none">
-  <div style="font-size:12px;opacity:.8">{% if selected_area %}{{ selected_area.name }}{% endif %} - Stock</div>
-  <div style="font-size:26px;font-weight:900;margin:2px 0">{{ stock_card_count|default:0 }} Items</div>
-  {% if low_stocks %}
-  <div style="font-size:13px;color:#fde68a;margin-top:3px">{{ low_stocks|length }} item(s) running low</div>
-  {% else %}
-  <div style="font-size:12px;opacity:.7;margin-top:3px">All stocks sufficient</div>
-  {% endif %}
+<div class="card" style="background:linear-gradient(135deg,#2d4a3e,#1e3a30);color:#fff;border:none;display:flex;justify-content:space-between;align-items:center;gap:12px">
+  <div style="min-width:0">
+    <div style="font-size:12px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{% if selected_area %}{{ selected_area.name }}{% endif %} - Stock</div>
+    <div style="font-size:26px;font-weight:900;margin:2px 0">{{ stock_card_count|default:0 }} Items</div>
+    {% if low_stocks %}
+    <div style="font-size:13px;color:#fde68a;margin-top:3px">{{ low_stocks|length }} item(s) running low</div>
+    {% else %}
+    <div style="font-size:12px;opacity:.7;margin-top:3px">All stocks sufficient</div>
+    {% endif %}
+  </div>
+  <a href="/housekeeping/stock/history/{% if selected_area %}?area={{ selected_area.id }}{% endif %}" id="stock-history-btn" style="text-decoration:none;color:#fff;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 13px;background:rgba(255,255,255,0.13);border:1px solid rgba(255,255,255,0.22);border-radius:12px;cursor:pointer;flex-shrink:0;transition:all 0.2s;-webkit-tap-highlight-color:transparent" title="Issue & Usage History">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <polyline points="12 6 12 12 16 14"></polyline>
+    </svg>
+    <span style="font-size:11px;font-weight:700;letter-spacing:0.3px">History</span>
+  </a>
 </div>
 
 {% for stock in low_stocks %}
-<div class="card" style="border-left:4px solid #f97316;background:#fff7ed">
+<div class="card" style="border-left:4px solid {% if stock.is_blocked %}#9ca3af{% else %}#f97316{% endif %};background:{% if stock.is_blocked %}#f9fafb{% else %}#fff7ed{% endif %}">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
     <div>
-      <div style="font-weight:700;color:#9a3412">{{ stock.item_name }}</div>
-      <div style="font-size:12px;color:#c2622a">{{ stock.quantity }} {{ stock.unit }} left (threshold: {{ stock.low_stock_threshold }})</div>
+      <div style="font-weight:700;color:{% if stock.is_blocked %}#4b5563{% else %}#9a3412{% endif %}">{{ stock.item_name }}</div>
+      <div style="font-size:12px;color:{% if stock.is_blocked %}#6b7280{% else %}#c2622a{% endif %}">{{ stock.quantity }} {{ stock.unit }} left (threshold: {{ stock.low_stock_threshold }})</div>
+      {% if stock.is_blocked %}
+      <div style="font-size:11px;color:#dc2626;font-weight:600;margin-top:4px">
+        Blocked: Previous item's usage report must be completed before requesting again ({{ stock.outstanding_quantity }} {{ stock.unit }} pending)
+      </div>
+      {% endif %}
     </div>
+    {% if stock.is_blocked %}
+      <button disabled style="background:#9ca3af;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:not-allowed" title="Previous item's usage report must be completed before requesting it again">Blocked</button>
+    {% else %}
     <a href="/housekeeping/stock/request/?area={{ selected_area.id }}&item={{ stock.item_name }}">
       <button style="background:#c2622a;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer">Request</button>
     </a>
+    {% endif %}
   </div>
 </div>
 {% endfor %}
@@ -68,9 +116,15 @@
       <div style="font-size:12px;color:#6b7280;margin-top:2px">
         Requested: {{ req.quantity }} {{ req.unit }} &bull; {{ req.created_at|date:"d M Y" }}
       </div>
+      {% if req.covered_quantity > 0 %}
+      <div style="font-size:12px;color:#059669;margin-top:2px">
+        {{ req.covered_quantity }} {{ req.unit }} covered from existing stock &bull; {{ req.approval_required_quantity }} {{ req.unit }} awaiting manager issue
+      </div>
+      {% else %}
       <div style="font-size:12px;color:#6b7280;margin-top:2px">
         Stock not issued yet. Area stock is unchanged.
       </div>
+      {% endif %}
     </div>
     <span class="bdg {% if req.status == 'approved' %}g{% else %}y{% endif %}">{{ req.get_status_display }}</span>
   </div>
@@ -151,6 +205,7 @@
       {% csrf_token %}
       {% if selected_area %}
       <input type="hidden" name="area_id" value="{{ selected_area.id }}">
+      <input type="hidden" name="area" value="{{ selected_area.id }}">
       {% endif %}
 
       <div style="margin-bottom:10px">

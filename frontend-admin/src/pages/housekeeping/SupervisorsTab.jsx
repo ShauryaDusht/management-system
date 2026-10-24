@@ -891,6 +891,26 @@ export default function SupervisorsTab({ hostelOnly = false }) {
                 </option>
               ))}
             </SelectField>
+            <ExportDropdown
+              headers={['Role', 'Name', 'Pay Code', 'Email', 'Username', 'Phone', 'Assigned Areas']}
+              data={visibleUsers.map((u) => {
+                const areasForUser = areaMap[u.id] || []
+                return [
+                  u.role || '-',
+                  toDisplayName(u),
+                  u.pay_code || '-',
+                  u.email || '-',
+                  u.username || '-',
+                  u.phone || '-',
+                  areasForUser.length ? areasForUser.join(', ') : '-',
+                ]
+              })}
+              title="Housekeeping Supervisors & Staff List"
+              filename="housekeeping_supervisors_list"
+              disabled={loading || !visibleUsers.length}
+              buttonText="Download Report"
+              align="right"
+            />
           </div>
         </div>
         {loading ? (

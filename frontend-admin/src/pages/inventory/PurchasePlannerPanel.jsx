@@ -228,7 +228,7 @@ export default function PurchasePlannerPanel() {
     let latest = plan
     if (dirty) {
       latest = await handleSave({ silent: true })
-      if (!latest) return
+      if (!latest) throw new Error('Could not save purchase plan.')
     }
     try {
       const visibleItemIds = filteredRows.map((row) => row.item_id)
@@ -260,7 +260,7 @@ export default function PurchasePlannerPanel() {
           { label: 'Total Purchase Qty', value: filteredSummary.total_purchase_quantity },
           { label: 'Total Estimated Cost', value: inr(visibleEstimatedCost) },
         ],
-        headers: ['Code', 'Item Name', 'Category', 'Type', 'Unit', 'Available', 'Purchase Price', 'Purchase Qty', 'Estimated Cost (INR)'],
+        headers: ['Code', 'Item Name', 'Category', 'Type', 'Unit', 'Available', 'Purchase Price', 'Purchase Qty', 'Estimated Cost (INR)', 'Vendor', 'Notes'],
         rows: filteredRows.map((row) => [
           row.item_code || '-',
           row.item_name || '-',
@@ -271,6 +271,8 @@ export default function PurchasePlannerPanel() {
           Number(row.unit_cost ?? row.current_unit_cost ?? 0).toFixed(2),
           row.purchase_quantity ?? 0,
           Number(row.estimated_cost ?? 0).toFixed(2),
+          row.vendor || '-',
+          row.notes || '-',
         ]),
       }
       await exportReport(format, exportData)

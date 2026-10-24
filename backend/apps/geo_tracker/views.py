@@ -285,5 +285,3 @@ class GeoTrackerAreasView(APIView):
 
         area = CampusAreaConfig.objects.create(label=label, db_value=db_value, code=code)
         return Response({'id': area.id, 'label': area.label, 'db_value': area.db_value, 'code': area.code}, status=201)
-
-

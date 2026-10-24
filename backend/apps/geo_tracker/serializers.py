@@ -158,5 +158,3 @@ def records_to_csv(queryset):
             r.submitted_at.strftime('%Y-%m-%d %H:%M') if r.submitted_at else '',
         ])
     return output.getvalue()
-
-
