@@ -373,7 +373,7 @@ export default function GalleryTab({ readOnly = false }) {
             <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 700 }}>{total.toLocaleString()} photos</span>
             <Input value={filters.search} onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))} placeholder="Search area, task, staff..." style={{ width: 250 }} />
             <ExportDropdown
-              label="Export Photo Log"
+              label="Export Data Log"
               onExport={handleExportPhotoLog}
               disabled={photos.length === 0}
             />

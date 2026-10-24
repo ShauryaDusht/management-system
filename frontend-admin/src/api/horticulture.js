@@ -36,6 +36,7 @@ export const horticultureAPI = {
   createAreaTaskAssignment: (data) => api.post('/horticulture/admin/area-task-assignments/', data),
   updateAreaTaskAssignment: (id, data) => api.patch(`/horticulture/admin/area-task-assignments/${id}/`, data),
   deleteAreaTaskAssignment: (id) => api.delete(`/horticulture/admin/area-task-assignments/${id}/`),
+  swapAreaTaskAssignments: (data) => api.post('/horticulture/admin/area-task-assignments/swap/', data),
   listTaskTypes: () => api.get('/horticulture/admin/task-types/'),
   createTaskType: (data) => api.post('/horticulture/admin/task-types/', data),
   updateTaskType: (id, data) => api.patch(`/horticulture/admin/task-types/${id}/`, data),

@@ -1334,6 +1334,62 @@ class AdminHorticultureAreaTaskAssignmentDetailAPIView(generics.RetrieveUpdateDe
     queryset = HorticultureAreaTaskAssignment.objects.select_related('area__zone', 'task_type', 'assigned_by')
 
 
+class AdminHorticultureAreaTaskAssignmentSwapAPIView(APIView):
+    permission_classes = [IsAdminOrHorticultureManager]
+
+    @transaction.atomic
+    def post(self, request):
+        assignment1_id = request.data.get('assignment1_id')
+        assignment2_id = request.data.get('assignment2_id')
+
+        area1_id = request.data.get('area1_id')
+        area2_id = request.data.get('area2_id')
+        date_str = request.data.get('date')
+        session = request.data.get('session', HorticultureAreaTaskAssignment.Session.ANY)
+
+        if assignment1_id and assignment2_id:
+            a1 = get_object_or_404(
+                HorticultureAreaTaskAssignment.objects.select_related('area', 'task_type'),
+                pk=assignment1_id,
+            )
+            a2 = get_object_or_404(
+                HorticultureAreaTaskAssignment.objects.select_related('area', 'task_type'),
+                pk=assignment2_id,
+            )
+        elif area1_id and area2_id and date_str:
+            target_date = parse_date(date_str) or timezone.localdate()
+            a1 = HorticultureAreaTaskAssignment.objects.select_related('area', 'task_type').filter(
+                area_id=area1_id, date=target_date, session=session
+            ).first()
+            a2 = HorticultureAreaTaskAssignment.objects.select_related('area', 'task_type').filter(
+                area_id=area2_id, date=target_date, session=session
+            ).first()
+            if not a1 or not a2:
+                return Response(
+                    {'detail': 'Both areas must have active task assignments on this date to swap.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            return Response(
+                {'detail': 'Please provide assignment1_id and assignment2_id (or area1_id, area2_id, and date).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        task1 = a1.task_type
+        task2 = a2.task_type
+
+        a1.task_type = task2
+        a2.task_type = task1
+        a1.save(update_fields=['task_type'])
+        a2.save(update_fields=['task_type'])
+
+        return Response({
+            'detail': f'Tasks swapped: {a1.area.name} is now assigned to {a1.task_type.name}, and {a2.area.name} is now assigned to {a2.task_type.name}.',
+            'assignment1': AdminAreaTaskAssignmentSerializer(a1).data,
+            'assignment2': AdminAreaTaskAssignmentSerializer(a2).data,
+        })
+
+
 class AdminHorticultureTaskTypeListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = AdminTaskTypeSerializer
     permission_classes = [IsAdminOrHorticultureManager]
