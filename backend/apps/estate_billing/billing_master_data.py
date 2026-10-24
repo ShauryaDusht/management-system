@@ -495,8 +495,11 @@ def ensure_master_shops_and_contractors(force=False):
 
     # Ensure EstateSettings exist
     settings = EstateSettings.get_settings()
+    if force and settings.first_note_no == 259:
+        settings.first_note_no = 230
+        settings.save(update_fields=['first_note_no'])
 
-    # Detect dirty/duplicate state from earlier commits (e.g. commit 21b3e6a had 34 shops with contractors in shops)
+    # Detect and clean up only rogue contractors mistakenly saved into the Shop table in commit 21b3e6a
     CONTRACTOR_NAMES_IN_SHOPS = [
         'Globe Civil Projects',
         'ADANI NEW INDUSTRIES',
@@ -504,49 +507,50 @@ def ensure_master_shops_and_contractors(force=False):
         'Summit Digital',
         'Haier Smart Solution',
     ]
+    for cname in CONTRACTOR_NAMES_IN_SHOPS:
+        Shop.objects.filter(name__icontains=cname).delete()
 
-    has_contractors_in_shops = any(
-        Shop.objects.filter(name__icontains=cname).exists()
-        for cname in CONTRACTOR_NAMES_IN_SHOPS
-    )
-    shops_count = Shop.objects.filter(is_active=True).count()
-    needs_shop_cleanup = force or (shops_count == 0) or (shops_count > 29) or has_contractors_in_shops
+    # 1. Reconcile / Seed Shops (never deleting new shops created with sl > 29)
+    for data in MASTER_SHOPS_DATA:
+        shop, created = Shop.objects.get_or_create(
+            sl=data['sl'],
+            defaults={
+                'name': data['name'],
+                'address': data.get('address', DEFAULT_ADDRESS),
+                'fixed': data.get('fixed', False),
+                'default_rate': data.get('rate', Decimal('9.55')),
+                'default_water': data.get('water', Decimal('320.00')),
+                'is_active': True,
+            }
+        )
+        if not created and force:
+            shop.name = data['name']
+            shop.address = data.get('address', DEFAULT_ADDRESS)
+            shop.fixed = data.get('fixed', False)
+            shop.default_rate = data.get('rate', Decimal('9.55'))
+            shop.default_water = data.get('water', Decimal('320.00'))
+            shop.is_active = True
+            shop.save()
 
-    # 1. Reconcile / Seed Shops
-    if needs_shop_cleanup:
-        # Delete extra shops beyond 29 or contractor names from shop table
-        Shop.objects.filter(sl__gt=29).delete()
-        for cname in CONTRACTOR_NAMES_IN_SHOPS:
-            Shop.objects.filter(name__icontains=cname).delete()
-
-        for data in MASTER_SHOPS_DATA:
-            Shop.objects.update_or_create(
-                sl=data['sl'],
-                defaults={
-                    'name': data['name'],
-                    'address': data.get('address', DEFAULT_ADDRESS),
-                    'fixed': data.get('fixed', False),
-                    'default_rate': data.get('rate', Decimal('9.55')),
-                    'default_water': data.get('water', Decimal('320.00')),
-                    'is_active': True,
-                }
-            )
-
-    # 2. Reconcile / Seed Contractors
-    contractors_count = Contractor.objects.filter(is_active=True).count()
-    if force or (contractors_count == 0) or (contractors_count > 6):
-        Contractor.objects.filter(sl__gt=6).delete()
-        for data in MASTER_CONTRACTORS_DATA:
-            Contractor.objects.update_or_create(
-                sl=data['sl'],
-                defaults={
-                    'name': data['name'],
-                    'to_line': data.get('to_line', ''),
-                    'address': data.get('address', CONTRACTOR_ADDRESS),
-                    'intro': data.get('intro', CONTRACTOR_INTRO),
-                    'is_active': True,
-                }
-            )
+    # 2. Reconcile / Seed Contractors (never deleting new contractors created with sl > 6)
+    for data in MASTER_CONTRACTORS_DATA:
+        c, created = Contractor.objects.get_or_create(
+            sl=data['sl'],
+            defaults={
+                'name': data['name'],
+                'to_line': data.get('to_line', ''),
+                'address': data.get('address', CONTRACTOR_ADDRESS),
+                'intro': data.get('intro', CONTRACTOR_INTRO),
+                'is_active': True,
+            }
+        )
+        if not created and force:
+            c.name = data['name']
+            c.to_line = data.get('to_line', '')
+            c.address = data.get('address', CONTRACTOR_ADDRESS)
+            c.intro = data.get('intro', CONTRACTOR_INTRO)
+            c.is_active = True
+            c.save()
 
     # 3. Ensure portal user estate.office exists
     try:
@@ -598,12 +602,15 @@ def ensure_master_shops_and_contractors(force=False):
                 'expiry_date': '',
             }
         )
-        if not created and (force or not note.units and not note.fixed):
+        if not created and (force or not note.units and not note.fixed or note.total_amount == Decimal('0.00')):
             # If note was created empty, populate with real numbers
             note.units = data.get('units', '')
             note.date = data.get('date', '2026-11-03')
             note.month = data.get('month', '2026-10')
             note.month_to = data.get('month_to', '')
+            note.rate = data.get('rate', Decimal('9.55'))
+            note.water = data.get('water', Decimal('320.00'))
+            note.fixed = data.get('fixed', False)
             note.total_amount = data.get('total_amount', Decimal('0.00'))
             note.save()
 
@@ -634,7 +641,7 @@ def ensure_master_shops_and_contractors(force=False):
                 'total_amount': data.get('total_amount', Decimal('0.00')),
             }
         )
-        if not created and (force or not cnote.total_amount or not cnote.note_no):
+        if not created and (force or not cnote.total_amount or not cnote.note_no or not cnote.meters):
             cnote.note_no = c_note_no
             cnote.date = data.get('date', '2026-11-03')
             cnote.month = data.get('month', '2026-10')

@@ -350,6 +350,7 @@ def ensure_cycle_notes(cycle_month):
 
 
 def get_current_cycle(request):
+    ensure_master_shops_and_contractors()
     cycle = request.query_params.get('cycle')
     if cycle and len(cycle) == 7:
         ensure_cycle_notes(cycle)
@@ -789,6 +790,7 @@ class BillingCycleListView(APIView):
     def get(self, request):
         if not is_estate_allowed(request.user):
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        ensure_master_shops_and_contractors()
         cycles = BillingCycle.objects.all().order_by('-month')
         return Response(BillingCycleSerializer(cycles, many=True).data)
 
