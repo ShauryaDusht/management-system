@@ -1393,28 +1393,15 @@ function buildPopupHtml(r, tcfg, ccfg, photos) {
 // Stat chip
 // ---------------------------------------------------------------------------
 
-function StatChip({ label, value, color, bg, sublabel, title, highlight }) {
+function StatChip({ label, value, color, bg }) {
   return (
-    <div
-      title={title}
-      style={{
-        background: bg,
-        borderRadius: 10,
-        padding: '7px 12px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minWidth: 72,
-        border: highlight ? `2px solid ${color}` : `1px solid ${color}33`,
-        boxShadow: highlight ? `0 2px 8px ${color}22` : undefined,
-      }}
-    >
-      <span style={{ fontSize: 18, fontWeight: 900, color, lineHeight: 1.1 }}>{value}</span>
-      <span style={{ fontSize: 10, fontWeight: 800, color: '#4b5563', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
-      {sublabel && (
-        <span style={{ fontSize: 9.5, fontWeight: 700, color: color, opacity: 0.9, marginTop: 1 }}>{sublabel}</span>
-      )}
+    <div style={{
+      background: bg, borderRadius: 10, padding: '8px 14px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      minWidth: 72, border: `1px solid ${color}33`,
+    }}>
+      <span style={{ fontSize: 18, fontWeight: 800, color }}>{value}</span>
+      <span style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', marginTop: 1, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
     </div>
   )
 }
@@ -1854,54 +1841,13 @@ export default function GeoTrackerPage() {
             </div>
 
             {stats && (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                <StatChip
-                  label="Total Plants"
-                  value={(stats.total_plants ?? stats.total).toLocaleString()}
-                  color="#15803d"
-                  bg="#dcfce7"
-                  sublabel="Flora Count"
-                  title="Total individual plants & trees across all surveyed beds and locations"
-                  highlight
-                />
-                <StatChip
-                  label="Total Records"
-                  value={stats.total}
-                  color="#374151"
-                  bg="#f3f4f6"
-                  sublabel="Beds / Trees"
-                  title="Total surveyed entries / markers on map"
-                />
-                <StatChip
-                  label="Trees"
-                  value={(stats.trees_plants ?? stats.trees).toLocaleString()}
-                  color={TYPE_CONFIG.tree.color}
-                  bg={TYPE_CONFIG.tree.bg}
-                  sublabel={stats.trees > 1 ? `${stats.trees} rec` : undefined}
-                />
-                <StatChip
-                  label="Plants"
-                  value={(stats.plants_plants ?? stats.plants).toLocaleString()}
-                  color={TYPE_CONFIG.plant.color}
-                  bg={TYPE_CONFIG.plant.bg}
-                  sublabel={stats.plants > 1 ? `${stats.plants} rec` : undefined}
-                />
-                <StatChip
-                  label="Creepers"
-                  value={(stats.creepers_plants || stats.creepers || 0).toLocaleString()}
-                  color={TYPE_CONFIG.creeper.color}
-                  bg={TYPE_CONFIG.creeper.bg}
-                  sublabel={`${stats.creepers || 0} ${stats.creepers === 1 ? 'bed' : 'beds'}`}
-                  title={`${stats.creepers_plants || 0} individual plants in ${stats.creepers || 0} beds`}
-                />
-                <StatChip
-                  label="Shrubs"
-                  value={(stats.shrubs_plants || stats.shrubs || 0).toLocaleString()}
-                  color={TYPE_CONFIG.shrub.color}
-                  bg={TYPE_CONFIG.shrub.bg}
-                  sublabel={`${stats.shrubs || 0} ${stats.shrubs === 1 ? 'bed' : 'beds'}`}
-                  title={`${stats.shrubs_plants || 0} individual plants in ${stats.shrubs || 0} beds`}
-                />
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                <StatChip label="Total"        value={stats.total}                                         color="#374151"                   bg="#f3f4f6" />
+                <StatChip label="Trees"        value={stats.trees}                                         color={TYPE_CONFIG.tree.color}    bg={TYPE_CONFIG.tree.bg} />
+                <StatChip label="Plants"       value={stats.plants}                                        color={TYPE_CONFIG.plant.color}   bg={TYPE_CONFIG.plant.bg} />
+                <StatChip label="Creepers"     value={stats.creepers || 0}                                 color={TYPE_CONFIG.creeper.color} bg={TYPE_CONFIG.creeper.bg} />
+                <StatChip label="Shrubs"       value={stats.shrubs || 0}                                   color={TYPE_CONFIG.shrub.color}   bg={TYPE_CONFIG.shrub.bg} />
+                <StatChip label="Total Plants" value={(stats.total_plants ?? stats.total).toLocaleString()} color="#15803d"                   bg="#dcfce7" />
               </div>
             )}
           </div>
