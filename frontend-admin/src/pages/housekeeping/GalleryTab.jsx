@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { Alert, Btn, Card, DataTable, Input, SelectField, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Input, SelectField, Spinner } from '../../components/ui'
+import { exportReport } from '../../shared/exportHelper'
 import { triggerDownload } from '../../shared/utils'
 import { generateImageUrl, handleImageError, imageDebugEnabled, imageDebugLog } from '../../shared/imageUrls'
 import ConfirmModal from '../../shared/components/ConfirmModal'
@@ -262,13 +263,45 @@ export default function GalleryTab({ readOnly = false }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [box.open, moveBox])
 
-  const exportCsv = async () => {
+  const handleExportPhotoLog = async (format) => {
     try {
-      const { data } = await hkAPI.exportGalleryCsv(params)
-      saveBlob(data, 'housekeeping_gallery_export.csv')
-      setSuccess('Gallery log exported.')
+      if (format === 'csv') {
+        // Can directly use backend CSV endpoint or client helper
+        const { data } = await hkAPI.exportGalleryCsv(params)
+        saveBlob(data, `housekeeping_gallery_export_${todayStr()}.csv`)
+        setSuccess('Gallery log exported as CSV.')
+        return
+      }
+      const headers = ['Area', 'Task', 'Staff', 'Captured At', 'Flagged', 'Notes']
+      const rows = photos.map((p) => [
+        p.areaName || '-',
+        p.taskName || '-',
+        p.staffName || '-',
+        fmt(p.capturedAt),
+        p.flagged ? 'Flagged' : 'Normal',
+        p.notes || '-',
+      ])
+      await exportReport(format, {
+        title: 'Housekeeping Task Photo Log',
+        subtitle: `Visual completion audit log (${photos.length} photos shown, total ${total})`,
+        filename: `housekeeping_photo_log_${todayStr()}`,
+        headers,
+        rows,
+        kpis: [
+          { label: 'Total Photos', value: stats.totalPhotos },
+          { label: 'This Week', value: stats.thisWeekPhotos },
+          { label: 'Area Coverage', value: `${stats.areasWithPhotos} / ${stats.totalAreas}` },
+          { label: 'Avg / Task', value: stats.avgPhotosPerTask },
+        ],
+        metadata: {
+          'Search Filter': filters.search || 'None',
+          'Total Photos In DB': total,
+          'Export Date': new Date().toLocaleString(),
+        },
+      })
+      setSuccess(`Gallery log exported as ${format.toUpperCase()}.`)
     } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to export CSV.')
+      setError(e.response?.data?.detail || `Failed to export as ${format.toUpperCase()}.`)
     }
   }
 
@@ -339,7 +372,11 @@ export default function GalleryTab({ readOnly = false }) {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 700 }}>{total.toLocaleString()} photos</span>
             <Input value={filters.search} onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))} placeholder="Search area, task, staff..." style={{ width: 250 }} />
-            <Btn variant="secondary" onClick={exportCsv}>Export Photo Log</Btn>
+            <ExportDropdown
+              label="Export Photo Log"
+              onExport={handleExportPhotoLog}
+              disabled={photos.length === 0}
+            />
           </div>
         </div>
       </Card>

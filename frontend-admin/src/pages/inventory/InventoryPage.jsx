@@ -29,7 +29,7 @@ export default function InventoryPage() {
   const { badges, markSeen } = useNotifications()
   const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
   const inventoryRole = isHostelOffice ? 'hostel_office' : user?.role
-  const canViewReports = user?.role === 'admin' || user?.role === 'hk_inventory_manager' || isHostelOffice
+  const canViewReports = user?.is_superuser || user?.role === 'admin' || user?.role === 'inventory_manager' || user?.role === 'hk_inventory_manager' || user?.role === 'horticulture_manager' || isHostelOffice
 
   const tabConfig = useMemo(() => {
     const visibleBase = isHostelOffice
@@ -99,12 +99,29 @@ export default function InventoryPage() {
       </div>
 
       {active === 'items' && <ItemsTab userRole={inventoryRole} />}
-      {active === 'requests' && <RequestsTab userRole={inventoryRole} />}
-      {active === 'issues' && <IssuesTab userRole={inventoryRole} />}
-      {active === 'stocklog' && <StockLogTab userRole={inventoryRole} />}
+      {active === 'requests' && (
+        <RequestsTab
+          userRole={inventoryRole}
+          excludeCategoryScope="Garden & Horticulture Equipment"
+        />
+      )}
+      {active === 'issues' && (
+        <IssuesTab
+          userRole={inventoryRole}
+          excludeCategoryScope="Garden & Horticulture Equipment"
+        />
+      )}
+      {active === 'stocklog' && (
+        <StockLogTab
+          userRole={inventoryRole}
+          excludeCategoryScope="Garden & Horticulture Equipment"
+        />
+      )}
       {active === 'monthly' && !isHostelOffice && canViewReports && <MonthlyReportTab />}
       {active === 'inventory-report' && canViewReports && <ReportTab />}
-      {active === 'request-report' && canViewReports && <RequestsReportTab />}
+      {active === 'request-report' && canViewReports && (
+        <RequestsReportTab excludeCategoryScope="Garden & Horticulture Equipment" />
+      )}
     </AdminLayout>
   )
 }

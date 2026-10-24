@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { horticultureAPI } from '../../api/horticulture'
-import { Alert, Btn, Card, DataTable, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
 import { asList, getErrorMessage, triggerDownload } from '../../shared/utils'
+import { exportHorticultureReport } from './exportHelper'
 import WorkerReportModal from './WorkerReportModal'
 
 const EMPTY_FORM = {
@@ -139,10 +140,22 @@ export default function WorkersTab() {
     }
   }
 
-  const downloadWorkersCsv = () => {
-    const rows = [
-      ['Worker Name', 'Areas', 'Zones', 'Supervisor', 'Phone', 'Pay Code', 'Status'],
-      ...visibleWorkers.map((worker) => [
+  const handleExportWorkers = async (format) => {
+    const exportData = {
+      filename: 'horticulture_workers',
+      title: 'Horticulture Workers Directory',
+      subtitle: 'Assigned areas, supervisors, contact information, and active status',
+      metadata: [
+        { label: 'Zone Filter', value: zoneFilter === 'all' ? 'All zones' : zoneFilter },
+        ...(search.trim() ? [{ label: 'Search Query', value: search.trim() }] : []),
+      ],
+      stats: [
+        { label: 'Total Listed', value: visibleWorkers.length },
+        { label: 'Active', value: visibleWorkers.filter((w) => w.is_active).length },
+        { label: 'Inactive', value: visibleWorkers.filter((w) => !w.is_active).length },
+      ],
+      headers: ['Worker Name', 'Areas', 'Zones', 'Supervisor', 'Phone', 'Pay Code', 'Status'],
+      rows: visibleWorkers.map((worker) => [
         worker.name || '',
         areaNames(worker),
         zoneNames(worker),
@@ -151,9 +164,8 @@ export default function WorkersTab() {
         worker.pay_code || '',
         worker.is_active ? 'Active' : 'Inactive',
       ]),
-    ]
-    const csv = rows.map((row) => row.map((cell) => csvValue(cell)).join(',')).join('\n')
-    triggerDownload(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), 'horticulture_workers.csv')
+    }
+    await exportHorticultureReport(format, exportData)
   }
 
   return (
@@ -185,9 +197,11 @@ export default function WorkersTab() {
                 <option key={zone} value={zone}>{zone}</option>
               ))}
             </SelectField>
-            <Btn size="sm" variant="secondary" onClick={downloadWorkersCsv} disabled={loading || !visibleWorkers.length}>
-              Download CSV
-            </Btn>
+            <ExportDropdown
+              label="Download Workers"
+              onExport={handleExportWorkers}
+              disabled={loading || !visibleWorkers.length}
+            />
             <Btn size="sm" onClick={openCreate}>+ Add Worker</Btn>
           </div>
         </div>

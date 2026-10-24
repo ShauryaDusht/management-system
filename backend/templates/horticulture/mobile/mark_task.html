@@ -47,12 +47,22 @@
   </div>
   {% if pending_task_count %}
     <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
-    <div style="font-size:13px;font-weight:700">Open a task, optionally attach before/after photos, and submit.</div>
-  </div>
+      <div style="font-size:13px;font-weight:700">Open a task, optionally attach before/after photos, and submit.</div>
+      <div style="font-size:11px;opacity:.92;margin-top:5px;display:flex;gap:8px;flex-wrap:wrap">
+        <span>⏰ <b>बिफोर फोटो (Before Photo):</b> सुबह 8:00 AM – 10:00 AM</span>
+        <span>•</span>
+        <span>⏰ <b>आफ्टर फोटो (After Photo):</b> शाम 4:00 PM – 5:00 PM</span>
+      </div>
+    </div>
   {% else %}
-  <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
-    <div style="font-size:13px;font-weight:700">All listed tasks are submitted for today.</div>
-  </div>
+    <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
+      <div style="font-size:13px;font-weight:700">All listed tasks are submitted for today.</div>
+      <div style="font-size:11px;opacity:.92;margin-top:5px;display:flex;gap:8px;flex-wrap:wrap">
+        <span>⏰ <b>बिफोर फोटो (Before Photo):</b> सुबह 8:00 AM – 10:00 AM</span>
+        <span>•</span>
+        <span>⏰ <b>आफ्टर फोटो (After Photo):</b> शाम 4:00 PM – 5:00 PM</span>
+      </div>
+    </div>
   {% endif %}
 </div>
 
@@ -148,17 +158,54 @@
     <div style="margin-top:7px;font-size:11px;color:#6b7280;background:#f3f4f6;border-radius:7px;padding:6px 8px">
       Worker selection locked for this task.
     </div>
-    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}&source={{ task_source }}" style="margin-top:8px">
+    <form method="post" enctype="multipart/form-data" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}&source={{ task_source }}" class="js-horti-task-start-form" style="margin-top:8px">
     {% csrf_token %}
     <input type="hidden" name="action" value="start">
     <input type="hidden" name="assignment_id" value="{{ task.assignment.id }}">
     <input type="hidden" name="task_type_id" value="{{ task.task_type_id }}">
     <input type="hidden" name="source" value="{{ task_source }}">
-    <div style="width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:8px;background:#f9fafb;margin-bottom:7px">
-      <div style="font-size:11px;font-weight:800;color:#374151;margin-bottom:5px">Before photo (optional)</div>
-      <input type="file" name="photo_before" accept="image/*" capture="environment" style="font-size:12px;width:100%">
+    <div style="width:100%;border:1.5px solid {% if is_before_window or can_bypass_time %}#bbf7d0{% else %}#fed7aa{% endif %};border-radius:10px;padding:9px;background:{% if is_before_window or can_bypass_time %}#f0fdf4{% else %}#fffbeb{% endif %};margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:4px">
+        <div style="font-size:11px;font-weight:800;color:{% if is_before_window or can_bypass_time %}#166534{% else %}#9a3412{% endif %}">
+          बिफोर फोटो (Before Photo) <span style="color:#dc2626">* (अनिवार्य)</span>
+        </div>
+        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:10px;background:{% if is_before_window %}#dcfce7;color:#166534;border:1px solid #86efac{% else %}#fee2e2;color:#991b1b;border:1px solid #fca5a5{% endif %};padding:2px 7px;border-radius:4px;font-weight:800">
+            ⏰ सुबह 8:00 AM – 10:00 AM {% if is_before_window %}(चालू){% else %}(समय समाप्त / बंद){% endif %}
+          </span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button type="button"
+                class="btn-g js-horti-open-camera-before"
+                data-task-id="{{ task.task_type_id }}"
+                data-task-name="Before - {{ task.task_type_name|escape }}"
+                data-window-open="{% if is_before_window or can_bypass_time %}1{% else %}0{% endif %}"
+                {% if not is_before_window and not can_bypass_time %}disabled style="padding:9px;font-size:12px;background:#9ca3af;cursor:not-allowed;opacity:.7"{% else %}style="padding:9px;font-size:12px;background:#15803d"{% endif %}>
+          📷 Take Before Photo (फोटो लें)
+        </button>
+      </div>
+      {% if not is_before_window and not can_bypass_time %}
+      <div style="margin-top:6px;font-size:11px;color:#991b1b;background:#fee2e2;border:1px solid #fca5a5;padding:6px 9px;border-radius:6px;font-weight:700">
+        ⚠️ बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 10:00 AM के बीच ही ली जा सकती है। (वर्तमान समय: {{ current_time_str }})
+      </div>
+      {% endif %}
+      <input type="file" name="photo_before" class="js-photo-before-file-input" accept="image/*" capture="environment" required style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+      <div class="js-photo-before-selected" style="display:none;margin-top:8px;background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:7px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <img class="js-photo-before-thumb" alt="Captured before task photo" style="width:52px;height:52px;border-radius:7px;object-fit:cover;border:1px solid #e5e7eb;flex-shrink:0">
+          <div style="flex:1;min-width:0">
+            <div class="js-photo-before-meta" style="font-size:11px;color:#374151;font-weight:700">बिफोर फोटो तैयार (Photo Ready)</div>
+            <div class="js-photo-before-size" style="font-size:10px;color:#6b7280;margin-top:2px"></div>
+          </div>
+          <button type="button" class="js-photo-before-clear" style="border:none;background:#fee2e2;color:#991b1b;border-radius:7px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer">
+            दोबारा लें (Retake)
+          </button>
+        </div>
+      </div>
+      <div class="js-photo-before-error" style="display:none;margin-top:8px;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:7px 8px;border-radius:7px;font-size:11px;font-weight:700"></div>
     </div>
-    <button type="submit" class="btn-g" style="padding:9px;font-size:12px">Start Work</button>
+    <button type="submit" class="btn-g" {% if not is_before_window and not can_bypass_time %}disabled style="padding:9px;font-size:12px;opacity:.5;cursor:not-allowed"{% else %}style="padding:9px;font-size:12px"{% endif %}>Start Work (कार्य शुरू करें)</button>
     </form>
 
     {% elif task.assignment.status == 'in_progress' %}
@@ -188,30 +235,47 @@
         <input type="text" name="note" placeholder="Remark / completion note" style="font-size:13px;padding:8px 10px">
       </div>
       <div style="margin-top:8px">
-        <div style="font-size:11px;font-weight:800;color:#374151;margin-bottom:5px">After photo (optional)</div>
-        <button type="button"
-                class="btn-g js-horti-open-camera"
-                data-task-id="{{ task.task_type_id }}"
-                data-task-name="{{ task.task_type_name|escape }}"
-                style="padding:9px;font-size:12px">
-          Take After Photo
-        </button>
-        <input type="file" name="photo_after" class="js-photo-file-input" accept="image/*" capture="environment" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
-        <div class="js-photo-selected" style="display:none;margin-top:8px;background:#f9fafb;border:1px solid #d1d5db;border-radius:8px;padding:7px">
-          <div style="display:flex;gap:8px;align-items:center">
-            <img class="js-photo-thumb" alt="Captured task photo" style="width:52px;height:52px;border-radius:7px;object-fit:cover;border:1px solid #e5e7eb;flex-shrink:0">
-            <div style="flex:1;min-width:0">
-              <div class="js-photo-meta" style="font-size:11px;color:#374151;font-weight:700">Captured with camera</div>
-              <div class="js-photo-size" style="font-size:10px;color:#6b7280;margin-top:2px"></div>
+        <div style="width:100%;border:1.5px solid {% if is_after_window or can_bypass_time %}#bbf7d0{% else %}#fed7aa{% endif %};border-radius:10px;padding:9px;background:{% if is_after_window or can_bypass_time %}#f0fdf4{% else %}#fffbeb{% endif %}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:4px">
+            <div style="font-size:11px;font-weight:800;color:{% if is_after_window or can_bypass_time %}#166534{% else %}#9a3412{% endif %}">
+              आफ्टर फोटो (After Photo) <span style="color:#dc2626">* (अनिवार्य)</span>
             </div>
-            <button type="button" class="js-photo-clear" style="border:none;background:#fee2e2;color:#991b1b;border-radius:7px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer">
-              Retake
-            </button>
+            <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+              <span style="font-size:10px;background:{% if is_after_window %}#dcfce7;color:#166534;border:1px solid #86efac{% else %}#fee2e2;color:#991b1b;border:1px solid #fca5a5{% endif %};padding:2px 7px;border-radius:4px;font-weight:800">
+                ⏰ शाम 4:00 PM – 5:00 PM {% if is_after_window %}(चालू){% else %}(समय समाप्त / बंद){% endif %}
+              </span>
+            </div>
           </div>
+          <button type="button"
+                  class="btn-g js-horti-open-camera"
+                  data-task-id="{{ task.task_type_id }}"
+                  data-task-name="After - {{ task.task_type_name|escape }}"
+                  data-window-open="{% if is_after_window or can_bypass_time %}1{% else %}0{% endif %}"
+                  {% if not is_after_window and not can_bypass_time %}disabled style="padding:9px;font-size:12px;background:#9ca3af;cursor:not-allowed;opacity:.7"{% else %}style="padding:9px;font-size:12px;background:#15803d"{% endif %}>
+            📷 Take After Photo (फोटो लें)
+          </button>
+          {% if not is_after_window and not can_bypass_time %}
+          <div style="margin-top:6px;font-size:11px;color:#991b1b;background:#fee2e2;border:1px solid #fca5a5;padding:6px 9px;border-radius:6px;font-weight:700">
+            ⚠️ आफ्टर फोटो (After Photo) केवल शाम 4:00 PM से 5:00 PM के बीच ही ली जा सकती है। (वर्तमान समय: {{ current_time_str }})
+          </div>
+          {% endif %}
+          <input type="file" name="photo_after" class="js-photo-file-input" accept="image/*" capture="environment" required style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+          <div class="js-photo-selected" style="display:none;margin-top:8px;background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:7px">
+            <div style="display:flex;gap:8px;align-items:center">
+              <img class="js-photo-thumb" alt="Captured task photo" style="width:52px;height:52px;border-radius:7px;object-fit:cover;border:1px solid #e5e7eb;flex-shrink:0">
+              <div style="flex:1;min-width:0">
+                <div class="js-photo-meta" style="font-size:11px;color:#374151;font-weight:700">आफ्टर फोटो तैयार (Photo Ready)</div>
+                <div class="js-photo-size" style="font-size:10px;color:#6b7280;margin-top:2px"></div>
+              </div>
+              <button type="button" class="js-photo-clear" style="border:none;background:#fee2e2;color:#991b1b;border-radius:7px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer">
+                दोबारा लें (Retake)
+              </button>
+            </div>
+          </div>
+          <div class="js-photo-error" style="display:none;margin-top:8px;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:7px 8px;border-radius:7px;font-size:11px;font-weight:700"></div>
         </div>
-        <div class="js-photo-error" style="display:none;margin-top:8px;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:7px 8px;border-radius:7px;font-size:11px;font-weight:700"></div>
       </div>
-      <button type="submit" class="btn-s js-submit-btn" style="margin-top:10px;padding:9px;font-size:12px">Mark Completed</button>
+      <button type="submit" class="btn-s js-submit-btn" {% if not is_after_window and not can_bypass_time %}disabled style="margin-top:10px;padding:9px;font-size:12px;opacity:.5;cursor:not-allowed"{% else %}style="margin-top:10px;padding:9px;font-size:12px"{% endif %}>Mark Completed (कार्य पूरा करें)</button>
     </form>
     <form method="post" action="/horticulture/mark-task/?zone={{ selected_zone.id }}&area={{ selected_area.id }}&task={{ task.task_type_id }}&source={{ task_source }}" style="margin-top:6px">
     {% csrf_token %}
@@ -272,6 +336,56 @@ function ensureHortiCamera() {
   hortiCamera = new HKCameraCapture();
 }
 
+function showHortiBeforePhotoError(form, message) {
+  var error = form ? form.querySelector('.js-photo-before-error') : null;
+  if (!error) return;
+  error.textContent = message || '';
+  error.style.display = message ? 'block' : 'none';
+}
+
+function setHortiBeforePhoto(form, payload) {
+  var fileInput = form.querySelector('.js-photo-before-file-input');
+  var selected = form.querySelector('.js-photo-before-selected');
+  var thumb = form.querySelector('.js-photo-before-thumb');
+  var meta = form.querySelector('.js-photo-before-meta');
+  var size = form.querySelector('.js-photo-before-size');
+  if (!fileInput || !payload || !payload.file) return;
+  try {
+    if (typeof DataTransfer !== 'undefined') {
+      var dt = new DataTransfer();
+      dt.items.add(payload.file);
+      fileInput.files = dt.files;
+    }
+  } catch (err) {}
+  if (thumb) {
+    if (thumb.dataset.objectUrl) URL.revokeObjectURL(thumb.dataset.objectUrl);
+    var url = URL.createObjectURL(payload.file);
+    thumb.src = url;
+    thumb.dataset.objectUrl = url;
+  }
+  if (meta) meta.textContent = 'बिफोर फोटो तैयार (Photo Ready)';
+  if (size) {
+    var kb = Math.max(1, Math.round((payload.compressedSize || payload.file.size || 0) / 1024));
+    size.textContent = kb + ' KB';
+  }
+  if (selected) selected.style.display = 'block';
+  showHortiBeforePhotoError(form, '');
+}
+
+function clearHortiBeforePhoto(form) {
+  if (!form) return;
+  var fileInput = form.querySelector('.js-photo-before-file-input');
+  var selected = form.querySelector('.js-photo-before-selected');
+  var thumb = form.querySelector('.js-photo-before-thumb');
+  if (fileInput) fileInput.value = '';
+  if (thumb) {
+    if (thumb.dataset.objectUrl) URL.revokeObjectURL(thumb.dataset.objectUrl);
+    thumb.removeAttribute('src');
+    thumb.dataset.objectUrl = '';
+  }
+  if (selected) selected.style.display = 'none';
+}
+
 function showHortiPhotoError(form, message) {
   var error = form ? form.querySelector('.js-photo-error') : null;
   if (!error) return;
@@ -309,7 +423,7 @@ function setHortiPhoto(form, payload) {
     thumb.src = url;
     thumb.dataset.objectUrl = url;
   }
-  if (meta) meta.textContent = 'Captured with camera';
+  if (meta) meta.textContent = 'आफ्टर फोटो तैयार (Photo Ready)';
   if (size) {
     var kb = Math.max(1, Math.round((payload.compressedSize || payload.file.size || 0) / 1024));
     size.textContent = kb + ' KB';
@@ -384,6 +498,37 @@ function updateHortiWorkerAvailability(panel) {
 document.addEventListener('submit', function(event) {
   var form = event.target.closest('form');
   if (!form) return;
+
+  if (form.classList.contains('js-horti-task-start-form')) {
+    var cameraBtn = form.querySelector('.js-horti-open-camera-before');
+    if (cameraBtn && cameraBtn.getAttribute('data-window-open') === '0') {
+      event.preventDefault();
+      showHortiBeforePhotoError(form, '⏰ बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 10:00 AM के बीच ही सबमिट की जा सकती है।');
+      return;
+    }
+    var beforeInput = form.querySelector('.js-photo-before-file-input');
+    if (!beforeInput || !beforeInput.files || beforeInput.files.length === 0) {
+      event.preventDefault();
+      showHortiBeforePhotoError(form, '⚠️ अनिवार्य: कृपया कार्य शुरू करने से पहले बिफोर फोटो (Before Photo) लें।');
+      return;
+    }
+  }
+
+  if (form.classList.contains('js-horti-task-complete-form')) {
+    var cameraBtn = form.querySelector('.js-horti-open-camera');
+    if (cameraBtn && cameraBtn.getAttribute('data-window-open') === '0') {
+      event.preventDefault();
+      showHortiPhotoError(form, '⏰ आफ्टर फोटो (After Photo) केवल शाम 4:00 PM से 5:00 PM के बीच ही सबमिट की जा सकती है।');
+      return;
+    }
+    var afterInput = form.querySelector('.js-photo-file-input');
+    if (!afterInput || !afterInput.files || afterInput.files.length === 0) {
+      event.preventDefault();
+      showHortiPhotoError(form, '⚠️ अनिवार्य: कृपया कार्य पूरा करने के लिए आफ्टर फोटो (After Photo) लें।');
+      return;
+    }
+  }
+
   if (form.dataset.submitting === '1') {
     event.preventDefault();
     return;
@@ -413,26 +558,67 @@ document.addEventListener('click', function(event) {
     if (openButton) openButton.style.display = 'inline-block';
     return;
   }
+  var cameraBeforeButton = event.target.closest('.js-horti-open-camera-before');
+  if (cameraBeforeButton) {
+    event.preventDefault();
+    var form = cameraBeforeButton.closest('.js-horti-task-start-form');
+    if (!form) return;
+    if (cameraBeforeButton.getAttribute('data-window-open') === '0') {
+      showHortiBeforePhotoError(form, '⏰ बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 10:00 AM के बीच ही ली जा सकती है।');
+      return;
+    }
+    ensureHortiCamera();
+    if (!hortiCamera) {
+      var fallbackInput = form.querySelector('.js-photo-before-file-input');
+      if (fallbackInput) fallbackInput.click();
+      return;
+    }
+    try {
+      hortiCamera.open({
+        taskId: cameraBeforeButton.getAttribute('data-task-id') || '',
+        taskName: cameraBeforeButton.getAttribute('data-task-name') || 'Before Task',
+        onUsePhoto: function(payload) {
+          setHortiBeforePhoto(form, payload);
+        }
+      });
+    } catch (err) {
+      var fallbackInput = form.querySelector('.js-photo-before-file-input');
+      if (fallbackInput) fallbackInput.click();
+    }
+    return;
+  }
+  var clearBeforeButton = event.target.closest('.js-photo-before-clear');
+  if (clearBeforeButton) {
+    event.preventDefault();
+    clearHortiBeforePhoto(clearBeforeButton.closest('.js-horti-task-start-form'));
+    return;
+  }
   var cameraButton = event.target.closest('.js-horti-open-camera');
   if (cameraButton) {
     event.preventDefault();
     var form = cameraButton.closest('.js-horti-task-complete-form');
     if (!form) return;
+    if (cameraButton.getAttribute('data-window-open') === '0') {
+      showHortiPhotoError(form, '⏰ आफ्टर फोटो (After Photo) केवल शाम 4:00 PM से 5:00 PM के बीच ही ली जा सकती है।');
+      return;
+    }
     ensureHortiCamera();
     if (!hortiCamera) {
-      showHortiPhotoError(form, 'Camera is not available on this device/browser.');
+      var fallbackInput = form.querySelector('.js-photo-file-input');
+      if (fallbackInput) fallbackInput.click();
       return;
     }
     try {
       hortiCamera.open({
         taskId: cameraButton.getAttribute('data-task-id') || '',
-        taskName: cameraButton.getAttribute('data-task-name') || 'Task',
+        taskName: cameraButton.getAttribute('data-task-name') || 'After Task',
         onUsePhoto: function(payload) {
           setHortiPhoto(form, payload);
         }
       });
     } catch (err) {
-      showHortiPhotoError(form, 'Camera is not available on this device/browser.');
+      var fallbackInput = form.querySelector('.js-photo-file-input');
+      if (fallbackInput) fallbackInput.click();
     }
     return;
   }
@@ -445,8 +631,26 @@ document.addEventListener('click', function(event) {
 
 document.addEventListener('change', function(event) {
   var select = event.target.closest('.js-horti-session-select');
-  if (!select) return;
-  updateHortiWorkerAvailability(select.closest('.js-horti-assign-panel'));
+  if (select) {
+    updateHortiWorkerAvailability(select.closest('.js-horti-assign-panel'));
+    return;
+  }
+  var beforeFileInput = event.target.closest('.js-photo-before-file-input');
+  if (beforeFileInput && beforeFileInput.files && beforeFileInput.files[0]) {
+    var startForm = beforeFileInput.closest('.js-horti-task-start-form');
+    if (startForm) {
+      setHortiBeforePhoto(startForm, { file: beforeFileInput.files[0] });
+    }
+    return;
+  }
+  var afterFileInput = event.target.closest('.js-photo-file-input');
+  if (afterFileInput && afterFileInput.files && afterFileInput.files[0]) {
+    var completeForm = afterFileInput.closest('.js-horti-task-complete-form');
+    if (completeForm) {
+      setHortiPhoto(completeForm, { file: afterFileInput.files[0] });
+    }
+    return;
+  }
 });
 
 </script>

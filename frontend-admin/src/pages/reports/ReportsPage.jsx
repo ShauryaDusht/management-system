@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 
 import api from '../../api/client'
 import AdminLayout from '../../layout/AdminLayout'
-import { Alert, Badge, Btn, Card, DataTable, Input, Modal, SelectField, Spinner, StatCard, Tabs } from '../../components/ui'
+import { Alert, Badge, Btn, Card, DataTable, ExportDropdown, Input, Modal, SelectField, Spinner, StatCard, Tabs } from '../../components/ui'
 import RequestsReportTab from './RequestsReportTab'
+import { exportReport } from '../../shared/exportHelper'
 import { exportCsv, triggerDownload } from '../../shared/utils'
 import MonthYearPicker from '../../shared/components/MonthYearPicker'
 import { useMonthYear } from '../../shared/hooks/useMonthYear'
@@ -73,10 +74,43 @@ function InventoryReportTab() {
     }
   }, [report])
 
+  const handleExportInventoryReport = async (format) => {
+    const headers = ['Item Code', 'Item Name', 'Category', 'Type', 'Available Qty', 'Unit', 'Threshold Qty', 'Unit Price (INR)', 'Status']
+    const rows = items.map((i) => [
+      i.item_code || '—',
+      i.name || '—',
+      i.category || '—',
+      i.type || '—',
+      i.available_quantity ?? 0,
+      i.unit || '',
+      i.threshold_quantity ?? 0,
+      Number(i.unit_cost || 0).toFixed(2),
+      String(i.status || '').replace(/_/g, ' '),
+    ])
+    await exportReport(format, {
+      title: 'IITGN Campus Inventory Report',
+      subtitle: `Filter: Status=${statusFilter.replace(/_/g, ' ')}, Type=${typeFilter}`,
+      filename: `inventory_report_${statusFilter}_${typeFilter}`,
+      headers,
+      rows,
+      kpis: [
+        { label: 'Total Items', value: report?.total_items ?? items.length },
+        { label: 'Total Value', value: `INR ${Number(report?.total_value || 0).toLocaleString('en-IN')}` },
+        { label: 'Low Stock', value: report?.low_stock_count ?? 0 },
+        { label: 'Out of Stock', value: report?.out_of_stock_count ?? 0 },
+      ],
+      metadata: {
+        'Status Filter': statusFilter,
+        'Type Filter': typeFilter,
+        'Generated At': new Date().toLocaleString(),
+      },
+    })
+  }
+
   return (
     <div>
       <Alert message={error} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(130px, 12vw, 175px), 1fr))', gap: 10, marginBottom: 12 }}>
         <StatCard label="Total Items" value={report?.total_items ?? 0} icon="IT" color="#1d4ed8" />
         <StatCard label="Total Value" value={`INR ${Number(report?.total_value || 0).toLocaleString('en-IN')}`} icon="VL" color="#16a34a" />
         <StatCard label="Low Stock" value={report?.low_stock_count ?? 0} icon="LS" color="#f59e0b" />
@@ -113,9 +147,11 @@ function InventoryReportTab() {
                 <option value="asset">Assets</option>
                 <option value="consumable">Consumables</option>
               </SelectField>
-              <Btn variant="secondary" onClick={() => exportCsv(items, `inventory_report_${statusFilter}_${typeFilter}.csv`)}>
-                Export CSV
-              </Btn>
+              <ExportDropdown
+                label="Export Report"
+                onExport={handleExportInventoryReport}
+                disabled={loading || items.length === 0}
+              />
             </div>
           </div>
         </div>
@@ -250,6 +286,48 @@ function MonthlyTab() {
     }
   }
 
+  const handleExportProcurement = async (format) => {
+    if (!selected) return
+    const filename = `procurement_${selected.year}_${String(selected.month).padStart(2, '0')}`
+    if (format === 'csv') {
+      await downloadWithToken(csvUrl(selected.id), `${filename}.csv`)
+      return
+    }
+    if (format === 'pdf') {
+      await downloadWithToken(pdfUrl(selected.id), `${filename}.pdf`)
+      return
+    }
+    const itemsList = selected.snapshot?.items || []
+    const totalEstCost = itemsList.reduce((acc, i) => acc + Number(i.estimated_cost || 0), 0)
+    const exportData = {
+      filename,
+      module: 'Procurement Reports',
+      title: 'Monthly Procurement Plan Report',
+      subtitle: `Period: ${MONTHS[(selected.month || 1) - 1]} ${selected.year} • Items: ${itemsList.length}`,
+      metadata: [
+        { label: 'Period', value: `${MONTHS[(selected.month || 1) - 1]} ${selected.year}` },
+        { label: 'Items Listed', value: itemsList.length },
+        { label: 'Reorder Count', value: selected.items_needing_reorder || 0 },
+        { label: 'Total Estimated Cost', value: `₹${totalEstCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` },
+      ],
+      stats: [
+        { label: 'Total Items', value: itemsList.length },
+        { label: 'Needs Reorder', value: selected.items_needing_reorder || 0 },
+        { label: 'Total Estimated Cost', value: `₹${totalEstCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` },
+      ],
+      headers: ['Item Name', 'Category', 'Current Stock', 'Threshold', 'Recommended Order', 'Est. Cost (INR)'],
+      rows: itemsList.map((i) => [
+        i.item_name || '-',
+        i.category || '-',
+        i.current_stock ?? 0,
+        i.threshold ?? 0,
+        i.recommended_order ?? 0,
+        Number(i.estimated_cost || 0).toFixed(2),
+      ]),
+    }
+    await exportReport(format, exportData)
+  }
+
   return (
     <div>
       <Alert message={error} />
@@ -305,32 +383,10 @@ function MonthlyTab() {
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontWeight: 700 }}>Selected Report</div>
             {selected && (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <Btn
-                  size="sm"
-                  variant="secondary"
-                  onClick={() =>
-                    downloadWithToken(
-                      csvUrl(selected.id),
-                      `procurement_${selected.year}_${String(selected.month).padStart(2, '0')}.csv`
-                    )
-                  }
-                >
-                  CSV
-                </Btn>
-                <Btn
-                  size="sm"
-                  variant="secondary"
-                  onClick={() =>
-                    downloadWithToken(
-                      pdfUrl(selected.id),
-                      `procurement_${selected.year}_${String(selected.month).padStart(2, '0')}.pdf`
-                    )
-                  }
-                >
-                  PDF
-                </Btn>
-              </div>
+              <ExportDropdown
+                label="Download Report"
+                onExport={handleExportProcurement}
+              />
             )}
           </div>
           {loadingSelected ? (
@@ -544,37 +600,6 @@ function ConsumptionTab() {
     }
   }
 
-  const downloadItemCsv = async () => {
-    if (!report?.id) return
-    setBusy(true)
-    setError('')
-    try {
-      const response = await downloadConsumptionItemCSV(report.id)
-      triggerDownload(response.data, `consumption_items_${report.year}_${String(report.month).padStart(2, '0')}.csv`)
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to download item CSV.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const downloadRequesterCsv = async () => {
-    if (!report?.id) return
-    setBusy(true)
-    setError('')
-    try {
-      const response = await downloadConsumptionRequesterCSV(report.id)
-      triggerDownload(
-        response.data,
-        `consumption_requesters_${report.year}_${String(report.month).padStart(2, '0')}.csv`
-      )
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to download requester CSV.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const snapshot = report?.snapshot || {}
   const summary = snapshot.summary || {}
   const itemRows = useMemo(() => {
@@ -606,6 +631,101 @@ function ConsumptionTab() {
       setSelectedRequesterId(requesterRows[0].requester_id)
     }
   }, [requesterRows, selectedRequesterId])
+
+  const handleExportItemBreakdown = async (format) => {
+    if (!report?.id) return
+    setBusy(true)
+    setError('')
+    try {
+      if (format === 'csv') {
+        const response = await downloadConsumptionItemCSV(report.id)
+        triggerDownload(response.data, `consumption_items_${report.year}_${String(report.month).padStart(2, '0')}.csv`)
+        return
+      }
+      const exportData = {
+        filename: `consumption_items_${report.year}_${String(report.month).padStart(2, '0')}`,
+        module: 'Consumption Reports',
+        title: 'Monthly Consumption - Item Breakdown',
+        subtitle: `Period: ${MONTHS[month - 1]} ${year} • Items: ${itemRows.length}`,
+        metadata: [
+          { label: 'Month/Year', value: `${MONTHS[month - 1]} ${year}` },
+          { label: 'Total Items Active', value: itemRows.length },
+          { label: 'Total Est. Cost', value: `INR ${Number(summary.total_estimated_cost || 0).toFixed(2)}` },
+        ],
+        stats: [
+          { label: 'Items Consumed', value: summary.distinct_items_consumed || itemRows.length },
+          { label: 'Total Est. Cost', value: `INR ${Number(summary.total_estimated_cost || 0).toFixed(2)}` },
+          { label: 'Total Requests', value: summary.total_requests || 0 },
+        ],
+        headers: ['Item Code', 'Item Name', 'Category', 'Type', 'Stock Added', 'Issued', 'Consumed', 'Est. Cost (INR)', 'Current Stock', 'Status'],
+        rows: itemRows.map((row) => [
+          row.item_code || '—',
+          row.item_name || '-',
+          row.category_name || '-',
+          String(row.item_type || '-').toUpperCase(),
+          row.stock_added || 0,
+          row.total_issued || 0,
+          row.actual_consumed || 0,
+          Number(row.estimated_cost || 0).toFixed(2),
+          `${row.current_stock || 0} ${row.unit || ''}`.trim(),
+          String(row.status || 'in_stock').replace(/_/g, ' ').toUpperCase(),
+        ]),
+      }
+      await exportReport(format, exportData)
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Failed to export item breakdown.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleExportRequesterSummary = async (format) => {
+    if (!report?.id) return
+    setBusy(true)
+    setError('')
+    try {
+      if (format === 'csv') {
+        const response = await downloadConsumptionRequesterCSV(report.id)
+        triggerDownload(
+          response.data,
+          `consumption_requesters_${report.year}_${String(report.month).padStart(2, '0')}.csv`
+        )
+        return
+      }
+      const exportData = {
+        filename: `consumption_requesters_${report.year}_${String(report.month).padStart(2, '0')}`,
+        module: 'Consumption Reports',
+        title: 'Monthly Consumption - Requester Summary',
+        subtitle: `Period: ${MONTHS[month - 1]} ${year} • Requesters: ${requesterRows.length}`,
+        metadata: [
+          { label: 'Month/Year', value: `${MONTHS[month - 1]} ${year}` },
+          { label: 'Total Requesters', value: requesterRows.length },
+          { label: 'Total Est. Spend', value: `INR ${Number(summary.total_estimated_cost || 0).toFixed(2)}` },
+        ],
+        stats: [
+          { label: 'Total Requesters', value: requesterRows.length },
+          { label: 'Total Requests', value: summary.total_requests || 0 },
+          { label: 'Issued Requests', value: summary.total_issued_requests || 0 },
+        ],
+        headers: ['Requester', 'Pay Code', 'Role', 'Requests', 'Issued', 'Rejected', 'Urgent', 'Est. Cost (INR)'],
+        rows: requesterRows.map((row) => [
+          row.requester_name || row.username || '-',
+          row.pay_code || '-',
+          String(row.role || '-').toUpperCase(),
+          row.total_requests || 0,
+          row.issued_requests || 0,
+          row.rejected_requests || 0,
+          row.urgent_requests || 0,
+          Number(row.total_estimated_cost || 0).toFixed(2),
+        ]),
+      }
+      await exportReport(format, exportData)
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Failed to export requester summary.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <div>
@@ -703,9 +823,11 @@ function ConsumptionTab() {
                   }}
                 >
                   <div style={{ fontWeight: 700 }}>Item Breakdown</div>
-                  <Btn size="sm" variant="secondary" onClick={downloadItemCsv} disabled={busy}>
-                    Download Item CSV
-                  </Btn>
+                  <ExportDropdown
+                    label="Download Items"
+                    onExport={handleExportItemBreakdown}
+                    disabled={busy || !itemRows.length}
+                  />
                 </div>
                 <DataTable
                   headers={['Item Code', 'Item Name', 'Category', 'Type', 'Stock Added', 'Issued', 'Consumed', 'Total Value (₹)', 'Est. Cost (₹)', 'Current Stock', 'Status']}
@@ -741,9 +863,11 @@ function ConsumptionTab() {
                   }}
                 >
                   <div style={{ fontWeight: 700 }}>Requester Summary</div>
-                  <Btn size="sm" variant="secondary" onClick={downloadRequesterCsv} disabled={busy}>
-                    Download Requester CSV
-                  </Btn>
+                  <ExportDropdown
+                    label="Download Requesters"
+                    onExport={handleExportRequesterSummary}
+                    disabled={busy || !requesterRows.length}
+                  />
                 </div>
                 <DataTable
                   headers={['Requester', 'Pay Code', 'Role', 'Requests', 'Issued', 'Rejected', 'Urgent', 'Est. Cost (₹)', 'Details']}

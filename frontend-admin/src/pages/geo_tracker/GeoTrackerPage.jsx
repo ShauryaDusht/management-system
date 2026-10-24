@@ -21,8 +21,11 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { geoApi } from '../../api/geoTracker'
+import { ExportDropdown } from '../../components/ui'
 import AdminLayout from '../../layout/AdminLayout'
 import ConfirmModal from '../../shared/components/ConfirmModal'
+import { exportReport } from '../../shared/exportHelper'
+
 
 // ---------------------------------------------------------------------------
 // eFlora of Gandhinagar – Tree Information Database
@@ -150,6 +153,7 @@ const TYPE_CONFIG = {
   tree:    { color: '#16a34a', bg: '#dcfce7', label: 'Tree',    emoji: '🌳' },
   plant:   { color: '#7c3aed', bg: '#ede9fe', label: 'Plant',   emoji: '🌿' },
   creeper: { color: '#0284c7', bg: '#e0f2fe', label: 'Creeper', emoji: '🌱' },
+  shrub:   { color: '#d97706', bg: '#fef3c7', label: 'Shrub',   emoji: '🪴' },
 }
 
 const CONDITION_CONFIG = {
@@ -608,7 +612,7 @@ function navBtnStyle(side) {
 // ---------------------------------------------------------------------------
 
 function TreeDetailPanel({
-  record, tcfg, ccfg, photos, zones,
+  record, tcfg, ccfg, photos, zones, varieties,
   onClose, onDelete, onOpenLightbox, onUpdate,
   labelStyle, inputStyle,
 }) {
@@ -629,16 +633,41 @@ function TreeDetailPanel({
 
   function startEdit() {
     setForm({
+      plant_type: record.plant_type || 'tree',
+      variety: record.variety ?? '',
+      local_name: record.local_name || '',
+      scientific_name: record.scientific_name || '',
       zone: record.zone || '',
       condition: record.condition || 'good',
       height_m: record.height_m ?? '',
       girth_cm: record.girth_cm ?? '',
+      length_m: record.length_m ?? '',
+      width_m: record.width_m ?? '',
       canopy_area_m: record.canopy_area_m ?? '',
       gps_accuracy_m: record.gps_accuracy_m ?? '',
       notes: record.notes || '',
     })
     setSaveError(null)
     setEditing(true)
+  }
+
+  function handleVarietySelect(varId) {
+    if (!varId) {
+      setForm(f => ({ ...f, variety: '' }))
+      return
+    }
+    const chosen = (varieties || []).find(v => String(v.id) === String(varId))
+    if (chosen) {
+      setForm(f => ({
+        ...f,
+        variety: chosen.id,
+        local_name: chosen.name,
+        scientific_name: chosen.scientific_name || '',
+        plant_type: chosen.plant_type || f.plant_type,
+      }))
+    } else {
+      setForm(f => ({ ...f, variety: varId }))
+    }
   }
 
   function cancelEdit() {
@@ -651,14 +680,24 @@ function TreeDetailPanel({
   }
 
   async function saveEdit() {
+    if (!form.local_name || !form.local_name.trim()) {
+      setSaveError('Name is required.')
+      return
+    }
     setSaving(true)
     setSaveError(null)
     const numOrNull = v => (v === '' || v === null || v === undefined ? null : v)
     const payload = {
+      plant_type: form.plant_type,
+      variety: form.variety ? parseInt(form.variety, 10) : null,
+      local_name: form.local_name.trim(),
+      scientific_name: form.scientific_name ? form.scientific_name.trim() : '',
       zone: form.zone,
       condition: form.condition,
       height_m: numOrNull(form.height_m),
       girth_cm: numOrNull(form.girth_cm),
+      length_m: numOrNull(form.length_m),
+      width_m: numOrNull(form.width_m),
       canopy_area_m: numOrNull(form.canopy_area_m),
       gps_accuracy_m: numOrNull(form.gps_accuracy_m),
       notes: form.notes,
@@ -720,18 +759,111 @@ function TreeDetailPanel({
         flexShrink: 0,
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>
-              {tcfg?.emoji} {record.local_name}
-            </div>
-            {record.tracking_id && (
-              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--green-700)', marginTop: 2, letterSpacing: '0.05em' }}>
-                {record.tracking_id}
-              </div>
-            )}
-            {record.scientific_name && (
-              <div style={{ fontSize: 13, fontStyle: 'italic', color: 'var(--text-2)', marginTop: 2 }}>
-                {record.scientific_name}
+          <div style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+            {!editing ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>
+                    {tcfg?.emoji} {record.local_name}
+                  </span>
+                  <button
+                    onClick={startEdit}
+                    title="Edit tree name & details"
+                    style={{
+                      background: 'none',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: 'var(--green-700)',
+                      padding: '2px 7px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    ✏️ Edit
+                  </button>
+                </div>
+                {record.tracking_id && (
+                  <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--green-700)', marginTop: 2, letterSpacing: '0.05em' }}>
+                    {record.tracking_id}
+                  </div>
+                )}
+                {record.scientific_name && (
+                  <div style={{ fontSize: 13, fontStyle: 'italic', color: 'var(--text-2)', marginTop: 2 }}>
+                    {record.scientific_name}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 18 }}>{tcfg?.emoji}</span>
+                  <input
+                    type="text"
+                    value={form.local_name}
+                    onChange={e => setField('local_name', e.target.value)}
+                    placeholder="Enter tree/plant name..."
+                    style={{
+                      ...inputStyle,
+                      fontSize: 15,
+                      fontWeight: 800,
+                      padding: '6px 10px',
+                      borderColor: 'var(--green-700)',
+                      background: '#fff',
+                      flex: 1,
+                    }}
+                    autoFocus
+                  />
+                </div>
+                <input
+                  type="text"
+                  value={form.scientific_name}
+                  onChange={e => setField('scientific_name', e.target.value)}
+                  placeholder="Botanical / scientific name..."
+                  style={{
+                    ...inputStyle,
+                    fontSize: 12,
+                    fontStyle: 'italic',
+                    padding: '4px 8px',
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                  <button
+                    onClick={saveEdit}
+                    disabled={saving}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 6,
+                      border: 'none',
+                      background: 'var(--green-800)',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      cursor: saving ? 'default' : 'pointer',
+                    }}
+                  >
+                    {saving ? 'Saving…' : '✓ Save Name'}
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    disabled={saving}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface)',
+                      color: 'var(--text)',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: saving ? 'default' : 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -845,6 +977,8 @@ function TreeDetailPanel({
                         ['Zone',        record.zone_display || record.zone],
                         ['Height',      record.height_m ? `${record.height_m} m` : null],
                         ['Girth',       record.girth_cm  ? `${record.girth_cm} cm` : null],
+                        ['Length',      record.length_m ? `${record.length_m} m` : null],
+                        ['Width',       record.width_m ? `${record.width_m} m` : null],
                         ['GPS',         record.lat != null ? `${parseFloat(record.lat).toFixed(5)}, ${parseFloat(record.lng).toFixed(5)}` : null],
                         ['Accuracy',    record.gps_accuracy_m ? `±${record.gps_accuracy_m} m` : null],
                         ['Location',    record.location_notes],
@@ -883,6 +1017,83 @@ function TreeDetailPanel({
               ) : (
                 <>
                   {/* Edit form – survey/characteristics fields */}
+                  <div style={{
+                    marginBottom: 14,
+                    padding: '12px 14px',
+                    borderRadius: 10,
+                    background: 'var(--surface-2, #f8fafc)',
+                    border: '1.5px solid var(--border)',
+                  }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      🏷️ Species & Classification
+                    </div>
+
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={labelStyle}>Category</label>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {Object.entries(TYPE_CONFIG).map(([key, cfg]) => {
+                          const isSel = form.plant_type === key
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => setField('plant_type', key)}
+                              style={{
+                                flex: 1, padding: '7px 4px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                                border: `2px solid ${isSel ? cfg.color : 'var(--border)'}`,
+                                background: isSel ? cfg.bg : 'var(--surface)',
+                                color: isSel ? cfg.color : 'var(--text-2)',
+                                transition: 'all .15s',
+                              }}
+                            >
+                              {cfg.emoji} {cfg.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={labelStyle}>Select Variety (Autofills Names)</label>
+                      <select
+                        style={inputStyle}
+                        value={form.variety || ''}
+                        onChange={e => handleVarietySelect(e.target.value)}
+                      >
+                        <option value="">-- Choose from known varieties --</option>
+                        {(varieties || [])
+                          .filter(v => !form.plant_type || v.plant_type === form.plant_type)
+                          .map(v => (
+                            <option key={v.id} value={v.id}>
+                              {v.name} {v.scientific_name ? `(${v.scientific_name})` : ''}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={labelStyle}>Tree / Plant / Creeper / Shrub Name *</label>
+                      <input
+                        type="text"
+                        style={inputStyle}
+                        placeholder="e.g. Tabebuia rosea, Neem, Money Plant..."
+                        value={form.local_name}
+                        onChange={e => setField('local_name', e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>Botanical / Scientific Name</label>
+                      <input
+                        type="text"
+                        style={inputStyle}
+                        placeholder="e.g. Tabebuia rosea, Azadirachta indica..."
+                        value={form.scientific_name}
+                        onChange={e => setField('scientific_name', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div>
                       <label style={labelStyle}>Zone</label>
@@ -923,6 +1134,22 @@ function TreeDetailPanel({
                         type="number" step="0.01" min="0" style={inputStyle}
                         value={form.girth_cm}
                         onChange={e => setField('girth_cm', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Length (m)</label>
+                      <input
+                        type="number" step="0.01" min="0" style={inputStyle}
+                        value={form.length_m}
+                        onChange={e => setField('length_m', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Width (m)</label>
+                      <input
+                        type="number" step="0.01" min="0" style={inputStyle}
+                        value={form.width_m}
+                        onChange={e => setField('width_m', e.target.value)}
                       />
                     </div>
                     <div>
@@ -1169,6 +1396,10 @@ export default function GeoTrackerPage() {
     q: '', plant_type: '', variety: '', zone: '', condition: '',
   })
   const [addVarietyOpen, setAddVarietyOpen] = useState(false)
+  const [varietyTab, setVarietyTab]         = useState('add') // 'add' | 'manage'
+  const [editingVarietyId, setEditingVarietyId] = useState(null)
+  const [varietySearch, setVarietySearch]   = useState('')
+  const [varietyTypeFilter, setVarietyTypeFilter] = useState('')
   const [varietyForm, setVarietyForm]       = useState({ name: '', scientific_name: '', plant_type: 'tree' })
   const [varietySaving, setVarietySaving]   = useState(false)
   const [varietyError, setVarietyError]     = useState(null)
@@ -1176,7 +1407,6 @@ export default function GeoTrackerPage() {
   const [areaForm, setAreaForm]         = useState({ label: '', db_value: '', code: '' })
   const [areaSaving, setAreaSaving]     = useState(false)
   const [areaError, setAreaError]       = useState(null)
-
   // Debounce search input
   const debounceRef = useRef(null)
 
@@ -1343,10 +1573,47 @@ export default function GeoTrackerPage() {
     setFilters({ q: '', plant_type: '', variety: '', zone: '', condition: '' })
   }
 
-  function handleExport() {
+  async function handleExport(format) {
     const params = {}
     Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v })
-    geoApi.exportCsv(params)
+
+    if (format === 'csv') {
+      geoApi.exportCsv(params)
+      return
+    }
+
+    const exportData = {
+      filename: `plant_geotracker_${new Date().toISOString().slice(0, 10)}`,
+      module: 'Plant GeoTracker',
+      title: 'Campus Flora & Plant GeoTracker Report',
+      subtitle: `Filters: ${activeFilterCount > 0 ? Object.entries(filters).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ') : 'All Plants'} • Total Records: ${records.length}`,
+      metadata: [
+        { label: 'Date', value: new Date().toLocaleDateString('en-IN') },
+        { label: 'Active Filters', value: activeFilterCount > 0 ? `${activeFilterCount} active` : 'None (All Records)' },
+        { label: 'Total Catalogued', value: records.length },
+      ],
+      stats: [
+        { label: 'Total Flora', value: stats?.total ?? records.length },
+        { label: 'Trees', value: stats?.trees ?? records.filter(r => r.plant_type === 'tree').length },
+        { label: 'Plants', value: stats?.plants ?? records.filter(r => r.plant_type === 'plant').length },
+        { label: 'Creepers', value: stats?.creepers ?? records.filter(r => r.plant_type === 'creeper').length },
+        { label: 'Shrubs', value: stats?.shrubs ?? records.filter(r => r.plant_type === 'shrub').length },
+      ],
+      headers: ['Tracking ID', 'Name', 'Scientific Name', 'Type', 'Variety', 'Condition', 'Zone / Area', 'Latitude', 'Longitude'],
+      rows: records.map(r => [
+        r.tracking_id || `ID-${r.id}`,
+        r.local_name || r.name || '-',
+        r.scientific_name || '-',
+        String(r.plant_type || '-').toUpperCase(),
+        r.variety_name || r.variety || '-',
+        String(r.condition || '-').toUpperCase(),
+        r.zone_name || r.zone || '-',
+        parseFloat(r.lat).toFixed(6),
+        parseFloat(r.lng).toFixed(6),
+      ]),
+    }
+
+    await exportReport(format, exportData)
   }
 
   function resetView() {
@@ -1383,6 +1650,7 @@ export default function GeoTrackerPage() {
     setRecords(prev => prev.map(r => (r.id === id ? { ...r, ...res.data } : r)))
     setSelectedRecord(prev => (prev && prev.id === id ? { ...prev, ...res.data } : prev))
     setSuccess(`Updated ${res.data.tracking_id || res.data.local_name}.`)
+    geoApi.getStats().then(s => setStats(s.data)).catch(() => {})
     return res.data
   }
 
@@ -1396,8 +1664,9 @@ export default function GeoTrackerPage() {
         scientific_name: varietyForm.scientific_name.trim(),
         plant_type: varietyForm.plant_type,
       })
-      const res = await geoApi.getVarieties()
-      setVarieties(res.data)
+      const [vRes, sRes] = await Promise.all([geoApi.getVarieties(), geoApi.getStats()])
+      setVarieties(vRes.data)
+      setStats(sRes.data)
       setAddVarietyOpen(false)
       setVarietyForm({ name: '', scientific_name: '', plant_type: 'tree' })
       setSuccess(`Added "${varietyForm.name.trim()}" to varieties.`)
@@ -1405,6 +1674,45 @@ export default function GeoTrackerPage() {
       setVarietyError('Failed to save. Please try again.')
     } finally {
       setVarietySaving(false)
+    }
+  }
+
+  async function handleUpdateVariety(id) {
+    setVarietyError(null)
+    if (!varietyForm.name.trim()) { setVarietyError('Name is required.'); return }
+    setVarietySaving(true)
+    try {
+      await geoApi.updateVariety(id, {
+        name: varietyForm.name.trim(),
+        scientific_name: varietyForm.scientific_name.trim(),
+        plant_type: varietyForm.plant_type,
+        sync_records: true,
+      })
+      const [vRes, sRes] = await Promise.all([geoApi.getVarieties(), geoApi.getStats()])
+      setVarieties(vRes.data)
+      setStats(sRes.data)
+      fetchRecords()
+      setEditingVarietyId(null)
+      setVarietyForm({ name: '', scientific_name: '', plant_type: 'tree' })
+      setSuccess(`Updated variety "${varietyForm.name.trim()}" and synced matching records.`)
+    } catch {
+      setVarietyError('Failed to update variety. Please try again.')
+    } finally {
+      setVarietySaving(false)
+    }
+  }
+
+  async function handleDeleteVariety(id, name) {
+    if (!window.confirm(`Are you sure you want to delete variety "${name}"?`)) return
+    try {
+      await geoApi.deleteVariety(id)
+      const [vRes, sRes] = await Promise.all([geoApi.getVarieties(), geoApi.getStats()])
+      setVarieties(vRes.data)
+      setStats(sRes.data)
+      fetchRecords()
+      setSuccess(`Deleted variety "${name}".`)
+    } catch {
+      setVarietyError('Failed to delete variety.')
     }
   }
 
@@ -1474,90 +1782,101 @@ export default function GeoTrackerPage() {
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <header style={{
-          padding: '12px 18px',
+          padding: '10px 16px',
           background: 'var(--surface)',
           borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           gap: 10,
           flexWrap: 'wrap',
           flexShrink: 0,
           zIndex: 10,
         }}>
-          <div style={{ flex: 1, minWidth: 140 }}>
-            <h1 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>
-              🌿 Plant GeoTracker
-            </h1>
-            <p style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2 }}>
-              Interactive map · campus trees, plants & creepers
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ minWidth: 140 }}>
+              <h1 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>
+                🌿 Plant GeoTracker
+              </h1>
+              <p style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2 }}>
+                Interactive map · campus flora
+              </p>
+            </div>
+
+            {stats && (
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                <StatChip label="Total"    value={stats.total}          color="#374151"               bg="#f3f4f6" />
+                <StatChip label="Trees"    value={stats.trees}          color={TYPE_CONFIG.tree.color}    bg={TYPE_CONFIG.tree.bg} />
+                <StatChip label="Plants"   value={stats.plants}         color={TYPE_CONFIG.plant.color}   bg={TYPE_CONFIG.plant.bg} />
+                <StatChip label="Creepers" value={stats.creepers || 0}  color={TYPE_CONFIG.creeper.color} bg={TYPE_CONFIG.creeper.bg} />
+                <StatChip label="Shrubs"   value={stats.shrubs || 0}    color={TYPE_CONFIG.shrub.color}   bg={TYPE_CONFIG.shrub.bg} />
+              </div>
+            )}
           </div>
 
-          {stats && (
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-              <StatChip label="Total"    value={stats.total}          color="#374151"               bg="#f3f4f6" />
-              <StatChip label="Trees"    value={stats.trees}          color={TYPE_CONFIG.tree.color}    bg={TYPE_CONFIG.tree.bg} />
-              <StatChip label="Plants"   value={stats.plants}         color={TYPE_CONFIG.plant.color}   bg={TYPE_CONFIG.plant.bg} />
-              <StatChip label="Creepers" value={stats.creepers || 0}  color={TYPE_CONFIG.creeper.color} bg={TYPE_CONFIG.creeper.bg} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end', minWidth: 280 }}>
+            <input
+              type="search"
+              aria-label="Search plant records"
+              placeholder="Search ID, name, botanical name…"
+              value={filters.q}
+              onChange={e => handleFilterChange('q', e.target.value)}
+              style={{ ...inputStyle, width: 'min(220px, 100%)', flexShrink: 0 }}
+            />
+
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <button
+                onClick={() => { setAddAreaOpen(true); setAreaError(null) }}
+                style={{
+                  padding: '7px 11px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                  border: '1.5px solid #0284c7', background: '#e0f2fe', color: '#0369a1', cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                + Add Area
+              </button>
+              <button
+                onClick={() => {
+                  setAddVarietyOpen(true)
+                  setVarietyTab('add')
+                  setEditingVarietyId(null)
+                  setVarietyForm({ name: '', scientific_name: '', plant_type: 'tree' })
+                  setVarietyError(null)
+                }}
+                style={{
+                  padding: '7px 11px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                  border: '1.5px solid #16a34a', background: '#dcfce7', color: '#15803d', cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                🌱 Varieties & Names
+              </button>
+              <button
+                onClick={() => setFiltersOpen(o => !o)}
+                aria-expanded={filtersOpen}
+                style={{
+                  padding: '7px 11px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                  border: '1.5px solid var(--border)', cursor: 'pointer',
+                  background: filtersOpen ? 'var(--green-800)' : 'var(--surface)',
+                  color: filtersOpen ? '#fff' : 'var(--text)',
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ⚙ Filters
+                {activeFilterCount > 0 && (
+                  <span style={{
+                    background: '#ef4444', color: '#fff', borderRadius: 9,
+                    fontSize: 10, fontWeight: 800, padding: '1px 5px',
+                  }}>{activeFilterCount}</span>
+                )}
+              </button>
+              <ExportDropdown
+                label="Export"
+                onExport={handleExport}
+                disabled={records.length === 0}
+              />
             </div>
-          )}
-
-          <input
-            type="search"
-            aria-label="Search plant records"
-            placeholder="Search ID, name, botanical name…"
-            value={filters.q}
-            onChange={e => handleFilterChange('q', e.target.value)}
-            style={{ ...inputStyle, width: 'min(260px,100%)', flexShrink: 0 }}
-          />
-
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            <button
-              onClick={() => { setAddAreaOpen(true); setAreaError(null) }}
-              style={{
-                padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                border: '1.5px solid #0284c7', background: '#e0f2fe', color: '#0369a1', cursor: 'pointer',
-              }}
-            >
-              + Add Area
-            </button>
-            <button
-              onClick={() => { setAddVarietyOpen(true); setVarietyError(null) }}
-              style={{
-                padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                border: '1.5px solid #16a34a', background: '#dcfce7', color: '#15803d', cursor: 'pointer',
-              }}
-            >
-              + Add Variety
-            </button>
-            <button
-              onClick={() => setFiltersOpen(o => !o)}
-              aria-expanded={filtersOpen}
-              style={{
-                padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                border: '1.5px solid var(--border)', cursor: 'pointer',
-                background: filtersOpen ? 'var(--green-800)' : 'var(--surface)',
-                color: filtersOpen ? '#fff' : 'var(--text)',
-                display: 'flex', alignItems: 'center', gap: 5,
-              }}
-            >
-              ⚙ Filters
-              {activeFilterCount > 0 && (
-                <span style={{
-                  background: '#ef4444', color: '#fff', borderRadius: 9,
-                  fontSize: 10, fontWeight: 800, padding: '1px 5px',
-                }}>{activeFilterCount}</span>
-              )}
-            </button>
-            <button
-              onClick={handleExport}
-              style={{
-                padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                background: 'var(--green-800)', color: '#fff', border: 'none', cursor: 'pointer',
-              }}
-            >
-              ↓ CSV
-            </button>
           </div>
         </header>
 
@@ -1728,6 +2047,7 @@ export default function GeoTrackerPage() {
                 ccfg={ccfg}
                 photos={photos}
                 zones={zones}
+                varieties={varieties}
                 onClose={() => setSelectedRecord(null)}
                 onDelete={() => setDeleteTarget(selectedRecord)}
                 onUpdate={handleUpdateRecord}
@@ -1790,56 +2110,261 @@ export default function GeoTrackerPage() {
         {addVarietyOpen && (
           <div
             onClick={() => !varietySaving && setAddVarietyOpen(false)}
-            style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
           >
-            <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 14, padding: 24, width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,.3)', border: '1.5px solid var(--border)' }}>
-              <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 18, color: 'var(--text)' }}>🌱 Add Plant Variety</div>
-
-              <div style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>Plant Type *</label>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {Object.entries(TYPE_CONFIG).map(([key, cfg]) => (
-                    <button key={key} onClick={() => setVarietyForm(f => ({ ...f, plant_type: key }))}
-                      style={{ flex: 1, padding: '8px 6px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                        border: `2px solid ${varietyForm.plant_type === key ? cfg.color : 'var(--border)'}`,
-                        background: varietyForm.plant_type === key ? cfg.bg : 'var(--surface)',
-                        color: varietyForm.plant_type === key ? cfg.color : 'var(--text-2)' }}>
-                      {cfg.emoji} {cfg.label}
-                    </button>
-                  ))}
+            <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 14, padding: 22, width: '100%', maxWidth: 500, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,.3)', border: '1.5px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>
+                  🌿 Tree, Plant, Creeper & Shrub Varieties
                 </div>
+                <button
+                  type="button"
+                  onClick={() => !varietySaving && setAddVarietyOpen(false)}
+                  style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text-2)' }}
+                >×</button>
               </div>
 
-              <div style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>Local Name *</label>
-                <input type="text" placeholder="e.g. Neem" value={varietyForm.name}
-                  onChange={e => setVarietyForm(f => ({ ...f, name: e.target.value }))}
-                  style={inputStyle} autoFocus />
-              </div>
-
-              <div style={{ marginBottom: 20 }}>
-                <label style={labelStyle}>Scientific Name (optional)</label>
-                <input type="text" placeholder="e.g. Azadirachta indica" value={varietyForm.scientific_name}
-                  onChange={e => setVarietyForm(f => ({ ...f, scientific_name: e.target.value }))}
-                  style={inputStyle} />
+              {/* Navigation Tabs */}
+              <div style={{ display: 'flex', borderBottom: '1.5px solid var(--border)', marginBottom: 16 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVarietyTab('add')
+                    setEditingVarietyId(null)
+                    setVarietyForm({ name: '', scientific_name: '', plant_type: 'tree' })
+                    setVarietyError(null)
+                  }}
+                  style={{
+                    flex: 1, padding: '9px 12px', background: 'none', border: 'none',
+                    borderBottom: varietyTab === 'add' ? '2.5px solid var(--green-700)' : '2.5px solid transparent',
+                    color: varietyTab === 'add' ? 'var(--green-700)' : 'var(--text-2)',
+                    fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  ➕ Add New Variety
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVarietyTab('manage')
+                    setEditingVarietyId(null)
+                    setVarietyError(null)
+                  }}
+                  style={{
+                    flex: 1, padding: '9px 12px', background: 'none', border: 'none',
+                    borderBottom: varietyTab === 'manage' ? '2.5px solid var(--green-700)' : '2.5px solid transparent',
+                    color: varietyTab === 'manage' ? 'var(--green-700)' : 'var(--text-2)',
+                    fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  ✏️ Edit Existing Varieties ({varieties?.length || 0})
+                </button>
               </div>
 
               {varietyError && (
-                <div style={{ marginBottom: 14, padding: '9px 12px', borderRadius: 8, background: '#fee2e2', color: '#991b1b', fontSize: 13 }}>
+                <div style={{ marginBottom: 14, padding: '9px 12px', borderRadius: 8, background: '#fee2e2', color: '#991b1b', fontSize: 13, fontWeight: 600 }}>
                   {varietyError}
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={handleAddVariety} disabled={varietySaving}
-                  style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: 'none', background: 'var(--green-800)', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', opacity: varietySaving ? 0.7 : 1 }}>
-                  {varietySaving ? 'Saving…' : 'Save Variety'}
-                </button>
-                <button onClick={() => setAddVarietyOpen(false)} disabled={varietySaving}
-                  style={{ padding: '10px 16px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                  Cancel
-                </button>
-              </div>
+              {/* Tab 1: Add New Variety */}
+              {varietyTab === 'add' && (
+                <div>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={labelStyle}>Category *</label>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {Object.entries(TYPE_CONFIG).map(([key, cfg]) => (
+                        <button key={key} type="button" onClick={() => setVarietyForm(f => ({ ...f, plant_type: key }))}
+                          style={{ flex: 1, padding: '8px 6px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                            border: `2px solid ${varietyForm.plant_type === key ? cfg.color : 'var(--border)'}`,
+                            background: varietyForm.plant_type === key ? cfg.bg : 'var(--surface)',
+                            color: varietyForm.plant_type === key ? cfg.color : 'var(--text-2)' }}>
+                          {cfg.emoji} {cfg.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={labelStyle}>Common / Local Name *</label>
+                    <input type="text" placeholder="e.g. Tabebuia rosea, Neem, Money Plant" value={varietyForm.name}
+                      onChange={e => setVarietyForm(f => ({ ...f, name: e.target.value }))}
+                      style={inputStyle} autoFocus />
+                  </div>
+
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={labelStyle}>Botanical / Scientific Name (optional)</label>
+                    <input type="text" placeholder="e.g. Tabebuia rosea, Azadirachta indica" value={varietyForm.scientific_name}
+                      onChange={e => setVarietyForm(f => ({ ...f, scientific_name: e.target.value }))}
+                      style={inputStyle} />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={handleAddVariety} disabled={varietySaving}
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: 'none', background: 'var(--green-800)', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', opacity: varietySaving ? 0.7 : 1 }}>
+                      {varietySaving ? 'Saving…' : 'Save Variety'}
+                    </button>
+                    <button onClick={() => setAddVarietyOpen(false)} disabled={varietySaving}
+                      style={{ padding: '10px 16px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 2: Manage & Edit Existing Varieties */}
+              {varietyTab === 'manage' && (
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                  {editingVarietyId ? (
+                    /* Edit specific variety form */
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--green-700)', marginBottom: 12 }}>
+                        Editing Variety #{editingVarietyId}
+                      </div>
+
+                      <div style={{ marginBottom: 12 }}>
+                        <label style={labelStyle}>Category *</label>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {Object.entries(TYPE_CONFIG).map(([key, cfg]) => (
+                            <button key={key} type="button" onClick={() => setVarietyForm(f => ({ ...f, plant_type: key }))}
+                              style={{ flex: 1, padding: '7px 4px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                                border: `2px solid ${varietyForm.plant_type === key ? cfg.color : 'var(--border)'}`,
+                                background: varietyForm.plant_type === key ? cfg.bg : 'var(--surface)',
+                                color: varietyForm.plant_type === key ? cfg.color : 'var(--text-2)' }}>
+                              {cfg.emoji} {cfg.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: 12 }}>
+                        <label style={labelStyle}>Common / Local Name *</label>
+                        <input type="text" value={varietyForm.name}
+                          onChange={e => setVarietyForm(f => ({ ...f, name: e.target.value }))}
+                          style={inputStyle} autoFocus />
+                      </div>
+
+                      <div style={{ marginBottom: 14 }}>
+                        <label style={labelStyle}>Botanical / Scientific Name</label>
+                        <input type="text" value={varietyForm.scientific_name}
+                          onChange={e => setVarietyForm(f => ({ ...f, scientific_name: e.target.value }))}
+                          style={inputStyle} />
+                      </div>
+
+                      <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 16, background: '#f0fdf4', padding: '8px 10px', borderRadius: 6, border: '1px solid #bbf7d0' }}>
+                        💡 Updating this variety will automatically update the name on all mapped trees/plants of this variety.
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => handleUpdateVariety(editingVarietyId)} disabled={varietySaving}
+                          style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: 'none', background: 'var(--green-800)', color: '#fff', fontSize: 13, fontWeight: 800, cursor: 'pointer', opacity: varietySaving ? 0.7 : 1 }}>
+                          {varietySaving ? 'Updating…' : 'Update Variety & Sync Mapped Plants'}
+                        </button>
+                        <button onClick={() => { setEditingVarietyId(null); setVarietyError(null) }} disabled={varietySaving}
+                          style={{ padding: '10px 14px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                          Back to List
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Search and list of varieties */
+                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                        <input
+                          type="search"
+                          placeholder="Search varieties..."
+                          value={varietySearch}
+                          onChange={e => setVarietySearch(e.target.value)}
+                          style={{ ...inputStyle, flex: 1 }}
+                        />
+                        <select
+                          value={varietyTypeFilter}
+                          onChange={e => setVarietyTypeFilter(e.target.value)}
+                          style={{ ...inputStyle, width: 110, flexShrink: 0 }}
+                        >
+                          <option value="">All Types</option>
+                          <option value="tree">Trees</option>
+                          <option value="plant">Plants</option>
+                          <option value="creeper">Creepers</option>
+                          <option value="shrub">Shrubs</option>
+                        </select>
+                      </div>
+
+                      <div style={{ flex: 1, overflowY: 'auto', maxHeight: 360, display: 'flex', flexDirection: 'column', gap: 6, paddingRight: 4 }}>
+                        {(varieties || [])
+                          .filter(v => {
+                            if (varietyTypeFilter && v.plant_type !== varietyTypeFilter) return false
+                            if (varietySearch.trim()) {
+                              const s = varietySearch.toLowerCase()
+                              return (v.name || '').toLowerCase().includes(s) || (v.scientific_name || '').toLowerCase().includes(s)
+                            }
+                            return true
+                          })
+                          .map(v => {
+                            const cfg = TYPE_CONFIG[v.plant_type] || TYPE_CONFIG.tree
+                            return (
+                              <div
+                                key={v.id}
+                                style={{
+                                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                  padding: '8px 12px', borderRadius: 8, background: 'var(--surface-2, #f9fafb)',
+                                  border: '1px solid var(--border)', gap: 8,
+                                }}
+                              >
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 12, background: cfg.bg, color: cfg.color }}>
+                                      {cfg.emoji} {cfg.label}
+                                    </span>
+                                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>
+                                      {v.name}
+                                    </span>
+                                  </div>
+                                  {v.scientific_name && (
+                                    <div style={{ fontSize: 12, fontStyle: 'italic', color: 'var(--text-2)', marginTop: 2 }}>
+                                      {v.scientific_name}
+                                    </div>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingVarietyId(v.id)
+                                      setVarietyForm({
+                                        name: v.name || '',
+                                        scientific_name: v.scientific_name || '',
+                                        plant_type: v.plant_type || 'tree',
+                                      })
+                                      setVarietyError(null)
+                                    }}
+                                    style={{
+                                      padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                                      border: '1.5px solid #16a34a', background: '#dcfce7', color: '#15803d', cursor: 'pointer',
+                                    }}
+                                  >
+                                    ✏️ Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteVariety(v.id, v.name)}
+                                    title="Delete variety"
+                                    style={{
+                                      padding: '5px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                                      border: '1px solid #fecaca', background: '#fee2e2', color: '#dc2626', cursor: 'pointer',
+                                    }}
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1893,6 +2418,9 @@ export default function GeoTrackerPage() {
             </div>
           </div>
         )}
+
+
+
         {/* ── Global styles ──────────────────────────────────────────────── */}
         <style>{`
           @keyframes spin { to { transform: rotate(360deg); } }

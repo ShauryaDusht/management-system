@@ -49,7 +49,7 @@ def get_portal_redirect(user):
         return '/wtp/dashboard/'
     if role in ['hvac_engineer', 'hvac_supervisor', 'hvac_operator']:
         return '/hvac/dashboard/'
-    if role in ['inventory_manager', 'hk_inventory_manager', 'hostel_office']:
+    if role in ['inventory_manager', 'hk_inventory_manager', 'hostel_office', 'estate_office', 'civil_team', 'electrical_team']:
         return '/admin/login/'
     if role == 'supervisor':
         has_horticulture_zone = user.horticulture_supervised_zones.exists()
@@ -94,9 +94,23 @@ def portal_login(request):
 
     error = ''
     if request.method == 'POST':
+        raw_user = normalize_username_value(request.POST.get('username', ''))
+        from apps.users.models import User
+        if not User.objects.filter(username=raw_user).exists():
+            matched = User.objects.filter(email__iexact=raw_user).first()
+            if not matched and '@' in raw_user:
+                from django.conf import settings
+                civil_emails = [e.strip().lower() for e in getattr(settings, 'CIVIL_ALERT_EMAIL', '').split(',') if e.strip()]
+                elec_emails = [e.strip().lower() for e in getattr(settings, 'ELECTRICAL_ALERT_EMAIL', '').split(',') if e.strip()]
+                if raw_user.lower() in civil_emails:
+                    matched = User.objects.filter(username='civil.team').first()
+                elif raw_user.lower() in elec_emails:
+                    matched = User.objects.filter(username='electrical.team').first()
+            if matched:
+                raw_user = matched.username
         user = authenticate(
             request,
-            username=normalize_username_value(request.POST.get('username', '')),
+            username=raw_user,
             password=request.POST.get('password', ''),
         )
         if user and user.is_active:

@@ -8,6 +8,7 @@ import {
   Btn,
   Card,
   DataTable,
+  ExportDropdown,
   Field,
   Input,
   Modal,
@@ -17,7 +18,8 @@ import {
 import AdminLayout from '../../layout/AdminLayout'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 import { useAsyncAction, useAsyncLoad } from '../../shared/hooks/useAsync'
-import { exportCsv, todayISO } from '../../shared/utils'
+import { exportReport } from '../../shared/exportHelper'
+import { todayISO } from '../../shared/utils'
 import { useAuth } from '../../context/AuthContext'
 
 const ROLES = [
@@ -30,29 +32,16 @@ const ROLES = [
   'hvac_engineer',
   'hvac_supervisor',
   'hvac_operator',
-  'supervisor',
-  'caretaker',
-  'horticulture_manager',
+  'estate_office',
+  'civil_team',
+  'electrical_team',
   'hk_inventory_manager',
   'hostel_office',
+  'horticulture_manager',
+  'supervisor',
+  'caretaker',
 ]
 const HK_ROLES = ['supervisor', 'caretaker']
-const ROLE_LABELS = {
-  admin: 'Admin',
-  plant_engineer: 'Substation & WTP/STP Engineer',
-  electrical_supervisor: 'Substation Supervisor',
-  electrical_operator: 'Substation Operator',
-  wtp_supervisor: 'WTP/STP Supervisor',
-  wtp_operator: 'WTP/STP Operator',
-  hvac_engineer: 'HVAC Engineer',
-  hvac_supervisor: 'HVAC Supervisor',
-  hvac_operator: 'HVAC Operator',
-  supervisor: 'Housekeeping Supervisor',
-  caretaker: 'Caretaker',
-  horticulture_manager: 'Horticulture Manager',
-  hk_inventory_manager: 'HK / Inventory Manager',
-  hostel_office: 'Hostel Office',
-}
 const ROLE_FILTERS = [
   { key: 'admin', label: 'Admin' },
   { key: 'plant_engineer', label: 'Substation & WTP Engr' },
@@ -63,12 +52,34 @@ const ROLE_FILTERS = [
   { key: 'hvac_engineer', label: 'HVAC Engineer' },
   { key: 'hvac_supervisor', label: 'HVAC Supervisor' },
   { key: 'hvac_operator', label: 'HVAC Operator' },
-  { key: 'supervisor', label: 'HK Supervisor' },
-  { key: 'caretaker', label: 'Caretaker' },
-  { key: 'horticulture_manager', label: 'Horticulture Manager' },
+  { key: 'estate_office', label: 'Estate Office' },
+  { key: 'civil_team', label: 'Civil Team' },
+  { key: 'electrical_team', label: 'Electrical Team' },
   { key: 'hk_inventory_manager', label: 'HK / Inv. Manager' },
   { key: 'hostel_office', label: 'Hostel Office' },
+  { key: 'horticulture_manager', label: 'Horticulture Manager' },
+  { key: 'supervisor', label: 'Supervisor' },
+  { key: 'caretaker', label: 'Caretaker' },
 ]
+const ROLE_LABELS = {
+  admin: 'Admin',
+  plant_engineer: 'Substation & WTP Engr',
+  electrical_supervisor: 'Substation Supervisor',
+  electrical_operator: 'Substation Operator',
+  wtp_supervisor: 'WTP/STP Supervisor',
+  wtp_operator: 'WTP/STP Operator',
+  hvac_engineer: 'HVAC Engineer',
+  hvac_supervisor: 'HVAC Supervisor',
+  hvac_operator: 'HVAC Operator',
+  estate_office: 'Estate Office',
+  civil_team: 'Civil Team',
+  electrical_team: 'Electrical Team',
+  hk_inventory_manager: 'HK / Inventory Manager',
+  hostel_office: 'Hostel Office',
+  horticulture_manager: 'Horticulture Manager',
+  supervisor: 'Supervisor',
+  caretaker: 'Caretaker',
+}
 const DEPRECATED_MANAGER_USERNAMES = new Set(['inventory.manager', 'housekeeping.manager', 'hostel.manager'])
 const EMPTY = {
   username: '',
@@ -280,11 +291,6 @@ export default function UsersPage() {
     [filtered]
   )
 
-  const downloadCsv = () => {
-    const scope = roleFilter === 'all' ? 'all_roles' : roleFilter
-    exportCsv(csvRows, `manage_users_${safeFilePart(scope)}_${todayISO()}.csv`)
-  }
-
   const roleCounts = useMemo(() => {
     const counts = {
       admin: 0,
@@ -296,11 +302,14 @@ export default function UsersPage() {
       hvac_engineer: 0,
       hvac_supervisor: 0,
       hvac_operator: 0,
-      supervisor: 0,
-      caretaker: 0,
-      horticulture_manager: 0,
+      estate_office: 0,
+      civil_team: 0,
+      electrical_team: 0,
       hk_inventory_manager: 0,
       hostel_office: 0,
+      horticulture_manager: 0,
+      supervisor: 0,
+      caretaker: 0,
     }
     users.forEach((u) => {
       if (Object.prototype.hasOwnProperty.call(counts, u.role)) {
@@ -312,6 +321,39 @@ export default function UsersPage() {
       ...counts,
     }
   }, [users])
+
+  const handleExportUsers = async (format) => {
+    const scope = roleFilter === 'all' ? 'All Roles' : (ROLE_FILTERS.find((r) => r.key === roleFilter)?.label || roleFilter)
+    const exportData = {
+      filename: `manage_users_${safeFilePart(roleFilter)}_${todayISO()}`,
+      module: 'User Administration',
+      title: 'Staff & User Directory Report',
+      subtitle: `Role Filter: ${scope} • Total Users: ${filtered.length}`,
+      metadata: [
+        { label: 'Role Filter', value: scope },
+        { label: 'Export Date', value: todayISO() },
+        { label: 'Total Users Listed', value: filtered.length },
+      ],
+      stats: [
+        { label: 'Total Users', value: filtered.length },
+        { label: 'Admins', value: roleCounts.admin || 0 },
+        { label: 'Supervisors', value: roleCounts.supervisor || 0 },
+        { label: 'Caretakers', value: roleCounts.caretaker || 0 },
+      ],
+      headers: ['Name', 'Username', 'Pay Code', 'Email', 'Phone', 'Role', 'Area Incharge', 'Status'],
+      rows: filtered.map((u) => [
+        userDisplayName(u),
+        u.username || '-',
+        u.pay_code || '-',
+        u.email || '-',
+        u.phone || '-',
+        String(u.role || '-').replace(/_/g, ' ').toUpperCase(),
+        areaInchargeText(u) || '-',
+        u.is_active ? 'Active' : 'Inactive',
+      ]),
+    }
+    await exportReport(format, exportData)
+  }
 
   return (
     <AdminLayout
@@ -328,9 +370,9 @@ export default function UsersPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(115px, 11vw, 160px), 1fr))',
           gap: 10,
-          marginBottom: 20,
+          marginBottom: 16,
         }}
       >
         <Card
@@ -411,9 +453,11 @@ export default function UsersPage() {
           </SelectField>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, color: 'var(--text-3)' }}>{filtered.length} users</span>
-            <Btn variant="secondary" onClick={downloadCsv} disabled={loading || csvRows.length === 0}>
-              Download CSV
-            </Btn>
+            <ExportDropdown
+              label="Download Users"
+              onExport={handleExportUsers}
+              disabled={loading || filtered.length === 0}
+            />
           </div>
         </div>
 

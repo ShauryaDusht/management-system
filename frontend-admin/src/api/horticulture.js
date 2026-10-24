@@ -45,4 +45,5 @@ export const horticultureAPI = {
   getLeaveApprovals: () => api.get('/horticulture/admin/leave-approvals/'),
   decideLeaveApproval: (id, decision, note = '') =>
     api.post(`/horticulture/admin/leave-approvals/${id}/decision/`, { decision, note }),
+  getAreaStocks: (params = {}) => api.get('/horticulture/admin/stocks/', { params }),
 }

@@ -81,6 +81,9 @@ class User(AbstractUser):
         HVAC_ENGINEER = 'hvac_engineer', 'HVAC Engineer'
         HVAC_SUPERVISOR = 'hvac_supervisor', 'HVAC Supervisor'
         HVAC_OPERATOR = 'hvac_operator', 'HVAC Operator'
+        ESTATE_OFFICE = 'estate_office', 'Estate Office'
+        CIVIL_TEAM = 'civil_team', 'Civil Team'
+        ELECTRICAL_TEAM = 'electrical_team', 'Electrical Team'
 
     role = models.CharField(max_length=30, choices=Role.choices, default=Role.SUPERVISOR)
     phone = models.CharField(max_length=15, blank=True)
@@ -162,7 +165,12 @@ class User(AbstractUser):
 
     @property
     def can_manage_inventory(self):
-        return self.is_admin or self.is_inventory_manager or self.is_hk_inventory_manager
+        return (
+            self.is_admin
+            or self.is_inventory_manager
+            or self.is_hk_inventory_manager
+            or self.is_horticulture_manager
+        )
 
     @property
     def can_manage_housekeeping(self):
@@ -170,7 +178,11 @@ class User(AbstractUser):
 
     @property
     def can_view_admin_reports(self):
-        return self.is_admin or self.is_hk_inventory_manager
+        return (
+            self.is_admin
+            or self.is_hk_inventory_manager
+            or self.is_horticulture_manager
+        )
 
     @property
     def is_manager(self):
@@ -188,4 +200,16 @@ class User(AbstractUser):
     @property
     def is_hk_staff(self):
         return self.role in [self.Role.SUPERVISOR, self.Role.CARETAKER]
+
+    @property
+    def is_estate_office(self):
+        return self.role == self.Role.ESTATE_OFFICE
+
+    @property
+    def is_civil_team(self):
+        return self.role == self.Role.CIVIL_TEAM
+
+    @property
+    def is_electrical_team(self):
+        return self.role == self.Role.ELECTRICAL_TEAM
 

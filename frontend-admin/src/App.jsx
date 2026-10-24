@@ -6,6 +6,7 @@ import { NotificationProvider } from './context/NotificationContext'
 import DashboardPage from './pages/dashboard/DashboardPage'
 import GeoTrackerPage from './pages/geo_tracker/GeoTrackerPage'
 import HorticulturePage from './pages/horticulture/HorticulturePage'
+import HorticultureStockPage from './pages/horticulture/HorticultureStockPage'
 import HousekeepingPage from './pages/housekeeping/HousekeepingPage'
 import InsightsPage from './pages/insights/InsightsPage'
 import InventoryPage from './pages/inventory/InventoryPage'
@@ -16,6 +17,7 @@ import UsersPage from './pages/users/UsersPage'
 import SubstationPage from './pages/substation/SubstationPage'
 import WtpPage from './pages/wtp/WtpPage'
 import HvacPage from './pages/hvac/HvacPage'
+import EstatePage from './pages/estate/EstatePage'
 
 const SUBSTATION_ALLOWED = [
   'admin',
@@ -41,19 +43,40 @@ const HVAC_ALLOWED = [
   'hvac_operator',
 ]
 
-const ADMIN_OR_HK_INVENTORY = ['admin', 'hk_inventory_manager']
-const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
-const HK_INVENTORY_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office']
+const ADMIN_OR_HK_INVENTORY = ['admin', 'hk_inventory_manager', 'horticulture_manager']
+const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'estate_office', 'civil_team', 'electrical_team']
+const HK_INVENTORY_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
 const HK_PORTAL_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office', 'supervisor']
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager', 'supervisor']
 const GEO_TRACKER_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'supervisor']
-const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
+const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'estate_office']
+const ESTATE_ALLOWED = ['admin', 'estate_office', 'civil_team', 'electrical_team', 'hk_inventory_manager']
+const PROFILE_ALLOWED = [
+  'admin',
+  'horticulture_manager',
+  'estate_office',
+  'hk_inventory_manager',
+  'hostel_office',
+  'civil_team',
+  'electrical_team',
+  'plant_engineer',
+  'electrical_supervisor',
+  'electrical_operator',
+  'wtp_supervisor',
+  'wtp_operator',
+  'hvac_engineer',
+  'hvac_supervisor',
+  'hvac_operator',
+]
 const ALL_PORTAL_ROLES = [
   'admin',
   'hk_inventory_manager',
   'horticulture_manager',
   'hostel_office',
   'supervisor',
+  'estate_office',
+  'civil_team',
+  'electrical_team',
   'plant_engineer',
   'electrical_supervisor',
   'electrical_operator',
@@ -71,6 +94,9 @@ function getLandingRoute(user) {
     ? 'hostel_office'
     : user?.role
   if (role === 'admin') return '/dashboard'
+  if (role === 'estate_office') return '/dashboard'
+  if (role === 'civil_team') return '/estate'
+  if (role === 'electrical_team') return '/estate'
   if (role === 'hk_inventory_manager') return '/dashboard'
   if (role === 'horticulture_manager') return '/dashboard'
   if (role === 'hostel_office') return '/dashboard'
@@ -101,6 +127,25 @@ function getLandingRoute(user) {
     return '/substation'
   }
   return '/unauthorized'
+}
+
+function DashboardRoute() {
+  const { user } = useAuth()
+  if (user?.role === 'estate_office') {
+    return <EstatePage />
+  }
+  if (user?.role === 'civil_team' || user?.role === 'electrical_team') {
+    return <Navigate to="/estate" replace />
+  }
+  return <DashboardPage />
+}
+
+function EstateRoute() {
+  const { user } = useAuth()
+  if (user?.role === 'estate_office') {
+    return <Navigate to="/dashboard" replace />
+  }
+  return <EstatePage />
 }
 
 function AdminOnlyRedirectRoute({ children }) {
@@ -145,7 +190,7 @@ export default function App() {
             path="/dashboard"
             element={
               <ProtectedRoute allowedRoles={ADMIN_DASHBOARD_ALLOWED}>
-                <DashboardPage />
+                <DashboardRoute />
               </ProtectedRoute>
             }
           />
@@ -166,6 +211,30 @@ export default function App() {
             }
           />
           <Route
+            path="/horticulture-stock"
+            element={
+              <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
+                <HorticultureStockPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/horticulture-inventory"
+            element={
+              <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
+                <HorticultureStockPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/horticulture/stock"
+            element={
+              <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
+                <HorticultureStockPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/horticulture/*"
             element={
               <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
@@ -178,6 +247,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={GEO_TRACKER_ALLOWED}>
                 <GeoTrackerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estate/*"
+            element={
+              <ProtectedRoute allowedRoles={ESTATE_ALLOWED}>
+                <EstateRoute />
               </ProtectedRoute>
             }
           />

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { hkAPI } from '../../api/housekeeping'
-import { Alert, Btn, Card, DataTable, Input, Spinner, StatCard } from '../../components/ui'
+import { Alert, Btn, Card, DataTable, ExportDropdown, Input, Spinner, StatCard } from '../../components/ui'
 import { BarGroupChart } from '../../components/ui/Charts'
-import { exportCsv, todayISO, triggerDownload } from '../../shared/utils'
+import { exportReport } from '../../shared/exportHelper'
+import { todayISO, triggerDownload } from '../../shared/utils'
 
 const AREA_GROUP_LABELS = {
   hostels: 'Hostels',
@@ -119,20 +120,79 @@ export default function AttendanceTab({ hostelOnly = false }) {
     [areaTypeById, date, visibleRows],
   )
 
-  const downloadCsv = () => {
+  const handleExportAttendance = async (format) => {
     const filterName = areaClassFilter === 'all' ? 'all_areas' : areaClassFilter
-    exportCsv(csvRows, `housekeeping_worker_attendance_${filterName}_${date}.csv`)
+    const pctAvg = totals.total ? Math.round((totals.present / totals.total) * 100) : 0
+    const exportData = {
+      filename: `housekeeping_worker_attendance_${filterName}_${date}`,
+      module: 'Housekeeping Operations',
+      title: 'Worker Attendance by Area Report',
+      subtitle: `Filter: ${AREA_GROUP_LABELS[areaClassFilter] || areaClassFilter} • Date: ${date}`,
+      metadata: [
+        { label: 'Date', value: date },
+        { label: 'Area Filter', value: AREA_GROUP_LABELS[areaClassFilter] || areaClassFilter },
+        { label: 'Areas Count', value: visibleRows.length },
+      ],
+      stats: [
+        { label: 'Total Workers', value: totals.total },
+        { label: 'Present Workers', value: totals.present },
+        { label: 'Absent Workers', value: totals.absent },
+        { label: 'Attendance %', value: `${pctAvg}%` },
+      ],
+      headers: ['Area', 'Area Group', 'Total Workers', 'Present', 'Absent', 'Attendance %'],
+      rows: visibleRows.map((r) => {
+        const group = areaGroup(r.area_name, areaTypeById.get(r.area_id))
+        const total = r.total_workers || 0
+        const present = r.present || 0
+        const absent = r.absent || 0
+        const pct = total ? Math.round((present / total) * 100) : 0
+        return [
+          r.area_name || '-',
+          AREA_GROUP_LABELS[group] || group,
+          total,
+          present,
+          absent,
+          `${pct}%`,
+        ]
+      }),
+    }
+    await exportReport(format, exportData)
   }
 
-  const downloadAbsentCsv = async () => {
+  const handleExportAbsent = async (format) => {
     setExportingAbsent(true)
     setError('')
     try {
       const response = await hkAPI.downloadAbsentAttendanceCSV(date, 'workers')
       const blob = new Blob([response.data], { type: 'text/csv' })
-      triggerDownload(blob, `housekeeping_absent_workers_${date}.csv`)
+      if (format === 'csv') {
+        triggerDownload(blob, `housekeeping_absent_workers_${date}.csv`)
+        return
+      }
+      const text = await blob.text()
+      const lines = text.split(/\r?\n/).filter((l) => l.trim())
+      const headers = lines.length
+        ? lines[0].split(',').map((c) => c.replace(/^"|"$/g, '').trim())
+        : ['Worker Name', 'Area', 'Date']
+      const dataRows = lines.slice(1).map((l) => l.split(',').map((c) => c.replace(/^"|"$/g, '').trim()))
+      const exportData = {
+        filename: `housekeeping_absent_workers_${date}`,
+        module: 'Housekeeping Operations',
+        title: 'Housekeeping Absent Workers Report',
+        subtitle: `Date: ${date}`,
+        metadata: [
+          { label: 'Date', value: date },
+          { label: 'Absent Count', value: dataRows.length },
+        ],
+        stats: [
+          { label: 'Total Absent Workers', value: dataRows.length },
+        ],
+        headers: headers.length ? headers : ['Details'],
+        rows: dataRows.length ? dataRows : [['No absent workers reported']],
+      }
+      await exportReport(format, exportData)
     } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to export absent workers CSV.')
+      setError(e.response?.data?.detail || 'Failed to export absent workers.')
     } finally {
       setExportingAbsent(false)
     }
@@ -206,22 +266,16 @@ export default function AttendanceTab({ hostelOnly = false }) {
                   </Btn>
                 </>
               )}
-              <Btn
-                size="sm"
-                variant="secondary"
-                onClick={downloadCsv}
-                disabled={loading || csvRows.length === 0}
-              >
-                CSV Report
-              </Btn>
-              <Btn
-                size="sm"
-                variant="secondary"
-                onClick={downloadAbsentCsv}
+              <ExportDropdown
+                label="Attendance Report"
+                onExport={handleExportAttendance}
+                disabled={loading || visibleRows.length === 0}
+              />
+              <ExportDropdown
+                label="Absent Workers"
+                onExport={handleExportAbsent}
                 disabled={loading || exportingAbsent}
-              >
-                {exportingAbsent ? 'Exporting...' : 'Absent Workers CSV'}
-              </Btn>
+              />
             </div>
           </div>
           {loading ? (

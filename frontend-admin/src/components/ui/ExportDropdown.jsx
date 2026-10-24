@@ -1,14 +1,86 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Download, ChevronDown, FileSpreadsheet, FileText, Calendar, RotateCcw } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react'
+
+const FORMATS = [
+  {
+    key: 'csv',
+    label: 'CSV Spreadsheet',
+    ext: '.csv',
+    badgeColor: '#16a34a',
+    badgeBg: '#dcfce7',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="8" y1="13" x2="16" y2="13" />
+        <line x1="8" y1="17" x2="16" y2="17" />
+        <polyline points="10 9 9 9 8 9" />
+      </svg>
+    ),
+    description: 'Tabular data for Excel & Sheets',
+  },
+  {
+    key: 'pdf',
+    label: 'PDF Document',
+    ext: '.pdf',
+    badgeColor: '#dc2626',
+    badgeBg: '#fee2e2',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <path d="M9 15h6" />
+        <path d="M9 11h6" />
+      </svg>
+    ),
+    description: 'Formatted printable report',
+  },
+  {
+    key: 'word',
+    label: 'Word Document',
+    ext: '.docx',
+    badgeColor: '#2563eb',
+    badgeBg: '#dbeafe',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+        <line x1="10" y1="9" x2="8" y2="9" />
+      </svg>
+    ),
+    description: 'Editable Microsoft Word (.docx)',
+  },
+  {
+    key: 'slides',
+    label: 'Presentation Slides',
+    ext: '.pptx',
+    badgeColor: '#ea580c',
+    badgeBg: '#ffedd5',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+        <line x1="8" y1="21" x2="16" y2="21" />
+        <line x1="12" y1="17" x2="12" y2="21" />
+      </svg>
+    ),
+    description: 'Executive slides for PowerPoint',
+  },
+]
 
 export default function ExportDropdown({
+  label = 'Download',
+  onExport,
   onExportCsv,
   onExportPdf,
-  label = 'Export',
-  variant = 'default', // 'default' | 'substation' | 'substation-primary' | 'substation-ghost'
-  style = {},
+  onExportWord,
+  onExportPresentation,
   disabled = false,
-  // Embedded Date Range / Calendar Filter
+  size = 'sm',
+  variant = 'secondary',
+  align = 'right',
+  style,
+  // Embedded Date Range / Calendar Filter (for Substation / WTP / HVAC)
   hasDateFilter = false,
   fromDate = '',
   toDate = '',
@@ -17,76 +89,108 @@ export default function ExportDropdown({
   onClearDates = null,
   dateLabel = '',
 }) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef(null);
+  const [open, setOpen] = useState(false)
+  const [busyFormat, setBusyFormat] = useState(null)
+  const dropdownRef = useRef(null)
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setOpen(false);
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpen(false)
       }
-    };
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
+    }
+    function handleEscape(event) {
+      if (event.key === 'Escape') setOpen(false)
+    }
 
     if (open) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleEscape)
     }
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [open]);
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [open])
 
-  const handleCsv = () => {
-    setOpen(false);
-    if (onExportCsv) onExportCsv();
-  };
-
-  const handlePdf = () => {
-    setOpen(false);
-    if (onExportPdf) onExportPdf();
-  };
-
-  const isSubstation = variant.startsWith('substation');
-  const isSubstationGhost = variant === 'substation-ghost' || variant === 'substation';
-  const isSubstationPrimary = variant === 'substation-primary';
-
-  let btnClass = undefined;
-  if (isSubstationPrimary) {
-    btnClass = 'btn btn-primary';
-  } else if (isSubstationGhost) {
-    btnClass = 'btn btn-ghost';
+  const handleSelect = async (formatKey) => {
+    if (disabled || busyFormat) return
+    setBusyFormat(formatKey)
+    try {
+      if (formatKey === 'csv' && typeof onExportCsv === 'function') {
+        await onExportCsv()
+      } else if (formatKey === 'pdf' && typeof onExportPdf === 'function') {
+        await onExportPdf()
+      } else if (formatKey === 'word' && typeof onExportWord === 'function') {
+        await onExportWord()
+      } else if (formatKey === 'slides' && typeof onExportPresentation === 'function') {
+        await onExportPresentation()
+      } else if (typeof onExport === 'function') {
+        await onExport(formatKey)
+      }
+      setOpen(false)
+    } catch (err) {
+      console.error('Export error:', err)
+      window.alert(`Failed to export ${formatKey.toUpperCase()}: ${err.message || err}`)
+    } finally {
+      setBusyFormat(null)
+    }
   }
 
-  const isFiltered = hasDateFilter && (fromDate || toDate);
+  const isPrimary = variant === 'primary' || variant === 'substation-primary'
+  const isSubstation = variant.startsWith('substation')
+  const isFiltered = Boolean(fromDate || toDate)
+
+  // Visible formats: if only onExportCsv / onExportPdf passed and no general onExport, show those
+  const visibleFormats = FORMATS.filter((fmt) => {
+    if (typeof onExport === 'function') return true
+    if (fmt.key === 'csv') return Boolean(onExportCsv)
+    if (fmt.key === 'pdf') return Boolean(onExportPdf)
+    if (fmt.key === 'word') return Boolean(onExportWord)
+    if (fmt.key === 'slides') return Boolean(onExportPresentation)
+    return true
+  })
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        position: 'relative',
-        display: 'inline-block',
-        ...style,
-      }}
-    >
+    <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block', zIndex: open ? 1000 : undefined, ...style }}>
       <button
         type="button"
-        disabled={disabled}
-        onClick={() => setOpen(!open)}
-        className={btnClass}
+        disabled={disabled || Boolean(busyFormat)}
+        onClick={() => setOpen((prev) => !prev)}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: 6,
+          borderRadius: 9,
+          fontWeight: 600,
           cursor: disabled ? 'not-allowed' : 'pointer',
-          opacity: disabled ? 0.6 : 1,
+          opacity: disabled ? 0.5 : 1,
+          border: isPrimary ? 'none' : '1px solid var(--border, #cbd5e1)',
+          background: isPrimary ? 'var(--green-800, #1e3a2f)' : 'var(--surface-2, #ffffff)',
+          color: isPrimary ? '#ffffff' : 'var(--text, #1e293b)',
+          fontSize: size === 'sm' ? 12 : 13,
+          padding: size === 'sm' ? '6px 12px' : '9px 16px',
+          transition: 'all 0.15s ease-in-out',
+          boxShadow: open ? '0 0 0 2px rgba(45, 74, 62, 0.2)' : 'none',
         }}
       >
-        <Download size={14} />
-        <span>{label}</span>
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+
+        <span>{busyFormat ? `Exporting ${busyFormat.toUpperCase()}...` : label}</span>
+
         {isFiltered && (
           <span
             style={{
@@ -103,31 +207,51 @@ export default function ExportDropdown({
             Range
           </span>
         )}
-        <ChevronDown size={13} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+
+        <svg
+          width="11"
+          height="11"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s ease',
+          }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
       </button>
 
       {open && (
         <div
           style={{
             position: 'absolute',
-            top: 'calc(100% + 5px)',
-            right: 0,
-            zIndex: 1000,
-            minWidth: hasDateFilter ? 270 : 175,
-            background: 'var(--card, #ffffff)',
-            borderRadius: 8,
-            border: '1px solid var(--line-strong, #cbd5e1)',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.15)',
-            overflow: 'hidden',
+            top: 'calc(100% + 6px)',
+            [align === 'right' ? 'right' : 'left']: 0,
+            zIndex: 9999,
+            minWidth: hasDateFilter ? 280 : 260,
+            background: 'var(--surface, #ffffff)',
+            borderRadius: 12,
+            border: '1px solid var(--border, #e2e8f0)',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            padding: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            animation: 'fadeIn 0.12s ease-out',
           }}
         >
-          {/* Calendar Option Inside Export File Dropdown */}
+          {/* Optional Embedded Date Filter */}
           {hasDateFilter && (
             <div
               style={{
-                padding: '10px 12px 10px',
-                borderBottom: '1px solid var(--line, #e2e8f0)',
-                background: 'var(--field, #f8fafc)',
+                padding: '8px 10px 10px',
+                borderBottom: '1px solid var(--border, #e2e8f0)',
+                marginBottom: 4,
               }}
             >
               <div
@@ -135,181 +259,170 @@ export default function ExportDropdown({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: 8,
+                  marginBottom: 6,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: 'var(--text-3, #64748b)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
                 }}
               >
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.4px',
-                    color: 'var(--water, #0284c7)',
-                  }}
-                >
-                  <Calendar size={13} />
-                  Export Date Range
-                </span>
-                {isFiltered && (
+                <span>Export Date Range</span>
+                {isFiltered && onClearDates && (
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onClearDates) onClearDates();
-                      else {
-                        if (onFromDateChange) onFromDateChange('');
-                        if (onToDateChange) onToDateChange('');
-                      }
-                    }}
+                    onClick={onClearDates}
                     style={{
-                      background: 'transparent',
                       border: 'none',
-                      padding: '2px 6px',
+                      background: 'transparent',
+                      color: '#0284c7',
                       fontSize: 11,
                       fontWeight: 600,
-                      color: 'var(--muted, #64748b)',
                       cursor: 'pointer',
-                      borderRadius: 4,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 3,
+                      padding: 0,
                     }}
-                    title="Clear date range to export all records"
-                    onMouseEnter={(e) => (e.currentTarget.style.color = '#dc2626')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--muted, #64748b)')}
                   >
-                    <RotateCcw size={10} />
-                    Reset (All)
+                    Clear Filter
                   </button>
                 )}
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'var(--ink, #334155)', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <span>From Date:</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 10, color: 'var(--text-3, #64748b)', marginBottom: 2 }}>From</label>
                   <input
                     type="date"
                     value={fromDate}
-                    max={toDate || undefined}
                     onChange={(e) => onFromDateChange && onFromDateChange(e.target.value)}
                     style={{
-                      padding: '5px 8px',
-                      fontSize: 12,
-                      borderRadius: 5,
-                      border: '1px solid var(--line-strong, #cbd5e1)',
-                      background: 'var(--card, #ffffff)',
-                      color: 'var(--ink, #1e293b)',
-                      outline: 'none',
                       width: '100%',
-                      boxSizing: 'border-box',
+                      padding: '4px 6px',
+                      fontSize: 11,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 6,
+                      background: 'var(--surface-2, #f8fafc)',
+                      color: 'var(--text, #1e293b)',
                     }}
                   />
-                </label>
-
-                <label style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'var(--ink, #334155)', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <span>Upto Date:</span>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 10, color: 'var(--text-3, #64748b)', marginBottom: 2 }}>To</label>
                   <input
                     type="date"
                     value={toDate}
-                    min={fromDate || undefined}
                     onChange={(e) => onToDateChange && onToDateChange(e.target.value)}
                     style={{
-                      padding: '5px 8px',
-                      fontSize: 12,
-                      borderRadius: 5,
-                      border: '1px solid var(--line-strong, #cbd5e1)',
-                      background: 'var(--card, #ffffff)',
-                      color: 'var(--ink, #1e293b)',
-                      outline: 'none',
                       width: '100%',
-                      boxSizing: 'border-box',
+                      padding: '4px 6px',
+                      fontSize: 11,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 6,
+                      background: 'var(--surface-2, #f8fafc)',
+                      color: 'var(--text, #1e293b)',
                     }}
                   />
-                </label>
-              </div>
-
-              {dateLabel && (
-                <div
-                  style={{
-                    marginTop: 8,
-                    fontSize: 11,
-                    color: 'var(--water, #0284c7)',
-                    fontWeight: 600,
-                    padding: '4px 6px',
-                    background: 'rgba(2, 132, 199, 0.08)',
-                    borderRadius: 4,
-                    textAlign: 'center',
-                  }}
-                >
-                  Selected: {dateLabel}
                 </div>
-              )}
+              </div>
             </div>
           )}
 
-          <div style={{ padding: '4px' }}>
-            <button
-              type="button"
-              onClick={handleCsv}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 12px',
-                border: 'none',
-                borderRadius: 6,
-                background: 'transparent',
-                color: 'var(--ink, #1e293b)',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'background 0.12s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--field, #f1f5f9)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-            >
-              <span style={{ color: '#16a34a', display: 'flex', alignItems: 'center' }}>
-                <FileSpreadsheet size={15} />
-              </span>
-              <span>Export to CSV</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handlePdf}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 12px',
-                border: 'none',
-                borderRadius: 6,
-                background: 'transparent',
-                color: 'var(--ink, #1e293b)',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'background 0.12s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--field, #f1f5f9)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-            >
-              <span style={{ color: '#dc2626', display: 'flex', alignItems: 'center' }}>
-                <FileText size={15} />
-              </span>
-              <span>Export to PDF</span>
-            </button>
+          <div
+            style={{
+              padding: '4px 10px 2px',
+              fontSize: 10,
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              color: 'var(--text-3, #64748b)',
+            }}
+          >
+            Select Export Format
           </div>
+
+          {visibleFormats.map((fmt) => {
+            const isItemBusy = busyFormat === fmt.key
+            return (
+              <button
+                key={fmt.key}
+                type="button"
+                disabled={Boolean(busyFormat)}
+                onClick={() => handleSelect(fmt.key)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: busyFormat ? 'wait' : 'pointer',
+                  textAlign: 'left',
+                  width: '100%',
+                  transition: 'background 0.12s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--surface-2, #f1f5f9)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                }}
+              >
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: fmt.badgeBg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {isItemBusy ? (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        width: 14,
+                        height: 14,
+                        border: `2px solid ${fmt.badgeColor}`,
+                        borderTopColor: 'transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 0.6s linear infinite',
+                      }}
+                    />
+                  ) : (
+                    fmt.icon
+                  )}
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text, #1e293b)' }}>
+                      {fmt.label}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: '1px 5px',
+                        borderRadius: 4,
+                        background: fmt.badgeBg,
+                        color: fmt.badgeColor,
+                      }}
+                    >
+                      {fmt.ext}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3, #64748b)', marginTop: 2 }}>
+                    {fmt.description}
+                  </div>
+                </div>
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
-  );
+  )
 }
-
