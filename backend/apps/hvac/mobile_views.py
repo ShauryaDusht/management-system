@@ -44,9 +44,6 @@ def mobile_dashboard(request):
     active_slot = get_current_slot()
     active_shift = (active_slot // 8) + 1
 
-    from .demo_data import ensure_hvac_demo_data
-    ensure_hvac_demo_data(query_date)
-
     logs = list(HvacLog.objects.filter(date=query_date).order_by('slot'))
     slots_map = {l.slot: l for l in logs}
 
@@ -513,9 +510,6 @@ def mobile_flash(request):
 
     is_today = (date_str == today_str)
     formatted_date = parsed_date.strftime('%a, %d %b %Y')
-
-    from .demo_data import ensure_hvac_demo_data
-    ensure_hvac_demo_data(parsed_date)
 
     logs = list(HvacLog.objects.filter(date=date_str).order_by('slot'))
 

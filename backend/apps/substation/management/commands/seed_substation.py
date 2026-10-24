@@ -13,18 +13,9 @@ from apps.users.models import User
 class Command(BaseCommand):
     help = 'Seeds Substation Log sheets, initial configs, and historical readings from baseline fixtures.'
 
-    def add_arguments(self, parser):
-        parser.add_argument(
-            '--with-readings',
-            action='store_true',
-            default=True,
-            help='Import historical readings from db.json (default: True)',
-        )
-
     def handle(self, *args, **options):
         fixture_dir = Path(__file__).resolve().parent.parent.parent / 'fixtures'
         sheets_file = fixture_dir / 'sheets.json'
-        db_file = fixture_dir / 'db.json'
 
         # 1. Seed SubstationSheets
         if sheets_file.exists():
@@ -53,73 +44,6 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"Seeded {count} Substation Sheets."))
         else:
             self.stdout.write(self.style.WARNING(f"sheets.json not found at {sheets_file}"))
-
-        # 2. Seed Configs and Readings from db.json
-        if db_file.exists():
-            with open(db_file, 'r', encoding='utf-8') as f:
-                db_data = json.load(f)
-
-            # Configs
-            configs = db_data.get('config', {})
-            cfg_count = 0
-            for key, val in configs.items():
-                if isinstance(val, dict):
-                    data = dict(val)
-                    data.pop('_id', None)
-                    SubstationConfigDoc.objects.update_or_create(
-                        key=key,
-                        defaults={'data': data, 'updated_at': timezone.now()}
-                    )
-                    cfg_count += 1
-            self.stdout.write(self.style.SUCCESS(f"Seeded {cfg_count} Substation Config documents."))
-
-            # Readings
-            if options.get('with_readings'):
-                readings = db_data.get('readings', {})
-                reading_count = 0
-                for doc_id, doc in readings.items():
-                    if not isinstance(doc, dict):
-                        continue
-                    sheet = doc.get('sheet', '')
-                    date_val = doc.get('date', '')
-                    slot = doc.get('slot', '')
-                    panel_type = doc.get('panelType') or ('HT' if ('_ht' in sheet or 'oldht' in sheet or 'newht' in sheet) else 'LT')
-                    section = doc.get('section') or panel_type
-                    substation = doc.get('substation', '')
-                    panel_name = doc.get('panelName', '')
-                    time_val = doc.get('time', '')
-                    operator = doc.get('operator', '')
-                    rows = doc.get('rows', {})
-                    filled = int(doc.get('filled', 0))
-                    total = int(doc.get('total', 0))
-
-                    try:
-                        parsed_date = datetime.strptime(date_val, '%Y-%m-%d').date() if isinstance(date_val, str) else date_val
-                    except (ValueError, TypeError):
-                        continue
-
-                    SubstationReading.objects.update_or_create(
-                        doc_id=doc_id,
-                        defaults={
-                            'sheet': sheet,
-                            'panel_type': panel_type,
-                            'section': section,
-                            'substation': substation,
-                            'panel_name': panel_name,
-                            'date': parsed_date,
-                            'slot': slot,
-                            'time': time_val,
-                            'operator': operator,
-                            'rows': rows,
-                            'filled': filled,
-                            'total': total,
-                            'raw_data': doc,
-                        }
-                    )
-                    reading_count += 1
-                self.stdout.write(self.style.SUCCESS(f"Seeded {reading_count} historical Substation Readings."))
-        else:
-            self.stdout.write(self.style.WARNING(f"db.json not found at {db_file}"))
 
         # 3. Seed Default Electrical Staff Users
         staff_accounts = [

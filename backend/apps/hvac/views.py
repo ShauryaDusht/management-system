@@ -80,13 +80,9 @@ class HvacLogsListView(APIView):
 
         qs = HvacLog.objects.all()
 
-        from .demo_data import ensure_hvac_demo_data
-
         if date_param:
             # Handle YYYY-MM-DD or YYYY-MM
             if len(date_param) == 10:
-                if op == '==':
-                    ensure_hvac_demo_data(date_param)
                 if op == '>=':
                     qs = qs.filter(date__gte=date_param)
                 elif op == '<=':
@@ -252,9 +248,6 @@ class HvacOverviewView(APIView):
         date_str = request.query_params.get('date')
         if not date_str:
             date_str = date.today().isoformat()
-
-        from .demo_data import ensure_hvac_demo_data
-        ensure_hvac_demo_data(date_str)
 
         day_logs = list(HvacLog.objects.filter(date=date_str).order_by('slot'))
         latest = day_logs[-1] if day_logs else HvacLog.objects.order_by('-date', '-slot').first()
