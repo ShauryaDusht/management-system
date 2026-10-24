@@ -1,0 +1,431 @@
+{% extends 'hvac/mobile/base_hvac.html' %}
+
+{% block title %}Log {{ time }} ({{ date }}) | HVAC Plant Log{% endblock %}
+
+{% block content %}
+<!-- Top Navigation Header -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+  <a href="/hvac/dashboard/?date={{ date }}" style="display:inline-flex;align-items:center;gap:4px;text-decoration:none;color:#2d4a3e;font-size:13px;font-weight:700">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <span>Dashboard</span>
+  </a>
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+    {% if is_today %}
+      <span class="live-badge" style="background:rgba(16,185,129,.12); color:#059669; border-color:rgba(16,185,129,.25);">
+        <span class="live-pulse-dot"></span> LIVE CALENDAR
+      </span>
+    {% else %}
+      <span class="live-badge-history" style="background:rgba(245,158,11,.12); color:#d97706; border-color:rgba(245,158,11,.25);">
+        📅 History
+      </span>
+      <button type="button" class="live-cal-sync-btn" onclick="syncToLiveToday('/hvac/entry/', {slot: '{{ slot }}'})" style="background:#2d4a3e; color:#fff; border:none; padding:3px 8px; font-size:11px; border-radius:6px;">
+        ⚡ Today
+      </button>
+    {% endif %}
+    <span class="pill pill-blue">Shift {{ shift }}</span>
+    <span class="pill pill-green">{{ time }}</span>
+  </div>
+</div>
+
+<!-- 24-Hour Selector Strip -->
+<div style="margin:6px 2px 4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#716b66">
+  Select Time Slot (24h)
+</div>
+<div class="hour-strip">
+  {% for h in slot_nav %}
+    <a href="/hvac/entry/?date={{ date }}&slot={{ h.idx }}" class="hour-pill {% if h.is_active %}active{% endif %}">
+      <span>{{ h.label }}</span>
+      {% if h.is_logged %}<span class="dot">&bull;</span>{% endif %}
+    </a>
+  {% endfor %}
+</div>
+
+{% if is_locked %}
+<style>
+  input, select, textarea { pointer-events: none; background: #f1f5f9 !important; color: #334155 !important; border-color: #cbd5e1 !important; }
+</style>
+<div class="alert-box alert-warn" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;border:1.5px solid #fde68a;background:#fffbeb;color:#92400e;padding:12px 14px">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  <div>
+    <div style="font-weight:800;font-size:13px">Locked (Read-Only Mode)</div>
+    <div style="font-size:12px;margin-top:3px;line-height:1.4">This reading was submitted by <b>{{ existing.operator|default:"Staff" }}</b>. Operators have access to <b>enter new readings only</b> and cannot edit already logged slots. If any correction is needed, please contact the Shift Engineer.</div>
+  </div>
+</div>
+{% elif existing and is_supervisor %}
+<div class="alert-box" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;border:1.5px solid #7dd3fc;background:#f0f9ff;color:#0369a1;padding:10px 14px">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+  <div>
+    <div style="font-weight:800;font-size:12.5px">Shift Engineer Revision Mode</div>
+    <div style="font-size:11.5px">You have supervisory permissions to modify previously logged readings for this slot.</div>
+  </div>
+</div>
+{% endif %}
+
+<form method="post" action="/hvac/entry/?date={{ date }}&slot={{ slot }}">
+  {% csrf_token %}
+
+  <!-- Reading Slot Header Card -->
+  <div class="card" style="border-top:3.5px solid #2d4a3e">
+    <div class="card-header">
+      <div class="card-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2d4a3e" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Hourly Log Details ({{ time }})</span>
+      </div>
+      {% if existing %}
+        <span class="pill pill-green">&check; Saved Entry</span>
+      {% else %}
+        <span class="pill pill-orange">New Entry</span>
+      {% endif %}
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <label>Reading Date</label>
+        <input type="date" name="date" value="{{ date }}" readonly style="background:#f1f5f9;font-weight:700">
+      </div>
+      <div>
+        <label>Time Slot</label>
+        <input type="text" value="{{ time }} (Shift {{ shift }})" readonly style="background:#f1f5f9;font-weight:700">
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+      <div>
+        <label>Operator Name</label>
+        <input type="text" name="operator" value="{% if existing %}{{ existing.operator }}{% else %}{{ user.get_full_name|default:user.username }}{% endif %}" placeholder="e.g. Ramesh Varma" required>
+      </div>
+      <div>
+        <label>Chilled Water SP (&deg;C)</label>
+        <input type="number" step="any" name="setpoint" value="{{ existing.setpoint|default:'' }}" placeholder="e.g. 7.0">
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. Chillers (7 Units) -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2d4a3e" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+        <span>1. Chillers (7 Units)</span>
+      </div>
+      <small style="color:#716b66">Evaporator, Condenser, RLA</small>
+    </div>
+
+    {% for c in chillers_data %}
+      <details class="equip-section" {% if c.st == 'on' or c.evapOut != '' or c.rla != '' %}open{% endif %}>
+        <summary>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13.5px">{{ c.name }} ({{ c.tr }} TR)</span>
+          </div>
+          {% if c.st == 'on' or c.evapOut != '' %}
+            <span class="pill pill-green" style="font-size:10px">Running</span>
+          {% else %}
+            <span class="pill pill-gray" style="font-size:10px">Standby</span>
+          {% endif %}
+        </summary>
+
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px">
+          <!-- Status & Load -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div>
+              <label>Status</label>
+              <select name="c{{ c.num }}_st" style="font-weight:700">
+                <option value="">-- Select --</option>
+                <option value="on" {% if c.st == 'on' %}selected{% endif %}>🟢 Running (On)</option>
+                <option value="off" {% if c.st == 'off' %}selected{% endif %}>⚪ Standby (Off)</option>
+              </select>
+            </div>
+            <div>
+              <label>% RLA</label>
+              <input type="number" step="any" name="c{{ c.num }}_rla" value="{{ c.rla }}" placeholder="e.g. 52.4">
+            </div>
+          </div>
+
+          <!-- Evaporator -->
+          <div style="background:#f8fafc;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;transition:all .2s" id="evap_card_{{ c.num }}">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:11px;font-weight:800;color:#0369a1;text-transform:uppercase">Evaporator (Chilled Water)</span>
+              <span id="dt_badge_{{ c.num }}" style="display:none;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px"></span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+              <div>
+                <label>Entering &deg;C</label>
+                <input type="number" step="any" name="c{{ c.num }}_evapIn" value="{{ c.evapIn }}" placeholder="10.2" oninput="updateChillerDeltaT({{ c.num }})">
+              </div>
+              <div>
+                <label>Leaving &deg;C</label>
+                <input type="number" step="any" name="c{{ c.num }}_evapOut" value="{{ c.evapOut }}" placeholder="7.0" oninput="updateChillerDeltaT({{ c.num }})">
+              </div>
+              <div>
+                <label>Press. (kPa)</label>
+                <input type="number" step="any" name="c{{ c.num }}_evapP" value="{{ c.evapP }}" placeholder="295">
+              </div>
+            </div>
+            <div id="dt_alert_{{ c.num }}" style="display:none;margin-top:8px;padding:6px 10px;background:#fee2e2;border:1px solid #f87171;border-radius:6px;color:#991b1b;font-size:11px;font-weight:800">
+              🚨 High ΔT Alert: Entering &minus; Leaving exceeds 4.0°C!
+            </div>
+          </div>
+
+          <!-- Condenser -->
+          <div style="background:#fff7ed;padding:8px 10px;border-radius:8px;border:1px solid #ffedd5">
+            <div style="font-size:11px;font-weight:800;color:#c2410c;text-transform:uppercase;margin-bottom:6px">Condenser (Cooling Water)</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+              <div>
+                <label>Entering &deg;C</label>
+                <input type="number" step="any" name="c{{ c.num }}_condIn" value="{{ c.condIn }}" placeholder="29.5">
+              </div>
+              <div>
+                <label>Leaving &deg;C</label>
+                <input type="number" step="any" name="c{{ c.num }}_condOut" value="{{ c.condOut }}" placeholder="33.0">
+              </div>
+              <div>
+                <label>Press. (kPa)</label>
+                <input type="number" step="any" name="c{{ c.num }}_condP" value="{{ c.condP }}" placeholder="620">
+              </div>
+            </div>
+          </div>
+
+          <!-- Oil & Refrigerant Diff -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+            <div>
+              <label>Refrig Diff (kPa)</label>
+              <input type="number" step="any" name="c{{ c.num }}_drift" value="{{ c.drift }}" placeholder="e.g. 150">
+            </div>
+            <div>
+              <label>Oil Press (kPa)</label>
+              <input type="number" step="any" name="c{{ c.num }}_oilP" value="{{ c.oilP }}" placeholder="e.g. 305">
+            </div>
+            <div>
+              <label>Oil Level</label>
+              <select name="c{{ c.num }}_oilL" style="font-weight:600">
+                <option value="">--</option>
+                <option value="wet" {% if c.oilL == 'wet' %}selected{% endif %}>Wet (OK)</option>
+                <option value="dry" {% if c.oilL == 'dry' %}selected{% endif %}>Dry (Alert)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Electrical Currents & Voltage -->
+          <div style="background:#f8fafc;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0">
+            <div style="font-size:11px;font-weight:800;color:#475569;text-transform:uppercase;margin-bottom:6px">Currents & Voltage</div>
+            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px 6px">
+              <div>
+                <label>L1 (A)</label>
+                <input type="number" step="any" name="c{{ c.num }}_l1" value="{{ c.l1 }}" placeholder="280">
+              </div>
+              <div>
+                <label>L2 (A)</label>
+                <input type="number" step="any" name="c{{ c.num }}_l2" value="{{ c.l2 }}" placeholder="280">
+              </div>
+              <div>
+                <label>L3 (A)</label>
+                <input type="number" step="any" name="c{{ c.num }}_l3" value="{{ c.l3 }}" placeholder="280">
+              </div>
+              <div>
+                <label>V1 (V)</label>
+                <input type="number" step="any" name="c{{ c.num }}_v1" value="{{ c.v1 }}" placeholder="415">
+              </div>
+              <div>
+                <label>V2 (V)</label>
+                <input type="number" step="any" name="c{{ c.num }}_v2" value="{{ c.v2 }}" placeholder="415">
+              </div>
+              <div>
+                <label>V3 (V)</label>
+                <input type="number" step="any" name="c{{ c.num }}_v3" value="{{ c.v3 }}" placeholder="415">
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+
+  <!-- 2. Water Pumps (Primary, Secondary, Condenser) -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2d4a3e" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span>2. Water Pumps</span>
+      </div>
+      <small style="color:#716b66">Primary, Secondary, Condenser</small>
+    </div>
+
+    {% for pg in pumps_data %}
+      <details class="equip-section" {% if forloop.first %}open{% endif %}>
+        <summary>
+          <span>{{ pg.name }}</span>
+          <span class="pill pill-blue" style="font-size:10px">{{ pg.items|length }} Units</span>
+        </summary>
+        <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          {% for p in pg.items %}
+            <div style="background:#fff;border:1px solid #d1cdc4;border-radius:8px;padding:8px">
+              <div style="font-size:12px;font-weight:800;color:#1a3c34;margin-bottom:4px">
+                Pump {{ p.label }}
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                <div>
+                  <label style="font-size:10px">Volts</label>
+                  <input type="number" step="any" name="{{ p.key }}_v" value="{{ p.v }}" placeholder="415" style="padding:6px 8px;font-size:12.5px">
+                </div>
+                <div>
+                  <label style="font-size:10px">Amps</label>
+                  <input type="number" step="any" name="{{ p.key }}_a" value="{{ p.a }}" placeholder="35.2" style="padding:6px 8px;font-size:12.5px">
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+
+  <!-- 3. Cooling Towers -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2d4a3e" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        <span>3. Cooling Towers (CT 1–5 & NA)</span>
+      </div>
+      <small style="color:#716b66">Fan Motor Current (Amps)</small>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      {% for ct in towers_data %}
+        <div style="background:#faf8f5;border:1px solid #e5e1d8;border-radius:8px;padding:9px 12px">
+          <div style="font-size:12.5px;font-weight:800;color:#1a3c34;margin-bottom:6px">
+            {{ ct.name }}
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(100px, 1fr));gap:6px">
+            {% for f in ct.fans %}
+              <div>
+                <label style="font-size:10px">Fan {{ f.num }} (A)</label>
+                <input type="number" step="any" name="{{ f.key }}" value="{{ f.val }}" placeholder="e.g. 18.2" style="padding:7px 8px;font-size:12.5px">
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- 4. Electrical Panels & Water Meters -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2d4a3e" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>
+        <span>4. Energy Panels & Makeup Water</span>
+      </div>
+    </div>
+
+    <!-- Panels -->
+    <div style="font-size:11px;font-weight:800;color:#716b66;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">HVAC Main Panels</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      {% for pn in panels_data %}
+        <div style="background:#faf8f5;border:1px solid #e5e1d8;border-radius:8px;padding:8px 10px">
+          <div style="font-size:12px;font-weight:800;color:#1a3c34;margin-bottom:6px">{{ pn.name }}</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div>
+              <label style="font-size:10px">MWh</label>
+              <input type="number" step="any" name="pn{{ pn.num }}_mwh" value="{{ pn.mwh }}" placeholder="e.g. 6945.5" style="padding:6px 8px;font-size:12.5px;font-family:'DM Mono',monospace">
+            </div>
+            <div>
+              <label style="font-size:10px">Amp</label>
+              <input type="number" step="any" name="pn{{ pn.num }}_amp" value="{{ pn.amp }}" placeholder="e.g. 74.2" style="padding:6px 8px;font-size:12.5px">
+            </div>
+            <div>
+              <label style="font-size:10px">PF</label>
+              <input type="number" step="any" name="pn{{ pn.num }}_pf" value="{{ pn.pf }}" placeholder="e.g. 0.95" style="padding:6px 8px;font-size:12.5px">
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Water Meters -->
+    <div style="font-size:11px;font-weight:800;color:#716b66;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Water Meters (kL)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(95px, 1fr));gap:8px">
+      {% for wm in water_data %}
+        <div style="background:#faf8f5;border:1px solid #e5e1d8;border-radius:8px;padding:8px 10px">
+          <label style="font-size:11px;color:#0369a1">{{ wm.name }}</label>
+          <input type="number" step="any" name="{{ wm.key }}" value="{{ wm.val }}" placeholder="e.g. 15280" style="padding:7px 8px;font-size:13px;font-family:'DM Mono',monospace">
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Form Submit Action -->
+  {% if not is_locked %}
+    <button type="submit" class="btn-primary" style="margin-top:14px;padding:14px;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      <span>{% if existing and is_supervisor %}Update Readings (Shift Engineer Revision){% else %}Save Readings for {{ time }}{% endif %}</span>
+    </button>
+  {% else %}
+    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 14px;text-align:center;margin-top:14px;color:#166534;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      <span>Readings Recorded &amp; Locked &middot; Read-Only</span>
+    </div>
+  {% endif %}
+  <a href="/hvac/dashboard/?date={{ date }}" class="btn-outline" style="margin-top:8px">
+    &larr; Back to Dashboard
+  </a>
+</form>
+
+<script>
+function updateChillerDeltaT(num) {
+  const inInput = document.querySelector(`input[name="c${num}_evapIn"]`);
+  const outInput = document.querySelector(`input[name="c${num}_evapOut"]`);
+  const badge = document.getElementById(`dt_badge_${num}`);
+  const alertEl = document.getElementById(`dt_alert_${num}`);
+  const card = document.getElementById(`evap_card_${num}`);
+  if (!inInput || !outInput) return;
+  const inVal = parseFloat(inInput.value);
+  const outVal = parseFloat(outInput.value);
+  if (!isNaN(inVal) && !isNaN(outVal)) {
+    const dt = +(inVal - outVal).toFixed(2);
+    if (badge) {
+      badge.style.display = 'inline-block';
+      if (dt > 4.0) {
+        badge.textContent = `🚨 ΔT: ${dt}°C (> 4°C)`;
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#991b1b';
+        badge.style.border = '1px solid #f87171';
+      } else {
+        badge.textContent = `ΔT: ${dt}°C`;
+        badge.style.background = '#e0f2fe';
+        badge.style.color = '#0369a1';
+        badge.style.border = '1px solid #bae6fd';
+      }
+    }
+    if (alertEl) {
+      if (dt > 4.0) {
+        alertEl.style.display = 'block';
+        alertEl.innerHTML = `🚨 <b>High ΔT Alert:</b> Entering (${inVal}°C) &minus; Leaving (${outVal}°C) = <b>${dt}°C</b> (&gt; 4.0°C limit)`;
+      } else {
+        alertEl.style.display = 'none';
+      }
+    }
+    if (card) {
+      if (dt > 4.0) {
+        card.style.borderColor = '#ef4444';
+        card.style.background = '#fff5f5';
+      } else {
+        card.style.borderColor = '#e2e8f0';
+        card.style.background = '#f8fafc';
+      }
+    }
+  } else {
+    if (badge) badge.style.display = 'none';
+    if (alertEl) alertEl.style.display = 'none';
+    if (card) {
+      card.style.borderColor = '#e2e8f0';
+      card.style.background = '#f8fafc';
+    }
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  for (let i = 1; i <= 7; i++) {
+    updateChillerDeltaT(i);
+  }
+});
+</script>
+{% endblock %}

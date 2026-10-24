@@ -1,0 +1,51 @@
+{% extends "wtp_stp/mobile/base_wtp.html" %}
+
+{% block title %}Monthly Block Meters{% endblock %}
+
+{% block content %}
+{% with active_nav="blocks" %}
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <div style="font-size: 16px; font-weight: 800; color: #14283a;">Monthly Block Meters</div>
+      <div style="font-size: 12px; color: #5b6f7c;">Month: {{ month }} • 84 Campus Meters</div>
+    </div>
+  </div>
+</div>
+
+<form method="post" action="">
+  {% csrf_token %}
+  <div class="card">
+    <div style="margin-bottom: 12px;">
+      <label>Operator Name</label>
+      <input type="text" name="by" value="{{ user.get_full_name|default:user.username }}" required>
+    </div>
+    <div>
+      <label>Select Month</label>
+      <input type="month" name="month" value="{{ month }}" onchange="location.href='/wtp/blocks/?month=' + this.value">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Meters List (CUM)</div>
+    <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 12px;">
+      {% for m in meters %}
+        <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #1e293b;">
+            <span>#{{ m.sr }} {{ m.block }}</span>
+            <span style="font-size: 11px; color: #64748b; font-family: monospace;">{{ m.meter_no }}</span>
+          </div>
+          <div style="margin-top: 6px;">
+            <input type="number" step="any" inputmode="decimal" name="m{{ m.sr }}" value="{% for k, v in readings_map.items %}{% if k == 'm'|add:m.sr|stringformat:'s' %}{{ v }}{% endif %}{% endfor %}" placeholder="Reading in CUM">
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <button type="submit" class="btn-primary" style="margin-top: 14px;">
+    Save Monthly Block Readings
+  </button>
+</form>
+{% endwith %}
+{% endblock %}

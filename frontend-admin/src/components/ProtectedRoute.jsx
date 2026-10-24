@@ -12,6 +12,15 @@ function getLandingRoute(user) {
   if (role === 'engineer') {
     return '/lifts'
   }
+  if (['plant_engineer', 'electrical_supervisor', 'supervisor', 'electrical_operator', 'operator'].includes(role)) {
+    return '/substation'
+  }
+  if (['wtp_supervisor', 'wtp_operator'].includes(role)) {
+    return '/wtp'
+  }
+  if (['hvac_engineer', 'hvac_supervisor', 'hvac_operator'].includes(role)) {
+    return '/hvac'
+  }
   return '/unauthorized'
 }
 

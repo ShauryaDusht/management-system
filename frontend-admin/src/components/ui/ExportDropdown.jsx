@@ -71,11 +71,23 @@ const FORMATS = [
 export default function ExportDropdown({
   label = 'Download',
   onExport,
+  onExportCsv,
+  onExportPdf,
+  onExportWord,
+  onExportPresentation,
   disabled = false,
   size = 'sm',
   variant = 'secondary',
   align = 'right',
   style,
+  // Embedded Date Range / Calendar Filter (for Substation / WTP / HVAC)
+  hasDateFilter = false,
+  fromDate = '',
+  toDate = '',
+  onFromDateChange = null,
+  onToDateChange = null,
+  onClearDates = null,
+  dateLabel = '',
 }) {
   const [open, setOpen] = useState(false)
   const [busyFormat, setBusyFormat] = useState(null)
@@ -105,7 +117,15 @@ export default function ExportDropdown({
     if (disabled || busyFormat) return
     setBusyFormat(formatKey)
     try {
-      if (typeof onExport === 'function') {
+      if (formatKey === 'csv' && typeof onExportCsv === 'function') {
+        await onExportCsv()
+      } else if (formatKey === 'pdf' && typeof onExportPdf === 'function') {
+        await onExportPdf()
+      } else if (formatKey === 'word' && typeof onExportWord === 'function') {
+        await onExportWord()
+      } else if (formatKey === 'slides' && typeof onExportPresentation === 'function') {
+        await onExportPresentation()
+      } else if (typeof onExport === 'function') {
         await onExport(formatKey)
       }
       setOpen(false)
@@ -117,7 +137,19 @@ export default function ExportDropdown({
     }
   }
 
-  const isPrimary = variant === 'primary'
+  const isPrimary = variant === 'primary' || variant === 'substation-primary'
+  const isSubstation = variant.startsWith('substation')
+  const isFiltered = Boolean(fromDate || toDate)
+
+  // Visible formats: if only onExportCsv / onExportPdf passed and no general onExport, show those
+  const visibleFormats = FORMATS.filter((fmt) => {
+    if (typeof onExport === 'function') return true
+    if (fmt.key === 'csv') return Boolean(onExportCsv)
+    if (fmt.key === 'pdf') return Boolean(onExportPdf)
+    if (fmt.key === 'word') return Boolean(onExportWord)
+    if (fmt.key === 'slides') return Boolean(onExportPresentation)
+    return true
+  })
 
   return (
     <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block', zIndex: open ? 1000 : undefined, ...style }}>
@@ -133,9 +165,9 @@ export default function ExportDropdown({
           fontWeight: 600,
           cursor: disabled ? 'not-allowed' : 'pointer',
           opacity: disabled ? 0.5 : 1,
-          border: isPrimary ? 'none' : '1px solid var(--border)',
-          background: isPrimary ? 'var(--green-800)' : 'var(--surface-2)',
-          color: isPrimary ? '#ffffff' : 'var(--text)',
+          border: isPrimary ? 'none' : '1px solid var(--border, #cbd5e1)',
+          background: isPrimary ? 'var(--green-800, #1e3a2f)' : 'var(--surface-2, #ffffff)',
+          color: isPrimary ? '#ffffff' : 'var(--text, #1e293b)',
           fontSize: size === 'sm' ? 12 : 13,
           padding: size === 'sm' ? '6px 12px' : '9px 16px',
           transition: 'all 0.15s ease-in-out',
@@ -158,6 +190,23 @@ export default function ExportDropdown({
         </svg>
 
         <span>{busyFormat ? `Exporting ${busyFormat.toUpperCase()}...` : label}</span>
+
+        {isFiltered && (
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              padding: '1px 6px',
+              borderRadius: 10,
+              background: 'var(--water, #0284c7)',
+              color: '#ffffff',
+              lineHeight: 1.3,
+            }}
+            title={dateLabel ? `Filtered: ${dateLabel}` : 'Date range filter active'}
+          >
+            Range
+          </span>
+        )}
 
         <svg
           width="11"
@@ -184,32 +233,113 @@ export default function ExportDropdown({
             top: 'calc(100% + 6px)',
             [align === 'right' ? 'right' : 'left']: 0,
             zIndex: 9999,
-            minWidth: 260,
-            background: 'var(--surface)',
+            minWidth: hasDateFilter ? 280 : 260,
+            background: 'var(--surface, #ffffff)',
             borderRadius: 12,
-            border: '1px solid var(--border)',
+            border: '1px solid var(--border, #e2e8f0)',
             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-            padding: 6,
+            padding: 8,
             display: 'flex',
             flexDirection: 'column',
-            gap: 2,
+            gap: 4,
             animation: 'fadeIn 0.12s ease-out',
           }}
         >
+          {/* Optional Embedded Date Filter */}
+          {hasDateFilter && (
+            <div
+              style={{
+                padding: '8px 10px 10px',
+                borderBottom: '1px solid var(--border, #e2e8f0)',
+                marginBottom: 4,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 6,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: 'var(--text-3, #64748b)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                <span>Export Date Range</span>
+                {isFiltered && onClearDates && (
+                  <button
+                    type="button"
+                    onClick={onClearDates}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#0284c7',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    Clear Filter
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 10, color: 'var(--text-3, #64748b)', marginBottom: 2 }}>From</label>
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => onFromDateChange && onFromDateChange(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '4px 6px',
+                      fontSize: 11,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 6,
+                      background: 'var(--surface-2, #f8fafc)',
+                      color: 'var(--text, #1e293b)',
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 10, color: 'var(--text-3, #64748b)', marginBottom: 2 }}>To</label>
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => onToDateChange && onToDateChange(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '4px 6px',
+                      fontSize: 11,
+                      border: '1px solid var(--border, #cbd5e1)',
+                      borderRadius: 6,
+                      background: 'var(--surface-2, #f8fafc)',
+                      color: 'var(--text, #1e293b)',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div
             style={{
-              padding: '6px 10px 4px',
+              padding: '4px 10px 2px',
               fontSize: 10,
               fontWeight: 800,
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              color: 'var(--text-3)',
+              color: 'var(--text-3, #64748b)',
             }}
           >
             Select Export Format
           </div>
 
-          {FORMATS.map((fmt) => {
+          {visibleFormats.map((fmt) => {
             const isItemBusy = busyFormat === fmt.key
             return (
               <button
@@ -231,7 +361,7 @@ export default function ExportDropdown({
                   transition: 'background 0.12s ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'var(--surface-2)'
+                  e.currentTarget.style.background = 'var(--surface-2, #f1f5f9)'
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'transparent'
@@ -268,7 +398,7 @@ export default function ExportDropdown({
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text, #1e293b)' }}>
                       {fmt.label}
                     </span>
                     <span
@@ -284,7 +414,7 @@ export default function ExportDropdown({
                       {fmt.ext}
                     </span>
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-3, #64748b)', marginTop: 2 }}>
                     {fmt.description}
                   </div>
                 </div>

@@ -24,6 +24,14 @@ import { useAuth } from '../../context/AuthContext'
 
 const ROLES = [
   'admin',
+  'plant_engineer',
+  'electrical_supervisor',
+  'electrical_operator',
+  'wtp_supervisor',
+  'wtp_operator',
+  'hvac_engineer',
+  'hvac_supervisor',
+  'hvac_operator',
   'estate_office',
   'civil_team',
   'electrical_team',
@@ -36,10 +44,18 @@ const ROLES = [
 const HK_ROLES = ['supervisor', 'caretaker']
 const ROLE_FILTERS = [
   { key: 'admin', label: 'Admin' },
+  { key: 'plant_engineer', label: 'Substation & WTP Engr' },
+  { key: 'electrical_supervisor', label: 'Substation Supervisor' },
+  { key: 'electrical_operator', label: 'Substation Operator' },
+  { key: 'wtp_supervisor', label: 'WTP/STP Supervisor' },
+  { key: 'wtp_operator', label: 'WTP/STP Operator' },
+  { key: 'hvac_engineer', label: 'HVAC Engineer' },
+  { key: 'hvac_supervisor', label: 'HVAC Supervisor' },
+  { key: 'hvac_operator', label: 'HVAC Operator' },
   { key: 'estate_office', label: 'Estate Office' },
   { key: 'civil_team', label: 'Civil Team' },
   { key: 'electrical_team', label: 'Electrical Team' },
-  { key: 'hk_inventory_manager', label: 'HK / Inventory Manager' },
+  { key: 'hk_inventory_manager', label: 'HK / Inv. Manager' },
   { key: 'hostel_office', label: 'Hostel Office' },
   { key: 'horticulture_manager', label: 'Horticulture Manager' },
   { key: 'supervisor', label: 'Supervisor' },
@@ -47,6 +63,14 @@ const ROLE_FILTERS = [
 ]
 const ROLE_LABELS = {
   admin: 'Admin',
+  plant_engineer: 'Substation & WTP Engr',
+  electrical_supervisor: 'Substation Supervisor',
+  electrical_operator: 'Substation Operator',
+  wtp_supervisor: 'WTP/STP Supervisor',
+  wtp_operator: 'WTP/STP Operator',
+  hvac_engineer: 'HVAC Engineer',
+  hvac_supervisor: 'HVAC Supervisor',
+  hvac_operator: 'HVAC Operator',
   estate_office: 'Estate Office',
   civil_team: 'Civil Team',
   electrical_team: 'Electrical Team',
@@ -100,6 +124,18 @@ function userDisplayName(user) {
 function areaInchargeText(user) {
   if (Array.isArray(user.areas_incharge) && user.areas_incharge.length > 0) {
     return user.areas_incharge.join(', ')
+  }
+  if (user.role === 'plant_engineer') {
+    return 'Substation & WTP/STP Combined'
+  }
+  if (user.role === 'electrical_supervisor' || user.role === 'electrical_operator') {
+    return 'Substation & HT/LT Panels'
+  }
+  if (user.role === 'wtp_supervisor' || user.role === 'wtp_operator') {
+    return 'WTP & STP Plants'
+  }
+  if (user.role === 'hvac_engineer' || user.role === 'hvac_supervisor' || user.role === 'hvac_operator') {
+    return 'HVAC Plants & Chillers'
   }
   return HK_ROLES.includes(user.role) ? 'Not assigned' : 'All areas'
 }
@@ -258,7 +294,17 @@ export default function UsersPage() {
   const roleCounts = useMemo(() => {
     const counts = {
       admin: 0,
+      plant_engineer: 0,
+      electrical_supervisor: 0,
+      electrical_operator: 0,
+      wtp_supervisor: 0,
+      wtp_operator: 0,
+      hvac_engineer: 0,
+      hvac_supervisor: 0,
+      hvac_operator: 0,
       estate_office: 0,
+      civil_team: 0,
+      electrical_team: 0,
       hk_inventory_manager: 0,
       hostel_office: 0,
       horticulture_manager: 0,
@@ -399,7 +445,7 @@ export default function UsersPage() {
             onChange={(e) => setSearch(e.target.value)}
             style={{ maxWidth: 320 }}
           />
-          <SelectField value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={{ width: 160 }}>
+          <SelectField value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={{ width: 190 }}>
             <option value="all">All Roles</option>
             {ROLE_FILTERS.map((r) => (
               <option key={r.key} value={r.key}>{r.label}</option>
@@ -521,7 +567,7 @@ export default function UsersPage() {
           >
             {editableRoles.map((r) => (
               <option key={r} value={r}>
-                {ROLE_LABELS[r] || r.replace('_', ' ')}
+                {ROLE_LABELS[r] || r.replace(/_/g, ' ')}
               </option>
             ))}
           </SelectField>

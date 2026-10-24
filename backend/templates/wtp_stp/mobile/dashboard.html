@@ -1,0 +1,191 @@
+{% extends "wtp_stp/mobile/base_wtp.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+{% with active_nav="dashboard" %}
+<!-- Shift & Live Calendar Selector Card -->
+<div class="card" style="background: linear-gradient(135deg, #1a3c34, #2d4a3e); color: #fff; border: none; padding: 14px 16px;">
+  <!-- Live Sync Status & Shift Badge Header -->
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px;">
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      {% if is_today %}
+        <span class="live-badge">
+          <span class="live-pulse-dot"></span> LIVE CALENDAR
+        </span>
+        <span style="font-size:12px; font-weight:700; color:rgba(255,255,255,.95);">
+          {{ formatted_date }}
+        </span>
+      {% else %}
+        <span class="live-badge-history">
+          &#x1F4C5; History: {{ formatted_date }}
+        </span>
+        <button type="button" class="live-cal-sync-btn" onclick="syncToLiveToday('/wtp/dashboard/')">
+          &#x26A1; Sync Today
+        </button>
+      {% endif %}
+    </div>
+    <span class="pill pill-green" style="font-size:11.5px; padding:4px 10px; background:rgba(255,255,255,.2); color:#fff; border:1px solid rgba(255,255,255,.3); white-space:nowrap;">
+      Shift {{ active_shift }}
+    </span>
+  </div>
+
+  <!-- Interactive Calendar Input & Live Sync Controls -->
+  <div style="display:flex; align-items:center; gap:8px;">
+    <form method="get" action="/wtp/dashboard/" style="margin:0; display:flex; align-items:center; gap:8px; flex:1;">
+      <div style="position:relative; flex:1; display:flex; align-items:center;">
+        <input
+          type="date"
+          name="date"
+          id="dashDateInput"
+          value="{{ query_date }}"
+          onchange="this.form.submit()"
+          class="cal-date-input"
+          style="width:100%; padding-left:10px;"
+          title="Tap to pick calendar date"
+        >
+      </div>
+    </form>
+    {% if not is_today %}
+      <button type="button" class="live-cal-sync-btn" onclick="syncToLiveToday('/wtp/dashboard/')" title="Sync live calendar to today">
+        Today
+      </button>
+    {% endif %}
+  </div>
+
+  <div style="font-size: 11.5px; color: rgba(255,255,255,0.8); margin-top: 10px;">
+    WTP, STP, WSC-III, and Jalmandapam readings
+  </div>
+</div>
+
+{% if is_supervisor %}
+<!-- Supervisor Operators Control Card -->
+<div class="card" style="background: linear-gradient(135deg, #059669, #047857); color: #fff; border:none; padding:14px 16px; margin-bottom:12px; box-shadow:0 4px 14px rgba(5,150,105,.25);">
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+    <div>
+      <div style="font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:rgba(255,255,255,.85);">
+        &#x1F6E1; Supervisor Portal
+      </div>
+      <div style="font-size:15px; font-weight:800; margin-top:2px;">
+        WTP / STP Operators (Add &amp; Remove)
+      </div>
+      <div style="font-size:11.5px; color:rgba(255,255,255,.9); margin-top:2px;">
+        Add new operators, activate/deactivate, or remove accounts.
+      </div>
+    </div>
+    <a href="/wtp/operators/" style="background:#fff; color:#047857; font-weight:800; padding:8px 14px; font-size:12px; white-space:nowrap; text-decoration:none; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.2); flex-shrink:0;">
+      Manage &rarr;
+    </a>
+  </div>
+</div>
+
+<!-- GWSSB Bulk Water Bill Card (Shift Engineer / Supervisor) -->
+<div class="card" style="background: linear-gradient(135deg, #0e6f8f, #0369a1); color: #fff; border:none; padding:14px 16px; margin-bottom:12px; box-shadow:0 4px 14px rgba(14,111,143,.25);">
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+    <div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:rgba(255,255,255,.85);">
+          💧 Water Billing
+        </span>
+        {% if latest_gwssb %}
+          <span style="background:rgba(255,255,255,.2); font-size:10.5px; font-weight:800; padding:2px 6px; border-radius:4px;">
+            {{ latest_gwssb.month }}
+          </span>
+        {% endif %}
+      </div>
+      <div style="font-size:15px; font-weight:800; margin-top:2px;">
+        GWSSB Water Bill &amp; Consumption
+      </div>
+      <div style="font-size:11.5px; color:rgba(255,255,255,.9); margin-top:2px;">
+        {% if latest_gwssb %}
+          Latest: <b>₹ {{ latest_gwssb.bill_amount|floatformat:2 }}</b> ({{ latest_gwssb.net_consumption|floatformat:1 }} CUM)
+        {% else %}
+          Monthly Initial &amp; Final reading &amp; bill calculation (&times;1000 &amp; &times;₹10).
+        {% endif %}
+      </div>
+    </div>
+    <a href="/wtp/gwssb/" style="background:#fff; color:#0e6f8f; font-weight:800; padding:8px 14px; font-size:12px; white-space:nowrap; text-decoration:none; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.2); flex-shrink:0;">
+      Calculate &rarr;
+    </a>
+  </div>
+</div>
+{% endif %}
+
+<!-- Jalmandapam Tank Levels Snapshot (Shift Engineer / Supervisor only) -->
+{% if tank_levels and is_supervisor %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">💧 Jalmandapam Storage Tanks</div>
+      <div class="card-sub">Real-time water level meters (Max: 4.0 m)</div>
+    </div>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; margin-top: 8px;">
+    {% for t in tank_levels %}
+      <div style="background: #f7fafb; border: 1px solid #d3dde2; border-radius: 8px; padding: 8px; text-align: center;">
+        <div style="font-size: 11px; font-weight: 700; color: #5b6f7c;">JM-{{ t.num }}</div>
+        <div style="font-size: 16px; font-weight: 800; color: #0e6f8f; margin: 4px 0;">{{ t.lvl }} m</div>
+        <div style="height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden;">
+          <div style="height: 100%; width: {{ t.pct }}%; background: #0e6f8f;"></div>
+        </div>
+        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">{{ t.pct }}%</div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Station Selection Cards -->
+<div style="font-size: 13px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.04em; margin: 16px 4px 8px;">
+  Station Shift Readings
+</div>
+
+{% for st in station_cards %}
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">{{ st.name }}</div>
+        <div class="card-sub">{{ st.tag }}</div>
+      </div>
+      {% if st.is_jm %}
+        <a href="/wtp/entry/jm/?shift=1&date={{ query_date }}" class="btn-primary" style="width: auto; padding: 6px 14px; font-size: 12px;">
+          + Log Jalmandap
+        </a>
+      {% else %}
+        <a href="/wtp/entry/{{ st.id }}/?shift={{ active_shift }}&date={{ query_date }}" class="btn-primary" style="width: auto; padding: 6px 14px; font-size: 12px;">
+          + Log S{{ active_shift }}
+        </a>
+      {% endif %}
+    </div>
+
+    <div style="display: flex; gap: 6px; margin-top: 10px;">
+      {% for s_num, s_info in st.shifts.items %}
+        <a href="/wtp/entry/{{ st.id }}/?shift={{ s_num }}&date={{ query_date }}" style="flex: 1; text-decoration: none; color: inherit;">
+          <div style="border: 1px solid {% if s_info.entered %}#86efac{% else %}#e2e8f0{% endif %}; background: {% if s_info.entered %}#f0fdf4{% else %}#f8fafc{% endif %}; border-radius: 8px; padding: 8px; text-align: center;">
+            <div style="font-size: 11px; font-weight: 700; color: #64748b;">{{ s_info.label }}</div>
+            <div style="margin-top: 4px;">
+              {% if s_info.entered %}
+                <span class="pill pill-green">✓ {% if is_supervisor %}Edit{% else %}View{% endif %}</span>
+              {% else %}
+                <span class="pill pill-gray">Pending</span>
+              {% endif %}
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+{% endfor %}
+
+<!-- Monthly Block Meters Card -->
+<div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+  <div>
+    <div class="card-title">🏢 Monthly Block Meters</div>
+    <div class="card-sub">Record readings for 84 residential & campus block meters</div>
+  </div>
+  <a href="/wtp/blocks/" class="btn-outline" style="width: auto; padding: 8px 16px;">
+    Open Blocks
+  </a>
+</div>
+{% endwith %}
+{% endblock %}

@@ -96,6 +96,11 @@ function getDisplayName(user) {
 }
 
 function getRoleLabel(role) {
+  if (role === 'electrical_supervisor') return 'Electrical Supervisor'
+  if (role === 'wtp_supervisor') return 'WTP / STP Supervisor'
+  if (role === 'hvac_engineer') return 'HVAC Engineer'
+  if (role === 'hvac_supervisor') return 'HVAC Supervisor'
+  if (role === 'hvac_operator') return 'HVAC Operator'
   return String(role || 'user').replaceAll('_', ' ')
 }
 
