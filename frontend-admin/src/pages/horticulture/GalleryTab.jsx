@@ -793,8 +793,8 @@ function CompareModal({ assignment, onPrev, onNext, onClose, onDownloadPhoto, cu
             </span>
           </div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 4 }}>
-            📸 Supervisor (Photo Captured By): <strong style={{ color: '#86efac' }}>{assignment.completed_by_name || assignment.assigned_by_name || 'Supervisor'}</strong> · 
-            🛠️ Assigned Worker: <strong style={{ color: '#fff' }}>{assignment.worker_name || '-'}</strong> · 
+            📸 Supervisor (Photo Captured By): <strong style={{ color: '#86efac' }}>{assignment.completed_by_name || assignment.assigned_by_name || 'Supervisor'}</strong> ·
+            🛠️ Assigned Worker: <strong style={{ color: '#fff' }}>{assignment.worker_name || '-'}</strong> ·
             Date: <strong style={{ color: '#fff' }}>{formatDate(assignment.date)}</strong>
             {assignment.session ? ` (${assignment.session})` : ''}
           </div>
@@ -1116,7 +1116,7 @@ export default function GalleryTab() {
         horticultureAPI.getAreas(),
       ])
       imageDebugLog('horticulture.gallery.response', { assignments: assignmentRes.data?.slice?.(0, 3), areas: areaRes.data?.slice?.(0, 3) })
-      
+
       const rawAssignments = asList(assignmentRes.data)
       setAssignments(
         rawAssignments.filter((row) => Boolean(normalizeMediaUrl(row.photo_before_url)) || Boolean(normalizeMediaUrl(row.photo_after_url || row.photo_url)))

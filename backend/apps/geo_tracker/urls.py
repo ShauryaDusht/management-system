@@ -30,4 +30,3 @@ urlpatterns = [
     path('varieties/<int:pk>/', GeoTrackerVarietyDetailView.as_view(), name='geo-variety-detail'),
     path('areas/', GeoTrackerAreasView.as_view(), name='geo-areas'),
 ]
-

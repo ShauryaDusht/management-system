@@ -31,6 +31,10 @@ from .serializers import (
     HousingClearanceSerializer,
 )
 from .housing_master_data import MASTER_HOUSING_UNITS
+from .billing_master_data import (
+    ensure_master_shops_and_contractors,
+    CONTRACTOR_DEFAULT_METERS,
+)
 from .notifications import (
     send_handover_alert,
     send_test_email,
@@ -250,6 +254,7 @@ def resequence_all_cycles_from(cycle_month):
 
 
 def ensure_cycle_notes(cycle_month):
+    ensure_master_shops_and_contractors()
     settings = EstateSettings.get_settings()
     prefix = settings.get_effective_prefix(cycle_month)
     first_no = get_cycle_first_note_no(cycle_month)
@@ -314,7 +319,14 @@ def ensure_cycle_notes(cycle_month):
                     for m in prev_note.meters
                 ]
             else:
-                meters_template = [{'label': '', 'current': '', 'previous': '', 'rate': 9.55}]
+                default_tmpl = CONTRACTOR_DEFAULT_METERS.get(
+                    contractor.sl,
+                    [{'label': '', 'current': '', 'previous': '', 'rate': 9.55}]
+                )
+                meters_template = [
+                    {'label': m.get('label', ''), 'current': '', 'previous': '', 'rate': m.get('rate', 9.55)}
+                    for m in default_tmpl
+                ]
 
             ContractorDemandNote.objects.create(
                 contractor=contractor,
@@ -729,15 +741,15 @@ class SettingsTestEmailView(APIView):
     def post(self, request):
         if not is_estate_allowed(request.user):
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         email = (request.data.get('email') or request.data.get('testRecipientEmail') or '').strip()
         if not email:
             settings_obj = EstateSettings.get_settings()
             email = (settings_obj.test_recipient_email or '').strip()
-        
+
         if not email:
             return Response({'error': 'Please enter a test email address first.'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         ok, msg = send_test_email(email, triggered_by=request.user)
         if ok:
             return Response({'success': True, 'message': f'Test automated no-reply email queued for {email}.'})
@@ -2178,6 +2190,3 @@ class HousingClearanceDetailView(APIView):
                     obj.unit.status = HousingUnit.Status.VACANT
                     obj.unit.save(update_fields=['status'])
         return Response({'success': True}, status=status.HTTP_200_OK)
-
-
-

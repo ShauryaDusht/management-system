@@ -1,0 +1,422 @@
+[
+ {
+  "sr": 1,
+  "block": "RP-Block B",
+  "meterNo": "24/03/12385"
+ },
+ {
+  "sr": 2,
+  "block": "RP-Block D",
+  "meterNo": "24/03/12403"
+ },
+ {
+  "sr": 3,
+  "block": "RP-Block E",
+  "meterNo": "24/03/12404"
+ },
+ {
+  "sr": 4,
+  "block": "STP (Central Vista)",
+  "meterNo": "24/03/12399"
+ },
+ {
+  "sr": 5,
+  "block": "STP (Scenic Drive)",
+  "meterNo": "24/03/12408"
+ },
+ {
+  "sr": 6,
+  "block": "STP (WSC-1)",
+  "meterNo": "24/03/12413"
+ },
+ {
+  "sr": 7,
+  "block": "AB-10 R",
+  "meterNo": "24/03/12402"
+ },
+ {
+  "sr": 8,
+  "block": "AB-10 F",
+  "meterNo": "24/03/12409"
+ },
+ {
+  "sr": 9,
+  "block": "AB-10",
+  "meterNo": "24/03/12411"
+ },
+ {
+  "sr": 10,
+  "block": "AB-11",
+  "meterNo": "24/03/12407"
+ },
+ {
+  "sr": 11,
+  "block": "AB-11",
+  "meterNo": "24/03/12405"
+ },
+ {
+  "sr": 12,
+  "block": "AB-12",
+  "meterNo": "24/03/12414"
+ },
+ {
+  "sr": 13,
+  "block": "AB-12",
+  "meterNo": "24/03/12398"
+ },
+ {
+  "sr": 14,
+  "block": "AB-13 F",
+  "meterNo": "24/03/12412"
+ },
+ {
+  "sr": 15,
+  "block": "AB-13 R",
+  "meterNo": "24/03/12406"
+ },
+ {
+  "sr": 16,
+  "block": "AB-13 F",
+  "meterNo": "24/03/12410"
+ },
+ {
+  "sr": 17,
+  "block": "AB-13 R",
+  "meterNo": "24/03/12400"
+ },
+ {
+  "sr": 18,
+  "block": "NEW AB Borwell",
+  "meterNo": "24/03/12415"
+ },
+ {
+  "sr": 19,
+  "block": "AB-9 HVAC Plant",
+  "meterNo": "24/03/12366"
+ },
+ {
+  "sr": 20,
+  "block": "AB-9 HVAC Plant",
+  "meterNo": "24/03/12340"
+ },
+ {
+  "sr": 21,
+  "block": "Central Arcade",
+  "meterNo": "24/03/12397"
+ },
+ {
+  "sr": 22,
+  "block": "Sports Complex",
+  "meterNo": "24/03/12401"
+ },
+ {
+  "sr": 23,
+  "block": "Director Bungalow",
+  "meterNo": "24/03/12419"
+ },
+ {
+  "sr": 24,
+  "block": "Director Bungalow",
+  "meterNo": "24/03/12418"
+ },
+ {
+  "sr": 25,
+  "block": "Guest House",
+  "meterNo": "24/03/12381"
+ },
+ {
+  "sr": 26,
+  "block": "Guest House",
+  "meterNo": "24/03/12367"
+ },
+ {
+  "sr": 27,
+  "block": "HB-3 Borewell",
+  "meterNo": "24/03/12416"
+ },
+ {
+  "sr": 28,
+  "block": "HB-31",
+  "meterNo": "24/03/12387"
+ },
+ {
+  "sr": 29,
+  "block": "HB-31",
+  "meterNo": "24/03/12363"
+ },
+ {
+  "sr": 30,
+  "block": "HB-32",
+  "meterNo": "24/03/12377"
+ },
+ {
+  "sr": 31,
+  "block": "HB-32",
+  "meterNo": "24/03/12373"
+ },
+ {
+  "sr": 32,
+  "block": "HB-32",
+  "meterNo": "24/03/12360"
+ },
+ {
+  "sr": 33,
+  "block": "HB-32",
+  "meterNo": "24/03/12369"
+ },
+ {
+  "sr": 34,
+  "block": "HB-33",
+  "meterNo": "24/03/12372"
+ },
+ {
+  "sr": 35,
+  "block": "HB-33",
+  "meterNo": "24/03/12368"
+ },
+ {
+  "sr": 36,
+  "block": "HB-34",
+  "meterNo": "24/03/12384"
+ },
+ {
+  "sr": 37,
+  "block": "HB-34",
+  "meterNo": "24/03/12364"
+ },
+ {
+  "sr": 38,
+  "block": "A- Hostel",
+  "meterNo": "24/03/12394"
+ },
+ {
+  "sr": 39,
+  "block": "A- Hostel",
+  "meterNo": "24/03/12380"
+ },
+ {
+  "sr": 40,
+  "block": "A- Hostel",
+  "meterNo": "24/03/12346"
+ },
+ {
+  "sr": 41,
+  "block": "A- Hostel",
+  "meterNo": "24/03/12358"
+ },
+ {
+  "sr": 42,
+  "block": "B- Hostel",
+  "meterNo": "24/03/12375"
+ },
+ {
+  "sr": 43,
+  "block": "B- Hostel",
+  "meterNo": "24/03/12347"
+ },
+ {
+  "sr": 44,
+  "block": "B- Hostel",
+  "meterNo": "24/03/12371"
+ },
+ {
+  "sr": 45,
+  "block": "G- Hostel",
+  "meterNo": "24/03/12378"
+ },
+ {
+  "sr": 46,
+  "block": "G- Hostel",
+  "meterNo": "24/03/12393"
+ },
+ {
+  "sr": 47,
+  "block": "G- Hostel",
+  "meterNo": "24/03/12342"
+ },
+ {
+  "sr": 48,
+  "block": "G- Hostel",
+  "meterNo": "24/03/12350"
+ },
+ {
+  "sr": 49,
+  "block": "G- Hostel",
+  "meterNo": "24/03/12361"
+ },
+ {
+  "sr": 50,
+  "block": "H-Hostel Borewell",
+  "meterNo": "24/03/12417"
+ },
+ {
+  "sr": 51,
+  "block": "H-Hostel",
+  "meterNo": "24/03/12391"
+ },
+ {
+  "sr": 52,
+  "block": "H-Hostel",
+  "meterNo": "24/03/12379"
+ },
+ {
+  "sr": 53,
+  "block": "H-Hostel",
+  "meterNo": "24/03/12376"
+ },
+ {
+  "sr": 54,
+  "block": "H-Hostel",
+  "meterNo": "24/03/12359"
+ },
+ {
+  "sr": 55,
+  "block": "H-Hostel",
+  "meterNo": "24/03/12357"
+ },
+ {
+  "sr": 56,
+  "block": "H-Hostel",
+  "meterNo": "24/03/12354"
+ },
+ {
+  "sr": 57,
+  "block": "I-Hostel",
+  "meterNo": "24/03/12382"
+ },
+ {
+  "sr": 58,
+  "block": "I-Hostel",
+  "meterNo": "24/03/12374"
+ },
+ {
+  "sr": 59,
+  "block": "I-Hostel",
+  "meterNo": "24/03/12351"
+ },
+ {
+  "sr": 60,
+  "block": "I-Hostel",
+  "meterNo": "24/03/12356"
+ },
+ {
+  "sr": 61,
+  "block": "I-Hostel",
+  "meterNo": "24/03/12362"
+ },
+ {
+  "sr": 62,
+  "block": "J-Hostel",
+  "meterNo": "24/03/12396"
+ },
+ {
+  "sr": 63,
+  "block": "J-Hostel",
+  "meterNo": "24/03/12389"
+ },
+ {
+  "sr": 64,
+  "block": "J-Hostel",
+  "meterNo": "24/03/12353"
+ },
+ {
+  "sr": 65,
+  "block": "J-Hostel",
+  "meterNo": "24/03/12343"
+ },
+ {
+  "sr": 66,
+  "block": "J-Hostel",
+  "meterNo": "24/03/12370"
+ },
+ {
+  "sr": 67,
+  "block": "K-Hostel",
+  "meterNo": "24/03/12386"
+ },
+ {
+  "sr": 68,
+  "block": "K-Hostel",
+  "meterNo": "24/03/12390"
+ },
+ {
+  "sr": 69,
+  "block": "K-Hostel",
+  "meterNo": "24/03/12388"
+ },
+ {
+  "sr": 70,
+  "block": "K-Hostel",
+  "meterNo": "24/03/12348"
+ },
+ {
+  "sr": 71,
+  "block": "K-Hostel",
+  "meterNo": "24/03/12345"
+ },
+ {
+  "sr": 72,
+  "block": "K-Hostel",
+  "meterNo": "24/03/12352"
+ },
+ {
+  "sr": 73,
+  "block": "K-Hostel",
+  "meterNo": "24/03/12349"
+ },
+ {
+  "sr": 74,
+  "block": "K-Hostel",
+  "meterNo": "24/03/12341"
+ },
+ {
+  "sr": 75,
+  "block": "L-Hostel",
+  "meterNo": "24/03/12392"
+ },
+ {
+  "sr": 76,
+  "block": "L-Hostel",
+  "meterNo": "24/03/12395"
+ },
+ {
+  "sr": 77,
+  "block": "L-Hostel",
+  "meterNo": "24/03/12355"
+ },
+ {
+  "sr": 78,
+  "block": "L-Hostel",
+  "meterNo": "24/03/12344"
+ },
+ {
+  "sr": 79,
+  "block": "L-Hostel",
+  "meterNo": "24/03/12365"
+ },
+ {
+  "sr": 80,
+  "block": "New Hostel Mess",
+  "meterNo": "24/03/12383"
+ },
+ {
+  "sr": 81,
+  "block": "New Hostel Mess",
+  "meterNo": "24/03/12339"
+ },
+ {
+  "sr": 82,
+  "block": "Laundry",
+  "meterNo": "24/03/12418"
+ },
+ {
+  "sr": 83,
+  "block": "Irrigation 2 Degree",
+  "meterNo": "24/03/12381"
+ },
+ {
+  "sr": 84,
+  "block": "H hostel Bore Const",
+  "meterNo": "24/03/12367"
+ }
+]

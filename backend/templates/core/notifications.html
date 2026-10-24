@@ -1,0 +1,58 @@
+{% extends 'housekeeping/mobile/base_hk.html' %}
+{% block title %}Notifications{% endblock %}
+{% block hdr_title %}NOTIFICATIONS{% endblock %}
+
+{% block back_btn %}
+<a href="{{ back_url|default:'/housekeeping/dashboard/' }}" class="bk" aria-label="Go back">&larr;</a>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+  <div>
+    <h2 style="font-size:18px;font-weight:800;color:#2d4a3e">All Notifications</h2>
+    <div style="font-size:12px;color:#6b7280;margin-top:2px">
+      {% if unread_count %}<span style="color:#dc2626;font-weight:700">{{ unread_count }} unread</span>{% else %}All caught up{% endif %}
+    </div>
+  </div>
+  {% if unread_count %}
+  <button type="button" class="btn-g" style="width:auto;padding:7px 12px;font-size:12px" onclick="markAllNotificationsRead()">Mark all as read</button>
+  {% endif %}
+</div>
+
+{% if notifications %}
+<div style="display:flex;flex-direction:column;gap:10px">
+  {% for notif in notifications %}
+  <div class="card notif-card {% if notif.is_read %}is-read{% endif %}"
+       style="margin-bottom:0;border-left:4.5px solid {% if not notif.is_read %}#2d4a3e{% else %}#cbd5e1{% endif %};background:{% if not notif.is_read %}#ffffff{% else %}rgba(255,255,255,0.7){% endif %};cursor:pointer"
+       onclick="handleNotificationClick({{ notif.id }}, '{{ notif.link|default:'' }}')">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:6px">
+        {% if not notif.is_read %}<span style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block"></span>{% endif %}
+        <span style="font-weight:{% if not notif.is_read %}800{% else %}700{% endif %};font-size:14px;color:#111827">{{ notif.title }}</span>
+      </div>
+      <span style="font-size:11px;color:#6b7280;white-space:nowrap">{{ notif.created_at|date:"d M, H:i" }}</span>
+    </div>
+    <div style="font-size:13px;color:#374151;line-height:1.4;margin:6px 0 10px 0">{{ notif.message }}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      {% if notif.status_label %}
+      <span class="bdg {% if 'approved' in notif.status_label|lower %}g{% elif 'rejected' in notif.status_label|lower %}r{% elif 'pending' in notif.status_label|lower or 'usage' in notif.status_label|lower %}y{% else %}gr{% endif %}">
+        {{ notif.status_label }}
+      </span>
+      {% else %}
+      <span></span>
+      {% endif %}
+      {% if notif.link %}
+      <span style="font-size:12px;font-weight:700;color:#2d4a3e">Open &rarr;</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:40px 20px;color:#6b7280">
+  <div style="font-size:40px;margin-bottom:10px">🔔</div>
+  <div style="font-weight:800;font-size:15px;color:#374151">No Notifications Yet</div>
+  <div style="font-size:12px;margin-top:4px">You will receive updates here for inventory approvals, leave requests, and usage report reminders.</div>
+</div>
+{% endif %}
+{% endblock %}

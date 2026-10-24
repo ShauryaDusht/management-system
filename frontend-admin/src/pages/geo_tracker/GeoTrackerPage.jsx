@@ -26,7 +26,6 @@ import AdminLayout from '../../layout/AdminLayout'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 import { exportReport } from '../../shared/exportHelper'
 
-
 // ---------------------------------------------------------------------------
 // eFlora of Gandhinagar – Tree Information Database
 // Source: www.efloraofgandhinagar.in  (87 trees from campus survey)
@@ -1653,6 +1652,36 @@ export default function GeoTrackerPage() {
     await exportReport(format, exportData)
   }
 
+  async function getGeoTrackerExportData(format) {
+    const params = {}
+    Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v })
+    if (format === 'csv') {
+      await geoApi.exportCsv(params)
+      return null
+    }
+    const query = new URLSearchParams(params).toString()
+    const url = `/api/geo-tracker/records/export/${query ? '?' + query : ''}`
+    const token = localStorage.getItem('access_token')
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!response.ok) throw new Error('Export failed')
+    const csvText = await response.text()
+    const lines = csvText.trim().split('\n').map((l) => l.split(',').map((c) => c.replace(/^"|"$/g, '').trim()))
+    const parsedHeaders = lines[0] || [
+      'Tracking ID', 'Plant Type', 'Common Name', 'Botanical Name', 'Variety',
+      'Latitude', 'Longitude', 'Zone / Area', 'Height (m)', 'Girth (cm)',
+      'Canopy Span (m)', 'Condition', 'Notes', 'GPS Accuracy (m)', 'Submitted At',
+    ]
+    const parsedRows = lines.slice(1).filter((r) => r.length > 1)
+    return {
+      title: 'IIT Gandhinagar Geo-Tracker Plant Records',
+      filename: 'plant_records',
+      headers: parsedHeaders,
+      rows: parsedRows,
+    }
+  }
+
   function resetView() {
     if (!mapInstanceRef.current) return
     mapInstanceRef.current.setView(CAMPUS_CENTER, 16, { animate: true })
@@ -1915,6 +1944,7 @@ export default function GeoTrackerPage() {
                 disabled={records.length === 0}
               />
             </div>
+
           </div>
         </header>
 

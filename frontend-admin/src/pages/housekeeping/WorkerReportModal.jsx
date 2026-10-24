@@ -232,7 +232,7 @@ export default function WorkerReportModal({ open, worker, onClose }) {
         <ExportDropdown
           label="Download Report"
           onExport={handleExportReport}
-          disabled={loading || !worker}
+          disabled={loading || downloading || !worker}
         />
       </div>
 

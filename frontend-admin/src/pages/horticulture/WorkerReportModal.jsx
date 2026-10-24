@@ -159,6 +159,33 @@ export default function WorkerReportModal({ open, worker, onClose }) {
     await exportHorticultureReport(format, exportData)
   }
 
+  const getWorkerExportData = async (format) => {
+    if (!report || !selectedPeriod) throw new Error('Report data not loaded.')
+    const filename = `horticulture_worker_${safeName(worker?.name, worker?.id)}_${String(selectedPeriod.month).padStart(2, '0')}_${selectedPeriod.year}`
+    if (format === 'csv') {
+      downloadCsv()
+      return null
+    }
+    const headers = ['Date', 'Area', 'Task', 'Session', 'Status', 'Assigned At', 'Submitted At', 'Supervisor', 'Photo']
+    const rows = (report.task_details || []).map((row) => [
+      row.date || '',
+      row.area_name || '-',
+      row.task_name || '-',
+      humanizeStatus(row.session),
+      humanizeStatus(row.status),
+      row.assigned_at || '-',
+      row.submitted_at || '-',
+      row.supervisor_name || '-',
+      row.photo_submitted ? 'Yes' : 'No',
+    ])
+    return {
+      title: `${worker?.name || 'Worker'} - Performance Report (${String(selectedPeriod.month).padStart(2, '0')}/${selectedPeriod.year})`,
+      filename,
+      headers,
+      rows: rows.length ? rows : [['No tasks recorded', '-', '-', '-', '-', '-', '-', '-', '-']],
+    }
+  }
+
   return (
     <Modal
       open={open}

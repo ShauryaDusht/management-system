@@ -1,13 +1,14 @@
 import os
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 try:
     from dotenv import load_dotenv
-    load_dotenv(BASE_DIR / '.env')
     load_dotenv(BASE_DIR.parent / '.env')
+    load_dotenv(BASE_DIR / '.env')
 except ImportError:
     pass
 
@@ -26,7 +27,7 @@ def env_list(name, default=''):
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'change-me-in-production')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = ['*'] if DEBUG else env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
@@ -63,7 +64,12 @@ INSTALLED_APPS = [
     'apps.horticulture',
     'apps.geo_tracker',
     'apps.estate_billing',
+    'apps.substation',
+    'apps.wtp_stp',
+    'apps.hvac',
+    'apps.lift_license',
 ]
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -96,8 +102,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-db_engine = os.getenv("DB_ENGINE", "django.db.backends.postgresql")
-if "sqlite" in db_engine:
+DB_ENGINE = os.getenv("DB_ENGINE", "django.db.backends.postgresql")
+
+if "sqlite" in DB_ENGINE:
     db_name = os.getenv("DB_NAME", "db.sqlite3")
     db_path = BASE_DIR / db_name if not os.path.isabs(db_name) else Path(db_name)
     DATABASES = {
@@ -109,7 +116,7 @@ if "sqlite" in db_engine:
 else:
     DATABASES = {
         "default": {
-            "ENGINE": db_engine,
+            "ENGINE": DB_ENGINE,
             "NAME": os.getenv("DB_NAME", "inventory_db"),
             "USER": os.getenv("DB_USER", "postgres"),
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
@@ -117,7 +124,6 @@ else:
             "PORT": os.getenv("DB_PORT", "5432"),
         }
     }
-
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -145,6 +151,7 @@ AUTH_USER_MODEL = 'users.User'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -158,14 +165,15 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOWED_ORIGINS = env_list(
     'CORS_ALLOWED_ORIGINS',
-    'http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000'
+    'http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000',
 )
 
 CSRF_TRUSTED_ORIGINS = env_list(
     'CSRF_TRUSTED_ORIGINS',
-    'http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000'
+    'http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000',
 )
 
 LOGIN_URL = '/portal/login/'
@@ -234,3 +242,7 @@ CIVIL_ALERT_EMAIL = os.getenv('CIVIL_ALERT_EMAIL', '')
 ELECTRICAL_ALERT_EMAIL = os.getenv('ELECTRICAL_ALERT_EMAIL', '')
 HK_ALERT_EMAIL = os.getenv('HK_ALERT_EMAIL', '')
 ESTATE_ALERT_EMAIL = os.getenv('ESTATE_ALERT_EMAIL', '')
+
+# Lift License Expiry Alert Settings
+LIFT_ALERT_EMAIL = os.getenv('LIFT_ALERT_EMAIL', 'je1.electrical@iitgn.ac.in,je2.electrical@iitgn.ac.in')
+LIFT_NOTICE_WINDOW = int(os.getenv('LIFT_NOTICE_WINDOW', 30))

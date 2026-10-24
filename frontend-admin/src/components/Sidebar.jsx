@@ -61,84 +61,143 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
 
-  const navItems = user?.role === 'civil_team'
+  const isEngineer = user?.role === 'engineer'
+  const isPlantEngineer = user?.role === 'plant_engineer'
+
+  const isElectrical =
+    user?.role === 'electrical_supervisor' ||
+    user?.role === 'electrical_operator'
+
+  const isWtp =
+    user?.role === 'wtp_supervisor' ||
+    user?.role === 'wtp_operator'
+
+  const isHvac =
+    user?.role === 'hvac_engineer' ||
+    user?.role === 'hvac_supervisor' ||
+    user?.role === 'hvac_operator'
+
+  const navItems = isEngineer
+    ? [
+      { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : isPlantEngineer
+    ? [
+      { to: '/substation', icon: 'substation', label: 'Substation Log' },
+      { to: '/wtp', icon: 'water', label: 'WTP/STP Meters' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : isElectrical
+    ? [
+      { to: '/substation', icon: 'substation', label: 'Substation Log' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : isWtp
+    ? [
+      { to: '/wtp', icon: 'water', label: 'WTP/STP Meters' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : isHvac
+    ? [
+      {
+        to: '/hvac',
+        icon: 'hvac',
+        label:
+          user?.role === 'hvac_engineer'
+            ? 'HVAC Engineer Portal'
+            : user?.role === 'hvac_supervisor'
+            ? 'HVAC Supervisor Portal'
+            : user?.role === 'hvac_operator'
+            ? 'HVAC Operator Portal'
+            : 'HVAC Plant Log',
+      },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : user?.role === 'civil_team'
     ? [
       { to: '/estate', icon: 'estate', label: 'Civil Clearances' },
       { to: '/profile', icon: 'users', label: 'Profile' },
     ]
     : user?.role === 'electrical_team'
-      ? [
-        { to: '/estate', icon: 'estate', label: 'Electrical Clearances' },
-        { to: '/profile', icon: 'users', label: 'Profile' },
-      ]
-      : user?.role === 'estate_office'
-        ? [
-          { to: '/dashboard', icon: 'estate', label: 'Dashboard' },
-          { to: '/insights', icon: 'insights', label: 'Insights' },
-          { to: '/profile', icon: 'users', label: 'Profile' },
-        ]
-        : user?.role === 'horticulture_manager'
-          ? [
-            { to: '/dashboard', icon: 'home', label: 'Home' },
-            { to: '/horticulture-stock', icon: 'inventory', label: 'Horticulture Inventory' },
-            { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
-            { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
-            { to: '/insights', icon: 'insights', label: 'Insights' },
-            { to: '/profile', icon: 'users', label: 'Profile' },
-          ]
-          : isHostelOffice
-            ? [
-              { to: '/dashboard', icon: 'home', label: 'Home' },
-              { to: '/housekeeping', icon: 'housekeeping', label: 'Hostel Office' },
-              { to: '/inventory', icon: 'inventory', label: 'Inventory Reports' },
-              { to: '/insights', icon: 'insights', label: 'Insights' },
-            ]
-            : user?.role === 'hk_inventory_manager'
-              ? [
-                { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
-                {
-                  to: '/inventory', icon: 'inventory', label: 'Inventory',
-                  badge: badges.inventory,
-                  badgeYellow: false,
-                  extraBadge: badges.lowStock,
-                  extraYellow: true,
-                  extraTitle: 'low stock items',
-                },
-                {
-                  to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
-                  badge: badges.housekeeping,
-                },
-                { to: '/estate', icon: 'estate', label: 'HK Clearances' },
-                { to: '/insights', icon: 'insights', label: 'Insights' },
-                { to: '/users', icon: 'users', label: 'Manage Users' },
-              ]
-              : [
-                { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
-                {
-                  to: '/inventory', icon: 'inventory', label: 'Inventory',
-                  badge: badges.inventory,
-                  badgeYellow: false,
-                  extraBadge: badges.lowStock,
-                  extraYellow: true,
-                  extraTitle: 'low stock items',
-                },
-                {
-                  to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
-                  badge: badges.housekeeping,
-                },
-                { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
-                {
-                  to: '/horticulture-stock',
-                  icon: 'inventory',
-                  label: 'Horticulture Inventory',
-                  badge: badges.horticultureInventory,
-                },
-                { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
-                { to: '/estate', icon: 'estate', label: 'Estate' },
-                { to: '/insights', icon: 'insights', label: 'Insights' },
-                { to: '/users', icon: 'users', label: 'Manage Users' },
-                { to: '/profile', icon: 'users', label: 'Profile' },
-              ]
+    ? [
+      { to: '/estate', icon: 'estate', label: 'Electrical Clearances' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : user?.role === 'estate_office'
+    ? [
+      { to: '/dashboard', icon: 'estate', label: 'Dashboard' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : user?.role === 'horticulture_manager'
+    ? [
+      { to: '/dashboard', icon: 'home', label: 'Home' },
+      { to: '/horticulture-stock', icon: 'inventory', label: 'Horticulture Inventory' },
+      { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
+      { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : isHostelOffice
+    ? [
+      { to: '/dashboard', icon: 'home', label: 'Home' },
+      { to: '/housekeeping', icon: 'housekeeping', label: 'Hostel Office' },
+      { to: '/inventory', icon: 'inventory', label: 'Inventory Reports' },
+      { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
+    ]
+    : user?.role === 'hk_inventory_manager'
+    ? [
+      { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+      {
+        to: '/inventory', icon: 'inventory', label: 'Inventory',
+        badge: badges.inventory,
+        badgeYellow: false,
+        extraBadge: badges.lowStock,
+        extraYellow: true,
+        extraTitle: 'low stock items',
+      },
+      {
+        to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
+        badge: badges.housekeeping,
+      },
+      { to: '/estate', icon: 'estate', label: 'HK Clearances' },
+      { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
+      { to: '/users', icon: 'users', label: 'Manage Users' },
+    ]
+    : [
+      { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+      {
+        to: '/inventory', icon: 'inventory', label: 'Inventory',
+        badge: badges.inventory,
+        badgeYellow: false,
+        extraBadge: badges.lowStock,
+        extraYellow: true,
+        extraTitle: 'low stock items',
+      },
+      {
+        to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
+        badge: badges.housekeeping,
+      },
+      { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
+      {
+        to: '/horticulture-stock',
+        icon: 'inventory',
+        label: 'Horticulture Inventory',
+        badge: badges.horticultureInventory,
+      },
+      { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
+      { to: '/estate', icon: 'estate', label: 'Estate' },
+      { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
+      { to: '/substation', icon: 'substation', label: 'Substation Log' },
+      { to: '/wtp', icon: 'water', label: 'WTP / STP Meters' },
+      { to: '/hvac', icon: 'hvac', label: 'HVAC Plant Log' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
+      { to: '/users', icon: 'users', label: 'Manage Users' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
 
   const handleLogout = async () => {
     await logout()
@@ -261,14 +320,14 @@ export default function Sidebar() {
               color: '#fff', fontWeight: 700, fontSize: 13, flexShrink: 0,
             }}
           >
-            {user?.full_name?.[0] || user?.username?.[0]?.toUpperCase() || 'A'}
+            {user?.role === 'engineer' ? 'L' : (user?.full_name?.[0] || user?.username?.[0]?.toUpperCase() || 'A')}
           </div>
           <div className="sidebar-user-text" style={{ overflow: 'hidden', minWidth: 0 }}>
             <div style={{ color: '#fff', fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user?.full_name || user?.username}
+              {user?.role === 'engineer' ? 'Lift Engineer' : (user?.full_name || user?.username)}
             </div>
             <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user?.role}
+              {user?.role === 'engineer' ? 'Electrical (Lift)' : user?.role === 'plant_engineer' ? 'Substation & WTP Engineer' : user?.role === 'electrical_supervisor' ? 'Substation Supervisor' : user?.role === 'wtp_supervisor' ? 'WTP / STP Supervisor' : user?.role === 'hvac_engineer' ? 'HVAC Engineer' : user?.role === 'hvac_supervisor' ? 'HVAC Supervisor' : user?.role === 'supervisor' ? 'Operations Supervisor' : user?.role === 'hvac_operator' ? 'HVAC Operator' : (user?.role || '').replaceAll('_', ' ')}
             </div>
           </div>
         </div>

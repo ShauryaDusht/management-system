@@ -5,6 +5,9 @@ __pycache__/
 .env
 venv/
 .venv/
+pyrefly.toml
+backend/pyrefly.toml
+backend/pyproject.toml
 *.egg-info/
 staticfiles/
 media/
@@ -20,3 +23,4 @@ Thumbs.db
 celerybeat-schedule
 *.log
 .pytest_cache/
+scratch/

@@ -202,7 +202,16 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'role', 'phone', 'pay_code', 'password', 'area_ids']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'phone', 'pay_code', 'password', 'area_ids']
+        read_only_fields = ['id']
+        extra_kwargs = {
+            'username': {'required': False, 'allow_blank': True},
+            'email': {'required': False, 'allow_blank': True},
+            'first_name': {'required': False, 'allow_blank': True},
+            'last_name': {'required': False, 'allow_blank': True},
+            'phone': {'required': False, 'allow_blank': True},
+            'pay_code': {'required': False, 'allow_blank': True},
+        }
 
     def create(self, validated_data):
         _validate_removed_role(validated_data)

@@ -59,8 +59,8 @@ export function Card({ children, style, onClick, noPad }) {
         borderRadius: 14,
         border: '1px solid var(--border)',
         padding: noPad ? 0 : '18px 20px',
-        overflow: style?.overflow || (noPad ? 'hidden' : 'visible'),
         cursor: onClick ? 'pointer' : 'default',
+        overflow: style?.overflow || (noPad ? 'hidden' : 'visible'),
         ...style,
       }}
     >
@@ -98,7 +98,17 @@ export function Badge({ value, style }) {
     horticulture_manager: { bg: '#dcfce7', color: '#166534', text: 'Horti Manager' },
     supervisor: { bg: '#d1fae5', color: '#065f46', text: 'Supervisor' },
     caretaker: { bg: '#fff7ed', color: '#c2410c', text: 'Caretaker' },
+    plant_engineer: { bg: '#ede9fe', color: '#6d28d9', text: 'Substation & WTP Engr' },
+    electrical_supervisor: { bg: '#e0e7ff', color: '#3730a3', text: 'Substation Supervisor' },
+    electrical_operator: { bg: '#ede9fe', color: '#4338ca', text: 'Substation Operator' },
+    wtp_supervisor: { bg: '#e0f2fe', color: '#0369a1', text: 'WTP/STP Supervisor' },
+    wtp_operator: { bg: '#e0f7fa', color: '#0e7490', text: 'WTP/STP Operator' },
+    hvac_engineer: { bg: '#e0f2fe', color: '#0369a1', text: 'HVAC Engineer' },
+    hvac_supervisor: { bg: '#fef3c7', color: '#b45309', text: 'HVAC Supervisor' },
+    hvac_operator: { bg: '#ffedd5', color: '#c2410c', text: 'HVAC Operator' },
     estate_office: { bg: '#fef3c7', color: '#92400e', text: 'Estate Office' },
+    civil_team: { bg: '#ecfeff', color: '#0e7490', text: 'Civil Team' },
+    electrical_team: { bg: '#ede9fe', color: '#6d28d9', text: 'Electrical Team' },
     urgent: { bg: '#fee2e2', color: '#991b1b', text: '⚡ Urgent' },
   }
   const m =
@@ -192,6 +202,9 @@ function inferIconName(icon, label = '') {
   if (key && ICON_ALIASES[key]) return ICON_ALIASES[key]
 
   const text = String(label || '').toLowerCase()
+  if (text.includes('substation') || text.includes('electrical') || text.includes('panel')) return 'substation'
+  if (text.includes('wtp') || text.includes('stp') || text.includes('water')) return 'water'
+  if (text.includes('hvac') || text.includes('chiller')) return 'hvac'
   if (text.includes('horticulture') || text.includes('zone')) return 'horticulture'
   if (text.includes('housekeeping') || text.includes('hostel task') || text.includes('hk task')) return 'housekeeping'
   if (text.includes('worker')) return 'workers'
@@ -205,10 +218,12 @@ function inferIconName(icon, label = '') {
   if (text.includes('pending') || text.includes('due')) return 'pending'
   if (text.includes('asset') || text.includes('return')) return 'assets'
   if (text.includes('photo') || text.includes('gallery')) return 'photos'
+  if (text.includes('lift') || text.includes('elevator') || text.includes('license')) return 'lift'
   return 'dashboard'
 }
 
 const ICON_PATHS = {
+  lift: 'M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm3 6 3-3 3 3m-6 6 3 3 3-3',
   home: 'M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z',
   dashboard: 'M4 5h7v7H4V5Zm9 0h7v4h-7V5ZM4 14h7v5H4v-5Zm9-3h7v8h-7v-8Z',
   insights: 'M4 19h18M7 16V9m5 7V5m5 11v-6',
@@ -235,6 +250,9 @@ const ICON_PATHS = {
   stockAdded: 'M12 5v14M5 12h14M4 4h16v16H4V4Z',
   photos: 'M4 7h3l2-3h6l2 3h3v14H4V7Zm8 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z',
   visible: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
+  substation: 'M13 2 3 14h9l-1 8 10-12h-9l1-8Z',
+  water: 'M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z',
+  hvac: 'M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z',
   estate: 'M3 21h18M5 21V7l8-4v18M13 21V3l6 4v14M9 9h1M9 13h1M9 17h1M16 10h1M16 14h1',
 }
 
@@ -567,7 +585,9 @@ export function StatCard({
 }
 
 // -- Tabs ---------------------------------------------------------------------
-export function Tabs({ tabs, active, onChange }) {
+export function Tabs({ tabs, active, activeTab, onChange }) {
+  const currentActive = active ?? activeTab
+
   const defaultCountStyle = (isActive) => ({
     background: isActive ? 'rgba(255,255,255,0.25)' : 'var(--border)',
     color: isActive ? '#fff' : 'var(--text-3)',
@@ -599,7 +619,7 @@ export function Tabs({ tabs, active, onChange }) {
       }}
     >
       {tabs.map((tab) => {
-        const isActive = active === tab.key
+        const isActive = currentActive === tab.key
         const countStyle = toneCountStyle(tab.countTone) || defaultCountStyle(isActive)
         return (
           <button

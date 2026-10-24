@@ -11,16 +11,23 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import PermissionDenied
 
-from .models import Category, Item, ItemRequest, ItemIssue, ItemUsageLog, PurchaseRequest, StockEntry
+from .models import (
+    Category, Item, ItemRequest, ItemIssue, ItemIssueAdjustment,
+    ItemUsageLog, PurchaseRequest, StockEntry,
+)
 from .serializers import (
     CategorySerializer, ItemSerializer,
     StockEntrySerializer,
     ItemRequestSerializer, ItemRequestBatchSerializer, ItemRequestReviewSerializer,
     PurchaseRequestSerializer,
-    ItemIssueSerializer, ItemUsageLogSerializer,
+    ItemIssueSerializer, ItemIssueAdjustmentSerializer, ItemUsageLogSerializer,
     ReturnAssetSerializer, FinalizeConsumableSerializer,
     UserActivitySerializer,
     StandardPagination,
+)
+from apps.core.notifications import (
+    notify_inventory_approval_undone,
+    notify_inventory_quantity_adjusted,
 )
 from apps.users.permissions import IsAdmin, IsAdminOrHKInventoryManager, IsSupervisor
 from .permissions import IsAdminOrInventoryManager
@@ -279,6 +286,24 @@ class ItemHistoryView(APIView):
                     'person': supervisor,
                     'detail': f"Actual quantity used: {issue.actual_quantity_used}",
                 })
+
+        adjustments = (
+            ItemIssueAdjustment.objects
+            .filter(issue__request__item=item)
+            .select_related('adjusted_by', 'issue__request__requested_by')
+            .order_by('-created_at')
+        )
+        for adj in adjustments:
+            mgr_name = (adj.adjusted_by.get_full_name() or adj.adjusted_by.username) if adj.adjusted_by else 'Manager'
+            action_label = 'Approval Undone (Restored to Pending)' if adj.action_type == ItemIssueAdjustment.ActionType.REVERSAL else 'Issue Quantity Adjusted'
+            events.append({
+                'type': f'issue_{adj.action_type}',
+                'date': adj.created_at.isoformat(),
+                '_sort_dt': adj.created_at,
+                'quantity': adj.quantity_returned_to_stock,
+                'person': mgr_name,
+                'detail': f"{action_label}: prev={adj.previous_quantity}, new={adj.new_quantity}. Reason: {adj.reason or 'None'}",
+            })
 
         events.sort(key=lambda e: e['_sort_dt'], reverse=True)
         capped = len(events) > self._MAX_MERGED_EVENTS
@@ -560,10 +585,13 @@ class ReviewRequestView(APIView):
             item = Item.objects.select_for_update().get(pk=item_request.item_id)
             item_request.units_remaining = item.available_quantity
 
-        item_request.approved_by = request.user
-        item_request.reviewed_at = timezone.now()
         item_request.save()
         _sync_horticulture_request_status(item_request, item_request.status)
+        from apps.core.notifications import notify_inventory_approved, notify_inventory_rejected
+        if item_request.status == ItemRequest.Status.APPROVED:
+            notify_inventory_approved(item_request)
+        elif item_request.status == ItemRequest.Status.REJECTED:
+            notify_inventory_rejected(item_request, item_request.rejection_reason)
 
         return Response(ItemRequestSerializer(item_request).data)
 
@@ -630,13 +658,29 @@ class IssueItemView(APIView):
             reserved_quantity=F('reserved_quantity') - reserved_release,
         )
 
-        issue = ItemIssue.objects.create(
-            request=item_request,
-            issued_by=request.user,
-            issued_quantity=issued_qty,
-            expected_return_date=expected_return_date,
-            notes=request.data.get('notes', ''),
-        )
+        existing_issue = ItemIssue.objects.filter(request=item_request).first()
+        if existing_issue:
+            existing_issue.issued_by = request.user
+            existing_issue.issued_quantity = issued_qty
+            existing_issue.original_quantity = issued_qty
+            existing_issue.expected_return_date = expected_return_date
+            existing_issue.notes = request.data.get('notes', '')
+            existing_issue.is_reversed = False
+            existing_issue.reversed_at = None
+            existing_issue.reversed_by = None
+            existing_issue.reversal_reason = ''
+            existing_issue.issued_at = timezone.now()
+            existing_issue.save()
+            issue = existing_issue
+        else:
+            issue = ItemIssue.objects.create(
+                request=item_request,
+                issued_by=request.user,
+                issued_quantity=issued_qty,
+                original_quantity=issued_qty,
+                expected_return_date=expected_return_date,
+                notes=request.data.get('notes', ''),
+            )
 
         if was_pending:
             # Skipping the separate approval step — record the issuer as the
@@ -656,6 +700,9 @@ class IssueItemView(APIView):
                 hk_req.save(update_fields=['status'])
         except Exception:
             pass
+
+        from apps.core.notifications import notify_inventory_approved
+        notify_inventory_approved(item_request)
 
         return Response(ItemIssueSerializer(issue).data, status=201)
 
@@ -679,8 +726,14 @@ class ItemIssueListView(generics.ListAPIView):
                 Value(0),
                 output_field=DecimalField(max_digits=10, decimal_places=2),
             )
-        )
+        ).order_by('-issued_at')
         params = getattr(self.request, 'query_params', getattr(self.request, 'GET', {}))
+        issue_id = params.get('id')
+        if issue_id:
+            qs = qs.filter(pk=issue_id)
+        request_id = params.get('request_id')
+        if request_id:
+            qs = qs.filter(request_id=request_id)
         category = params.get('category')
         if category:
             if str(category).isdigit():
@@ -701,11 +754,267 @@ class ItemIssueListView(generics.ListAPIView):
                     | dm.Q(request__item__category__name__icontains='Horticulture')
                     | dm.Q(request__purpose__icontains='[Horticulture')
                 )
+        include_reversed = params.get('include_reversed')
+        if not (include_reversed and str(include_reversed).lower() in ['true', '1']):
+            qs = qs.filter(is_reversed=False)
+
         if getattr(user, 'role', '') in ['supervisor', 'caretaker']:
             return qs.filter(request__requested_by=user)
         if _is_hostel_office(user):
             return qs.filter(request__requested_by_id__in=_hostel_office_staff_ids())
         return qs
+
+
+# ─────────────────────────────────────────────────
+# UNDO APPROVAL / ADJUST ISSUED QUANTITY
+# ─────────────────────────────────────────────────
+
+class AdjustOrReverseIssueView(APIView):
+    permission_classes = [IsAdminOrInventoryManager]
+
+    @transaction.atomic
+    def post(self, request, pk):
+        try:
+            issue = (
+                ItemIssue.objects
+                .select_for_update()
+                .select_related('request__item', 'request__requested_by')
+                .get(pk=pk)
+            )
+        except ItemIssue.DoesNotExist:
+            return Response({'detail': 'Issue record not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if issue.is_reversed:
+            return Response(
+                {'detail': 'This issue has already been undone.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if issue.returned_at:
+            return Response(
+                {'detail': 'Cannot modify an issue where the asset has already been returned.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if issue.usage_finalized:
+            return Response(
+                {'detail': 'Cannot modify an issue where consumable usage has already been finalized.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        action = (request.data.get('action') or '').strip().lower()
+        reason = (request.data.get('reason') or '').strip()
+        if not reason:
+            return Response(
+                {'reason': ['A reason must be provided for reversing or adjusting an issue.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        total_consumed = issue.usage_logs.aggregate(
+            c=Coalesce(Sum('quantity_used'), Value(0), output_field=DecimalField(max_digits=10, decimal_places=2))
+        )['c'] or Decimal('0')
+
+        item = Item.objects.select_for_update().get(pk=issue.request.item_id)
+        item_request = ItemRequest.objects.select_for_update().get(pk=issue.request_id)
+
+        # ── ACTION 1: UNDO ENTIRE APPROVAL / REVERSAL ─────────────────────────
+        if action in ['reversal', 'undo']:
+            if total_consumed > 0:
+                return Response(
+                    {
+                        'detail': (
+                            f'Cannot undo approval: {total_consumed} units have already been reported as used '
+                            f'or consumed by the supervisor. Downstream usage must not be silently rewritten.'
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            restore_qty = issue.issued_quantity
+            # 1. Restore stock to warehouse
+            Item.objects.filter(pk=item.pk).update(
+                available_quantity=F('available_quantity') + restore_qty
+            )
+            item.refresh_from_db()
+
+            # 2. Mark issue as reversed
+            issue.is_reversed = True
+            issue.reversed_at = timezone.now()
+            issue.reversed_by = request.user
+            issue.reversal_reason = reason
+            issue.save(update_fields=['is_reversed', 'reversed_at', 'reversed_by', 'reversal_reason'])
+
+            # 3. Restore item request to PENDING state
+            original_requested_qty = issue.original_quantity or item_request.quantity_requested
+            item_request.status = ItemRequest.Status.PENDING
+            item_request.approved_by = None
+            item_request.reviewed_at = None
+            item_request.quantity_requested = original_requested_qty
+            item_request.units_remaining = item.available_quantity
+            item_request.save(update_fields=[
+                'status', 'approved_by', 'reviewed_at', 'quantity_requested', 'units_remaining'
+            ])
+
+            # 4. Sync with horticulture & HKStockRequest
+            _sync_horticulture_request_status(item_request, ItemRequest.Status.PENDING)
+            try:
+                from apps.housekeeping.models import HKStockRequest
+                hk_req = HKStockRequest.objects.filter(inventory_request=item_request).first()
+                if hk_req:
+                    hk_req.status = 'pending'
+                    hk_req.quantity = original_requested_qty
+                    hk_req.covered_quantity = Decimal('0')
+                    hk_req.save(update_fields=['status', 'quantity', 'covered_quantity'])
+            except Exception:
+                pass
+
+            # 5. Record audit trail
+            adjustment = ItemIssueAdjustment.objects.create(
+                issue=issue,
+                action_type=ItemIssueAdjustment.ActionType.REVERSAL,
+                previous_quantity=issue.issued_quantity,
+                new_quantity=Decimal('0'),
+                quantity_returned_to_stock=restore_qty,
+                reason=reason,
+                adjusted_by=request.user,
+            )
+
+            # 6. Notify supervisor
+            notify_inventory_approval_undone(item_request, reason=reason, manager=request.user)
+
+            return Response({
+                'detail': 'Entire approval undone successfully. Request restored to Pending state.',
+                'issue': ItemIssueSerializer(issue).data,
+                'request': ItemRequestSerializer(item_request).data,
+                'adjustment': ItemIssueAdjustmentSerializer(adjustment).data,
+            }, status=status.HTTP_200_OK)
+
+        # ── ACTION 2: QUANTITY ADJUSTMENT ─────────────────────────────────────
+        elif action == 'adjustment':
+            raw_new_qty = request.data.get('new_quantity')
+            try:
+                new_quantity = Decimal(str(raw_new_qty).strip())
+            except (InvalidOperation, TypeError, ValueError):
+                return Response(
+                    {'new_quantity': ['A valid numerical quantity is required.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if new_quantity <= 0:
+                return Response(
+                    {'new_quantity': ['Adjusted quantity must be greater than zero. To reverse completely, select Undo Entire Approval.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            orig_qty = issue.original_quantity or issue.issued_quantity
+            if new_quantity > orig_qty:
+                return Response(
+                    {'new_quantity': [f'Adjusted quantity cannot exceed the original quantity of {orig_qty}.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if new_quantity < total_consumed:
+                return Response(
+                    {
+                        'new_quantity': [
+                            f'Adjusted quantity cannot be less than already consumed quantity ({total_consumed}).'
+                        ]
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            current_qty = issue.issued_quantity
+            diff = current_qty - new_quantity
+
+            if diff == Decimal('0'):
+                return Response(
+                    {'new_quantity': ['Adjusted quantity is identical to current issued quantity. No change needed.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if diff > 0:
+                # Returning excess to warehouse stock
+                Item.objects.filter(pk=item.pk).update(available_quantity=F('available_quantity') + diff)
+                qty_returned = diff
+            else:
+                # Manager is increasing back towards original quantity; need stock from warehouse
+                needed = abs(diff)
+                if item.available_quantity < needed:
+                    return Response(
+                        {'detail': f'Insufficient warehouse stock. Needed: {needed}, Available: {item.available_quantity}.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                Item.objects.filter(pk=item.pk).update(available_quantity=F('available_quantity') - needed)
+                qty_returned = -needed
+
+            # Update issue
+            issue.issued_quantity = new_quantity
+            issue.save(update_fields=['issued_quantity'])
+
+            # Update request
+            item_request.quantity_requested = new_quantity
+            item_request.save(update_fields=['quantity_requested'])
+
+            # Sync HKStockRequest
+            try:
+                from apps.housekeeping.models import HKStockRequest
+                hk_req = HKStockRequest.objects.filter(inventory_request=item_request).first()
+                if hk_req:
+                    hk_req.quantity = new_quantity
+                    hk_req.save(update_fields=['quantity'])
+            except Exception:
+                pass
+
+            # Record audit trail
+            adjustment = ItemIssueAdjustment.objects.create(
+                issue=issue,
+                action_type=ItemIssueAdjustment.ActionType.ADJUSTMENT,
+                previous_quantity=current_qty,
+                new_quantity=new_quantity,
+                quantity_returned_to_stock=qty_returned,
+                reason=reason,
+                adjusted_by=request.user,
+            )
+
+            # Notify supervisor
+            notify_inventory_quantity_adjusted(
+                item_request,
+                old_qty=current_qty,
+                new_qty=new_quantity,
+                reason=reason,
+                manager=request.user,
+            )
+
+            return Response({
+                'detail': f'Issued quantity adjusted from {current_qty} to {new_quantity}.',
+                'issue': ItemIssueSerializer(issue).data,
+                'request': ItemRequestSerializer(item_request).data,
+                'adjustment': ItemIssueAdjustmentSerializer(adjustment).data,
+            }, status=status.HTTP_200_OK)
+
+        else:
+            return Response(
+                {'action': ["Invalid action. Must be 'reversal' (undo) or 'adjustment'."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class IssueAdjustmentHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            issue = ItemIssue.objects.get(pk=pk)
+        except ItemIssue.DoesNotExist:
+            return Response({'detail': 'Issue record not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        user = request.user
+        # Supervisor can view their own, manager/admin can view any
+        if getattr(user, 'role', '') in ['supervisor', 'caretaker'] and issue.request.requested_by_id != user.id:
+            raise PermissionDenied('You do not have permission to view adjustments for this issue.')
+
+        adjustments = issue.adjustments.select_related('adjusted_by').order_by('-created_at')
+        return Response(ItemIssueAdjustmentSerializer(adjustments, many=True).data)
 
 
 # ─────────────────────────────────────────────────

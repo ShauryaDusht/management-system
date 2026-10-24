@@ -28,7 +28,7 @@ def build_username_from_names(first_name, last_name):
 
 
 def is_standard_username(username):
-    if username == 'hk_inventory_manager':
+    if username in ('hk_inventory_manager', 'engineer'):
         return True
     return bool(USERNAME_RE.fullmatch(username or ''))
 
@@ -71,13 +71,22 @@ class User(AbstractUser):
         HK_INVENTORY_MANAGER = 'hk_inventory_manager', 'Housekeeping / Inventory Manager'
         HOSTEL_OFFICE = 'hostel_office', 'Hostel Office'
         HORTICULTURE_MANAGER = 'horticulture_manager', 'Horticulture Manager'
+        ENGINEER = 'engineer', 'Lift Engineer'
         SUPERVISOR = 'supervisor', 'Supervisor'
         CARETAKER = 'caretaker', 'Caretaker'
+        PLANT_ENGINEER = 'plant_engineer', 'Executive Engineer (Substation & WTP/STP)'
+        ELECTRICAL_SUPERVISOR = 'electrical_supervisor', 'Electrical Supervisor'
+        ELECTRICAL_OPERATOR = 'electrical_operator', 'Electrical Operator'
+        WTP_SUPERVISOR = 'wtp_supervisor', 'WTP/STP Supervisor'
+        WTP_OPERATOR = 'wtp_operator', 'WTP/STP Operator'
+        HVAC_ENGINEER = 'hvac_engineer', 'HVAC Engineer'
+        HVAC_SUPERVISOR = 'hvac_supervisor', 'HVAC Supervisor'
+        HVAC_OPERATOR = 'hvac_operator', 'HVAC Operator'
         ESTATE_OFFICE = 'estate_office', 'Estate Office'
         CIVIL_TEAM = 'civil_team', 'Civil Team'
         ELECTRICAL_TEAM = 'electrical_team', 'Electrical Team'
 
-    role = models.CharField(max_length=25, choices=Role.choices, default=Role.SUPERVISOR)
+    role = models.CharField(max_length=30, choices=Role.choices, default=Role.SUPERVISOR)
     phone = models.CharField(max_length=15, blank=True)
     pay_code = models.CharField(max_length=20, blank=True)
     profile_photo = models.ImageField(upload_to='users/photos/', null=True, blank=True)
@@ -113,6 +122,42 @@ class User(AbstractUser):
     @property
     def is_horticulture_manager(self):
         return self.role == self.Role.HORTICULTURE_MANAGER
+
+    @property
+    def is_engineer(self):
+        return self.role == self.Role.ENGINEER
+
+    @property
+    def is_plant_engineer(self):
+        return self.role == self.Role.PLANT_ENGINEER
+
+    @property
+    def is_electrical_supervisor(self):
+        return self.role == self.Role.ELECTRICAL_SUPERVISOR
+
+    @property
+    def is_electrical_operator(self):
+        return self.role == self.Role.ELECTRICAL_OPERATOR
+
+    @property
+    def is_wtp_supervisor(self):
+        return self.role == self.Role.WTP_SUPERVISOR
+
+    @property
+    def is_wtp_operator(self):
+        return self.role == self.Role.WTP_OPERATOR
+
+    @property
+    def is_hvac_engineer(self):
+        return self.role == self.Role.HVAC_ENGINEER
+
+    @property
+    def is_hvac_supervisor(self):
+        return self.role == self.Role.HVAC_SUPERVISOR
+
+    @property
+    def is_hvac_operator(self):
+        return self.role == self.Role.HVAC_OPERATOR
 
     @property
     def is_any_manager(self):
