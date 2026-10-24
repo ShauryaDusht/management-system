@@ -58,49 +58,12 @@ class Command(BaseCommand):
                 estate_user.save(update_fields=['role'])
             self.stdout.write('  [OK] Login estate.office exists.')
 
-        # 3. Seed Shops
-        shops_created = 0
-        for data in SEED_SHOPS:
-            shop, was_created = Shop.objects.get_or_create(
-                sl=data['sl'],
-                defaults={
-                    'name': data['name'],
-                    'address': DEFAULT_ADDRESS,
-                    'fixed': data.get('fixed', False),
-                    'default_rate': Decimal('9.55'),
-                    'default_water': data.get('water', Decimal('320.00')),
-                    'is_active': True,
-                }
-            )
-            if was_created:
-                shops_created += 1
-            else:
-                shop.name = data['name']
-                shop.fixed = data.get('fixed', False)
-                shop.default_water = data.get('water', Decimal('320.00'))
-                shop.save(update_fields=['name', 'fixed', 'default_water'])
+        # 1. Run master reconciliation and data population
+        ensure_master_shops_and_contractors(force=True)
+        self.stdout.write(f'  [OK] Shops reconciled: {Shop.objects.count()}')
+        self.stdout.write(f'  [OK] Contractors reconciled: {Contractor.objects.count()}')
 
-        self.stdout.write(f'  [OK] Shops: {Shop.objects.count()} (created: {shops_created})')
-
-        # 4. Seed Contractors
-        contractors_created = 0
-        for data in SEED_CONTRACTORS:
-            contractor, was_created = Contractor.objects.get_or_create(
-                sl=data['sl'],
-                defaults={
-                    'name': data['name'],
-                    'to_line': data.get('to_line', ''),
-                    'address': CONTRACTOR_ADDRESS,
-                    'intro': data.get('intro', CONTRACTOR_INTRO),
-                    'is_active': True,
-                }
-            )
-            if was_created:
-                contractors_created += 1
-
-        self.stdout.write(f'  [OK] Contractors: {Contractor.objects.count()} (created: {contractors_created})')
-
-        # 5. Initialize current billing cycle notes
+        # 2. Ensure current cycle notes
         current_cycle = datetime.date.today().strftime('%Y-%m')
         ensure_cycle_notes(current_cycle)
         self.stdout.write(f'  [OK] Demand notes ensured for cycle {current_cycle}')
