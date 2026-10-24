@@ -1,0 +1,63 @@
+{% extends "wtp_stp/mobile/base_wtp.html" %}
+
+{% block title %}Recent Logs History{% endblock %}
+
+{% block content %}
+{% with active_nav="history" %}
+<div class="card" style="padding: 12px 14px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+    <div>
+      <div class="card-title">Recent Shift Readings</div>
+      <div class="card-sub">Audit trail of submitted station logs</div>
+    </div>
+    {% if date_filter %}
+      <a href="/wtp/history/" class="btn-outline" style="width:auto; padding:4px 10px; font-size:11px;">
+        Show All
+      </a>
+    {% endif %}
+  </div>
+  <form method="get" action="/wtp/history/" style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+    <input type="date" name="date" value="{{ date_filter }}" onchange="this.form.submit()" style="padding:6px 10px; font-size:13px; font-weight:700; flex:1;">
+    <button type="button" class="btn-outline" onclick="syncToLiveToday('/wtp/history/')" style="width:auto; padding:6px 12px; font-size:12px; white-space:nowrap;">
+      ⚡ Today
+    </button>
+  </form>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px;">
+  {% for r in readings %}
+    <div class="card" style="margin-bottom: 0;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-size: 13px; font-weight: 800; color: #14283a;">
+            {% if r.station == 'jm' %}JALMANDAPAM • {% if r.shift == 2 %}Final Value{% else %}Initial Value{% endif %}{% else %}{{ r.station|upper }} • Shift {{ r.shift }}{% endif %}
+          </div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+            {{ r.date }} • By {{ r.by|default:"Operator" }}
+          </div>
+        </div>
+        <div>
+          {% if r.status == 'verified' %}
+            <span class="pill pill-green">Verified</span>
+          {% elif r.status == 'flagged' %}
+            <span class="pill pill-orange">Flagged</span>
+          {% else %}
+            <span class="pill pill-gray">Pending</span>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if r.supervisor_note %}
+        <div style="margin-top: 8px; font-size: 11px; color: #b4540a; background: #fffbeb; padding: 6px 10px; border-radius: 6px; border: 1px solid #fef3c7;">
+          <strong>Note:</strong> {{ r.supervisor_note }}
+        </div>
+      {% endif %}
+    </div>
+  {% empty %}
+    <div class="card" style="text-align: center; color: #64748b; padding: 24px;">
+      No readings recorded yet.
+    </div>
+  {% endfor %}
+</div>
+{% endwith %}
+{% endblock %}

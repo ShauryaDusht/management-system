@@ -1,0 +1,151 @@
+{% extends 'hvac/mobile/base_hvac.html' %}
+
+{% block title %}Shift Engineer Handover ({{ date }}) | HVAC Plant{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+  <a href="/hvac/dashboard/?date={{ date }}" style="display:inline-flex;align-items:center;gap:4px;text-decoration:none;color:#2d4a3e;font-size:13px;font-weight:700">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <span>Dashboard</span>
+  </a>
+  <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+    {% if is_today %}
+      <span class="live-badge" style="background:rgba(16,185,129,.12); color:#059669; border-color:rgba(16,185,129,.25);">
+        <span class="live-pulse-dot"></span> LIVE CALENDAR
+      </span>
+    {% else %}
+      <span class="live-badge-history" style="background:rgba(245,158,11,.12); color:#d97706; border-color:rgba(245,158,11,.25);">
+        📅 History
+      </span>
+      <button type="button" class="live-cal-sync-btn" onclick="syncToLiveToday('/hvac/handover/', {shift: '{{ shift }}'})" style="background:#2d4a3e; color:#fff; border:none; padding:3px 8px; font-size:11px; border-radius:6px;">
+        ⚡ Today
+      </button>
+    {% endif %}
+    <span class="pill pill-blue">Shift {{ shift }} Handover</span>
+  </div>
+</div>
+
+<div class="card" style="padding:12px 14px">
+  <form method="get" action="/hvac/handover/" style="display:flex;gap:10px;margin:0">
+    <div style="flex:1">
+      <label>Handover Date</label>
+      <input type="date" name="date" value="{{ date }}" onchange="this.form.submit()" style="padding:7px 10px;font-size:13px;font-weight:700">
+    </div>
+    <div style="width:120px">
+      <label>Shift</label>
+      <select name="shift" onchange="this.form.submit()" style="padding:7px 10px;font-size:13px;font-weight:700">
+        <option value="1" {% if shift == '1' %}selected{% endif %}>Shift 1</option>
+        <option value="2" {% if shift == '2' %}selected{% endif %}>Shift 2</option>
+        <option value="3" {% if shift == '3' %}selected{% endif %}>Shift 3</option>
+      </select>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="border-top:3.5px solid #1a3c34">
+  <div class="card-header">
+    <div class="card-title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a3c34" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span>Shift Engineer Handover (Shift {{ shift }})</span>
+    </div>
+    <span class="pill {% if existing.status == 'Normal' %}pill-green{% elif existing.status == 'Critical' %}pill-red{% else %}pill-orange{% endif %}">
+      {{ existing.status|default:"Pending" }}
+    </span>
+  </div>
+
+  <form method="post" action="/hvac/handover/?date={{ date }}&shift={{ shift }}" style="display:flex;flex-direction:column;gap:14px">
+    {% csrf_token %}
+    <input type="hidden" name="date" value="{{ date }}">
+    <input type="hidden" name="shift" value="{{ shift }}">
+
+    <div>
+      <div style="font-size:11.5px;font-weight:800;color:#1a3c34;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">
+        Plant Equipment Physical Audit Checklist:
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label style="display:flex;align-items:center;gap:10px;background:#faf8f5;padding:10px 12px;border-radius:8px;border:1px solid #e5e1d8;cursor:pointer;margin:0">
+          <input type="checkbox" name="chillers_checked" value="1" {% if existing == None or existing.chillers_checked %}checked{% endif %} style="width:18px;height:18px;accent-color:#2d4a3e">
+          <span style="font-size:12.5px;font-weight:700;color:#1a1a1a">❄️ Chillers 1–7 inspected (delta-T & oil pressure nominal)</span>
+        </label>
+
+        <label style="display:flex;align-items:center;gap:10px;background:#faf8f5;padding:10px 12px;border-radius:8px;border:1px solid #e5e1d8;cursor:pointer;margin:0">
+          <input type="checkbox" name="pumps_checked" value="1" {% if existing == None or existing.pumps_checked %}checked{% endif %} style="width:18px;height:18px;accent-color:#2d4a3e">
+          <span style="font-size:12.5px;font-weight:700;color:#1a1a1a">🔄 Chilled Water Pumps (Primary & Secondary operating)</span>
+        </label>
+
+        <label style="display:flex;align-items:center;gap:10px;background:#faf8f5;padding:10px 12px;border-radius:8px;border:1px solid #e5e1d8;cursor:pointer;margin:0">
+          <input type="checkbox" name="towers_checked" value="1" {% if existing == None or existing.towers_checked %}checked{% endif %} style="width:18px;height:18px;accent-color:#2d4a3e">
+          <span style="font-size:12.5px;font-weight:700;color:#1a1a1a">🗼 Cooling Towers CT 1–5 & NA 1–2 water basin & fans</span>
+        </label>
+
+        <label style="display:flex;align-items:center;gap:10px;background:#faf8f5;padding:10px 12px;border-radius:8px;border:1px solid #e5e1d8;cursor:pointer;margin:0">
+          <input type="checkbox" name="panels_checked" value="1" {% if existing == None or existing.panels_checked %}checked{% endif %} style="width:18px;height:18px;accent-color:#2d4a3e">
+          <span style="font-size:12.5px;font-weight:700;color:#1a1a1a">⚡ Main Electrical Panels (Panel 1 & 2 MWh, Amps, PF)</span>
+        </label>
+
+        <label style="display:flex;align-items:center;gap:10px;background:#faf8f5;padding:10px 12px;border-radius:8px;border:1px solid #e5e1d8;cursor:pointer;margin:0">
+          <input type="checkbox" name="water_checked" value="1" {% if existing == None or existing.water_checked %}checked{% endif %} style="width:18px;height:18px;accent-color:#2d4a3e">
+          <span style="font-size:12.5px;font-weight:700;color:#1a1a1a">💧 Makeup Water Supply & Meters functioning correctly</span>
+        </label>
+      </div>
+    </div>
+
+    <div>
+      <label>Shift Operational Status</label>
+      <select name="status" style="font-weight:700">
+        <option value="Normal" {% if existing.status == 'Normal' %}selected{% endif %}>🟢 Normal Operations</option>
+        <option value="Attention Needed" {% if existing.status == 'Attention Needed' %}selected{% endif %}>🟡 Attention Needed</option>
+        <option value="Critical" {% if existing.status == 'Critical' %}selected{% endif %}>🔴 Critical Action Needed</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Shift Engineer Name</label>
+      <input type="text" name="supervisor_name" value="{{ existing.supervisor_name|default:user.get_full_name|default:user.username }}" style="font-weight:700">
+    </div>
+
+    <div>
+      <label>Handover Remarks & Next Shift Instructions</label>
+      <textarea name="notes" rows="4" placeholder="Enter equipment status, ongoing maintenance, or handover notes...">{{ existing.notes|default:"" }}</textarea>
+    </div>
+
+    <button type="submit" class="btn-primary" style="margin-top:6px;display:flex;align-items:center;justify-content:center;gap:8px">
+      <span>🛡️ Save & Sign Off Shift Handover</span>
+    </button>
+  </form>
+</div>
+
+<!-- History of Recorded Handovers for this date -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a3c34" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>Recorded Handovers for {{ date }}</span>
+    </div>
+  </div>
+  {% if recent_handovers %}
+    <div style="display:flex;flex-direction:column;gap:8px">
+      {% for h in recent_handovers %}
+        <div style="background:#faf8f5;border:1px solid #e5e1d8;border-radius:8px;padding:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <b style="font-size:13px;color:#1a3c34">Shift {{ h.shift }} &middot; {{ h.supervisor_name }}</b>
+            <span class="pill {% if h.status == 'Normal' %}pill-green{% elif h.status == 'Critical' %}pill-red{% else %}pill-orange{% endif %}">
+              {{ h.status }}
+            </span>
+          </div>
+          <div style="font-size:12px;color:#4a4540;margin-top:4px">
+            {{ h.notes|default:"No remarks recorded" }}
+          </div>
+          <div style="font-size:10.5px;color:#716b66;margin-top:4px;text-align:right">
+            Updated: {{ h.updated_at|date:"H:i, d M" }}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div style="text-align:center;color:#716b66;padding:16px;font-size:12px">
+      No handovers logged yet for this date.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "substation/mobile/base_substation.html" %}
+
+{% block title %}R-01 Flash Report | Substation Log{% endblock %}
+
+{% block content %}
+<div class="card" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: #fff; border: none; padding: 14px 16px;">
+  <!-- Live Sync Status & Shift Badge -->
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px;">
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      {% if is_today %}
+        <span class="live-badge">
+          <span class="live-pulse-dot"></span> LIVE CALENDAR
+        </span>
+        <span style="font-size:12px; font-weight:700; color:rgba(255,255,255,.95);">
+          {{ formatted_date }}
+        </span>
+      {% else %}
+        <span class="live-badge-history">
+          &#x1F4C5; History: {{ formatted_date }}
+        </span>
+        <button type="button" class="live-cal-sync-btn" onclick="syncToLiveToday('/substation/flash/')">
+          &#x26A1; Sync Today
+        </button>
+      {% endif %}
+    </div>
+    <span class="pill pill-blue" style="font-size:11.5px; padding:4px 10px; background:rgba(255,255,255,.2); color:#fff; border:1px solid rgba(255,255,255,.3);">
+      Shift {{ current_slot }}
+    </span>
+  </div>
+
+  <div style="font-size:18px; font-weight:800; margin-top:2px;">
+    R-01 Flash Report
+  </div>
+
+  <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+    <form method="get" action="/substation/flash/" style="margin:0; flex:1;">
+      <input
+        type="date"
+        name="date"
+        value="{{ current_date }}"
+        onchange="this.form.submit()"
+        class="cal-date-input"
+        style="width:100%;"
+        title="Tap to pick calendar date"
+      >
+    </form>
+    {% if not is_today %}
+      <button type="button" class="live-cal-sync-btn" onclick="syncToLiveToday('/substation/flash/')" title="Sync live calendar to current date">
+        Today
+      </button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Flash Overview Cards -->
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+  <div class="card" style="padding:14px;">
+    <div style="font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase;">Campus Total Load</div>
+    <div style="font-size:22px; font-weight:800; color:#0284c7; margin-top:4px;">{{ total_load_kwh|default:"1,420" }} <span style="font-size:12px; font-weight:600; color:#64748b;">kW</span></div>
+    <div style="font-size:11px; color:#059669; margin-top:4px; font-weight:600;">Normal operating range</div>
+  </div>
+  <div class="card" style="padding:14px;">
+    <div style="font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase;">Solar Generation</div>
+    <div style="font-size:22px; font-weight:800; color:#10b981; margin-top:4px;">{{ solar_kw|default:"385" }} <span style="font-size:12px; font-weight:600; color:#64748b;">kW</span></div>
+    <div style="font-size:11px; color:#059669; margin-top:4px; font-weight:600;">{{ solar_pct|default:"27" }}% of total load</div>
+  </div>
+</div>
+
+<!-- Transformer Status -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Transformer Loading (TR-1 & TR-2)</div>
+    <span class="pill pill-green">Stable</span>
+  </div>
+
+  <div style="margin-top:12px;">
+    <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:700;">
+      <span>TR-1 (2000 kVA - Acad 1)</span>
+      <span style="color:#0284c7;">58%</span>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-bar" style="width: 58%; background:#0284c7;"></div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;">
+    <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:700;">
+      <span>TR-2 (2000 kVA - Acad 2)</span>
+      <span style="color:#0284c7;">62%</span>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-bar" style="width: 62%; background:#0284c7;"></div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;">
+    <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:700;">
+      <span>TR-3 (1500 kVA - Main Infra)</span>
+      <span style="color:#10b981;">44%</span>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-bar" style="width: 44%; background:#10b981;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Average Power Factor (PF)</div>
+    <span class="pill pill-green">0.98</span>
+  </div>
+  <div style="font-size:12px; color:#475569; line-height:1.45;">
+    APFC capacitor banks active across Academic, Main Infra, and Hostel substations. Target maintained above 0.95.
+  </div>
+</div>
+{% endblock %}

@@ -31,6 +31,10 @@ from .serializers import (
     HousingClearanceSerializer,
 )
 from .housing_master_data import MASTER_HOUSING_UNITS
+from .billing_master_data import (
+    ensure_master_shops_and_contractors,
+    CONTRACTOR_DEFAULT_METERS,
+)
 from .notifications import (
     send_handover_alert,
     send_test_email,
@@ -250,6 +254,7 @@ def resequence_all_cycles_from(cycle_month):
 
 
 def ensure_cycle_notes(cycle_month):
+    ensure_master_shops_and_contractors()
     settings = EstateSettings.get_settings()
     prefix = settings.get_effective_prefix(cycle_month)
     first_no = get_cycle_first_note_no(cycle_month)
@@ -314,7 +319,14 @@ def ensure_cycle_notes(cycle_month):
                     for m in prev_note.meters
                 ]
             else:
-                meters_template = [{'label': '', 'current': '', 'previous': '', 'rate': 9.55}]
+                default_tmpl = CONTRACTOR_DEFAULT_METERS.get(
+                    contractor.sl,
+                    [{'label': '', 'current': '', 'previous': '', 'rate': 9.55}]
+                )
+                meters_template = [
+                    {'label': m.get('label', ''), 'current': '', 'previous': '', 'rate': m.get('rate', 9.55)}
+                    for m in default_tmpl
+                ]
 
             ContractorDemandNote.objects.create(
                 contractor=contractor,

@@ -1,0 +1,152 @@
+{% extends "substation/mobile/base_substation.html" %}
+
+{% block title %}Manage Operators | Substation{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+  <div>
+    <h2 style="font-size:18px; font-weight:800; color:#0f172a; margin:0;">
+      &#x1F465; Substation Operators
+    </h2>
+    <p style="font-size:12px; color:#64748b; margin:2px 0 0 0;">
+      Add, activate, deactivate, or remove field operators.
+    </p>
+  </div>
+  <a href="/substation/dashboard/" class="btn-outline" style="width:auto; padding:6px 12px; font-size:12px;">
+    &larr; Dashboard
+  </a>
+</div>
+
+<!-- Stats Strip -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
+  <div class="card" style="margin:0; padding:12px 14px; background:#fff;">
+    <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">Total Operators</div>
+    <div style="font-size:22px; font-weight:900; color:#0f172a; margin-top:2px;">{{ total_count }}</div>
+  </div>
+  <div class="card" style="margin:0; padding:12px 14px; background:#f0fdf4; border-color:#bbf7d0;">
+    <div style="font-size:11px; font-weight:700; color:#15803d; text-transform:uppercase;">Active On Duty</div>
+    <div style="font-size:22px; font-weight:900; color:#15803d; margin-top:2px;">{{ active_count }}</div>
+  </div>
+</div>
+
+<!-- Add Operator Collapsible Card -->
+<div class="card" style="background:#fff; border:1.5px solid #0284c7; box-shadow:0 4px 12px rgba(2,132,199,.08);">
+  <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleAddForm()">
+    <div style="font-weight:800; font-size:14px; color:#0284c7; display:flex; align-items:center; gap:6px;">
+      <span>&#x2795;</span> Add New Field Operator
+    </div>
+    <span id="addFormToggleIcon" style="font-size:13px; font-weight:800; color:#0284c7;">+ Expand</span>
+  </div>
+
+  <form id="addOperatorForm" method="post" action="/substation/operators/" style="display:none; margin-top:14px; border-top:1px solid #e2e8f0; padding-top:14px;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="add">
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+      <div>
+        <label>First Name *</label>
+        <input type="text" name="first_name" placeholder="e.g. Ramesh" required>
+      </div>
+      <div>
+        <label>Last Name *</label>
+        <input type="text" name="last_name" placeholder="e.g. Patel" required>
+      </div>
+    </div>
+
+    <div style="margin-bottom:10px;">
+      <label>10-Digit Mobile Number (Login ID) *</label>
+      <input type="tel" name="phone" placeholder="e.g. 9876543210" pattern="[0-9]{10}" maxlength="10" required>
+      <div style="font-size:11px; color:#64748b; margin-top:3px;">
+        Operator can login directly using this mobile number.
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label>Initial Password</label>
+      <input type="text" name="password" value="IITGN@2025" required>
+      <div style="font-size:11px; color:#64748b; margin-top:3px;">
+        Default: <code>IITGN@2025</code> (operator can change later).
+      </div>
+    </div>
+
+    <button type="submit" class="btn-primary" style="background:linear-gradient(135deg, #0284c7, #0369a1);">
+      &#x2714; Save &amp; Create Operator
+    </button>
+  </form>
+</div>
+
+<!-- Operator List -->
+<h3 style="font-size:14px; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:.04em; margin:16px 0 8px 4px;">
+  Active &amp; Registered Operators ({{ total_count }})
+</h3>
+
+{% for op in operators %}
+  <div class="card" style="margin-bottom:10px; padding:14px; {% if not op.is_active %}opacity:0.75; background:#fafafa;{% endif %}">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+      <div style="display:flex; gap:10px; align-items:center;">
+        <div style="width:38px; height:38px; border-radius:50%; background:{% if op.is_active %}#2d4a3e{% else %}#94a3b8{% endif %}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; flex-shrink:0;">
+          {{ op.first_name|slice:":1"|upper }}{{ op.last_name|slice:":1"|upper }}
+        </div>
+        <div>
+          <div style="font-weight:800; font-size:14px; color:#0f172a;">
+            {{ op.get_full_name|default:op.username }}
+          </div>
+          <div style="font-size:12px; color:#0369a1; font-weight:700; margin-top:2px;">
+            &#x1F4DE; <a href="tel:{{ op.phone }}" style="color:#0369a1; text-decoration:none;">{{ op.phone|default:"No phone" }}</a>
+          </div>
+          <div style="font-size:11px; color:#64748b; margin-top:1px;">
+            Username: <code>{{ op.username }}</code>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        {% if op.is_active %}
+          <span class="pill pill-green">&#x25CF; Active</span>
+        {% else %}
+          <span class="pill pill-orange">Inactive</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Quick Action Bar -->
+    <div style="display:flex; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid #f1f5f9;">
+      <form method="post" action="/substation/operators/" style="flex:1; margin:0;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="toggle_status">
+        <input type="hidden" name="operator_id" value="{{ op.id }}">
+        <button type="submit" class="btn-outline" style="padding:6px 10px; font-size:12px; {% if op.is_active %}color:#b45309; border-color:#fde68a; background:#fffbeb;{% else %}color:#15803d; border-color:#bbf7d0; background:#f0fdf4;{% endif %}">
+          {% if op.is_active %}&#x23F8; Deactivate{% else %}&#x25B6; Activate{% endif %}
+        </button>
+      </form>
+
+      <form method="post" action="/substation/operators/" style="margin:0;" onsubmit="return confirm('Are you sure you want to permanently remove operator {{ op.get_full_name|default:op.username }}?');">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="operator_id" value="{{ op.id }}">
+        <button type="submit" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;">
+          &#x1F5D1; Remove
+        </button>
+      </form>
+    </div>
+  </div>
+{% empty %}
+  <div class="card" style="text-align:center; padding:30px; color:#64748b;">
+    No operators found. Tap "+ Add New Field Operator" above to register staff.
+  </div>
+{% endfor %}
+
+<script>
+function toggleAddForm() {
+  const form = document.getElementById('addOperatorForm');
+  const icon = document.getElementById('addFormToggleIcon');
+  if (form.style.display === 'none' || form.style.display === '') {
+    form.style.display = 'block';
+    icon.textContent = '- Collapse';
+  } else {
+    form.style.display = 'none';
+    icon.textContent = '+ Expand';
+  }
+}
+</script>
+{% endblock %}

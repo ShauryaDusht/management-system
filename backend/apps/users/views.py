@@ -42,6 +42,32 @@ def _hostel_office_area_q():
     )
 
 
+def _get_managed_operator_roles(user):
+    if not user or not user.is_authenticated:
+        return set()
+    if user.is_admin or getattr(user, 'is_hk_inventory_manager', False) or user.is_superuser:
+        return None  # None indicates unrestricted admin / HK manager access
+    allowed = set()
+    role = getattr(user, 'role', '')
+    if role == User.Role.PLANT_ENGINEER:
+        allowed.update([User.Role.ELECTRICAL_OPERATOR, User.Role.WTP_OPERATOR])
+    elif role == User.Role.ELECTRICAL_SUPERVISOR:
+        allowed.add(User.Role.ELECTRICAL_OPERATOR)
+    elif role == User.Role.WTP_SUPERVISOR:
+        allowed.add(User.Role.WTP_OPERATOR)
+    elif role in [User.Role.HVAC_ENGINEER, User.Role.HVAC_SUPERVISOR]:
+        allowed.add(User.Role.HVAC_OPERATOR)
+    return allowed
+
+
+def _is_operations_supervisor_or_admin(user):
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_admin or getattr(user, 'is_hk_inventory_manager', False) or user.is_superuser:
+        return True
+    return bool(_get_managed_operator_roles(user))
+
+
 def _deny_hk_inventory_admin_mutation(request_user, target_user=None, incoming_role=None):
     if not _is_hk_inventory_request(request_user):
         return
@@ -94,19 +120,24 @@ class MeView(APIView):
 
 class UserListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/auth/users/   — Admin: list all users
-    POST /api/auth/users/   — Admin: create new user
+    GET  /api/auth/users/   — Admin & Supervisors: list users
+    POST /api/auth/users/   — Admin & Supervisors: create new operator/user
     """
     def get_permissions(self):
-        if self.request.method == 'GET' and _is_hostel_office_request(self.request.user):
-            return [IsAuthenticated()]
-        return [IsAdminOrHousekeepingUserManager()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         qs = User.objects.prefetch_related(
             'hk_areas__area',
             'horticulture_supervised_zones',
         ).exclude(username__in=DEPRECATED_MANAGER_USERNAMES).exclude(role='housekeeping_manager').order_by('role', 'first_name')
+
+        managed_roles = _get_managed_operator_roles(self.request.user)
+        if managed_roles is not None:
+            if not managed_roles:
+                raise PermissionDenied('You do not have permission to view users.')
+            qs = qs.filter(role__in=managed_roles)
+
         if _is_hostel_office_request(self.request.user):
             from apps.housekeeping.models import HKArea
 
@@ -130,26 +161,48 @@ class UserListCreateView(generics.ListCreateAPIView):
         return UserSerializer
 
     def perform_create(self, serializer):
-        _deny_hk_inventory_admin_mutation(
-            self.request.user,
-            incoming_role=serializer.validated_data.get('role'),
-        )
+        managed_roles = _get_managed_operator_roles(self.request.user)
+        if managed_roles is not None:
+            incoming_role = serializer.validated_data.get('role')
+            if incoming_role not in managed_roles:
+                raise PermissionDenied(f'Supervisors can only add operators for their department: {", ".join(managed_roles)}')
+        else:
+            _deny_hk_inventory_admin_mutation(
+                self.request.user,
+                incoming_role=serializer.validated_data.get('role'),
+            )
         serializer.save()
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
     GET/PUT/PATCH/DELETE /api/auth/users/<id>/
-    Admin only.
+    Admin & Department Supervisors.
     """
     queryset = User.objects.prefetch_related('hk_areas__area', 'horticulture_supervised_zones').all()
     serializer_class = UserSerializer
+
     def get_permissions(self):
-        if self.request.method == 'PATCH' and _is_hostel_office_request(self.request.user):
-            return [IsAuthenticated()]
-        return [IsAdminOrHousekeepingUserManager()]
+        return [IsAuthenticated()]
+
+    def get_queryset(self):
+        qs = User.objects.prefetch_related('hk_areas__area', 'horticulture_supervised_zones').all()
+        managed_roles = _get_managed_operator_roles(self.request.user)
+        if managed_roles is not None:
+            qs = qs.filter(role__in=managed_roles)
+        return qs
 
     def perform_update(self, serializer):
+        managed_roles = _get_managed_operator_roles(self.request.user)
+        if managed_roles is not None:
+            if serializer.instance.role not in managed_roles:
+                raise PermissionDenied('Supervisors can only update operators for their department.')
+            incoming_role = serializer.validated_data.get('role')
+            if incoming_role and incoming_role not in managed_roles:
+                raise PermissionDenied('Supervisors cannot reassign operators outside their department.')
+            serializer.save()
+            return
+
         if _is_hostel_office_request(self.request.user):
             incoming_keys = set(self.request.data.keys())
             allowed_keys = {'first_name', 'last_name', 'email', 'phone', 'pay_code', 'is_active', 'area_ids'}
@@ -188,6 +241,12 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         serializer.save()
 
     def perform_destroy(self, instance):
+        managed_roles = _get_managed_operator_roles(self.request.user)
+        if managed_roles is not None:
+            if instance.role not in managed_roles:
+                raise PermissionDenied('Supervisors can only remove operators for their department.')
+            instance.delete()
+            return
         _deny_hk_inventory_admin_mutation(self.request.user, target_user=instance)
         instance.delete()
 
