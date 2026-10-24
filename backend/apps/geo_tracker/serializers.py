@@ -31,6 +31,8 @@ class PlantRecordSerializer(serializers.ModelSerializer):
             'latitude', 'longitude', 'lat', 'lng',
             'zone', 'zone_display',
             'height_m', 'girth_cm', 'length_m', 'width_m', 'canopy_area_m',
+            'total_area_m', 'plant_spacing_cm', 'planting_pattern', 'area_shape',
+            'plant_count',
             'condition', 'condition_display',
             'photo_url',
             'notes', 'gps_accuracy_m',
@@ -55,17 +57,24 @@ class PlantRecordUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'plant_type', 'variety', 'local_name', 'scientific_name',
             'zone', 'condition',
-            'height_m', 'girth_cm', 'length_m', 'width_m', 'canopy_area_m', 'gps_accuracy_m',
+            'height_m', 'girth_cm', 'length_m', 'width_m', 'canopy_area_m',
+            'total_area_m', 'plant_spacing_cm', 'planting_pattern', 'area_shape',
+            'plant_count', 'gps_accuracy_m',
             'notes',
         ]
         extra_kwargs = {
-            'plant_type':      {'required': False},
-            'variety':         {'required': False, 'allow_null': True},
-            'local_name':      {'required': False, 'allow_blank': True},
-            'scientific_name': {'required': False, 'allow_blank': True},
-            'zone':            {'required': False, 'allow_blank': True},
-            'condition':       {'required': False},
-            'notes':           {'required': False, 'allow_blank': True},
+            'plant_type':       {'required': False},
+            'variety':          {'required': False, 'allow_null': True},
+            'local_name':       {'required': False, 'allow_blank': True},
+            'scientific_name':  {'required': False, 'allow_blank': True},
+            'zone':             {'required': False, 'allow_blank': True},
+            'condition':        {'required': False},
+            'plant_count':      {'required': False},
+            'total_area_m':     {'required': False, 'allow_null': True},
+            'plant_spacing_cm': {'required': False, 'allow_null': True},
+            'planting_pattern': {'required': False, 'allow_blank': True},
+            'area_shape':       {'required': False, 'allow_blank': True},
+            'notes':            {'required': False, 'allow_blank': True},
         }
 
     def update(self, instance, validated_data):
@@ -90,12 +99,19 @@ class PlantRecordCreateSerializer(serializers.ModelSerializer):
             'plant_type', 'local_name', 'scientific_name', 'variety',
             'latitude', 'longitude', 'zone',
             'height_m', 'girth_cm', 'length_m', 'width_m', 'canopy_area_m',
+            'total_area_m', 'plant_spacing_cm', 'planting_pattern', 'area_shape',
+            'plant_count',
             'condition', 'photo', 'notes', 'gps_accuracy_m',
         ]
         read_only_fields = ['plant_type', 'local_name', 'scientific_name']
         extra_kwargs = {
-            'variety': {'required': True, 'allow_null': False},
-            'zone':    {'required': True, 'allow_blank': False},
+            'variety':          {'required': True, 'allow_null': False},
+            'zone':             {'required': True, 'allow_blank': False},
+            'plant_count':      {'required': False},
+            'total_area_m':     {'required': False, 'allow_null': True},
+            'plant_spacing_cm': {'required': False, 'allow_null': True},
+            'planting_pattern': {'required': False, 'allow_blank': True},
+            'area_shape':       {'required': False, 'allow_blank': True},
         }
 
     def create(self, validated_data):
@@ -135,6 +151,7 @@ def records_to_csv(queryset):
         'ID', 'Type', 'Local Name', 'Scientific Name', 'Variety',
         'Latitude', 'Longitude', 'Campus Area',
         'Height (m)', 'Girth (cm)', 'Length (m)', 'Width (m)', 'Canopy Span (m)',
+        'Total Plants', 'Plot Area (m²)', 'Spacing (cm)',
         'Condition', 'Notes', 'GPS Accuracy (m)', 'Submitted At',
     ])
     for r in queryset:
@@ -152,6 +169,9 @@ def records_to_csv(queryset):
             r.length_m or '',
             r.width_m or '',
             r.canopy_area_m or '',
+            r.plant_count or 1,
+            r.total_area_m or '',
+            r.plant_spacing_cm or '',
             r.get_condition_display(),
             r.notes,
             r.gps_accuracy_m or '',
