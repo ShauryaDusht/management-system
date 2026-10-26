@@ -1041,6 +1041,50 @@ class AdminHorticultureSupervisorsAPIView(APIView):
         return Response(serializer.data)
 
 
+def _normalize_worker_area_ids(data):
+    if not hasattr(data, '__getitem__') or 'area_ids' not in data:
+        return data
+    if hasattr(data, 'getlist'):
+        raw = data.getlist('area_ids')
+        parsed = []
+        for item in raw:
+            if isinstance(item, str) and (',' in item or item.startswith('[')):
+                try:
+                    import json
+                    loaded = json.loads(item)
+                    if isinstance(loaded, list):
+                        parsed.extend([str(x) for x in loaded])
+                    else:
+                        parsed.append(str(loaded))
+                except Exception:
+                    parsed.extend([s.strip() for s in item.strip('[]').split(',') if s.strip()])
+            elif item:
+                parsed.append(str(item))
+        data.setlist('area_ids', parsed)
+    else:
+        raw = data['area_ids']
+        if isinstance(raw, str):
+            raw = raw.strip()
+            if raw.startswith('[') and raw.endswith(']'):
+                try:
+                    import json
+                    raw = json.loads(raw)
+                except Exception:
+                    raw = [s.strip() for s in raw[1:-1].split(',') if s.strip()]
+            elif ',' in raw:
+                raw = [s.strip() for s in raw.split(',') if s.strip()]
+            elif raw:
+                raw = [raw]
+            else:
+                raw = []
+        elif isinstance(raw, int):
+            raw = [raw]
+        elif raw is None:
+            raw = []
+        data['area_ids'] = raw
+    return data
+
+
 class AdminHorticultureWorkersAPIView(APIView):
     permission_classes = [IsAdminOrHorticultureManager]
 
@@ -1050,8 +1094,7 @@ class AdminHorticultureWorkersAPIView(APIView):
 
     def post(self, request):
         data = request.data.copy()
-        if hasattr(request.data, 'getlist'):
-            data.setlist('area_ids', request.data.getlist('area_ids'))
+        data = _normalize_worker_area_ids(data)
         serializer = AdminWorkerSerializer(data=data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         worker = serializer.save()
@@ -1068,8 +1111,7 @@ class AdminHorticultureWorkerDetailAPIView(APIView):
     def patch(self, request, worker_id):
         worker = self.get_object(worker_id)
         data = request.data.copy()
-        if hasattr(request.data, 'getlist'):
-            data.setlist('area_ids', request.data.getlist('area_ids'))
+        data = _normalize_worker_area_ids(data)
         serializer = AdminWorkerSerializer(worker, data=data, partial=True, context={'request': request})
         serializer.is_valid(raise_exception=True)
         worker = serializer.save()

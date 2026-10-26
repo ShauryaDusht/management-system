@@ -68,6 +68,18 @@ export default function WorkersTab() {
     return Array.from(names).sort()
   }, [workers])
 
+  const areaWorkerMap = useMemo(() => {
+    const map = {}
+    asList(workers).forEach((w) => {
+      if (w.is_active === false) return
+      asList(w.assigned_areas).forEach((a) => {
+        if (!map[a.id]) map[a.id] = []
+        map[a.id].push(w.name)
+      })
+    })
+    return map
+  }, [workers])
+
   const visibleWorkers = useMemo(() => {
     const query = search.trim().toLowerCase()
     return workers.filter((worker) => {
@@ -114,14 +126,23 @@ export default function WorkersTab() {
   }
 
   const buildWorkerPayload = () => {
-    const payload = new FormData()
-    payload.append('name', String(form.name || '').trim())
-    payload.append('phone', String(form.phone || '').trim())
-    payload.append('pay_code', String(form.pay_code || '').trim())
-    payload.append('is_active', form.is_active ? 'true' : 'false')
-    asList(form.area_ids).forEach((id) => payload.append('area_ids', String(id)))
-    if (form.photo) payload.append('photo', form.photo)
-    return payload
+    if (form.photo) {
+      const payload = new FormData()
+      payload.append('name', String(form.name || '').trim())
+      payload.append('phone', String(form.phone || '').trim())
+      payload.append('pay_code', String(form.pay_code || '').trim())
+      payload.append('is_active', form.is_active ? 'true' : 'false')
+      asList(form.area_ids).forEach((id) => payload.append('area_ids', String(id)))
+      payload.append('photo', form.photo)
+      return payload
+    }
+    return {
+      name: String(form.name || '').trim(),
+      phone: String(form.phone || '').trim(),
+      pay_code: String(form.pay_code || '').trim(),
+      is_active: Boolean(form.is_active),
+      area_ids: asList(form.area_ids).map(Number),
+    }
   }
 
   const saveWorker = async () => {
@@ -264,16 +285,29 @@ export default function WorkersTab() {
         </div>
         <Field label="Assigned Areas">
           <div style={{ border: '1px solid var(--border)', borderRadius: 8, maxHeight: 220, overflow: 'auto', padding: 8 }}>
-            {areas.map((area) => (
-              <label key={area.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 4px', fontSize: 12 }}>
-                <input
-                  type="checkbox"
-                  checked={asList(form.area_ids).map(Number).includes(Number(area.id))}
-                  onChange={() => toggleArea(area.id)}
-                />
-                <span>{area.name} ({area.zone_name || '-'})</span>
-              </label>
-            ))}
+            {areas.map((area) => {
+              const otherAssigned = (areaWorkerMap[area.id] || []).filter((name) => name !== modal?.worker?.name)
+              return (
+                <label key={area.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 4px', fontSize: 12, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={asList(form.area_ids).map(Number).includes(Number(area.id))}
+                    onChange={() => toggleArea(area.id)}
+                  />
+                  <span>
+                    {area.name} ({area.zone_name || '-'})
+                    {otherAssigned.length > 0 && (
+                      <span style={{ color: '#d97706', fontSize: 11, marginLeft: 6, fontWeight: 600 }}>
+                        (Assigned: {otherAssigned.join(', ')})
+                      </span>
+                    )}
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
+            💡 Selecting an area currently assigned to another worker will automatically swap their areas.
           </div>
         </Field>
       </Modal>

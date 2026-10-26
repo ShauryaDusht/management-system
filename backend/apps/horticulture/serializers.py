@@ -273,6 +273,54 @@ class AdminWorkerSerializer(serializers.ModelSerializer):
                 names.append(name)
         return ', '.join(names)
 
+    def to_internal_value(self, data):
+        if hasattr(data, 'copy'):
+            data = data.copy()
+        elif isinstance(data, dict):
+            data = dict(data)
+
+        if 'area_ids' in data:
+            if hasattr(data, 'getlist'):
+                raw = data.getlist('area_ids')
+                parsed = []
+                for item in raw:
+                    if isinstance(item, str) and (',' in item or item.startswith('[')):
+                        try:
+                            import json
+                            loaded = json.loads(item)
+                            if isinstance(loaded, list):
+                                parsed.extend(loaded)
+                            else:
+                                parsed.append(loaded)
+                        except Exception:
+                            parsed.extend([s.strip() for s in item.strip('[]').split(',') if s.strip()])
+                    elif item:
+                        parsed.append(item)
+                data.setlist('area_ids', parsed)
+            else:
+                raw = data['area_ids']
+                if isinstance(raw, str):
+                    raw = raw.strip()
+                    if raw.startswith('[') and raw.endswith(']'):
+                        try:
+                            import json
+                            raw = json.loads(raw)
+                        except Exception:
+                            raw = [s.strip() for s in raw[1:-1].split(',') if s.strip()]
+                    elif ',' in raw:
+                        raw = [s.strip() for s in raw.split(',') if s.strip()]
+                    elif raw:
+                        raw = [raw]
+                    else:
+                        raw = []
+                elif isinstance(raw, int):
+                    raw = [raw]
+                elif raw is None:
+                    raw = []
+                data['area_ids'] = raw
+
+        return super().to_internal_value(data)
+
     def get_photo_url(self, obj):
         return image_field_url(self.context.get('request'), obj.photo)
 
@@ -280,20 +328,67 @@ class AdminWorkerSerializer(serializers.ModelSerializer):
         if area_ids is None:
             return
         request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+
+        area_ids = [int(x) for x in area_ids if str(x).isdigit()]
         existing_ids = set(HorticultureArea.objects.filter(id__in=area_ids).values_list('id', flat=True))
         missing = sorted(set(area_ids) - existing_ids)
         if missing:
             raise serializers.ValidationError({'area_ids': [f'Invalid area ids: {missing}']})
-        HorticultureWorkerArea.objects.filter(worker=worker).exclude(area_id__in=area_ids).update(is_active=False)
-        for area_id in set(area_ids):
+
+        new_area_ids = list(dict.fromkeys(area_ids))
+        current_area_ids = list(
+            HorticultureWorkerArea.objects.filter(worker=worker, is_active=True).values_list('area_id', flat=True)
+        )
+
+        added_area_ids = [aid for aid in new_area_ids if aid not in current_area_ids]
+        removed_area_ids = [aid for aid in current_area_ids if aid not in new_area_ids]
+
+        # For any newly added areas, if another worker is already assigned, swap areas
+        for target_area_id in added_area_ids:
+            other_assignments = list(
+                HorticultureWorkerArea.objects.filter(
+                    area_id=target_area_id,
+                    is_active=True,
+                ).exclude(worker=worker).select_related('worker')
+            )
+            for other_assignment in other_assignments:
+                other_worker = other_assignment.worker
+                if removed_area_ids:
+                    swap_area_id = removed_area_ids.pop(0)
+                    swapped_link, created = HorticultureWorkerArea.objects.get_or_create(
+                        worker=other_worker,
+                        area_id=swap_area_id,
+                        defaults={'assigned_by': user, 'is_active': True},
+                    )
+                    if not created and not swapped_link.is_active:
+                        swapped_link.is_active = True
+                        swapped_link.assigned_by = user
+                        swapped_link.save(update_fields=['is_active', 'assigned_by', 'assigned_at'])
+                # Deactivate other_worker's assignment to target_area_id
+                other_assignment.is_active = False
+                other_assignment.save(update_fields=['is_active'])
+
+        # Deactivate any remaining removed areas for worker
+        if removed_area_ids:
+            HorticultureWorkerArea.objects.filter(
+                worker=worker,
+                area_id__in=removed_area_ids,
+            ).update(is_active=False)
+
+        # Deactivate any areas worker currently has that are not in new_area_ids
+        HorticultureWorkerArea.objects.filter(worker=worker).exclude(area_id__in=new_area_ids).update(is_active=False)
+
+        # Ensure all new_area_ids are active for worker
+        for area_id in new_area_ids:
             link, created = HorticultureWorkerArea.objects.get_or_create(
                 worker=worker,
                 area_id=area_id,
-                defaults={'assigned_by': getattr(request, 'user', None)},
+                defaults={'assigned_by': user, 'is_active': True},
             )
             if not created and not link.is_active:
                 link.is_active = True
-                link.assigned_by = getattr(request, 'user', None)
+                link.assigned_by = user
                 link.save(update_fields=['is_active', 'assigned_by', 'assigned_at'])
 
     def create(self, validated_data):
