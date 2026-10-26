@@ -13,7 +13,7 @@ from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
-from apps.users.models import normalize_username_value
+from apps.users.models import normalize_username_value, resolve_username_alias
 
 
 def _is_hostel_office_login(user):
@@ -30,16 +30,17 @@ def _repair_hostel_office_user(user):
     return user
 
 
-def get_react_admin_url(request):
-    if settings.DEBUG:
+def get_react_admin_url(request=None, section=''):
+    sub = f'/{section.lstrip("/")}' if section else '/'
+    if request and settings.DEBUG:
         host = request.get_host().split(':')[0]
-        return f'http://{host}:5173/admin/'
-    return '/admin/'
+        return f'http://{host}:5173/admin{sub}'
+    return f'/admin{sub}'
 
 
-def get_portal_redirect(user):
+def get_portal_redirect(user, request=None):
     if _is_hostel_office_login(user):
-        return '/admin/login/'
+        return get_react_admin_url(request, 'dashboard')
     role = getattr(user, 'role', '')
     if role == 'horticulture_manager':
         return '/horticulture/dashboard/'
@@ -50,9 +51,11 @@ def get_portal_redirect(user):
     if role in ['hvac_engineer', 'hvac_supervisor', 'hvac_operator']:
         return '/hvac/dashboard/'
     if role == 'engineer':
-        return '/admin/lifts'
-    if role in ['inventory_manager', 'hk_inventory_manager', 'hostel_office', 'estate_office', 'civil_team', 'electrical_team']:
-        return '/admin/login/'
+        return get_react_admin_url(request, 'lifts')
+    if role in ['civil_team', 'electrical_team']:
+        return get_react_admin_url(request, 'estate')
+    if role in ['inventory_manager', 'hk_inventory_manager', 'hostel_office', 'estate_office']:
+        return get_react_admin_url(request, 'dashboard')
     if role == 'supervisor':
         has_horticulture_zone = user.horticulture_supervised_zones.exists()
         has_housekeeping_area = user.hk_areas.exists()
@@ -62,7 +65,7 @@ def get_portal_redirect(user):
     if role == 'caretaker':
         return '/housekeeping/dashboard/'
     if role == 'admin':
-        return '/portal/login/'
+        return get_react_admin_url(request)
     return '/portal/login/'
 
 
@@ -70,7 +73,7 @@ def portal_root(request):
     if request.user.is_authenticated and request.user.is_active:
         if getattr(request.user, 'role', '') == 'admin':
             return redirect(get_react_admin_url(request))
-        return redirect(get_portal_redirect(request.user))
+        return redirect(get_portal_redirect(request.user, request))
     return redirect('/portal/login/')
 
 
@@ -96,20 +99,7 @@ def portal_login(request):
 
     error = ''
     if request.method == 'POST':
-        raw_user = normalize_username_value(request.POST.get('username', ''))
-        from apps.users.models import User
-        if not User.objects.filter(username=raw_user).exists():
-            matched = User.objects.filter(email__iexact=raw_user).first()
-            if not matched and '@' in raw_user:
-                from django.conf import settings
-                civil_emails = [e.strip().lower() for e in getattr(settings, 'CIVIL_ALERT_EMAIL', '').split(',') if e.strip()]
-                elec_emails = [e.strip().lower() for e in getattr(settings, 'ELECTRICAL_ALERT_EMAIL', '').split(',') if e.strip()]
-                if raw_user.lower() in civil_emails:
-                    matched = User.objects.filter(username='civil.team').first()
-                elif raw_user.lower() in elec_emails:
-                    matched = User.objects.filter(username='electrical.team').first()
-            if matched:
-                raw_user = matched.username
+        raw_user = resolve_username_alias(request.POST.get('username', ''))
         user = authenticate(
             request,
             username=raw_user,
@@ -117,10 +107,10 @@ def portal_login(request):
         )
         if user and user.is_active:
             user = _repair_hostel_office_user(user)
-            if user.role in ['admin', 'inventory_manager', 'hk_inventory_manager', 'hostel_office', 'engineer']:
-                return redirect(get_portal_redirect(user) if user.role == 'engineer' else get_react_admin_url(request))
+            if user.role in ['admin', 'inventory_manager', 'hk_inventory_manager', 'hostel_office', 'engineer', 'civil_team', 'electrical_team', 'estate_office']:
+                return redirect(get_portal_redirect(user, request))
             auth_login(request, user)
-            return redirect(get_portal_redirect(user))
+            return redirect(get_portal_redirect(user, request))
         else:
             error = 'Invalid username or password.'
 

@@ -35,6 +35,7 @@ const ROLES = [
   'estate_office',
   'civil_team',
   'electrical_team',
+  'engineer',
   'hk_inventory_manager',
   'hostel_office',
   'horticulture_manager',
@@ -55,6 +56,7 @@ const ROLE_FILTERS = [
   { key: 'estate_office', label: 'Estate Office' },
   { key: 'civil_team', label: 'Civil Team' },
   { key: 'electrical_team', label: 'Electrical Team' },
+  { key: 'engineer', label: 'Lift License' },
   { key: 'hk_inventory_manager', label: 'HK / Inv. Manager' },
   { key: 'hostel_office', label: 'Hostel Office' },
   { key: 'horticulture_manager', label: 'Horticulture Manager' },
@@ -74,6 +76,7 @@ const ROLE_LABELS = {
   estate_office: 'Estate Office',
   civil_team: 'Civil Team',
   electrical_team: 'Electrical Team',
+  engineer: 'Lift License',
   hk_inventory_manager: 'HK / Inventory Manager',
   hostel_office: 'Hostel Office',
   horticulture_manager: 'Horticulture Manager',
@@ -136,6 +139,9 @@ function areaInchargeText(user) {
   }
   if (user.role === 'hvac_engineer' || user.role === 'hvac_supervisor' || user.role === 'hvac_operator') {
     return 'HVAC Plants & Chillers'
+  }
+  if (user.role === 'engineer') {
+    return 'Lift Licenses & Elevators'
   }
   return HK_ROLES.includes(user.role) ? 'Not assigned' : 'All areas'
 }
@@ -305,6 +311,7 @@ export default function UsersPage() {
       estate_office: 0,
       civil_team: 0,
       electrical_team: 0,
+      engineer: 0,
       hk_inventory_manager: 0,
       hostel_office: 0,
       horticulture_manager: 0,
@@ -337,6 +344,7 @@ export default function UsersPage() {
       stats: [
         { label: 'Total Users', value: filtered.length },
         { label: 'Admins', value: roleCounts.admin || 0 },
+        { label: 'Lift License', value: roleCounts.engineer || 0 },
         { label: 'Supervisors', value: roleCounts.supervisor || 0 },
         { label: 'Caretakers', value: roleCounts.caretaker || 0 },
       ],

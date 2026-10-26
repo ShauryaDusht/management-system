@@ -163,7 +163,6 @@ export default function Sidebar() {
         badge: badges.housekeeping,
       },
       { to: '/estate', icon: 'estate', label: 'HK Clearances' },
-      { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
       { to: '/insights', icon: 'insights', label: 'Insights' },
       { to: '/users', icon: 'users', label: 'Manage Users' },
     ]

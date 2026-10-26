@@ -155,6 +155,36 @@ class Command(BaseCommand):
         estate_office.is_staff = True
         estate_office.save()
 
+        lift_user = User.objects.filter(username='engineer').first()
+        if lift_user:
+            lift_user.username = 'lift.engineer'
+            lift_user.first_name = 'Lift'
+            lift_user.last_name = 'Engineer'
+            lift_user.role = User.Role.ENGINEER
+            lift_user.is_active = True
+            lift_user.is_staff = True
+            lift_user.save()
+            lift_action = 'renamed from engineer to lift.engineer'
+        else:
+            lift_user, lift_created = User.objects.get_or_create(
+                username='lift.engineer',
+                defaults={
+                    'first_name': 'Lift',
+                    'last_name': 'Engineer',
+                    'email': 'je1.electrical@iitgn.ac.in',
+                    'role': User.Role.ENGINEER,
+                    'is_staff': True,
+                    'is_active': True,
+                },
+            )
+            if lift_created:
+                lift_user.set_password(DEFAULT_PASSWORD)
+            lift_user.role = User.Role.ENGINEER
+            lift_user.is_active = True
+            lift_user.is_staff = True
+            lift_user.save()
+            lift_action = 'created' if lift_created else 'repaired'
+
         deleted_legacy_admins = self._replace_legacy_admin_references(admin_user)
 
         disabled = User.objects.filter(
@@ -174,6 +204,7 @@ class Command(BaseCommand):
             f'civil.team login {"created" if civil_created else "repaired"}; '
             f'electrical.team login {"created" if elec_created else "repaired"}; '
             f'estate.office login {"created" if estate_created else "repaired"}; '
+            f'lift.engineer login {lift_action}; '
             f'deleted old admin logins: {deleted_legacy_admins}; '
             f'disabled old manager logins: {disabled}'
         ))
