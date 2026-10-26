@@ -7,6 +7,14 @@ export default function MonthlyReport({ defaultMonth }) {
   const [month, setMonth] = useState(defaultMonth || new Date().toISOString().slice(0, 7));
   const [monthLogs, setMonthLogs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+
+  // Reset custom date filter when switching month
+  useEffect(() => {
+    setFromDate('');
+    setToDate('');
+  }, [month]);
 
   useEffect(() => {
     let active = true;
@@ -27,10 +35,58 @@ export default function MonthlyReport({ defaultMonth }) {
     return () => { active = false; };
   }, [month]);
 
+  // Month date bounds and recorded range
+  const { minMonthDate, maxMonthDate, daysInMonth } = useMemo(() => {
+    if (!month || !month.includes('-')) {
+      return { minMonthDate: '', maxMonthDate: '', daysInMonth: 31 };
+    }
+    const [yStr, mStr] = month.split('-');
+    const y = parseInt(yStr, 10);
+    const m = parseInt(mStr, 10);
+    const days = new Date(y, m, 0).getDate();
+    return {
+      minMonthDate: `${month}-01`,
+      maxMonthDate: `${month}-${String(days).padStart(2, '0')}`,
+      daysInMonth: days,
+    };
+  }, [month]);
+
+  const latestRecordedDate = useMemo(() => {
+    if (!monthLogs.length) return '';
+    const dates = monthLogs.map((l) => l.date).filter(Boolean).sort();
+    return dates[dates.length - 1] || '';
+  }, [monthLogs]);
+
+  const isDateFiltered = Boolean(fromDate || toDate);
+
+  const dateFilterLabel = useMemo(() => {
+    if (fromDate && toDate) {
+      return fromDate === toDate ? fromDate : `${fromDate} to ${toDate}`;
+    }
+    if (toDate) {
+      return `Upto ${toDate}`;
+    }
+    if (fromDate) {
+      return `From ${fromDate}`;
+    }
+    return '';
+  }, [fromDate, toDate]);
+
+  // Filter logs based on date selection
+  const filteredLogs = useMemo(() => {
+    if (!isDateFiltered) return monthLogs;
+    return monthLogs.filter((l) => {
+      if (!l.date) return false;
+      if (fromDate && l.date < fromDate) return false;
+      if (toDate && l.date > toDate) return false;
+      return true;
+    });
+  }, [monthLogs, fromDate, toDate, isDateFiltered]);
+
   // Calculations
   const report = useMemo(() => {
     const days = {};
-    monthLogs.forEach((r) => {
+    filteredLogs.forEach((r) => {
       if (!days[r.date]) days[r.date] = [];
       days[r.date].push(r);
     });
@@ -79,7 +135,7 @@ export default function MonthlyReport({ defaultMonth }) {
 
     // Chiller running hours (each slot logged with chiller on = 1 operating hour)
     const chillerHours = CHILLERS.map(([n, nm, tr]) => {
-      const hrs = monthLogs.filter((l) => runningChillers(l.v).some((c) => c[0] === n)).length;
+      const hrs = filteredLogs.filter((l) => runningChillers(l.v).some((c) => c[0] === n)).length;
       return { num: n, name: nm, tr, hours: hrs };
     });
 
@@ -97,12 +153,16 @@ export default function MonthlyReport({ defaultMonth }) {
       },
       chillerHours,
     };
-  }, [monthLogs]);
+  }, [filteredLogs]);
 
   // Export handlers
   const handleExportCsv = () => {
+    const titleSuffix = dateFilterLabel ? ` (${dateFilterLabel})` : '';
+    const fileSuffix = dateFilterLabel
+      ? `_${dateFilterLabel.toLowerCase().replace(/[\s\:]+/g, '_')}`
+      : '';
     const csvRows = [
-      ['HVAC Monthly Consumption Report', month],
+      ['HVAC Monthly Consumption Report', `${month}${titleSuffix}`],
       [],
       ['Date', 'Readings Logged', 'Panel 1 MWh', 'Panel 2 MWh', 'Total Energy MWh', 'Old Water kL', 'New Water kL', 'Chilled Water kL', 'Total Water kL'],
       ...report.rows.map((r) => [
@@ -131,10 +191,14 @@ export default function MonthlyReport({ defaultMonth }) {
       ['Chiller', 'TR Rating', 'Operating Hours'],
       ...report.chillerHours.map((c) => [c.name, c.tr, c.hours]),
     ];
-    HvacApi.exportCsv(`hvac_monthly_${month}.csv`, csvRows);
+    HvacApi.exportCsv(`hvac_monthly_${month}${fileSuffix}.csv`, csvRows);
   };
 
   const handleExportPdf = () => {
+    const titleSuffix = dateFilterLabel ? ` (${dateFilterLabel})` : '';
+    const fileSuffix = dateFilterLabel
+      ? `_${dateFilterLabel.toLowerCase().replace(/[\s\:]+/g, '_')}`
+      : '';
     const pdfRows = [
       ['Date', 'Slots', 'Panel 1 MWh', 'Panel 2 MWh', 'Total Energy', 'Old kL', 'New kL', 'Chilled kL', 'Total Water'],
       ...report.rows.map((r) => [
@@ -161,39 +225,260 @@ export default function MonthlyReport({ defaultMonth }) {
       ],
     ];
     HvacApi.exportPdf(
-      `hvac_monthly_${month}.pdf`,
+      `hvac_monthly_${month}${fileSuffix}.pdf`,
       pdfRows,
-      `HVAC Monthly Plant Consumption & Operations - ${month}`
+      `HVAC Monthly Plant Consumption & Operations - ${month}${titleSuffix}`
     );
   };
 
   return (
     <div>
-      {/* Controls */}
-      <div className="hvac-card" style={{ padding: '14px 18px' }}>
+      {/* Controls Card */}
+      <div className="hvac-card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <label style={{ margin: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <label style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', textTransform: 'uppercase' }}>Month:</span>
               <input
                 type="month"
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
-                style={{ padding: '6px 12px', fontWeight: 700, borderRadius: 8 }}
+                style={{ padding: '6px 12px', fontWeight: 700, borderRadius: 8, border: '1px solid var(--hvac-line, #cbd5e1)' }}
               />
             </label>
             <span className="pill pill-blue">
               {report.rows.length} Active Days
             </span>
+            {isDateFiltered && (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '3px 10px',
+                  borderRadius: 12,
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  background: '#e0f2fe',
+                  color: '#0369a1',
+                  border: '1px solid #bae6fd',
+                }}
+              >
+                <span>📅 Scope: {dateFilterLabel}</span>
+                <button
+                  type="button"
+                  onClick={() => { setFromDate(''); setToDate(''); }}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    color: '#0369a1',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    padding: 0,
+                    lineHeight: 1,
+                  }}
+                  title="Clear date filter"
+                >
+                  ✕
+                </button>
+              </span>
+            )}
           </div>
 
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <ExportDropdown
               label="Export Monthly Report"
+              hasDateFilter={true}
+              fromDate={fromDate}
+              toDate={toDate}
+              onFromDateChange={setFromDate}
+              onToDateChange={setToDate}
+              onClearDates={() => { setFromDate(''); setToDate(''); }}
+              dateLabel={dateFilterLabel}
+              minDate={minMonthDate}
+              maxDate={maxMonthDate}
               onExportCsv={handleExportCsv}
               onExportPdf={handleExportPdf}
               disabled={report.rows.length === 0}
             />
+          </div>
+        </div>
+
+        {/* Date Selection Bar Under Export Monthly Report */}
+        <div
+          style={{
+            paddingTop: 12,
+            borderTop: '1px solid var(--hvac-line, #e2e8f0)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+            background: '#f8fafc',
+            margin: '0 -18px -16px -18px',
+            padding: '12px 18px',
+            borderRadius: '0 0 12px 12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--hvac-muted, #64748b)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span>🗓️</span>
+              <span>Report Date Range:</span>
+            </span>
+
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: 0, fontSize: 11, fontWeight: 600, color: '#334155' }}>
+              <span>From:</span>
+              <input
+                type="date"
+                value={fromDate}
+                min={minMonthDate}
+                max={toDate || maxMonthDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  border: fromDate ? '1.5px solid #0284c7' : '1px solid var(--hvac-line, #cbd5e1)',
+                  background: fromDate ? '#f0f9ff' : '#ffffff',
+                }}
+              />
+            </label>
+
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: 0, fontSize: 11, fontWeight: 700, color: '#0369a1' }}>
+              <span>Report Upto:</span>
+              <input
+                type="date"
+                value={toDate}
+                min={fromDate || minMonthDate}
+                max={maxMonthDate}
+                onChange={(e) => setToDate(e.target.value)}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  borderRadius: 6,
+                  border: toDate ? '1.5px solid #0284c7' : '1px solid var(--hvac-line, #cbd5e1)',
+                  background: toDate ? '#f0f9ff' : '#ffffff',
+                  color: '#0369a1',
+                }}
+              />
+            </label>
+
+            {isDateFiltered && (
+              <button
+                type="button"
+                onClick={() => { setFromDate(''); setToDate(''); }}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  borderRadius: 6,
+                  border: '1px solid #fecaca',
+                  background: '#fef2f2',
+                  color: '#dc2626',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                ✕ Reset to Full Month
+              </button>
+            )}
+          </div>
+
+          {/* Quick Preset Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted, #64748b)' }}>Quick Range:</span>
+            <button
+              type="button"
+              onClick={() => { setFromDate(''); setToDate(''); }}
+              style={{
+                padding: '3px 8px',
+                fontSize: 11,
+                fontWeight: !isDateFiltered ? 700 : 500,
+                borderRadius: 5,
+                border: '1px solid',
+                borderColor: !isDateFiltered ? '#0284c7' : '#cbd5e1',
+                background: !isDateFiltered ? '#0284c7' : '#ffffff',
+                color: !isDateFiltered ? '#ffffff' : '#475569',
+                cursor: 'pointer',
+              }}
+            >
+              Full Month
+            </button>
+            <button
+              type="button"
+              onClick={() => { setFromDate(''); setToDate(`${month}-10`); }}
+              style={{
+                padding: '3px 8px',
+                fontSize: 11,
+                fontWeight: (!fromDate && toDate === `${month}-10`) ? 700 : 500,
+                borderRadius: 5,
+                border: '1px solid',
+                borderColor: (!fromDate && toDate === `${month}-10`) ? '#0284c7' : '#cbd5e1',
+                background: (!fromDate && toDate === `${month}-10`) ? '#0284c7' : '#ffffff',
+                color: (!fromDate && toDate === `${month}-10`) ? '#ffffff' : '#475569',
+                cursor: 'pointer',
+              }}
+            >
+              Upto 10th
+            </button>
+            <button
+              type="button"
+              onClick={() => { setFromDate(''); setToDate(`${month}-15`); }}
+              style={{
+                padding: '3px 8px',
+                fontSize: 11,
+                fontWeight: (!fromDate && toDate === `${month}-15`) ? 700 : 500,
+                borderRadius: 5,
+                border: '1px solid',
+                borderColor: (!fromDate && toDate === `${month}-15`) ? '#0284c7' : '#cbd5e1',
+                background: (!fromDate && toDate === `${month}-15`) ? '#0284c7' : '#ffffff',
+                color: (!fromDate && toDate === `${month}-15`) ? '#ffffff' : '#475569',
+                cursor: 'pointer',
+              }}
+            >
+              Upto 15th
+            </button>
+            <button
+              type="button"
+              onClick={() => { setFromDate(''); setToDate(`${month}-20`); }}
+              style={{
+                padding: '3px 8px',
+                fontSize: 11,
+                fontWeight: (!fromDate && toDate === `${month}-20`) ? 700 : 500,
+                borderRadius: 5,
+                border: '1px solid',
+                borderColor: (!fromDate && toDate === `${month}-20`) ? '#0284c7' : '#cbd5e1',
+                background: (!fromDate && toDate === `${month}-20`) ? '#0284c7' : '#ffffff',
+                color: (!fromDate && toDate === `${month}-20`) ? '#ffffff' : '#475569',
+                cursor: 'pointer',
+              }}
+            >
+              Upto 20th
+            </button>
+            {latestRecordedDate && latestRecordedDate < maxMonthDate && (
+              <button
+                type="button"
+                onClick={() => { setFromDate(''); setToDate(latestRecordedDate); }}
+                style={{
+                  padding: '3px 8px',
+                  fontSize: 11,
+                  fontWeight: (!fromDate && toDate === latestRecordedDate) ? 700 : 500,
+                  borderRadius: 5,
+                  border: '1px solid',
+                  borderColor: (!fromDate && toDate === latestRecordedDate) ? '#16a34a' : '#cbd5e1',
+                  background: (!fromDate && toDate === latestRecordedDate) ? '#16a34a' : '#ffffff',
+                  color: (!fromDate && toDate === latestRecordedDate) ? '#ffffff' : '#15803d',
+                  cursor: 'pointer',
+                }}
+              >
+                Upto Latest Data ({latestRecordedDate.slice(8)}th)
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -230,13 +515,26 @@ export default function MonthlyReport({ defaultMonth }) {
 
           {/* Monthly Consumption Table */}
           <div className="hvac-card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--hvac-line)' }}>
-              <div style={{ fontWeight: 800, fontSize: 15, color: '#0c2535' }}>
-                Daily Consumption Summary &middot; {month}
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--hvac-line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 15, color: '#0c2535', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span>Daily Consumption Summary &middot; {month}</span>
+                  {dateFilterLabel && (
+                    <span className="pill pill-blue" style={{ fontSize: 11, padding: '2px 8px' }}>
+                      📅 {dateFilterLabel}
+                    </span>
+                  )}
+                </div>
+                <small style={{ color: 'var(--hvac-muted)' }}>
+                  Daily consumption computed as closing minus opening meter readings for each 24-hr period
+                  {isDateFiltered ? ` (Showing ${report.rows.length} filtered days)` : ''}
+                </small>
               </div>
-              <small style={{ color: 'var(--hvac-muted)' }}>
-                Daily consumption computed as closing minus opening meter readings for each 24-hr period
-              </small>
+              {isDateFiltered && (
+                <span style={{ fontSize: 11.5, color: '#0369a1', fontWeight: 700, background: '#f0f9ff', padding: '3px 10px', borderRadius: 8, border: '1px solid #bae6fd' }}>
+                  Scope: {dateFilterLabel} ({report.rows.length} Day{report.rows.length === 1 ? '' : 's'})
+                </span>
+              )}
             </div>
 
             <div className="hvac-scroll">
@@ -277,13 +575,15 @@ export default function MonthlyReport({ defaultMonth }) {
                   {report.rows.length === 0 && (
                     <tr>
                       <td colSpan="9" style={{ padding: 24, textAlign: 'center', color: 'var(--hvac-muted)' }}>
-                        No records found for {month}.
+                        No records found for {month}{dateFilterLabel ? ` (${dateFilterLabel})` : ''}.
                       </td>
                     </tr>
                   )}
                   {report.rows.length > 0 && (
                     <tr style={{ background: '#f1f5f9', fontWeight: 800 }}>
-                      <td style={{ padding: '10px 12px' }}>Total Monthly Consumption</td>
+                      <td style={{ padding: '10px 12px' }}>
+                        {isDateFiltered ? `Total Consumption (${dateFilterLabel})` : 'Total Monthly Consumption'}
+                      </td>
                       <td style={{ padding: '10px 12px', textAlign: 'center' }}>{report.totals.count}</td>
                       <td style={{ padding: '10px 12px', textAlign: 'right' }}>{report.totals.p1}</td>
                       <td style={{ padding: '10px 12px', textAlign: 'right' }}>{report.totals.p2}</td>
@@ -305,13 +605,26 @@ export default function MonthlyReport({ defaultMonth }) {
 
           {/* Chiller Running Hours */}
           <div className="hvac-card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--hvac-line)' }}>
-              <div style={{ fontWeight: 800, fontSize: 15, color: '#0c2535' }}>
-                Chiller Operating Hours Breakdown &middot; {month}
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--hvac-line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 15, color: '#0c2535', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span>Chiller Operating Hours Breakdown &middot; {month}</span>
+                  {dateFilterLabel && (
+                    <span className="pill pill-blue" style={{ fontSize: 11, padding: '2px 8px' }}>
+                      📅 {dateFilterLabel}
+                    </span>
+                  )}
+                </div>
+                <small style={{ color: 'var(--hvac-muted)' }}>
+                  Cumulative hours of active operation logged per chiller unit
+                  {isDateFiltered ? ` across selected ${report.rows.length} days` : ''}
+                </small>
               </div>
-              <small style={{ color: 'var(--hvac-muted)' }}>
-                Cumulative hours of active operation logged per chiller unit
-              </small>
+              {isDateFiltered && (
+                <span style={{ fontSize: 11.5, color: '#0369a1', fontWeight: 700, background: '#f0f9ff', padding: '3px 10px', borderRadius: 8, border: '1px solid #bae6fd' }}>
+                  Max Window: {report.rows.length * 24} hrs/chiller
+                </span>
+              )}
             </div>
 
             <div className="hvac-scroll">
