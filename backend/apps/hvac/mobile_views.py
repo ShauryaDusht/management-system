@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
@@ -293,12 +293,32 @@ def mobile_entry(request):
 
     user_role = getattr(request.user, 'role', '')
     is_supervisor = user_role in ['hvac_engineer', 'hvac_supervisor', 'supervisor', 'admin'] or request.user.is_superuser
-    is_operator = not is_supervisor
-    is_locked = (existing is not None) and (not is_supervisor)
+    OPERATOR_EDIT_WINDOW_MINUTES = 10
+    can_operator_edit = False
+    remaining_minutes = 0
+    remaining_seconds = 0
+    edit_window_active = False
+
+    if existing:
+        created_time = existing.created_at
+        if not created_time and existing.ts:
+            try:
+                created_time = datetime.fromtimestamp(existing.ts / 1000.0, tz=timezone.utc)
+            except Exception:
+                pass
+        if created_time:
+            elapsed = timezone.now() - created_time
+            if elapsed <= timedelta(minutes=OPERATOR_EDIT_WINDOW_MINUTES):
+                can_operator_edit = True
+                edit_window_active = True
+                remaining_seconds = max(0, int((timedelta(minutes=OPERATOR_EDIT_WINDOW_MINUTES) - elapsed).total_seconds()))
+                remaining_minutes = max(1, (remaining_seconds + 59) // 60)
+
+    is_locked = (existing is not None) and (not is_supervisor) and (not can_operator_edit)
 
     if request.method == 'POST':
         if is_locked:
-            messages.error(request, "Permission Denied: Operators have access to enter new readings only and cannot edit already logged slots.")
+            messages.error(request, "Permission Denied: The 10-minute edit window has expired. Contact Shift Engineer for any revisions.")
             return redirect(f"/hvac/dashboard/?date={date_str}")
 
         operator = request.POST.get('operator', '').strip() or request.user.get_full_name() or request.user.username
@@ -490,8 +510,12 @@ def mobile_entry(request):
         'water_data': water_data,
         'user': request.user,
         'is_locked': is_locked,
+        'edit_window_active': edit_window_active,
+        'remaining_minutes': remaining_minutes,
+        'remaining_seconds': remaining_seconds,
+        'can_operator_edit': can_operator_edit,
         'is_supervisor': is_supervisor,
-        'is_operator': is_operator,
+        'is_operator': not is_supervisor,
         'active_nav': 'entry',
     })
 

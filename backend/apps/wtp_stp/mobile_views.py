@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -145,11 +145,28 @@ def mobile_station_entry(request, station='wtp'):
     # Fetch existing values
     existing = WtpReading.objects.filter(date=parsed_date, shift=shift_val, station=station).first()
     has_existing = bool(existing and existing.values and any(v != '' and v is not None for v in existing.values.values()))
-    is_locked = has_existing and is_operator
+
+    OPERATOR_EDIT_WINDOW_MINUTES = 10
+    can_operator_edit = False
+    remaining_minutes = 0
+    remaining_seconds = 0
+    edit_window_active = False
+
+    if has_existing and existing:
+        ts = existing.created_at or existing.updated_at
+        if ts:
+            elapsed = timezone.now() - ts
+            if elapsed <= timedelta(minutes=OPERATOR_EDIT_WINDOW_MINUTES):
+                can_operator_edit = True
+                edit_window_active = True
+                remaining_seconds = max(0, int((timedelta(minutes=OPERATOR_EDIT_WINDOW_MINUTES) - elapsed).total_seconds()))
+                remaining_minutes = max(1, (remaining_seconds + 59) // 60)
+
+    is_locked = has_existing and is_operator and (not can_operator_edit)
 
     if request.method == 'POST':
         if is_locked:
-            messages.error(request, f"Permission Denied: Shift {shift_val} reading for {st_info['name']} is already recorded. Operators cannot edit logged shifts. Contact Shift Engineer for any revisions.")
+            messages.error(request, f"Permission Denied: The 10-minute edit window for Shift {shift_val} ({st_info['name']}) has expired. Contact Shift Engineer for any revisions.")
             return redirect(f"/wtp/dashboard/?date={date_str}")
 
         values = {}
@@ -205,6 +222,10 @@ def mobile_station_entry(request, station='wtp'):
         'existing': existing,
         'has_existing': has_existing,
         'is_locked': is_locked,
+        'edit_window_active': edit_window_active,
+        'remaining_minutes': remaining_minutes,
+        'remaining_seconds': remaining_seconds,
+        'can_operator_edit': can_operator_edit,
         'is_supervisor': is_supervisor,
         'is_operator': is_operator,
         'custom_meters': custom_meters,
@@ -225,12 +246,29 @@ def mobile_block_entry(request):
 
     doc = BlockReading.objects.filter(month=month).first()
     has_existing = bool(doc and doc.readings and any(v != '' and v is not None for v in doc.readings.values()))
-    is_locked = has_existing and is_operator
+
+    OPERATOR_EDIT_WINDOW_MINUTES = 10
+    can_operator_edit = False
+    remaining_minutes = 0
+    remaining_seconds = 0
+    edit_window_active = False
+
+    if has_existing and doc:
+        ts = doc.created_at or doc.updated_at
+        if ts:
+            elapsed = timezone.now() - ts
+            if elapsed <= timedelta(minutes=OPERATOR_EDIT_WINDOW_MINUTES):
+                can_operator_edit = True
+                edit_window_active = True
+                remaining_seconds = max(0, int((timedelta(minutes=OPERATOR_EDIT_WINDOW_MINUTES) - elapsed).total_seconds()))
+                remaining_minutes = max(1, (remaining_seconds + 59) // 60)
+
+    is_locked = has_existing and is_operator and (not can_operator_edit)
 
     if request.method == 'POST':
         month_post = request.POST.get('month', month)
         if is_locked:
-            messages.error(request, f"Permission Denied: Block meter readings for {month_post} are already recorded. Operators cannot edit logged readings.")
+            messages.error(request, f"Permission Denied: The 10-minute edit window for block meter readings ({month_post}) has expired. Contact Shift Engineer for revisions.")
             return redirect(f"/wtp/blocks/?month={month_post}")
 
         readings = {}
@@ -267,6 +305,10 @@ def mobile_block_entry(request):
         'meters': meters,
         'readings_map': readings_map,
         'is_locked': is_locked,
+        'edit_window_active': edit_window_active,
+        'remaining_minutes': remaining_minutes,
+        'remaining_seconds': remaining_seconds,
+        'can_operator_edit': can_operator_edit,
         'is_supervisor': is_supervisor,
         'is_operator': is_operator,
         'user': request.user,

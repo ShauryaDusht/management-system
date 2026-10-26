@@ -78,6 +78,7 @@ class SubstationReading(models.Model):
             'rows': self.rows,
             'filled': self.filled,
             'total': self.total,
+            'createdAt': self.created_at.isoformat() if self.created_at else None,
             'updatedAt': self.updated_at.isoformat() if self.updated_at else None,
         })
         return doc

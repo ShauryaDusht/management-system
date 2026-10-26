@@ -204,7 +204,30 @@ export default function OperatorView({
     return n;
   }, [draft]);
 
+  const editWindowInfo = useMemo(() => {
+    if (!savedDoc || !savedDoc.filled) return { active: false, expired: false, minutesRemaining: 0 };
+    const ts = savedDoc.createdAt
+      ? new Date(savedDoc.createdAt).getTime()
+      : (typeof savedDoc.updatedAt === 'number' ? savedDoc.updatedAt : (savedDoc.updatedAt ? new Date(savedDoc.updatedAt).getTime() : 0));
+    if (!ts) return { active: false, expired: true, minutesRemaining: 0 };
+    const diffMs = Date.now() - ts;
+    const windowMs = 10 * 60 * 1000;
+    if (diffMs > windowMs) {
+      return { active: false, expired: true, minutesRemaining: 0 };
+    }
+    const remSec = Math.max(0, Math.floor((windowMs - diffMs) / 1000));
+    const remMin = Math.max(1, Math.ceil(remSec / 60));
+    return { active: true, expired: false, minutesRemaining: remMin, secondsRemaining: remSec };
+  }, [savedDoc]);
+
+  const isOperatorUser = user?.role === 'operator' || user?.role === 'electrical_operator';
+  const isLockedForOperator = isOperatorUser && Boolean(savedDoc && savedDoc.filled > 0) && editWindowInfo.expired;
+
   const handleSave = async () => {
+    if (isLockedForOperator) {
+      setSaveMsg('The 10-minute edit window has expired. Contact Shift Engineer for revisions.');
+      return;
+    }
     if (!operator.trim()) {
       setSaveMsg('Please enter your operator name before saving.');
       return;
@@ -454,12 +477,35 @@ export default function OperatorView({
       </div>
 
       {/* Status banner if already saved */}
-      {savedDoc && (
+      {savedDoc && savedDoc.filled > 0 && isLockedForOperator && (
+        <div className="banner" style={{ background: '#fffbeb', border: '1.5px solid #fde68a', color: '#92400e' }}>
+          <AlertTriangle size={18} />
+          <span>
+            Shift reading recorded by <strong>{savedDoc.operator || 'Operator'}</strong>. The <strong>10-minute operator edit window has expired</strong>. Locked in Read-Only mode. Contact Shift Engineer for revisions.
+          </span>
+        </div>
+      )}
+
+      {savedDoc && savedDoc.filled > 0 && isOperatorUser && editWindowInfo.active && (
+        <div className="banner" style={{ background: '#f0fdf4', border: '1.5px solid #86efac', color: '#166534' }}>
+          <Clock size={18} />
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8, flexWrap: 'wrap' }}>
+            <span>
+              ⏱️ <strong>10-Minute Editable Window Active</strong>: Logged by <strong>{savedDoc.operator || 'Operator'}</strong>. You can correct values before the window closes.
+            </span>
+            <span style={{ background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontWeight: 800 }}>
+              {editWindowInfo.minutesRemaining}m remaining
+            </span>
+          </span>
+        </div>
+      )}
+
+      {savedDoc && savedDoc.filled > 0 && !isOperatorUser && (
         <div className="banner ok">
           <CheckCircle size={18} />
           <span>
             {activeSheet.mode === 'hourly' || activeSheet.id === 'newht' || activeSheet.id === 'oldht' ? 'Hourly readings logged' : 'Shift logged'} by <strong>{savedDoc.operator || 'Unknown'}</strong> on{' '}
-            {new Date(savedDoc.updatedAt).toLocaleString()}. You can update readings and save again.
+            {new Date(savedDoc.updatedAt).toLocaleString()}. Shift Engineer Revision Mode active.
           </span>
         </div>
       )}
@@ -623,12 +669,17 @@ export default function OperatorView({
         <button
           className="btn btn-primary"
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || isLockedForOperator}
+          style={isLockedForOperator ? { opacity: 0.6, cursor: 'not-allowed', background: '#64748b' } : {}}
         >
           <Save size={16} />
           <span>
             {saving
               ? 'Saving readings…'
+              : isLockedForOperator
+              ? '🔒 Locked (Edit Window Expired)'
+              : editWindowInfo.active
+              ? `Update Shift ${slot} (Edit Window Active)`
               : activeSheet.mode === 'hourly' || activeSheet.id === 'newht' || activeSheet.id === 'oldht'
               ? 'Save Hourly Readings (24h)'
               : `Save Shift ${slot} Readings`}

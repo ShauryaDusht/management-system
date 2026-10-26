@@ -13,12 +13,36 @@
   </div>
 </div>
 
+{% if is_locked %}
+<style>
+  input { pointer-events: none; background: #f1f5f9 !important; color: #334155 !important; border-color: #cbd5e1 !important; }
+</style>
+<div class="alert-box alert-warn" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;border:1.5px solid #fde68a;background:#fffbeb;color:#92400e;padding:12px 14px">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  <div>
+    <div style="font-weight:800;font-size:13px">Locked (Read-Only Mode)</div>
+    <div style="font-size:12px;margin-top:3px;line-height:1.4">Block readings for <b>{{ month }}</b> have been recorded. The 10-minute operator edit window has expired. Contact Shift Engineer for any revisions.</div>
+  </div>
+</div>
+{% elif edit_window_active and not is_supervisor %}
+<div class="alert-box" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;border:1.5px solid #86efac;background:#f0fdf4;color:#166534;padding:12px 14px;border-radius:10px;">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+  <div style="flex:1">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+      <div style="font-weight:800;font-size:13px">⏱️ 10-Minute Editable Window Active</div>
+      <span id="window-timer-block" style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:800;font-family:'DM Mono',monospace;">{{ remaining_minutes }}m remaining</span>
+    </div>
+    <div style="font-size:12px;margin-top:3px;line-height:1.4">You have 10 minutes from logging to correct/update any block readings. After 10 minutes, editing will automatically lock.</div>
+  </div>
+</div>
+{% endif %}
+
 <form method="post" action="">
   {% csrf_token %}
   <div class="card">
     <div style="margin-bottom: 12px;">
       <label>Operator Name</label>
-      <input type="text" name="by" value="{{ user.get_full_name|default:user.username }}" required>
+      <input type="text" name="by" value="{{ user.get_full_name|default:user.username }}" required {% if is_locked %}readonly style="pointer-events:none;background:#f1f5f9;"{% endif %}>
     </div>
     <div>
       <label>Select Month</label>
@@ -36,16 +60,44 @@
             <span style="font-size: 11px; color: #64748b; font-family: monospace;">{{ m.meter_no }}</span>
           </div>
           <div style="margin-top: 6px;">
-            <input type="number" step="any" inputmode="decimal" name="m{{ m.sr }}" value="{% for k, v in readings_map.items %}{% if k == 'm'|add:m.sr|stringformat:'s' %}{{ v }}{% endif %}{% endfor %}" placeholder="Reading in CUM">
+            <input type="number" step="any" inputmode="decimal" name="m{{ m.sr }}" value="{% for k, v in readings_map.items %}{% if k == 'm'|add:m.sr|stringformat:'s' %}{{ v }}{% endif %}{% endfor %}" placeholder="Reading in CUM" {% if is_locked %}readonly style="pointer-events:none;background:#f1f5f9;"{% endif %}>
           </div>
         </div>
       {% endfor %}
     </div>
   </div>
 
-  <button type="submit" class="btn-primary" style="margin-top: 14px;">
-    Save Monthly Block Readings
-  </button>
+  {% if not is_locked %}
+    <button type="submit" class="btn-primary" style="margin-top: 14px;">
+      {% if edit_window_active %}Update Block Readings (10-Min Edit Window Active){% elif readings_map %}Update Monthly Block Readings{% else %}Save Monthly Block Readings{% endif %}
+    </button>
+  {% else %}
+    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 14px;text-align:center;margin-top:14px;color:#166534;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      <span>Block Readings Logged &middot; Read-Only</span>
+    </div>
+  {% endif %}
 </form>
+
+<script>
+{% if edit_window_active and not is_supervisor %}
+(function() {
+  let sec = {{ remaining_seconds }};
+  const timerEl = document.getElementById('window-timer-block');
+  const iv = setInterval(() => {
+    sec--;
+    if (sec <= 0) {
+      clearInterval(iv);
+      if (timerEl) timerEl.textContent = 'Expired';
+      window.location.reload();
+    } else {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      if (timerEl) timerEl.textContent = `${m}m ${s < 10 ? '0' : ''}${s}s remaining`;
+    }
+  }, 1000);
+})();
+{% endif %}
+</script>
 {% endwith %}
 {% endblock %}

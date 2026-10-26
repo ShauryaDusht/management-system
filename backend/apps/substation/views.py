@@ -1,6 +1,6 @@
 import hashlib
 import json
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from django.db.models import Q
 from django.utils import timezone
@@ -167,6 +167,13 @@ class SubstationDocView(APIView):
         # Role check: Operators, Supervisors, and Admins can save readings
         # Only Supervisors and Admins can change configs
         if coll in ('readings', 'readings_ht', 'readings_lt'):
+            # Check 10-minute edit window for electrical operators updating an existing reading
+            is_sup = (getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False) or getattr(user, 'role', '') == 'electrical_supervisor')
+            existing = SubstationReading.objects.filter(doc_id=doc_id).first()
+            if existing and existing.filled > 0 and not is_sup:
+                if existing.created_at and (timezone.now() - existing.created_at) > timedelta(minutes=10):
+                    return Response({'error': 'The 10-minute edit window has expired. Contact Shift Engineer for any revisions.'}, status=status.HTTP_403_FORBIDDEN)
+
             sheet = body.get('sheet', '')
             date_val = body.get('date', '')
             slot = body.get('slot', '')

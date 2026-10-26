@@ -76,7 +76,18 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       <div>
         <div style="font-weight:800;font-size:13px">Locked (Read-Only Mode)</div>
-        <div style="font-size:12px;margin-top:3px;line-height:1.4">Reading for <b>{{ selected_hour_label }}</b> has been recorded by <b>{{ reading.operator|default:"Operator" }}</b>. Operators have access to <b>enter new readings only</b> and cannot edit already logged hours. Contact Shift Engineer for any revisions.</div>
+        <div style="font-size:12px;margin-top:3px;line-height:1.4">Reading for <b>{{ selected_hour_label }}</b> was recorded by <b>{{ reading.operator|default:"Operator" }}</b>. The 10-minute operator edit window has expired. Contact Shift Engineer for any revisions.</div>
+      </div>
+    </div>
+  {% elif edit_window_active and not is_supervisor %}
+    <div class="alert-box" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;border:1.5px solid #86efac;background:#f0fdf4;color:#166534;padding:12px 14px;border-radius:10px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+          <div style="font-weight:800;font-size:13px">⏱️ 10-Minute Editable Window Active</div>
+          <span id="window-timer-hourly" style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:800;font-family:'DM Mono',monospace;">{{ remaining_minutes }}m remaining</span>
+        </div>
+        <div style="font-size:12px;margin-top:3px;line-height:1.4">Reading recorded by <b>{{ reading.operator|default:"Operator" }}</b>. You have 10 minutes from logging to correct/update any readings. After 10 minutes, editing will automatically lock.</div>
       </div>
     </div>
   {% elif is_current_hour_logged and is_supervisor %}
@@ -226,7 +237,7 @@
       {% if not is_locked %}
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
           <button type="submit" name="save_this_hour" class="btn-primary" style="font-size:14px; padding:13px; box-shadow:0 8px 24px rgba(2,132,199,.4);">
-            {% if is_current_hour_logged and is_supervisor %}Update {{ selected_hour_label }} (Engineer Revision){% else %}Save {{ selected_hour_label }}{% endif %}
+            {% if is_current_hour_logged and is_supervisor %}Update {{ selected_hour_label }} (Engineer Revision){% elif edit_window_active %}Update {{ selected_hour_label }} (10-Min Edit Window Active){% elif is_current_hour_logged %}Update {{ selected_hour_label }}{% else %}Save {{ selected_hour_label }}{% endif %}
           </button>
           <button type="submit" name="save_next_hour" class="btn-secondary" style="font-size:14px; padding:13px;">
             Save & Next Hour →
@@ -259,7 +270,18 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       <div>
         <div style="font-weight:800;font-size:13px">Locked (Read-Only Mode)</div>
-        <div style="font-size:12px;margin-top:3px;line-height:1.4">Shift <b>{{ current_slot }}</b> reading for <b>{{ display_name }}</b> was submitted by <b>{{ reading.operator|default:"Operator" }}</b>. Operators have access to <b>enter new readings only</b> and cannot edit already logged panels. Contact Shift Engineer for any revisions.</div>
+        <div style="font-size:12px;margin-top:3px;line-height:1.4">Shift <b>{{ current_slot }}</b> reading for <b>{{ display_name }}</b> was submitted by <b>{{ reading.operator|default:"Operator" }}</b>. The 10-minute operator edit window has expired. Contact Shift Engineer for any revisions.</div>
+      </div>
+    </div>
+  {% elif edit_window_active and not is_supervisor %}
+    <div class="alert-box" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;border:1.5px solid #86efac;background:#f0fdf4;color:#166534;padding:12px 14px;border-radius:10px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:gap:6px">
+          <div style="font-weight:800;font-size:13px">⏱️ 10-Minute Editable Window Active</div>
+          <span id="window-timer-snapshot" style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:800;font-family:'DM Mono',monospace;">{{ remaining_minutes }}m remaining</span>
+        </div>
+        <div style="font-size:12px;margin-top:3px;line-height:1.4">Reading recorded by <b>{{ reading.operator|default:"Operator" }}</b>. You have 10 minutes from logging to correct/update any readings. After 10 minutes, editing will automatically lock.</div>
       </div>
     </div>
   {% elif is_panel_logged and is_supervisor %}
@@ -398,7 +420,7 @@
     <div style="position:sticky; bottom:70px; z-index:90; margin-top:16px; background:#f0f4f2; padding-top:8px;">
       {% if not is_locked %}
         <button type="submit" class="btn-primary" style="font-size:15px; padding:14px; box-shadow:0 8px 24px rgba(2,132,199,.4);">
-          {% if is_panel_logged and is_supervisor %}Update Shift {{ current_slot }} (Engineer Revision){% else %}Save Shift {{ current_slot }} Reading{% endif %}
+          {% if is_panel_logged and is_supervisor %}Update Shift {{ current_slot }} (Engineer Revision){% elif edit_window_active %}Update Shift {{ current_slot }} (10-Min Edit Window Active){% elif is_panel_logged %}Update Shift {{ current_slot }} Reading{% else %}Save Shift {{ current_slot }} Reading{% endif %}
         </button>
         {% if next_panel %}
           <button type="submit" name="save_next" class="btn-secondary" style="margin-top:8px; font-size:14px; padding:12px;">
@@ -432,5 +454,30 @@
     </a>
   </div>
 {% endif %}
+
+<script>
+{% if edit_window_active and not is_supervisor %}
+(function() {
+  let sec = {{ remaining_seconds }};
+  const timerElHourly = document.getElementById('window-timer-hourly');
+  const timerElSnapshot = document.getElementById('window-timer-snapshot');
+  const iv = setInterval(() => {
+    sec--;
+    if (sec <= 0) {
+      clearInterval(iv);
+      if (timerElHourly) timerElHourly.textContent = 'Expired';
+      if (timerElSnapshot) timerElSnapshot.textContent = 'Expired';
+      window.location.reload();
+    } else {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      const str = `${m}m ${s < 10 ? '0' : ''}${s}s remaining`;
+      if (timerElHourly) timerElHourly.textContent = str;
+      if (timerElSnapshot) timerElSnapshot.textContent = str;
+    }
+  }, 1000);
+})();
+{% endif %}
+</script>
 
 {% endblock %}

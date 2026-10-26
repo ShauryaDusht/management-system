@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
@@ -21,6 +21,36 @@ TIME_SLOTS = [
     f"{str((450 + 60 * i) // 60 % 24).zfill(2)}:30"
     for i in range(24)
 ]
+
+OPERATOR_EDIT_WINDOW_MINUTES = 10
+
+
+def is_hvac_supervisor_or_admin(user):
+    if not user or not user.is_authenticated:
+        return False
+    if getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False):
+        return True
+    return getattr(user, 'role', '') in ('hvac_engineer', 'hvac_supervisor')
+
+
+def can_edit_hvac_log(user, log_obj):
+    """
+    Returns True if user is a supervisor/engineer/admin,
+    or if user is an operator and the log was created within 10 minutes.
+    """
+    if is_hvac_supervisor_or_admin(user):
+        return True
+    if not log_obj:
+        return True
+    created_time = log_obj.created_at
+    if not created_time and log_obj.ts:
+        try:
+            created_time = datetime.fromtimestamp(log_obj.ts / 1000.0, tz=timezone.utc)
+        except Exception:
+            pass
+    if not created_time:
+        return False
+    return (timezone.now() - created_time) <= timedelta(minutes=OPERATOR_EDIT_WINDOW_MINUTES)
 
 
 class IsHvacStaff(permissions.BasePermission):
@@ -45,12 +75,7 @@ class IsHvacSupervisorOrAdmin(permissions.BasePermission):
     Operators are strictly forbidden from modifying or deleting records.
     """
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        user = request.user
-        if getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False):
-            return True
-        return getattr(user, 'role', '') in ('hvac_engineer', 'hvac_supervisor')
+        return is_hvac_supervisor_or_admin(request.user)
 
 
 class HvacHealthView(APIView):
@@ -118,9 +143,18 @@ class HvacLogsListView(APIView):
         return self.save_log(request)
 
     def put(self, request):
-        user = request.user
-        if not (getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False) or getattr(user, 'role', '') in ('hvac_engineer', 'hvac_supervisor')):
-            return Response({'error': 'Only supervisors and engineers can edit logs'}, status=status.HTTP_403_FORBIDDEN)
+        b = request.data or {}
+        date_val = b.get('date')
+        time_val = b.get('time')
+        clean_time = (time_val or '').replace(':', '')
+        log_id = f"{date_val}_{clean_time}" if (date_val and clean_time) else None
+        existing = HvacLog.objects.filter(id=log_id).first() if log_id else None
+        if existing and not can_edit_hvac_log(request.user, existing):
+            return Response({'error': 'The 10-minute edit window has expired. Only supervisors and engineers can edit logs.'}, status=status.HTTP_403_FORBIDDEN)
+        if not existing and not is_hvac_supervisor_or_admin(request.user):
+            user_role = getattr(request.user, 'role', '')
+            if user_role not in ('hvac_engineer', 'hvac_supervisor', 'hvac_operator'):
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         return self.save_log(request)
 
     def save_log(self, request):
@@ -154,6 +188,11 @@ class HvacLogsListView(APIView):
         # ID format: YYYY-MM-DD_HHMM
         clean_time = time_val.replace(':', '')
         log_id = f"{date_val}_{clean_time}"
+
+        # Check 10-minute edit window for operators
+        existing = HvacLog.objects.filter(id=log_id).first()
+        if existing and not can_edit_hvac_log(request.user, existing):
+            return Response({'error': 'The 10-minute edit window has expired. Only supervisors and engineers can edit logs.'}, status=status.HTTP_403_FORBIDDEN)
 
         # Clean readings values
         cleaned_v = {}
@@ -196,8 +235,10 @@ class HvacLogDetailView(APIView):
             return Response({'error': 'Log not found'}, status=status.HTTP_404_NOT_FOUND)
 
     def put(self, request, log_id):
-        user = request.user
-        if not (getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False) or getattr(user, 'role', '') in ('hvac_engineer', 'hvac_supervisor')):
+        existing = HvacLog.objects.filter(id=log_id).first()
+        if existing and not can_edit_hvac_log(request.user, existing):
+            return Response({'error': 'The 10-minute edit window has expired. Only supervisors and engineers can edit logs.'}, status=status.HTTP_403_FORBIDDEN)
+        if not existing and not is_hvac_supervisor_or_admin(request.user):
             return Response({'error': 'Only supervisors and engineers can edit logs'}, status=status.HTTP_403_FORBIDDEN)
         b = request.data or {}
         # Ensure log_id matches or fallback
