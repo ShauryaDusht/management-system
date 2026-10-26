@@ -1455,7 +1455,8 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
   var isPlotType = curType === 'shrub' || curType === 'creeper';
 
   if (!isPlotType) {
-    // Tree and Plant: remove plot dimensions and extra calculation fields
+    // Tree and Plant: individual plant count is 1
+    formData.set('plant_count', '1');
     formData.delete('length_m');
     formData.delete('width_m');
     formData.delete('total_area_m');
@@ -1469,27 +1470,35 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
     formData.delete('girth_cm');
     formData.delete('canopy_area_m');
 
-    // Append plot & total plants spec into notes
+    // Extract calculated total plants
+    var totalPlantsEl = document.getElementById('sumTotalPlants');
+    var rawCount = totalPlantsEl ? totalPlantsEl.textContent.replace(/,/g, '').trim() : '1';
+    var parsedCount = parseInt(rawCount, 10);
+    var plantCount = isNaN(parsedCount) || parsedCount <= 0 ? 1 : parsedCount;
+    formData.set('plant_count', plantCount);
+
+    var shapeVal = document.querySelector('input[name="area_shape"]:checked');
+    var shapeName = shapeVal ? shapeVal.value : 'rectangle';
+    formData.set('area_shape', shapeName);
+
+    var spacingInp = document.getElementById('plant_spacing_cm') || document.getElementById('plant_spacing_m');
+    var spacingVal = (spacingInp ? spacingInp.value : '') || '25';
+    formData.set('plant_spacing_cm', spacingVal);
+
+    var patternVal = document.getElementById('planting_pattern') ? document.getElementById('planting_pattern').value : 'square';
+    formData.set('planting_pattern', patternVal || 'square');
+
+    // Append plot & total plants spec into notes and keep structured fields
     var areaVal = document.getElementById('total_area_m').value;
     var notesField = document.getElementById('notes');
     if (areaVal && parseFloat(areaVal) > 0) {
-      var shapeVal = document.querySelector('input[name="area_shape"]:checked');
-      var shapeName = shapeVal ? shapeVal.value : 'rectangle';
-      var spacingInp = document.getElementById('plant_spacing_cm') || document.getElementById('plant_spacing_m');
-      var spacingVal = (spacingInp ? spacingInp.value : '') || '25';
-      var patternVal = document.getElementById('planting_pattern').value || 'square';
-      var totalPlantsVal = document.getElementById('sumTotalPlants') ? document.getElementById('sumTotalPlants').textContent : '0';
-      var specNote = '[Plot: ' + shapeName.charAt(0).toUpperCase() + shapeName.slice(1) + ' ' + areaVal + ' m² | Spacing: ' + spacingVal + 'cm (' + patternVal + ') | Total Plants: ' + totalPlantsVal + ']';
+      formData.set('total_area_m', areaVal);
+      var specNote = '[Plot: ' + shapeName.charAt(0).toUpperCase() + shapeName.slice(1) + ' ' + areaVal + ' m² | Spacing: ' + spacingVal + 'cm (' + patternVal + ') | Total Plants: ' + plantCount.toLocaleString() + ']';
       if (notesField && !notesField.value.includes('[Plot:')) {
         notesField.value = (notesField.value ? notesField.value + '\n' : '') + specNote;
         formData.set('notes', notesField.value);
       }
     }
-    formData.delete('total_area_m');
-    formData.delete('plant_spacing_cm');
-    formData.delete('plant_spacing_m');
-    formData.delete('planting_pattern');
-    formData.delete('area_shape');
   }
 
   fetch('/geo/submit/record/', {
