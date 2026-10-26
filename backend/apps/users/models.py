@@ -241,16 +241,18 @@ def resolve_username_alias(raw_val):
 
     # 4. Common human aliases for engineering, lift, admin, and management roles
     alias_map = {
-        'engineer': 'engineer',
-        'lift': 'engineer',
-        'lifts': 'engineer',
-        'lift_engineer': 'engineer',
-        'lift.engineer': 'engineer',
-        'lift-engineer': 'engineer',
-        'je1.electrical': 'engineer',
-        'je2.electrical': 'engineer',
-        'je1.electrical@iitgn.ac.in': 'engineer',
-        'je2.electrical@iitgn.ac.in': 'engineer',
+        'engineer': 'lift.engineer',
+        'lift': 'lift.engineer',
+        'lifts': 'lift.engineer',
+        'lift_engineer': 'lift.engineer',
+        'lift.engineer': 'lift.engineer',
+        'lift-engineer': 'lift.engineer',
+        'je1.electrical': 'lift.engineer',
+        'je2.electrical': 'lift.engineer',
+        'ae1.electrical': 'lift.engineer',
+        'je1.electrical@iitgn.ac.in': 'lift.engineer',
+        'je2.electrical@iitgn.ac.in': 'lift.engineer',
+        'ae1.electrical@iitgn.ac.in': 'lift.engineer',
         'electrical': 'electrical.team',
         'electrical_team': 'electrical.team',
         'electrical.team': 'electrical.team',
@@ -275,6 +277,8 @@ def resolve_username_alias(raw_val):
         target = alias_map[raw_val]
         if User.objects.filter(username=target).exists():
             return target
+        if target == 'lift.engineer' and User.objects.filter(username='engineer').exists():
+            return 'engineer'
 
     from django.conf import settings
     civil_emails = [e.strip().lower() for e in getattr(settings, 'CIVIL_ALERT_EMAIL', '').split(',') if e.strip()]
@@ -283,6 +287,8 @@ def resolve_username_alias(raw_val):
 
     target_email = raw_val if '@' in raw_val else f'{raw_val}@iitgn.ac.in'
     if target_email in lift_emails:
+        if User.objects.filter(username='lift.engineer').exists():
+            return 'lift.engineer'
         if User.objects.filter(username='engineer').exists():
             return 'engineer'
     if target_email in elec_emails:
