@@ -109,6 +109,7 @@ export function Badge({ value, style }) {
     estate_office: { bg: '#fef3c7', color: '#92400e', text: 'Estate Office' },
     civil_team: { bg: '#ecfeff', color: '#0e7490', text: 'Civil Team' },
     electrical_team: { bg: '#ede9fe', color: '#6d28d9', text: 'Electrical Team' },
+    engineer: { bg: '#ede9fe', color: '#6d28d9', text: 'Lift License' },
     urgent: { bg: '#fee2e2', color: '#991b1b', text: '⚡ Urgent' },
   }
   const m =
