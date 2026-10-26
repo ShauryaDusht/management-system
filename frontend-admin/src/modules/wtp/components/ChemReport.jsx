@@ -70,8 +70,26 @@ export default function ChemReport({ rows }) {
   const isAllChem = sel === 'all';
   const f0 = C.find((f) => f.k === sel) || C[0];
 
+  const allChartData = isAllChem
+    ? cr.map((r) => ({
+        date: r.date,
+        label: r.date.slice(5),
+        title: rlab(r, view),
+        cl_wtp: Number(r.cl_wtp) || 0,
+        cl_stp: Number(r.cl_stp) || 0,
+        alum: Number(r.alum) || 0,
+        value: (Number(r.cl_wtp) || 0) + (Number(r.cl_stp) || 0) + (Number(r.alum) || 0),
+      }))
+    : cr.filter((r) => r[f0.k] != null).map((r) => ({
+        date: r.date,
+        label: r.date.slice(5),
+        value: r[f0.k],
+        title: `${rlab(r, view)}: ${fmt(r[f0.k], 2)} ${f0.unit}`,
+      }));
+
   const chart = isAllChem
     ? cr.slice(-30).map((r) => ({
+        date: r.date,
         label: r.date.slice(5),
         title: rlab(r, view),
         cl_wtp: Number(r.cl_wtp) || 0,
@@ -80,6 +98,7 @@ export default function ChemReport({ rows }) {
         value: (Number(r.cl_wtp) || 0) + (Number(r.cl_stp) || 0) + (Number(r.alum) || 0),
       }))
     : cr.filter((r) => r[f0.k] != null).slice(-30).map((r) => ({
+        date: r.date,
         label: r.date.slice(5),
         value: r[f0.k],
         title: `${rlab(r, view)}: ${fmt(r[f0.k], 2)} ${f0.unit}`,
@@ -163,12 +182,13 @@ export default function ChemReport({ rows }) {
         </div>
         <BarChart
           data={chart}
+          allData={allChartData}
           unit={isAllChem ? 'kg' : f0.unit}
           title={isAllChem ? 'Combined Chemical Dosing Trend (WTP Cl₂, STP Cl₂, Alum)' : `${f0.label} Consumption Trend`}
           metricName={isAllChem ? 'Total Dosed' : f0.label}
           color="chemical"
           multiSeries={chemMultiSeries}
-          height={280}
+          height={300}
         />
       </div>
       <div className="card">

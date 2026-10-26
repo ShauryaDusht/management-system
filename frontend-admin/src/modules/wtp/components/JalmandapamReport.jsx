@@ -74,10 +74,35 @@ export default function JalmandapamReport({ rows }) {
   const refVal = isAllTanks ? null : (unit === 'cum' ? (JMT[sel]?.cap || 1400) : 4.0);
   const refLabel = isAllTanks ? null : (unit === 'cum' ? `Max Capacity (${refVal} CUM)` : `Max Safe Limit (4.0 m)`);
 
+  const allChartData = useMemo(() => {
+    if (isAllTanks) {
+      return filteredJr.map((r) => ({
+        date: r.date,
+        label: r.date.slice(5),
+        title: `${r.date} (${jmLabel(r.shift)})`,
+        jm1: conv('jm1', r.jm1 ?? 0),
+        jm2: conv('jm2', r.jm2 ?? 0),
+        jm3: conv('jm3', r.jm3 ?? 0),
+        jm4: conv('jm4', r.jm4 ?? 0),
+        jm5: conv('jm5', r.jm5 ?? 0),
+        value: conv('jm1', r.jm1 ?? 0),
+      }));
+    }
+    return filteredJr
+      .filter((r) => r[sel] != null)
+      .map((r) => ({
+        date: r.date,
+        label: r.date.slice(5),
+        value: conv(sel, r[sel]),
+        title: `${r.date} (${jmLabel(r.shift)}): ${fmt(conv(sel, r[sel]), 2)} ${unit === 'cum' ? 'CUM' : 'm'}`,
+      }));
+  }, [filteredJr, isAllTanks, sel, unit]);
+
   const chart = useMemo(() => {
     const subset = filteredJr.slice(-30);
     if (isAllTanks) {
       return subset.map((r) => ({
+        date: r.date,
         label: r.date.slice(5),
         title: `${r.date} (${jmLabel(r.shift)})`,
         jm1: conv('jm1', r.jm1 ?? 0),
@@ -91,6 +116,7 @@ export default function JalmandapamReport({ rows }) {
     return subset
       .filter((r) => r[sel] != null)
       .map((r) => ({
+        date: r.date,
         label: r.date.slice(5),
         value: conv(sel, r[sel]),
         title: `${r.date} (${jmLabel(r.shift)}): ${fmt(conv(sel, r[sel]), 2)} ${unit === 'cum' ? 'CUM' : 'm'}`,
@@ -224,6 +250,7 @@ export default function JalmandapamReport({ rows }) {
         </div>
         <BarChart
           data={chart}
+          allData={allChartData}
           unit={unit === 'cum' ? 'CUM' : 'm'}
           title={isAllTanks ? `All 5 Jalmandapam Storage Tanks (${unit === 'cum' ? 'Volume CUM' : 'Level Metres'})` : `${selField.label} Storage Level Trend`}
           metricName={isAllTanks ? 'Level' : selField.label}
@@ -231,7 +258,7 @@ export default function JalmandapamReport({ rows }) {
           referenceValue={refVal}
           referenceLabel={refLabel}
           multiSeries={jmMultiSeries}
-          height={290}
+          height={300}
         />
       </div>
       <div className="card">
