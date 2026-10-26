@@ -51,12 +51,6 @@ export default function MonthlyReport({ defaultMonth }) {
     };
   }, [month]);
 
-  const latestRecordedDate = useMemo(() => {
-    if (!monthLogs.length) return '';
-    const dates = monthLogs.map((l) => l.date).filter(Boolean).sort();
-    return dates[dates.length - 1] || '';
-  }, [monthLogs]);
-
   const isDateFiltered = Boolean(fromDate || toDate);
 
   const dateFilterLabel = useMemo(() => {
@@ -385,98 +379,6 @@ export default function MonthlyReport({ defaultMonth }) {
                 }}
               >
                 ✕ Reset to Full Month
-              </button>
-            )}
-          </div>
-
-          {/* Quick Preset Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted, #64748b)' }}>Quick Range:</span>
-            <button
-              type="button"
-              onClick={() => { setFromDate(''); setToDate(''); }}
-              style={{
-                padding: '3px 8px',
-                fontSize: 11,
-                fontWeight: !isDateFiltered ? 700 : 500,
-                borderRadius: 5,
-                border: '1px solid',
-                borderColor: !isDateFiltered ? '#0284c7' : '#cbd5e1',
-                background: !isDateFiltered ? '#0284c7' : '#ffffff',
-                color: !isDateFiltered ? '#ffffff' : '#475569',
-                cursor: 'pointer',
-              }}
-            >
-              Full Month
-            </button>
-            <button
-              type="button"
-              onClick={() => { setFromDate(''); setToDate(`${month}-10`); }}
-              style={{
-                padding: '3px 8px',
-                fontSize: 11,
-                fontWeight: (!fromDate && toDate === `${month}-10`) ? 700 : 500,
-                borderRadius: 5,
-                border: '1px solid',
-                borderColor: (!fromDate && toDate === `${month}-10`) ? '#0284c7' : '#cbd5e1',
-                background: (!fromDate && toDate === `${month}-10`) ? '#0284c7' : '#ffffff',
-                color: (!fromDate && toDate === `${month}-10`) ? '#ffffff' : '#475569',
-                cursor: 'pointer',
-              }}
-            >
-              Upto 10th
-            </button>
-            <button
-              type="button"
-              onClick={() => { setFromDate(''); setToDate(`${month}-15`); }}
-              style={{
-                padding: '3px 8px',
-                fontSize: 11,
-                fontWeight: (!fromDate && toDate === `${month}-15`) ? 700 : 500,
-                borderRadius: 5,
-                border: '1px solid',
-                borderColor: (!fromDate && toDate === `${month}-15`) ? '#0284c7' : '#cbd5e1',
-                background: (!fromDate && toDate === `${month}-15`) ? '#0284c7' : '#ffffff',
-                color: (!fromDate && toDate === `${month}-15`) ? '#ffffff' : '#475569',
-                cursor: 'pointer',
-              }}
-            >
-              Upto 15th
-            </button>
-            <button
-              type="button"
-              onClick={() => { setFromDate(''); setToDate(`${month}-20`); }}
-              style={{
-                padding: '3px 8px',
-                fontSize: 11,
-                fontWeight: (!fromDate && toDate === `${month}-20`) ? 700 : 500,
-                borderRadius: 5,
-                border: '1px solid',
-                borderColor: (!fromDate && toDate === `${month}-20`) ? '#0284c7' : '#cbd5e1',
-                background: (!fromDate && toDate === `${month}-20`) ? '#0284c7' : '#ffffff',
-                color: (!fromDate && toDate === `${month}-20`) ? '#ffffff' : '#475569',
-                cursor: 'pointer',
-              }}
-            >
-              Upto 20th
-            </button>
-            {latestRecordedDate && latestRecordedDate < maxMonthDate && (
-              <button
-                type="button"
-                onClick={() => { setFromDate(''); setToDate(latestRecordedDate); }}
-                style={{
-                  padding: '3px 8px',
-                  fontSize: 11,
-                  fontWeight: (!fromDate && toDate === latestRecordedDate) ? 700 : 500,
-                  borderRadius: 5,
-                  border: '1px solid',
-                  borderColor: (!fromDate && toDate === latestRecordedDate) ? '#16a34a' : '#cbd5e1',
-                  background: (!fromDate && toDate === latestRecordedDate) ? '#16a34a' : '#ffffff',
-                  color: (!fromDate && toDate === latestRecordedDate) ? '#ffffff' : '#15803d',
-                  cursor: 'pointer',
-                }}
-              >
-                Upto Latest Data ({latestRecordedDate.slice(8)}th)
               </button>
             )}
           </div>
