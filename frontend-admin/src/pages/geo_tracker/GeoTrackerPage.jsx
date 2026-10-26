@@ -1871,12 +1871,11 @@ export default function GeoTrackerPage() {
 
             {stats && (
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                <StatChip label="Total"        value={stats.total}                                         color="#374151"                   bg="#f3f4f6" />
                 <StatChip label="Trees"        value={stats.trees}                                         color={TYPE_CONFIG.tree.color}    bg={TYPE_CONFIG.tree.bg} />
                 <StatChip label="Plants"       value={stats.plants}                                        color={TYPE_CONFIG.plant.color}   bg={TYPE_CONFIG.plant.bg} />
                 <StatChip label="Creepers"     value={stats.creepers || 0}                                 color={TYPE_CONFIG.creeper.color} bg={TYPE_CONFIG.creeper.bg} />
                 <StatChip label="Shrubs"       value={stats.shrubs || 0}                                   color={TYPE_CONFIG.shrub.color}   bg={TYPE_CONFIG.shrub.bg} />
-                <StatChip label="Total Plants" value={(stats.total_plants ?? stats.total).toLocaleString()} color="#15803d"                   bg="#dcfce7" />
+                <StatChip label="Total"        value={(stats.total_plants ?? stats.total).toLocaleString()} color="#15803d"                   bg="#dcfce7" />
               </div>
             )}
           </div>
