@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -12,6 +12,7 @@ import {
   Tooltip,
   ReferenceLine,
   Cell,
+  Legend,
 } from 'recharts';
 import {
   BarChart3,
@@ -20,10 +21,13 @@ import {
   Activity,
   Layers,
   Calendar,
-  AlertCircle,
   CheckCircle2,
   Sparkles,
+  ArrowRightLeft,
+  CalendarRange,
+  Gauge,
 } from 'lucide-react';
+import { num, isEnergy, isIncomer } from './sheetsData';
 
 const COLORS = {
   primary: '#1a3c34', // IITGN Pine Green
@@ -52,11 +56,137 @@ const FEEDER_PALETTE = [
   '#475569',
 ];
 
+const YEAR_COLORS = [
+  '#1a3c34', // IITGN Pine Green
+  '#c2622a', // Terracotta
+  '#0284c7', // Sky Blue
+  '#d97706', // Amber
+  '#7c3aed', // Royal Violet
+  '#059669', // Emerald
+  '#e11d48', // Rose
+];
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatMonthLabel(monthKey) {
+  if (!monthKey || !monthKey.includes('-')) return monthKey || '';
+  const [y, m] = monthKey.split('-');
+  const idx = parseInt(m, 10) - 1;
+  const name = MONTH_NAMES[idx] || m;
+  return `${name} ${y}`;
+}
+
+// Extract reportable meter/feeder items for any substation sheet definition
+function getSheetReportItems(sh) {
+  if (!sh || !sh.tables) return [];
+  const out = [];
+  sh.tables.forEach((t) => {
+    if (t.raw) return;
+    if (sh.mode === 'snapshot') {
+      (t.rows || []).forEach((r) => {
+        if (r.head || r.anchor) return;
+        const rk = t.id + ':' + r.id;
+        out.push({
+          label: r.label,
+          sn: r.sn,
+          bold: r.kind === 'incomer',
+          incoming: isIncomer(r),
+          unit: sh.section === 'HT' ? 'kWh' : 'kWh',
+          read: (d) => [{ ord: d.date + '|' + d.slot, v: d.rows?.[rk]?.kwh }],
+        });
+      });
+    } else {
+      (t.cols || []).filter(isEnergy).forEach((c) =>
+        out.push({
+          label: c.f === 'kwh' && !/Meter/.test(c.g) ? c.g : c.g + ' · ' + c.l,
+          incoming: /^Incomer/i.test(c.g) || /HT\s*TVM\s*Meter/i.test(c.g),
+          unit: c.k === 'tvm_mwh' || c.k === 'tvm_mwh2' ? 'MWh' : c.f === 'kwh' ? 'kWh' : 'MWh',
+          read: (d) =>
+            (t.rows || []).map((hr) => ({
+              ord: d.date + '|' + hr.id,
+              v: d.rows?.[t.id + ':' + hr.id]?.[c.k],
+            })),
+        })
+      );
+    }
+  });
+  return out;
+}
+
+// Compute daily consumption map for a single sheet across all available docs
+function computeSheetDailyConsumption(sh, allDocs) {
+  if (!sh || !allDocs || !allDocs.length) return {};
+  const sheetDocs = allDocs.filter((d) => d.sheet === sh.id);
+  if (!sheetDocs.length) return {};
+
+  const items = getSheetReportItems(sh);
+  if (!items.length) return {};
+
+  const perDate = {};
+  items.forEach((it) => {
+    const reads = [];
+    sheetDocs.forEach((d) => {
+      it.read(d).forEach((x) => {
+        const n = num(x.v);
+        if (n != null) reads.push({ ord: x.ord, date: d.date, v: n });
+      });
+    });
+    reads.sort((a, b) => (a.ord < b.ord ? -1 : a.ord > b.ord ? 1 : 0));
+
+    let prev = null;
+    reads.forEach((r) => {
+      if (prev) {
+        const diff = r.v - prev.v;
+        if (diff >= 0) {
+          if (!perDate[r.date]) perDate[r.date] = { incoming: 0, total: 0, hasIncoming: false };
+          perDate[r.date].total += diff;
+          if (it.incoming) {
+            perDate[r.date].incoming += diff;
+            perDate[r.date].hasIncoming = true;
+          }
+        }
+      }
+      prev = r;
+    });
+  });
+
+  const dailyMap = {};
+  Object.keys(perDate).forEach((dt) => {
+    const entry = perDate[dt];
+    const val = entry.hasIncoming && entry.incoming > 0 ? entry.incoming : entry.total;
+    dailyMap[dt] = Number(val.toFixed(2));
+  });
+
+  return dailyMap;
+}
+
 // Custom Tooltip Component
-function CustomAnalyticsTooltip({ active, payload, label, unit, viewMode }) {
+function CustomAnalyticsTooltip({
+  active,
+  payload,
+  label,
+  unit,
+  viewMode,
+  trendAnalysisMode,
+}) {
   if (!active || !payload || !payload.length) return null;
   const p = payload[0];
   const d = p.payload || {};
+
+  let headerTitle = d.fullName || d.label || d.date || label;
+  if (viewMode === 'trend') {
+    if (trendAnalysisMode === 'compare_years') {
+      headerTitle = `Month: ${d.label || label}`;
+    } else if (trendAnalysisMode === 'compare_months') {
+      headerTitle = `${d.label || label}`;
+    } else if (trendAnalysisMode === 'yearly') {
+      headerTitle = `${d.label || label}`;
+    } else if (trendAnalysisMode === 'monthly') {
+      headerTitle = `${d.label || label}`;
+    } else if (trendAnalysisMode === 'timeline') {
+      headerTitle = d.date ? `Date: ${d.date}` : (d.label || label);
+    }
+  }
 
   return (
     <div
@@ -69,12 +199,13 @@ function CustomAnalyticsTooltip({ active, payload, label, unit, viewMode }) {
         boxShadow: '0 10px 25px -5px rgba(26, 60, 52, 0.18)',
         fontSize: '12px',
         color: '#1a1a1a',
-        minWidth: '170px',
+        minWidth: '180px',
+        maxWidth: '320px',
         pointerEvents: 'none',
       }}
     >
       <div style={{ fontWeight: 700, marginBottom: 6, color: '#1a3c34', borderBottom: '1px solid #f1f0ec', paddingBottom: 4 }}>
-        {d.fullName || d.label || d.date || label}
+        {headerTitle}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -89,6 +220,35 @@ function CustomAnalyticsTooltip({ active, payload, label, unit, viewMode }) {
             </strong>
           </div>
         ))}
+
+        {/* Live Variance Calculation in Tooltip for Compare Months */}
+        {trendAnalysisMode === 'compare_months' && payload.length === 2 && (
+          <div
+            style={{
+              marginTop: 6,
+              paddingTop: 6,
+              borderTop: '1px dashed #e5e1d8',
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '11px',
+              fontWeight: 700,
+            }}
+          >
+            <span style={{ color: '#64748b' }}>Daily Variance:</span>
+            {(() => {
+              const vA = Number(payload[0].value || 0);
+              const vB = Number(payload[1].value || 0);
+              const diff = vA - vB;
+              const pct = vB > 0 ? (diff / vB) * 100 : 0;
+              const isInc = diff > 0;
+              return (
+                <span style={{ color: isInc ? '#c2622a' : '#16a34a' }}>
+                  {isInc ? `+${diff.toFixed(1)}` : diff.toFixed(1)} ({isInc ? `+${pct.toFixed(1)}%` : `${pct.toFixed(1)}%`})
+                </span>
+              );
+            })()}
+          </div>
+        )}
 
         {d.isIncoming != null && (
           <div style={{ fontSize: '11px', marginTop: 4, color: d.isIncoming ? '#16a34a' : '#c2622a', fontWeight: 600 }}>
@@ -120,7 +280,12 @@ export default function SubstationAnalyticsChart({
   onJumpToDate = null,
 }) {
   const [viewMode, setViewMode] = useState('comparison'); // 'comparison' | 'feeder' | 'trend'
+  const [trendAnalysisMode, setTrendAnalysisMode] = useState('timeline'); // 'timeline' | 'monthly' | 'yearly' | 'compare_years' | 'compare_months'
   const [trendChartType, setTrendChartType] = useState('area'); // 'area' | 'bar'
+  const [analysisScope, setAnalysisScope] = useState('substation'); // 'substation' | 'section'
+  const [selectedYears, setSelectedYears] = useState([]);
+  const [selectedMonthA, setSelectedMonthA] = useState('');
+  const [selectedMonthB, setSelectedMonthB] = useState('');
 
   const unit = activeResult?.items?.[0]?.it?.unit || (section === 'HT' ? 'kWh' : 'kWh');
 
@@ -161,8 +326,137 @@ export default function SubstationAnalyticsChart({
       .sort((a, b) => b.value - a.value);
   }, [activeResult, reportType, date, unit]);
 
-  // 3. Time-Series Timeline Dataset
+  // 3. Compute Complete Daily Historical Series Across All Docs
+  const sectionDailyMap = useMemo(() => {
+    const mapBySheet = {};
+    const allDatesSet = new Set();
+
+    sectionResults.forEach(({ sh }) => {
+      const daily = computeSheetDailyConsumption(sh, docs);
+      mapBySheet[sh.id] = daily;
+      Object.keys(daily).forEach((dt) => allDatesSet.add(dt));
+    });
+
+    if (activeSheet?.id && !mapBySheet[activeSheet.id]) {
+      const daily = computeSheetDailyConsumption(activeSheet, docs);
+      mapBySheet[activeSheet.id] = daily;
+      Object.keys(daily).forEach((dt) => allDatesSet.add(dt));
+    }
+
+    // Also include raw dates from docs
+    docs.forEach((d) => {
+      if (d.date && typeof d.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.date)) {
+        allDatesSet.add(d.date);
+      }
+    });
+
+    return { mapBySheet, allDates: [...allDatesSet].sort() };
+  }, [sectionResults, activeSheet, docs]);
+
+  // Flattened chronological historical records
+  const allHistoricalDaily = useMemo(() => {
+    const { mapBySheet, allDates } = sectionDailyMap;
+    const isSection = analysisScope === 'section';
+
+    return allDates.map((dt) => {
+      const [y, m, d] = dt.split('-');
+      const monthKey = `${y}-${m}`;
+
+      let subVal = 0;
+      if (activeSheet?.id && mapBySheet[activeSheet.id]?.[dt] != null) {
+        subVal = mapBySheet[activeSheet.id][dt];
+      }
+
+      let secVal = 0;
+      sectionResults.forEach(({ sh }) => {
+        if (mapBySheet[sh.id]?.[dt] != null) {
+          secVal += mapBySheet[sh.id][dt];
+        }
+      });
+
+      const activeVal = isSection ? secVal : subVal;
+
+      return {
+        date: dt,
+        dateStr: dt,
+        year: y,
+        month: m,
+        day: d,
+        monthKey,
+        value: Number(activeVal.toFixed(2)),
+        subVal: Number(subVal.toFixed(2)),
+        secVal: Number(secVal.toFixed(2)),
+        unit,
+      };
+    });
+  }, [sectionDailyMap, analysisScope, activeSheet?.id, sectionResults, unit]);
+
+  // Discover unique available years
+  const availableYears = useMemo(() => {
+    const set = new Set();
+    allHistoricalDaily.forEach((d) => {
+      if (d.year && d.year.length === 4) set.add(d.year);
+    });
+    if (set.size === 1) {
+      const yr = Number([...set][0]);
+      if (!isNaN(yr)) set.add(String(yr - 1));
+    } else if (set.size === 0) {
+      const curYear = new Date().getFullYear();
+      set.add(String(curYear - 1));
+      set.add(String(curYear));
+    }
+    return [...set].sort();
+  }, [allHistoricalDaily]);
+
+  // Discover unique available months (sorted latest first)
+  const availableMonths = useMemo(() => {
+    const set = new Set();
+    allHistoricalDaily.forEach((d) => {
+      if (d.monthKey && d.monthKey.length === 7) set.add(d.monthKey);
+    });
+    if (set.size <= 1) {
+      const curMonth = month || new Date().toISOString().slice(0, 7);
+      set.add(curMonth);
+      const [y, m] = curMonth.split('-').map(Number);
+      const prevM = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+      set.add(prevM);
+    }
+    return [...set].sort().reverse();
+  }, [allHistoricalDaily, month]);
+
+  // Initialize selected years for comparison
+  useEffect(() => {
+    if (availableYears.length > 0 && selectedYears.length === 0) {
+      setSelectedYears(availableYears.slice(-3));
+    }
+  }, [availableYears, selectedYears.length]);
+
+  // Initialize selected months for comparison
+  useEffect(() => {
+    if (availableMonths.length > 0) {
+      if (!selectedMonthA || !availableMonths.includes(selectedMonthA)) {
+        setSelectedMonthA(availableMonths[0]);
+      }
+      if (!selectedMonthB || !availableMonths.includes(selectedMonthB)) {
+        setSelectedMonthB(availableMonths[1] || availableMonths[0]);
+      }
+    }
+  }, [availableMonths, selectedMonthA, selectedMonthB]);
+
+  const toggleYearSelection = (yr) => {
+    setSelectedYears((prev) => {
+      if (prev.includes(yr)) {
+        if (prev.length <= 1) return prev;
+        return prev.filter((y) => y !== yr);
+      }
+      return [...prev, yr].sort();
+    });
+  };
+
+  // MODE 1: Granular Timeline Dataset
   const trendData = useMemo(() => {
+    const isSection = analysisScope === 'section';
+
     if (reportType === 'monthly') {
       const days = [...Array(numDaysInMonth).keys()].map((i) => {
         const dNum = String(i + 1).padStart(2, '0');
@@ -171,8 +465,12 @@ export default function SubstationAnalyticsChart({
 
       return days.map((dStr) => {
         const dNum = dStr.slice(8);
+        const match = allHistoricalDaily.find((h) => h.dateStr === dStr);
+
         let activeVal = 0;
-        if (activeResult) {
+        if (match) {
+          activeVal = isSection ? match.secVal : match.subVal;
+        } else if (activeResult) {
           activeResult.items.forEach(({ it, c }) => {
             if (it.incoming && c?.perDate?.[dStr] != null) {
               activeVal += c.perDate[dStr];
@@ -185,21 +483,11 @@ export default function SubstationAnalyticsChart({
           }
         }
 
-        let sectionVal = 0;
-        sectionResults.forEach(({ items }) => {
-          items.forEach(({ it, c }) => {
-            if (it.incoming && c?.perDate?.[dStr] != null) {
-              sectionVal += c.perDate[dStr];
-            }
-          });
-        });
-
         return {
           date: dStr,
           label: `${dNum} ${month.slice(5) === '10' ? 'Oct' : ''}`,
           shortLabel: dNum,
           value: Number(activeVal.toFixed(2)),
-          sectionTotal: Number(sectionVal.toFixed(2)),
           unit,
         };
       });
@@ -207,17 +495,19 @@ export default function SubstationAnalyticsChart({
 
     // Daily Mode: Trailing 14 days curve leading to current date
     const dates = [];
-    const curr = new Date(date);
+    const curr = new Date(date || new Date().toISOString().slice(0, 10));
     for (let i = 13; i >= 0; i--) {
       const past = new Date(curr);
       past.setDate(past.getDate() - i);
       dates.push(past.toISOString().slice(0, 10));
     }
 
-    const sheetDocs = docs.filter((d) => d.sheet === activeSheet?.id);
     return dates.map((dStr) => {
+      const match = allHistoricalDaily.find((h) => h.dateStr === dStr);
       let val = 0;
-      if (activeResult) {
+      if (match) {
+        val = isSection ? match.secVal : match.subVal;
+      } else if (activeResult) {
         activeResult.items.forEach(({ it, c }) => {
           if (it.incoming && c?.perDate?.[dStr] != null) {
             val += c.perDate[dStr];
@@ -239,38 +529,179 @@ export default function SubstationAnalyticsChart({
         unit,
       };
     });
-  }, [reportType, month, numDaysInMonth, date, activeResult, sectionResults, activeSheet?.id, docs, unit]);
+  }, [reportType, month, numDaysInMonth, date, allHistoricalDaily, analysisScope, activeResult, unit]);
+
+  // MODE 2: Monthly Aggregated Data
+  const monthlyData = useMemo(() => {
+    const map = new Map();
+    allHistoricalDaily.forEach((d) => {
+      if (!d.monthKey) return;
+      const mk = d.monthKey;
+      let entry = map.get(mk);
+      if (!entry) {
+        entry = {
+          label: formatMonthLabel(mk),
+          monthKey: mk,
+          value: 0,
+          count: 0,
+          unit,
+        };
+        map.set(mk, entry);
+      }
+      entry.value += d.value;
+      entry.count += 1;
+    });
+
+    const list = [...map.values()].sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+    list.forEach((e) => {
+      e.value = Number(e.value.toFixed(2));
+    });
+    return list;
+  }, [allHistoricalDaily, unit]);
+
+  // MODE 3: Yearly Aggregated Data
+  const yearlyData = useMemo(() => {
+    const map = new Map();
+    allHistoricalDaily.forEach((d) => {
+      if (!d.year) return;
+      const yr = d.year;
+      let entry = map.get(yr);
+      if (!entry) {
+        entry = {
+          label: `Year ${yr}`,
+          year: yr,
+          value: 0,
+          count: 0,
+          unit,
+        };
+        map.set(yr, entry);
+      }
+      entry.value += d.value;
+      entry.count += 1;
+    });
+
+    const list = [...map.values()].sort((a, b) => a.year.localeCompare(b.year));
+    list.forEach((e) => {
+      e.value = Number(e.value.toFixed(2));
+    });
+    return list;
+  }, [allHistoricalDaily, unit]);
+
+  // MODE 4: Compare Years (YoY) Overlay Dataset across 12 months (Jan–Dec)
+  const activeCompareYears = useMemo(() => {
+    return selectedYears.length > 0 ? selectedYears : availableYears;
+  }, [selectedYears, availableYears]);
+
+  const compareYearsData = useMemo(() => {
+    return MONTH_NAMES.map((mName, mIdx) => {
+      const monthNum = String(mIdx + 1).padStart(2, '0');
+      const row = { label: mName, monthNum: mIdx + 1 };
+      activeCompareYears.forEach((yr) => {
+        const matching = allHistoricalDaily.filter((d) => d.year === yr && d.month === monthNum);
+        const sum = matching.reduce((acc, curr) => acc + (Number(curr.value) || 0), 0);
+        row[yr] = Number(sum.toFixed(2));
+      });
+      return row;
+    });
+  }, [activeCompareYears, allHistoricalDaily]);
+
+  // MODE 5: Compare Months Side-by-Side Dataset (Day 01–Day 31)
+  const compareMonthsData = useMemo(() => {
+    if (!selectedMonthA || !selectedMonthB) return [];
+    const days = [];
+    for (let d = 1; d <= 31; d++) {
+      const dayStr = String(d).padStart(2, '0');
+      const matchA = allHistoricalDaily.find((item) => item.monthKey === selectedMonthA && item.day === dayStr);
+      const matchB = allHistoricalDaily.find((item) => item.monthKey === selectedMonthB && item.day === dayStr);
+      const valA = matchA ? Number(matchA.value) : 0;
+      const valB = matchB ? Number(matchB.value) : 0;
+      days.push({
+        label: `Day ${dayStr}`,
+        day: d,
+        [selectedMonthA]: Number(valA.toFixed(2)),
+        [selectedMonthB]: Number(valB.toFixed(2)),
+      });
+    }
+    return days;
+  }, [allHistoricalDaily, selectedMonthA, selectedMonthB]);
+
+  // Live Variance Statistics for Compare Months
+  const monthCompStats = useMemo(() => {
+    if (!compareMonthsData.length || !selectedMonthA || !selectedMonthB) return null;
+    const totA = compareMonthsData.reduce((acc, r) => acc + (Number(r[selectedMonthA]) || 0), 0);
+    const totB = compareMonthsData.reduce((acc, r) => acc + (Number(r[selectedMonthB]) || 0), 0);
+    const diff = totA - totB;
+    const pct = totB > 0 ? (diff / totB) * 100 : 0;
+    return {
+      totA: Number(totA.toFixed(1)),
+      totB: Number(totB.toFixed(1)),
+      diff: Number(diff.toFixed(1)),
+      pct: Number(pct.toFixed(1)),
+    };
+  }, [compareMonthsData, selectedMonthA, selectedMonthB]);
+
+  // Active chart dataset depending on mode
+  const activeTrendChartData = useMemo(() => {
+    if (trendAnalysisMode === 'monthly') return monthlyData;
+    if (trendAnalysisMode === 'yearly') return yearlyData;
+    if (trendAnalysisMode === 'compare_years') return compareYearsData;
+    if (trendAnalysisMode === 'compare_months') return compareMonthsData;
+    return trendData;
+  }, [trendAnalysisMode, monthlyData, yearlyData, compareYearsData, compareMonthsData, trendData]);
+
+  // Dynamic axis titles
+  const xAxisTitle = useMemo(() => {
+    if (viewMode === 'comparison') return 'X-Axis: Substation / Panel Name';
+    if (viewMode === 'feeder') return `X-Axis: Energy Consumption (${unit || 'kWh'})`;
+    if (trendAnalysisMode === 'timeline') {
+      return reportType === 'daily' ? 'X-Axis: Hourly Time Slot / Date' : 'X-Axis: Date (Day of Month)';
+    }
+    if (trendAnalysisMode === 'monthly') return 'X-Axis: Month (Chronological)';
+    if (trendAnalysisMode === 'yearly') return 'X-Axis: Year (Annual Summary)';
+    if (trendAnalysisMode === 'compare_years') return 'X-Axis: Month of Year (Jan – Dec)';
+    if (trendAnalysisMode === 'compare_months') return 'X-Axis: Day of Month (Day 01 – Day 31)';
+    return 'X-Axis: Timeline';
+  }, [viewMode, trendAnalysisMode, reportType, unit]);
+
+  const yAxisTitle = useMemo(() => {
+    if (viewMode === 'feeder') return 'Y-Axis: Feeder / Circuit Name';
+    if (viewMode === 'trend') {
+      if (trendAnalysisMode === 'yearly') return `Y-Axis: Annual Consumption (${unit || 'kWh'})`;
+      if (trendAnalysisMode === 'monthly') return `Y-Axis: Monthly Consumption (${unit || 'kWh'})`;
+      return `Y-Axis: Daily Consumption (${unit || 'kWh'})`;
+    }
+    return `Y-Axis: Energy Consumption (${unit || 'kWh'})`;
+  }, [viewMode, trendAnalysisMode, unit]);
 
   // Aggregate stats for KPI badges
   const stats = useMemo(() => {
     const totalEnergy = comparisonData.reduce((acc, x) => acc + x.value, 0);
     const sortedSubs = [...comparisonData].sort((a, b) => b.value - a.value);
     const topSub = sortedSubs[0] || null;
-    const sortedFeeders = [...feederData].sort((a, b) => b.value - a.value);
-    const topFeeder = sortedFeeders[0] || null;
 
-    const validTrendPoints = trendData.filter((d) => d.value > 0);
+    const validTrendPoints = activeTrendChartData.filter((d) => d.value > 0);
     const trendAvg = validTrendPoints.length
       ? validTrendPoints.reduce((acc, d) => acc + d.value, 0) / validTrendPoints.length
       : 0;
     const trendPeak = validTrendPoints.length ? Math.max(...validTrendPoints.map((d) => d.value)) : 0;
 
-    const hasData = totalEnergy > 0 || feederData.some((f) => f.value > 0);
+    const hasData = totalEnergy > 0 || feederData.some((f) => f.value > 0) || allHistoricalDaily.some((h) => h.value > 0);
 
     return {
       totalEnergy,
       topSub,
-      topFeeder,
       trendAvg,
       trendPeak,
       hasData,
     };
-  }, [comparisonData, feederData, trendData]);
+  }, [comparisonData, feederData, activeTrendChartData, allHistoricalDaily]);
 
   // Gradient IDs
   const gradSubstation = `substationGrad_${section}`;
   const gradTrend = `trendGrad_${section}`;
   const gradFeeder = `feederGrad_${section}`;
+
+  const scopeLabel = analysisScope === 'section' ? `All ${section} Substations Combined` : (activeSheet?.name || 'Substation');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
@@ -427,10 +858,10 @@ export default function SubstationAnalyticsChart({
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' }}>
-              Feeder Telemetry Health
+              Historical Telemetry Logs
             </div>
             <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--status-ok)', marginTop: 2 }}>
-              {stats.hasData ? 'Active Telemetry ✓' : 'Standby / Ready'}
+              {allHistoricalDaily.length} Days Recorded ✓
             </div>
           </div>
         </div>
@@ -456,7 +887,7 @@ export default function SubstationAnalyticsChart({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Calendar size={16} color="var(--orange-600)" />
             <span>
-              Selected date <strong>{date}</strong> has 0 logged entries. Logs exist up to mid-October.
+              Selected date <strong>{date}</strong> has 0 logged entries. Logs exist in historical timeline.
             </span>
           </div>
           <button
@@ -472,7 +903,7 @@ export default function SubstationAnalyticsChart({
 
       {/* 2. Interactive Analytics Glass Card */}
       <div className="glass-card" style={{ marginBottom: 0 }}>
-        {/* Card Header & Controls */}
+        {/* Card Header & Primary Tabs */}
         <div
           style={{
             padding: '14px 18px',
@@ -492,7 +923,17 @@ export default function SubstationAnalyticsChart({
               <span>
                 {viewMode === 'comparison' && `Substation Energy Comparison (${section} Panels)`}
                 {viewMode === 'feeder' && `${activeSheet?.name || 'Substation'} Feeder Load Breakdown`}
-                {viewMode === 'trend' && `${activeSheet?.name || 'Substation'} Daily Power Trend`}
+                {viewMode === 'trend' && `${scopeLabel} · ${
+                  trendAnalysisMode === 'timeline'
+                    ? '📅 Granular Timeline'
+                    : trendAnalysisMode === 'monthly'
+                    ? '📊 Monthly Trend'
+                    : trendAnalysisMode === 'yearly'
+                    ? '📆 Yearly Trend'
+                    : trendAnalysisMode === 'compare_years'
+                    ? '🔄 Year-over-Year (YoY) Overlay'
+                    : '⚖️ Month-to-Month Variance'
+                }`}
               </span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
@@ -500,7 +941,7 @@ export default function SubstationAnalyticsChart({
             </div>
           </div>
 
-          {/* Interactive Mode Switcher Tabs */}
+          {/* Interactive View Switcher Tabs */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <div
               style={{
@@ -575,7 +1016,7 @@ export default function SubstationAnalyticsChart({
                 }}
               >
                 <TrendingUp size={13} />
-                <span>Daily Load Trend</span>
+                <span>Power Trend & Analysis</span>
               </button>
             </div>
 
@@ -628,7 +1069,273 @@ export default function SubstationAnalyticsChart({
           </div>
         </div>
 
-        {/* Axis Guide Strip */}
+        {/* 5-Mode Primary Trend & Comparison Toolbar */}
+        {viewMode === 'trend' && (
+          <div
+            style={{
+              padding: '10px 18px',
+              borderBottom: '1px solid var(--glass-border)',
+              background: 'var(--bg-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 10,
+            }}
+          >
+            {/* The 5 Analysis Modes */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', marginRight: 2 }}>
+                Mode:
+              </span>
+              {[
+                { id: 'timeline', label: '📅 Timeline', title: 'Regular granular view' },
+                { id: 'monthly', label: '📊 Monthly Trend', title: 'Aggregated monthly consumption over time' },
+                { id: 'yearly', label: '📆 Yearly Trend', title: 'Annual totals with year-over-year trends' },
+                { id: 'compare_years', label: '🔄 Compare Years', title: 'Month-by-month overlay comparison (Jan–Dec) across different years' },
+                { id: 'compare_months', label: '⚖️ Compare Months', title: 'Side-by-side day-by-day (1–31) comparison with live variance' },
+              ].map((m) => {
+                const isActive = trendAnalysisMode === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setTrendAnalysisMode(m.id)}
+                    title={m.title}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: 6,
+                      fontSize: '11.5px',
+                      fontWeight: isActive ? 700 : 500,
+                      background: isActive ? 'var(--green-800)' : 'var(--bg-tertiary)',
+                      color: isActive ? '#ffffff' : 'var(--text-main)',
+                      border: isActive ? '1px solid var(--green-900)' : '1px solid var(--glass-border)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Scope Switcher: Active Substation vs All Section Substations */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>Scope:</span>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--glass-border)',
+                  borderRadius: 6,
+                  padding: 2,
+                  gap: 2,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setAnalysisScope('substation')}
+                  style={{
+                    padding: '3px 8px',
+                    fontSize: 11,
+                    fontWeight: analysisScope === 'substation' ? 700 : 500,
+                    borderRadius: 4,
+                    border: 'none',
+                    background: analysisScope === 'substation' ? 'var(--green-800)' : 'transparent',
+                    color: analysisScope === 'substation' ? '#ffffff' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  🏢 {activeSheet?.name ? activeSheet.name.replace(/ Sub Station| \(hourly\)| Panel/gi, '') : 'Active Substation'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAnalysisScope('section')}
+                  style={{
+                    padding: '3px 8px',
+                    fontSize: 11,
+                    fontWeight: analysisScope === 'section' ? 700 : 500,
+                    borderRadius: 4,
+                    border: 'none',
+                    background: analysisScope === 'section' ? 'var(--green-800)' : 'transparent',
+                    color: analysisScope === 'section' ? '#ffffff' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ⚡ All {section} Panels
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sub-selectors for Compare Years / Compare Months */}
+        {viewMode === 'trend' && trendAnalysisMode === 'compare_years' && (
+          <div
+            style={{
+              padding: '8px 18px',
+              borderBottom: '1px solid var(--glass-border)',
+              background: 'var(--bg-tertiary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 8,
+              fontSize: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>
+                Select Years to Overlay:
+              </span>
+              {availableYears.map((yr, idx) => {
+                const isSelected = selectedYears.includes(yr);
+                const color = YEAR_COLORS[idx % YEAR_COLORS.length];
+                return (
+                  <button
+                    key={yr}
+                    type="button"
+                    onClick={() => toggleYearSelection(yr)}
+                    style={{
+                      padding: '3px 9px',
+                      borderRadius: 6,
+                      fontSize: 11.5,
+                      fontWeight: isSelected ? 700 : 500,
+                      border: `1.5px solid ${color}`,
+                      background: isSelected ? color : 'transparent',
+                      color: isSelected ? '#ffffff' : color,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {isSelected ? '✓ ' : ''}{yr}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              Overlays monthly consumption (Jan–Dec) for chosen years side-by-side.
+            </div>
+          </div>
+        )}
+
+        {viewMode === 'trend' && trendAnalysisMode === 'compare_months' && (
+          <div
+            style={{
+              padding: '8px 18px',
+              borderBottom: '1px solid var(--glass-border)',
+              background: 'var(--bg-tertiary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 12,
+              fontSize: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: '#1a3c34' }}>Month 1:</span>
+                <select
+                  value={selectedMonthA}
+                  onChange={(e) => setSelectedMonthA(e.target.value)}
+                  style={{
+                    padding: '3px 8px',
+                    fontSize: 11.5,
+                    borderRadius: 6,
+                    border: '1px solid var(--glass-border)',
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-main)',
+                  }}
+                >
+                  {availableMonths.map((m) => (
+                    <option key={m} value={m}>{formatMonthLabel(m)}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: '#c2622a' }}>Month 2:</span>
+                <select
+                  value={selectedMonthB}
+                  onChange={(e) => setSelectedMonthB(e.target.value)}
+                  style={{
+                    padding: '3px 8px',
+                    fontSize: 11.5,
+                    borderRadius: 6,
+                    border: '1px solid var(--glass-border)',
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-main)',
+                  }}
+                >
+                  {availableMonths.map((m) => (
+                    <option key={m} value={m}>{formatMonthLabel(m)}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              Compares Day 01 to Day 31 side-by-side with live variance calculation.
+            </div>
+          </div>
+        )}
+
+        {/* Month-to-Month Live Variance Summary Card */}
+        {viewMode === 'trend' && trendAnalysisMode === 'compare_months' && monthCompStats && (
+          <div
+            style={{
+              margin: '10px 16px 4px 16px',
+              padding: '10px 16px',
+              background: 'rgba(26, 60, 52, 0.04)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 10,
+              fontSize: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <span>
+                <strong style={{ color: '#1a3c34' }}>{formatMonthLabel(selectedMonthA)}:</strong>{' '}
+                <span style={{ fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+                  {monthCompStats.totA.toLocaleString()} {unit}
+                </span>
+              </span>
+              <span>
+                <strong style={{ color: '#c2622a' }}>{formatMonthLabel(selectedMonthB)}:</strong>{' '}
+                <span style={{ fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+                  {monthCompStats.totB.toLocaleString()} {unit}
+                </span>
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Net Variance:</span>
+              <span
+                style={{
+                  padding: '2px 10px',
+                  borderRadius: 6,
+                  fontWeight: 800,
+                  fontSize: 11.5,
+                  fontFamily: "'DM Mono', monospace",
+                  background: monthCompStats.diff <= 0 ? '#dcfce7' : '#fee2e2',
+                  color: monthCompStats.diff <= 0 ? '#15803d' : '#b91c1c',
+                  border: `1px solid ${monthCompStats.diff <= 0 ? '#86efac' : '#fca5a5'}`,
+                }}
+              >
+                {monthCompStats.diff >= 0 ? `+${monthCompStats.diff.toLocaleString()}` : monthCompStats.diff.toLocaleString()} {unit} ({monthCompStats.pct >= 0 ? `+${monthCompStats.pct}%` : `${monthCompStats.pct}%`})
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Dynamic Axis Guide Strip */}
         <div
           style={{
             display: 'flex',
@@ -641,26 +1348,18 @@ export default function SubstationAnalyticsChart({
             border: '1px solid var(--border-color)',
             fontSize: '11.5px',
             color: 'var(--text-main)',
-            margin: '0 16px 8px 16px',
+            margin: '8px 16px 8px 16px',
           }}
         >
           <span style={{ fontWeight: 700, color: COLORS.accent }}>📌 Graph Axis Labels:</span>
           <span>
             <strong style={{ color: 'var(--text-muted)' }}>X-Axis:</strong>{' '}
-            {viewMode === 'comparison'
-              ? 'Substation / Panel Name'
-              : viewMode === 'feeder'
-              ? `Energy Consumption (${unit || 'kWh'})`
-              : reportType === 'daily'
-              ? 'Hourly Time Slot (Hour of Day)'
-              : 'Date (Day of Month)'}
+            {xAxisTitle.replace(/^X-Axis:\s*/i, '')}
           </span>
           <span style={{ color: 'var(--border-color)' }}>•</span>
           <span>
             <strong style={{ color: 'var(--text-muted)' }}>Y-Axis:</strong>{' '}
-            {viewMode === 'feeder'
-              ? 'Feeder / Circuit Name'
-              : `Energy Consumption (${unit || 'kWh'})`}
+            {yAxisTitle.replace(/^Y-Axis:\s*/i, '')}
           </span>
         </div>
 
@@ -687,7 +1386,7 @@ export default function SubstationAnalyticsChart({
                   tickLine={false}
                   dy={4}
                   label={{
-                    value: 'X-Axis: Substation / Panel Name',
+                    value: xAxisTitle,
                     position: 'insideBottom',
                     offset: -16,
                     fill: 'var(--text-main)',
@@ -702,7 +1401,7 @@ export default function SubstationAnalyticsChart({
                   tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
                   width={68}
                   label={{
-                    value: `Y-Axis: Energy Consumption (${unit || 'kWh'})`,
+                    value: yAxisTitle,
                     angle: -90,
                     position: 'insideLeft',
                     offset: 2,
@@ -756,7 +1455,7 @@ export default function SubstationAnalyticsChart({
                   tickLine={false}
                   tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
                   label={{
-                    value: `X-Axis: Energy Consumption (${unit || 'kWh'})`,
+                    value: xAxisTitle,
                     position: 'insideBottom',
                     offset: -16,
                     fill: 'var(--text-main)',
@@ -772,7 +1471,7 @@ export default function SubstationAnalyticsChart({
                   tickLine={false}
                   width={150}
                   label={{
-                    value: 'Y-Axis: Feeder / Circuit Name',
+                    value: yAxisTitle,
                     angle: -90,
                     position: 'insideLeft',
                     offset: -4,
@@ -798,24 +1497,18 @@ export default function SubstationAnalyticsChart({
                   ))}
                 </Bar>
               </BarChart>
-            ) : (
-              <ComposedChart data={trendData} margin={{ top: 14, right: 20, left: 18, bottom: 26 }}>
-                <defs>
-                  <linearGradient id={gradTrend} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#1a3c34" stopOpacity={0.4} />
-                    <stop offset="65%" stopColor="#3d6b55" stopOpacity={0.12} />
-                    <stop offset="100%" stopColor="#3d6b55" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
+            ) : trendAnalysisMode === 'compare_years' ? (
+              /* MODE 4: Year-over-Year (YoY) Overlay Comparison */
+              <ComposedChart data={compareYearsData} margin={{ top: 14, right: 20, left: 18, bottom: 26 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--table-border)" strokeOpacity={0.6} />
                 <XAxis
-                  dataKey="shortLabel"
+                  dataKey="label"
                   stroke="var(--text-dim)"
                   fontSize={11}
                   tickLine={false}
                   dy={4}
                   label={{
-                    value: reportType === 'daily' ? 'X-Axis: Hourly Time Slot (Hour of Day)' : 'X-Axis: Date (Day of Month)',
+                    value: xAxisTitle,
                     position: 'insideBottom',
                     offset: -16,
                     fill: 'var(--text-main)',
@@ -830,7 +1523,7 @@ export default function SubstationAnalyticsChart({
                   tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
                   width={68}
                   label={{
-                    value: `Y-Axis: Energy Consumption (${unit || 'kWh'})`,
+                    value: yAxisTitle,
                     angle: -90,
                     position: 'insideLeft',
                     offset: 2,
@@ -840,9 +1533,178 @@ export default function SubstationAnalyticsChart({
                     style: { textAnchor: 'middle' },
                   }}
                 />
-                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} />} />
+                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} trendAnalysisMode={trendAnalysisMode} />} />
+                <Legend verticalAlign="top" height={32} iconType="circle" iconSize={8} />
 
-                {stats.trendAvg > 0 && (
+                {activeCompareYears.map((yr, idx) => {
+                  const color = YEAR_COLORS[idx % YEAR_COLORS.length];
+                  return trendChartType === 'bar' ? (
+                    <Bar
+                      key={yr}
+                      dataKey={yr}
+                      name={`Year ${yr}`}
+                      fill={color}
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={28}
+                      animationDuration={600}
+                    />
+                  ) : (
+                    <Line
+                      key={yr}
+                      type="monotone"
+                      dataKey={yr}
+                      name={`Year ${yr}`}
+                      stroke={color}
+                      strokeWidth={2.5}
+                      dot={{ r: 3.5, fill: color, stroke: '#fff', strokeWidth: 1.5 }}
+                      activeDot={{ r: 5 }}
+                      animationDuration={600}
+                    />
+                  );
+                })}
+              </ComposedChart>
+            ) : trendAnalysisMode === 'compare_months' ? (
+              /* MODE 5: Month-to-Month Side-by-Side Day 01-31 Comparison */
+              <ComposedChart data={compareMonthsData} margin={{ top: 14, right: 20, left: 18, bottom: 26 }}>
+                <defs>
+                  <linearGradient id="gradMonthA" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#1a3c34" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#1a3c34" stopOpacity={0.0} />
+                  </linearGradient>
+                  <linearGradient id="gradMonthB" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#c2622a" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#c2622a" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--table-border)" strokeOpacity={0.6} />
+                <XAxis
+                  dataKey="label"
+                  stroke="var(--text-dim)"
+                  fontSize={10.5}
+                  tickLine={false}
+                  dy={4}
+                  interval={1}
+                  label={{
+                    value: xAxisTitle,
+                    position: 'insideBottom',
+                    offset: -16,
+                    fill: 'var(--text-main)',
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                />
+                <YAxis
+                  stroke="var(--text-dim)"
+                  fontSize={11}
+                  tickLine={false}
+                  tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
+                  width={68}
+                  label={{
+                    value: yAxisTitle,
+                    angle: -90,
+                    position: 'insideLeft',
+                    offset: 2,
+                    fill: 'var(--text-main)',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    style: { textAnchor: 'middle' },
+                  }}
+                />
+                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} trendAnalysisMode={trendAnalysisMode} />} />
+                <Legend verticalAlign="top" height={32} iconType="circle" iconSize={8} />
+
+                {trendChartType === 'bar' ? (
+                  <>
+                    <Bar
+                      dataKey={selectedMonthA}
+                      name={formatMonthLabel(selectedMonthA)}
+                      fill="#1a3c34"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={18}
+                      animationDuration={600}
+                    />
+                    <Bar
+                      dataKey={selectedMonthB}
+                      name={formatMonthLabel(selectedMonthB)}
+                      fill="#c2622a"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={18}
+                      animationDuration={600}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Area
+                      type="monotone"
+                      dataKey={selectedMonthA}
+                      name={formatMonthLabel(selectedMonthA)}
+                      stroke="#1a3c34"
+                      strokeWidth={2.5}
+                      fill="url(#gradMonthA)"
+                      dot={{ r: 2.5, fill: '#1a3c34' }}
+                      activeDot={{ r: 4.5 }}
+                      animationDuration={600}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey={selectedMonthB}
+                      name={formatMonthLabel(selectedMonthB)}
+                      stroke="#c2622a"
+                      strokeWidth={2.5}
+                      fill="url(#gradMonthB)"
+                      dot={{ r: 2.5, fill: '#c2622a' }}
+                      activeDot={{ r: 4.5 }}
+                      animationDuration={600}
+                    />
+                  </>
+                )}
+              </ComposedChart>
+            ) : (
+              /* MODES 1, 2, 3: Timeline, Monthly Trend, Yearly Trend */
+              <ComposedChart data={activeTrendChartData} margin={{ top: 14, right: 20, left: 18, bottom: 26 }}>
+                <defs>
+                  <linearGradient id={gradTrend} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#1a3c34" stopOpacity={0.4} />
+                    <stop offset="65%" stopColor="#3d6b55" stopOpacity={0.12} />
+                    <stop offset="100%" stopColor="#3d6b55" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--table-border)" strokeOpacity={0.6} />
+                <XAxis
+                  dataKey={trendAnalysisMode === 'timeline' ? 'shortLabel' : 'label'}
+                  stroke="var(--text-dim)"
+                  fontSize={11}
+                  tickLine={false}
+                  dy={4}
+                  label={{
+                    value: xAxisTitle,
+                    position: 'insideBottom',
+                    offset: -16,
+                    fill: 'var(--text-main)',
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                />
+                <YAxis
+                  stroke="var(--text-dim)"
+                  fontSize={11}
+                  tickLine={false}
+                  tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
+                  width={68}
+                  label={{
+                    value: yAxisTitle,
+                    angle: -90,
+                    position: 'insideLeft',
+                    offset: 2,
+                    fill: 'var(--text-main)',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    style: { textAnchor: 'middle' },
+                  }}
+                />
+                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} trendAnalysisMode={trendAnalysisMode} />} />
+
+                {stats.trendAvg > 0 && trendAnalysisMode === 'timeline' && (
                   <ReferenceLine
                     y={stats.trendAvg}
                     stroke="#d97706"
@@ -862,21 +1724,21 @@ export default function SubstationAnalyticsChart({
                   <Area
                     type="monotone"
                     dataKey="value"
-                    name={activeSheet?.name || 'Substation Load'}
+                    name={scopeLabel}
                     stroke="#1a3c34"
                     strokeWidth={2.5}
                     fill={`url(#${gradTrend})`}
-                    dot={{ r: 2.5, fill: '#1a3c34', stroke: '#fff', strokeWidth: 1 }}
+                    dot={{ r: 3, fill: '#1a3c34', stroke: '#fff', strokeWidth: 1 }}
                     activeDot={{ r: 5, fill: '#1a3c34', stroke: '#fff', strokeWidth: 2 }}
                     animationDuration={600}
                   />
                 ) : (
                   <Bar
                     dataKey="value"
-                    name={activeSheet?.name || 'Substation Load'}
+                    name={scopeLabel}
                     fill="#1a3c34"
                     radius={[4, 4, 0, 0]}
-                    maxBarSize={32}
+                    maxBarSize={trendAnalysisMode === 'yearly' ? 56 : 36}
                     animationDuration={600}
                   />
                 )}
@@ -905,7 +1767,11 @@ export default function SubstationAnalyticsChart({
               💡 <strong>Tip:</strong>{' '}
               {viewMode === 'comparison' && 'Click on any substation bar to inspect its feeder breakdown below.'}
               {viewMode === 'feeder' && 'Green bars indicate incoming feeds, other bars represent outgoing load circuits.'}
-              {viewMode === 'trend' && 'The dashed amber line shows the average daily load for this cycle.'}
+              {viewMode === 'trend' && trendAnalysisMode === 'timeline' && 'The dashed amber line shows the average daily load for this cycle.'}
+              {viewMode === 'trend' && trendAnalysisMode === 'monthly' && 'Aggregates all daily consumption across the campus history month-by-month.'}
+              {viewMode === 'trend' && trendAnalysisMode === 'yearly' && 'Shows annual energy consumption totals and multi-year progression.'}
+              {viewMode === 'trend' && trendAnalysisMode === 'compare_years' && 'Select any years above to overlay monthly trends (Jan–Dec) side-by-side.'}
+              {viewMode === 'trend' && trendAnalysisMode === 'compare_months' && 'Select any two months to inspect day-by-day (1–31) variance and net deltas.'}
             </span>
           </div>
 
@@ -921,7 +1787,7 @@ export default function SubstationAnalyticsChart({
                 color: 'var(--green-900)',
               }}
             >
-              Active: {activeSheet?.name || 'Substation'}
+              Active: {scopeLabel}
             </span>
           </div>
         </div>
