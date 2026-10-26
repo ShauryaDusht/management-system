@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart3, Download, RefreshCw, Calendar, AlertTriangle } from 'lucide-react';
 import { BASE_SHEETS, mkSub, todayDate, num, isEnergy, isIncomer } from './sheetsData';
 import { SubstationApi as ApiClient } from './substationApi';
@@ -45,6 +45,30 @@ export default function ReportsView({ docs = [], layout = {}, user, onSaveLayout
     () => allSheets.find((s) => s.id === selectedSheetId) || sheetsInSection[0] || allSheets[0],
     [allSheets, selectedSheetId, sheetsInSection]
   );
+
+  // Latest date with logged readings for the active substation
+  const latestActiveSheetDate = useMemo(() => {
+    if (!docs || !docs.length) return latestDocDate;
+    const sheetDocs = docs.filter((d) => d.sheet === activeSheet?.id);
+    if (!sheetDocs.length) return latestDocDate;
+    const dates = sheetDocs.map((d) => d.date).filter(Boolean).sort();
+    return dates[dates.length - 1] || latestDocDate;
+  }, [docs, activeSheet?.id, latestDocDate]);
+
+  // When active sheet changes, if current date has no data for it, intelligently align to its latest recorded date
+  useEffect(() => {
+    if (docs && docs.length && activeSheet?.id) {
+      const sheetDocs = docs.filter((d) => d.sheet === activeSheet.id);
+      const hasCurrent = sheetDocs.some((d) => d.date === date);
+      if (!hasCurrent && sheetDocs.length > 0) {
+        const sheetDates = sheetDocs.map((d) => d.date).filter(Boolean).sort();
+        const maxSheetDate = sheetDates[sheetDates.length - 1];
+        if (maxSheetDate && maxSheetDate !== date) {
+          setDate(maxSheetDate);
+        }
+      }
+    }
+  }, [activeSheet?.id, docs]);
 
   const dayDiff = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
   const r2 = (x) => +x.toFixed(2);
@@ -330,7 +354,8 @@ export default function ReportsView({ docs = [], layout = {}, user, onSaveLayout
         onSelectSheet={setSelectedSheetId}
         docs={docs}
         numDaysInMonth={numDaysInMonth}
-        onJumpToDate={date !== latestDocDate ? () => setDate(latestDocDate) : null}
+        latestActiveSheetDate={latestActiveSheetDate}
+        onJumpToDate={date !== latestActiveSheetDate ? () => setDate(latestActiveSheetDate) : null}
       />
 
       {/* Substation Summary Card */}

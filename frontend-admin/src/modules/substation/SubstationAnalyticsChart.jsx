@@ -113,13 +113,14 @@ function getSheetReportItems(sh) {
   return out;
 }
 
-// Compute daily, monthly, and yearly consumption for a single sheet across all available docs
+// Compute daily, monthly, yearly, and shift/hourly consumption for a single sheet across all available docs
 function computeSheetFullHistory(sh, allDocs) {
   if (!sh || !allDocs || !allDocs.length) {
     return {
       subDaily: {},
       subMonthly: {},
       subYearly: {},
+      subSlots: {},
       feederItems: [],
     };
   }
@@ -130,6 +131,7 @@ function computeSheetFullHistory(sh, allDocs) {
       subDaily: {},
       subMonthly: {},
       subYearly: {},
+      subSlots: {},
       feederItems: [],
     };
   }
@@ -147,6 +149,7 @@ function computeSheetFullHistory(sh, allDocs) {
     const daily = {};
     const monthly = {};
     const yearly = {};
+    const slotsByDate = {};
     let prev = null;
 
     reads.forEach((r) => {
@@ -158,6 +161,10 @@ function computeSheetFullHistory(sh, allDocs) {
           const mk = `${y}-${m}`;
           monthly[mk] = (monthly[mk] || 0) + diff;
           yearly[y] = (yearly[y] || 0) + diff;
+
+          const slotKey = r.ord.split('|')[1] || 'R1';
+          if (!slotsByDate[r.date]) slotsByDate[r.date] = {};
+          slotsByDate[r.date][slotKey] = (slotsByDate[r.date][slotKey] || 0) + diff;
         }
       }
       prev = r;
@@ -176,6 +183,7 @@ function computeSheetFullHistory(sh, allDocs) {
       daily,
       monthly,
       yearly,
+      slotsByDate,
     };
   });
 
@@ -190,10 +198,14 @@ function computeSheetFullHistory(sh, allDocs) {
   });
 
   const subDaily = {};
+  const subSlots = {};
+
   allDates.forEach((dt) => {
     let inc = 0;
     let hasInc = false;
     let tot = 0;
+    const slotAgg = {};
+
     feederItems.forEach((f) => {
       const v = f.daily[dt] || 0;
       tot += v;
@@ -201,9 +213,24 @@ function computeSheetFullHistory(sh, allDocs) {
         inc += v;
         hasInc = true;
       }
+      const dateSlots = f.slotsByDate?.[dt];
+      if (dateSlots) {
+        Object.entries(dateSlots).forEach(([slotK, slotDiff]) => {
+          if (!slotAgg[slotK]) slotAgg[slotK] = { inc: 0, tot: 0 };
+          slotAgg[slotK].tot += slotDiff;
+          if (f.isIncoming) slotAgg[slotK].inc += slotDiff;
+        });
+      }
     });
+
     const val = hasInc && inc > 0 ? inc : tot;
     subDaily[dt] = Number(val.toFixed(2));
+
+    subSlots[dt] = {};
+    Object.entries(slotAgg).forEach(([slotK, s]) => {
+      const sVal = hasInc && s.inc > 0 ? s.inc : s.tot;
+      subSlots[dt][slotK] = Number(sVal.toFixed(2));
+    });
   });
 
   const subMonthly = {};
@@ -244,6 +271,7 @@ function computeSheetFullHistory(sh, allDocs) {
     subDaily,
     subMonthly,
     subYearly,
+    subSlots,
     feederItems,
   };
 }
@@ -256,6 +284,10 @@ function CustomAnalyticsTooltip({
   unit,
   viewMode,
   analysisMode,
+  monthlyViewType = 'days',
+  yearlyViewType = 'months',
+  dailyTimelineScope = 'shifts',
+  reportType = 'daily',
 }) {
   if (!active || !payload || !payload.length) return null;
   const p = payload[0];
@@ -268,11 +300,15 @@ function CustomAnalyticsTooltip({
     } else if (analysisMode === 'compare_months') {
       headerTitle = `${d.label || label}`;
     } else if (analysisMode === 'yearly') {
-      headerTitle = `${d.label || label}`;
+      headerTitle = yearlyViewType === 'months' ? `Month: ${d.label || label}` : `Year: ${d.label || label}`;
     } else if (analysisMode === 'monthly') {
-      headerTitle = `${d.label || label}`;
+      headerTitle = monthlyViewType === 'days' ? (d.date ? `Date: ${d.label || d.date}` : (d.label || label)) : `Month: ${d.label || label}`;
     } else if (analysisMode === 'timeline') {
-      headerTitle = d.date ? `Date: ${d.date}` : (d.label || label);
+      if (reportType === 'daily' && dailyTimelineScope === 'shifts') {
+        headerTitle = d.label || `Shift: ${label}`;
+      } else {
+        headerTitle = d.date ? `Date: ${d.label || d.date}` : (d.label || label);
+      }
     }
   } else if (viewMode === 'comparison') {
     if (analysisMode === 'compare_years' || analysisMode === 'compare_months') {
@@ -371,12 +407,16 @@ export default function SubstationAnalyticsChart({
   onSelectSheet = () => {},
   docs = [],
   numDaysInMonth = 30,
+  latestActiveSheetDate = '',
   onJumpToDate = null,
 }) {
   const [viewMode, setViewMode] = useState('comparison'); // 'comparison' | 'feeder' | 'trend'
   const [analysisMode, setAnalysisMode] = useState('timeline'); // 'timeline' | 'monthly' | 'yearly' | 'compare_years' | 'compare_months'
   const [trendChartType, setTrendChartType] = useState('area'); // 'area' | 'bar'
   const [analysisScope, setAnalysisScope] = useState('substation'); // 'substation' | 'section'
+  const [dailyTimelineScope, setDailyTimelineScope] = useState('shifts'); // 'shifts' | '14days'
+  const [monthlyViewType, setMonthlyViewType] = useState('days'); // 'days' | 'overview'
+  const [yearlyViewType, setYearlyViewType] = useState('months'); // 'months' | 'overview'
   const [selectedYears, setSelectedYears] = useState([]);
   const [selectedMonthA, setSelectedMonthA] = useState('');
   const [selectedMonthB, setSelectedMonthB] = useState('');
@@ -678,6 +718,10 @@ export default function SubstationAnalyticsChart({
     const isSection = analysisScope === 'section';
 
     if (reportType === 'monthly') {
+      const [y, m] = (month || '').split('-');
+      const mIdx = parseInt(m, 10);
+      const mName = MONTH_NAMES[mIdx - 1] || '';
+
       const days = [...Array(numDaysInMonth).keys()].map((i) => {
         const dNum = String(i + 1).padStart(2, '0');
         return `${month}-${dNum}`;
@@ -705,17 +749,64 @@ export default function SubstationAnalyticsChart({
 
         return {
           date: dStr,
-          label: `${dNum} ${month.slice(5) === '10' ? 'Oct' : ''}`,
-          shortLabel: dNum,
+          label: `${dNum} ${mName} ${y}`,
+          shortLabel: `${dNum} ${mName}`,
           value: Number(activeVal.toFixed(2)),
           unit,
         };
       });
     }
 
-    // Daily Mode: Trailing 14 days curve leading to current date
+    // Daily Mode:
+    // Option A: Intra-Day Shift / Hourly Breakdown for selected date
+    if (dailyTimelineScope === 'shifts') {
+      const activeSlots = allSheetsHistory[activeSheet?.id]?.subSlots?.[date] || {};
+
+      // Hourly panel (24 hours: 00:00 to 23:00)
+      if (activeSheet?.mode === 'hourly') {
+        return [...Array(24).keys()].map((h) => {
+          const hh = String(h).padStart(2, '0');
+          const hKey1 = `${hh}:00`;
+          const hKey2 = `h${hh}`;
+          const val = activeSlots[hKey1] ?? activeSlots[hKey2] ?? 0;
+          return {
+            slot: hKey1,
+            label: `${hKey1} (Hour ${h}) · ${date}`,
+            shortLabel: `${hh}:00`,
+            value: Number(val.toFixed(2)),
+            unit,
+            isCurrent: true,
+          };
+        });
+      }
+
+      // Snapshot panel (3 standard operational shifts: R1, R2, R3)
+      const slotDefs = [
+        { slot: 'R1', label: 'Shift 1: Morning (06:00 – 14:00)', shortLabel: 'Shift 1 (R1)' },
+        { slot: 'R2', label: 'Shift 2: Evening (14:00 – 22:00)', shortLabel: 'Shift 2 (R2)' },
+        { slot: 'R3', label: 'Shift 3: Night (22:00 – 06:00)', shortLabel: 'Shift 3 (R3)' },
+      ];
+
+      return slotDefs.map((sd) => {
+        const val = activeSlots[sd.slot] ?? 0;
+        return {
+          slot: sd.slot,
+          label: `${sd.label} · ${date}`,
+          shortLabel: sd.shortLabel,
+          value: Number(val.toFixed(2)),
+          unit,
+          isCurrent: true,
+        };
+      });
+    }
+
+    // Option B: Multi-Day Timeline (14 Days) leading up to selected date
+    const targetDate = (allSheetsHistory[activeSheet?.id]?.subDaily?.[date] != null && allSheetsHistory[activeSheet?.id]?.subDaily?.[date] > 0)
+      ? date
+      : (latestActiveSheetDate || date || new Date().toISOString().slice(0, 10));
+
     const dates = [];
-    const curr = new Date(date || new Date().toISOString().slice(0, 10));
+    const curr = new Date(targetDate);
     for (let i = 13; i >= 0; i--) {
       const past = new Date(curr);
       past.setDate(past.getDate() - i);
@@ -723,6 +814,8 @@ export default function SubstationAnalyticsChart({
     }
 
     return dates.map((dStr) => {
+      const [y, m, d] = dStr.split('-');
+      const mName = MONTH_NAMES[parseInt(m, 10) - 1] || '';
       const match = allHistoricalDaily.find((h) => h.dateStr === dStr);
       let val = 0;
       if (match) {
@@ -742,17 +835,61 @@ export default function SubstationAnalyticsChart({
 
       return {
         date: dStr,
-        label: dStr.slice(5),
-        shortLabel: dStr.slice(8),
+        label: `${d} ${mName} ${y}`,
+        shortLabel: `${d} ${mName}`,
         value: Number(val.toFixed(2)),
         isCurrent: dStr === date,
         unit,
       };
     });
-  }, [reportType, month, numDaysInMonth, date, allHistoricalDaily, analysisScope, activeResult, unit]);
+  }, [
+    reportType,
+    month,
+    numDaysInMonth,
+    date,
+    allHistoricalDaily,
+    analysisScope,
+    activeResult,
+    dailyTimelineScope,
+    activeSheet?.id,
+    activeSheet?.mode,
+    allSheetsHistory,
+    latestActiveSheetDate,
+    unit,
+  ]);
 
   // MODE 2: Monthly Aggregated Data
-  const monthlyData = useMemo(() => {
+  // When monthlyViewType === 'days': show 31 days of selectedMonth
+  // When monthlyViewType === 'overview': show all months chronological progression
+  const monthlySelectedDaysData = useMemo(() => {
+    if (!selectedMonth) return [];
+    const [y, m] = selectedMonth.split('-');
+    const mIdx = parseInt(m, 10);
+    const numDays = new Date(Number(y), mIdx, 0).getDate();
+    const mName = MONTH_NAMES[mIdx - 1] || '';
+    const isSection = analysisScope === 'section';
+
+    const days = [];
+    for (let i = 1; i <= numDays; i++) {
+      const dNum = String(i).padStart(2, '0');
+      const dStr = `${selectedMonth}-${dNum}`;
+      const match = allHistoricalDaily.find((h) => h.dateStr === dStr);
+      let val = 0;
+      if (match) {
+        val = isSection ? match.secVal : match.subVal;
+      }
+      days.push({
+        date: dStr,
+        label: `${dNum} ${mName} ${y}`,
+        shortLabel: `${dNum} ${mName}`,
+        value: Number(val.toFixed(2)),
+        unit,
+      });
+    }
+    return days;
+  }, [selectedMonth, allHistoricalDaily, analysisScope, unit]);
+
+  const monthlyOverviewData = useMemo(() => {
     const map = new Map();
     allHistoricalDaily.forEach((d) => {
       if (!d.monthKey) return;
@@ -761,6 +898,7 @@ export default function SubstationAnalyticsChart({
       if (!entry) {
         entry = {
           label: formatMonthLabel(mk),
+          shortLabel: formatMonthLabel(mk),
           monthKey: mk,
           value: 0,
           count: 0,
@@ -779,8 +917,29 @@ export default function SubstationAnalyticsChart({
     return list;
   }, [allHistoricalDaily, unit]);
 
+  // Backward compatibility alias for comparison / feeder views
+  const monthlyData = monthlyOverviewData;
+
   // MODE 3: Yearly Aggregated Data
-  const yearlyData = useMemo(() => {
+  // When yearlyViewType === 'months': show 12 months (Jan-Dec) of selectedYear
+  // When yearlyViewType === 'overview': show all years annual totals
+  const yearlySelectedMonthsData = useMemo(() => {
+    if (!selectedYear) return [];
+    return MONTH_NAMES.map((mName, mIdx) => {
+      const monthNum = String(mIdx + 1).padStart(2, '0');
+      const matching = allHistoricalDaily.filter((d) => d.year === selectedYear && d.month === monthNum);
+      const sum = matching.reduce((acc, curr) => acc + (Number(curr.value) || 0), 0);
+      return {
+        label: `${mName} ${selectedYear}`,
+        shortLabel: mName,
+        monthNum: mIdx + 1,
+        value: Number(sum.toFixed(2)),
+        unit,
+      };
+    });
+  }, [selectedYear, allHistoricalDaily, unit]);
+
+  const yearlyOverviewData = useMemo(() => {
     const map = new Map();
     allHistoricalDaily.forEach((d) => {
       if (!d.year) return;
@@ -789,6 +948,7 @@ export default function SubstationAnalyticsChart({
       if (!entry) {
         entry = {
           label: `Year ${yr}`,
+          shortLabel: yr,
           year: yr,
           value: 0,
           count: 0,
@@ -807,11 +967,14 @@ export default function SubstationAnalyticsChart({
     return list;
   }, [allHistoricalDaily, unit]);
 
+  // Backward compatibility alias
+  const yearlyData = yearlyOverviewData;
+
   // MODE 4: Compare Years (YoY) Overlay Dataset across 12 months (Jan–Dec)
   const compareYearsData = useMemo(() => {
     return MONTH_NAMES.map((mName, mIdx) => {
       const monthNum = String(mIdx + 1).padStart(2, '0');
-      const row = { label: mName, monthNum: mIdx + 1 };
+      const row = { label: mName, shortLabel: mName, monthNum: mIdx + 1 };
       activeCompareYears.forEach((yr) => {
         const matching = allHistoricalDaily.filter((d) => d.year === yr && d.month === monthNum);
         const sum = matching.reduce((acc, curr) => acc + (Number(curr.value) || 0), 0);
@@ -833,6 +996,7 @@ export default function SubstationAnalyticsChart({
       const valB = matchB ? Number(matchB.value) : 0;
       days.push({
         label: `Day ${dayStr}`,
+        shortLabel: `${dayStr}`,
         day: d,
         [selectedMonthA]: Number(valA.toFixed(2)),
         [selectedMonthB]: Number(valB.toFixed(2)),
@@ -873,12 +1037,27 @@ export default function SubstationAnalyticsChart({
 
   // Active trend chart dataset depending on mode
   const activeTrendChartData = useMemo(() => {
-    if (analysisMode === 'monthly') return monthlyData;
-    if (analysisMode === 'yearly') return yearlyData;
+    if (analysisMode === 'monthly') {
+      return monthlyViewType === 'days' ? monthlySelectedDaysData : monthlyOverviewData;
+    }
+    if (analysisMode === 'yearly') {
+      return yearlyViewType === 'months' ? yearlySelectedMonthsData : yearlyOverviewData;
+    }
     if (analysisMode === 'compare_years') return compareYearsData;
     if (analysisMode === 'compare_months') return compareMonthsData;
     return trendData;
-  }, [analysisMode, monthlyData, yearlyData, compareYearsData, compareMonthsData, trendData]);
+  }, [
+    analysisMode,
+    monthlyViewType,
+    monthlySelectedDaysData,
+    monthlyOverviewData,
+    yearlyViewType,
+    yearlySelectedMonthsData,
+    yearlyOverviewData,
+    compareYearsData,
+    compareMonthsData,
+    trendData,
+  ]);
 
   // Dynamic titles and labels
   const scopeLabel = analysisScope === 'section' ? `All ${section} Substations Combined` : (activeSheet?.name || 'Substation');
@@ -912,16 +1091,34 @@ export default function SubstationAnalyticsChart({
     }
     const modeName =
       analysisMode === 'timeline'
-        ? '📅 Granular Timeline'
+        ? (reportType === 'daily'
+            ? (dailyTimelineScope === 'shifts' ? '⚡ Operational Shift Profile' : '📈 14-Day Timeline')
+            : `📅 Daily Timeline (${formatMonthLabel(month)})`)
         : analysisMode === 'monthly'
-        ? '📊 Monthly Trend'
+        ? (monthlyViewType === 'days' ? `📊 Daily Trend (${formatMonthLabel(selectedMonth)})` : '📊 Monthly Progression')
         : analysisMode === 'yearly'
-        ? '📆 Yearly Trend'
+        ? (yearlyViewType === 'months' ? `📆 12-Month Breakdown (${selectedYear})` : '📆 Annual Totals')
         : analysisMode === 'compare_years'
-        ? '🔄 Year-over-Year (YoY) Overlay'
-        : '⚖️ Month-to-Month Variance';
+        ? `🔄 Year-over-Year (YoY) Overlay (${activeCompareYears.join(' vs ')})`
+        : `⚖️ Month-to-Month Variance (${formatMonthLabel(selectedMonthA)} vs ${formatMonthLabel(selectedMonthB)})`;
     return `${scopeLabel} · ${modeName}`;
-  }, [viewMode, activeSheet?.name, section, scopeLabel, analysisMode, selectedMonth, selectedYear, selectedMonthA, selectedMonthB, activeCompareYears]);
+  }, [
+    viewMode,
+    activeSheet?.name,
+    section,
+    scopeLabel,
+    analysisMode,
+    reportType,
+    dailyTimelineScope,
+    monthlyViewType,
+    yearlyViewType,
+    selectedMonth,
+    selectedYear,
+    selectedMonthA,
+    selectedMonthB,
+    activeCompareYears,
+    month,
+  ]);
 
   const xAxisTitle = useMemo(() => {
     if (viewMode === 'comparison') {
@@ -934,14 +1131,41 @@ export default function SubstationAnalyticsChart({
       return `X-Axis: Energy Consumption (${unit || 'kWh'})`;
     }
     if (analysisMode === 'timeline') {
-      return reportType === 'daily' ? 'X-Axis: Hourly Time Slot / Date' : 'X-Axis: Date (Day of Month)';
+      if (reportType === 'daily') {
+        return dailyTimelineScope === 'shifts'
+          ? (activeSheet?.mode === 'hourly'
+              ? 'X-Axis: Hourly Time Slot (00:00 – 23:00)'
+              : 'X-Axis: Shift Slot (Shift 1: Morning · Shift 2: Evening · Shift 3: Night)')
+          : 'X-Axis: Date (Day & Month)';
+      }
+      return `X-Axis: Date (${formatMonthLabel(month)})`;
     }
-    if (analysisMode === 'monthly') return 'X-Axis: Month (Chronological)';
-    if (analysisMode === 'yearly') return 'X-Axis: Year (Annual Summary)';
+    if (analysisMode === 'monthly') {
+      return monthlyViewType === 'days'
+        ? `X-Axis: Day of Month (${formatMonthLabel(selectedMonth)})`
+        : 'X-Axis: Month (Chronological)';
+    }
+    if (analysisMode === 'yearly') {
+      return yearlyViewType === 'months'
+        ? `X-Axis: Month of Year (Jan – Dec ${selectedYear})`
+        : 'X-Axis: Year (Annual Summary)';
+    }
     if (analysisMode === 'compare_years') return 'X-Axis: Month of Year (Jan – Dec)';
     if (analysisMode === 'compare_months') return 'X-Axis: Day of Month (Day 01 – Day 31)';
     return 'X-Axis: Timeline';
-  }, [viewMode, analysisMode, reportType, unit]);
+  }, [
+    viewMode,
+    analysisMode,
+    reportType,
+    dailyTimelineScope,
+    activeSheet?.mode,
+    month,
+    selectedMonth,
+    selectedYear,
+    monthlyViewType,
+    yearlyViewType,
+    unit,
+  ]);
 
   const yAxisTitle = useMemo(() => {
     if (viewMode === 'feeder') {
@@ -951,12 +1175,15 @@ export default function SubstationAnalyticsChart({
       return 'Y-Axis: Feeder / Circuit Name';
     }
     if (viewMode === 'trend') {
-      if (analysisMode === 'yearly') return `Y-Axis: Annual Consumption (${unit || 'kWh'})`;
-      if (analysisMode === 'monthly') return `Y-Axis: Monthly Consumption (${unit || 'kWh'})`;
-      return `Y-Axis: Daily Consumption (${unit || 'kWh'})`;
+      if (analysisMode === 'yearly' && yearlyViewType === 'overview') return `Y-Axis: Annual Consumption (${unit || 'kWh'})`;
+      if (analysisMode === 'monthly' && monthlyViewType === 'overview') return `Y-Axis: Monthly Consumption (${unit || 'kWh'})`;
+      if (analysisMode === 'timeline' && reportType === 'daily' && dailyTimelineScope === 'shifts') {
+        return `Y-Axis: Shift Consumption (${unit || 'kWh'})`;
+      }
+      return `Y-Axis: Consumption (${unit || 'kWh'})`;
     }
     return `Y-Axis: Energy Consumption (${unit || 'kWh'})`;
-  }, [viewMode, analysisMode, unit]);
+  }, [viewMode, analysisMode, yearlyViewType, monthlyViewType, reportType, dailyTimelineScope, unit]);
 
   // Aggregate stats for KPI badges
   const stats = useMemo(() => {
@@ -1150,8 +1377,8 @@ export default function SubstationAnalyticsChart({
         </div>
       </div>
 
-      {/* Zero Data Helpful Banner */}
-      {!stats.hasData && onJumpToDate && (
+      {/* Zero Data / Date Realignment Helpful Banner */}
+      {(!stats.hasData || (date && latestActiveSheetDate && date !== latestActiveSheetDate)) && onJumpToDate && (
         <div
           style={{
             background: 'var(--bg-tertiary)',
@@ -1170,16 +1397,16 @@ export default function SubstationAnalyticsChart({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Calendar size={16} color="var(--orange-600)" />
             <span>
-              Selected date <strong>{date}</strong> has 0 logged entries. Logs exist in historical timeline.
+              {activeSheet?.name || 'Selected panel'} has no logged entries on <strong>{date}</strong>. Latest recorded telemetry exists on <strong>{latestActiveSheetDate}</strong>.
             </span>
           </div>
           <button
             type="button"
             className="btn btn-primary"
-            style={{ padding: '4px 12px', fontSize: 12, height: 30 }}
+            style={{ padding: '4px 14px', fontSize: 12, height: 32, display: 'flex', alignItems: 'center', gap: 6 }}
             onClick={onJumpToDate}
           >
-            📅 View Latest Recorded Logs
+            <span>📅 View Latest Recorded Logs ({latestActiveSheetDate})</span>
           </button>
         </div>
       )}
@@ -1390,10 +1617,61 @@ export default function SubstationAnalyticsChart({
           </div>
 
           {/* Context Controls: Single Month / Single Year / Scope Selectors */}
+          {/* Context Controls: Single Month / Single Year / Scope Selectors */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {/* When in Monthly view: choose month */}
+            {/* When in Daily Timeline view: toggle shifts/hourly vs 14-day trend */}
+            {viewMode === 'trend' && analysisMode === 'timeline' && reportType === 'daily' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>Granularity:</span>
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    background: 'var(--bg-tertiary)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: 6,
+                    padding: 2,
+                    gap: 2,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setDailyTimelineScope('shifts')}
+                    style={{
+                      padding: '3px 8px',
+                      fontSize: 11,
+                      fontWeight: dailyTimelineScope === 'shifts' ? 700 : 500,
+                      borderRadius: 4,
+                      border: 'none',
+                      background: dailyTimelineScope === 'shifts' ? 'var(--green-800)' : 'transparent',
+                      color: dailyTimelineScope === 'shifts' ? '#ffffff' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {activeSheet?.mode === 'hourly' ? '⚡ 24h Hourly Profile' : '⚡ Shifts (R1–R3)'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDailyTimelineScope('14days')}
+                    style={{
+                      padding: '3px 8px',
+                      fontSize: 11,
+                      fontWeight: dailyTimelineScope === '14days' ? 700 : 500,
+                      borderRadius: 4,
+                      border: 'none',
+                      background: dailyTimelineScope === '14days' ? 'var(--green-800)' : 'transparent',
+                      color: dailyTimelineScope === '14days' ? '#ffffff' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    📈 14-Day Timeline
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* When in Monthly view: choose month and toggle days vs overview */}
             {analysisMode === 'monthly' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>Select Month:</span>
                 <select
                   value={selectedMonth}
@@ -1411,12 +1689,58 @@ export default function SubstationAnalyticsChart({
                     <option key={m} value={m}>{formatMonthLabel(m)}</option>
                   ))}
                 </select>
+
+                {viewMode === 'trend' && (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      background: 'var(--bg-tertiary)',
+                      border: '1px solid var(--glass-border)',
+                      borderRadius: 6,
+                      padding: 2,
+                      gap: 2,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setMonthlyViewType('days')}
+                      style={{
+                        padding: '3px 8px',
+                        fontSize: 11,
+                        fontWeight: monthlyViewType === 'days' ? 700 : 500,
+                        borderRadius: 4,
+                        border: 'none',
+                        background: monthlyViewType === 'days' ? 'var(--green-800)' : 'transparent',
+                        color: monthlyViewType === 'days' ? '#ffffff' : 'var(--text-muted)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      📅 Days (1–31)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMonthlyViewType('overview')}
+                      style={{
+                        padding: '3px 8px',
+                        fontSize: 11,
+                        fontWeight: monthlyViewType === 'overview' ? 700 : 500,
+                        borderRadius: 4,
+                        border: 'none',
+                        background: monthlyViewType === 'overview' ? 'var(--green-800)' : 'transparent',
+                        color: monthlyViewType === 'overview' ? '#ffffff' : 'var(--text-muted)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      📊 All Months
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* When in Yearly view: choose year */}
+            {/* When in Yearly view: choose year and toggle months vs overview */}
             {analysisMode === 'yearly' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>Select Year:</span>
                 <select
                   value={selectedYear}
@@ -1434,6 +1758,52 @@ export default function SubstationAnalyticsChart({
                     <option key={yr} value={yr}>Year {yr}</option>
                   ))}
                 </select>
+
+                {viewMode === 'trend' && (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      background: 'var(--bg-tertiary)',
+                      border: '1px solid var(--glass-border)',
+                      borderRadius: 6,
+                      padding: 2,
+                      gap: 2,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setYearlyViewType('months')}
+                      style={{
+                        padding: '3px 8px',
+                        fontSize: 11,
+                        fontWeight: yearlyViewType === 'months' ? 700 : 500,
+                        borderRadius: 4,
+                        border: 'none',
+                        background: yearlyViewType === 'months' ? 'var(--green-800)' : 'transparent',
+                        color: yearlyViewType === 'months' ? '#ffffff' : 'var(--text-muted)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      📆 12 Months (Jan–Dec)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setYearlyViewType('overview')}
+                      style={{
+                        padding: '3px 8px',
+                        fontSize: 11,
+                        fontWeight: yearlyViewType === 'overview' ? 700 : 500,
+                        borderRadius: 4,
+                        border: 'none',
+                        background: yearlyViewType === 'overview' ? 'var(--green-800)' : 'transparent',
+                        color: yearlyViewType === 'overview' ? '#ffffff' : 'var(--text-muted)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      📊 All Years
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2078,7 +2448,19 @@ export default function SubstationAnalyticsChart({
                     style: { textAnchor: 'middle' },
                   }}
                 />
-                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} analysisMode={analysisMode} />} />
+                <Tooltip
+                  content={
+                    <CustomAnalyticsTooltip
+                      unit={unit}
+                      viewMode={viewMode}
+                      analysisMode={analysisMode}
+                      monthlyViewType={monthlyViewType}
+                      yearlyViewType={yearlyViewType}
+                      dailyTimelineScope={dailyTimelineScope}
+                      reportType={reportType}
+                    />
+                  }
+                />
                 <Legend verticalAlign="top" height={32} iconType="circle" iconSize={8} />
 
                 {activeCompareYears.map((yr, idx) => {
@@ -2155,7 +2537,19 @@ export default function SubstationAnalyticsChart({
                     style: { textAnchor: 'middle' },
                   }}
                 />
-                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} analysisMode={analysisMode} />} />
+                <Tooltip
+                  content={
+                    <CustomAnalyticsTooltip
+                      unit={unit}
+                      viewMode={viewMode}
+                      analysisMode={analysisMode}
+                      monthlyViewType={monthlyViewType}
+                      yearlyViewType={yearlyViewType}
+                      dailyTimelineScope={dailyTimelineScope}
+                      reportType={reportType}
+                    />
+                  }
+                />
                 <Legend verticalAlign="top" height={32} iconType="circle" iconSize={8} />
 
                 {trendChartType === 'bar' ? (
@@ -2216,7 +2610,13 @@ export default function SubstationAnalyticsChart({
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--table-border)" strokeOpacity={0.6} />
                 <XAxis
-                  dataKey={analysisMode === 'timeline' ? 'shortLabel' : 'label'}
+                  dataKey={
+                    analysisMode === 'timeline'
+                      ? 'shortLabel'
+                      : (analysisMode === 'monthly' && monthlyViewType === 'days')
+                      ? 'shortLabel'
+                      : 'label'
+                  }
                   stroke="var(--text-dim)"
                   fontSize={11}
                   tickLine={false}
@@ -2247,7 +2647,19 @@ export default function SubstationAnalyticsChart({
                     style: { textAnchor: 'middle' },
                   }}
                 />
-                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} analysisMode={analysisMode} />} />
+                <Tooltip
+                  content={
+                    <CustomAnalyticsTooltip
+                      unit={unit}
+                      viewMode={viewMode}
+                      analysisMode={analysisMode}
+                      monthlyViewType={monthlyViewType}
+                      yearlyViewType={yearlyViewType}
+                      dailyTimelineScope={dailyTimelineScope}
+                      reportType={reportType}
+                    />
+                  }
+                />
 
                 {stats.trendAvg > 0 && analysisMode === 'timeline' && (
                   <ReferenceLine
@@ -2320,9 +2732,21 @@ export default function SubstationAnalyticsChart({
               {viewMode === 'feeder' && analysisMode === 'yearly' && `Showing active feeder annual loads for Year ${selectedYear}.`}
               {viewMode === 'feeder' && analysisMode === 'compare_years' && 'Side-by-side feeder load comparison across chosen years.'}
               {viewMode === 'feeder' && analysisMode === 'compare_months' && 'Side-by-side feeder circuit comparison between two selected months.'}
-              {viewMode === 'trend' && analysisMode === 'timeline' && 'The dashed amber line shows the average daily load for this cycle.'}
-              {viewMode === 'trend' && analysisMode === 'monthly' && 'Aggregates all daily consumption across the campus history month-by-month.'}
-              {viewMode === 'trend' && analysisMode === 'yearly' && 'Shows annual energy consumption totals and multi-year progression.'}
+              {viewMode === 'trend' && analysisMode === 'timeline' && (
+                reportType === 'daily' && dailyTimelineScope === 'shifts'
+                  ? 'Showing intra-day operational shift / hourly power consumption breakdown for the selected date.'
+                  : 'Showing 14-day chronological daily power consumption curve.'
+              )}
+              {viewMode === 'trend' && analysisMode === 'monthly' && (
+                monthlyViewType === 'days'
+                  ? `Showing day-by-day (1–31) power consumption breakdown for ${formatMonthLabel(selectedMonth)}.`
+                  : 'Aggregates all daily consumption across campus history month-by-month.'
+              )}
+              {viewMode === 'trend' && analysisMode === 'yearly' && (
+                yearlyViewType === 'months'
+                  ? `Showing month-by-month (Jan–Dec) power breakdown for Year ${selectedYear}.`
+                  : 'Shows annual energy consumption totals and multi-year progression.'
+              )}
               {viewMode === 'trend' && analysisMode === 'compare_years' && 'Select any years above to overlay monthly trends (Jan–Dec) side-by-side.'}
               {viewMode === 'trend' && analysisMode === 'compare_months' && 'Select any two months to inspect day-by-day (1–31) variance and net deltas.'}
             </span>
