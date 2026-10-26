@@ -356,6 +356,14 @@ class AdminWorkerSerializer(serializers.ModelSerializer):
                 other_worker = other_assignment.worker
                 if removed_area_ids:
                     swap_area_id = removed_area_ids.pop(0)
+                elif current_area_ids:
+                    swap_area_id = current_area_ids[0]
+                    if swap_area_id in new_area_ids:
+                        new_area_ids.remove(swap_area_id)
+                else:
+                    swap_area_id = None
+
+                if swap_area_id:
                     swapped_link, created = HorticultureWorkerArea.objects.get_or_create(
                         worker=other_worker,
                         area_id=swap_area_id,

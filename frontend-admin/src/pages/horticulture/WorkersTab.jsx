@@ -96,32 +96,47 @@ export default function WorkersTab() {
     })
   }, [search, workers, zoneFilter])
 
+  const [areaSearch, setAreaSearch] = useState('')
+  const [multiAreaMode, setMultiAreaMode] = useState(false)
+
   const openEdit = (worker) => {
+    const workerAreaIds = asList(worker.assigned_areas).map((area) => Number(area.id))
     setForm({
       name: worker.name || '',
       phone: worker.phone || '',
       pay_code: worker.pay_code || '',
-      area_ids: asList(worker.assigned_areas).map((area) => Number(area.id)),
+      area_ids: workerAreaIds,
       photo: null,
       is_active: worker.is_active !== false,
     })
     setFormError('')
+    setAreaSearch('')
+    setMultiAreaMode(workerAreaIds.length > 1)
     setModal({ worker })
   }
 
   const openCreate = () => {
     setForm(EMPTY_FORM)
     setFormError('')
+    setAreaSearch('')
+    setMultiAreaMode(false)
     setModal({ mode: 'create' })
   }
 
-  const toggleArea = (areaId) => {
+  const selectArea = (areaId) => {
     const id = Number(areaId)
     setForm((prev) => {
-      const current = new Set(asList(prev.area_ids).map(Number))
-      if (current.has(id)) current.delete(id)
-      else current.add(id)
-      return { ...prev, area_ids: Array.from(current) }
+      if (multiAreaMode) {
+        const current = new Set(asList(prev.area_ids).map(Number))
+        if (current.has(id)) current.delete(id)
+        else current.add(id)
+        return { ...prev, area_ids: Array.from(current) }
+      }
+      const current = asList(prev.area_ids).map(Number)
+      if (current.includes(id)) {
+        return { ...prev, area_ids: [] }
+      }
+      return { ...prev, area_ids: [id] }
     })
   }
 
@@ -188,6 +203,25 @@ export default function WorkersTab() {
     }
     await exportHorticultureReport(format, exportData)
   }
+
+  const filteredModalAreas = useMemo(() => {
+    const q = areaSearch.trim().toLowerCase()
+    if (!q) return areas
+    return areas.filter((a) => (a.name || '').toLowerCase().includes(q) || (a.zone_name || '').toLowerCase().includes(q))
+  }, [areas, areaSearch])
+
+  const selectedAreaId = form.area_ids?.[0]
+  const targetArea = areas.find((a) => Number(a.id) === Number(selectedAreaId))
+  const otherWorkersInSelectedArea = selectedAreaId
+    ? (areaWorkerMap[selectedAreaId] || []).filter((name) => name !== modal?.worker?.name)
+    : []
+  const currentWorkerAreaName = modal?.worker?.assigned_areas?.[0]?.name
+  const isSwapping = Boolean(
+    !multiAreaMode &&
+    selectedAreaId &&
+    otherWorkersInSelectedArea.length > 0 &&
+    selectedAreaId !== modal?.worker?.assigned_areas?.[0]?.id
+  )
 
   return (
     <div>
@@ -258,7 +292,9 @@ export default function WorkersTab() {
         footer={(
           <>
             <Btn variant="ghost" onClick={() => setModal(null)} disabled={saving}>Cancel</Btn>
-            <Btn onClick={saveWorker} disabled={saving}>{saving ? 'Saving...' : modal?.mode === 'create' ? 'Add Worker' : 'Save Changes'}</Btn>
+            <Btn onClick={saveWorker} disabled={saving}>
+              {saving ? 'Saving...' : isSwapping ? '🔄 Save & Swap Area' : modal?.mode === 'create' ? 'Add Worker' : 'Save Changes'}
+            </Btn>
           </>
         )}
       >
@@ -283,22 +319,69 @@ export default function WorkersTab() {
             <Input type="file" accept="image/*" onChange={(event) => setForm((prev) => ({ ...prev, photo: event.target.files?.[0] || null }))} />
           </Field>
         </div>
-        <Field label="Assigned Areas">
-          <div style={{ border: '1px solid var(--border)', borderRadius: 8, maxHeight: 220, overflow: 'auto', padding: 8 }}>
-            {areas.map((area) => {
+        <Field label={multiAreaMode ? "Assigned Areas (Multi-select)" : "Assigned Area"}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+              {modal?.worker ? (
+                <>Current: <strong style={{ color: 'var(--text-1)' }}>{currentWorkerAreaName || 'None'}</strong></>
+              ) : 'Select primary area for worker'}
+            </span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer', color: 'var(--text-2)' }}>
+              <input
+                type="checkbox"
+                checked={multiAreaMode}
+                onChange={(e) => setMultiAreaMode(e.target.checked)}
+              />
+              Multi-area mode
+            </label>
+          </div>
+
+          <Input
+            placeholder="🔍 Search area (e.g. Central Vista, Gate...)"
+            value={areaSearch}
+            onChange={(e) => setAreaSearch(e.target.value)}
+            style={{ marginBottom: 6, fontSize: 12, padding: '5px 8px' }}
+          />
+
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, maxHeight: 190, overflow: 'auto', padding: 6 }}>
+            {!multiAreaMode && (
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '5px 4px', fontSize: 12, cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
+                <input
+                  type="radio"
+                  name="worker_assigned_area"
+                  checked={!form.area_ids || form.area_ids.length === 0}
+                  onChange={() => setForm((prev) => ({ ...prev, area_ids: [] }))}
+                />
+                <span style={{ color: 'var(--text-3)', fontStyle: 'italic' }}>None (Unassigned)</span>
+              </label>
+            )}
+            {filteredModalAreas.map((area) => {
               const otherAssigned = (areaWorkerMap[area.id] || []).filter((name) => name !== modal?.worker?.name)
+              const isCurrentWorkerArea = modal?.worker?.assigned_areas?.some((a) => Number(a.id) === Number(area.id))
+              const isChecked = asList(form.area_ids).map(Number).includes(Number(area.id))
               return (
-                <label key={area.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 4px', fontSize: 12, cursor: 'pointer' }}>
+                <label
+                  key={area.id}
+                  style={{
+                    display: 'flex', gap: 8, alignItems: 'center', padding: '5px 4px', fontSize: 12, cursor: 'pointer',
+                    background: isChecked ? 'rgba(34, 197, 94, 0.08)' : undefined,
+                    borderRadius: 4,
+                  }}
+                >
                   <input
-                    type="checkbox"
-                    checked={asList(form.area_ids).map(Number).includes(Number(area.id))}
-                    onChange={() => toggleArea(area.id)}
+                    type={multiAreaMode ? "checkbox" : "radio"}
+                    name="worker_assigned_area"
+                    checked={isChecked}
+                    onChange={() => selectArea(area.id)}
                   />
-                  <span>
-                    {area.name} ({area.zone_name || '-'})
-                    {otherAssigned.length > 0 && (
+                  <span style={{ flex: 1 }}>
+                    {area.name} <span style={{ color: 'var(--text-3)' }}>({area.zone_name || '-'})</span>
+                    {isCurrentWorkerArea && (
+                      <span style={{ color: '#16a34a', fontSize: 11, marginLeft: 6, fontWeight: 700 }}>(Current)</span>
+                    )}
+                    {otherAssigned.length > 0 && !isCurrentWorkerArea && (
                       <span style={{ color: '#d97706', fontSize: 11, marginLeft: 6, fontWeight: 600 }}>
-                        (Assigned: {otherAssigned.join(', ')})
+                        (Assigned: {otherAssigned.join(', ')}) 🔄
                       </span>
                     )}
                   </span>
@@ -306,9 +389,32 @@ export default function WorkersTab() {
               )
             })}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-            💡 Selecting an area currently assigned to another worker will automatically swap their areas.
-          </div>
+
+          {isSwapping && (
+            <div style={{
+              marginTop: 8, padding: '9px 12px', borderRadius: 8,
+              background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+              fontSize: 12, display: 'flex', alignItems: 'flex-start', gap: 8,
+            }}>
+              <span style={{ fontSize: 18, lineHeight: 1 }}>🔄</span>
+              <div>
+                <strong>Auto-Swap Preview:</strong> <u>{targetArea?.name}</u> is currently assigned to <strong>{otherWorkersInSelectedArea.join(', ')}</strong>.
+                <div style={{ marginTop: 4, color: '#1e3a8a', lineHeight: 1.4 }}>
+                  Saving will automatically swap areas between both workers:
+                  <br />
+                  • <strong>{form.name || modal?.worker?.name}</strong> ➔ <u>{targetArea?.name}</u>
+                  <br />
+                  • <strong>{otherWorkersInSelectedArea.join(', ')}</strong> ➔ <u>{currentWorkerAreaName || 'Unassigned'}</u>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isSwapping && (
+            <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
+              💡 Selecting an area currently assigned to another worker will automatically swap their areas.
+            </div>
+          )}
         </Field>
       </Modal>
 
