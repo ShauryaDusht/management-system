@@ -2,10 +2,15 @@ from django.db import transaction
 from django.db.models import Sum, Value, DecimalField
 from django.db.models.functions import Coalesce
 from rest_framework import serializers
-from .models import Category, Item, ItemRequest, ItemRequestBatch, ItemIssue, ItemUsageLog, PurchaseRequest, RequisitionItem, StockEntry
+from .models import (
+    Category, Item, ItemRequest, ItemRequestBatch, ItemIssue,
+    ItemIssueAdjustment, ItemUsageLog, PurchaseRequest, RequisitionItem, StockEntry
+)
 from .request_permissions import (
     EXCESSIVE_QUANTITY_MESSAGE,
+    REPEAT_REQUEST_BLOCKED_MESSAGE,
     UNAUTHORIZED_ITEM_REQUEST_MESSAGE,
+    get_unaccounted_item_quantity,
     user_can_request_item,
 )
 
@@ -29,6 +34,8 @@ class ItemSerializer(serializers.ModelSerializer):
     is_below_threshold = serializers.ReadOnlyField()
     unit_cost_missing = serializers.SerializerMethodField()
     total_value = serializers.SerializerMethodField()
+    is_blocked_for_requester = serializers.SerializerMethodField()
+    blocked_reason = serializers.SerializerMethodField()
 
     class Meta:
         model = Item
@@ -36,9 +43,25 @@ class ItemSerializer(serializers.ModelSerializer):
             'id', 'item_code', 'name', 'category', 'category_name', 'item_type', 'unit',
             'total_quantity', 'available_quantity', 'reserved_quantity', 'threshold_quantity',
             'unit_cost', 'total_value', 'unit_cost_missing', 'description', 'status',
-            'is_below_threshold', 'created_at', 'updated_at',
+            'is_below_threshold', 'is_blocked_for_requester', 'blocked_reason', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'total_value', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'total_value', 'is_blocked_for_requester', 'blocked_reason', 'created_at', 'updated_at']
+
+    def get_is_blocked_for_requester(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user and getattr(user, 'role', None) in ['supervisor', 'caretaker']:
+            return get_unaccounted_item_quantity(user, obj) > 0
+        return False
+
+    def get_blocked_reason(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user and getattr(user, 'role', None) in ['supervisor', 'caretaker']:
+            out = get_unaccounted_item_quantity(user, obj)
+            if out > 0:
+                return f"Previous item's usage report must be completed before requesting it again ({out} {obj.unit} pending)."
+        return None
 
     def get_unit_cost_missing(self, obj):
         return obj.unit_cost is None
@@ -154,6 +177,16 @@ class ItemRequestSerializer(serializers.ModelSerializer):
     reason = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(source='requested_at', read_only=True)
     updated_at = serializers.SerializerMethodField()
+    issue_id = serializers.SerializerMethodField()
+    issue_is_reversed = serializers.SerializerMethodField()
+
+    def get_issue_id(self, obj):
+        issue = getattr(obj, 'issue', None)
+        return issue.id if issue else None
+
+    def get_issue_is_reversed(self, obj):
+        issue = getattr(obj, 'issue', None)
+        return getattr(issue, 'is_reversed', False) if issue else False
 
     def to_internal_value(self, data):
         payload = data.copy()
@@ -218,6 +251,12 @@ class ItemRequestSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'item': UNAUTHORIZED_ITEM_REQUEST_MESSAGE})
         if item and quantity and quantity > item.available_quantity:
             raise serializers.ValidationError({'quantity_requested': EXCESSIVE_QUANTITY_MESSAGE})
+        if user and item and getattr(user, 'role', None) in ['supervisor', 'caretaker']:
+            out = get_unaccounted_item_quantity(user, item)
+            if out > 0:
+                raise serializers.ValidationError({
+                    'item': f"Previous item's usage report must be completed before requesting it again ({out} {item.unit} pending)."
+                })
         return attrs
 
     def create(self, validated_data):
@@ -280,6 +319,12 @@ class ItemRequestBatchSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(UNAUTHORIZED_ITEM_REQUEST_MESSAGE)
             if line['quantity_requested'] > item.available_quantity:
                 raise serializers.ValidationError(EXCESSIVE_QUANTITY_MESSAGE)
+            if user and getattr(user, 'role', None) in ['supervisor', 'caretaker']:
+                out = get_unaccounted_item_quantity(user, item)
+                if out > 0:
+                    raise serializers.ValidationError(
+                        f"Previous item's usage report must be completed before requesting it again ({item.name}: {out} {item.unit} pending)."
+                    )
             seen.add(item_id)
         return value
 
@@ -380,6 +425,31 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
         return float(val) if val is not None else None
 
 
+class ItemIssueAdjustmentSerializer(serializers.ModelSerializer):
+    adjusted_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ItemIssueAdjustment
+        fields = [
+            'id',
+            'issue',
+            'action_type',
+            'previous_quantity',
+            'new_quantity',
+            'quantity_returned_to_stock',
+            'reason',
+            'adjusted_by',
+            'adjusted_by_name',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_adjusted_by_name(self, obj):
+        if obj.adjusted_by:
+            return obj.adjusted_by.get_full_name() or obj.adjusted_by.username
+        return None
+
+
 class ItemIssueSerializer(serializers.ModelSerializer):
     issued_by_name = serializers.CharField(source='issued_by.get_full_name', read_only=True)
     item_name = serializers.CharField(source='request.item.name', read_only=True)
@@ -388,9 +458,15 @@ class ItemIssueSerializer(serializers.ModelSerializer):
     item_unit = serializers.CharField(source='request.item.unit', read_only=True)
     requested_by_name = serializers.CharField(source='request.requested_by.get_full_name', read_only=True)
     return_recorded_by_name = serializers.CharField(source='return_recorded_by.get_full_name', read_only=True)
+    reversed_by_name = serializers.CharField(source='reversed_by.get_full_name', read_only=True)
+    item_available_quantity = serializers.IntegerField(source='request.item.available_quantity', read_only=True)
     area_name = serializers.SerializerMethodField()
     area_type = serializers.SerializerMethodField()
     total_consumed = serializers.SerializerMethodField()
+    can_reverse = serializers.SerializerMethodField()
+    can_adjust = serializers.SerializerMethodField()
+    cannot_reverse_reason = serializers.SerializerMethodField()
+    adjustments = ItemIssueAdjustmentSerializer(many=True, read_only=True)
 
     def get_area_name(self, obj):
         try:
@@ -433,12 +509,52 @@ class ItemIssueSerializer(serializers.ModelSerializer):
             )
         )['total']
 
+    def get_can_reverse(self, obj):
+        if obj.is_reversed:
+            return False
+        if obj.returned_at or (obj.returned_quantity is not None and obj.returned_quantity > 0):
+            return False
+        if obj.usage_finalized:
+            return False
+        consumed = self.get_total_consumed(obj)
+        if consumed > 0:
+            return False
+        return True
+
+    def get_can_adjust(self, obj):
+        if obj.is_reversed:
+            return False
+        if obj.returned_at or (obj.returned_quantity is not None and obj.returned_quantity > 0):
+            return False
+        if obj.usage_finalized:
+            return False
+        consumed = self.get_total_consumed(obj)
+        if obj.issued_quantity <= consumed:
+            return False
+        return True
+
+    def get_cannot_reverse_reason(self, obj):
+        if obj.is_reversed:
+            return 'This transaction has already been reversed.'
+        if obj.returned_at or (obj.returned_quantity is not None and obj.returned_quantity > 0):
+            return 'Cannot reverse or adjust: asset return has already been recorded.'
+        if obj.usage_finalized:
+            return 'Cannot reverse or adjust: consumable usage has already been finalized.'
+        consumed = self.get_total_consumed(obj)
+        if consumed > 0:
+            unit = getattr(getattr(obj.request, 'item', None), 'unit', '') or ''
+            return f"Cannot fully reverse: {consumed} {unit} has already been logged as consumed in downstream reports."
+        return ''
+
     class Meta:
         model = ItemIssue
         fields = [
             'id', 'request', 'item_name', 'item_code', 'item_type', 'item_unit',
             'requested_by_name', 'area_name', 'area_type', 'issued_by', 'issued_by_name',
-            'issued_quantity', 'issued_at',
+            'issued_quantity', 'original_quantity', 'issued_at',
+            'is_reversed', 'reversed_at', 'reversed_by', 'reversed_by_name', 'reversal_reason',
+            'item_available_quantity', 'can_reverse', 'can_adjust', 'cannot_reverse_reason',
+            'adjustments',
             'expected_return_date', 'returned_quantity', 'returned_at',
             'condition_on_return', 'return_recorded_by', 'return_recorded_by_name',
             'actual_quantity_used', 'usage_finalized', 'usage_finalized_at',
@@ -446,6 +562,7 @@ class ItemIssueSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id', 'issued_by', 'issued_at',
+            'original_quantity', 'is_reversed', 'reversed_at', 'reversed_by',
             'returned_at', 'return_recorded_by',
             'usage_finalized_at',
         ]
@@ -498,6 +615,32 @@ class ItemUsageLogSerializer(serializers.ModelSerializer):
             'id', 'logged_at', 'logged_by', 'logged_by_name',
             'item_name', 'item_unit', 'requested_by_name',
         ]
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        issue = attrs.get('issue') or getattr(self.instance, 'issue', None)
+        quantity_used = attrs.get('quantity_used') or getattr(self.instance, 'quantity_used', None)
+        if quantity_used is not None:
+            if quantity_used <= 0:
+                raise serializers.ValidationError({'quantity_used': 'Quantity must be greater than 0.'})
+            if issue:
+                consumed = ItemUsageLog.objects.filter(issue=issue).exclude(
+                    pk=getattr(self.instance, 'pk', None)
+                ).aggregate(
+                    total=Coalesce(
+                        Sum('quantity_used'),
+                        Value(0),
+                        output_field=DecimalField(max_digits=10, decimal_places=2),
+                    )
+                )['total'] or 0
+                issued_qty = issue.issued_quantity
+                remaining = issued_qty - consumed
+                if quantity_used > remaining:
+                    rem_display = max(0, remaining)
+                    raise serializers.ValidationError({
+                        'quantity_used': f"Cannot exceed remaining quantity ({rem_display} {issue.request.item.unit})."
+                    })
+        return attrs
 
 
 class ItemHistorySerializer(serializers.Serializer):

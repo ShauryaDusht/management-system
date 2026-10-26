@@ -26,7 +26,6 @@ import AdminLayout from '../../layout/AdminLayout'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 import { exportReport } from '../../shared/exportHelper'
 
-
 // ---------------------------------------------------------------------------
 // eFlora of Gandhinagar – Tree Information Database
 // Source: www.efloraofgandhinagar.in  (87 trees from campus survey)
@@ -643,6 +642,9 @@ function TreeDetailPanel({
       girth_cm: record.girth_cm ?? '',
       length_m: record.length_m ?? '',
       width_m: record.width_m ?? '',
+      total_area_m: record.total_area_m ?? '',
+      plant_spacing_cm: record.plant_spacing_cm ?? '',
+      plant_count: record.plant_count ?? '',
       canopy_area_m: record.canopy_area_m ?? '',
       gps_accuracy_m: record.gps_accuracy_m ?? '',
       notes: record.notes || '',
@@ -698,6 +700,9 @@ function TreeDetailPanel({
       girth_cm: numOrNull(form.girth_cm),
       length_m: numOrNull(form.length_m),
       width_m: numOrNull(form.width_m),
+      total_area_m: numOrNull(form.total_area_m),
+      plant_spacing_cm: numOrNull(form.plant_spacing_cm),
+      plant_count: form.plant_count ? parseInt(form.plant_count, 10) : 1,
       canopy_area_m: numOrNull(form.canopy_area_m),
       gps_accuracy_m: numOrNull(form.gps_accuracy_m),
       notes: form.notes,
@@ -974,17 +979,22 @@ function TreeDetailPanel({
                   <table style={{ fontSize: 13, borderCollapse: 'collapse', width: '100%' }}>
                     <tbody>
                       {[
-                        ['Zone',        record.zone_display || record.zone],
-                        ['Height',      record.height_m ? `${record.height_m} m` : null],
-                        ['Girth',       record.girth_cm  ? `${record.girth_cm} cm` : null],
-                        ['Length',      record.length_m ? `${record.length_m} m` : null],
-                        ['Width',       record.width_m ? `${record.width_m} m` : null],
-                        ['GPS',         record.lat != null ? `${parseFloat(record.lat).toFixed(5)}, ${parseFloat(record.lng).toFixed(5)}` : null],
-                        ['Accuracy',    record.gps_accuracy_m ? `±${record.gps_accuracy_m} m` : null],
-                        ['Location',    record.location_notes],
-                        ['Canopy span', record.canopy_area_m ? `${record.canopy_area_m} m` : null],
-                        ['Recorded',    record.submitted_at ? new Date(record.submitted_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : null],
-                        ['By',          record.submitted_by && record.submitted_by !== 'Geo tracker form' ? record.submitted_by : null],
+                        ['Zone',         record.zone_display || record.zone],
+                        ['Total Plants', record.plant_count != null ? Number(record.plant_count).toLocaleString() : null],
+                        ['Total Area',   record.total_area_m ? `${record.total_area_m} m²` : null],
+                        ['Spacing',      record.plant_spacing_cm ? `${record.plant_spacing_cm} cm` : null],
+                        ['Pattern',      record.planting_pattern ? (record.planting_pattern.charAt(0).toUpperCase() + record.planting_pattern.slice(1)) : null],
+                        ['Shape',        record.area_shape ? (record.area_shape.charAt(0).toUpperCase() + record.area_shape.slice(1)) : null],
+                        ['Height',       record.height_m ? `${record.height_m} m` : null],
+                        ['Girth',        record.girth_cm  ? `${record.girth_cm} cm` : null],
+                        ['Length',       record.length_m ? `${record.length_m} m` : null],
+                        ['Width',        record.width_m ? `${record.width_m} m` : null],
+                        ['GPS',          record.lat != null ? `${parseFloat(record.lat).toFixed(5)}, ${parseFloat(record.lng).toFixed(5)}` : null],
+                        ['Accuracy',     record.gps_accuracy_m ? `±${record.gps_accuracy_m} m` : null],
+                        ['Location',     record.location_notes],
+                        ['Canopy span',  record.canopy_area_m ? `${record.canopy_area_m} m` : null],
+                        ['Recorded',     record.submitted_at ? new Date(record.submitted_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : null],
+                        ['By',           record.submitted_by && record.submitted_by !== 'Geo tracker form' ? record.submitted_by : null],
                       ].filter(([, v]) => v).map(([k, v]) => (
                         <tr key={k}>
                           <td style={{ padding: '5px 0', color: 'var(--text-2)', fontWeight: 600, width: 88, verticalAlign: 'top', fontSize: 12 }}>{k}</td>
@@ -1150,6 +1160,30 @@ function TreeDetailPanel({
                         type="number" step="0.01" min="0" style={inputStyle}
                         value={form.width_m}
                         onChange={e => setField('width_m', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Total Plants (Count)</label>
+                      <input
+                        type="number" step="1" min="1" style={inputStyle}
+                        value={form.plant_count}
+                        onChange={e => setField('plant_count', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Total Area (m²)</label>
+                      <input
+                        type="number" step="0.01" min="0" style={inputStyle}
+                        value={form.total_area_m}
+                        onChange={e => setField('total_area_m', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Plant Spacing (cm)</label>
+                      <input
+                        type="number" step="1" min="1" style={inputStyle}
+                        value={form.plant_spacing_cm}
+                        onChange={e => setField('plant_spacing_cm', e.target.value)}
                       />
                     </div>
                     <div>
@@ -1344,8 +1378,10 @@ function buildPopupHtml(r, tcfg, ccfg, photos) {
       <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
         <span style="background:${tcfg.bg};color:${tcfg.color};border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700">${tcfg.label}</span>
         <span style="background:${ccfg.ring};color:${ccfg.color};border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700">${ccfg.label}</span>
+        ${r.plant_count && r.plant_count > 1 ? `<span style="background:#dcfce7;color:#15803d;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:800">🌱 ${Number(r.plant_count).toLocaleString()} plants</span>` : ''}
         ${r.zone ? `<span style="background:#f3f4f6;color:#374151;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700">${r.zone_display || r.zone}</span>` : ''}
       </div>
+      ${r.total_area_m ? `<div style="font-size:11px;color:#15803d;font-weight:700;margin-bottom:3px">📐 ${r.total_area_m} m² ${r.plant_spacing_cm ? `(${r.plant_spacing_cm} cm spacing)` : ''}</div>` : ''}
       ${r.height_m ? `<div style="font-size:11px;color:#6b7280">↕ ${r.height_m} m ${r.girth_cm ? `&nbsp;|&nbsp; ⊙ ${r.girth_cm} cm` : ''}</div>` : ''}
       ${photoHtml}
     </div>
@@ -1356,13 +1392,21 @@ function buildPopupHtml(r, tcfg, ccfg, photos) {
 // Stat chip
 // ---------------------------------------------------------------------------
 
-function StatChip({ label, value, color, bg }) {
+function StatChip({ label, value, color, bg, active, onClick, title }) {
   return (
-    <div style={{
-      background: bg, borderRadius: 10, padding: '8px 14px',
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      minWidth: 72, border: `1px solid ${color}33`,
-    }}>
+    <div
+      onClick={onClick}
+      title={title}
+      style={{
+        background: bg, borderRadius: 10, padding: '8px 14px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        minWidth: 72, border: active ? `2px solid ${color}` : `1px solid ${color}33`,
+        boxShadow: active ? `0 0 0 2px ${color}33` : 'none',
+        cursor: onClick ? 'pointer' : 'default',
+        userSelect: 'none',
+        transition: 'transform 0.15s, box-shadow 0.15s',
+      }}
+    >
       <span style={{ fontSize: 18, fontWeight: 800, color }}>{value}</span>
       <span style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', marginTop: 1, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
     </div>
@@ -1593,11 +1637,11 @@ export default function GeoTrackerPage() {
         { label: 'Total Catalogued', value: records.length },
       ],
       stats: [
-        { label: 'Total Flora', value: stats?.total ?? records.length },
-        { label: 'Trees', value: stats?.trees ?? records.filter(r => r.plant_type === 'tree').length },
-        { label: 'Plants', value: stats?.plants ?? records.filter(r => r.plant_type === 'plant').length },
-        { label: 'Creepers', value: stats?.creepers ?? records.filter(r => r.plant_type === 'creeper').length },
-        { label: 'Shrubs', value: stats?.shrubs ?? records.filter(r => r.plant_type === 'shrub').length },
+        { label: 'Total Flora', value: stats?.total_plants ?? stats?.total ?? records.length },
+        { label: 'Trees', value: stats?.trees_plants ?? stats?.trees ?? records.filter(r => r.plant_type === 'tree').length },
+        { label: 'Plants', value: stats?.plants_plants ?? stats?.plants ?? records.filter(r => r.plant_type === 'plant').length },
+        { label: 'Creepers', value: stats?.creepers_plants ?? stats?.creepers ?? records.filter(r => r.plant_type === 'creeper').length },
+        { label: 'Shrubs', value: stats?.shrubs_plants ?? stats?.shrubs ?? records.filter(r => r.plant_type === 'shrub').length },
       ],
       headers: ['Tracking ID', 'Name', 'Scientific Name', 'Type', 'Variety', 'Condition', 'Zone / Area', 'Latitude', 'Longitude'],
       rows: records.map(r => [
@@ -1614,6 +1658,36 @@ export default function GeoTrackerPage() {
     }
 
     await exportReport(format, exportData)
+  }
+
+  async function getGeoTrackerExportData(format) {
+    const params = {}
+    Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v })
+    if (format === 'csv') {
+      await geoApi.exportCsv(params)
+      return null
+    }
+    const query = new URLSearchParams(params).toString()
+    const url = `/api/geo-tracker/records/export/${query ? '?' + query : ''}`
+    const token = localStorage.getItem('access_token')
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!response.ok) throw new Error('Export failed')
+    const csvText = await response.text()
+    const lines = csvText.trim().split('\n').map((l) => l.split(',').map((c) => c.replace(/^"|"$/g, '').trim()))
+    const parsedHeaders = lines[0] || [
+      'Tracking ID', 'Plant Type', 'Common Name', 'Botanical Name', 'Variety',
+      'Latitude', 'Longitude', 'Zone / Area', 'Height (m)', 'Girth (cm)',
+      'Canopy Span (m)', 'Condition', 'Notes', 'GPS Accuracy (m)', 'Submitted At',
+    ]
+    const parsedRows = lines.slice(1).filter((r) => r.length > 1)
+    return {
+      title: 'IIT Gandhinagar Geo-Tracker Plant Records',
+      filename: 'plant_records',
+      headers: parsedHeaders,
+      rows: parsedRows,
+    }
   }
 
   function resetView() {
@@ -1805,11 +1879,51 @@ export default function GeoTrackerPage() {
 
             {stats && (
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                <StatChip label="Total"    value={stats.total}          color="#374151"               bg="#f3f4f6" />
-                <StatChip label="Trees"    value={stats.trees}          color={TYPE_CONFIG.tree.color}    bg={TYPE_CONFIG.tree.bg} />
-                <StatChip label="Plants"   value={stats.plants}         color={TYPE_CONFIG.plant.color}   bg={TYPE_CONFIG.plant.bg} />
-                <StatChip label="Creepers" value={stats.creepers || 0}  color={TYPE_CONFIG.creeper.color} bg={TYPE_CONFIG.creeper.bg} />
-                <StatChip label="Shrubs"   value={stats.shrubs || 0}    color={TYPE_CONFIG.shrub.color}   bg={TYPE_CONFIG.shrub.bg} />
+                <StatChip
+                  label="Trees"
+                  value={(stats.trees_plants ?? stats.trees ?? 0).toLocaleString()}
+                  color={TYPE_CONFIG.tree.color}
+                  bg={TYPE_CONFIG.tree.bg}
+                  active={filters.plant_type === 'tree'}
+                  onClick={() => setFilters(p => ({ ...p, plant_type: p.plant_type === 'tree' ? '' : 'tree' }))}
+                  title={`${(stats.trees_plants ?? stats.trees ?? 0).toLocaleString()} plants (${stats.trees || 0} recorded)`}
+                />
+                <StatChip
+                  label="Plants"
+                  value={(stats.plants_plants ?? stats.plants ?? 0).toLocaleString()}
+                  color={TYPE_CONFIG.plant.color}
+                  bg={TYPE_CONFIG.plant.bg}
+                  active={filters.plant_type === 'plant'}
+                  onClick={() => setFilters(p => ({ ...p, plant_type: p.plant_type === 'plant' ? '' : 'plant' }))}
+                  title={`${(stats.plants_plants ?? stats.plants ?? 0).toLocaleString()} plants (${stats.plants || 0} recorded)`}
+                />
+                <StatChip
+                  label="Creepers"
+                  value={(stats.creepers_plants ?? stats.creepers ?? 0).toLocaleString()}
+                  color={TYPE_CONFIG.creeper.color}
+                  bg={TYPE_CONFIG.creeper.bg}
+                  active={filters.plant_type === 'creeper'}
+                  onClick={() => setFilters(p => ({ ...p, plant_type: p.plant_type === 'creeper' ? '' : 'creeper' }))}
+                  title={`${(stats.creepers_plants ?? stats.creepers ?? 0).toLocaleString()} plants (${stats.creepers || 0} area${stats.creepers === 1 ? '' : 's'})`}
+                />
+                <StatChip
+                  label="Shrubs"
+                  value={(stats.shrubs_plants ?? stats.shrubs ?? 0).toLocaleString()}
+                  color={TYPE_CONFIG.shrub.color}
+                  bg={TYPE_CONFIG.shrub.bg}
+                  active={filters.plant_type === 'shrub'}
+                  onClick={() => setFilters(p => ({ ...p, plant_type: p.plant_type === 'shrub' ? '' : 'shrub' }))}
+                  title={`${(stats.shrubs_plants ?? stats.shrubs ?? 0).toLocaleString()} plants (${stats.shrubs || 0} area${stats.shrubs === 1 ? '' : 's'})`}
+                />
+                <StatChip
+                  label="Total"
+                  value={(stats.total_plants ?? stats.total ?? 0).toLocaleString()}
+                  color="#15803d"
+                  bg="#dcfce7"
+                  active={!filters.plant_type}
+                  onClick={() => setFilters(p => ({ ...p, plant_type: '' }))}
+                  title={`${(stats.total_plants ?? stats.total ?? 0).toLocaleString()} total plants (${stats.total || 0} records/areas)`}
+                />
               </div>
             )}
           </div>
@@ -1877,6 +1991,7 @@ export default function GeoTrackerPage() {
                 disabled={records.length === 0}
               />
             </div>
+
           </div>
         </header>
 

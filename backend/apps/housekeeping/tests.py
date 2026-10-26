@@ -746,10 +746,12 @@ class HousekeepingDashboardGroupingTests(TestCase):
             password='pass',
             role='supervisor',
         )
-        area = HKArea.objects.create(
+        area, _ = HKArea.objects.get_or_create(
             name='Canteen, Gate-01 and Gate-02',
-            area_type='guesthouse',
-            is_active=True,
+            defaults={
+                'area_type': 'guesthouse',
+                'is_active': True,
+            },
         )
         template = HKScheduleTemplate.objects.create(
             area=area,
@@ -780,3 +782,763 @@ class HousekeepingDashboardGroupingTests(TestCase):
 
         self.assertEqual(dashboard_group_tag(second_floor, area), 'room')
         self.assertEqual(dashboard_group_tag(third_floor, area), 'washroom')
+
+
+class SupervisorRelieverIntegrationTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.eligible_supervisor = User.objects.create_user(
+            username='bharat.solanki',
+            password='pass',
+            role='supervisor',
+            first_name='Bharat Kumar',
+            last_name='Solanki',
+        )
+        self.eligible_area = HKArea.objects.create(
+            name='Sports Complex',
+            area_type='sports',
+            is_active=True,
+        )
+        HKUserArea.objects.create(user=self.eligible_supervisor, area=self.eligible_area)
+
+        # Permanent workers in Sports Complex
+        self.assigned_worker_1 = HKWorker.objects.create(
+            name='Sports Worker One',
+            pay_code='101',
+            area=self.eligible_area,
+            worker_type='general',
+            shift='day',
+            is_active=True,
+        )
+        self.assigned_worker_2 = HKWorker.objects.create(
+            name='Sports Worker Two',
+            pay_code='102',
+            area=self.eligible_area,
+            worker_type='general',
+            shift='day',
+            is_active=True,
+        )
+
+        # Ganesh Jayesh supervisor and his Deep Cleaning area
+        self.ganesh_jayesh = User.objects.create_user(
+            username='ganesh.jayesh',
+            password='pass',
+            role='supervisor',
+            first_name='Ganesh',
+            last_name='Jayesh',
+        )
+        self.deep_cleaning_area = HKArea.objects.create(
+            name='Deep Cleaning',
+            area_type='other',
+            is_active=True,
+        )
+        HKUserArea.objects.create(user=self.ganesh_jayesh, area=self.deep_cleaning_area)
+
+        # 5 relievers under Deep Cleaning / Ganesh Jayesh
+        self.reliever_303, _ = HKWorker.objects.get_or_create(
+            pay_code='303',
+            defaults={
+                'name': 'Vaghela Chirag M',
+                'area': self.deep_cleaning_area,
+                'supervisor': self.ganesh_jayesh,
+                'worker_type': 'general',
+                'shift': 'day',
+                'is_active': True,
+                'is_reliever': False,
+            },
+        )
+        self.reliever_329, _ = HKWorker.objects.get_or_create(
+            pay_code='329',
+            defaults={
+                'name': 'Parmar Vijay Kumar Chhaganbhai',
+                'area': self.deep_cleaning_area,
+                'supervisor': self.ganesh_jayesh,
+                'worker_type': 'general',
+                'shift': 'day',
+                'is_active': True,
+                'is_reliever': False,
+            },
+        )
+        self.reliever_364, _ = HKWorker.objects.get_or_create(
+            pay_code='364',
+            defaults={
+                'name': 'Makvana Nikhil Girishbhai',
+                'area': self.deep_cleaning_area,
+                'supervisor': self.ganesh_jayesh,
+                'worker_type': 'general',
+                'shift': 'day',
+                'is_active': True,
+                'is_reliever': False,
+            },
+        )
+        self.reliever_389, _ = HKWorker.objects.get_or_create(
+            pay_code='389',
+            defaults={
+                'name': 'Bhangi Sikandar D.',
+                'area': self.deep_cleaning_area,
+                'supervisor': self.ganesh_jayesh,
+                'worker_type': 'general',
+                'shift': 'day',
+                'is_active': True,
+                'is_reliever': False,
+            },
+        )
+        self.reliever_455, _ = HKWorker.objects.get_or_create(
+            pay_code='455',
+            defaults={
+                'name': 'Sunil R. Vaghela',
+                'area': self.deep_cleaning_area,
+                'supervisor': self.ganesh_jayesh,
+                'worker_type': 'general',
+                'shift': 'day',
+                'is_active': True,
+                'is_reliever': False,
+            },
+        )
+        # 6th reliever (Vankar Vishalkumar Aravindbhai, pay_code 494)
+        self.reliever_494, _ = HKWorker.objects.get_or_create(
+            pay_code='494',
+            defaults={
+                'name': 'Vankar Vishalkumar Aravindbhai',
+                'worker_type': 'reliever',
+                'shift': 'day',
+                'is_active': True,
+                'is_reliever': True,
+                'area': None,
+                'supervisor': None,
+            },
+        )
+
+        # Task schedule in Sports Complex
+        self.schedule = HKScheduleTemplate.objects.create(
+            area=self.eligible_area,
+            order=1,
+            start_time=datetime.time(9, 0),
+            end_time=datetime.time(10, 0),
+            task_name='Badminton Court Cleaning',
+            task_description='',
+            worker_tag='general',
+            requires_photo=False,
+            frequency='daily',
+            is_active=True,
+        )
+        self.today = timezone.localdate()
+        self.record = HKDailyRecord.objects.create(
+            schedule=self.schedule,
+            originating_template=self.schedule,
+            area=self.eligible_area,
+            date=self.today,
+            status='pending',
+        )
+
+    def test_eligible_supervisor_attendance_reliever_list_and_numerical_sorting(self):
+        from apps.housekeeping.htmx_views import _attendance_relievers_for_area, worker_paycode_sort_key
+
+        relievers = list(_attendance_relievers_for_area(self.eligible_area, user=self.eligible_supervisor))
+        self.assertEqual(len(relievers), 6)
+        paycodes = [int(r.pay_code) for r in relievers]
+        self.assertEqual(paycodes, [303, 329, 364, 389, 455, 494])
+
+        # Verify exact spelling of Bhangi Sikandar D.
+        bhangi = next(r for r in relievers if r.pay_code == '389')
+        self.assertEqual(bhangi.name, 'Bhangi Sikandar D.')
+
+        # Set phone numbers to verify they are omitted from dropdown options
+        self.reliever_303.phone = '7698612890'
+        self.reliever_303.save(update_fields=['phone'])
+        self.reliever_455.phone = '9023986019'
+        self.reliever_455.save(update_fields=['phone'])
+
+        # Verify attendance page loads and contains all 6 relievers with exact expected labels
+        self.client.force_login(self.eligible_supervisor)
+        resp = self.client.get(f'/housekeeping/attendance/?area={self.eligible_area.id}&date={self.today}')
+        self.assertEqual(resp.status_code, 200)
+
+        expected_options = [
+            'Vaghela Chirag M · Deep Cleaning · #303',
+            'Parmar Vijay Kumar Chhaganbhai · Deep Cleaning · #329',
+            'Makvana Nikhil Girishbhai · Deep Cleaning · #364',
+            'Bhangi Sikandar D. · Deep Cleaning · #389',
+            'Sunil R. Vaghela · Deep Cleaning · #455',
+            'Vankar Vishalkumar Aravindbhai · Deep Cleaning · #494',
+        ]
+        content = resp.content.decode('utf-8')
+        last_pos = -1
+        for opt in expected_options:
+            self.assertIn(opt, content)
+            pos = content.find(opt)
+            self.assertGreater(pos, last_pos, f"Option '{opt}' is out of order")
+            last_pos = pos
+
+        # Verify phone numbers do not appear in reliever dropdown options
+        self.assertNotIn('7698612890', content)
+        self.assertNotIn('9023986019', content)
+
+    def test_reliever_replacement_in_attendance_and_assignment_in_assign_team(self):
+        self.client.force_login(self.eligible_supervisor)
+
+        # 1. Replace assigned_worker_1 with Sunil R. Vaghela (pay_code 455)
+        post_data = {
+            'original_worker_id': str(self.assigned_worker_1.id),
+            'reliever_id': str(self.reliever_455.id),
+            'area_id': str(self.eligible_area.id),
+            'note': 'Worker on leave',
+        }
+        resp = self.client.post('/housekeeping/attendance/assign-reliever/', post_data, HTTP_HX_REQUEST='true')
+        self.assertEqual(resp.status_code, 200)
+
+        # Verify substitution saved in DB
+        sub = HKRelieverSubstitution.objects.filter(
+            original_worker=self.assigned_worker_1,
+            date=self.today,
+            area=self.eligible_area,
+        ).first()
+        self.assertIsNotNone(sub)
+        self.assertEqual(sub.reliever, self.reliever_455)
+
+        # Verify original worker marked Leave
+        att = HKAttendanceRecord.objects.filter(worker=self.assigned_worker_1, date=self.today, half='first').first()
+        self.assertEqual(att.status, 'leave')
+        self.assertIn('Sunil R. Vaghela', att.note)
+
+        # Verify reliever marked Present
+        rel_att = HKAttendanceRecord.objects.filter(worker=self.reliever_455, date=self.today, half='first').first()
+        self.assertEqual(rel_att.status, 'present')
+
+        # 2. Open Home page (dashboard) and check effective workers for area
+        resp = self.client.get(f'/housekeeping/dashboard/?area={self.eligible_area.id}')
+        self.assertEqual(resp.status_code, 200)
+        from apps.housekeeping.htmx_views import effective_workers_for_area
+        eff_workers = effective_workers_for_area(self.eligible_area, self.today)
+        eff_ids = [w.id for w in eff_workers]
+        self.assertIn(self.reliever_455.id, eff_ids)
+        self.assertNotIn(self.assigned_worker_1.id, eff_ids)
+
+        # Verify workers are displayed in ascending numerical paycode order: 102, 455
+        eff_paycodes = [int(w.pay_code) for w in eff_workers if w.pay_code]
+        self.assertEqual(eff_paycodes, sorted(eff_paycodes))
+
+        # 3. Assign team to task with the reliever
+        assign_resp = self.client.post(
+            f'/housekeeping/task/{self.record.id}/mark/',
+            {'action': 'assign', 'worker_ids': [str(self.reliever_455.id)]},
+            HTTP_HX_REQUEST='true',
+        )
+        self.assertEqual(assign_resp.status_code, 200)
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.assigned_worker_id, self.reliever_455.id)
+        from apps.housekeeping.models import HKTaskWorkerAssignment
+        self.assertTrue(
+            HKTaskWorkerAssignment.objects.filter(daily_record=self.record, worker=self.reliever_455).exists()
+        )
+
+    def test_area_based_exclusions(self):
+        User = get_user_model()
+        excluded_area_names = [
+            'Canteen, Gate-01 and Gate-02',
+            'Guest House New',
+            'Director Bungalow',
+            'Research Park',
+            'Old Guest House',
+        ]
+        from apps.housekeeping.htmx_views import _attendance_relievers_for_area
+
+        for area_name in excluded_area_names:
+            area, _ = HKArea.objects.get_or_create(
+                name=area_name,
+                defaults={'area_type': 'guesthouse', 'is_active': True},
+            )
+            sup = User.objects.create_user(
+                username=f'sup_{area.id}',
+                password='pass',
+                role='supervisor',
+            )
+            HKUserArea.objects.create(user=sup, area=area)
+            worker = HKWorker.objects.create(
+                name=f'Worker in {area_name}',
+                pay_code='999',
+                area=area,
+                shift='day',
+                is_active=True,
+            )
+
+            # Relievers list should be empty
+            relievers = list(_attendance_relievers_for_area(area, user=sup))
+            self.assertEqual(len(relievers), 0, f"Area {area_name} should have 0 relievers")
+
+            # Backend POST assign-reliever should reject with 400 Bad Request
+            self.client.force_login(sup)
+            resp = self.client.post(
+                '/housekeeping/attendance/assign-reliever/',
+                {
+                    'original_worker_id': str(worker.id),
+                    'reliever_id': str(self.reliever_303.id),
+                    'area_id': str(area.id),
+                },
+            )
+            self.assertEqual(resp.status_code, 400)
+
+    def test_ganesh_jayesh_exclusion(self):
+        from apps.housekeeping.htmx_views import _attendance_relievers_for_area, effective_workers_for_area
+
+        # 1. Check relievers list is empty for Ganesh Jayesh
+        relievers = list(_attendance_relievers_for_area(self.deep_cleaning_area, user=self.ganesh_jayesh))
+        self.assertEqual(len(relievers), 0)
+
+        # 2. Check Attendance page for Ganesh Jayesh has no reliever option
+        self.client.force_login(self.ganesh_jayesh)
+        resp = self.client.get(f'/housekeeping/attendance/?area={self.deep_cleaning_area.id}&date={self.today}')
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, '🔄 Reliever')
+        self.assertNotContains(resp, 'reliever_id')
+
+        # 3. Check POST to assign-reliever is rejected
+        worker = HKWorker.objects.filter(area=self.deep_cleaning_area).first()
+        post_resp = self.client.post(
+            '/housekeeping/attendance/assign-reliever/',
+            {
+                'original_worker_id': str(worker.id),
+                'reliever_id': str(self.reliever_494.id),
+                'area_id': str(self.deep_cleaning_area.id),
+            },
+        )
+        self.assertEqual(post_resp.status_code, 400)
+
+        # 4. Check existing worker list under Ganesh Jayesh contains exactly 5 workers
+        workers = effective_workers_for_area(self.deep_cleaning_area, self.today)
+        self.assertEqual(len(workers), 5)
+        worker_paycodes = {w.pay_code for w in workers}
+        self.assertEqual(worker_paycodes, {'303', '329', '364', '389', '455'})
+        self.assertNotIn('494', worker_paycodes)
+
+    def test_caretaker_reliever_functionality_preserved(self):
+        User = get_user_model()
+        caretaker = User.objects.create_user(
+            username='caretaker_test',
+            password='pass',
+            role='caretaker',
+        )
+        hostel_reliever_area, _ = HKArea.objects.get_or_create(
+            name='Hostels Reliever',
+            defaults={'area_type': 'hostel', 'is_active': True},
+        )
+        hostel_reliever = HKWorker.objects.create(
+            name='Hostel Reliever One',
+            pay_code='777',
+            area=hostel_reliever_area,
+            worker_type='reliever',
+            shift='day',
+            is_active=True,
+            is_reliever=True,
+        )
+        hostel_area = HKArea.objects.create(
+            name='Beauki',
+            area_type='hostel',
+            is_active=True,
+        )
+        HKUserArea.objects.create(user=caretaker, area=hostel_area)
+
+        from apps.housekeeping.htmx_views import _attendance_relievers_for_area
+        caretaker_relievers = list(_attendance_relievers_for_area(hostel_area, user=caretaker))
+        # Preserves caretaker relievers from Hostels Reliever area
+        self.assertTrue(any(r.id == hostel_reliever.id for r in caretaker_relievers))
+
+
+class HostelCommonAreaRelieverManagementTests(TestCase):
+    def setUp(self):
+        import datetime
+        from django.contrib.auth import get_user_model
+        from apps.housekeeping.models import (
+            HKArea, HKDailyRecord, HKRelieverSubstitution, HKScheduleTemplate,
+            HKUserArea, HKWorker, HKAttendanceRecord
+        )
+        User = get_user_model()
+        self.today = timezone.localdate()
+
+        self.caretaker = User.objects.create_user(
+            username='vishwajeet.mishra.test',
+            password='pass',
+            role='caretaker',
+            first_name='Vishwajeet',
+            last_name='Mishra',
+        )
+        self.common_area = HKArea.objects.create(
+            name='Hostel Common Area',
+            area_type='hostel',
+            is_active=True,
+        )
+        HKUserArea.objects.create(user=self.caretaker, area=self.common_area)
+
+        self.jrha_area = HKArea.objects.create(
+            name='Block-D JRHA',
+            area_type='hostel',
+            is_active=True,
+        )
+
+        # 6 Workers registered in the system:
+        # Paycodes: 80, 100, 240, 457, 459, 472
+        self.w_80 = HKWorker.objects.create(
+            name='Yogesh Vaghela',
+            pay_code='80',
+            area=self.common_area,
+            worker_type='general',
+            shift='day',
+            is_active=True,
+            is_reliever=False,
+        )
+        self.w_100 = HKWorker.objects.create(
+            name='Ketan Gujjar',
+            pay_code='100',
+            area=self.common_area,
+            worker_type='general',
+            shift='day',
+            is_active=True,
+            is_reliever=False,
+        )
+        self.w_240 = HKWorker.objects.create(
+            name='Vinayak Solanki',
+            pay_code='240',
+            area=self.common_area,
+            worker_type='general',
+            shift='day',
+            is_active=True,
+            is_reliever=False,
+        )
+        self.w_457 = HKWorker.objects.create(
+            name='Bhavika',
+            pay_code='457',
+            area=self.jrha_area,
+            worker_type='general',
+            shift='day',
+            is_active=True,
+            is_reliever=False,
+        )
+        self.w_459 = HKWorker.objects.create(
+            name='Urvashi',
+            pay_code='459',
+            area=self.jrha_area,
+            worker_type='general',
+            shift='day',
+            is_active=True,
+            is_reliever=False,
+        )
+        self.w_472 = HKWorker.objects.create(
+            name='Suresh Solanki',
+            pay_code='472',
+            area=self.common_area,
+            worker_type='general',
+            shift='day',
+            is_active=True,
+            is_reliever=False,
+        )
+
+        # Create schedule templates for testing task time overlaps
+        self.tmpl_morning = HKScheduleTemplate.objects.create(
+            area=self.common_area,
+            start_time=datetime.time(9, 0),
+            end_time=datetime.time(10, 0),
+            task_name='Office Cleaning',
+            worker_tag='all',
+            frequency='daily',
+            order=1,
+        )
+        self.tmpl_morning_overlap = HKScheduleTemplate.objects.create(
+            area=self.common_area,
+            start_time=datetime.time(9, 30),
+            end_time=datetime.time(10, 30),
+            task_name='Washroom Cleaning',
+            worker_tag='all',
+            frequency='daily',
+            order=2,
+        )
+        self.tmpl_afternoon = HKScheduleTemplate.objects.create(
+            area=self.common_area,
+            start_time=datetime.time(14, 0),
+            end_time=datetime.time(15, 0),
+            task_name='Terrace Cleaning',
+            worker_tag='all',
+            frequency='daily',
+            order=3,
+        )
+
+    def test_dropdown_displays_six_workers_actual_names_and_numerical_order(self):
+        from apps.housekeeping.htmx_views import _attendance_relievers_for_area
+
+        relievers = list(_attendance_relievers_for_area(self.common_area, user=self.caretaker))
+        self.assertEqual(len(relievers), 6)
+        paycodes = [int(r.pay_code) for r in relievers]
+        # Must be in ascending numerical paycode order: 80, 100, 240, 457, 459, 472
+        self.assertEqual(paycodes, [80, 100, 240, 457, 459, 472])
+        self.assertNotIn(60, paycodes)
+        self.assertIn(80, paycodes)
+
+        # Names must be actual names from DB
+        names = [r.name for r in relievers]
+        self.assertEqual(names, [
+            'Yogesh Vaghela',
+            'Ketan Gujjar',
+            'Vinayak Solanki',
+            'Bhavika',
+            'Urvashi',
+            'Suresh Solanki',
+        ])
+
+        # Test attendance view rendering for caretaker
+        self.client.force_login(self.caretaker)
+        resp = self.client.get(f'/housekeeping/attendance/?area={self.common_area.id}&date={self.today}')
+        self.assertEqual(resp.status_code, 200)
+        content = resp.content.decode('utf-8')
+
+        # Check placeholder
+        self.assertIn('— Choose reliever —', content)
+
+        # Check that all 6 options appear in ascending order
+        expected_options = [
+            'Yogesh Vaghela · Hostel Common Area · #80',
+            'Ketan Gujjar · Hostel Common Area · #100',
+            'Vinayak Solanki · Hostel Common Area · #240',
+            'Bhavika · Block-D JRHA · #457',
+            'Urvashi · Block-D JRHA · #459',
+            'Suresh Solanki · Hostel Common Area · #472',
+        ]
+        last_pos = -1
+        for opt in expected_options:
+            self.assertIn(opt, content)
+            pos = content.find(opt)
+            self.assertGreater(pos, last_pos, f"Option '{opt}' is out of order")
+            last_pos = pos
+
+    def test_available_worker_assignment_success(self):
+        self.client.force_login(self.caretaker)
+        post_data = {
+            'original_worker_id': str(self.w_80.id),
+            'reliever_id': str(self.w_240.id),
+            'area_id': str(self.common_area.id),
+            'note': 'Sick leave',
+        }
+        resp = self.client.post('/housekeeping/attendance/assign-reliever/', post_data, HTTP_HX_REQUEST='true')
+        self.assertEqual(resp.status_code, 200)
+
+        # Verify substitution saved in DB
+        from apps.housekeeping.models import HKRelieverSubstitution, HKAttendanceRecord
+        sub = HKRelieverSubstitution.objects.filter(
+            original_worker=self.w_80,
+            date=self.today,
+            area=self.common_area,
+        ).first()
+        self.assertIsNotNone(sub)
+        self.assertEqual(sub.reliever, self.w_240)
+
+        # Original worker auto-marked as leave
+        att = HKAttendanceRecord.objects.filter(worker=self.w_80, date=self.today, half='first').first()
+        self.assertEqual(att.status, 'leave')
+        self.assertIn('Vinayak Solanki', att.note)
+
+        # Reliever marked present
+        rel_att = HKAttendanceRecord.objects.filter(worker=self.w_240, date=self.today, half='first').first()
+        self.assertEqual(rel_att.status, 'present')
+
+    def test_busy_worker_displayed_with_busy_label_and_disabled(self):
+        from apps.housekeeping.models import HKDailyRecord, HKRelieverSubstitution
+        # w_80 has an active task from 09:00 to 10:00
+        task_80 = HKDailyRecord.objects.create(
+            schedule=self.tmpl_morning,
+            area=self.common_area,
+            date=self.today,
+            status='pending',
+            assigned_worker=self.w_80,
+        )
+
+        # Assign w_240 as reliever for w_80
+        self.client.force_login(self.caretaker)
+        self.client.post('/housekeeping/attendance/assign-reliever/', {
+            'original_worker_id': str(self.w_80.id),
+            'reliever_id': str(self.w_240.id),
+            'area_id': str(self.common_area.id),
+        }, HTTP_HX_REQUEST='true')
+
+        # w_100 has an overlapping active task from 09:30 to 10:30
+        task_100 = HKDailyRecord.objects.create(
+            schedule=self.tmpl_morning_overlap,
+            area=self.common_area,
+            date=self.today,
+            status='pending',
+            assigned_worker=self.w_100,
+        )
+
+        resp = self.client.get(f'/housekeeping/attendance/?area={self.common_area.id}&date={self.today}')
+        self.assertEqual(resp.status_code, 200)
+        content = resp.content.decode('utf-8')
+
+        # w_240 should have Busy label and be disabled
+        self.assertIn('Vinayak Solanki · Hostel Common Area · #240 · Busy', content)
+        self.assertIn(f'value="{self.w_240.id}" disabled', content)
+
+        # w_457 is free and should remain selectable without Busy
+        self.assertIn('Bhavika · Block-D JRHA · #457', content)
+        self.assertNotIn('Bhavika · Block-D JRHA · #457 · Busy', content)
+        self.assertIn(f'value="{self.w_457.id}">', content)
+
+    def test_backend_rejects_conflicting_assignment_bypassing_ui(self):
+        from apps.housekeeping.models import HKDailyRecord
+        # w_80 has active morning task (09:00 - 10:00)
+        HKDailyRecord.objects.create(
+            schedule=self.tmpl_morning,
+            area=self.common_area,
+            date=self.today,
+            status='in_progress',
+            assigned_worker=self.w_80,
+        )
+        self.client.force_login(self.caretaker)
+        self.client.post('/housekeeping/attendance/assign-reliever/', {
+            'original_worker_id': str(self.w_80.id),
+            'reliever_id': str(self.w_240.id),
+            'area_id': str(self.common_area.id),
+        })
+
+        # w_100 has overlapping active task (09:30 - 10:30)
+        HKDailyRecord.objects.create(
+            schedule=self.tmpl_morning_overlap,
+            area=self.common_area,
+            date=self.today,
+            status='pending',
+            assigned_worker=self.w_100,
+        )
+
+        # Directly attempt to assign w_240 to w_100
+        post_resp = self.client.post('/housekeeping/attendance/assign-reliever/', {
+            'original_worker_id': str(self.w_100.id),
+            'reliever_id': str(self.w_240.id),
+            'area_id': str(self.common_area.id),
+        })
+        self.assertEqual(post_resp.status_code, 400)
+        self.assertIn(b'conflicting active task', post_resp.content)
+
+    def test_availability_restored_when_task_completed_or_cancelled(self):
+        from apps.housekeeping.models import HKDailyRecord
+        task_80 = HKDailyRecord.objects.create(
+            schedule=self.tmpl_morning,
+            area=self.common_area,
+            date=self.today,
+            status='in_progress',
+            assigned_worker=self.w_80,
+        )
+        self.client.force_login(self.caretaker)
+        self.client.post('/housekeeping/attendance/assign-reliever/', {
+            'original_worker_id': str(self.w_80.id),
+            'reliever_id': str(self.w_240.id),
+            'area_id': str(self.common_area.id),
+        })
+
+        task_100 = HKDailyRecord.objects.create(
+            schedule=self.tmpl_morning_overlap,
+            area=self.common_area,
+            date=self.today,
+            status='pending',
+            assigned_worker=self.w_100,
+        )
+
+        # Mark task_80 as done
+        task_80.refresh_from_db()
+        task_80.status = 'done'
+        task_80.save(update_fields=['status'])
+
+        # w_240 should now be available again for w_100!
+        resp = self.client.get(f'/housekeeping/attendance/?area={self.common_area.id}&date={self.today}')
+        content = resp.content.decode('utf-8')
+        self.assertNotIn('Vinayak Solanki · Hostel Common Area · #240 · Busy', content)
+
+        # Assigning w_240 to w_100 now succeeds
+        assign_resp = self.client.post('/housekeeping/attendance/assign-reliever/', {
+            'original_worker_id': str(self.w_100.id),
+            'reliever_id': str(self.w_240.id),
+            'area_id': str(self.common_area.id),
+        }, HTTP_HX_REQUEST='true')
+        self.assertEqual(assign_resp.status_code, 200)
+
+    def test_non_overlapping_task_assignments_remain_possible(self):
+        from apps.housekeeping.models import HKDailyRecord
+        # w_80 has morning task (09:00 - 10:00)
+        HKDailyRecord.objects.create(
+            schedule=self.tmpl_morning,
+            area=self.common_area,
+            date=self.today,
+            status='in_progress',
+            assigned_worker=self.w_80,
+        )
+        self.client.force_login(self.caretaker)
+        self.client.post('/housekeeping/attendance/assign-reliever/', {
+            'original_worker_id': str(self.w_80.id),
+            'reliever_id': str(self.w_240.id),
+            'area_id': str(self.common_area.id),
+        })
+
+        # w_100 has afternoon non-overlapping task (14:00 - 15:00)
+        HKDailyRecord.objects.create(
+            schedule=self.tmpl_afternoon,
+            area=self.common_area,
+            date=self.today,
+            status='pending',
+            assigned_worker=self.w_100,
+        )
+
+        # w_240 is NOT busy for w_100's afternoon task
+        assign_resp = self.client.post('/housekeeping/attendance/assign-reliever/', {
+            'original_worker_id': str(self.w_100.id),
+            'reliever_id': str(self.w_240.id),
+            'area_id': str(self.common_area.id),
+        }, HTTP_HX_REQUEST='true')
+        self.assertEqual(assign_resp.status_code, 200)
+
+    def test_inter_area_conflicting_active_task_marks_reliever_busy(self):
+        from apps.housekeeping.models import HKDailyRecord
+        # w_457 has active morning task in Block-D JRHA (09:00 - 10:00)
+        tmpl_jrha = HKScheduleTemplate.objects.create(
+            area=self.jrha_area,
+            start_time=datetime.time(9, 0),
+            end_time=datetime.time(10, 0),
+            task_name='JRHA Cleaning',
+            worker_tag='all',
+            frequency='daily',
+            order=1,
+        )
+        HKDailyRecord.objects.create(
+            schedule=tmpl_jrha,
+            area=self.jrha_area,
+            date=self.today,
+            status='in_progress',
+            assigned_worker=self.w_457,
+        )
+
+        # w_80 in Hostel Common Area has conflicting morning task
+        HKDailyRecord.objects.create(
+            schedule=self.tmpl_morning,
+            area=self.common_area,
+            date=self.today,
+            status='pending',
+            assigned_worker=self.w_80,
+        )
+
+        # w_457 should appear as Busy in Hostel Common Area
+        self.client.force_login(self.caretaker)
+        resp = self.client.get(f'/housekeeping/attendance/?area={self.common_area.id}&date={self.today}')
+        content = resp.content.decode('utf-8')
+        self.assertIn('Bhavika · Block-D JRHA · #457 · Busy', content)
+
+        # Direct attempt to assign w_457 must be rejected with 400
+        post_resp = self.client.post('/housekeeping/attendance/assign-reliever/', {
+            'original_worker_id': str(self.w_80.id),
+            'reliever_id': str(self.w_457.id),
+            'area_id': str(self.common_area.id),
+        })
+        self.assertEqual(post_resp.status_code, 400)
+
+    def test_worker_cannot_relieve_themselves(self):
+        self.client.force_login(self.caretaker)
+        post_resp = self.client.post('/housekeeping/attendance/assign-reliever/', {
+            'original_worker_id': str(self.w_240.id),
+            'reliever_id': str(self.w_240.id),
+            'area_id': str(self.common_area.id),
+        })
+        self.assertEqual(post_resp.status_code, 400)
+

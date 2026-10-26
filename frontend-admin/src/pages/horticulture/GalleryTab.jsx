@@ -793,8 +793,8 @@ function CompareModal({ assignment, onPrev, onNext, onClose, onDownloadPhoto, cu
             </span>
           </div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 4 }}>
-            📸 Supervisor (Photo Captured By): <strong style={{ color: '#86efac' }}>{assignment.completed_by_name || assignment.assigned_by_name || 'Supervisor'}</strong> · 
-            🛠️ Assigned Worker: <strong style={{ color: '#fff' }}>{assignment.worker_name || '-'}</strong> · 
+            📸 Supervisor (Photo Captured By): <strong style={{ color: '#86efac' }}>{assignment.completed_by_name || assignment.assigned_by_name || 'Supervisor'}</strong> ·
+            🛠️ Assigned Worker: <strong style={{ color: '#fff' }}>{assignment.worker_name || '-'}</strong> ·
             Date: <strong style={{ color: '#fff' }}>{formatDate(assignment.date)}</strong>
             {assignment.session ? ` (${assignment.session})` : ''}
           </div>
@@ -1116,7 +1116,7 @@ export default function GalleryTab() {
         horticultureAPI.getAreas(),
       ])
       imageDebugLog('horticulture.gallery.response', { assignments: assignmentRes.data?.slice?.(0, 3), areas: areaRes.data?.slice?.(0, 3) })
-      
+
       const rawAssignments = asList(assignmentRes.data)
       setAssignments(
         rawAssignments.filter((row) => Boolean(normalizeMediaUrl(row.photo_before_url)) || Boolean(normalizeMediaUrl(row.photo_after_url || row.photo_url)))
@@ -1619,9 +1619,9 @@ export default function GalleryTab() {
           : 'All Dates'
 
     await exportReport(format, {
-      title: 'Horticulture Task Photo Log',
-      subtitle: `Photo Log Report (${targetPhotos.length} records • ${dateRangeLabel}) • Tabular report without photo images`,
-      filename: `horticulture_photo_log_${fromDate || 'start'}_to_${toDate || todayISO()}`,
+      title: 'Horticulture Task Data Log',
+      subtitle: `Data Log Report (${targetPhotos.length} records • ${dateRangeLabel}) • Tabular report without photo images`,
+      filename: `horticulture_data_log_${fromDate || 'start'}_to_${toDate || todayISO()}`,
       headers,
       rows,
       kpis: [
@@ -1631,7 +1631,7 @@ export default function GalleryTab() {
         { label: 'Areas Covered', value: new Set(targetPhotos.map((r) => r.area).filter(Boolean)).size },
       ],
       metadata: {
-        'Report Type': 'Task Photo Log (Data Table without photos)',
+        'Report Type': 'Task Data Log (Data Table without photos)',
         'Date Range': dateRangeLabel,
         'Search Filter': filters.search || 'None',
         'Area Filter': filters.area ? (areas.find((a) => String(a.id) === String(filters.area))?.name || filters.area) : 'All Areas',
@@ -1639,7 +1639,7 @@ export default function GalleryTab() {
         'Export Date': new Date().toLocaleString(),
       },
     })
-    setSuccess(`Horticulture photo log (${targetPhotos.length} records, ${dateRangeLabel}) exported as ${format.toUpperCase()}.`)
+    setSuccess(`Horticulture data log (${targetPhotos.length} records, ${dateRangeLabel}) exported as ${format.toUpperCase()}.`)
     setDateExportModal((prev) => ({ ...prev, open: false }))
   }
 
@@ -1734,7 +1734,7 @@ export default function GalleryTab() {
               }}
               title="Click to select calendar date range and download report"
             >
-              📅 Export Photo Log
+              📅 Export Data Log
             </Btn>
           </div>
         </div>
@@ -1931,12 +1931,12 @@ export default function GalleryTab() {
         />
       )}
 
-      {/* Date-Range Export Modal for Photo Log (Without Photos) */}
+      {/* Date-Range Export Modal for Data Log (Without Photos) */}
       {dateExportModal.open && (
         <Modal
           open={dateExportModal.open}
           onClose={() => setDateExportModal((prev) => ({ ...prev, open: false }))}
-          title="🗓️ Export Photo Log (Select Date Range)"
+          title="🗓️ Export Data Log (Select Date Range)"
           width={580}
           footer={(
             <Btn variant="ghost" onClick={() => setDateExportModal((prev) => ({ ...prev, open: false }))}>
@@ -1946,7 +1946,7 @@ export default function GalleryTab() {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
-              Select the start and end dates to download the tabular photo log report (without photos):
+              Select the start and end dates to download the tabular data log report (without photos):
             </div>
 
             {/* Quick Date Range Preset Buttons */}
@@ -2081,7 +2081,7 @@ export default function GalleryTab() {
                   }}
                 >
                   <span>
-                    {count > 0 ? `✔ Found ${count} photo log record(s) in selected range` : '⚠️ No photo log records found in this date range'}
+                    {count > 0 ? `✔ Found ${count} data log record(s) in selected range` : '⚠️ No data log records found in this date range'}
                   </span>
                   <span style={{ fontSize: 11, opacity: 0.85 }}>
                     Columns: Date, Type, Session, Worker, Area, Task, Assigned By, Photo URL...

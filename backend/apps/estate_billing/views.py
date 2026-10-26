@@ -350,6 +350,7 @@ def ensure_cycle_notes(cycle_month):
 
 
 def get_current_cycle(request):
+    ensure_master_shops_and_contractors()
     cycle = request.query_params.get('cycle')
     if cycle and len(cycle) == 7:
         ensure_cycle_notes(cycle)
@@ -741,15 +742,15 @@ class SettingsTestEmailView(APIView):
     def post(self, request):
         if not is_estate_allowed(request.user):
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-        
+
         email = (request.data.get('email') or request.data.get('testRecipientEmail') or '').strip()
         if not email:
             settings_obj = EstateSettings.get_settings()
             email = (settings_obj.test_recipient_email or '').strip()
-        
+
         if not email:
             return Response({'error': 'Please enter a test email address first.'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         ok, msg = send_test_email(email, triggered_by=request.user)
         if ok:
             return Response({'success': True, 'message': f'Test automated no-reply email queued for {email}.'})
@@ -789,6 +790,7 @@ class BillingCycleListView(APIView):
     def get(self, request):
         if not is_estate_allowed(request.user):
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        ensure_master_shops_and_contractors()
         cycles = BillingCycle.objects.all().order_by('-month')
         return Response(BillingCycleSerializer(cycles, many=True).data)
 
@@ -2190,6 +2192,3 @@ class HousingClearanceDetailView(APIView):
                     obj.unit.status = HousingUnit.Status.VACANT
                     obj.unit.save(update_fields=['status'])
         return Response({'success': True}, status=status.HTTP_200_OK)
-
-
-

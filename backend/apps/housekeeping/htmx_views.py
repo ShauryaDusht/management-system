@@ -4,6 +4,7 @@ import datetime
 import functools
 import json
 import logging
+import math
 import re
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
@@ -15,9 +16,9 @@ from django.contrib.auth import (
 )
 from django.db import models as dm
 from django.db import transaction
-from django.db.models import Max, Prefetch, Sum, Value, DecimalField
-from django.db.models.functions import Coalesce
-from django.http import HttpResponseBadRequest, HttpResponseForbidden
+from django.db.models import DecimalField, IntegerField, Max, Prefetch, Q, Sum, Value
+from django.db.models.functions import Cast, Coalesce
+from django.http import HttpResponseBadRequest, HttpResponseForbidden, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils import timezone
@@ -48,8 +49,10 @@ from .photo_utils import process_task_photo
 from apps.core.image_urls import image_debug_payload, log_image_event
 from apps.inventory.request_permissions import (
     EXCESSIVE_QUANTITY_MESSAGE,
+    REPEAT_REQUEST_BLOCKED_MESSAGE,
     UNAUTHORIZED_ITEM_REQUEST_MESSAGE,
     filter_requestable_items,
+    get_unaccounted_item_quantity,
     user_can_request_item,
 )
 from apps.users.models import normalize_username_value
@@ -249,7 +252,7 @@ HOSTEL_RELIEVER_ASSIGNMENTS = {
     "Jurqia": {"pay_codes": ["136"]},
     "Kyzeel": {"pay_codes": ["154"]},
     "Lekhaag": {"pay_codes": ["88"]},
-    "Hostel Common Area": {"pay_codes": ["471"]},
+    "Hostel Common Area": {"pay_codes": ["80", "100", "240", "457", "459", "472"]},
 }
 
 HOUSEKEEPING_MANAGER_ROLES = {"admin", "hk_inventory_manager"}
@@ -260,37 +263,285 @@ def can_manage_housekeeping_user(user):
     return getattr(user, "role", "") in HOUSEKEEPING_MANAGER_ROLES
 
 
-def _attendance_relievers_for_area(area):
-    qs = HKWorker.objects.filter(is_active=True)
+SUPERVISOR_EXCLUDED_AREA_IDS = {1, 18, 24, 25, 26}
+SUPERVISOR_EXCLUDED_AREA_NAMES = {
+    "Canteen, Gate-01 and Gate-02",
+    "Canteen Gate-01",
+    "Gate-02",
+    "Guest House New",
+    "Director Bungalow",
+    "Research Park",
+    "Old Guest House",
+}
+SUPERVISOR_RELIEVER_PAYCODES = ["303", "329", "364", "389", "455", "494"]
+HOSTEL_COMMON_AREA_RELIEVER_PAYCODES = ["80", "100", "240", "457", "459", "472"]
+
+
+def is_ganesh_jayesh_user(user):
+    if not user:
+        return False
+    return (
+        (getattr(user, "username", "") or "").lower() == "ganesh.jayesh"
+        or getattr(user, "id", None) == 27
+    )
+
+
+def is_supervisor_excluded_area(area):
+    if not area:
+        return True
+    if getattr(area, "id", None) in SUPERVISOR_EXCLUDED_AREA_IDS:
+        return True
+    if getattr(area, "name", "") in SUPERVISOR_EXCLUDED_AREA_NAMES:
+        return True
+    return False
+
+
+def worker_paycode_sort_key(worker):
+    pay_code = getattr(worker, "pay_code", "") or ""
+    try:
+        return (0, int(pay_code), (getattr(worker, "name", "") or "").lower(), getattr(worker, "id", 0))
+    except (ValueError, TypeError):
+        return (1, pay_code, (getattr(worker, "name", "") or "").lower(), getattr(worker, "id", 0))
+
+
+def task_time_interval(record_or_schedule):
+    schedule = getattr(record_or_schedule, "schedule", record_or_schedule)
+    start_t = getattr(schedule, "start_time", None)
+    end_t = getattr(schedule, "end_time", None)
+    if not start_t or not end_t:
+        return None
+    s = start_t.hour * 60 + start_t.minute
+    e = end_t.hour * 60 + end_t.minute
+    if e <= s:
+        e += 1440
+    return (s, e)
+
+
+def intervals_overlap(int1, int2):
+    if not int1 or not int2:
+        return True
+    s1, e1 = int1
+    s2, e2 = int2
+    return max(s1, s2) < min(e1, e2)
+
+
+def get_active_tasks_for_worker(worker_id, date):
+    if not worker_id or not date:
+        return HKDailyRecord.objects.none()
+    return (
+        HKDailyRecord.objects.filter(date=date)
+        .filter(
+            dm.Q(assigned_worker_id=worker_id)
+            | dm.Q(worker_assignments__worker_id=worker_id)
+        )
+        .exclude(status__in=["done", "skipped"])
+        .select_related("schedule", "area")
+        .distinct()
+    )
+
+
+def is_reliever_busy_for_target(reliever, target_worker=None, date=None, area=None):
+    if not reliever:
+        return False
+    if date is None:
+        date = timezone.localdate()
+
+    rel_id = getattr(reliever, "id", reliever)
+    target_id = getattr(target_worker, "id", target_worker) if target_worker else None
+
+    # 1. A worker cannot relieve themselves
+    if target_id and rel_id == target_id:
+        return True
+
+    # 2. Candidate reliever is marked absent or replaced by another worker today
+    if HKRelieverSubstitution.objects.filter(original_worker_id=rel_id, date=date).exists():
+        return True
+
+    # 3. Active (unfinished) tasks currently assigned to reliever across all areas
+    rel_active_tasks = list(get_active_tasks_for_worker(rel_id, date))
+    rel_intervals = []
+    for t in rel_active_tasks:
+        inv = task_time_interval(t)
+        if inv:
+            rel_intervals.append(inv)
+
+    # 4. Check active substitutions where reliever is covering another worker on date
+    active_subs = list(
+        HKRelieverSubstitution.objects.filter(reliever_id=rel_id, date=date)
+        .exclude(original_worker_id=target_id if target_id else 0)
+        .select_related("original_worker", "area")
+    )
+    has_sub_without_tasks = False
+    for sub in active_subs:
+        orig_records = HKDailyRecord.objects.filter(
+            date=date,
+            area=sub.area,
+        ).filter(
+            dm.Q(assigned_worker_id=sub.original_worker_id)
+            | dm.Q(assigned_worker_id=rel_id)
+            | dm.Q(worker_assignments__worker_id=sub.original_worker_id)
+            | dm.Q(worker_assignments__worker_id=rel_id)
+        )
+        if orig_records.exists():
+            open_records = orig_records.exclude(status__in=["done", "skipped"])
+            if open_records.exists():
+                for t in open_records.select_related("schedule"):
+                    inv = task_time_interval(t)
+                    if inv:
+                        rel_intervals.append(inv)
+                    else:
+                        has_sub_without_tasks = True
+        else:
+            has_sub_without_tasks = True
+
+    has_active_work = bool(rel_active_tasks or rel_intervals or has_sub_without_tasks)
+
+    # 5. Check against target worker / task intervals
+    if target_id is not None:
+        target_active_tasks = list(get_active_tasks_for_worker(target_id, date))
+        target_intervals = []
+        for t in target_active_tasks:
+            inv = task_time_interval(t)
+            if inv:
+                target_intervals.append(inv)
+
+        if target_intervals:
+            if not rel_intervals and not has_sub_without_tasks:
+                return False
+            if has_sub_without_tasks:
+                return True
+            for r_int in rel_intervals:
+                for t_int in target_intervals:
+                    if intervals_overlap(r_int, t_int):
+                        return True
+            return False
+        else:
+            return has_active_work
+
+    return has_active_work
+
+
+def _format_reliever_options(relievers, user=None, target_worker=None, date=None, area=None):
+    if date is None:
+        date = timezone.localdate()
+    relievers_list = sorted(relievers, key=worker_paycode_sort_key)
+    is_common_area = bool(area and getattr(area, "name", "") == "Hostel Common Area")
+    formatted = []
+    for orig_rel in relievers_list:
+        rel = copy.copy(orig_rel)
+        rel_paycode = str(getattr(rel, "pay_code", "") or "")
+        is_hca = is_common_area or rel_paycode in HOSTEL_COMMON_AREA_RELIEVER_PAYCODES
+
+        if is_hca:
+            is_busy = False
+            if target_worker and rel.id == getattr(target_worker, "id", None):
+                is_busy = True
+            elif is_reliever_busy_for_target(rel, target_worker, date, area):
+                is_busy = True
+            rel.is_busy = is_busy
+            area_name = getattr(getattr(rel, "area", None), "name", None) or ""
+            if not area_name and getattr(rel, "area_id", None):
+                try:
+                    from apps.housekeeping.models import HKArea
+                    area_obj = HKArea.objects.filter(id=rel.area_id).first()
+                    if area_obj:
+                        area_name = area_obj.name
+                except Exception:
+                    pass
+            if not area_name and getattr(rel, "pay_code", None):
+                matching_worker = (
+                    HKWorker.objects.filter(pay_code=rel.pay_code, is_active=True)
+                    .exclude(area=None)
+                    .select_related("area")
+                    .first()
+                )
+                if matching_worker and matching_worker.area:
+                    area_name = matching_worker.area.name
+
+            label = f"{rel.name}"
+            if area_name:
+                label += f" · {area_name}"
+            if rel.pay_code:
+                label += f" · #{rel.pay_code}"
+
+            if is_busy:
+                rel.reliever_label = f"{label} · Busy"
+            else:
+                rel.reliever_label = label
+        elif rel_paycode in SUPERVISOR_RELIEVER_PAYCODES or getattr(getattr(rel, "area", None), "name", "") == "Deep Cleaning":
+            is_busy = is_reliever_busy_for_target(rel, target_worker, date, area) if target_worker else False
+            rel.is_busy = is_busy
+            if is_busy:
+                rel.reliever_label = f"{rel.name} · Deep Cleaning · #{rel.pay_code} · Busy"
+            else:
+                rel.reliever_label = f"{rel.name} · Deep Cleaning · #{rel.pay_code}"
+        else:
+            is_busy = is_reliever_busy_for_target(rel, target_worker, date, area) if target_worker else False
+            rel.is_busy = is_busy
+            if is_busy:
+                label = f"{rel.name}"
+                if rel.area:
+                    label += f" · {rel.area.name}"
+                if rel.pay_code:
+                    label += f" #{rel.pay_code}"
+                label += " · Busy"
+                rel.reliever_label = label
+
+        formatted.append(rel)
+    return formatted
+
+
+def _attendance_relievers_for_area(area, user=None):
+    qs = HKWorker.objects.filter(is_active=True).select_related("area")
     if not area:
         return qs.none()
 
-    if _is_jrha_area(area):
-        return qs.filter(area__name__in=JRHA_AREA_NAMES).exclude(area=area).order_by("area__name", "name")
+    # 1. Ganesh Jayesh exclusion: no reliever option for his account or Deep Cleaning
+    if is_ganesh_jayesh_user(user) or area.name == "Deep Cleaning" or getattr(area, "id", None) == 23:
+        return qs.none()
 
-    if area_bucket(area) == "hostels":
-        assigned = HOSTEL_RELIEVER_ASSIGNMENTS.get(area.name)
-        relievers = qs.filter(is_reliever=True, area__name="Hostels Reliever")
-        if area.name != "Hostel Common Area":
-            return relievers.order_by("name")
-        if assigned:
-            reliever_filter = dm.Q()
-            pay_codes = [code for code in assigned.get("pay_codes", []) if code]
-            names = [name for name in assigned.get("names", []) if name]
-            if pay_codes:
-                reliever_filter |= dm.Q(pay_code__in=pay_codes)
-            if names:
-                reliever_filter |= dm.Q(name__in=names)
-            return relievers.filter(reliever_filter).order_by("name")
-        return relievers.order_by("name")
+    # 2. Excluded areas: reject 6 areas explicitly
+    if is_supervisor_excluded_area(area):
+        return qs.none()
 
-    if _uses_academic_reliever_pool(area):
-        return qs.filter(is_reliever=True, area__name="Old Academic Reliever").order_by("name")
+    # 3. Hostel Common Area: return the 6 registered workers sorted in ascending numerical paycode order
+    if area.name == "Hostel Common Area":
+        return (
+            qs.filter(pay_code__in=HOSTEL_COMMON_AREA_RELIEVER_PAYCODES)
+            .annotate(pay_code_num=Cast("pay_code", dm.IntegerField()))
+            .order_by("pay_code_num", "name")
+        )
 
-    if _uses_new_academic_reliever_pool(area):
-        return qs.filter(is_reliever=True, area__name="New Academic Reliever").order_by("name")
+    # 4. Caretaker role: preserve existing caretaker reliever behavior
+    if user and getattr(user, "role", "") == "caretaker":
+        if _is_jrha_area(area):
+            return qs.filter(area__name__in=JRHA_AREA_NAMES).exclude(area=area).order_by("area__name", "name")
 
-    return qs.none()
+        if area_bucket(area) == "hostels":
+            return qs.filter(is_reliever=True, area__name="Hostels Reliever").order_by("name")
+
+        if _uses_academic_reliever_pool(area):
+            return qs.filter(is_reliever=True, area__name="Old Academic Reliever").order_by("name")
+
+        if _uses_new_academic_reliever_pool(area):
+            return qs.filter(is_reliever=True, area__name="New Academic Reliever").order_by("name")
+
+        return qs.none()
+
+    # Fallback for caretaker areas when user object is omitted
+    if not user:
+        if _is_jrha_area(area):
+            return qs.filter(area__name__in=JRHA_AREA_NAMES).exclude(area=area).order_by("area__name", "name")
+        if area_bucket(area) == "hostels":
+            return qs.filter(is_reliever=True, area__name="Hostels Reliever").order_by("name")
+
+    # 5. Eligible supervisor-managed areas (and managers viewing supervisor areas):
+    # Return master list of 6 relievers sorted in ascending numerical paycode order
+    return (
+        qs.filter(pay_code__in=SUPERVISOR_RELIEVER_PAYCODES)
+        .annotate(pay_code_num=Cast("pay_code", dm.IntegerField()))
+        .order_by("pay_code_num", "name")
+    )
 
 
 def _shared_display_worker_qs_for_area(area):
@@ -334,16 +585,21 @@ def display_workers_for_area(area):
 def effective_workers_for_area(area, date=None):
     workers = {worker.id: worker for worker in display_workers_for_area(area)}
     if not area or not date:
-        return list(workers.values())
+        if getattr(area, "area_type", "") == "hostel":
+            return sorted(workers.values(), key=lambda w: (w.worker_type or "", worker_paycode_sort_key(w)))
+        return sorted(workers.values(), key=worker_paycode_sort_key)
 
-    outgoing_reliever_ids = set(
-        HKRelieverSubstitution.objects.filter(
-            date=date,
-            reliever_id__in=workers,
-        ).exclude(area=area).values_list("reliever_id", flat=True)
-    )
-    for worker_id in outgoing_reliever_ids:
-        workers.pop(worker_id, None)
+    outgoing_reliever_ids = set()
+    # Ganesh Jayesh's Deep Cleaning workers must not be removed from his roster.
+    if not (area.name == "Deep Cleaning" or getattr(area, "id", None) == 23):
+        outgoing_reliever_ids = set(
+            HKRelieverSubstitution.objects.filter(
+                date=date,
+                reliever_id__in=workers,
+            ).exclude(area=area).values_list("reliever_id", flat=True)
+        )
+        for worker_id in outgoing_reliever_ids:
+            workers.pop(worker_id, None)
 
     incoming_substitutions = list(
         HKRelieverSubstitution.objects.filter(
@@ -352,14 +608,18 @@ def effective_workers_for_area(area, date=None):
         ).select_related("original_worker", "reliever")
     )
     if not incoming_substitutions and not outgoing_reliever_ids:
-        return list(workers.values())
+        if getattr(area, "area_type", "") == "hostel":
+            return sorted(workers.values(), key=lambda w: (w.worker_type or "", worker_paycode_sort_key(w)))
+        return sorted(workers.values(), key=worker_paycode_sort_key)
 
     for sub in incoming_substitutions:
         workers.pop(sub.original_worker_id, None)
         if sub.reliever and sub.reliever.is_active:
             workers[sub.reliever_id] = sub.reliever
 
-    return sorted(workers.values(), key=lambda w: (w.worker_type or "", w.name or "", w.id))
+    if getattr(area, "area_type", "") == "hostel":
+        return sorted(workers.values(), key=lambda w: (w.worker_type or "", worker_paycode_sort_key(w)))
+    return sorted(workers.values(), key=worker_paycode_sort_key)
 
 
 def display_worker_ids_for_area(area, date=None):
@@ -810,13 +1070,24 @@ def _dashboard_section_labels(area):
     return labels
 
 
-def _build_usage_issues(user, limit=None):
+def _build_usage_issues(user, area=None, limit=None):
+    if not area:
+        return []
+
     usage_logs_qs = ItemUsageLog.objects.select_related('logged_by').order_by('-logged_at')
+    area_filter = Q(request__hkstockrequest__area=area)
+    if hasattr(area, 'name') and area.name:
+        area_filter |= (
+            Q(request__hkstockrequest__isnull=True) &
+            Q(request__purpose__startswith=f"[HK - {area.name}]")
+        )
+
     issues_qs = ItemIssue.objects.select_related(
         'request',
         'request__item',
         'request__item__category',
         'request__requested_by',
+        'request__hkstockrequest__area',
         'issued_by',
     ).prefetch_related(
         Prefetch('usage_logs', queryset=usage_logs_qs)
@@ -827,7 +1098,7 @@ def _build_usage_issues(user, limit=None):
             output_field=DecimalField(max_digits=10, decimal_places=2),
         )
     ).filter(
-        request__requested_by=user
+        Q(request__requested_by=user) & area_filter
     ).order_by('-issued_at')
 
     issues = []
@@ -850,6 +1121,26 @@ def _build_usage_issues(user, limit=None):
         if limit and len(issues) >= limit:
             break
     return issues
+
+
+def _annotate_blocked_area_stocks(user, sel_area, area_stocks):
+    if not sel_area or not area_stocks:
+        return
+    from apps.inventory.models import Item
+    item_names = [s.item_name for s in area_stocks]
+    items_by_name = {
+        item.name.lower(): item
+        for item in Item.objects.filter(name__in=item_names)
+    }
+    for s in area_stocks:
+        matched_item = items_by_name.get(s.item_name.lower())
+        if matched_item:
+            out_qty = get_unaccounted_item_quantity(user, matched_item, area=sel_area)
+            s.is_blocked = out_qty > Decimal('0.00')
+            s.outstanding_quantity = out_qty
+        else:
+            s.is_blocked = False
+            s.outstanding_quantity = Decimal('0.00')
 
 
 def _create_incharge_notice(user, assignment, message, level="info"):
@@ -1079,11 +1370,14 @@ def hk_required(fn):
 
 
 def selected_area(request, user_areas):
-    aid = request.GET.get("area") or request.POST.get("area")
+    aid = request.GET.get("area") or request.POST.get("area") or request.GET.get("area_id") or request.POST.get("area_id")
     if aid:
-        area = user_areas.filter(pk=aid).first()
-        if area:
-            return area
+        try:
+            area = user_areas.filter(pk=aid).first()
+            if area:
+                return area
+        except (ValueError, TypeError):
+            pass
     return user_areas.first()
 
 
@@ -2627,9 +2921,17 @@ def hk_mark_task(request, record_id):
                 if len(selected_worker_ids) != len(worker_ids):
                     task_error = "Please select only valid workers for this area."
                 elif selected_busy_ids:
-                    task_error = "One or more selected workers are already assigned to an unfinished task."
+                    task_error = (
+                        "This worker is already assigned to an unfinished task."
+                        if len(selected_worker_ids) == 1
+                        else "One or more selected workers are already assigned to an unfinished task."
+                    )
                 elif unavailable_ids:
-                    task_error = "One or more selected workers are absent or on leave for this task session."
+                    task_error = (
+                        "This worker is absent or on leave for this task session."
+                        if len(selected_worker_ids) == 1
+                        else "One or more selected workers are absent or on leave for this task session."
+                    )
                 elif not selected_worker_ids.issubset(allowed_worker_ids):
                     task_error = "Please select only valid workers for this area."
                 else:
@@ -3100,7 +3402,8 @@ def hk_attendance(request):
                 ).select_related("reliever").first()
                 if not sub:
                     sub = _substitution_for_reliever(worker, sel_area, sel_date)
-                all_rel = list(_attendance_relievers_for_area(sel_area))
+                raw_rel = _attendance_relievers_for_area(sel_area, user=user)
+                all_rel = _format_reliever_options(raw_rel, user=user, target_worker=worker, date=sel_date, area=sel_area)
                 return render(request, "housekeeping/mobile/partials/attendance_worker_card.html", {
                     "row": {
                         "worker": worker,
@@ -3108,6 +3411,7 @@ def hk_attendance(request):
                         "second_att": HKAttendanceRecord.objects.filter(worker=worker, date=sel_date, half="second").first(),
                         "substitution": sub,
                         "can_assign_reliever": _is_jrha_area(sel_area) or not worker.is_reliever,
+                        "reliever_options": all_rel,
                     },
                     "sel_date": sel_date,
                     "sel_area": sel_area,
@@ -3145,7 +3449,16 @@ def hk_attendance(request):
             row["worker"], sel_area, sel_date
         )
 
-    all_relievers = list(_attendance_relievers_for_area(sel_area))
+    raw_relievers = _attendance_relievers_for_area(sel_area, user=user)
+    all_relievers = _format_reliever_options(raw_relievers, user=user, date=sel_date, area=sel_area)
+    for row in worker_rows:
+        row["reliever_options"] = _format_reliever_options(
+            raw_relievers,
+            user=user,
+            target_worker=row["worker"],
+            date=sel_date,
+            area=sel_area,
+        )
 
     # Group by worker type
     type_groups = {}
@@ -3195,76 +3508,98 @@ def hk_assign_reliever(request):
         return HttpResponseForbidden()
 
     user = request.user
+    if is_ganesh_jayesh_user(user):
+        return HttpResponseBadRequest("Reliever functionality is not available for this supervisor.")
+
     user_areas = get_user_areas(user)
     area_id = request.POST.get("area_id")
     area = user_areas.filter(pk=area_id).first()
+    if is_supervisor_excluded_area(area):
+        return HttpResponseBadRequest("Reliever functionality is not available in this area.")
+
     today = timezone.localdate()
 
-    original = get_object_or_404(HKWorker, pk=request.POST.get("original_worker_id"))
-    if area and original.id not in display_worker_ids_for_area(area):
-        return HttpResponseBadRequest("Worker does not belong to the selected area.")
-    if original.is_reliever and not _is_jrha_area(area or original.area):
-        return HttpResponseBadRequest("Reliever workers cannot receive another reliever.")
-
-    allowed_relievers = _attendance_relievers_for_area(area or original.area)
-    reliever = allowed_relievers.filter(pk=request.POST.get("reliever_id")).first()
-    if not reliever:
-        return HttpResponseBadRequest("Selected worker is not a valid reliever.")
-
-    already_covering = HKRelieverSubstitution.objects.filter(
-        reliever=reliever,
-        date=today,
-    ).exclude(original_worker=original).select_related("original_worker").first()
-    if already_covering:
-        return HttpResponseBadRequest(
-            f"This reliever is already covering {already_covering.original_worker.name} today"
+    with transaction.atomic():
+        # of=('self',): HKWorker.Meta.ordering joins the nullable `area` FK, and PostgreSQL
+        # refuses FOR UPDATE on the nullable side of an outer join.
+        original = get_object_or_404(
+            HKWorker.objects.select_for_update(of=('self',)),
+            pk=request.POST.get("original_worker_id")
         )
-    already_absent = HKRelieverSubstitution.objects.filter(
-        original_worker=reliever,
-        date=today,
-    ).select_related("reliever").first()
-    if already_absent:
-        return HttpResponseBadRequest("Selected worker is already replaced by another worker today.")
+        if area and original.id not in display_worker_ids_for_area(area):
+            return HttpResponseBadRequest("Worker does not belong to the selected area.")
+        if original.is_reliever and not _is_jrha_area(area or original.area):
+            return HttpResponseBadRequest("Reliever workers cannot receive another reliever.")
 
-    note = request.POST.get("note", "")
+        reliever_id = request.POST.get("reliever_id")
+        reliever = HKWorker.objects.select_for_update(of=('self',)).filter(pk=reliever_id, is_active=True).first()
+        if not reliever:
+            return HttpResponseBadRequest("Selected worker is not a valid reliever.")
 
-    HKRelieverSubstitution.objects.update_or_create(
-        original_worker=original,
-        date=today,
-        defaults={
-            "reliever": reliever,
-            "area": area or original.area,
-            "note": note,
-            "assigned_by": user,
-        }
-    )
+        allowed_relievers = _attendance_relievers_for_area(area or original.area, user=user)
+        if not allowed_relievers.filter(pk=reliever.pk).exists():
+            return HttpResponseBadRequest("Selected worker is not a valid reliever.")
 
-    # Auto-mark original worker as leave for both halves (if not already submitted)
-    for half in ["first", "second"]:
-        att, _ = HKAttendanceRecord.objects.get_or_create(
-            worker=original, date=today, half=half,
-            defaults={"marked_by": user}
+        if reliever.id == original.id:
+            return HttpResponseBadRequest("Worker cannot be assigned as a reliever for themselves.")
+
+        already_absent = HKRelieverSubstitution.objects.filter(
+            original_worker=reliever,
+            date=today,
+        ).select_related("reliever").first()
+        if already_absent:
+            return HttpResponseBadRequest("Selected worker is already replaced by another worker today.")
+
+        if is_reliever_busy_for_target(reliever, original, today, area or original.area):
+            return HttpResponseBadRequest("Selected reliever is already assigned to a conflicting active task.")
+
+        note = request.POST.get("note", "")
+
+        HKRelieverSubstitution.objects.update_or_create(
+            original_worker=original,
+            date=today,
+            defaults={
+                "reliever": reliever,
+                "area": area or original.area,
+                "note": note,
+                "assigned_by": user,
+            }
         )
-        if not att.is_submitted:
-            att.status = "leave"
-            att.note = f"Reliever: {reliever.name}"
-            att.marked_by = user
-            att.save(update_fields=["status", "note", "marked_by"])
 
-    _mark_reliever_present(reliever, today, user)
-    _move_open_task_assignments_to_reliever(original, reliever, area or original.area, today, user)
+        # Auto-mark original worker as leave for both halves (if not already submitted)
+        for half in ["first", "second"]:
+            att, _ = HKAttendanceRecord.objects.get_or_create(
+                worker=original, date=today, half=half,
+                defaults={"marked_by": user}
+            )
+            if not att.is_submitted:
+                att.status = "leave"
+                att.note = f"Reliever: {reliever.name}"
+                att.marked_by = user
+                att.save(update_fields=["status", "note", "marked_by"])
+
+        _mark_reliever_present(reliever, today, user)
+        _move_open_task_assignments_to_reliever(original, reliever, area or original.area, today, user)
 
     if request.headers.get("HX-Request"):
         sub = HKRelieverSubstitution.objects.filter(original_worker=original, date=today).select_related("reliever").first()
         first_att = HKAttendanceRecord.objects.filter(worker=original, date=today, half="first").first()
         second_att = HKAttendanceRecord.objects.filter(worker=original, date=today, half="second").first()
-        all_relievers = list(_attendance_relievers_for_area(area or original.area))
+        all_relievers = _format_reliever_options(
+            _attendance_relievers_for_area(area or original.area, user=user),
+            user=user,
+            target_worker=original,
+            date=today,
+            area=area or original.area,
+        )
         return render(request, "housekeeping/mobile/partials/attendance_worker_card.html", {
             "row": {
                 "worker": original,
                 "first_att": first_att,
                 "second_att": second_att,
                 "substitution": sub,
+                "can_assign_reliever": _is_jrha_area(area or original.area) or not original.is_reliever,
+                "reliever_options": all_relievers,
             },
             "sel_date": today,
             "sel_area": area,
@@ -3287,12 +3622,13 @@ def hk_stock(request):
     visible_areas = visible_user_areas(user, user_areas)
     sel_area = selected_area(request, visible_areas)
     area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
-    issued_items = _build_usage_issues(user, limit=10)
+    _annotate_blocked_area_stocks(user, sel_area, area_stocks)
+    issued_items = _build_usage_issues(user, area=sel_area) if sel_area else []
     active_requests = (
         HKStockRequest.objects
         .filter(requested_by=user, area=sel_area, status__in=["pending", "approved"])
         .select_related("item", "inventory_request")
-        .order_by("-created_at")[:10]
+        .order_by("-created_at")
         if sel_area else []
     )
     return render(request, "housekeeping/mobile/stock.html", {
@@ -3304,7 +3640,98 @@ def hk_stock(request):
         "user_areas": visible_areas,
         "selected_area": sel_area,
         "requested": request.GET.get("requested"),
+        "fully_covered": request.GET.get("fully_covered"),
+        "partially_covered": request.GET.get("partially_covered"),
     })
+
+
+@hk_required
+def hk_stock_history(request):
+    from apps.housekeeping.stock_history_service import (
+        get_available_history_months,
+        get_user_history_transactions,
+        group_transactions_by_date,
+    )
+
+    user = request.user
+    user_areas = get_user_areas(user)
+    visible_areas = visible_user_areas(user, user_areas)
+
+    area_id = request.GET.get("area")
+    sel_area = None
+    if area_id and area_id != "all":
+        try:
+            sel_area = visible_areas.filter(pk=area_id).first()
+        except (ValueError, TypeError):
+            sel_area = None
+
+    month_options = get_available_history_months(user)
+
+    selected_month = request.GET.get("month")
+    from_date_raw = (request.GET.get("from_date") or "").strip()
+    to_date_raw = (request.GET.get("to_date") or "").strip()
+    from_date = parse_date(from_date_raw) if from_date_raw else None
+    to_date = parse_date(to_date_raw) if to_date_raw else None
+
+    if from_date or to_date:
+        selected_month = "custom"
+    elif not selected_month:
+        default_month = timezone.localtime().strftime("%Y-%m")
+        if any(m["value"] == default_month for m in month_options):
+            selected_month = default_month
+        elif month_options:
+            selected_month = month_options[0]["value"]
+        else:
+            selected_month = default_month
+
+    status_filter = (request.GET.get("status") or "all").lower().strip()
+    if status_filter not in ["all", "issued", "pending", "rejected"]:
+        status_filter = "all"
+
+    search_query = (request.GET.get("q") or "").strip()
+
+    res = get_user_history_transactions(
+        user=user,
+        area=sel_area,
+        month=selected_month if selected_month != "custom" else None,
+        from_date=from_date,
+        to_date=to_date,
+        status_filter=status_filter,
+        search_query=search_query,
+    )
+
+    transactions = res["transactions"]
+    date_groups = group_transactions_by_date(transactions)
+    summary = res["summary"]
+
+    return render(request, "housekeeping/mobile/stock_history.html", {
+        "user_areas": visible_areas,
+        "selected_area": sel_area,
+        "date_groups": date_groups,
+        "transactions": transactions,
+        "total_transactions": len(transactions),
+        "total_period_transactions": res["total_period_transactions"],
+        "summary": summary,
+        "month_options": month_options,
+        "selected_month": selected_month,
+        "from_date": from_date_raw,
+        "to_date": to_date_raw,
+        "status_filter": status_filter,
+        "search_query": search_query,
+    })
+
+
+@hk_required
+def hk_stock_history_detail(request, pk):
+    from apps.housekeeping.stock_history_service import get_transaction_detail
+
+    user = request.user
+    tx = get_transaction_detail(user, pk)
+    if not tx:
+        return HttpResponseNotFound("Transaction record not found or access denied.")
+    if request.headers.get("HX-Request") or request.GET.get("format") == "html":
+        return render(request, "housekeeping/mobile/partials/stock_history_detail_modal.html", {"tx": tx})
+    return JsonResponse(tx)
 
 
 @hk_required
@@ -3313,13 +3740,31 @@ def hk_log_usage(request, pk):
         return redirect("/housekeeping/stock/")
 
     user = request.user
+    user_areas = get_user_areas(user)
+    visible_areas = visible_user_areas(user, user_areas)
+
     issue = get_object_or_404(
         ItemIssue.objects.select_related(
-            'request', 'request__item', 'request__requested_by'
+            'request', 'request__item', 'request__requested_by', 'request__hkstockrequest__area'
         ),
         pk=pk,
         request__requested_by=user,
     )
+
+    hk_req = getattr(issue.request, "hkstockrequest", None)
+    issue_area = hk_req.area if hk_req else None
+    if issue_area and not visible_areas.filter(pk=issue_area.pk).exists():
+        return HttpResponseForbidden("You do not have permission to log usage for this area.")
+
+    posted_area_id = request.POST.get("area_id") or request.POST.get("area")
+    posted_area = None
+    if posted_area_id:
+        try:
+            posted_area = visible_areas.filter(pk=posted_area_id).first()
+        except (ValueError, TypeError):
+            pass
+
+    target_area = posted_area or issue_area or selected_area(request, visible_areas)
 
     raw_qty = (request.POST.get("quantity_used") or "").strip()
     purpose = (request.POST.get("purpose") or "").strip()
@@ -3378,22 +3823,23 @@ def hk_log_usage(request, pk):
                 )
 
     if error is None:
-        area_id = request.POST.get("area_id") or ""
-        if area_id:
-            return redirect(f"/housekeeping/stock/?area={area_id}")
+        if target_area:
+            return redirect(f"/housekeeping/stock/?area={target_area.id}")
         return redirect("/housekeeping/stock/")
 
-    user_areas = get_user_areas(user)
-    visible_areas = visible_user_areas(user, user_areas)
-    sel_area = selected_area(request, visible_areas)
+    sel_area = target_area or selected_area(request, visible_areas)
     area_stocks = HKAreaStock.objects.filter(area=sel_area).order_by("item_name") if sel_area else []
-    my_requests = HKStockRequest.objects.filter(requested_by=user).order_by("-created_at")[:10]
-    issued_items = _build_usage_issues(user, limit=10)
+    _annotate_blocked_area_stocks(user, sel_area, area_stocks)
+    my_requests = (
+        HKStockRequest.objects.filter(requested_by=user, area=sel_area).order_by("-created_at")
+        if sel_area else []
+    )
+    issued_items = _build_usage_issues(user, area=sel_area) if sel_area else []
     active_requests = (
         HKStockRequest.objects
         .filter(requested_by=user, area=sel_area, status__in=["pending", "approved"])
         .select_related("item", "inventory_request")
-        .order_by("-created_at")[:10]
+        .order_by("-created_at")
         if sel_area else []
     )
     return render(request, "housekeeping/mobile/stock.html", {
@@ -3415,6 +3861,12 @@ def hk_log_usage(request, pk):
 @hk_required
 def hk_stock_request(request):
     from apps.inventory.models import Item, ItemRequest as InvItemRequest, ItemRequestBatch, RequisitionItem
+    from apps.housekeeping.stock_reconciliation import (
+        get_area_unreported_stock_items,
+        get_unallocated_outstanding_stock,
+        reconcile_and_create_batch_stock_requests,
+        reconcile_and_create_stock_request,
+    )
 
     user = request.user
     user_areas = get_user_areas(user)
@@ -3482,76 +3934,41 @@ def hk_stock_request(request):
                     if len(locked_items) != len(item_quantities):
                         error = "One or more selected inventory items were not found."
                     else:
+                        from apps.housekeeping.stock_reconciliation import get_unallocated_outstanding_stock, reconcile_and_create_batch_stock_requests
                         for item_id, quantity in item_quantities.items():
                             item = locked_items[item_id]
                             if not user_can_request_item(user, item):
                                 error = UNAUTHORIZED_ITEM_REQUEST_MESSAGE
                                 break
-                            if item.available_quantity <= 0:
-                                error = f"{item.name} is out of stock."
+                            unaccounted = get_unaccounted_item_quantity(user, item, area=area)
+                            if unaccounted > Decimal('0.00'):
+                                error = f"Cannot request {item.name}: previous item's usage report must be completed before requesting it again ({unaccounted} {item.unit} pending)."
                                 break
-                            if quantity > item.available_quantity:
+                            unallocated = get_unallocated_outstanding_stock(user, area, item)
+                            needed_from_wh = max(0, quantity - int(math.floor(unallocated)))
+                            if needed_from_wh > 0 and item.available_quantity <= 0:
+                                error = f"{item.name} is out of stock in warehouse."
+                                break
+                            if needed_from_wh > item.available_quantity:
                                 error = EXCESSIVE_QUANTITY_MESSAGE
                                 break
 
                     if not error:
                         is_urgent = request.POST.get("is_urgent") == "on"
-                        batch = ItemRequestBatch.objects.create(
-                            requested_by=user,
-                            purpose=f"[HK - {area.name if area else 'General'}] {reason}",
-                            notes=f"Urgent: {'Yes' if is_urgent else 'No'}",
+                        from apps.housekeeping.stock_reconciliation import reconcile_and_create_batch_stock_requests
+                        res = reconcile_and_create_batch_stock_requests(
+                            user=user,
+                            area=area,
+                            item_quantities=item_quantities,
+                            reason=reason,
                             is_urgent=is_urgent,
                         )
-                        created_count = 0
-                        for item_id, quantity in item_quantities.items():
-                            item = locked_items[item_id]
-                            logger.debug(
-                                "HK stock request creating line: batch_id=%s item_id=%s item=%s quantity=%s",
-                                batch.pk,
-                                item.pk,
-                                item.name,
-                                quantity,
-                            )
-                            hk_req = HKStockRequest.objects.create(
-                                requested_by=user,
-                                area=area,
-                                item_name=item.name,
-                                item=item,
-                                quantity=quantity,
-                                unit=item.unit,
-                                reason=reason,
-                                is_urgent=is_urgent,
-                            )
-                            inv_req = InvItemRequest.objects.create(
-                                batch=batch,
-                                item=item,
-                                requested_by=user,
-                                quantity_requested=quantity,
-                                units_remaining=item.available_quantity,
-                                purpose=f"[HK - {area.name if area else 'General'}] {reason}",
-                                notes=f"Urgent: {'Yes' if is_urgent else 'No'}",
-                                is_urgent=is_urgent,
-                            )
-                            RequisitionItem.objects.create(
-                                requisition=inv_req,
-                                inventory_item=item,
-                                quantity=quantity,
-                                unit=item.unit,
-                            )
-                            hk_req.inventory_request = inv_req
-                            hk_req.save(update_fields=["inventory_request"])
-                            created_count += 1
-                            logger.debug(
-                                "HK stock request created line: hk_request_id=%s inventory_request_id=%s",
-                                hk_req.pk,
-                                inv_req.pk,
-                            )
-                        logger.debug(
-                            "HK stock request completed: batch_id=%s total_created=%s",
-                            batch.pk,
-                            created_count,
-                        )
-                        return redirect(f"/housekeeping/stock/?requested=1&area={area.id if area else ''}")
+                        redirect_param = "requested=1"
+                        if res['fully_covered_count'] == len(item_quantities):
+                            redirect_param += "&fully_covered=1"
+                        elif res['fully_covered_count'] > 0 or res['partially_covered_count'] > 0:
+                            redirect_param += "&partially_covered=1"
+                        return redirect(f"/housekeeping/stock/?{redirect_param}&area={area.id if area else ''}")
 
             if error:
                 logger.debug(
@@ -3561,12 +3978,20 @@ def hk_stock_request(request):
                     error,
                 )
 
+            sel_area_for_render = area or selected_area(request, visible_areas)
+            from apps.housekeeping.stock_reconciliation import get_area_unreported_stock_items
+            unreported_stocks = get_area_unreported_stock_items(user, sel_area_for_render, inv_items)
+            for item in inv_items:
+                out_qty = get_unaccounted_item_quantity(user, item, area=sel_area_for_render)
+                item.is_blocked = out_qty > Decimal('0.00')
+                item.outstanding_quantity = out_qty
             return render(request, "housekeeping/mobile/stock_request.html", {
                 "inv_items": inv_items,
                 "user_areas": visible_areas,
-                "selected_area": area or selected_area(request, visible_areas),
+                "selected_area": sel_area_for_render,
                 "pre_item": request.GET.get("item", ""),
                 "form_error": error,
+                "unreported_stocks": unreported_stocks,
             })
 
         item_name = request.POST.get("item_name", "").strip()
@@ -3595,52 +4020,85 @@ def hk_stock_request(request):
                 "pre_item": request.GET.get("item", ""),
                 "form_error": UNAUTHORIZED_ITEM_REQUEST_MESSAGE,
             })
-        if inv_item and qty > inv_item.available_quantity:
-            return render(request, "housekeeping/mobile/stock_request.html", {
-                "inv_items": inv_items,
-                "user_areas": visible_areas,
-                "selected_area": area or selected_area(request, visible_areas),
-                "pre_item": request.GET.get("item", ""),
-                "form_error": EXCESSIVE_QUANTITY_MESSAGE,
-            })
+
+        if inv_item:
+            from apps.housekeeping.stock_reconciliation import get_unallocated_outstanding_stock, reconcile_and_create_stock_request
+            with transaction.atomic():
+                locked_item = Item.objects.select_for_update().get(pk=inv_item.pk)
+                unaccounted = get_unaccounted_item_quantity(user, locked_item, area=area)
+                if unaccounted > Decimal('0.00'):
+                    sel_area_for_render = area or selected_area(request, visible_areas)
+                    unreported_stocks = get_area_unreported_stock_items(user, sel_area_for_render, inv_items)
+                    for item in inv_items:
+                        out_qty = get_unaccounted_item_quantity(user, item, area=sel_area_for_render)
+                        item.is_blocked = out_qty > Decimal('0.00')
+                        item.outstanding_quantity = out_qty
+                    return render(request, "housekeeping/mobile/stock_request.html", {
+                        "inv_items": inv_items,
+                        "user_areas": visible_areas,
+                        "selected_area": sel_area_for_render,
+                        "pre_item": request.GET.get("item", ""),
+                        "form_error": f"Cannot request {locked_item.name}: previous item's usage report must be completed before requesting it again ({unaccounted} {locked_item.unit} pending).",
+                        "unreported_stocks": unreported_stocks,
+                    })
+                unallocated = get_unallocated_outstanding_stock(user, area, locked_item)
+                needed_from_wh = max(0, qty - int(math.floor(unallocated)))
+                if needed_from_wh > 0 and locked_item.available_quantity <= 0:
+                    return render(request, "housekeeping/mobile/stock_request.html", {
+                        "inv_items": inv_items,
+                        "user_areas": visible_areas,
+                        "selected_area": area or selected_area(request, visible_areas),
+                        "pre_item": request.GET.get("item", ""),
+                        "form_error": f"{locked_item.name} is out of stock in warehouse.",
+                    })
+                if needed_from_wh > locked_item.available_quantity:
+                    return render(request, "housekeeping/mobile/stock_request.html", {
+                        "inv_items": inv_items,
+                        "user_areas": visible_areas,
+                        "selected_area": area or selected_area(request, visible_areas),
+                        "pre_item": request.GET.get("item", ""),
+                        "form_error": EXCESSIVE_QUANTITY_MESSAGE,
+                    })
+
+                is_urgent = request.POST.get("is_urgent") == "on"
+                hk_req, inv_req, cov_qty, app_qty = reconcile_and_create_stock_request(
+                    user=user,
+                    area=area,
+                    item=locked_item,
+                    quantity=qty,
+                    reason=request.POST.get("reason", "").strip(),
+                    is_urgent=is_urgent,
+                )
+                redirect_param = "requested=1"
+                if hk_req.is_fully_covered:
+                    redirect_param += "&fully_covered=1"
+                elif hk_req.is_partially_covered:
+                    redirect_param += "&partially_covered=1"
+                return redirect(f"/housekeeping/stock/?{redirect_param}&area={area.id if area else ''}")
 
         hk_req = HKStockRequest.objects.create(
             requested_by=user, area=area,
-            item_name=item_name, item=inv_item,
+            item_name=item_name, item=None,
             quantity=qty, unit=request.POST.get("unit", "").strip(),
             reason=request.POST.get("reason", "").strip(),
             is_urgent=request.POST.get("is_urgent") == "on",
+            status="pending",
         )
-
-        # FIX HK-01: log inventory request creation failures instead of silently swallowing them
-        if inv_item:
-            try:
-                inv_req = InvItemRequest.objects.create(
-                    item=inv_item, requested_by=user,
-                    quantity_requested=qty,
-                    purpose=f"[HK - {area.name if area else 'General'}] {hk_req.reason}",
-                    notes=f"Urgent: {'Yes' if hk_req.is_urgent else 'No'}",
-                    is_urgent=hk_req.is_urgent,
-                )
-                hk_req.inventory_request = inv_req
-                hk_req.save(update_fields=["inventory_request"])
-            except Exception:
-                # Log the error so it appears in server logs; the HKStockRequest
-                # is saved but inventory_request will be None — ops team can reconcile.
-                logger.exception(
-                    "Failed to create InvItemRequest for HKStockRequest pk=%s item=%s",
-                    hk_req.pk,
-                    inv_item.pk,
-                )
-
         return redirect(f"/housekeeping/stock/?requested=1&area={area.id if area else ''}")
 
     sel_area = selected_area(request, visible_areas)
+    from apps.housekeeping.stock_reconciliation import get_area_unreported_stock_items
+    unreported_stocks = get_area_unreported_stock_items(user, sel_area, inv_items)
+    for item in inv_items:
+        out_qty = get_unaccounted_item_quantity(user, item, area=sel_area)
+        item.is_blocked = out_qty > Decimal('0.00')
+        item.outstanding_quantity = out_qty
     return render(request, "housekeeping/mobile/stock_request.html", {
         "inv_items": inv_items,
         "user_areas": visible_areas,
         "selected_area": sel_area,
         "pre_item": request.GET.get("item", ""),
+        "unreported_stocks": unreported_stocks,
     })
 
 

@@ -52,16 +52,32 @@
     <a href="?type=inventory&filter=low_stock{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}"><div class="chip {% if status_filter == 'low_stock' %}active{% endif %}">Low Stock</div></a>
     <a href="?type=inventory&filter=out_of_stock{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}"><div class="chip {% if status_filter == 'out_of_stock' %}active{% endif %}">Out of Stock</div></a>
   </div>
-  <a
-    href="{% url 'mobile_export_inventory_report_csv' %}?filter={{ status_filter }}{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}"
-    class="btn btn-outline"
-    target="_blank"
-    rel="noopener"
-    onclick="return openCsvDownload(this.href)"
-    style="height:36px;padding:0 12px;font-size:12px;flex-shrink:0;margin-left:8px;display:inline-flex;align-items:center;gap:6px"
-  >
-    <span class="material-icons-round" style="font-size:16px">download</span> CSV
-  </a>
+  <div class="mobile-export-dropdown" style="position:relative;display:inline-block;flex-shrink:0;margin-left:8px">
+    <button
+      type="button"
+      class="btn btn-outline"
+      onclick="toggleExportMenu(this)"
+      style="height:36px;padding:0 10px;font-size:12px;display:inline-flex;align-items:center;gap:4px"
+    >
+      <span class="material-icons-round" style="font-size:16px">file_download</span>
+      Download Report
+      <span class="material-icons-round" style="font-size:16px">arrow_drop_down</span>
+    </button>
+    <div class="export-menu" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.15);min-width:145px;z-index:100;overflow:hidden">
+      <a href="{% url 'mobile_export_inventory_report_csv' %}?filter={{ status_filter }}{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}&format=csv" onclick="return triggerMobileDownload(this.href)" class="export-menu-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;color:#1e293b;text-decoration:none;border-bottom:1px solid #f1f5f9">
+        <span class="material-icons-round" style="font-size:16px;color:#16a34a">description</span> CSV (.csv)
+      </a>
+      <a href="{% url 'mobile_export_inventory_report_csv' %}?filter={{ status_filter }}{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}&format=xlsx" onclick="return triggerMobileDownload(this.href)" class="export-menu-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;color:#1e293b;text-decoration:none;border-bottom:1px solid #f1f5f9">
+        <span class="material-icons-round" style="font-size:16px;color:#059669">table_view</span> Excel (.xlsx)
+      </a>
+      <a href="{% url 'mobile_export_inventory_report_csv' %}?filter={{ status_filter }}{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}&format=pdf" onclick="return triggerMobileDownload(this.href)" class="export-menu-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;color:#1e293b;text-decoration:none;border-bottom:1px solid #f1f5f9">
+        <span class="material-icons-round" style="font-size:16px;color:#dc2626">picture_as_pdf</span> PDF (.pdf)
+      </a>
+      <a href="{% url 'mobile_export_inventory_report_csv' %}?filter={{ status_filter }}{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}&format=print" onclick="return triggerMobileDownload(this.href)" class="export-menu-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;color:#1e293b;text-decoration:none">
+        <span class="material-icons-round" style="font-size:16px;color:#475569">print</span> Print
+      </a>
+    </div>
+  </div>
 </div>
 
 <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px">
@@ -186,16 +202,32 @@
 </div>
 
 <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-  <a
-    href="{% url 'mobile_export_requests_report_csv' %}{% if date_from or date_to %}?{% endif %}{% if date_from %}date_from={{ date_from }}{% endif %}{% if date_from and date_to %}&{% endif %}{% if date_to %}date_to={{ date_to }}{% endif %}"
-    class="btn btn-outline"
-    target="_blank"
-    rel="noopener"
-    onclick="return openCsvDownload(this.href)"
-    style="height:36px;padding:0 12px;font-size:12px;display:inline-flex;align-items:center;gap:6px"
-  >
-    <span class="material-icons-round" style="font-size:16px">download</span> Export CSV
-  </a>
+  <div class="mobile-export-dropdown" style="position:relative;display:inline-block">
+    <button
+      type="button"
+      class="btn btn-outline"
+      onclick="toggleExportMenu(this)"
+      style="height:36px;padding:0 10px;font-size:12px;display:inline-flex;align-items:center;gap:4px"
+    >
+      <span class="material-icons-round" style="font-size:16px">file_download</span>
+      Download Report
+      <span class="material-icons-round" style="font-size:16px">arrow_drop_down</span>
+    </button>
+    <div class="export-menu" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.15);min-width:145px;z-index:100;overflow:hidden">
+      <a href="{% url 'mobile_export_requests_report_csv' %}{% if date_from or date_to %}?{% endif %}{% if date_from %}date_from={{ date_from }}{% endif %}{% if date_from and date_to %}&{% endif %}{% if date_to %}date_to={{ date_to }}{% endif %}{% if date_from or date_to %}&{% else %}?{% endif %}format=csv" onclick="return triggerMobileDownload(this.href)" class="export-menu-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;color:#1e293b;text-decoration:none;border-bottom:1px solid #f1f5f9">
+        <span class="material-icons-round" style="font-size:16px;color:#16a34a">description</span> CSV (.csv)
+      </a>
+      <a href="{% url 'mobile_export_requests_report_csv' %}{% if date_from or date_to %}?{% endif %}{% if date_from %}date_from={{ date_from }}{% endif %}{% if date_from and date_to %}&{% endif %}{% if date_to %}date_to={{ date_to }}{% endif %}{% if date_from or date_to %}&{% else %}?{% endif %}format=xlsx" onclick="return triggerMobileDownload(this.href)" class="export-menu-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;color:#1e293b;text-decoration:none;border-bottom:1px solid #f1f5f9">
+        <span class="material-icons-round" style="font-size:16px;color:#059669">table_view</span> Excel (.xlsx)
+      </a>
+      <a href="{% url 'mobile_export_requests_report_csv' %}{% if date_from or date_to %}?{% endif %}{% if date_from %}date_from={{ date_from }}{% endif %}{% if date_from and date_to %}&{% endif %}{% if date_to %}date_to={{ date_to }}{% endif %}{% if date_from or date_to %}&{% else %}?{% endif %}format=pdf" onclick="return triggerMobileDownload(this.href)" class="export-menu-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;color:#1e293b;text-decoration:none;border-bottom:1px solid #f1f5f9">
+        <span class="material-icons-round" style="font-size:16px;color:#dc2626">picture_as_pdf</span> PDF (.pdf)
+      </a>
+      <a href="{% url 'mobile_export_requests_report_csv' %}{% if date_from or date_to %}?{% endif %}{% if date_from %}date_from={{ date_from }}{% endif %}{% if date_from and date_to %}&{% endif %}{% if date_to %}date_to={{ date_to }}{% endif %}{% if date_from or date_to %}&{% else %}?{% endif %}format=print" onclick="return triggerMobileDownload(this.href)" class="export-menu-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;color:#1e293b;text-decoration:none">
+        <span class="material-icons-round" style="font-size:16px;color:#475569">print</span> Print
+      </a>
+    </div>
+  </div>
 </div>
 
 {% for req in requests_page_obj %}
@@ -258,6 +290,24 @@
 {% endif %}
 {% endif %}
 <script>
+function toggleExportMenu(btn) {
+  const menu = btn.nextElementSibling;
+  const isVisible = menu.style.display === 'block';
+  document.querySelectorAll('.export-menu').forEach(m => m.style.display = 'none');
+  menu.style.display = isVisible ? 'none' : 'block';
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.mobile-export-dropdown')) {
+    document.querySelectorAll('.export-menu').forEach(m => m.style.display = 'none');
+  }
+});
+
+function triggerMobileDownload(url) {
+  document.querySelectorAll('.export-menu').forEach(m => m.style.display = 'none');
+  return openCsvDownload(url);
+}
+
 function openCsvDownload(url) {
   if (!url) return false;
   try {

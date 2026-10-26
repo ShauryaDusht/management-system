@@ -1,7 +1,8 @@
 import json
 from decimal import Decimal
 from django.http import HttpResponse, JsonResponse
-from django.db.models import Q
+from django.db.models import Q, Sum, Value
+from django.db.models.functions import Coalesce
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -246,17 +247,40 @@ class GeoTrackerStatsView(APIView):
     permission_classes = [IsAdminOrHKInventoryOrHorticultureManager]
 
     def get(self, request):
-        total = PlantRecord.objects.count()
-        trees = PlantRecord.objects.filter(plant_type='tree').count()
-        plants = PlantRecord.objects.filter(plant_type='plant').count()
-        creepers = PlantRecord.objects.filter(plant_type='creeper').count()
-        shrubs = PlantRecord.objects.filter(plant_type='shrub').count()
+        total_records = PlantRecord.objects.count()
+        total_plants = PlantRecord.objects.aggregate(
+            total=Coalesce(Sum('plant_count'), Value(0))
+        )['total']
+
+        trees_plants = PlantRecord.objects.filter(plant_type='tree').aggregate(
+            total=Coalesce(Sum('plant_count'), Value(0))
+        )['total']
+        plants_count = PlantRecord.objects.filter(plant_type='plant').aggregate(
+            total=Coalesce(Sum('plant_count'), Value(0))
+        )['total']
+        creepers_plants = PlantRecord.objects.filter(plant_type='creeper').aggregate(
+            total=Coalesce(Sum('plant_count'), Value(0))
+        )['total']
+        shrubs_plants = PlantRecord.objects.filter(plant_type='shrub').aggregate(
+            total=Coalesce(Sum('plant_count'), Value(0))
+        )['total']
+
+        trees_records = PlantRecord.objects.filter(plant_type='tree').count()
+        plants_records = PlantRecord.objects.filter(plant_type='plant').count()
+        creepers_records = PlantRecord.objects.filter(plant_type='creeper').count()
+        shrubs_records = PlantRecord.objects.filter(plant_type='shrub').count()
+
         return Response({
-            'total': total,
-            'trees': trees,
-            'plants': plants,
-            'creepers': creepers,
-            'shrubs': shrubs,
+            'total': total_records,
+            'total_plants': total_plants,
+            'trees': trees_records,
+            'trees_plants': trees_plants,
+            'plants': plants_records,
+            'plants_plants': plants_count,
+            'creepers': creepers_records,
+            'creepers_plants': creepers_plants,
+            'shrubs': shrubs_records,
+            'shrubs_plants': shrubs_plants,
         })
 
 class GeoTrackerAreasView(APIView):
@@ -285,5 +309,3 @@ class GeoTrackerAreasView(APIView):
 
         area = CampusAreaConfig.objects.create(label=label, db_value=db_value, code=code)
         return Response({'id': area.id, 'label': area.label, 'db_value': area.db_value, 'code': area.code}, status=201)
-
-

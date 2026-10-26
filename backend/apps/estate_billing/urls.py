@@ -36,5 +36,3 @@ urlpatterns = [
     path('settings/test-email/', SettingsTestEmailView.as_view(), name='estate-settings-test-email'),
     path('cycles/', BillingCycleListView.as_view(), name='estate-cycles'),
 ]
-
-

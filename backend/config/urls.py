@@ -40,6 +40,7 @@ def api_root(_request):
             'wtp': '/api/wtp/',
             'hvac': '/api/hvac/',
             'reports': '/api/reports/',
+            'notifications': '/api/notifications/',
             'estate': '/api/estate/',
             'lifts': '/api/lifts/',
         }

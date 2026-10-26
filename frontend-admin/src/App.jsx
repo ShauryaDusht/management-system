@@ -51,7 +51,7 @@ const HK_PORTAL_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office', 'su
 const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager', 'supervisor']
 const GEO_TRACKER_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'supervisor']
 const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'estate_office']
-const LIFTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'engineer']
+const LIFTS_ALLOWED = ['admin', 'hostel_office', 'engineer']
 const ESTATE_ALLOWED = ['admin', 'estate_office', 'civil_team', 'electrical_team', 'hk_inventory_manager']
 const PROFILE_ALLOWED = [
   'admin',

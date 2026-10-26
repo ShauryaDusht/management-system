@@ -25,6 +25,7 @@ export default function WorkerSelectionTab() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [editModal, setEditModal] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [swapModal, setSwapModal] = useState(null)
 
   const load = async (date = form.date) => {
     setLoading(true)
@@ -49,7 +50,44 @@ export default function WorkerSelectionTab() {
     load()
   }, [])
 
-  const areaOptions = useMemo(() => areas.slice().sort((a, b) => Number(a.area_number || 0) - Number(b.area_number || 0)), [areas])
+  const areaOptions = useMemo(
+    () => areas.slice().sort((a, b) => Number(a.area_number || 0) - Number(b.area_number || 0)),
+    [areas]
+  )
+
+  // Live swap check when filling form
+  const swapAlert = useMemo(() => {
+    if (form.area_mode !== 'single' || !form.area || !form.task_type) return null
+    const selectedAreaId = Number(form.area)
+    const selectedTaskId = Number(form.task_type)
+    const session = form.session || 'any'
+
+    const otherAssign = assignments.find((a) => (
+      Number(a.area) !== selectedAreaId &&
+      Number(a.task_type) === selectedTaskId &&
+      (session === 'any' || a.session === 'any' || a.session === session)
+    ))
+    if (!otherAssign) return null
+
+    const currentAssign = assignments.find((a) => (
+      Number(a.area) === selectedAreaId &&
+      (session === 'any' || a.session === 'any' || a.session === session)
+    ))
+
+    const otherArea = areas.find((a) => Number(a.id) === Number(otherAssign.area))
+    const selectedArea = areas.find((a) => Number(a.id) === selectedAreaId)
+    const task = tasks.find((t) => Number(t.id) === selectedTaskId)
+    const currentTask = tasks.find((t) => Number(t.id) === Number(currentAssign?.task_type))
+
+    return {
+      otherAssign,
+      currentAssign,
+      otherAreaName: otherArea ? `Area ${otherArea.area_number} - ${otherArea.name}` : (otherAssign.area_name || 'Another area'),
+      selectedAreaName: selectedArea ? `Area ${selectedArea.area_number} - ${selectedArea.name}` : 'Selected area',
+      taskName: task?.name || 'Selected task',
+      currentTaskName: currentTask?.name || currentAssign?.task_type_name || null,
+    }
+  }, [form.area_mode, form.area, form.task_type, form.session, assignments, areas, tasks])
 
   const buildPayloads = () => {
     const taskType = Number(form.task_type)
@@ -72,21 +110,103 @@ export default function WorkerSelectionTab() {
   }
 
   const submit = async () => {
-    const built = buildPayloads()
-    if (built.error) {
-      setError(built.error)
+    const taskType = Number(form.task_type)
+    if (!taskType) {
+      setError('Select a task.')
       return
     }
+    if (!form.date) {
+      setError('Select a date.')
+      return
+    }
+
     setSaving(true)
     setError('')
     setSuccess('')
+
     try {
+      if (form.area_mode === 'single') {
+        if (!form.area) {
+          setError('Select an area.')
+          setSaving(false)
+          return
+        }
+        const selectedAreaId = Number(form.area)
+        const session = form.session || 'any'
+
+        const otherAssign = assignments.find((a) => (
+          Number(a.area) !== selectedAreaId &&
+          Number(a.task_type) === taskType &&
+          (session === 'any' || a.session === 'any' || a.session === session)
+        ))
+
+        const currentAssign = assignments.find((a) => (
+          Number(a.area) === selectedAreaId &&
+          (session === 'any' || a.session === 'any' || a.session === session)
+        ))
+
+        if (otherAssign) {
+          if (currentAssign) {
+            // SWAP: Both areas have tasks on this date and session -> Swap tasks!
+            const res = await horticultureAPI.swapAreaTaskAssignments({
+              assignment1_id: currentAssign.id,
+              assignment2_id: otherAssign.id,
+            })
+            setSuccess(res.data?.detail || 'Tasks swapped successfully between both areas.')
+          } else {
+            // TRANSFER: Task was on other area, transfer to selected area
+            await horticultureAPI.updateAreaTaskAssignment(otherAssign.id, {
+              area: selectedAreaId,
+              note: String(form.note || '').trim() || otherAssign.note,
+              session: form.session,
+              date: form.date,
+            })
+            const taskName = tasks.find((t) => Number(t.id) === taskType)?.name || 'Task'
+            const areaName = areas.find((a) => Number(a.id) === selectedAreaId)?.name || 'selected area'
+            setSuccess(`Task '${taskName}' transferred from ${otherAssign.area_name} to ${areaName}.`)
+          }
+        } else if (currentAssign) {
+          // Selected area already has a task, update it
+          await horticultureAPI.updateAreaTaskAssignment(currentAssign.id, {
+            task_type: taskType,
+            note: String(form.note || '').trim() || currentAssign.note,
+            session: form.session,
+            date: form.date,
+            is_active: true,
+          })
+          const taskName = tasks.find((t) => Number(t.id) === taskType)?.name || 'Task'
+          setSuccess(`Task for ${currentAssign.area_name} updated to ${taskName}.`)
+        } else {
+          // Fresh assignment
+          await horticultureAPI.createAreaTaskAssignment({
+            area: selectedAreaId,
+            date: form.date,
+            session: form.session,
+            task_type: taskType,
+            note: String(form.note || '').trim(),
+            is_active: true,
+          })
+          setSuccess('Task assigned successfully.')
+        }
+
+        setForm((prev) => ({ ...EMPTY_FORM, date: prev.date }))
+        await load(form.date)
+        return
+      }
+
+      // Bulk assign all areas
+      const built = buildPayloads()
+      if (built.error) {
+        setError(built.error)
+        setSaving(false)
+        return
+      }
       await Promise.all(built.payloads.map((payload) => horticultureAPI.createAreaTaskAssignment(payload)))
       setSuccess(`Task assigned to ${built.payloads.length} area${built.payloads.length === 1 ? '' : 's'}.`)
       setForm((prev) => ({ ...EMPTY_FORM, date: prev.date }))
       await load(form.date)
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to assign task.'))
+      setError(getErrorMessage(err, 'Failed to assign or swap task.'))
     } finally {
       setSaving(false)
     }
@@ -112,7 +232,30 @@ export default function WorkerSelectionTab() {
     setSaving(true)
     setEditModal((prev) => ({ ...prev, error: '' }))
     try {
-      await horticultureAPI.updateAreaTaskAssignment(editModal.row.id, editModal.form)
+      const targetTaskId = Number(editModal.form.task_type)
+      const targetAreaId = Number(editModal.form.area)
+      const session = editModal.form.session || 'any'
+
+      // Check if target task is currently assigned to another area on this date
+      const otherAssign = assignments.find((a) => (
+        a.id !== editModal.row.id &&
+        Number(a.area) !== targetAreaId &&
+        Number(a.task_type) === targetTaskId &&
+        (session === 'any' || a.session === 'any' || a.session === session)
+      ))
+
+      if (otherAssign) {
+        // Swap tasks between editModal row and otherAssign
+        const res = await horticultureAPI.swapAreaTaskAssignments({
+          assignment1_id: editModal.row.id,
+          assignment2_id: otherAssign.id,
+        })
+        setSuccess(res.data?.detail || 'Tasks swapped successfully.')
+      } else {
+        await horticultureAPI.updateAreaTaskAssignment(editModal.row.id, editModal.form)
+        setSuccess('Task assignment updated.')
+      }
+
       setEditModal(null)
       await load(form.date)
     } catch (err) {
@@ -131,6 +274,26 @@ export default function WorkerSelectionTab() {
       await load(form.date)
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to delete task assignment.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const executeSwap = async () => {
+    if (!swapModal?.sourceRow?.id || !swapModal?.targetAssignmentId) return
+    setSaving(true)
+    setError('')
+    setSuccess('')
+    try {
+      const res = await horticultureAPI.swapAreaTaskAssignments({
+        assignment1_id: swapModal.sourceRow.id,
+        assignment2_id: swapModal.targetAssignmentId,
+      })
+      setSuccess(res.data?.detail || 'Tasks swapped successfully.')
+      setSwapModal(null)
+      await load(form.date)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to swap tasks.'))
     } finally {
       setSaving(false)
     }
@@ -185,11 +348,67 @@ export default function WorkerSelectionTab() {
                 </SelectField>
               </Field>
             </div>
+
+            {/* Live Swap Alert Banner */}
+            {swapAlert && (
+              <div
+                style={{
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  border: '1.5px solid #f59e0b',
+                  borderRadius: 10,
+                  padding: '10px 14px',
+                  marginTop: 12,
+                  marginBottom: 8,
+                  color: '#b45309',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                <span style={{ fontSize: 20 }}>🔄</span>
+                <div>
+                  <div>
+                    <strong>Auto-Swap Notice:</strong> <u>{swapAlert.taskName}</u> is already assigned to{' '}
+                    <strong>{swapAlert.otherAreaName}</strong> on this date.
+                  </div>
+                  <div style={{ fontSize: 12, marginTop: 3, opacity: 0.9 }}>
+                    {swapAlert.currentTaskName ? (
+                      <>
+                        Assigning will <strong>SWAP</strong> tasks between both areas:
+                        <br />• <strong>{swapAlert.selectedAreaName}</strong> ➔ {swapAlert.taskName}
+                        <br />• <strong>{swapAlert.otherAreaName}</strong> ➔ {swapAlert.currentTaskName}
+                      </>
+                    ) : (
+                      <>
+                        Assigning will <strong>transfer</strong> <u>{swapAlert.taskName}</u> from{' '}
+                        {swapAlert.otherAreaName} to <strong>{swapAlert.selectedAreaName}</strong>.
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <Field label="Note">
               <Input value={form.note} onChange={(event) => setForm((prev) => ({ ...prev, note: event.target.value }))} />
             </Field>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Btn onClick={submit} disabled={saving}>{saving ? 'Assigning...' : 'Assign Task'}</Btn>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, alignItems: 'center' }}>
+              <Btn
+                onClick={submit}
+                disabled={saving}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  background: swapAlert?.currentTaskName ? '#d97706' : undefined,
+                  color: swapAlert?.currentTaskName ? '#fff' : undefined,
+                }}
+              >
+                {saving ? 'Processing...' : (swapAlert?.currentTaskName ? '🔄 Swap Tasks' : (swapAlert ? 'Transfer & Assign Task' : 'Assign Task'))}
+              </Btn>
             </div>
           </div>
         )}
@@ -200,7 +419,7 @@ export default function WorkerSelectionTab() {
           Assigned Area Tasks
         </div>
         <DataTable
-          headers={['Date', 'Area', 'Zone', 'Session', 'Task', 'Note', 'Status', 'Edit']}
+          headers={['Date', 'Area', 'Zone', 'Session', 'Task', 'Note', 'Status', 'Actions']}
           rows={assignments.map((row) => [
             row.date,
             row.area_name || '-',
@@ -210,6 +429,15 @@ export default function WorkerSelectionTab() {
             row.note || '-',
             row.is_active ? 'Active' : 'Inactive',
             <div key={`actions-${row.id}`} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <Btn
+                size="sm"
+                variant="outline"
+                onClick={() => setSwapModal({ sourceRow: row, targetAssignmentId: '' })}
+                title="Swap task with another area"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                🔄 Swap
+              </Btn>
               <Btn size="sm" variant="ghost" onClick={() => openEdit(row)}>Edit</Btn>
               <Btn size="sm" variant="danger" onClick={() => setDeleteTarget(row)}>Delete</Btn>
             </div>,
@@ -218,6 +446,7 @@ export default function WorkerSelectionTab() {
         />
       </Card>
 
+      {/* Edit Modal */}
       <Modal
         open={!!editModal}
         onClose={() => setEditModal(null)}
@@ -266,6 +495,70 @@ export default function WorkerSelectionTab() {
         )}
       </Modal>
 
+      {/* Quick Swap Tasks Modal */}
+      <Modal
+        open={!!swapModal}
+        onClose={() => setSwapModal(null)}
+        title="🔄 Swap Area Tasks"
+        width={560}
+        footer={(
+          <>
+            <Btn variant="ghost" onClick={() => setSwapModal(null)} disabled={saving}>
+              Cancel
+            </Btn>
+            <Btn
+              onClick={executeSwap}
+              disabled={saving || !swapModal?.targetAssignmentId}
+              style={{ background: '#d97706', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              {saving ? 'Swapping...' : '🔄 Confirm Swap'}
+            </Btn>
+          </>
+        )}
+      >
+        {swapModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ background: 'var(--surface-2)', padding: 12, borderRadius: 8, fontSize: 13, border: '1px solid var(--border)' }}>
+              <div><strong>Selected Area:</strong> {swapModal.sourceRow.area_name}</div>
+              <div style={{ marginTop: 4 }}>
+                <strong>Current Task:</strong> <span style={{ color: '#059669', fontWeight: 700 }}>{swapModal.sourceRow.task_type_name}</span> ({swapModal.sourceRow.session || 'any'} session)
+              </div>
+            </div>
+
+            <Field label="Swap Task With (Select Target Area)" required>
+              <SelectField
+                value={swapModal.targetAssignmentId}
+                onChange={(event) => setSwapModal((prev) => ({ ...prev, targetAssignmentId: event.target.value }))}
+              >
+                <option value="">Select another assigned area on this date...</option>
+                {assignments
+                  .filter((a) => a.id !== swapModal.sourceRow.id)
+                  .map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.area_name} — (Task: {a.task_type_name}) [{a.session || 'any'}]
+                    </option>
+                  ))}
+              </SelectField>
+            </Field>
+
+            {swapModal.targetAssignmentId && (() => {
+              const target = assignments.find((a) => a.id === Number(swapModal.targetAssignmentId))
+              if (!target) return null
+              return (
+                <div style={{ background: 'rgba(217, 119, 6, 0.1)', border: '1px solid #d97706', padding: 12, borderRadius: 8, fontSize: 12.5, color: '#92400e' }}>
+                  <strong>🔄 Swap Result:</strong>
+                  <ul style={{ margin: '6px 0 0 18px', padding: 0 }}>
+                    <li><strong>{swapModal.sourceRow.area_name}</strong> will receive: <span style={{ color: '#059669', fontWeight: 700 }}>{target.task_type_name}</span></li>
+                    <li><strong>{target.area_name}</strong> will receive: <span style={{ color: '#059669', fontWeight: 700 }}>{swapModal.sourceRow.task_type_name}</span></li>
+                  </ul>
+                </div>
+              )
+            })()}
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
       <ConfirmModal
         open={!!deleteTarget}
         title="Delete Task Assignment"

@@ -58,10 +58,8 @@
         <select name="reliever_id" required
           style="width:100%;border:1.5px solid #fde68a;border-radius:8px;padding:9px 10px;font-size:13px">
           <option value="">— Choose reliever —</option>
-          {% for rel in all_relievers %}
-          <option value="{{ rel.id }}">
-            {{ rel.name }}{% if rel.area %} · {{ rel.area.name }}{% endif %}{% if rel.phone %} · {{ rel.phone }}{% endif %}{% if rel.pay_code %} #{{ rel.pay_code }}{% endif %}
-          </option>
+          {% for rel in row.reliever_options|default:all_relievers %}
+          <option value="{{ rel.id }}"{% if rel.is_busy %} disabled style="color:#9ca3af;background:#f9fafb;"{% endif %}>{% if rel.reliever_label %}{{ rel.reliever_label }}{% elif rel.pay_code == '303' or rel.pay_code == '329' or rel.pay_code == '364' or rel.pay_code == '389' or rel.pay_code == '455' or rel.pay_code == '494' %}{{ rel.name }} · Deep Cleaning · #{{ rel.pay_code }}{% else %}{{ rel.name }}{% if rel.area %} · {{ rel.area.name }}{% endif %}{% if rel.phone %} · {{ rel.phone }}{% endif %}{% if rel.pay_code %} #{{ rel.pay_code }}{% endif %}{% endif %}</option>
           {% endfor %}
         </select>
       </div>

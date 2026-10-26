@@ -1,0 +1,811 @@
+{% extends 'housekeeping/mobile/base_hk.html' %}
+{% block title %}Issue & Usage History{% endblock %}
+{% block hdr_title %}STOCK HISTORY{% endblock %}
+
+{% block back_btn %}
+<a href="/housekeeping/stock/{% if selected_area %}?area={{ selected_area.id }}{% endif %}" class="bk" style="margin-right:10px" aria-label="Back to Stock">&#8592;</a>
+{% endblock %}
+
+{% block n4 %}on{% endblock %}
+
+{% block content %}
+<style>
+  html, body {
+    overflow-x: hidden;
+  }
+  .stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    flex: 1;
+    min-width: 0;
+  }
+  .stat-num {
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 2px;
+  }
+  .stat-lbl {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .filter-bar {
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  .search-wrap {
+    position: relative;
+    margin-bottom: 10px;
+  }
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+  }
+  .search-input {
+    width: 100%;
+    padding: 9px 36px 9px 38px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 10px;
+    font-size: 14px;
+    background: #f9fafb;
+    outline: none;
+    transition: all 0.2s;
+  }
+  .search-input:focus {
+    background: #fff;
+    border-color: #2d4a3e;
+  }
+  .search-clear {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: #9ca3af;
+    cursor: pointer;
+    display: none;
+    padding: 4px;
+    line-height: 1;
+  }
+
+  .status-tabs {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .status-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .status-tab {
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1.5px solid #d1d5db;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    color: #4b5563;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    line-height: 1.2;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .status-tab.on {
+    background: #2d4a3e;
+    border-color: #2d4a3e;
+    color: #fff;
+  }
+
+  /* Date Grouping */
+  .date-group-header {
+    font-size: 12px;
+    font-weight: 800;
+    color: #2d4a3e;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 16px 4px 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* History Cards without icons */
+  .history-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 13px 14px;
+    margin-bottom: 9px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border: 1px solid rgba(0,0,0,0.04);
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .history-card:active {
+    transform: scale(0.99);
+    background: #faf9f6;
+  }
+  .hc-main {
+    flex: 1;
+    min-width: 0;
+  }
+  .hc-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e3a30;
+    line-height: 1.25;
+    margin-bottom: 2px;
+    word-break: break-word;
+  }
+  .hc-area {
+    font-size: 12px;
+    font-weight: 600;
+    color: #2d4a3e;
+    opacity: 0.85;
+    margin-bottom: 6px;
+  }
+  .hc-details {
+    font-size: 12px;
+    color: #4b5563;
+    line-height: 1.4;
+    margin-bottom: 6px;
+  }
+  .hc-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #6b7280;
+    flex-wrap: wrap;
+  }
+  .hc-chevron {
+    color: #9ca3af;
+    font-size: 18px;
+    line-height: 1;
+    flex-shrink: 0;
+    padding-left: 4px;
+  }
+
+  /* Modal Bottom Sheet */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 200;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+  .modal-overlay.open {
+    display: flex;
+  }
+  .modal-card {
+    background: #fff;
+    width: 100%;
+    max-width: 480px;
+    border-radius: 20px 20px 0 0;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.25s ease-out;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  .modal-header {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid #f3f4f6;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    border-radius: 20px 20px 0 0;
+  }
+  .modal-close {
+    background: #f3f4f6;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4b5563;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .modal-body {
+    padding: 14px 18px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .modal-footer {
+    padding: 12px 18px calc(14px + env(safe-area-inset-bottom));
+    border-top: 1px solid #f3f4f6;
+    background: #fff;
+  }
+
+  .stat-box {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 8px 10px;
+  }
+  .stat-box .stat-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .stat-box .stat-val {
+    font-size: 17px;
+    font-weight: 800;
+    color: #111827;
+    margin-top: 1px;
+  }
+  .stat-box .stat-unit {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+  }
+
+  /* Timeline */
+  .timeline {
+    position: relative;
+    padding-left: 18px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 6px;
+    bottom: 14px;
+    width: 2px;
+    background: #e5e7eb;
+  }
+  .t-step {
+    position: relative;
+    padding-bottom: 16px;
+  }
+  .t-step:last-child {
+    padding-bottom: 4px;
+  }
+  .t-dot {
+    position: absolute;
+    left: -18px;
+    top: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2.5px solid #fff;
+    box-shadow: 0 0 0 1px #d1d5db;
+    background: #d1d5db;
+  }
+  .t-step.done .t-dot {
+    background: #22c55e;
+    box-shadow: 0 0 0 1px #22c55e;
+  }
+  .t-step.pending .t-dot {
+    background: #f59e0b;
+    box-shadow: 0 0 0 1px #f59e0b;
+  }
+  .t-step.rejected .t-dot {
+    background: #ef4444;
+    box-shadow: 0 0 0 1px #ef4444;
+  }
+  .t-content {
+    min-width: 0;
+  }
+  .t-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.2;
+  }
+  .t-meta {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 1px;
+  }
+  .t-desc {
+    font-size: 12px;
+    color: #374151;
+    margin-top: 4px;
+    background: #f9fafb;
+    padding: 7px 9px;
+    border-radius: 8px;
+    border: 1px solid #f3f4f6;
+  }
+</style>
+
+<!-- Multi-Area Tabs (if user assigned to multiple campus areas) -->
+{% if user_areas.count > 1 %}
+<div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none">
+  <a href="?{% if selected_month %}&month={{ selected_month }}{% endif %}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}"
+     class="atab {% if not selected_area %}on{% endif %}">
+    All Areas
+  </a>
+  {% for area in user_areas %}
+  <a href="?area={{ area.id }}{% if selected_month %}&month={{ selected_month }}{% endif %}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}"
+     class="atab {% if selected_area.id == area.id %}on{% endif %}">
+    {{ area.name }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div style="font-size:18px;font-weight:800;color:#1e3a30;margin:2px 0 12px;display:flex;align-items:center;justify-content:space-between">
+  <span>Issue &amp; Usage History</span>
+  {% if selected_area %}
+  <span style="font-size:12px;font-weight:600;color:#2d4a3e;background:rgba(45,74,62,0.1);padding:3px 8px;border-radius:6px">
+    {{ selected_area.name }}
+  </span>
+  {% endif %}
+</div>
+
+<!-- Summary Cards (Section 2.A) -->
+<div style="display:flex;gap:10px;margin-bottom:12px">
+  <div class="stat-card">
+    <div class="stat-num" style="color:#2d4a3e">{{ summary.total_requests|default:0 }}</div>
+    <div class="stat-lbl">Total Requests</div>
+  </div>
+  <div class="stat-card" style="border-left:4px solid {% if summary.usage_pending > 0 %}#f97316{% else %}#22c55e{% endif %}">
+    <div class="stat-num" style="color:{% if summary.usage_pending > 0 %}#c2622a{% else %}#065f46{% endif %}">
+      {{ summary.usage_pending|default:0 }}
+    </div>
+    <div class="stat-lbl">Usage Pending</div>
+  </div>
+</div>
+
+<!-- Filters Container (Section 2.B, 2.C, 2.D) -->
+<div class="filter-bar">
+  <!-- Search Input (Section 2.C) -->
+  <div class="search-wrap">
+    <div class="search-icon">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </div>
+    <input
+      type="search"
+      id="history-search-input"
+      class="search-input"
+      placeholder="Search item name..."
+      value="{{ search_query }}"
+      autocomplete="off"
+    >
+    <button type="button" id="history-search-clear" class="search-clear" aria-label="Clear search">&times;</button>
+  </div>
+
+  <!-- Month & Date Range Selector (Section 2.B) -->
+  <form id="filter-form" method="GET" action="" style="margin-bottom:10px">
+    {% if selected_area %}
+    <input type="hidden" name="area" value="{{ selected_area.id }}">
+    {% endif %}
+    <input type="hidden" name="status" id="filter-status-input" value="{{ status_filter }}">
+    <input type="hidden" name="q" id="filter-q-input" value="{{ search_query }}">
+
+    <div style="display:flex;gap:8px;align-items:center">
+      <div style="flex:1">
+        <select
+          name="month"
+          id="month-select"
+          style="padding:8px 10px;font-size:13px;font-weight:600;border-radius:8px;border:1.5px solid #d1d5db;background:#fff;color:#1e3a30;cursor:pointer"
+          onchange="handleMonthChange(this)"
+        >
+          {% for m in month_options %}
+          <option value="{{ m.value }}" {% if selected_month == m.value %}selected{% endif %}>{{ m.label }}</option>
+          {% endfor %}
+          <option value="all" {% if selected_month == 'all' %}selected{% endif %}>All Months</option>
+          <option value="custom" {% if selected_month == 'custom' %}selected{% endif %}>Custom Range...</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Custom Date Range Row -->
+    <div id="custom-date-box" style="display:{% if selected_month == 'custom' %}grid{% else %}none{% endif %};grid-template-columns:1fr 1fr auto;gap:6px;margin-top:8px;align-items:center">
+      <input
+        type="date"
+        name="from_date"
+        id="from_date"
+        value="{{ from_date }}"
+        placeholder="From"
+        style="padding:7px 8px;font-size:12px;border-radius:6px;border:1px solid #d1d5db"
+      >
+      <input
+        type="date"
+        name="to_date"
+        id="to_date"
+        value="{{ to_date }}"
+        placeholder="To"
+        style="padding:7px 8px;font-size:12px;border-radius:6px;border:1px solid #d1d5db"
+      >
+      <button type="submit" class="btn-s" style="padding:7px 12px;font-size:12px;border-radius:6px;width:auto">
+        Apply
+      </button>
+    </div>
+  </form>
+
+  <!-- Status Filter Tabs (Section 2.D) -->
+  <div class="status-tabs" id="status-tabs-bar">
+    <button type="button" class="status-tab {% if status_filter == 'all' %}on{% endif %}" data-status="all">All</button>
+    <button type="button" class="status-tab {% if status_filter == 'issued' %}on{% endif %}" data-status="issued">Issued</button>
+    <button type="button" class="status-tab {% if status_filter == 'pending' %}on{% endif %}" data-status="pending">Pending</button>
+    <button type="button" class="status-tab {% if status_filter == 'rejected' %}on{% endif %}" data-status="rejected">Rejected</button>
+  </div>
+</div>
+
+<!-- Transaction Groups (Section 3: Simple, clean, text-based cards without item icons) -->
+<div id="transaction-list-container">
+  {% if date_groups %}
+    {% for group in date_groups %}
+    <div class="date-group-block" data-date="{{ group.date|date:'Y-m-d' }}">
+      <div class="date-group-header">
+        <span class="group-header-text">{{ group.header }}</span>
+      </div>
+      <div class="group-cards">
+        {% for tx in group.transactions %}
+        <div
+          class="history-card"
+          data-id="{{ tx.id }}"
+          data-status="{{ tx.status_category }}"
+          data-search="{{ tx.item_name|lower }} {{ tx.area_name|lower }} req-{{ tx.request_id }} {{ tx.request_id }} {% if tx.issue_id %}issue-{{ tx.issue_id }} {{ tx.issue_id }}{% endif %}"
+          onclick="openHistoryDetailModal('{{ tx.id }}')"
+        >
+          <div class="hc-main">
+            <div class="hc-title">{{ tx.item_name }}</div>
+            <div class="hc-area">{{ tx.area_name }}</div>
+            <div class="hc-details">
+              <div>Requested: {{ tx.quantity_requested }} {{ tx.unit }}</div>
+              {% if tx.has_issue %}
+              <div style="font-weight:600;color:#1f2937">
+                Issued: {{ tx.quantity_issued_display }} {{ tx.unit }} &bull; Used: {{ tx.quantity_used_display }} {{ tx.unit }}
+              </div>
+              {% elif tx.covered_quantity > 0 %}
+              <div style="font-weight:600;color:#1f2937">
+                Covered: {{ tx.covered_quantity }} {{ tx.unit }}
+              </div>
+              {% endif %}
+            </div>
+            <div class="hc-footer">
+              <span class="bdg {{ tx.badge_class }}">{{ tx.status_label }}</span>
+              <span>&bull;</span>
+              <span>{{ tx.time_display }}</span>
+            </div>
+          </div>
+          <div class="hc-chevron">&#8250;</div>
+          <!-- Embedded full transaction data for instantaneous modal popups -->
+          <script type="application/json" class="tx-data-blob" id="tx-data-{{ tx.id }}">
+            {{ tx.json_data|safe }}
+          </script>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div id="empty-state-card" class="card" style="text-align:center;padding:36px 16px;color:#6b7280">
+      <div style="font-size:16px;font-weight:700;color:#1e3a30;margin-bottom:6px">No transactions found</div>
+      <div style="font-size:13px">There are no stock requests or issuances recorded for the selected period.</div>
+    </div>
+  {% endif %}
+
+  <!-- Hidden no-results message for dynamic client-side filtering -->
+  <div id="client-no-results" class="card" style="display:none;text-align:center;padding:32px 16px;color:#6b7280">
+    <div style="font-size:15px;font-weight:700;color:#1e3a30;margin-bottom:4px">No matching records</div>
+    <div style="font-size:12px">Try adjusting your search query or status filter.</div>
+  </div>
+</div>
+
+<!-- Modal Container (Section 4: Transaction Details on Card Selection) -->
+<div id="history-modal-overlay" class="modal-overlay" onclick="handleOverlayClick(event)">
+  <div id="history-modal-content" style="width:100%;max-width:480px"></div>
+</div>
+
+<script>
+  var currentStatusFilter = "{{ status_filter }}";
+
+  function handleMonthChange(selectElem) {
+    var val = selectElem.value;
+    var customBox = document.getElementById('custom-date-box');
+    if (val === 'custom') {
+      customBox.style.display = 'grid';
+    } else {
+      customBox.style.display = 'none';
+      document.getElementById('filter-form').submit();
+    }
+  }
+
+  // Real-time client-side search and status filter
+  var searchInput = document.getElementById('history-search-input');
+  var searchClearBtn = document.getElementById('history-search-clear');
+  var statusTabs = document.querySelectorAll('.status-tab');
+
+  function applyClientFilters() {
+    var query = (searchInput.value || '').trim().toLowerCase();
+    searchClearBtn.style.display = query.length > 0 ? 'block' : 'none';
+
+    var dateGroups = document.querySelectorAll('.date-group-block');
+    var totalVisible = 0;
+
+    dateGroups.forEach(function (group) {
+      var cards = group.querySelectorAll('.history-card');
+      var groupVisibleCount = 0;
+
+      cards.forEach(function (card) {
+        var cardStatus = card.getAttribute('data-status');
+        var cardSearchText = card.getAttribute('data-search') || '';
+
+        var matchesStatus = (currentStatusFilter === 'all' || cardStatus === currentStatusFilter);
+        var matchesQuery = (query === '' || cardSearchText.indexOf(query) !== -1);
+
+        if (matchesStatus && matchesQuery) {
+          card.style.display = 'flex';
+          groupVisibleCount++;
+          totalVisible++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+
+      if (groupVisibleCount > 0) {
+        group.style.display = 'block';
+        var headerTextElem = group.querySelector('.group-header-text');
+        var baseDate = headerTextElem.textContent.split(' — ')[0];
+        var cntLabel = groupVisibleCount === 1 ? '1 transaction' : (groupVisibleCount + ' transactions');
+        headerTextElem.textContent = baseDate + ' — ' + cntLabel;
+      } else {
+        group.style.display = 'none';
+      }
+    });
+
+    var emptyState = document.getElementById('empty-state-card');
+    var clientNoResults = document.getElementById('client-no-results');
+
+    if (totalVisible === 0) {
+      if (clientNoResults) clientNoResults.style.display = 'block';
+      if (emptyState) emptyState.style.display = 'none';
+    } else {
+      if (clientNoResults) clientNoResults.style.display = 'none';
+    }
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', applyClientFilters);
+    searchClearBtn.addEventListener('click', function () {
+      searchInput.value = '';
+      applyClientFilters();
+      searchInput.focus();
+    });
+  }
+
+  statusTabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      statusTabs.forEach(function (t) { t.classList.remove('on'); });
+      tab.classList.add('on');
+      currentStatusFilter = tab.getAttribute('data-status');
+      document.getElementById('filter-status-input').value = currentStatusFilter;
+      applyClientFilters();
+    });
+  });
+
+  // Modal rendering logic
+  function openHistoryDetailModal(txId) {
+    var blobElem = document.getElementById('tx-data-' + txId);
+    if (!blobElem) return;
+
+    var tx;
+    try {
+      tx = JSON.parse(blobElem.textContent);
+    } catch (e) {
+      console.error("Failed to parse tx data", e);
+      return;
+    }
+
+    var modalContent = document.getElementById('history-modal-content');
+
+    // Build timeline HTML safely
+    var timelineHtml = '';
+
+    // Step 1: Request
+    timelineHtml += '<div class="t-step done">' +
+      '<div class="t-dot"></div>' +
+      '<div class="t-content">' +
+        '<div class="t-title">Request Submitted</div>' +
+        '<div class="t-meta">' + tx.created_at_date + ' &bull; ' + tx.created_at_time + '</div>' +
+        '<div class="t-desc">Requested: <strong>' + tx.quantity_requested + ' ' + tx.unit + '</strong> for <strong>' + tx.area_name + '</strong>' +
+        (tx.reason ? '<div style="margin-top:2px;font-style:italic;color:#4b5563">"' + escapeHtml(tx.reason) + '"</div>' : '') +
+        '</div>' +
+      '</div></div>';
+
+    // Step 2: Review
+    if (tx.status_category === 'rejected') {
+      timelineHtml += '<div class="t-step rejected">' +
+        '<div class="t-dot"></div>' +
+        '<div class="t-content">' +
+          '<div class="t-title" style="color:#991b1b">Request Rejected</div>' +
+          '<div class="t-meta">' + (tx.reviewed_at_date ? tx.reviewed_at_date + ' &bull; ' + tx.reviewed_at_time : '') + (tx.reviewed_by ? ' &bull; by ' + escapeHtml(tx.reviewed_by) : '') + '</div>' +
+          (tx.rejection_reason ? '<div class="t-desc" style="color:#b91c1c;margin-top:2px">Reason: ' + escapeHtml(tx.rejection_reason) + '</div>' : '') +
+        '</div></div>';
+    } else if (tx.status_category === 'pending') {
+      timelineHtml += '<div class="t-step pending">' +
+        '<div class="t-dot"></div>' +
+        '<div class="t-content">' +
+          '<div class="t-title">Approval & Review</div>' +
+          '<div class="t-meta" style="color:#d97706">Awaiting Inventory Manager review</div>' +
+        '</div></div>';
+    } else {
+      timelineHtml += '<div class="t-step done">' +
+        '<div class="t-dot"></div>' +
+        '<div class="t-content">' +
+          '<div class="t-title">Request Approved</div>' +
+          '<div class="t-meta">' + (tx.reviewed_at_date ? tx.reviewed_at_date + ' &bull; ' + tx.reviewed_at_time : 'Approved') + (tx.reviewed_by ? ' &bull; by ' + escapeHtml(tx.reviewed_by) : '') + '</div>' +
+        '</div></div>';
+    }
+
+    // Step 3: Warehouse Issue
+    if (tx.has_issue) {
+      timelineHtml += '<div class="t-step done">' +
+        '<div class="t-dot"></div>' +
+        '<div class="t-content">' +
+          '<div class="t-title">Item Issued</div>' +
+          '<div class="t-meta">' + (tx.issued_at_date ? tx.issued_at_date + ' &bull; ' + tx.issued_at_time : '') + (tx.issued_by ? ' &bull; by ' + escapeHtml(tx.issued_by) : '') + '</div>' +
+          '<div class="t-desc">Issued: <strong>' + tx.quantity_issued_display + ' ' + tx.unit + '</strong>' +
+          (tx.issue_notes ? '<div style="margin-top:2px;color:#6b7280">Note: ' + escapeHtml(tx.issue_notes) + '</div>' : '') +
+          '</div>' +
+        '</div></div>';
+    } else if (tx.status_category !== 'rejected') {
+      timelineHtml += '<div class="t-step pending">' +
+        '<div class="t-dot"></div>' +
+        '<div class="t-content">' +
+          '<div class="t-title">Warehouse Issuance</div>' +
+          '<div class="t-meta" style="color:#d97706">Pending stock dispatch from warehouse</div>' +
+        '</div></div>';
+    }
+
+    // Step 4: Usage Reports
+    if (tx.usage_logs && tx.usage_logs.length > 0) {
+      var logsListHtml = '';
+      tx.usage_logs.forEach(function (log) {
+        logsListHtml += '<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:12px">' +
+          '<div style="display:flex;justify-content:space-between;color:#4b5563">' +
+            '<span>' + log.logged_at_date + ' &bull; ' + log.logged_at_time + '</span>' +
+            '<strong style="color:#111827">' + log.quantity_used_display + ' ' + tx.unit + '</strong>' +
+          '</div>' +
+          (log.purpose ? '<div style="margin-top:3px;color:#374151;font-style:italic">"' + escapeHtml(log.purpose) + '"</div>' : '') +
+          (log.notes ? '<div style="margin-top:2px;color:#6b7280;font-size:11px">Note: ' + escapeHtml(log.notes) + '</div>' : '') +
+        '</div>';
+      });
+
+      timelineHtml += '<div class="t-step done">' +
+        '<div class="t-dot"></div>' +
+        '<div class="t-content">' +
+          '<div class="t-title">Usage Reports (' + tx.usage_logs.length + ')</div>' +
+          '<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">' + logsListHtml + '</div>' +
+          (tx.outstanding_quantity > 0 ? '<div style="margin-top:6px;font-size:12px;color:#c2622a;font-weight:600">Remaining unlogged stock: ' + tx.outstanding_quantity_display + ' ' + tx.unit + '</div>' : '') +
+        '</div></div>';
+    } else if (tx.has_issue) {
+      timelineHtml += '<div class="t-step pending">' +
+        '<div class="t-dot"></div>' +
+        '<div class="t-content">' +
+          '<div class="t-title">Usage Report</div>' +
+          '<div class="t-meta" style="color:#d97706">No usage report submitted yet (' + tx.outstanding_quantity_display + ' ' + tx.unit + ' pending)</div>' +
+        '</div></div>';
+    }
+
+    // Step 5: Asset Returns (if asset)
+    if (tx.returned_at_date) {
+      timelineHtml += '<div class="t-step done">' +
+        '<div class="t-dot"></div>' +
+        '<div class="t-content">' +
+          '<div class="t-title">Asset Returned</div>' +
+          '<div class="t-meta">' + tx.returned_at_date + '</div>' +
+          '<div class="t-desc">' +
+            (tx.returned_quantity ? 'Returned: ' + tx.returned_quantity + ' ' + tx.unit + ' &bull; ' : '') +
+            'Condition: <strong>' + escapeHtml(tx.condition_on_return || 'Good') + '</strong>' +
+          '</div>' +
+        '</div></div>';
+    }
+
+    var html = '<div class="modal-card">' +
+      '<div class="modal-header">' +
+        '<div style="min-width:0">' +
+          '<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">' +
+            tx.request_code + (tx.issue_code ? ' &bull; ' + tx.issue_code : '') +
+          '</div>' +
+          '<h2 style="font-size:18px;font-weight:800;color:#1e3a30;margin:3px 0 0;line-height:1.2">' + escapeHtml(tx.item_name) + '</h2>' +
+          '<div style="margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
+            '<span class="wtag" style="margin:0">' + escapeHtml(tx.area_name) + '</span>' +
+            '<span class="bdg ' + tx.badge_class + '">' + tx.status_label + '</span>' +
+            (tx.is_urgent ? '<span class="bdg r">Urgent</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<button type="button" class="modal-close" onclick="closeHistoryModal()" aria-label="Close">&times;</button>' +
+      '</div>' +
+
+      '<div class="modal-body">' +
+        '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px">' +
+          '<div class="stat-box"><div class="stat-label">Requested</div><div class="stat-val">' + tx.quantity_requested + ' <span class="stat-unit">' + tx.unit + '</span></div></div>' +
+          '<div class="stat-box"><div class="stat-label">Issued</div><div class="stat-val">' + (tx.has_issue ? tx.quantity_issued_display + ' <span class="stat-unit">' + tx.unit + '</span>' : '&mdash;') + '</div></div>' +
+          '<div class="stat-box"><div class="stat-label">Used</div><div class="stat-val">' + (tx.has_issue ? tx.quantity_used_display + ' <span class="stat-unit">' + tx.unit + '</span>' : '&mdash;') + '</div></div>' +
+          '<div class="stat-box" style="border-left:3px solid ' + (tx.outstanding_quantity > 0 && tx.has_issue ? '#f97316' : '#22c55e') + '">' +
+            '<div class="stat-label">Outstanding</div>' +
+            '<div class="stat-val" style="color:' + (tx.outstanding_quantity > 0 && tx.has_issue ? '#c2622a' : '#065f46') + '">' +
+              (tx.has_issue ? tx.outstanding_quantity_display + ' <span class="stat-unit">' + tx.unit + '</span>' : '&mdash;') +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div style="font-size:13px;font-weight:800;color:#2d4a3e;margin:14px 0 8px">Transaction Lifecycle</div>' +
+        '<div class="timeline">' + timelineHtml + '</div>' +
+      '</div>' +
+
+      '<div class="modal-footer">' +
+        '<button type="button" class="btn-s" onclick="closeHistoryModal()" style="padding:10px">Close</button>' +
+      '</div>' +
+    '</div>';
+
+    modalContent.innerHTML = html;
+    document.getElementById('history-modal-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeHistoryModal() {
+    var overlay = document.getElementById('history-modal-overlay');
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function handleOverlayClick(e) {
+    if (e.target.id === 'history-modal-overlay') {
+      closeHistoryModal();
+    }
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      closeHistoryModal();
+    }
+  });
+
+  function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+</script>
+{% endblock %}

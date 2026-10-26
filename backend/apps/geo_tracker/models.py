@@ -204,6 +204,26 @@ class PlantRecord(models.Model):
         max_digits=6, decimal_places=2, null=True, blank=True,
         help_text='Width in metres',
     )
+    total_area_m = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text='Total plot/bed area in square metres',
+    )
+    plant_spacing_cm = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        help_text='Plant spacing in centimetres',
+    )
+    planting_pattern = models.CharField(
+        max_length=20, blank=True, default='',
+        help_text='Planting pattern (e.g. square, triangular)',
+    )
+    area_shape = models.CharField(
+        max_length=20, blank=True, default='',
+        help_text='Plot or bed shape (e.g. rectangle, square, circle)',
+    )
+    plant_count = models.PositiveIntegerField(
+        default=1,
+        help_text='Total count of individual plants in this record/bed',
+    )
 
     CONDITION_CHOICES = [
         ('excellent', 'Excellent'),

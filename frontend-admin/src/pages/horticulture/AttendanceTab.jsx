@@ -25,28 +25,28 @@ export default function AttendanceTab() {
 
   useEffect(() => {
     let mounted = true
-    ;(async () => {
-      setLoading(true)
-      setError('')
-      try {
-        const [summaryRes, workerRes, recordRes, staffRes] = await Promise.all([
-          horticultureAPI.getAttendanceSummary(date),
-          horticultureAPI.getWorkers(),
-          horticultureAPI.getAttendanceRecords(date),
-          horticultureAPI.getAttendance(date),
-        ])
-        if (mounted) {
-          setRows(asList(summaryRes.data))
-          setWorkers(asList(workerRes.data?.workers))
-          setRecords(asList(recordRes.data))
-          setStaffRows(asList(staffRes.data?.supervisors))
+      ; (async () => {
+        setLoading(true)
+        setError('')
+        try {
+          const [summaryRes, workerRes, recordRes, staffRes] = await Promise.all([
+            horticultureAPI.getAttendanceSummary(date),
+            horticultureAPI.getWorkers(),
+            horticultureAPI.getAttendanceRecords(date),
+            horticultureAPI.getAttendance(date),
+          ])
+          if (mounted) {
+            setRows(asList(summaryRes.data))
+            setWorkers(asList(workerRes.data?.workers))
+            setRecords(asList(recordRes.data))
+            setStaffRows(asList(staffRes.data?.supervisors))
+          }
+        } catch (err) {
+          if (mounted) setError(getErrorMessage(err, 'Failed to load horticulture worker attendance.'))
+        } finally {
+          if (mounted) setLoading(false)
         }
-      } catch (err) {
-        if (mounted) setError(getErrorMessage(err, 'Failed to load horticulture worker attendance.'))
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    })()
+      })()
     return () => {
       mounted = false
     }
@@ -176,6 +176,31 @@ export default function AttendanceTab() {
       ],
     }
     await exportHorticultureReport(format, exportData)
+  }
+
+  const getAttendanceExportData = async (format) => {
+    if (format === 'csv') {
+      downloadAttendanceCsv()
+      return null
+    }
+    const headers = ['Area', 'Zone', 'Total Workers', 'Present', 'Absent', 'Attendance %']
+    const rows = visibleRows.map((row) => {
+      const pct = row.total_workers ? Math.round((Number(row.present || 0) / Number(row.total_workers || 1)) * 100) : 0
+      return [
+        row.area_name || '-',
+        row.zone_name || '-',
+        row.total_workers || 0,
+        row.present || 0,
+        row.absent || 0,
+        `${pct}%`,
+      ]
+    })
+    return {
+      title: `Horticulture Attendance Report (${date})`,
+      filename: `horticulture_attendance_${date}`,
+      headers,
+      rows: rows.length ? rows : [['No area attendance records', '-', '-', '-', '-', '-']],
+    }
   }
 
   return (

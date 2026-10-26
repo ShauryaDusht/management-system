@@ -69,7 +69,7 @@ def _build_html_email(clearance, event_type, event_info, actor_name, remarks, is
     priority = escape(str(clearance.priority or 'Standard'))
     remarks_safe = escape(str(remarks or 'No specific remarks recorded.'))
     actor_safe = escape(str(actor_name or event_info['from_dept']))
-    
+
     test_banner = ""
     if is_test:
         test_banner = """
@@ -91,7 +91,7 @@ def _build_html_email(clearance, event_type, event_info, actor_name, remarks, is
   <tr>
     <td align="center">
       <table role="presentation" width="100%" style="max-width: 620px; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;" cellspacing="0" cellpadding="0">
-        
+
         <!-- Header -->
         <tr>
           <td style="background-color: #0f2b48; padding: 24px 28px; text-align: left;">

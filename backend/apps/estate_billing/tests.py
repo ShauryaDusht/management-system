@@ -329,6 +329,3 @@ class EstateBillingTestCase(TestCase):
         # Shop 2 note should now take note number 259
         shop_2_note = ShopDemandNote.objects.get(id=notes_10[1].id)
         self.assertEqual(shop_2_note.note_no, 'IWD/26-27/259')
-
-
-
