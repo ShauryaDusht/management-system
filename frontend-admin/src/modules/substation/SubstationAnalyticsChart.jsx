@@ -113,17 +113,28 @@ function getSheetReportItems(sh) {
   return out;
 }
 
-// Compute daily consumption map for a single sheet across all available docs
-function computeSheetDailyConsumption(sh, allDocs) {
-  if (!sh || !allDocs || !allDocs.length) return {};
+// Compute daily, monthly, and yearly consumption for a single sheet across all available docs
+function computeSheetFullHistory(sh, allDocs) {
+  if (!sh || !allDocs || !allDocs.length) {
+    return {
+      subDaily: {},
+      subMonthly: {},
+      subYearly: {},
+      feederItems: [],
+    };
+  }
   const sheetDocs = allDocs.filter((d) => d.sheet === sh.id);
-  if (!sheetDocs.length) return {};
-
   const items = getSheetReportItems(sh);
-  if (!items.length) return {};
+  if (!items.length) {
+    return {
+      subDaily: {},
+      subMonthly: {},
+      subYearly: {},
+      feederItems: [],
+    };
+  }
 
-  const perDate = {};
-  items.forEach((it) => {
+  const feederItems = items.map((it) => {
     const reads = [];
     sheetDocs.forEach((d) => {
       it.read(d).forEach((x) => {
@@ -133,31 +144,108 @@ function computeSheetDailyConsumption(sh, allDocs) {
     });
     reads.sort((a, b) => (a.ord < b.ord ? -1 : a.ord > b.ord ? 1 : 0));
 
+    const daily = {};
+    const monthly = {};
+    const yearly = {};
     let prev = null;
+
     reads.forEach((r) => {
       if (prev) {
         const diff = r.v - prev.v;
         if (diff >= 0) {
-          if (!perDate[r.date]) perDate[r.date] = { incoming: 0, total: 0, hasIncoming: false };
-          perDate[r.date].total += diff;
-          if (it.incoming) {
-            perDate[r.date].incoming += diff;
-            perDate[r.date].hasIncoming = true;
-          }
+          daily[r.date] = (daily[r.date] || 0) + diff;
+          const [y, m] = r.date.split('-');
+          const mk = `${y}-${m}`;
+          monthly[mk] = (monthly[mk] || 0) + diff;
+          yearly[y] = (yearly[y] || 0) + diff;
         }
       }
       prev = r;
     });
+
+    Object.keys(daily).forEach((k) => (daily[k] = Number(daily[k].toFixed(2))));
+    Object.keys(monthly).forEach((k) => (monthly[k] = Number(monthly[k].toFixed(2))));
+    Object.keys(yearly).forEach((k) => (yearly[k] = Number(yearly[k].toFixed(2))));
+
+    return {
+      label: it.label,
+      shortLabel: it.label.length > 20 ? it.label.slice(0, 18) + '…' : it.label,
+      sn: it.sn,
+      isIncoming: it.incoming,
+      unit: it.unit,
+      daily,
+      monthly,
+      yearly,
+    };
   });
 
-  const dailyMap = {};
-  Object.keys(perDate).forEach((dt) => {
-    const entry = perDate[dt];
-    const val = entry.hasIncoming && entry.incoming > 0 ? entry.incoming : entry.total;
-    dailyMap[dt] = Number(val.toFixed(2));
+  const allDates = new Set();
+  const allMonths = new Set();
+  const allYears = new Set();
+
+  feederItems.forEach((f) => {
+    Object.keys(f.daily).forEach((dt) => allDates.add(dt));
+    Object.keys(f.monthly).forEach((mk) => allMonths.add(mk));
+    Object.keys(f.yearly).forEach((yr) => allYears.add(yr));
   });
 
-  return dailyMap;
+  const subDaily = {};
+  allDates.forEach((dt) => {
+    let inc = 0;
+    let hasInc = false;
+    let tot = 0;
+    feederItems.forEach((f) => {
+      const v = f.daily[dt] || 0;
+      tot += v;
+      if (f.isIncoming) {
+        inc += v;
+        hasInc = true;
+      }
+    });
+    const val = hasInc && inc > 0 ? inc : tot;
+    subDaily[dt] = Number(val.toFixed(2));
+  });
+
+  const subMonthly = {};
+  allMonths.forEach((mk) => {
+    let inc = 0;
+    let hasInc = false;
+    let tot = 0;
+    feederItems.forEach((f) => {
+      const v = f.monthly[mk] || 0;
+      tot += v;
+      if (f.isIncoming) {
+        inc += v;
+        hasInc = true;
+      }
+    });
+    const val = hasInc && inc > 0 ? inc : tot;
+    subMonthly[mk] = Number(val.toFixed(2));
+  });
+
+  const subYearly = {};
+  allYears.forEach((yr) => {
+    let inc = 0;
+    let hasInc = false;
+    let tot = 0;
+    feederItems.forEach((f) => {
+      const v = f.yearly[yr] || 0;
+      tot += v;
+      if (f.isIncoming) {
+        inc += v;
+        hasInc = true;
+      }
+    });
+    const val = hasInc && inc > 0 ? inc : tot;
+    subYearly[yr] = Number(val.toFixed(2));
+  });
+
+  return {
+    subDaily,
+    subMonthly,
+    subYearly,
+    feederItems,
+  };
 }
 
 // Custom Tooltip Component
@@ -167,25 +255,31 @@ function CustomAnalyticsTooltip({
   label,
   unit,
   viewMode,
-  trendAnalysisMode,
+  analysisMode,
 }) {
   if (!active || !payload || !payload.length) return null;
   const p = payload[0];
   const d = p.payload || {};
 
-  let headerTitle = d.fullName || d.label || d.date || label;
+  let headerTitle = d.fullName || d.label || d.name || d.date || label;
   if (viewMode === 'trend') {
-    if (trendAnalysisMode === 'compare_years') {
+    if (analysisMode === 'compare_years') {
       headerTitle = `Month: ${d.label || label}`;
-    } else if (trendAnalysisMode === 'compare_months') {
+    } else if (analysisMode === 'compare_months') {
       headerTitle = `${d.label || label}`;
-    } else if (trendAnalysisMode === 'yearly') {
+    } else if (analysisMode === 'yearly') {
       headerTitle = `${d.label || label}`;
-    } else if (trendAnalysisMode === 'monthly') {
+    } else if (analysisMode === 'monthly') {
       headerTitle = `${d.label || label}`;
-    } else if (trendAnalysisMode === 'timeline') {
+    } else if (analysisMode === 'timeline') {
       headerTitle = d.date ? `Date: ${d.date}` : (d.label || label);
     }
+  } else if (viewMode === 'comparison') {
+    if (analysisMode === 'compare_years' || analysisMode === 'compare_months') {
+      headerTitle = d.fullName || d.name || label;
+    }
+  } else if (viewMode === 'feeder') {
+    headerTitle = d.label || d.shortLabel || label;
   }
 
   return (
@@ -200,7 +294,7 @@ function CustomAnalyticsTooltip({
         fontSize: '12px',
         color: '#1a1a1a',
         minWidth: '180px',
-        maxWidth: '320px',
+        maxWidth: '340px',
         pointerEvents: 'none',
       }}
     >
@@ -222,7 +316,7 @@ function CustomAnalyticsTooltip({
         ))}
 
         {/* Live Variance Calculation in Tooltip for Compare Months */}
-        {trendAnalysisMode === 'compare_months' && payload.length === 2 && (
+        {analysisMode === 'compare_months' && payload.length === 2 && (
           <div
             style={{
               marginTop: 6,
@@ -234,7 +328,7 @@ function CustomAnalyticsTooltip({
               fontWeight: 700,
             }}
           >
-            <span style={{ color: '#64748b' }}>Daily Variance:</span>
+            <span style={{ color: '#64748b' }}>Difference:</span>
             {(() => {
               const vA = Number(payload[0].value || 0);
               const vB = Number(payload[1].value || 0);
@@ -280,122 +374,49 @@ export default function SubstationAnalyticsChart({
   onJumpToDate = null,
 }) {
   const [viewMode, setViewMode] = useState('comparison'); // 'comparison' | 'feeder' | 'trend'
-  const [trendAnalysisMode, setTrendAnalysisMode] = useState('timeline'); // 'timeline' | 'monthly' | 'yearly' | 'compare_years' | 'compare_months'
+  const [analysisMode, setAnalysisMode] = useState('timeline'); // 'timeline' | 'monthly' | 'yearly' | 'compare_years' | 'compare_months'
   const [trendChartType, setTrendChartType] = useState('area'); // 'area' | 'bar'
   const [analysisScope, setAnalysisScope] = useState('substation'); // 'substation' | 'section'
   const [selectedYears, setSelectedYears] = useState([]);
   const [selectedMonthA, setSelectedMonthA] = useState('');
   const [selectedMonthB, setSelectedMonthB] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
 
   const unit = activeResult?.items?.[0]?.it?.unit || (section === 'HT' ? 'kWh' : 'kWh');
 
-  // 1. Substation Comparison Dataset
-  const comparisonData = useMemo(() => {
-    return sectionResults.map(({ sh, incomingTotal, items }) => {
-      const feederSum = items.reduce((acc, x) => acc + (x.c?.total || 0), 0);
-      const val = incomingTotal != null && incomingTotal > 0 ? incomingTotal : feederSum;
-      return {
-        id: sh.id,
-        name: sh.name.replace(/ Sub Station| \(hourly\)| Panel/gi, '').trim(),
-        fullName: sh.name,
-        value: Math.max(0, Number(val.toFixed(2))),
-        unit: items[0]?.it?.unit || unit,
-        activeFeeders: items.filter((x) => x.c?.has).length,
-        totalFeeders: items.length,
-        isSelected: sh.id === activeSheet?.id,
-      };
-    });
-  }, [sectionResults, activeSheet?.id, unit]);
-
-  // 2. Feeder Load Breakdown Dataset for Active Substation
-  const feederData = useMemo(() => {
-    if (!activeResult) return [];
-    return activeResult.items
-      .map(({ it, c }, idx) => {
-        const val = reportType === 'daily' ? (c?.perDate?.[date] ?? 0) : (c?.total ?? 0);
-        return {
-          id: it.sn || `f_${idx}`,
-          label: it.label,
-          shortLabel: it.label.length > 20 ? it.label.slice(0, 18) + '…' : it.label,
-          value: Math.max(0, Number(val.toFixed(2))),
-          isIncoming: it.incoming,
-          unit: it.unit || unit,
-          hasData: c?.has,
-        };
-      })
-      .sort((a, b) => b.value - a.value);
-  }, [activeResult, reportType, date, unit]);
-
-  // 3. Compute Complete Daily Historical Series Across All Docs
-  const sectionDailyMap = useMemo(() => {
-    const mapBySheet = {};
-    const allDatesSet = new Set();
-
+  // Compute Full Historical Series for Every Substation Sheet and All Feeders
+  const allSheetsHistory = useMemo(() => {
+    const map = {};
     sectionResults.forEach(({ sh }) => {
-      const daily = computeSheetDailyConsumption(sh, docs);
-      mapBySheet[sh.id] = daily;
-      Object.keys(daily).forEach((dt) => allDatesSet.add(dt));
+      map[sh.id] = computeSheetFullHistory(sh, docs);
     });
-
-    if (activeSheet?.id && !mapBySheet[activeSheet.id]) {
-      const daily = computeSheetDailyConsumption(activeSheet, docs);
-      mapBySheet[activeSheet.id] = daily;
-      Object.keys(daily).forEach((dt) => allDatesSet.add(dt));
+    if (activeSheet?.id && !map[activeSheet.id]) {
+      map[activeSheet.id] = computeSheetFullHistory(activeSheet, docs);
     }
-
-    // Also include raw dates from docs
-    docs.forEach((d) => {
-      if (d.date && typeof d.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.date)) {
-        allDatesSet.add(d.date);
-      }
-    });
-
-    return { mapBySheet, allDates: [...allDatesSet].sort() };
+    return map;
   }, [sectionResults, activeSheet, docs]);
 
-  // Flattened chronological historical records
-  const allHistoricalDaily = useMemo(() => {
-    const { mapBySheet, allDates } = sectionDailyMap;
-    const isSection = analysisScope === 'section';
-
-    return allDates.map((dt) => {
-      const [y, m, d] = dt.split('-');
-      const monthKey = `${y}-${m}`;
-
-      let subVal = 0;
-      if (activeSheet?.id && mapBySheet[activeSheet.id]?.[dt] != null) {
-        subVal = mapBySheet[activeSheet.id][dt];
-      }
-
-      let secVal = 0;
-      sectionResults.forEach(({ sh }) => {
-        if (mapBySheet[sh.id]?.[dt] != null) {
-          secVal += mapBySheet[sh.id][dt];
-        }
-      });
-
-      const activeVal = isSection ? secVal : subVal;
-
-      return {
-        date: dt,
-        dateStr: dt,
-        year: y,
-        month: m,
-        day: d,
-        monthKey,
-        value: Number(activeVal.toFixed(2)),
-        subVal: Number(subVal.toFixed(2)),
-        secVal: Number(secVal.toFixed(2)),
-        unit,
-      };
+  // Discover all unique dates across history
+  const allHistoricalDates = useMemo(() => {
+    const set = new Set();
+    Object.values(allSheetsHistory).forEach((h) => {
+      Object.keys(h.subDaily).forEach((dt) => set.add(dt));
     });
-  }, [sectionDailyMap, analysisScope, activeSheet?.id, sectionResults, unit]);
+    docs.forEach((d) => {
+      if (d.date && typeof d.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.date)) {
+        set.add(d.date);
+      }
+    });
+    return [...set].sort();
+  }, [allSheetsHistory, docs]);
 
   // Discover unique available years
   const availableYears = useMemo(() => {
     const set = new Set();
-    allHistoricalDaily.forEach((d) => {
-      if (d.year && d.year.length === 4) set.add(d.year);
+    allHistoricalDates.forEach((dt) => {
+      const yr = dt.slice(0, 4);
+      if (yr.length === 4) set.add(yr);
     });
     if (set.size === 1) {
       const yr = Number([...set][0]);
@@ -406,13 +427,14 @@ export default function SubstationAnalyticsChart({
       set.add(String(curYear));
     }
     return [...set].sort();
-  }, [allHistoricalDaily]);
+  }, [allHistoricalDates]);
 
   // Discover unique available months (sorted latest first)
   const availableMonths = useMemo(() => {
     const set = new Set();
-    allHistoricalDaily.forEach((d) => {
-      if (d.monthKey && d.monthKey.length === 7) set.add(d.monthKey);
+    allHistoricalDates.forEach((dt) => {
+      const mk = dt.slice(0, 7);
+      if (mk.length === 7) set.add(mk);
     });
     if (set.size <= 1) {
       const curMonth = month || new Date().toISOString().slice(0, 7);
@@ -422,7 +444,17 @@ export default function SubstationAnalyticsChart({
       set.add(prevM);
     }
     return [...set].sort().reverse();
-  }, [allHistoricalDaily, month]);
+  }, [allHistoricalDates, month]);
+
+  // Initialize selected year and month
+  useEffect(() => {
+    if (availableYears.length > 0 && !selectedYear) {
+      setSelectedYear(availableYears[availableYears.length - 1]);
+    }
+    if (availableMonths.length > 0 && !selectedMonth) {
+      setSelectedMonth(month || availableMonths[0]);
+    }
+  }, [availableYears, availableMonths, selectedYear, selectedMonth, month]);
 
   // Initialize selected years for comparison
   useEffect(() => {
@@ -452,6 +484,194 @@ export default function SubstationAnalyticsChart({
       return [...prev, yr].sort();
     });
   };
+
+  const activeCompareYears = useMemo(() => {
+    return selectedYears.length > 0 ? selectedYears : availableYears;
+  }, [selectedYears, availableYears]);
+
+  // ==========================================================
+  // VIEW 1: SUBSTATION COMPARISON DATASETS (ALL 5 MODES)
+  // ==========================================================
+  const comparisonData = useMemo(() => {
+    return sectionResults.map(({ sh, incomingTotal, items }) => {
+      const feederSum = items.reduce((acc, x) => acc + (x.c?.total || 0), 0);
+      let val = incomingTotal != null && incomingTotal > 0 ? incomingTotal : feederSum;
+
+      if (val === 0 && date && allSheetsHistory[sh.id]?.subDaily?.[date] != null) {
+        val = allSheetsHistory[sh.id].subDaily[date];
+      }
+
+      if (analysisMode === 'monthly') {
+        val = allSheetsHistory[sh.id]?.subMonthly?.[selectedMonth] ?? 0;
+      } else if (analysisMode === 'yearly') {
+        val = allSheetsHistory[sh.id]?.subYearly?.[selectedYear] ?? 0;
+      }
+
+      return {
+        id: sh.id,
+        name: sh.name.replace(/ Sub Station| \(hourly\)| Panel/gi, '').trim(),
+        fullName: sh.name,
+        value: Math.max(0, Number(val.toFixed(2))),
+        unit: items[0]?.it?.unit || unit,
+        activeFeeders: items.filter((x) => x.c?.has).length,
+        totalFeeders: items.length,
+        isSelected: sh.id === activeSheet?.id,
+      };
+    });
+  }, [sectionResults, activeSheet?.id, unit, date, analysisMode, selectedMonth, selectedYear, allSheetsHistory]);
+
+  const comparisonCompareYearsData = useMemo(() => {
+    return sectionResults.map(({ sh }) => {
+      const row = {
+        id: sh.id,
+        name: sh.name.replace(/ Sub Station| \(hourly\)| Panel/gi, '').trim(),
+        fullName: sh.name,
+        unit,
+      };
+      activeCompareYears.forEach((yr) => {
+        row[yr] = allSheetsHistory[sh.id]?.subYearly?.[yr] ?? 0;
+      });
+      return row;
+    });
+  }, [sectionResults, activeCompareYears, allSheetsHistory, unit]);
+
+  const comparisonCompareMonthsData = useMemo(() => {
+    return sectionResults.map(({ sh }) => {
+      const vA = allSheetsHistory[sh.id]?.subMonthly?.[selectedMonthA] ?? 0;
+      const vB = allSheetsHistory[sh.id]?.subMonthly?.[selectedMonthB] ?? 0;
+      return {
+        id: sh.id,
+        name: sh.name.replace(/ Sub Station| \(hourly\)| Panel/gi, '').trim(),
+        fullName: sh.name,
+        unit,
+        [selectedMonthA]: vA,
+        [selectedMonthB]: vB,
+      };
+    });
+  }, [sectionResults, selectedMonthA, selectedMonthB, allSheetsHistory, unit]);
+
+  // ==========================================================
+  // VIEW 2: FEEDER LOAD BREAKDOWN DATASETS (ALL 5 MODES)
+  // ==========================================================
+  const activeFeederItems = useMemo(() => {
+    return allSheetsHistory[activeSheet?.id]?.feederItems || [];
+  }, [allSheetsHistory, activeSheet?.id]);
+
+  const feederData = useMemo(() => {
+    if (activeFeederItems.length > 0) {
+      return activeFeederItems
+        .map((f, idx) => {
+          let val = 0;
+          if (analysisMode === 'monthly') {
+            val = f.monthly[selectedMonth] ?? 0;
+          } else if (analysisMode === 'yearly') {
+            val = f.yearly[selectedYear] ?? 0;
+          } else {
+            val = reportType === 'daily' ? (f.daily[date] ?? 0) : (f.monthly[month] ?? 0);
+            if (val === 0 && activeResult?.items?.[idx]?.c) {
+              const c = activeResult.items[idx].c;
+              val = reportType === 'daily' ? (c.perDate?.[date] ?? 0) : (c.total ?? 0);
+            }
+          }
+
+          return {
+            id: f.sn || `f_${idx}`,
+            label: f.label,
+            shortLabel: f.shortLabel,
+            value: Math.max(0, Number(val.toFixed(2))),
+            isIncoming: f.isIncoming,
+            unit: f.unit || unit,
+            hasData: val > 0,
+          };
+        })
+        .sort((a, b) => b.value - a.value);
+    }
+
+    if (!activeResult) return [];
+    return activeResult.items
+      .map(({ it, c }, idx) => {
+        const val = reportType === 'daily' ? (c?.perDate?.[date] ?? 0) : (c?.total ?? 0);
+        return {
+          id: it.sn || `f_${idx}`,
+          label: it.label,
+          shortLabel: it.label.length > 20 ? it.label.slice(0, 18) + '…' : it.label,
+          value: Math.max(0, Number(val.toFixed(2))),
+          isIncoming: it.incoming,
+          unit: it.unit || unit,
+          hasData: c?.has,
+        };
+      })
+      .sort((a, b) => b.value - a.value);
+  }, [activeFeederItems, activeResult, reportType, date, month, unit, analysisMode, selectedMonth, selectedYear]);
+
+  const feederCompareYearsData = useMemo(() => {
+    return activeFeederItems
+      .slice(0, 10)
+      .map((f, idx) => {
+        const row = {
+          id: f.sn || `f_${idx}`,
+          label: f.label,
+          shortLabel: f.shortLabel,
+          isIncoming: f.isIncoming,
+          unit: f.unit || unit,
+        };
+        activeCompareYears.forEach((yr) => {
+          row[yr] = f.yearly[yr] ?? 0;
+        });
+        return row;
+      });
+  }, [activeFeederItems, activeCompareYears, unit]);
+
+  const feederCompareMonthsData = useMemo(() => {
+    return activeFeederItems
+      .slice(0, 10)
+      .map((f, idx) => {
+        const vA = f.monthly[selectedMonthA] ?? 0;
+        const vB = f.monthly[selectedMonthB] ?? 0;
+        return {
+          id: f.sn || `f_${idx}`,
+          label: f.label,
+          shortLabel: f.shortLabel,
+          isIncoming: f.isIncoming,
+          unit: f.unit || unit,
+          [selectedMonthA]: vA,
+          [selectedMonthB]: vB,
+        };
+      });
+  }, [activeFeederItems, selectedMonthA, selectedMonthB, unit]);
+
+  // ==========================================================
+  // VIEW 3: POWER TREND & TIME-SERIES DATASETS (ALL 5 MODES)
+  // ==========================================================
+  const allHistoricalDaily = useMemo(() => {
+    const isSection = analysisScope === 'section';
+
+    return allHistoricalDates.map((dt) => {
+      const [y, m, d] = dt.split('-');
+      const monthKey = `${y}-${m}`;
+
+      const subVal = allSheetsHistory[activeSheet?.id]?.subDaily?.[dt] ?? 0;
+      let secVal = 0;
+      sectionResults.forEach(({ sh }) => {
+        secVal += allSheetsHistory[sh.id]?.subDaily?.[dt] ?? 0;
+      });
+
+      const activeVal = isSection ? secVal : subVal;
+
+      return {
+        date: dt,
+        dateStr: dt,
+        year: y,
+        month: m,
+        day: d,
+        monthKey,
+        value: Number(activeVal.toFixed(2)),
+        subVal: Number(subVal.toFixed(2)),
+        secVal: Number(secVal.toFixed(2)),
+        unit,
+      };
+    });
+  }, [allHistoricalDates, allSheetsHistory, analysisScope, activeSheet?.id, sectionResults, unit]);
 
   // MODE 1: Granular Timeline Dataset
   const trendData = useMemo(() => {
@@ -588,10 +808,6 @@ export default function SubstationAnalyticsChart({
   }, [allHistoricalDaily, unit]);
 
   // MODE 4: Compare Years (YoY) Overlay Dataset across 12 months (Jan–Dec)
-  const activeCompareYears = useMemo(() => {
-    return selectedYears.length > 0 ? selectedYears : availableYears;
-  }, [selectedYears, availableYears]);
-
   const compareYearsData = useMemo(() => {
     return MONTH_NAMES.map((mName, mIdx) => {
       const monthNum = String(mIdx + 1).padStart(2, '0');
@@ -625,11 +841,26 @@ export default function SubstationAnalyticsChart({
     return days;
   }, [allHistoricalDaily, selectedMonthA, selectedMonthB]);
 
-  // Live Variance Statistics for Compare Months
+  // ==========================================================
+  // LIVE VARIANCE STATS (CONTEXTUALIZED FOR ALL 3 VIEWS)
+  // ==========================================================
   const monthCompStats = useMemo(() => {
-    if (!compareMonthsData.length || !selectedMonthA || !selectedMonthB) return null;
-    const totA = compareMonthsData.reduce((acc, r) => acc + (Number(r[selectedMonthA]) || 0), 0);
-    const totB = compareMonthsData.reduce((acc, r) => acc + (Number(r[selectedMonthB]) || 0), 0);
+    if (!selectedMonthA || !selectedMonthB) return null;
+
+    let totA = 0;
+    let totB = 0;
+
+    if (viewMode === 'comparison') {
+      totA = comparisonCompareMonthsData.reduce((acc, r) => acc + (Number(r[selectedMonthA]) || 0), 0);
+      totB = comparisonCompareMonthsData.reduce((acc, r) => acc + (Number(r[selectedMonthB]) || 0), 0);
+    } else if (viewMode === 'feeder') {
+      totA = feederCompareMonthsData.reduce((acc, r) => acc + (Number(r[selectedMonthA]) || 0), 0);
+      totB = feederCompareMonthsData.reduce((acc, r) => acc + (Number(r[selectedMonthB]) || 0), 0);
+    } else {
+      totA = compareMonthsData.reduce((acc, r) => acc + (Number(r[selectedMonthA]) || 0), 0);
+      totB = compareMonthsData.reduce((acc, r) => acc + (Number(r[selectedMonthB]) || 0), 0);
+    }
+
     const diff = totA - totB;
     const pct = totB > 0 ? (diff / totB) * 100 : 0;
     return {
@@ -638,40 +869,94 @@ export default function SubstationAnalyticsChart({
       diff: Number(diff.toFixed(1)),
       pct: Number(pct.toFixed(1)),
     };
-  }, [compareMonthsData, selectedMonthA, selectedMonthB]);
+  }, [viewMode, comparisonCompareMonthsData, feederCompareMonthsData, compareMonthsData, selectedMonthA, selectedMonthB]);
 
-  // Active chart dataset depending on mode
+  // Active trend chart dataset depending on mode
   const activeTrendChartData = useMemo(() => {
-    if (trendAnalysisMode === 'monthly') return monthlyData;
-    if (trendAnalysisMode === 'yearly') return yearlyData;
-    if (trendAnalysisMode === 'compare_years') return compareYearsData;
-    if (trendAnalysisMode === 'compare_months') return compareMonthsData;
+    if (analysisMode === 'monthly') return monthlyData;
+    if (analysisMode === 'yearly') return yearlyData;
+    if (analysisMode === 'compare_years') return compareYearsData;
+    if (analysisMode === 'compare_months') return compareMonthsData;
     return trendData;
-  }, [trendAnalysisMode, monthlyData, yearlyData, compareYearsData, compareMonthsData, trendData]);
+  }, [analysisMode, monthlyData, yearlyData, compareYearsData, compareMonthsData, trendData]);
 
-  // Dynamic axis titles
+  // Dynamic titles and labels
+  const scopeLabel = analysisScope === 'section' ? `All ${section} Substations Combined` : (activeSheet?.name || 'Substation');
+
+  const chartTitle = useMemo(() => {
+    if (viewMode === 'comparison') {
+      const modeSuffix =
+        analysisMode === 'monthly'
+          ? ` · ${formatMonthLabel(selectedMonth)}`
+          : analysisMode === 'yearly'
+          ? ` · Annual ${selectedYear}`
+          : analysisMode === 'compare_years'
+          ? ` · Multi-Year Overlay (${activeCompareYears.join(' vs ')})`
+          : analysisMode === 'compare_months'
+          ? ` · ${formatMonthLabel(selectedMonthA)} vs ${formatMonthLabel(selectedMonthB)}`
+          : '';
+      return `Substation Energy Comparison (${section} Panels)${modeSuffix}`;
+    }
+    if (viewMode === 'feeder') {
+      const modeSuffix =
+        analysisMode === 'monthly'
+          ? ` · ${formatMonthLabel(selectedMonth)}`
+          : analysisMode === 'yearly'
+          ? ` · Annual ${selectedYear}`
+          : analysisMode === 'compare_years'
+          ? ` · Multi-Year Comparison (${activeCompareYears.join(' vs ')})`
+          : analysisMode === 'compare_months'
+          ? ` · ${formatMonthLabel(selectedMonthA)} vs ${formatMonthLabel(selectedMonthB)}`
+          : '';
+      return `${activeSheet?.name || 'Substation'} Feeder Load Breakdown${modeSuffix}`;
+    }
+    const modeName =
+      analysisMode === 'timeline'
+        ? '📅 Granular Timeline'
+        : analysisMode === 'monthly'
+        ? '📊 Monthly Trend'
+        : analysisMode === 'yearly'
+        ? '📆 Yearly Trend'
+        : analysisMode === 'compare_years'
+        ? '🔄 Year-over-Year (YoY) Overlay'
+        : '⚖️ Month-to-Month Variance';
+    return `${scopeLabel} · ${modeName}`;
+  }, [viewMode, activeSheet?.name, section, scopeLabel, analysisMode, selectedMonth, selectedYear, selectedMonthA, selectedMonthB, activeCompareYears]);
+
   const xAxisTitle = useMemo(() => {
-    if (viewMode === 'comparison') return 'X-Axis: Substation / Panel Name';
-    if (viewMode === 'feeder') return `X-Axis: Energy Consumption (${unit || 'kWh'})`;
-    if (trendAnalysisMode === 'timeline') {
+    if (viewMode === 'comparison') {
+      return 'X-Axis: Substation / Panel Name';
+    }
+    if (viewMode === 'feeder') {
+      if (analysisMode === 'compare_years' || analysisMode === 'compare_months') {
+        return 'X-Axis: Feeder / Circuit Name';
+      }
+      return `X-Axis: Energy Consumption (${unit || 'kWh'})`;
+    }
+    if (analysisMode === 'timeline') {
       return reportType === 'daily' ? 'X-Axis: Hourly Time Slot / Date' : 'X-Axis: Date (Day of Month)';
     }
-    if (trendAnalysisMode === 'monthly') return 'X-Axis: Month (Chronological)';
-    if (trendAnalysisMode === 'yearly') return 'X-Axis: Year (Annual Summary)';
-    if (trendAnalysisMode === 'compare_years') return 'X-Axis: Month of Year (Jan – Dec)';
-    if (trendAnalysisMode === 'compare_months') return 'X-Axis: Day of Month (Day 01 – Day 31)';
+    if (analysisMode === 'monthly') return 'X-Axis: Month (Chronological)';
+    if (analysisMode === 'yearly') return 'X-Axis: Year (Annual Summary)';
+    if (analysisMode === 'compare_years') return 'X-Axis: Month of Year (Jan – Dec)';
+    if (analysisMode === 'compare_months') return 'X-Axis: Day of Month (Day 01 – Day 31)';
     return 'X-Axis: Timeline';
-  }, [viewMode, trendAnalysisMode, reportType, unit]);
+  }, [viewMode, analysisMode, reportType, unit]);
 
   const yAxisTitle = useMemo(() => {
-    if (viewMode === 'feeder') return 'Y-Axis: Feeder / Circuit Name';
+    if (viewMode === 'feeder') {
+      if (analysisMode === 'compare_years' || analysisMode === 'compare_months') {
+        return `Y-Axis: Energy Consumption (${unit || 'kWh'})`;
+      }
+      return 'Y-Axis: Feeder / Circuit Name';
+    }
     if (viewMode === 'trend') {
-      if (trendAnalysisMode === 'yearly') return `Y-Axis: Annual Consumption (${unit || 'kWh'})`;
-      if (trendAnalysisMode === 'monthly') return `Y-Axis: Monthly Consumption (${unit || 'kWh'})`;
+      if (analysisMode === 'yearly') return `Y-Axis: Annual Consumption (${unit || 'kWh'})`;
+      if (analysisMode === 'monthly') return `Y-Axis: Monthly Consumption (${unit || 'kWh'})`;
       return `Y-Axis: Daily Consumption (${unit || 'kWh'})`;
     }
     return `Y-Axis: Energy Consumption (${unit || 'kWh'})`;
-  }, [viewMode, trendAnalysisMode, unit]);
+  }, [viewMode, analysisMode, unit]);
 
   // Aggregate stats for KPI badges
   const stats = useMemo(() => {
@@ -700,8 +985,6 @@ export default function SubstationAnalyticsChart({
   const gradSubstation = `substationGrad_${section}`;
   const gradTrend = `trendGrad_${section}`;
   const gradFeeder = `feederGrad_${section}`;
-
-  const scopeLabel = analysisScope === 'section' ? `All ${section} Substations Combined` : (activeSheet?.name || 'Substation');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
@@ -741,7 +1024,7 @@ export default function SubstationAnalyticsChart({
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' }}>
-              Total {section} Power Logged
+              Total {section} Power ({analysisMode === 'monthly' ? formatMonthLabel(selectedMonth) : analysisMode === 'yearly' ? `Year ${selectedYear}` : 'Logged'})
             </div>
             <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-main)', marginTop: 2, fontFamily: "'DM Mono', monospace" }}>
               {stats.totalEnergy.toLocaleString(undefined, { maximumFractionDigits: 1 })} <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{unit}</span>
@@ -861,7 +1144,7 @@ export default function SubstationAnalyticsChart({
               Historical Telemetry Logs
             </div>
             <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--status-ok)', marginTop: 2 }}>
-              {allHistoricalDaily.length} Days Recorded ✓
+              {allHistoricalDates.length} Days Recorded ✓
             </div>
           </div>
         </div>
@@ -920,21 +1203,7 @@ export default function SubstationAnalyticsChart({
           <div>
             <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Sparkles size={18} color="var(--green-800)" />
-              <span>
-                {viewMode === 'comparison' && `Substation Energy Comparison (${section} Panels)`}
-                {viewMode === 'feeder' && `${activeSheet?.name || 'Substation'} Feeder Load Breakdown`}
-                {viewMode === 'trend' && `${scopeLabel} · ${
-                  trendAnalysisMode === 'timeline'
-                    ? '📅 Granular Timeline'
-                    : trendAnalysisMode === 'monthly'
-                    ? '📊 Monthly Trend'
-                    : trendAnalysisMode === 'yearly'
-                    ? '📆 Yearly Trend'
-                    : trendAnalysisMode === 'compare_years'
-                    ? '🔄 Year-over-Year (YoY) Overlay'
-                    : '⚖️ Month-to-Month Variance'
-                }`}
-              </span>
+              <span>{chartTitle}</span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
               {reportType === 'daily' ? `Log Date: ${date}` : `Monthly Period: ${month}`} · Units in {unit}
@@ -1069,110 +1338,159 @@ export default function SubstationAnalyticsChart({
           </div>
         </div>
 
-        {/* 5-Mode Primary Trend & Comparison Toolbar */}
-        {viewMode === 'trend' && (
-          <div
-            style={{
-              padding: '10px 18px',
-              borderBottom: '1px solid var(--glass-border)',
-              background: 'var(--bg-secondary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 10,
-            }}
-          >
-            {/* The 5 Analysis Modes */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', marginRight: 2 }}>
-                Mode:
-              </span>
-              {[
-                { id: 'timeline', label: '📅 Timeline', title: 'Regular granular view' },
-                { id: 'monthly', label: '📊 Monthly Trend', title: 'Aggregated monthly consumption over time' },
-                { id: 'yearly', label: '📆 Yearly Trend', title: 'Annual totals with year-over-year trends' },
-                { id: 'compare_years', label: '🔄 Compare Years', title: 'Month-by-month overlay comparison (Jan–Dec) across different years' },
-                { id: 'compare_months', label: '⚖️ Compare Months', title: 'Side-by-side day-by-day (1–31) comparison with live variance' },
-              ].map((m) => {
-                const isActive = trendAnalysisMode === m.id;
-                return (
+        {/* 5-Mode Primary Trend & Comparison Toolbar (ACTIVE ACROSS ALL 3 VIEWS) */}
+        <div
+          style={{
+            padding: '10px 18px',
+            borderBottom: '1px solid var(--glass-border)',
+            background: 'var(--bg-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 10,
+          }}
+        >
+          {/* The 5 Analysis Modes */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', marginRight: 2 }}>
+              Mode:
+            </span>
+            {[
+              { id: 'timeline', label: '📅 Timeline', title: 'Regular granular view' },
+              { id: 'monthly', label: '📊 Monthly Trend', title: 'Aggregated monthly consumption' },
+              { id: 'yearly', label: '📆 Yearly Trend', title: 'Annual totals with year-over-year trends' },
+              { id: 'compare_years', label: '🔄 Compare Years', title: 'Multi-year side-by-side overlay comparison' },
+              { id: 'compare_months', label: '⚖️ Compare Months', title: 'Side-by-side day-by-day comparison with live variance' },
+            ].map((m) => {
+              const isActive = analysisMode === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setAnalysisMode(m.id)}
+                  title={m.title}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    fontSize: '11.5px',
+                    fontWeight: isActive ? 700 : 500,
+                    background: isActive ? 'var(--green-800)' : 'var(--bg-tertiary)',
+                    color: isActive ? '#ffffff' : 'var(--text-main)',
+                    border: isActive ? '1px solid var(--green-900)' : '1px solid var(--glass-border)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
+                  }}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Context Controls: Single Month / Single Year / Scope Selectors */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {/* When in Monthly view: choose month */}
+            {analysisMode === 'monthly' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>Select Month:</span>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  style={{
+                    padding: '3px 8px',
+                    fontSize: 11.5,
+                    borderRadius: 6,
+                    border: '1px solid var(--glass-border)',
+                    background: 'var(--bg-tertiary)',
+                    color: 'var(--text-main)',
+                  }}
+                >
+                  {availableMonths.map((m) => (
+                    <option key={m} value={m}>{formatMonthLabel(m)}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* When in Yearly view: choose year */}
+            {analysisMode === 'yearly' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>Select Year:</span>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  style={{
+                    padding: '3px 8px',
+                    fontSize: 11.5,
+                    borderRadius: 6,
+                    border: '1px solid var(--glass-border)',
+                    background: 'var(--bg-tertiary)',
+                    color: 'var(--text-main)',
+                  }}
+                >
+                  {availableYears.map((yr) => (
+                    <option key={yr} value={yr}>Year {yr}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* In Trend View: Scope Switcher */}
+            {viewMode === 'trend' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>Scope:</span>
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    background: 'var(--bg-tertiary)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: 6,
+                    padding: 2,
+                    gap: 2,
+                  }}
+                >
                   <button
-                    key={m.id}
                     type="button"
-                    onClick={() => setTrendAnalysisMode(m.id)}
-                    title={m.title}
+                    onClick={() => setAnalysisScope('substation')}
                     style={{
-                      padding: '4px 10px',
-                      borderRadius: 6,
-                      fontSize: '11.5px',
-                      fontWeight: isActive ? 700 : 500,
-                      background: isActive ? 'var(--green-800)' : 'var(--bg-tertiary)',
-                      color: isActive ? '#ffffff' : 'var(--text-main)',
-                      border: isActive ? '1px solid var(--green-900)' : '1px solid var(--glass-border)',
+                      padding: '3px 8px',
+                      fontSize: 11,
+                      fontWeight: analysisScope === 'substation' ? 700 : 500,
+                      borderRadius: 4,
+                      border: 'none',
+                      background: analysisScope === 'substation' ? 'var(--green-800)' : 'transparent',
+                      color: analysisScope === 'substation' ? '#ffffff' : 'var(--text-muted)',
                       cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
                     }}
                   >
-                    {m.label}
+                    🏢 {activeSheet?.name ? activeSheet.name.replace(/ Sub Station| \(hourly\)| Panel/gi, '') : 'Active Substation'}
                   </button>
-                );
-              })}
-            </div>
-
-            {/* Scope Switcher: Active Substation vs All Section Substations */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>Scope:</span>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  background: 'var(--bg-tertiary)',
-                  border: '1px solid var(--glass-border)',
-                  borderRadius: 6,
-                  padding: 2,
-                  gap: 2,
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setAnalysisScope('substation')}
-                  style={{
-                    padding: '3px 8px',
-                    fontSize: 11,
-                    fontWeight: analysisScope === 'substation' ? 700 : 500,
-                    borderRadius: 4,
-                    border: 'none',
-                    background: analysisScope === 'substation' ? 'var(--green-800)' : 'transparent',
-                    color: analysisScope === 'substation' ? '#ffffff' : 'var(--text-muted)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  🏢 {activeSheet?.name ? activeSheet.name.replace(/ Sub Station| \(hourly\)| Panel/gi, '') : 'Active Substation'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAnalysisScope('section')}
-                  style={{
-                    padding: '3px 8px',
-                    fontSize: 11,
-                    fontWeight: analysisScope === 'section' ? 700 : 500,
-                    borderRadius: 4,
-                    border: 'none',
-                    background: analysisScope === 'section' ? 'var(--green-800)' : 'transparent',
-                    color: analysisScope === 'section' ? '#ffffff' : 'var(--text-muted)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  ⚡ All {section} Panels
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnalysisScope('section')}
+                    style={{
+                      padding: '3px 8px',
+                      fontSize: 11,
+                      fontWeight: analysisScope === 'section' ? 700 : 500,
+                      borderRadius: 4,
+                      border: 'none',
+                      background: analysisScope === 'section' ? 'var(--green-800)' : 'transparent',
+                      color: analysisScope === 'section' ? '#ffffff' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ⚡ All {section} Panels
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* Sub-selectors for Compare Years / Compare Months */}
-        {viewMode === 'trend' && trendAnalysisMode === 'compare_years' && (
+        {/* Sub-selectors for Compare Years across all 3 views */}
+        {analysisMode === 'compare_years' && (
           <div
             style={{
               padding: '8px 18px',
@@ -1216,12 +1534,15 @@ export default function SubstationAnalyticsChart({
               })}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              Overlays monthly consumption (Jan–Dec) for chosen years side-by-side.
+              {viewMode === 'comparison' && 'Compares all substations side-by-side for each selected year.'}
+              {viewMode === 'feeder' && 'Compares top feeder loads side-by-side for each selected year.'}
+              {viewMode === 'trend' && 'Overlays monthly consumption (Jan–Dec) for chosen years side-by-side.'}
             </div>
           </div>
         )}
 
-        {viewMode === 'trend' && trendAnalysisMode === 'compare_months' && (
+        {/* Sub-selectors for Compare Months across all 3 views */}
+        {analysisMode === 'compare_months' && (
           <div
             style={{
               padding: '8px 18px',
@@ -1278,13 +1599,15 @@ export default function SubstationAnalyticsChart({
             </div>
 
             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              Compares Day 01 to Day 31 side-by-side with live variance calculation.
+              {viewMode === 'comparison' && 'Compares all substations between Month 1 and Month 2 with live variance.'}
+              {viewMode === 'feeder' && 'Compares active substation feeders between Month 1 and Month 2 with live variance.'}
+              {viewMode === 'trend' && 'Compares Day 01 to Day 31 side-by-side with live variance calculation.'}
             </div>
           </div>
         )}
 
-        {/* Month-to-Month Live Variance Summary Card */}
-        {viewMode === 'trend' && trendAnalysisMode === 'compare_months' && monthCompStats && (
+        {/* Month-to-Month Live Variance Summary Card across all 3 views */}
+        {analysisMode === 'compare_months' && monthCompStats && (
           <div
             style={{
               margin: '10px 16px 4px 16px',
@@ -1316,7 +1639,9 @@ export default function SubstationAnalyticsChart({
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: 'var(--text-dim)', fontWeight: 600 }}>Net Variance:</span>
+              <span style={{ color: 'var(--text-dim)', fontWeight: 600 }}>
+                {viewMode === 'comparison' ? `All ${section} Net Variance:` : viewMode === 'feeder' ? 'Substation Net Variance:' : 'Net Variance:'}
+              </span>
               <span
                 style={{
                   padding: '2px 10px',
@@ -1367,138 +1692,358 @@ export default function SubstationAnalyticsChart({
         <div style={{ padding: '10px 20px 14px 10px', width: '100%', height: 350, position: 'relative' }}>
           <ResponsiveContainer width="100%" height="100%">
             {viewMode === 'comparison' ? (
-              <BarChart data={comparisonData} margin={{ top: 14, right: 20, left: 18, bottom: 26 }}>
-                <defs>
-                  <linearGradient id={gradSubstation} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#1a3c34" stopOpacity={0.95} />
-                    <stop offset="100%" stopColor="#3d6b55" stopOpacity={0.75} />
-                  </linearGradient>
-                  <linearGradient id={`${gradSubstation}_selected`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#c2622a" stopOpacity={0.95} />
-                    <stop offset="100%" stopColor="#ea580c" stopOpacity={0.75} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--table-border)" strokeOpacity={0.6} />
-                <XAxis
-                  dataKey="name"
-                  stroke="var(--text-dim)"
-                  fontSize={11}
-                  tickLine={false}
-                  dy={4}
-                  label={{
-                    value: xAxisTitle,
-                    position: 'insideBottom',
-                    offset: -16,
-                    fill: 'var(--text-main)',
-                    fontSize: 11,
-                    fontWeight: 700,
-                  }}
-                />
-                <YAxis
-                  stroke="var(--text-dim)"
-                  fontSize={11}
-                  tickLine={false}
-                  tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
-                  width={68}
-                  label={{
-                    value: yAxisTitle,
-                    angle: -90,
-                    position: 'insideLeft',
-                    offset: 2,
-                    fill: 'var(--text-main)',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    style: { textAnchor: 'middle' },
-                  }}
-                />
-                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} />} />
-                <Bar
-                  dataKey="value"
-                  name="Energy Consumption"
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={48}
-                  animationDuration={600}
-                  onClick={(entry) => entry && entry.id && onSelectSheet(entry.id)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  {comparisonData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={entry.isSelected ? `url(#${gradSubstation}_selected)` : `url(#${gradSubstation})`}
-                      stroke={entry.isSelected ? '#c2622a' : '#1a3c34'}
-                      strokeWidth={entry.isSelected ? 2 : 1}
+              analysisMode === 'compare_years' ? (
+                /* Substation Comparison - Compare Years */
+                <ComposedChart data={comparisonCompareYearsData} margin={{ top: 14, right: 20, left: 18, bottom: 26 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--table-border)" strokeOpacity={0.6} />
+                  <XAxis
+                    dataKey="name"
+                    stroke="var(--text-dim)"
+                    fontSize={11}
+                    tickLine={false}
+                    dy={4}
+                    label={{
+                      value: xAxisTitle,
+                      position: 'insideBottom',
+                      offset: -16,
+                      fill: 'var(--text-main)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  />
+                  <YAxis
+                    stroke="var(--text-dim)"
+                    fontSize={11}
+                    tickLine={false}
+                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
+                    width={68}
+                    label={{
+                      value: yAxisTitle,
+                      angle: -90,
+                      position: 'insideLeft',
+                      offset: 2,
+                      fill: 'var(--text-main)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      style: { textAnchor: 'middle' },
+                    }}
+                  />
+                  <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} analysisMode={analysisMode} />} />
+                  <Legend verticalAlign="top" height={32} iconType="circle" iconSize={8} />
+
+                  {activeCompareYears.map((yr, idx) => (
+                    <Bar
+                      key={yr}
+                      dataKey={yr}
+                      name={`Year ${yr}`}
+                      fill={YEAR_COLORS[idx % YEAR_COLORS.length]}
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={28}
+                      animationDuration={600}
                     />
                   ))}
-                </Bar>
-              </BarChart>
+                </ComposedChart>
+              ) : analysisMode === 'compare_months' ? (
+                /* Substation Comparison - Compare Months */
+                <ComposedChart data={comparisonCompareMonthsData} margin={{ top: 14, right: 20, left: 18, bottom: 26 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--table-border)" strokeOpacity={0.6} />
+                  <XAxis
+                    dataKey="name"
+                    stroke="var(--text-dim)"
+                    fontSize={11}
+                    tickLine={false}
+                    dy={4}
+                    label={{
+                      value: xAxisTitle,
+                      position: 'insideBottom',
+                      offset: -16,
+                      fill: 'var(--text-main)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  />
+                  <YAxis
+                    stroke="var(--text-dim)"
+                    fontSize={11}
+                    tickLine={false}
+                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
+                    width={68}
+                    label={{
+                      value: yAxisTitle,
+                      angle: -90,
+                      position: 'insideLeft',
+                      offset: 2,
+                      fill: 'var(--text-main)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      style: { textAnchor: 'middle' },
+                    }}
+                  />
+                  <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} analysisMode={analysisMode} />} />
+                  <Legend verticalAlign="top" height={32} iconType="circle" iconSize={8} />
+
+                  <Bar
+                    dataKey={selectedMonthA}
+                    name={formatMonthLabel(selectedMonthA)}
+                    fill="#1a3c34"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={22}
+                    animationDuration={600}
+                  />
+                  <Bar
+                    dataKey={selectedMonthB}
+                    name={formatMonthLabel(selectedMonthB)}
+                    fill="#c2622a"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={22}
+                    animationDuration={600}
+                  />
+                </ComposedChart>
+              ) : (
+                /* Substation Comparison - Standard / Monthly / Yearly */
+                <BarChart data={comparisonData} margin={{ top: 14, right: 20, left: 18, bottom: 26 }}>
+                  <defs>
+                    <linearGradient id={gradSubstation} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#1a3c34" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#3d6b55" stopOpacity={0.75} />
+                    </linearGradient>
+                    <linearGradient id={`${gradSubstation}_selected`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#c2622a" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#ea580c" stopOpacity={0.75} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--table-border)" strokeOpacity={0.6} />
+                  <XAxis
+                    dataKey="name"
+                    stroke="var(--text-dim)"
+                    fontSize={11}
+                    tickLine={false}
+                    dy={4}
+                    label={{
+                      value: xAxisTitle,
+                      position: 'insideBottom',
+                      offset: -16,
+                      fill: 'var(--text-main)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  />
+                  <YAxis
+                    stroke="var(--text-dim)"
+                    fontSize={11}
+                    tickLine={false}
+                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
+                    width={68}
+                    label={{
+                      value: yAxisTitle,
+                      angle: -90,
+                      position: 'insideLeft',
+                      offset: 2,
+                      fill: 'var(--text-main)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      style: { textAnchor: 'middle' },
+                    }}
+                  />
+                  <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} analysisMode={analysisMode} />} />
+                  <Bar
+                    dataKey="value"
+                    name="Energy Consumption"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={48}
+                    animationDuration={600}
+                    onClick={(entry) => entry && entry.id && onSelectSheet(entry.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {comparisonData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.isSelected ? `url(#${gradSubstation}_selected)` : `url(#${gradSubstation})`}
+                        stroke={entry.isSelected ? '#c2622a' : '#1a3c34'}
+                        strokeWidth={entry.isSelected ? 2 : 1}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              )
             ) : viewMode === 'feeder' ? (
-              <BarChart
-                data={feederData.slice(0, 10)}
-                layout="vertical"
-                margin={{ top: 12, right: 30, left: 24, bottom: 26 }}
-              >
-                <defs>
-                  <linearGradient id={gradFeeder} x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#2d4a3e" stopOpacity={0.9} />
-                    <stop offset="100%" stopColor="#4d8c6e" stopOpacity={0.75} />
-                  </linearGradient>
-                  <linearGradient id={`${gradFeeder}_inc`} x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#1a3c34" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#22c55e" stopOpacity={0.8} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--table-border)" strokeOpacity={0.6} />
-                <XAxis
-                  type="number"
-                  stroke="var(--text-dim)"
-                  fontSize={11}
-                  tickLine={false}
-                  tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
-                  label={{
-                    value: xAxisTitle,
-                    position: 'insideBottom',
-                    offset: -16,
-                    fill: 'var(--text-main)',
-                    fontSize: 11,
-                    fontWeight: 700,
-                  }}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="shortLabel"
-                  stroke="var(--text-dim)"
-                  fontSize={11}
-                  tickLine={false}
-                  width={150}
-                  label={{
-                    value: yAxisTitle,
-                    angle: -90,
-                    position: 'insideLeft',
-                    offset: -4,
-                    fill: 'var(--text-main)',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    style: { textAnchor: 'middle' },
-                  }}
-                />
-                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} />} />
-                <Bar
-                  dataKey="value"
-                  name="Feeder Load"
-                  radius={[0, 6, 6, 0]}
-                  maxBarSize={22}
-                  animationDuration={600}
-                >
-                  {feederData.slice(0, 10).map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={entry.isIncoming ? `url(#${gradFeeder}_inc)` : FEEDER_PALETTE[index % FEEDER_PALETTE.length]}
+              analysisMode === 'compare_years' ? (
+                /* Feeder Breakdown - Compare Years */
+                <ComposedChart data={feederCompareYearsData} margin={{ top: 14, right: 20, left: 18, bottom: 26 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--table-border)" strokeOpacity={0.6} />
+                  <XAxis
+                    dataKey="shortLabel"
+                    stroke="var(--text-dim)"
+                    fontSize={11}
+                    tickLine={false}
+                    dy={4}
+                    label={{
+                      value: xAxisTitle,
+                      position: 'insideBottom',
+                      offset: -16,
+                      fill: 'var(--text-main)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  />
+                  <YAxis
+                    stroke="var(--text-dim)"
+                    fontSize={11}
+                    tickLine={false}
+                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
+                    width={68}
+                    label={{
+                      value: yAxisTitle,
+                      angle: -90,
+                      position: 'insideLeft',
+                      offset: 2,
+                      fill: 'var(--text-main)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      style: { textAnchor: 'middle' },
+                    }}
+                  />
+                  <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} analysisMode={analysisMode} />} />
+                  <Legend verticalAlign="top" height={32} iconType="circle" iconSize={8} />
+
+                  {activeCompareYears.map((yr, idx) => (
+                    <Bar
+                      key={yr}
+                      dataKey={yr}
+                      name={`Year ${yr}`}
+                      fill={YEAR_COLORS[idx % YEAR_COLORS.length]}
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={28}
+                      animationDuration={600}
                     />
                   ))}
-                </Bar>
-              </BarChart>
-            ) : trendAnalysisMode === 'compare_years' ? (
-              /* MODE 4: Year-over-Year (YoY) Overlay Comparison */
+                </ComposedChart>
+              ) : analysisMode === 'compare_months' ? (
+                /* Feeder Breakdown - Compare Months */
+                <ComposedChart data={feederCompareMonthsData} margin={{ top: 14, right: 20, left: 18, bottom: 26 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--table-border)" strokeOpacity={0.6} />
+                  <XAxis
+                    dataKey="shortLabel"
+                    stroke="var(--text-dim)"
+                    fontSize={11}
+                    tickLine={false}
+                    dy={4}
+                    label={{
+                      value: xAxisTitle,
+                      position: 'insideBottom',
+                      offset: -16,
+                      fill: 'var(--text-main)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  />
+                  <YAxis
+                    stroke="var(--text-dim)"
+                    fontSize={11}
+                    tickLine={false}
+                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
+                    width={68}
+                    label={{
+                      value: yAxisTitle,
+                      angle: -90,
+                      position: 'insideLeft',
+                      offset: 2,
+                      fill: 'var(--text-main)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      style: { textAnchor: 'middle' },
+                    }}
+                  />
+                  <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} analysisMode={analysisMode} />} />
+                  <Legend verticalAlign="top" height={32} iconType="circle" iconSize={8} />
+
+                  <Bar
+                    dataKey={selectedMonthA}
+                    name={formatMonthLabel(selectedMonthA)}
+                    fill="#1a3c34"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={22}
+                    animationDuration={600}
+                  />
+                  <Bar
+                    dataKey={selectedMonthB}
+                    name={formatMonthLabel(selectedMonthB)}
+                    fill="#c2622a"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={22}
+                    animationDuration={600}
+                  />
+                </ComposedChart>
+              ) : (
+                /* Feeder Breakdown - Standard / Monthly / Yearly (Ranked Horizontal Bars) */
+                <BarChart
+                  data={feederData.slice(0, 10)}
+                  layout="vertical"
+                  margin={{ top: 12, right: 30, left: 24, bottom: 26 }}
+                >
+                  <defs>
+                    <linearGradient id={gradFeeder} x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#2d4a3e" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#4d8c6e" stopOpacity={0.75} />
+                    </linearGradient>
+                    <linearGradient id={`${gradFeeder}_inc`} x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#1a3c34" stopOpacity={1} />
+                      <stop offset="100%" stopColor="#22c55e" stopOpacity={0.8} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--table-border)" strokeOpacity={0.6} />
+                  <XAxis
+                    type="number"
+                    stroke="var(--text-dim)"
+                    fontSize={11}
+                    tickLine={false}
+                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
+                    label={{
+                      value: xAxisTitle,
+                      position: 'insideBottom',
+                      offset: -16,
+                      fill: 'var(--text-main)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="shortLabel"
+                    stroke="var(--text-dim)"
+                    fontSize={11}
+                    tickLine={false}
+                    width={150}
+                    label={{
+                      value: yAxisTitle,
+                      angle: -90,
+                      position: 'insideLeft',
+                      offset: -4,
+                      fill: 'var(--text-main)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      style: { textAnchor: 'middle' },
+                    }}
+                  />
+                  <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} analysisMode={analysisMode} />} />
+                  <Bar
+                    dataKey="value"
+                    name="Feeder Load"
+                    radius={[0, 6, 6, 0]}
+                    maxBarSize={22}
+                    animationDuration={600}
+                  >
+                    {feederData.slice(0, 10).map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.isIncoming ? `url(#${gradFeeder}_inc)` : FEEDER_PALETTE[index % FEEDER_PALETTE.length]}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              )
+            ) : analysisMode === 'compare_years' ? (
+              /* Power Trend - Year-over-Year (YoY) Overlay Comparison */
               <ComposedChart data={compareYearsData} margin={{ top: 14, right: 20, left: 18, bottom: 26 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--table-border)" strokeOpacity={0.6} />
                 <XAxis
@@ -1533,7 +2078,7 @@ export default function SubstationAnalyticsChart({
                     style: { textAnchor: 'middle' },
                   }}
                 />
-                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} trendAnalysisMode={trendAnalysisMode} />} />
+                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} analysisMode={analysisMode} />} />
                 <Legend verticalAlign="top" height={32} iconType="circle" iconSize={8} />
 
                 {activeCompareYears.map((yr, idx) => {
@@ -1563,8 +2108,8 @@ export default function SubstationAnalyticsChart({
                   );
                 })}
               </ComposedChart>
-            ) : trendAnalysisMode === 'compare_months' ? (
-              /* MODE 5: Month-to-Month Side-by-Side Day 01-31 Comparison */
+            ) : analysisMode === 'compare_months' ? (
+              /* Power Trend - Month-to-Month Side-by-Side Day 01-31 Comparison */
               <ComposedChart data={compareMonthsData} margin={{ top: 14, right: 20, left: 18, bottom: 26 }}>
                 <defs>
                   <linearGradient id="gradMonthA" x1="0" y1="0" x2="0" y2="1">
@@ -1610,7 +2155,7 @@ export default function SubstationAnalyticsChart({
                     style: { textAnchor: 'middle' },
                   }}
                 />
-                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} trendAnalysisMode={trendAnalysisMode} />} />
+                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} analysisMode={analysisMode} />} />
                 <Legend verticalAlign="top" height={32} iconType="circle" iconSize={8} />
 
                 {trendChartType === 'bar' ? (
@@ -1660,7 +2205,7 @@ export default function SubstationAnalyticsChart({
                 )}
               </ComposedChart>
             ) : (
-              /* MODES 1, 2, 3: Timeline, Monthly Trend, Yearly Trend */
+              /* Power Trend - MODES 1, 2, 3: Timeline, Monthly Trend, Yearly Trend */
               <ComposedChart data={activeTrendChartData} margin={{ top: 14, right: 20, left: 18, bottom: 26 }}>
                 <defs>
                   <linearGradient id={gradTrend} x1="0" y1="0" x2="0" y2="1">
@@ -1671,7 +2216,7 @@ export default function SubstationAnalyticsChart({
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--table-border)" strokeOpacity={0.6} />
                 <XAxis
-                  dataKey={trendAnalysisMode === 'timeline' ? 'shortLabel' : 'label'}
+                  dataKey={analysisMode === 'timeline' ? 'shortLabel' : 'label'}
                   stroke="var(--text-dim)"
                   fontSize={11}
                   tickLine={false}
@@ -1702,9 +2247,9 @@ export default function SubstationAnalyticsChart({
                     style: { textAnchor: 'middle' },
                   }}
                 />
-                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} trendAnalysisMode={trendAnalysisMode} />} />
+                <Tooltip content={<CustomAnalyticsTooltip unit={unit} viewMode={viewMode} analysisMode={analysisMode} />} />
 
-                {stats.trendAvg > 0 && trendAnalysisMode === 'timeline' && (
+                {stats.trendAvg > 0 && analysisMode === 'timeline' && (
                   <ReferenceLine
                     y={stats.trendAvg}
                     stroke="#d97706"
@@ -1738,7 +2283,7 @@ export default function SubstationAnalyticsChart({
                     name={scopeLabel}
                     fill="#1a3c34"
                     radius={[4, 4, 0, 0]}
-                    maxBarSize={trendAnalysisMode === 'yearly' ? 56 : 36}
+                    maxBarSize={analysisMode === 'yearly' ? 56 : 36}
                     animationDuration={600}
                   />
                 )}
@@ -1765,13 +2310,21 @@ export default function SubstationAnalyticsChart({
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <span>
               💡 <strong>Tip:</strong>{' '}
-              {viewMode === 'comparison' && 'Click on any substation bar to inspect its feeder breakdown below.'}
-              {viewMode === 'feeder' && 'Green bars indicate incoming feeds, other bars represent outgoing load circuits.'}
-              {viewMode === 'trend' && trendAnalysisMode === 'timeline' && 'The dashed amber line shows the average daily load for this cycle.'}
-              {viewMode === 'trend' && trendAnalysisMode === 'monthly' && 'Aggregates all daily consumption across the campus history month-by-month.'}
-              {viewMode === 'trend' && trendAnalysisMode === 'yearly' && 'Shows annual energy consumption totals and multi-year progression.'}
-              {viewMode === 'trend' && trendAnalysisMode === 'compare_years' && 'Select any years above to overlay monthly trends (Jan–Dec) side-by-side.'}
-              {viewMode === 'trend' && trendAnalysisMode === 'compare_months' && 'Select any two months to inspect day-by-day (1–31) variance and net deltas.'}
+              {viewMode === 'comparison' && analysisMode === 'timeline' && 'Click on any substation bar to inspect its feeder breakdown.'}
+              {viewMode === 'comparison' && analysisMode === 'monthly' && `Showing all ${section} substations for ${formatMonthLabel(selectedMonth)}.`}
+              {viewMode === 'comparison' && analysisMode === 'yearly' && `Showing annual totals for all ${section} substations for Year ${selectedYear}.`}
+              {viewMode === 'comparison' && analysisMode === 'compare_years' && 'Select any years to compare all substations side-by-side YoY.'}
+              {viewMode === 'comparison' && analysisMode === 'compare_months' && 'Compare all substations between two selected months with net variance.'}
+              {viewMode === 'feeder' && analysisMode === 'timeline' && 'Green bars indicate incoming feeds, other bars represent outgoing load circuits.'}
+              {viewMode === 'feeder' && analysisMode === 'monthly' && `Showing active feeder loads for ${formatMonthLabel(selectedMonth)}.`}
+              {viewMode === 'feeder' && analysisMode === 'yearly' && `Showing active feeder annual loads for Year ${selectedYear}.`}
+              {viewMode === 'feeder' && analysisMode === 'compare_years' && 'Side-by-side feeder load comparison across chosen years.'}
+              {viewMode === 'feeder' && analysisMode === 'compare_months' && 'Side-by-side feeder circuit comparison between two selected months.'}
+              {viewMode === 'trend' && analysisMode === 'timeline' && 'The dashed amber line shows the average daily load for this cycle.'}
+              {viewMode === 'trend' && analysisMode === 'monthly' && 'Aggregates all daily consumption across the campus history month-by-month.'}
+              {viewMode === 'trend' && analysisMode === 'yearly' && 'Shows annual energy consumption totals and multi-year progression.'}
+              {viewMode === 'trend' && analysisMode === 'compare_years' && 'Select any years above to overlay monthly trends (Jan–Dec) side-by-side.'}
+              {viewMode === 'trend' && analysisMode === 'compare_months' && 'Select any two months to inspect day-by-day (1–31) variance and net deltas.'}
             </span>
           </div>
 
@@ -1787,7 +2340,7 @@ export default function SubstationAnalyticsChart({
                 color: 'var(--green-900)',
               }}
             >
-              Active: {scopeLabel}
+              Active: {viewMode === 'comparison' ? `All ${section} Substations` : scopeLabel}
             </span>
           </div>
         </div>
