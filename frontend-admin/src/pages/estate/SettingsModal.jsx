@@ -11,7 +11,8 @@ export default function SettingsModal({
     headline: 'Demand Note',
     noteNoPrefix: 'IWD/26-27/',
     autoFinancialYear: true,
-    firstNoteNo: 259,
+    firstNoteNo: 230,
+    firstContractorNoteNo: 228,
     expiryAlertDays: 30,
     paymentNote: '',
     signatory: { name: 'Sujeet Kumar, SE', title: 'Estate Officer' },
@@ -25,7 +26,8 @@ export default function SettingsModal({
         headline: settings.headline || 'Demand Note',
         noteNoPrefix: settings.noteNoPrefix || 'IWD/26-27/',
         autoFinancialYear: settings.autoFinancialYear !== false,
-        firstNoteNo: settings.firstNoteNo || 259,
+        firstNoteNo: settings.firstNoteNo || 230,
+        firstContractorNoteNo: settings.firstContractorNoteNo || 228,
         expiryAlertDays: Number(settings.expiryAlertDays) || 30,
         paymentNote: settings.paymentNote || '',
         signatory: {
@@ -75,7 +77,7 @@ export default function SettingsModal({
       width={600}
     >
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 4 }}>
               Headline
@@ -89,12 +91,23 @@ export default function SettingsModal({
           </div>
           <div>
             <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 4 }}>
-              Starting Note No.
+              Shop Note Start
             </label>
             <input
               type="number"
               value={formData.firstNoteNo}
               onChange={(e) => setFormData({ ...formData, firstNoteNo: Number(e.target.value) })}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+              Contractor Note Start
+            </label>
+            <input
+              type="number"
+              value={formData.firstContractorNoteNo}
+              onChange={(e) => setFormData({ ...formData, firstContractorNoteNo: Number(e.target.value) })}
               style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}
             />
           </div>

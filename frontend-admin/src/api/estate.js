@@ -40,6 +40,10 @@ export const estateApi = {
   createClearance: (data) => api.post('/estate/housing/clearances/', data),
   patchClearance: (id, data) => api.patch(`/estate/housing/clearances/${id}/`, data),
   deleteClearance: (id) => api.delete(`/estate/housing/clearances/${id}/`),
+  deleteClearanceHistory: (data) => api.post('/estate/housing/clearances/delete-history/', data),
+  getClearanceTrash: () => api.get('/estate/housing/clearances/trash/'),
+  restoreClearanceTrash: (data) => api.post('/estate/housing/clearances/trash/restore/', data),
+  purgeClearanceTrash: (data) => api.post('/estate/housing/clearances/trash/purge/', data),
   getClearanceAlertsStatus: () => api.get('/estate/housing/clearances/toggle-alerts/'),
   toggleClearanceAlerts: (data) => api.post('/estate/housing/clearances/toggle-alerts/', data),
 }

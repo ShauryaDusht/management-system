@@ -3,6 +3,9 @@ import { Badge, Btn, Card, Modal, Spinner } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import estateApi from '../../api/estate'
 import { todayISO } from '../../shared/utils'
+import { Trash2, EyeOff, Eye, Clock, RotateCcw, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import HousingDeleteHistoryModal from './HousingDeleteHistoryModal'
+import HousingTrashModal from './HousingTrashModal'
 
 export function toDateInputValue(str) {
   if (!str) return ''
@@ -776,29 +779,132 @@ export default function HousingStatusTab({ onReloadHousing, isReadOnly: propRead
         : 'all'
   const [deptFilter, setDeptFilter] = useState(defaultDeptFilter)
 
-  // Automated Email Alerts status
-  const [alertsEnabled, setAlertsEnabled] = useState(true)
+  // Department-specific Automated Email Alerts status
+  const [alertsState, setAlertsState] = useState({
+    enabled: true,
+    civil: true,
+    electrical: true,
+    hk: true,
+    estate: true,
+    userDept: 'all',
+    isMaster: false,
+  })
   const [togglingAlerts, setTogglingAlerts] = useState(false)
+  const [showAlertsMenu, setShowAlertsMenu] = useState(false)
+  const alertsMenuRef = useRef(null)
+
+  // History Deletion & 24-Hour Recovery Trash State
+  const [isDeleteHistoryOpen, setIsDeleteHistoryOpen] = useState(false)
+  const [isTrashOpen, setIsTrashOpen] = useState(false)
+  const [trashCount, setTrashCount] = useState(0)
+  const [deleteToast, setDeleteToast] = useState(null)
+
+  const refreshTrashCount = () => {
+    estateApi.getClearanceTrash()
+      .then((res) => {
+        setTrashCount(res?.data?.total_in_trash || 0)
+      })
+      .catch((err) => console.error('Failed to load clearance trash count:', err))
+  }
+
+  useEffect(() => {
+    refreshTrashCount()
+  }, [])
+
+  const handleConfirmDeleteHistory = async (payload) => {
+    const res = await estateApi.deleteClearanceHistory(payload)
+    const deletedIds = res?.data?.deleted_ids || payload.ids || []
+    const count = res?.data?.deleted_count || deletedIds.length
+    setClearances((prev) => prev.filter((c) => !deletedIds.includes(c.id)))
+    refreshTrashCount()
+    setDeleteToast({ count, ids: deletedIds })
+    setTimeout(() => {
+      setDeleteToast(null)
+    }, 12000)
+  }
+
+  const handleUndoRecentDelete = async () => {
+    if (!deleteToast || !deleteToast.ids || deleteToast.ids.length === 0) return
+    try {
+      await estateApi.restoreClearanceTrash({ ids: deleteToast.ids })
+      setDeleteToast(null)
+      loadData()
+      refreshTrashCount()
+    } catch (err) {
+      console.error('Failed to undo delete:', err)
+      alert(err?.response?.data?.error || 'Failed to restore records.')
+    }
+  }
 
   useEffect(() => {
     estateApi.getClearanceAlertsStatus()
       .then((res) => {
         if (res.data) {
-          setAlertsEnabled(Boolean(res.data.enabled))
+          setAlertsState({
+            enabled: Boolean(res.data.enabled),
+            civil: res.data.civil !== false,
+            electrical: res.data.electrical !== false,
+            hk: res.data.hk !== false,
+            estate: res.data.estate !== false,
+            userDept: res.data.userDept || 'all',
+            isMaster: Boolean(res.data.isMaster),
+          })
         }
       })
       .catch((err) => console.error('Failed to load clearance alerts status:', err))
   }, [])
 
-  const handleToggleAlerts = async () => {
-    if (isReadOnly) return
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (alertsMenuRef.current && !alertsMenuRef.current.contains(event.target)) {
+        setShowAlertsMenu(false)
+      }
+    }
+    if (showAlertsMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showAlertsMenu])
+
+  const handleToggleDeptAlert = async (targetDept) => {
     setTogglingAlerts(true)
     try {
-      const res = await estateApi.toggleClearanceAlerts({ enabled: !alertsEnabled })
-      setAlertsEnabled(Boolean(res.data?.enabled))
+      let dept = targetDept
+      if (!dept) {
+        if (isCivil) dept = 'civil'
+        else if (isElectrical) dept = 'electrical'
+        else if (isHK) dept = 'hk'
+        else if (isEstateOffice) dept = 'estate'
+        else dept = 'all'
+      }
+
+      let currentVal = true
+      if (dept === 'civil') currentVal = alertsState.civil
+      else if (dept === 'electrical') currentVal = alertsState.electrical
+      else if (dept === 'hk') currentVal = alertsState.hk
+      else if (dept === 'estate') currentVal = alertsState.estate
+      else currentVal = alertsState.enabled
+
+      const res = await estateApi.toggleClearanceAlerts({
+        department: dept,
+        enabled: !currentVal,
+      })
+
+      if (res.data) {
+        setAlertsState((prev) => ({
+          ...prev,
+          enabled: Boolean(res.data.enabled),
+          civil: res.data.civil !== false,
+          electrical: res.data.electrical !== false,
+          hk: res.data.hk !== false,
+          estate: res.data.estate !== false,
+        }))
+      }
     } catch (err) {
       console.error('Failed to toggle clearance alerts:', err)
-      alert('Could not toggle email alerts.')
+      alert(err.response?.data?.error || 'Could not toggle email alerts.')
     } finally {
       setTogglingAlerts(false)
     }
@@ -1968,6 +2074,250 @@ export default function HousingStatusTab({ onReloadHousing, isReadOnly: propRead
             </span>
           )}
 
+          {/* Department-specific Email Alerts Toggle */}
+          {!isMaster ? (
+            (() => {
+              const isDeptActive = isCivil
+                ? alertsState.civil
+                : isElectrical
+                  ? alertsState.electrical
+                  : isHK
+                    ? alertsState.hk
+                    : alertsState.enabled
+              const deptName = isCivil
+                ? 'Civil'
+                : isElectrical
+                  ? 'Electrical'
+                  : isHK
+                    ? 'Housekeeping'
+                    : 'Email'
+              return (
+                <button
+                  type="button"
+                  onClick={() => handleToggleDeptAlert()}
+                  disabled={togglingAlerts}
+                  title={
+                    isDeptActive
+                      ? `${deptName} handover email alerts are ACTIVE. Click to turn OFF for ${deptName}.`
+                      : `${deptName} handover email alerts are PAUSED. Click to turn ON for ${deptName}.`
+                  }
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '7px 12px',
+                    borderRadius: 8,
+                    border: `1.5px solid ${isDeptActive ? '#86efac' : '#cbd5e1'}`,
+                    background: isDeptActive ? '#f0fdf4' : '#f8fafc',
+                    color: isDeptActive ? '#15803d' : '#64748b',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: togglingAlerts ? 'wait' : 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s ease',
+                    boxShadow: isDeptActive ? '0 1px 3px rgba(34,197,94,0.15)' : 'none',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: '50%',
+                      background: isDeptActive ? '#22c55e' : '#94a3b8',
+                      boxShadow: isDeptActive ? '0 0 6px #22c55e' : 'none',
+                    }}
+                  />
+                  <span>{deptName} Alerts: {isDeptActive ? 'ON' : 'OFF'}</span>
+                </button>
+              )
+            })()
+          ) : (
+            <div style={{ position: 'relative' }} ref={alertsMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowAlertsMenu((v) => !v)}
+                disabled={togglingAlerts}
+                title="Manage email alert toggles for each department"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '7px 12px',
+                  borderRadius: 8,
+                  border: `1.5px solid ${alertsState.enabled ? '#86efac' : '#cbd5e1'}`,
+                  background: alertsState.enabled ? '#f0fdf4' : '#f8fafc',
+                  color: alertsState.enabled ? '#15803d' : '#64748b',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease',
+                  boxShadow: alertsState.enabled ? '0 1px 3px rgba(34,197,94,0.15)' : 'none',
+                }}
+              >
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    background: alertsState.enabled ? '#22c55e' : '#94a3b8',
+                    boxShadow: alertsState.enabled ? '0 0 6px #22c55e' : 'none',
+                  }}
+                />
+                <span>Email Alerts: {alertsState.enabled ? 'Active' : 'Paused'}</span>
+                <span style={{ fontSize: 10, marginLeft: 2 }}>▾</span>
+              </button>
+
+              {showAlertsMenu && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    right: 0,
+                    background: '#ffffff',
+                    borderRadius: 10,
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)',
+                    padding: '12px 14px',
+                    width: 250,
+                    zIndex: 100,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, color: '#64748b', borderBottom: '1px solid #f1f5f9', paddingBottom: 6 }}>
+                    Department Alert Control
+                  </div>
+
+                  {/* Civil Team Switch */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b' }}>Civil Team</div>
+                      <div style={{ fontSize: 10, color: '#64748b' }}>Key received alert</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleDeptAlert('civil')}
+                      disabled={togglingAlerts}
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        border: `1px solid ${alertsState.civil ? '#86efac' : '#cbd5e1'}`,
+                        background: alertsState.civil ? '#f0fdf4' : '#f8fafc',
+                        color: alertsState.civil ? '#15803d' : '#64748b',
+                      }}
+                    >
+                      {alertsState.civil ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+
+                  {/* Electrical Team Switch */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b' }}>Electrical Team</div>
+                      <div style={{ fontSize: 10, color: '#64748b' }}>Handover alert</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleDeptAlert('electrical')}
+                      disabled={togglingAlerts}
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        border: `1px solid ${alertsState.electrical ? '#86efac' : '#cbd5e1'}`,
+                        background: alertsState.electrical ? '#f0fdf4' : '#f8fafc',
+                        color: alertsState.electrical ? '#15803d' : '#64748b',
+                      }}
+                    >
+                      {alertsState.electrical ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+
+                  {/* Housekeeping Switch */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b' }}>Housekeeping</div>
+                      <div style={{ fontSize: 10, color: '#64748b' }}>Cleaning handover</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleDeptAlert('hk')}
+                      disabled={togglingAlerts}
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        border: `1px solid ${alertsState.hk ? '#86efac' : '#cbd5e1'}`,
+                        background: alertsState.hk ? '#f0fdf4' : '#f8fafc',
+                        color: alertsState.hk ? '#15803d' : '#64748b',
+                      }}
+                    >
+                      {alertsState.hk ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+
+                  {/* Estate Office Switch */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b' }}>Estate Office</div>
+                      <div style={{ fontSize: 10, color: '#64748b' }}>Final readiness</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleDeptAlert('estate')}
+                      disabled={togglingAlerts}
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        border: `1px solid ${alertsState.estate ? '#86efac' : '#cbd5e1'}`,
+                        background: alertsState.estate ? '#f0fdf4' : '#f8fafc',
+                        color: alertsState.estate ? '#15803d' : '#64748b',
+                      }}
+                    >
+                      {alertsState.estate ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+
+                  {/* Global Master Switch */}
+                  <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>All Emails (Master)</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleDeptAlert('all')}
+                      disabled={togglingAlerts}
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        border: `1px solid ${alertsState.enabled ? '#86efac' : '#cbd5e1'}`,
+                        background: alertsState.enabled ? '#f0fdf4' : '#f8fafc',
+                        color: alertsState.enabled ? '#15803d' : '#64748b',
+                      }}
+                    >
+                      {alertsState.enabled ? 'Master ON' : 'Master OFF'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {isMaster && !isReadOnly && (
             <button
               type="button"
@@ -2081,42 +2431,45 @@ export default function HousingStatusTab({ onReloadHousing, isReadOnly: propRead
             Showing <strong>{filtered.length}</strong> {filtered.length === 1 ? 'record' : 'records'}
           </div>
 
-          {/* Delete All History / Restore History controls (Only on Completed Work views) */}
+          {/* History Controls: Clear History (UI Only) + Delete History (DB with 24hr Recovery) + Trash */}
           {Boolean(currentCompletedKey) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {/* Button 1: Clear History (UI Only) */}
               {filtered.length > 0 && !isReadOnly && (
                 <button
                   type="button"
                   onClick={handleClearHistory}
-                  title="Clear completed history from this screen. All records remain safely stored in database."
+                  title="Hide completed history from this screen. All records remain safely stored in database."
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6,
-                    padding: '5px 12px',
+                    gap: 5,
+                    padding: '5px 11px',
                     borderRadius: 7,
-                    border: '1.5px solid #fca5a5',
-                    background: '#fef2f2',
-                    color: '#991b1b',
+                    border: '1.5px solid var(--border)',
+                    background: 'var(--surface-2)',
+                    color: 'var(--text-2)',
                     fontSize: 12,
-                    fontWeight: 700,
+                    fontWeight: 600,
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                     whiteSpace: 'nowrap',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#fee2e2'
-                    e.currentTarget.style.borderColor = '#f87171'
+                    e.currentTarget.style.background = 'var(--surface)'
+                    e.currentTarget.style.borderColor = 'var(--text-3)'
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#fef2f2'
-                    e.currentTarget.style.borderColor = '#fca5a5'
+                    e.currentTarget.style.background = 'var(--surface-2)'
+                    e.currentTarget.style.borderColor = 'var(--border)'
                   }}
                 >
-                  Delete All History
+                  <EyeOff size={13} />
+                  <span>Clear History</span>
                 </button>
               )}
 
+              {/* Restore Screen History (UI Only) */}
               {hiddenCountForCurrent > 0 && (
                 <button
                   type="button"
@@ -2138,13 +2491,139 @@ export default function HousingStatusTab({ onReloadHousing, isReadOnly: propRead
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  Restore History ({hiddenCountForCurrent} hidden)
+                  <Eye size={13} />
+                  <span>Restore Screen ({hiddenCountForCurrent} hidden)</span>
+                </button>
+              )}
+
+              {/* Button 2: Delete History (Database + 24hr Recovery) - Only for Master / Completed View */}
+              {!isReadOnly && isMaster && (
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteHistoryOpen(true)}
+                  title="Delete completed allotted history by date range, month, year, or all, with 24-hour recovery window."
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '5px 12px',
+                    borderRadius: 7,
+                    border: '1.5px solid #fca5a5',
+                    background: '#fef2f2',
+                    color: '#991b1b',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#fee2e2'
+                    e.currentTarget.style.borderColor = '#f87171'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#fef2f2'
+                    e.currentTarget.style.borderColor = '#fca5a5'
+                  }}
+                >
+                  <Trash2 size={13} />
+                  <span>Delete History</span>
+                </button>
+              )}
+
+              {/* Trash (24-Hour Recovery) Button */}
+              {trashCount > 0 && isMaster && (
+                <button
+                  type="button"
+                  onClick={() => setIsTrashOpen(true)}
+                  title="View and restore records currently in 24-hour recovery trash"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '5px 10px',
+                    borderRadius: 7,
+                    border: '1.5px solid #bfdbfe',
+                    background: '#eff6ff',
+                    color: '#1d4ed8',
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <Clock size={12} />
+                  <span>Trash ({trashCount})</span>
                 </button>
               )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Undo Toast Banner */}
+      {deleteToast && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 16px',
+            borderRadius: 8,
+            background: '#f0fdf4',
+            border: '1.5px solid #86efac',
+            color: '#15803d',
+            fontSize: 12.5,
+            fontWeight: 600,
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CheckCircle2 size={16} />
+            <span>
+              {deleteToast.count} {deleteToast.count === 1 ? 'record' : 'records'} moved to Trash. You have 24 hours to recover before permanent database deletion.
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              onClick={handleUndoRecentDelete}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '4px 10px',
+                borderRadius: 5,
+                border: '1px solid #16a34a',
+                background: '#ffffff',
+                color: '#15803d',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              <RotateCcw size={12} />
+              <span>Undo</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeleteToast(null)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#15803d',
+                cursor: 'pointer',
+                padding: 2,
+                fontSize: 14,
+                fontWeight: 700,
+              }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <Card style={{ borderColor: '#fecaca', background: '#fff1f2', color: '#991b1b', fontSize: 13, padding: '10px 14px' }}>
@@ -4125,6 +4604,28 @@ export default function HousingStatusTab({ onReloadHousing, isReadOnly: propRead
             </div>
           </div>
         </div>
+      )}
+
+      {/* Delete Allotted History Modal (Date / Month / Year / All) */}
+      {isDeleteHistoryOpen && (
+        <HousingDeleteHistoryModal
+          isOpen={isDeleteHistoryOpen}
+          onClose={() => setIsDeleteHistoryOpen(false)}
+          records={clearances.filter((c) => Boolean(c.isAllotted || c.status === 'completed'))}
+          onConfirmDelete={handleConfirmDeleteHistory}
+        />
+      )}
+
+      {/* 24-Hour Recovery Trash Modal */}
+      {isTrashOpen && (
+        <HousingTrashModal
+          isOpen={isTrashOpen}
+          onClose={() => setIsTrashOpen(false)}
+          onRecordsRestored={() => {
+            loadData()
+            refreshTrashCount()
+          }}
+        />
       )}
     </div>
   )

@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from unittest.mock import patch
 from .models import (
     EstateSettings,
     BillingCycle,
@@ -12,6 +13,14 @@ from .models import (
     ContractorDemandNote,
     HousingUnit,
     HousingAllotment,
+    HousingClearance,
+)
+from .notifications import (
+    send_handover_alert,
+    EVENT_ESTATE_TO_CIVIL,
+    EVENT_CIVIL_TO_ELECTRICAL,
+    EVENT_ELECTRICAL_TO_HK,
+    EVENT_HK_TO_ESTATE,
 )
 from .views import (
     calculate_shop_total,
@@ -41,6 +50,18 @@ class EstateBillingTestCase(TestCase):
             email='normal@test.com',
             password='Password@123',
             role='supervisor',
+        )
+        self.civil_user = User.objects.create_user(
+            username='civil.test',
+            email='civil@test.com',
+            password='Password@123',
+            role='civil_team',
+        )
+        self.electrical_user = User.objects.create_user(
+            username='elec.test',
+            email='elec@test.com',
+            password='Password@123',
+            role='electrical_team',
         )
 
         self.client = APIClient()
@@ -290,16 +311,16 @@ class EstateBillingTestCase(TestCase):
         ensure_cycle_notes('2026-10')
         notes_10 = list(ShopDemandNote.objects.filter(cycle_month='2026-10', shop__is_active=True).order_by('shop__sl'))
         self.assertEqual(len(notes_10), 2)
-        # In test DB, default first_note_no is 259
-        self.assertEqual(notes_10[0].note_no, 'IWD/26-27/259')
-        self.assertEqual(notes_10[1].note_no, 'IWD/26-27/260')
+        # In test DB, default first_note_no is 230
+        self.assertEqual(notes_10[0].note_no, 'IWD/26-27/230')
+        self.assertEqual(notes_10[1].note_no, 'IWD/26-27/231')
 
-        # Next cycle 2026-11 must start at 261
+        # Next cycle 2026-11 must start at 232
         ensure_cycle_notes('2026-11')
         notes_11 = list(ShopDemandNote.objects.filter(cycle_month='2026-11', shop__is_active=True).order_by('shop__sl'))
         self.assertEqual(len(notes_11), 2)
-        self.assertEqual(notes_11[0].note_no, 'IWD/26-27/261')
-        self.assertEqual(notes_11[1].note_no, 'IWD/26-27/262')
+        self.assertEqual(notes_11[0].note_no, 'IWD/26-27/232')
+        self.assertEqual(notes_11[1].note_no, 'IWD/26-27/233')
 
     def test_cancel_shop_demand_note_resequencing(self):
         self.client.force_authenticate(user=self.estate_user)
@@ -315,7 +336,7 @@ class EstateBillingTestCase(TestCase):
         notes_10 = list(ShopDemandNote.objects.filter(cycle_month='2026-10', shop__is_active=True).order_by('shop__sl'))
         first_note_id = notes_10[0].id
 
-        # Cancel shop 1: note_no becomes 'CANCELLED', amount becomes 0, shop 2 gets 259
+        # Cancel shop 1: note_no becomes 'CANCELLED', amount becomes 0, shop 2 gets 230
         patch_res = self.client.patch(
             f'/api/estate/shops/{first_note_id}/',
             {'isCancelled': True},
@@ -326,6 +347,266 @@ class EstateBillingTestCase(TestCase):
         self.assertEqual(patch_res.data['noteNo'], 'CANCELLED')
         self.assertEqual(Decimal(str(patch_res.data['total_amount'])), Decimal('0'))
 
-        # Shop 2 note should now take note number 259
+        # Shop 2 note should now take note number 230
         shop_2_note = ShopDemandNote.objects.get(id=notes_10[1].id)
-        self.assertEqual(shop_2_note.note_no, 'IWD/26-27/259')
+        self.assertEqual(shop_2_note.note_no, 'IWD/26-27/230')
+
+    def test_independent_contractor_note_numbers_across_cycles(self):
+        self.client.force_authenticate(user=self.estate_user)
+        # Add a second contractor
+        Contractor.objects.create(
+            sl=2,
+            name='Second Contractor Ltd',
+            to_line='CPWD 2',
+            is_active=True,
+        )
+        ensure_cycle_notes('2026-10')
+        c_notes_10 = list(ContractorDemandNote.objects.filter(cycle_month='2026-10', contractor__is_active=True).order_by('contractor__sl'))
+        self.assertEqual(len(c_notes_10), 2)
+        # Contractor starts at default first_contractor_note_no (228)
+        self.assertEqual(c_notes_10[0].note_no, 'IWD/26-27/228')
+        self.assertEqual(c_notes_10[1].note_no, 'IWD/26-27/229')
+
+        # Next cycle 2026-11 must continue from max (229) + 1 = 230
+        ensure_cycle_notes('2026-11')
+        c_notes_11 = list(ContractorDemandNote.objects.filter(cycle_month='2026-11', contractor__is_active=True).order_by('contractor__sl'))
+        self.assertEqual(len(c_notes_11), 2)
+        self.assertEqual(c_notes_11[0].note_no, 'IWD/26-27/230')
+        self.assertEqual(c_notes_11[1].note_no, 'IWD/26-27/231')
+
+    def test_department_specific_clearance_email_toggle(self):
+        # 1. Civil user can access toggle endpoint and gets their department metadata
+        self.client.force_authenticate(user=self.civil_user)
+        res = self.client.get('/api/estate/housing/clearances/toggle-alerts/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['userDept'], 'civil')
+        self.assertFalse(res.data['isMaster'])
+        self.assertTrue(res.data['civil'])
+
+        # 2. Civil user cannot toggle other department alerts (e.g. electrical)
+        res_forbidden = self.client.post(
+            '/api/estate/housing/clearances/toggle-alerts/',
+            {'department': 'electrical', 'enabled': False},
+            format='json',
+        )
+        self.assertEqual(res_forbidden.status_code, 403)
+
+        # 3. Civil user CAN toggle their own department alert
+        res_toggle_civil = self.client.post(
+            '/api/estate/housing/clearances/toggle-alerts/',
+            {'department': 'civil', 'enabled': False},
+            format='json',
+        )
+        self.assertEqual(res_toggle_civil.status_code, 200)
+        self.assertFalse(res_toggle_civil.data['civil'])
+
+        # Verify DB: Only civil alerts are disabled; other departments remain enabled
+        settings = EstateSettings.get_settings()
+        self.assertFalse(settings.enable_civil_alerts)
+        self.assertTrue(settings.enable_electrical_alerts)
+        self.assertTrue(settings.enable_hk_alerts)
+        self.assertTrue(settings.enable_estate_alerts)
+
+        # 4. Master (Estate Office) can toggle any department and master switch
+        self.client.force_authenticate(user=self.estate_user)
+        res_estate_get = self.client.get('/api/estate/housing/clearances/toggle-alerts/')
+        self.assertEqual(res_estate_get.status_code, 200)
+        self.assertTrue(res_estate_get.data['isMaster'])
+
+        # Estate office turns global alerts ON
+        res_global = self.client.post(
+            '/api/estate/housing/clearances/toggle-alerts/',
+            {'department': 'all', 'enabled': True},
+            format='json',
+        )
+        self.assertEqual(res_global.status_code, 200)
+        self.assertTrue(res_global.data['enabled'])
+
+        # 5. Check send_handover_alert behavior:
+        # Since enable_civil_alerts is False, EVENT_ESTATE_TO_CIVIL should skip sending email!
+        clearance = HousingClearance.objects.create(
+            house_no='01/101',
+            house_type='A',
+        )
+
+        with patch('apps.estate_billing.notifications.threading.Thread') as mock_thread:
+            send_handover_alert(clearance, EVENT_ESTATE_TO_CIVIL)
+            # Civil alerts are OFF, so no Thread is started for Civil
+            mock_thread.assert_not_called()
+
+            # But Electrical alerts are ON, so Thread is initialized and started
+            send_handover_alert(clearance, EVENT_CIVIL_TO_ELECTRICAL)
+            self.assertEqual(mock_thread.call_count, 1)
+
+            # Now disable Electrical alerts too
+            settings.enable_electrical_alerts = False
+            settings.save()
+
+            mock_thread.reset_mock()
+            send_handover_alert(clearance, EVENT_CIVIL_TO_ELECTRICAL)
+            # Now Electrical is also OFF, so no Thread is started
+            mock_thread.assert_not_called()
+
+    def test_partial_installment_payments_tracking(self):
+        self.client.force_authenticate(user=self.estate_user)
+        res = self.client.get(f'/api/estate/shops/?cycle={self.cycle_month}')
+        self.assertEqual(res.status_code, 200)
+        note_id = res.data[0]['id']
+
+        # Set shop total to 10,000 (1000 units * 10 rate)
+        self.client.patch(
+            f'/api/estate/shops/{note_id}/',
+            {'units': '1000', 'rate': '10.00', 'water': '0.00'},
+            format='json',
+        )
+        shop_note = ShopDemandNote.objects.get(id=note_id)
+        self.assertEqual(shop_note.total_amount, Decimal('10000.00'))
+        self.assertEqual(shop_note.payment_status, 'unpaid')
+        self.assertEqual(shop_note.total_paid, Decimal('0.00'))
+        self.assertEqual(shop_note.balance_due, Decimal('10000.00'))
+
+        # 1st installment: 5,000
+        p1 = [{'amount': '5000', 'date': '2026-10-27', 'mode': 'Online', 'receipt_no': 'SBI1001'}]
+        p_res_1 = self.client.patch(
+            f'/api/estate/shops/{note_id}/',
+            {'payments': p1},
+            format='json',
+        )
+        self.assertEqual(p_res_1.status_code, 200)
+        self.assertEqual(Decimal(str(p_res_1.data['totalPaid'])), Decimal('5000.00'))
+        self.assertEqual(Decimal(str(p_res_1.data['balanceDue'])), Decimal('5000.00'))
+        self.assertEqual(p_res_1.data['paymentStatus'], 'partially_paid')
+
+        # 2nd installment: 2,000 more (total paid 7,000, due 3,000)
+        p2 = p1 + [{'amount': '2000', 'date': '2026-10-28', 'mode': 'Cheque', 'receipt_no': 'CHQ2002'}]
+        p_res_2 = self.client.patch(
+            f'/api/estate/shops/{note_id}/',
+            {'payments': p2},
+            format='json',
+        )
+        self.assertEqual(p_res_2.status_code, 200)
+        self.assertEqual(Decimal(str(p_res_2.data['totalPaid'])), Decimal('7000.00'))
+        self.assertEqual(Decimal(str(p_res_2.data['balanceDue'])), Decimal('3000.00'))
+        self.assertEqual(p_res_2.data['paymentStatus'], 'partially_paid')
+
+        # 3rd installment: remaining 3,000 (total paid 10,000, due 0)
+        p3 = p2 + [{'amount': '3000', 'date': '2026-10-29', 'mode': 'Cash', 'receipt_no': 'CSH3003'}]
+        p_res_3 = self.client.patch(
+            f'/api/estate/shops/{note_id}/',
+            {'payments': p3},
+            format='json',
+        )
+        self.assertEqual(p_res_3.status_code, 200)
+        self.assertEqual(Decimal(str(p_res_3.data['totalPaid'])), Decimal('10000.00'))
+        self.assertEqual(Decimal(str(p_res_3.data['balanceDue'])), Decimal('0.00'))
+        self.assertEqual(p_res_3.data['paymentStatus'], 'paid')
+
+        # Contractor partial payment test
+        c_res = self.client.get(f'/api/estate/contractors/?cycle={self.cycle_month}')
+        c_note_id = c_res.data[0]['id']
+        c_patch = self.client.patch(
+            f'/api/estate/contractors/{c_note_id}/',
+            {'payments': [{'amount': '1500', 'date': '2026-10-27', 'mode': 'UPI'}]},
+            format='json',
+        )
+        self.assertEqual(c_patch.status_code, 200)
+        self.assertEqual(Decimal(str(c_patch.data['totalPaid'])), Decimal('1500.00'))
+
+    def test_housing_clearance_delete_history_and_recovery(self):
+        # Create completed clearances
+        c1 = HousingClearance.objects.create(
+            sr_no=101,
+            house_type='Type A',
+            house_no='01/101',
+            allottee_name='User One',
+            status='completed',
+            is_allotted=True,
+            estate_date_1='2026-01-15',
+        )
+        c2 = HousingClearance.objects.create(
+            sr_no=102,
+            house_type='Type B',
+            house_no='02/202',
+            allottee_name='User Two',
+            status='completed',
+            is_allotted=True,
+            estate_date_1='2026-03-20',
+        )
+        c3 = HousingClearance.objects.create(
+            sr_no=103,
+            house_type='Type C',
+            house_no='03/303',
+            allottee_name='Active User',
+            status='in_progress',
+            is_allotted=False,
+            estate_date_1='2026-03-22',
+        )
+
+        self.client.force_authenticate(user=self.estate_user)
+
+        # 1. Non-master user cannot delete
+        self.client.force_authenticate(user=self.civil_user)
+        forbid_res = self.client.post('/api/estate/housing/clearances/delete-history/', {'delete_type': 'all'})
+        self.assertEqual(forbid_res.status_code, 403)
+
+        # 2. Master user deletes date range Jan 2026 (should only match c1, not c2, and never c3)
+        self.client.force_authenticate(user=self.estate_user)
+        del_res = self.client.post(
+            '/api/estate/housing/clearances/delete-history/',
+            {'delete_type': 'date_range', 'from_date': '2026-01-01', 'to_date': '2026-01-31'},
+            format='json',
+        )
+        self.assertEqual(del_res.status_code, 200)
+        self.assertEqual(del_res.data['deleted_count'], 1)
+        self.assertEqual(del_res.data['deleted_ids'], [c1.id])
+
+        c1.refresh_from_db()
+        self.assertTrue(c1.is_deleted)
+        self.assertIsNotNone(c1.deleted_at)
+        self.assertEqual(c1.deleted_by, self.estate_user)
+
+        # Verify c1 is now excluded from active GET
+        list_res = self.client.get('/api/estate/housing/clearances/')
+        active_ids = [c['id'] for c in list_res.data]
+        self.assertNotIn(c1.id, active_ids)
+        self.assertIn(c2.id, active_ids)
+        self.assertIn(c3.id, active_ids)
+
+        # 3. View Trash
+        trash_res = self.client.get('/api/estate/housing/clearances/trash/')
+        self.assertEqual(trash_res.status_code, 200)
+        self.assertEqual(trash_res.data['total_in_trash'], 1)
+        self.assertEqual(trash_res.data['trash'][0]['id'], c1.id)
+
+        # 4. Restore c1 from Trash
+        restore_res = self.client.post(
+            '/api/estate/housing/clearances/trash/restore/',
+            {'ids': [c1.id]},
+            format='json',
+        )
+        self.assertEqual(restore_res.status_code, 200)
+        self.assertEqual(restore_res.data['restored_count'], 1)
+
+        c1.refresh_from_db()
+        self.assertFalse(c1.is_deleted)
+        self.assertIsNone(c1.deleted_at)
+
+        # 5. Delete c2 and purge permanently
+        del_c2 = self.client.post(
+            '/api/estate/housing/clearances/delete-history/',
+            {'delete_type': 'all', 'ids': [c2.id]},
+            format='json',
+        )
+        self.assertEqual(del_c2.status_code, 200)
+
+        purge_res = self.client.post(
+            '/api/estate/housing/clearances/trash/purge/',
+            {'ids': [c2.id]},
+            format='json',
+        )
+        self.assertEqual(purge_res.status_code, 200)
+        self.assertEqual(purge_res.data['purged_count'], 1)
+        self.assertFalse(HousingClearance.objects.filter(id=c2.id).exists())
+
+
+

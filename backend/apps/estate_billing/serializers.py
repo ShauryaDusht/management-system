@@ -1,4 +1,6 @@
+import datetime
 from decimal import Decimal
+from django.utils import timezone
 from rest_framework import serializers
 from .models import (
     EstateSettings,
@@ -18,9 +20,14 @@ class EstateSettingsSerializer(serializers.ModelSerializer):
     noteNoPrefix = serializers.CharField(source='note_no_prefix')
     autoFinancialYear = serializers.BooleanField(source='auto_financial_year')
     firstNoteNo = serializers.IntegerField(source='first_note_no')
+    firstContractorNoteNo = serializers.IntegerField(source='first_contractor_note_no', required=False)
     paymentNote = serializers.CharField(source='payment_note')
     expiryAlertDays = serializers.IntegerField(source='expiry_alert_days', required=False)
     enableEmailAlerts = serializers.BooleanField(source='enable_email_alerts', required=False)
+    enableCivilAlerts = serializers.BooleanField(source='enable_civil_alerts', required=False)
+    enableElectricalAlerts = serializers.BooleanField(source='enable_electrical_alerts', required=False)
+    enableHkAlerts = serializers.BooleanField(source='enable_hk_alerts', required=False)
+    enableEstateAlerts = serializers.BooleanField(source='enable_estate_alerts', required=False)
     testRecipientEmail = serializers.CharField(source='test_recipient_email', required=False, allow_blank=True)
     civilAlertEmail = serializers.CharField(source='civil_alert_email', required=False, allow_blank=True)
     electricalAlertEmail = serializers.CharField(source='electrical_alert_email', required=False, allow_blank=True)
@@ -35,10 +42,15 @@ class EstateSettingsSerializer(serializers.ModelSerializer):
             'noteNoPrefix',
             'autoFinancialYear',
             'firstNoteNo',
+            'firstContractorNoteNo',
             'paymentNote',
             'bank',
             'expiryAlertDays',
             'enableEmailAlerts',
+            'enableCivilAlerts',
+            'enableElectricalAlerts',
+            'enableHkAlerts',
+            'enableEstateAlerts',
             'testRecipientEmail',
             'civilAlertEmail',
             'electricalAlertEmail',
@@ -69,6 +81,8 @@ class EstateSettingsSerializer(serializers.ModelSerializer):
             instance.auto_financial_year = validated_data['auto_financial_year']
         if 'first_note_no' in validated_data:
             instance.first_note_no = validated_data['first_note_no']
+        if 'first_contractor_note_no' in validated_data:
+            instance.first_contractor_note_no = validated_data['first_contractor_note_no']
         if 'payment_note' in validated_data:
             instance.payment_note = validated_data['payment_note']
         if 'bank' in validated_data:
@@ -83,6 +97,10 @@ class EstateSettingsSerializer(serializers.ModelSerializer):
 
         for field in [
             'enable_email_alerts',
+            'enable_civil_alerts',
+            'enable_electrical_alerts',
+            'enable_hk_alerts',
+            'enable_estate_alerts',
             'test_recipient_email',
             'civil_alert_email',
             'electrical_alert_email',
@@ -111,8 +129,11 @@ class ShopDemandNoteSerializer(serializers.ModelSerializer):
     shopExpiryDate = serializers.CharField(source='shop.expiry_date', read_only=True)
     noteNo = serializers.CharField(source='note_no', required=False, allow_blank=True)
     monthTo = serializers.CharField(source='month_to', required=False, allow_blank=True)
-
     isCancelled = serializers.BooleanField(source='is_cancelled', required=False)
+    payments = serializers.JSONField(required=False, default=list)
+    totalPaid = serializers.DecimalField(source='total_paid', max_digits=12, decimal_places=2, read_only=True)
+    balanceDue = serializers.DecimalField(source='balance_due', max_digits=12, decimal_places=2, read_only=True)
+    paymentStatus = serializers.CharField(source='payment_status', read_only=True)
 
     class Meta:
         model = ShopDemandNote
@@ -133,6 +154,10 @@ class ShopDemandNoteSerializer(serializers.ModelSerializer):
             'month',
             'monthTo',
             'extras',
+            'payments',
+            'totalPaid',
+            'balanceDue',
+            'paymentStatus',
             'total_amount',
             'cycle_month',
             'isCancelled',
@@ -149,6 +174,10 @@ class ContractorDemandNoteSerializer(serializers.ModelSerializer):
     noteNo = serializers.CharField(source='note_no', required=False, allow_blank=True)
     periodType = serializers.CharField(source='period_type', required=False)
     monthTo = serializers.CharField(source='month_to', required=False, allow_blank=True)
+    payments = serializers.JSONField(required=False, default=list)
+    totalPaid = serializers.DecimalField(source='total_paid', max_digits=12, decimal_places=2, read_only=True)
+    balanceDue = serializers.DecimalField(source='balance_due', max_digits=12, decimal_places=2, read_only=True)
+    paymentStatus = serializers.CharField(source='payment_status', read_only=True)
 
     class Meta:
         model = ContractorDemandNote
@@ -168,6 +197,10 @@ class ContractorDemandNoteSerializer(serializers.ModelSerializer):
             'from_date',
             'to_date',
             'meters',
+            'payments',
+            'totalPaid',
+            'balanceDue',
+            'paymentStatus',
             'total_amount',
             'cycle_month',
         ]
@@ -427,6 +460,10 @@ class HousingClearanceSerializer(serializers.ModelSerializer):
     remarks = serializers.CharField(required=False, allow_blank=True)
     status = serializers.CharField(required=False)
     isActive = serializers.BooleanField(source='is_active', required=False)
+    isDeleted = serializers.BooleanField(source='is_deleted', required=False)
+    deletedAt = serializers.DateTimeField(source='deleted_at', required=False, allow_null=True)
+    deletedBy = serializers.SerializerMethodField()
+    recoveryHoursLeft = serializers.SerializerMethodField()
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
     updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
     unitStatus = serializers.SerializerMethodField()
@@ -550,6 +587,21 @@ class HousingClearanceSerializer(serializers.ModelSerializer):
 
         return unit.status == 'occupied' and active_allotments.exists()
 
+    def get_deletedBy(self, obj):
+        if obj.deleted_by:
+            return obj.deleted_by.get_full_name() or obj.deleted_by.username
+        return ''
+
+    def get_recoveryHoursLeft(self, obj):
+        if not obj.is_deleted or not obj.deleted_at:
+            return None
+        from django.utils import timezone
+        diff = (obj.deleted_at + datetime.timedelta(hours=24)) - timezone.now()
+        secs = int(diff.total_seconds())
+        if secs <= 0:
+            return 0
+        return round(secs / 3600, 1)
+
     class Meta:
         model = HousingClearance
         fields = [
@@ -606,6 +658,11 @@ class HousingClearanceSerializer(serializers.ModelSerializer):
             'remarks',
             'status',
             'isActive',
+            'isDeleted',
+            'deletedAt',
+            'deletedBy',
+            'recoveryHoursLeft',
             'createdAt',
             'updatedAt',
         ]
+

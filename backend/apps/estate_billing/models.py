@@ -1,5 +1,6 @@
 import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from django.conf import settings
 from django.db import models
 
 
@@ -44,7 +45,11 @@ class EstateSettings(models.Model):
         default=True,
         help_text="Automatically update financial year in note prefix (e.g. IWD/26-27/)"
     )
-    first_note_no = models.PositiveIntegerField(default=259)
+    first_note_no = models.PositiveIntegerField(default=230)
+    first_contractor_note_no = models.PositiveIntegerField(
+        default=228,
+        help_text="Starting note number for contractors in baseline cycle"
+    )
     payment_note = models.TextField(
         default=(
             'The amount may be deposited to IIT Gandhinagar account and '
@@ -61,6 +66,22 @@ class EstateSettings(models.Model):
     enable_email_alerts = models.BooleanField(
         default=False,
         help_text="Enable automated email notifications for clearance handovers"
+    )
+    enable_civil_alerts = models.BooleanField(
+        default=True,
+        help_text="Enable clearance email notifications for Civil Team"
+    )
+    enable_electrical_alerts = models.BooleanField(
+        default=True,
+        help_text="Enable clearance email notifications for Electrical Team"
+    )
+    enable_hk_alerts = models.BooleanField(
+        default=True,
+        help_text="Enable clearance email notifications for Housekeeping Team"
+    )
+    enable_estate_alerts = models.BooleanField(
+        default=True,
+        help_text="Enable clearance email notifications for Estate Office"
     )
     test_recipient_email = models.CharField(
         max_length=150,
@@ -163,6 +184,7 @@ class ShopDemandNote(models.Model):
     water = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('320.00'))
     fixed = models.BooleanField(default=False)
     extras = models.JSONField(default=list)  # list of {"label": str, "amount": str}
+    payments = models.JSONField(default=list, blank=True)  # list of {"id": str, "amount": str, "date": str, "mode": str, "receipt_no": str, "remarks": str}
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     is_cancelled = models.BooleanField(default=False, help_text="True if this shop's demand note was cancelled/skipped for this cycle")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -176,6 +198,33 @@ class ShopDemandNote(models.Model):
 
     def __str__(self):
         return f"{self.shop.name} ({self.cycle_month})"
+
+    @property
+    def total_paid(self):
+        tot = Decimal('0.00')
+        for p in (self.payments or []):
+            try:
+                tot += Decimal(str(p.get('amount', 0) or 0).strip().replace(',', ''))
+            except (ValueError, TypeError, InvalidOperation):
+                pass
+        return tot
+
+    @property
+    def balance_due(self):
+        tot = self.total_amount or Decimal('0.00')
+        paid = self.total_paid
+        bal = tot - paid
+        return bal if bal > Decimal('0.00') else Decimal('0.00')
+
+    @property
+    def payment_status(self):
+        paid = self.total_paid
+        tot = self.total_amount or Decimal('0.00')
+        if paid <= Decimal('0.00'):
+            return 'unpaid'
+        if paid >= tot and tot > Decimal('0.00'):
+            return 'paid'
+        return 'partially_paid'
 
 
 class Contractor(models.Model):
@@ -208,6 +257,7 @@ class ContractorDemandNote(models.Model):
     to_date = models.CharField(max_length=10, blank=True, default='')
     note_no = models.CharField(max_length=100, blank=True, default='')
     meters = models.JSONField(default=list)  # list of {"label": str, "current": str, "previous": str, "rate": float}
+    payments = models.JSONField(default=list, blank=True)  # list of {"id": str, "amount": str, "date": str, "mode": str, "receipt_no": str, "remarks": str}
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -220,6 +270,33 @@ class ContractorDemandNote(models.Model):
 
     def __str__(self):
         return f"{self.contractor.name} ({self.cycle_month})"
+
+    @property
+    def total_paid(self):
+        tot = Decimal('0.00')
+        for p in (self.payments or []):
+            try:
+                tot += Decimal(str(p.get('amount', 0) or 0).strip().replace(',', ''))
+            except (ValueError, TypeError, InvalidOperation):
+                pass
+        return tot
+
+    @property
+    def balance_due(self):
+        tot = self.total_amount or Decimal('0.00')
+        paid = self.total_paid
+        bal = tot - paid
+        return bal if bal > Decimal('0.00') else Decimal('0.00')
+
+    @property
+    def payment_status(self):
+        paid = self.total_paid
+        tot = self.total_amount or Decimal('0.00')
+        if paid <= Decimal('0.00'):
+            return 'unpaid'
+        if paid >= tot and tot > Decimal('0.00'):
+            return 'paid'
+        return 'partially_paid'
 
 
 class HousingUnit(models.Model):
@@ -417,6 +494,15 @@ class HousingClearance(models.Model):
     @possession_deadline_date.setter
     def possession_deadline_date(self, val):
         self.estate_date_4 = val
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='deleted_housing_clearances'
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
