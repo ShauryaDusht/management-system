@@ -468,7 +468,7 @@ export default function MeterReport({ rows, stationMeters = [], user, onReload, 
           metricName={isAllMeters ? 'Consumption' : selF.label}
           color="water"
           multiSeries={meterMultiSeries}
-          height={300}
+          height={420}
           defaultChartType="bar"
         />
       </div>

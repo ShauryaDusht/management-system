@@ -93,6 +93,29 @@ function formatMonthLabel(monthKey) {
   return `${name} ${y}`;
 }
 
+function computeExtendedYMax(dataMax, referenceValue) {
+  const rawMax = Math.max(Number(dataMax) || 0, Number(referenceValue) || 0);
+  if (rawMax <= 0) return 10;
+  
+  // Provide 25% headroom so the tallest bar never hits the ceiling
+  const target = rawMax * 1.25;
+  const power = Math.pow(10, Math.floor(Math.log10(target)));
+  const ratio = target / power;
+  
+  let multiplier = 10.0;
+  if (ratio <= 1.2) multiplier = 1.2;
+  else if (ratio <= 1.5) multiplier = 1.5;
+  else if (ratio <= 2.0) multiplier = 2.0;
+  else if (ratio <= 2.5) multiplier = 2.5;
+  else if (ratio <= 3.0) multiplier = 3.0;
+  else if (ratio <= 4.0) multiplier = 4.0;
+  else if (ratio <= 5.0) multiplier = 5.0;
+  else if (ratio <= 6.0) multiplier = 6.0;
+  else if (ratio <= 8.0) multiplier = 8.0;
+  
+  return Math.ceil(power * multiplier);
+}
+
 function CustomTooltip({ active, payload, label, unit }) {
   if (!active || !payload || !payload.length) return null;
   const p = payload[0];
@@ -101,6 +124,17 @@ function CustomTooltip({ active, payload, label, unit }) {
   const total = payload.length > 1
     ? payload.reduce((acc, entry) => acc + (Number(entry.value) || 0), 0)
     : null;
+
+  // For multi-series, filter and highlight active meters with value > 0
+  const hasMultiple = payload.length > 1;
+  const activeEntries = hasMultiple
+    ? payload.filter((e) => Number(e.value) > 0).sort((a, b) => Number(b.value) - Number(a.value))
+    : payload;
+  const zeroEntries = hasMultiple
+    ? payload.filter((e) => !Number(e.value) || Number(e.value) <= 0)
+    : [];
+
+  const displayEntries = activeEntries.length > 0 ? activeEntries : payload;
 
   return (
     <div
@@ -113,8 +147,10 @@ function CustomTooltip({ active, payload, label, unit }) {
         boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.15)',
         fontSize: '12px',
         color: '#1e293b',
-        minWidth: '170px',
-        maxWidth: '320px',
+        minWidth: '200px',
+        maxWidth: '420px',
+        maxHeight: '380px',
+        overflowY: 'auto',
         pointerEvents: 'none',
       }}
     >
@@ -128,9 +164,18 @@ function CustomTooltip({ active, payload, label, unit }) {
           fontSize: '11px',
           textTransform: 'uppercase',
           letterSpacing: '0.04em',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '8px',
         }}
       >
-        {label}
+        <span>{label}</span>
+        {hasMultiple && activeEntries.length > 0 && (
+          <span style={{ fontSize: '10.5px', color: '#0284c7', fontWeight: 600, textTransform: 'none' }}>
+            {activeEntries.length} Active Meter{activeEntries.length === 1 ? '' : 's'}
+          </span>
+        )}
       </div>
 
       {payloadTitle ? (
@@ -139,38 +184,46 @@ function CustomTooltip({ active, payload, label, unit }) {
         </div>
       ) : null}
 
-      {payload.map((entry, idx) => (
-        <div
-          key={idx}
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '12px',
-            marginTop: '3px',
-          }}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: entry.color || entry.fill || '#0284c7',
-                flexShrink: 0,
-              }}
-            />
-            <span style={{ color: '#64748b' }}>{entry.name || 'Value'}:</span>
-          </span>
-          <strong style={{ color: '#0f172a', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-            {Number(entry.value).toLocaleString(undefined, {
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 2,
-            })}{' '}
-            {unit}
-          </strong>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+        {displayEntries.map((entry, idx) => (
+          <div
+            key={idx}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '2px 0',
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: entry.color || entry.fill || '#0284c7',
+                  flexShrink: 0,
+                }}
+              />
+              <span style={{ color: '#334155', fontWeight: 500 }}>{entry.name || 'Value'}:</span>
+            </span>
+            <strong style={{ color: '#0f172a', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+              {Number(entry.value).toLocaleString(undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2,
+              })}{' '}
+              {unit}
+            </strong>
+          </div>
+        ))}
+      </div>
+
+      {activeEntries.length > 0 && zeroEntries.length > 0 && (
+        <div style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic', marginTop: '4px', paddingTop: '4px', borderTop: '1px dotted #f1f5f9' }}>
+          + {zeroEntries.length} other meter{zeroEntries.length === 1 ? '' : 's'} logged 0 {unit}
         </div>
-      ))}
+      )}
 
       {total !== null && (
         <div
@@ -181,12 +234,13 @@ function CustomTooltip({ active, payload, label, unit }) {
             gap: '12px',
             marginTop: '6px',
             paddingTop: '6px',
-            borderTop: '1px dashed #e2e8f0',
-            fontWeight: 700,
+            borderTop: '1.5px solid #e2e8f0',
+            fontWeight: 800,
+            fontSize: '12.5px',
           }}
         >
-          <span style={{ color: '#334155' }}>Total:</span>
-          <strong style={{ color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ color: '#0f172a' }}>Total Consumption:</span>
+          <strong style={{ color: '#0284c7', fontVariantNumeric: 'tabular-nums' }}>
             {total.toLocaleString(undefined, {
               minimumFractionDigits: 0,
               maximumFractionDigits: 2,
@@ -209,7 +263,7 @@ export default function BarChart({
   referenceValue = null,
   referenceLabel = '',
   multiSeries = null,
-  height = 290,
+  height = 420,
   defaultChartType = 'bar',
   xAxisLabel = '',
   yAxisLabel = '',
@@ -911,6 +965,14 @@ export default function BarChart({
         <span>
           <strong style={{ color: 'var(--muted)' }}>Y:</strong> {resolvedYLabel.replace(/^Y-Axis:\s*/i, '')}
         </span>
+        {activeSeries && activeSeries.length > 0 && analysisMode !== 'compare_years' && analysisMode !== 'compare_months' && (
+          <>
+            <span style={{ color: 'var(--line)' }}>•</span>
+            <span style={{ color: 'var(--muted)', fontStyle: 'italic' }}>
+              💡 Hover on any bar to see meter breakdown and values
+            </span>
+          </>
+        )}
         {analysisMode === 'compare_years' && availableYears.length === 1 && (
           <>
             <span style={{ color: 'var(--line)' }}>•</span>
@@ -924,7 +986,7 @@ export default function BarChart({
       {/* SVG Canvas via Recharts ResponsiveContainer */}
       <div style={{ width: '100%', height, minHeight: height, position: 'relative' }}>
         <ResponsiveContainer width="100%" height="100%" minHeight={height}>
-          <ComposedChart data={activeChartData} margin={{ top: 14, right: 20, left: 18, bottom: 26 }}>
+          <ComposedChart data={activeChartData} margin={{ top: 16, right: 24, left: 20, bottom: 12 }}>
             <defs>
               <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={theme.gradientStart} stopOpacity={0.45} />
@@ -947,28 +1009,20 @@ export default function BarChart({
               tick={{ fontSize: 11, fill: 'var(--muted)' }}
               interval="preserveStartEnd"
               minTickGap={16}
-              label={{
-                value: activeXLabel,
-                position: 'insideBottom',
-                offset: -16,
-                fill: 'var(--ink)',
-                fontSize: 11,
-                fontWeight: 700,
-              }}
             />
 
             <YAxis
               tickLine={false}
               axisLine={false}
               tick={{ fontSize: 11, fill: 'var(--muted)' }}
-              tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)}
-              domain={[0, (dataMax) => (referenceValue && referenceValue > dataMax ? Math.ceil(referenceValue * 1.1) : Math.ceil(dataMax * 1.15) || 10)]}
-              width={66}
+              tickFormatter={(v) => (v >= 1000 ? `${Number((v / 1000).toFixed(1))}k` : v)}
+              domain={[0, (dataMax) => computeExtendedYMax(dataMax, referenceValue)]}
+              width={74}
               label={{
                 value: resolvedYLabel,
                 angle: -90,
                 position: 'insideLeft',
-                offset: 2,
+                offset: 4,
                 fill: 'var(--ink)',
                 fontSize: 11,
                 fontWeight: 700,
@@ -1009,8 +1063,10 @@ export default function BarChart({
               />
             )}
 
-            {/* Legend for Multi-series, Year Comparison or Month Comparison */}
-            {activeSeries && activeSeries.length > 0 && (
+            {/* Show Legend ONLY for Year Comparison or Month Comparison (where there are only 2-3 items).
+                For multi-series meter breakdowns (which can have 16+ meters), the names are removed from below
+                the X-axis as requested, and are seen only when marking in the graph via the tooltip */}
+            {activeSeries && activeSeries.length > 0 && (analysisMode === 'compare_years' || analysisMode === 'compare_months') && (
               <Legend
                 wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
                 iconType="circle"
