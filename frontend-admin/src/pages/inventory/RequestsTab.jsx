@@ -127,7 +127,7 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
   )
 
   const pending = useMemo(
-    () => scopedRequests.filter((r) => r.status === 'pending'),
+    () => scopedRequests.filter((r) => r.status === 'pending' && !r.issue_is_reversed),
     [scopedRequests]
   )
   const approved = useMemo(
@@ -169,6 +169,32 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
     }
   }
 
+  const isWithin24Hours = (timestamp) => {
+    if (!timestamp) return false
+    const time = new Date(timestamp).getTime()
+    if (Number.isNaN(time)) return false
+    const diffHours = (Date.now() - time) / (1000 * 60 * 60)
+    return diffHours >= 0 && diffHours <= 24
+  }
+
+  const undoRejectRequest = async (req) => {
+    if (!req) return
+    setActingId(req.id)
+    clearError()
+    setSuccess('')
+    try {
+      const result = await runAction(async () => {
+        await inventoryAPI.undoRejectRequest(req.id)
+        return true
+      }, 'Undo rejection failed.')
+      if (!result) return
+      await reload()
+      refreshBadges()
+      setSuccess(`Rejection undone for ${req.item_name || 'item'}. Request restored to pending.`)
+    } finally {
+      setActingId(null)
+    }
+  }
 
   const issueRequest = async (req) => {
     if (!req) return
@@ -407,49 +433,6 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
           </div>
         )}
 
-        {canReview && approved.length > 0 && (
-          <>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>Approved - Ready to Issue</div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill,minmax(320px,1fr))',
-                gap: 10,
-              }}
-            >
-              {approved.map((r) => (
-                <div
-                  key={`approved-${r.id}`}
-                  style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 12 }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ fontWeight: 700 }}>{r.item_name || 'Item'}</div>
-                    <Badge value="approved" />
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
-                    Qty Requested: {r.quantity_requested} {r.item_unit || ''}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
-                    Available Now: {r.item_available ?? r.units_remaining ?? 0} {r.item_unit || ''}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 6 }}>
-                    {r.requester_name || r.requested_by_name || 'Requester'}
-                  </div>
-                  <div style={{ marginTop: 10 }}>
-                    <Btn
-                      size="sm"
-                      variant="success"
-                      onClick={() => issueRequest(r)}
-                      disabled={actingId === r.id}
-                    >
-                      {actingId === r.id ? 'Issuing...' : 'Issue Item'}
-                    </Btn>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
       </Card>
 
       <Card noPad>
@@ -468,7 +451,6 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
             tabs={[
               { key: 'all', label: 'All' },
               { key: 'pending', label: 'Pending' },
-              { key: 'approved', label: 'Approved' },
               { key: 'rejected', label: 'Rejected' },
               { key: 'issued', label: 'Issued' },
             ]}
@@ -518,31 +500,46 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
                   Reject
                 </Btn>
               </div>
-            ) : canReview && r.status === 'approved' ? (
-              <Btn
-                key={`act-i-${r.id}`}
-                size="sm"
-                variant="success"
-                onClick={() => issueRequest(r)}
-                disabled={actingId === r.id}
-              >
-                {actingId === r.id ? 'Issuing...' : 'Issue'}
-              </Btn>
             ) : canReview && r.status === 'issued' ? (
-              <Btn
-                key={`act-undo-${r.id}`}
-                size="sm"
-                variant="ghost"
-                style={{ color: '#b91c1c', borderColor: '#fca5a5' }}
-                onClick={() => openUndoModalForRequest(r)}
-                disabled={actingId === r.id}
-              >
-                Undo / Adjust
-              </Btn>
-            ) : r.status === 'rejected' && r.rejection_reason ? (
-              <span key={`act-r-${r.id}`} style={{ fontSize: 12, color: '#991b1b' }} title={r.rejection_reason}>
-                Reason set
-              </span>
+              isWithin24Hours(r.issued_at || r.reviewed_at) && !r.is_reversed && !r.already_adjusted ? (
+                <Btn
+                  key={`act-undo-${r.id}`}
+                  size="sm"
+                  variant="ghost"
+                  style={{ color: '#b91c1c', borderColor: '#fca5a5' }}
+                  onClick={() => openUndoModalForRequest(r)}
+                  disabled={actingId === r.id}
+                >
+                  Undo / Adjust
+                </Btn>
+              ) : (
+                <span key={`act-final-${r.id}`} style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                  Completed
+                </span>
+              )
+            ) : canReview && r.status === 'rejected' ? (
+              isWithin24Hours(r.reviewed_at || r.updated_at) && r.can_undo_reject !== false ? (
+                <div key={`act-rej-${r.id}`} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <Btn
+                    size="sm"
+                    variant="ghost"
+                    style={{ color: '#b91c1c', borderColor: '#fca5a5' }}
+                    onClick={() => undoRejectRequest(r)}
+                    disabled={actingId === r.id}
+                  >
+                    Undo
+                  </Btn>
+                  {r.rejection_reason && (
+                    <span style={{ fontSize: 11, color: '#991b1b' }} title={r.rejection_reason}>
+                      Reason set
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span key={`act-final-${r.id}`} style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                  Closed
+                </span>
+              )
             ) : (
               '—'
             ),

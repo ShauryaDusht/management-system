@@ -1,6 +1,7 @@
 from datetime import datetime, date, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from apps.core.module_access import module_required
 from django.views.decorators.cache import never_cache
 from django.contrib import messages
 from django.utils import timezone
@@ -27,6 +28,7 @@ def mobile_hvac_root(request):
 
 @login_required(login_url='/portal/login/')
 @never_cache
+@module_required('hvac')
 def mobile_dashboard(request):
     today = timezone.localdate()
     today_str = str(today)
@@ -271,6 +273,7 @@ def mobile_dashboard(request):
 
 @login_required(login_url='/portal/login/')
 @never_cache
+@module_required('hvac')
 def mobile_entry(request):
     today = timezone.localdate()
     today_str = str(today)
@@ -522,6 +525,7 @@ def mobile_entry(request):
 
 @login_required(login_url='/portal/login/')
 @never_cache
+@module_required('hvac')
 def mobile_flash(request):
     today = timezone.localdate()
     today_str = str(today)
@@ -634,6 +638,7 @@ def mobile_flash(request):
 
 @login_required(login_url='/portal/login/')
 @never_cache
+@module_required('hvac')
 def mobile_history(request):
     dates = HvacLog.objects.values('date').distinct().order_by('-date')
     history_items = []
@@ -656,6 +661,7 @@ def mobile_history(request):
 
 
 @login_required(login_url='/portal/login/')
+@module_required('hvac')
 def mobile_handover(request):
     today = timezone.localdate()
     today_str = str(today)
@@ -724,6 +730,7 @@ def mobile_handover(request):
 
 @login_required(login_url='/portal/login/')
 @never_cache
+@module_required('hvac')
 def mobile_operators_view(request):
     """
     Mobile operator management for HVAC supervisors and engineers.

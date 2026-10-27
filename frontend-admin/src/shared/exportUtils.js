@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import * as XLSX from 'xlsx-js-style'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
@@ -103,19 +103,6 @@ export function exportToExcel({ filename, headers = [], rows = [], sheetName = '
   const wb = XLSX.utils.book_new()
   const aoa = []
 
-  let headerRowIndex = 0
-
-  if (title) {
-    aoa.push([title])
-    headerRowIndex++
-    if (subtitle) {
-      aoa.push([subtitle])
-      headerRowIndex++
-    }
-    aoa.push([]) // empty row before table
-    headerRowIndex++
-  }
-
   if (headers && headers.length) {
     aoa.push(headers.map((h) => extractText(h)))
   }
@@ -124,7 +111,6 @@ export function exportToExcel({ filename, headers = [], rows = [], sheetName = '
     if (Array.isArray(row)) {
       aoa.push(row.map((cell) => {
         const text = extractText(cell)
-        // Try converting numeric strings to numbers if clean integer or decimal
         if (/^-?\d+(\.\d+)?$/.test(text) && !text.startsWith('0') && text.length < 15) {
           const num = Number(text)
           if (!isNaN(num)) return num
@@ -143,22 +129,85 @@ export function exportToExcel({ filename, headers = [], rows = [], sheetName = '
     }
   })
 
+  if (aoa.length === 0) {
+    aoa.push(['No data available'])
+  }
+
   const ws = XLSX.utils.aoa_to_sheet(aoa)
+
+  // Header row height
+  ws['!rows'] = [{ hpt: 26 }, ...Array(Math.max(0, aoa.length - 1)).fill({ hpt: 20 })]
+
+  // Style header row (bold, highlighted background) and data cells
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
+  for (let R = range.s.r; R <= range.e.r; ++R) {
+    const isHeaderRow = R === 0
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellRef = XLSX.utils.encode_cell({ r: R, c: C })
+      const cell = ws[cellRef]
+      if (!cell) continue
+
+      if (isHeaderRow) {
+        cell.s = {
+          font: {
+            bold: true,
+            color: { rgb: 'FFFFFF' },
+            sz: 11,
+            name: 'Calibri',
+          },
+          fill: {
+            fgColor: { rgb: '1E3A2F' },
+          },
+          alignment: {
+            horizontal: 'center',
+            vertical: 'center',
+            wrapText: true,
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: '0F172A' } },
+            bottom: { style: 'medium', color: { rgb: '0F172A' } },
+            left: { style: 'thin', color: { rgb: '334155' } },
+            right: { style: 'thin', color: { rgb: '334155' } },
+          },
+        }
+      } else {
+        const isNum = typeof cell.v === 'number'
+        cell.s = {
+          font: {
+            sz: 10,
+            name: 'Calibri',
+            color: { rgb: '0F172A' },
+          },
+          alignment: {
+            vertical: 'center',
+            horizontal: isNum ? 'right' : 'left',
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          },
+        }
+      }
+    }
+  }
 
   // Compute column widths dynamically
   const colWidths = (headers || []).map((h, colIdx) => {
     let maxLen = String(h || '').length
-    for (let r = headerRowIndex; r < aoa.length; r++) {
+    for (let r = 0; r < aoa.length; r++) {
       const cellVal = aoa[r]?.[colIdx]
       if (cellVal !== undefined && cellVal !== null) {
         maxLen = Math.max(maxLen, String(cellVal).length)
       }
     }
-    return { wch: Math.min(Math.max(maxLen + 3, 10), 60) }
+    return { wch: Math.min(Math.max(maxLen + 4, 12), 60) }
   })
   ws['!cols'] = colWidths
 
-  XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31) || 'Report')
+  const cleanSheet = (sheetName || title || 'Report').replace(/[:\\/?*\[\]]/g, ' ').slice(0, 31).trim() || 'Report'
+  XLSX.utils.book_append_sheet(wb, ws, cleanSheet)
   const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
   const blob = new Blob([wbOut], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -462,7 +511,7 @@ function escapeHtml(str) {
  * Standard unified dispatcher for exporting in any format.
  */
 export async function exportReport({
-  format = 'csv',
+  format = 'excel',
   filename = 'report',
   title = 'Report',
   subtitle = '',
@@ -491,10 +540,9 @@ export async function exportReport({
     resolvedRows = data.map((item) => resolvedHeaders.map((k) => item[k]))
   }
 
-  switch (format) {
+  const fmt = String(format || '').toLowerCase()
+  switch (fmt) {
     case 'csv':
-      exportToCsv({ filename, headers: resolvedHeaders, rows: resolvedRows, title })
-      break
     case 'excel':
     case 'xlsx':
       exportToExcel({ filename, headers: resolvedHeaders, rows: resolvedRows, title, subtitle })
@@ -506,6 +554,7 @@ export async function exportReport({
       printReport({ title, subtitle, headers: resolvedHeaders, rows: resolvedRows, metadata })
       break
     default:
-      throw new Error(`Unsupported export format: ${format}`)
+      exportToExcel({ filename, headers: resolvedHeaders, rows: resolvedRows, title, subtitle })
+      break
   }
 }

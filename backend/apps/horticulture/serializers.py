@@ -373,9 +373,9 @@ class AdminWorkerSerializer(serializers.ModelSerializer):
                         swapped_link.is_active = True
                         swapped_link.assigned_by = user
                         swapped_link.save(update_fields=['is_active', 'assigned_by', 'assigned_at'])
-                # Deactivate other_worker's assignment to target_area_id
-                other_assignment.is_active = False
-                other_assignment.save(update_fields=['is_active'])
+                    # Deactivate other_worker's assignment to target_area_id only if swapped
+                    other_assignment.is_active = False
+                    other_assignment.save(update_fields=['is_active'])
 
         # Deactivate any remaining removed areas for worker
         if removed_area_ids:

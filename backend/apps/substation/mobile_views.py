@@ -1,6 +1,7 @@
 from datetime import datetime, date, time, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from apps.core.module_access import module_required
 from django.views.decorators.cache import never_cache
 from django.contrib import messages
 from django.utils import timezone
@@ -55,6 +56,7 @@ def mobile_substation_root(request):
 
 @login_required(login_url='/portal/login/')
 @never_cache
+@module_required('substation')
 def mobile_dashboard(request):
     """
     Mobile operator dashboard showing shifts, progress bar,
@@ -151,6 +153,7 @@ def mobile_dashboard(request):
 
 @login_required(login_url='/portal/login/')
 @never_cache
+@module_required('substation')
 def mobile_entry_select(request):
     """
     Panel selection view if user hits /substation/entry/ directly.
@@ -213,6 +216,7 @@ def mobile_entry_select(request):
 
 @login_required(login_url='/portal/login/')
 @never_cache
+@module_required('substation')
 def mobile_panel_entry(request, sheet_id):
     """
     Panel data logging view for electrical operator.
@@ -733,6 +737,7 @@ def mobile_panel_entry(request, sheet_id):
 
 @login_required(login_url='/portal/login/')
 @never_cache
+@module_required('substation')
 def mobile_flash(request):
     """
     R-01 Flash Report view:
@@ -796,6 +801,7 @@ def mobile_flash(request):
 
 @login_required(login_url='/portal/login/')
 @never_cache
+@module_required('substation')
 def mobile_history(request):
     """
     Historical log explorer:
@@ -837,6 +843,7 @@ def mobile_history(request):
 
 @login_required(login_url='/portal/login/')
 @never_cache
+@module_required('substation')
 def mobile_operators_view(request):
     """
     Mobile operator management for Substation Supervisors and Plant Engineer.

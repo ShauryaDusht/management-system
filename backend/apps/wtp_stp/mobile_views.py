@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from apps.core.module_access import module_required
 from django.contrib import messages
 from django.utils import timezone
 
@@ -38,6 +39,7 @@ def mobile_wtp_root(request):
 
 
 @login_required(login_url='/portal/login/')
+@module_required('wtp')
 def mobile_dashboard(request):
     today = timezone.localdate()
     today_str = str(today)
@@ -119,6 +121,7 @@ def mobile_dashboard(request):
 
 
 @login_required(login_url='/portal/login/')
+@module_required('wtp')
 def mobile_station_entry(request, station='wtp'):
     today = timezone.localdate()
     today_str = str(today)
@@ -235,6 +238,7 @@ def mobile_station_entry(request, station='wtp'):
 
 
 @login_required(login_url='/portal/login/')
+@module_required('wtp')
 def mobile_block_entry(request):
     current_month = timezone.localdate().strftime('%Y-%m')
     month = request.GET.get('month', current_month)
@@ -316,6 +320,7 @@ def mobile_block_entry(request):
 
 
 @login_required(login_url='/portal/login/')
+@module_required('wtp')
 def mobile_history(request):
     today = timezone.localdate()
     today_str = str(today)
@@ -334,6 +339,7 @@ def mobile_history(request):
 
 
 @login_required(login_url='/portal/login/')
+@module_required('wtp')
 def mobile_operators_view(request):
     """
     Mobile operator management for WTP/STP Supervisors and Plant Engineer.
@@ -409,6 +415,7 @@ def mobile_operators_view(request):
 
 
 @login_required(login_url='/portal/login/')
+@module_required('wtp')
 def mobile_gwssb_view(request):
     user_role = getattr(request.user, 'role', '')
     is_supervisor = user_role in ['plant_engineer', 'wtp_supervisor', 'supervisor', 'admin', 'electrical_supervisor'] or request.user.is_superuser

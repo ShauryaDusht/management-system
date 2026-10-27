@@ -31,19 +31,24 @@ export function DocShell({ children }) {
   )
 }
 
+const IITGN_LOGO_URL = `${import.meta.env.BASE_URL || '/'}iitgn-logo.png`.replace(/\/{2,}/g, '/')
+const FALLBACK_LOGO_URL = `${import.meta.env.BASE_URL || '/'}campus-sanchalika-logo.png`.replace(/\/{2,}/g, '/')
+
 export function DocHeader({ note }) {
   return (
     <>
       {/* Letterhead */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <img
-          src="/iitgn-logo.png"
+          src={IITGN_LOGO_URL}
           alt="IITGN Logo"
           width={76}
           height={76}
           style={{ objectFit: 'contain', flexShrink: 0 }}
           onError={(e) => {
-            e.currentTarget.src = '/campus-sanchalika-logo.png'
+            if (e.currentTarget.src !== FALLBACK_LOGO_URL) {
+              e.currentTarget.src = FALLBACK_LOGO_URL
+            }
           }}
         />
         <div style={{ flex: 1, textAlign: 'center', paddingRight: 76 }}>

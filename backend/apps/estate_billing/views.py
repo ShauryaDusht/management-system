@@ -5,6 +5,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.db import models, transaction
 from django.db.models import F, Max
 from django.db.models.functions import Cast
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -155,7 +156,39 @@ def calculate_contractor_total(meters):
     return total
 
 
-def get_cycle_first_note_no(cycle_month):
+def sanitize_payments(payments_list):
+    """Sanitizes installment payment entries for shop & contractor demand notes."""
+    import uuid
+    cleaned = []
+    for p in payments_list:
+        if not isinstance(p, dict):
+            continue
+        amt_raw = str(p.get('amount', '')).strip().replace(',', '')
+        if not amt_raw:
+            continue
+        try:
+            amt_num = float(amt_raw)
+            if amt_num <= 0:
+                continue
+        except (ValueError, TypeError):
+            continue
+
+        p_id = str(p.get('id') or '').strip()
+        if not p_id or p_id.startswith('temp_'):
+            p_id = f"pay_{uuid.uuid4().hex[:8]}"
+
+        cleaned.append({
+            'id': p_id,
+            'amount': f"{amt_num:.2f}",
+            'date': str(p.get('date') or '').strip(),
+            'mode': str(p.get('mode') or 'Online').strip(),
+            'receipt_no': str(p.get('receipt_no') or p.get('receiptNo') or '').strip(),
+            'remarks': str(p.get('remarks') or '').strip(),
+        })
+    return cleaned
+
+
+def get_cycle_first_shop_note_no(cycle_month):
     """
     Returns the starting note number for shops in the given cycle_month.
     If an earlier cycle exists in the same financial year (same prefix), continues
@@ -197,23 +230,61 @@ def get_cycle_first_note_no(cycle_month):
     return settings.first_note_no
 
 
-def resequence_shop_note_numbers(cycle_month):
+get_cycle_first_note_no = get_cycle_first_shop_note_no
+
+
+def get_cycle_first_contractor_note_no(cycle_month):
     """
-    Re-assigns note_no (e.g. IWD/26-27/196, 197...) sequentially to all active,
-    non-cancelled shop demand notes in this billing cycle so there are no number gaps.
-    Skips any note numbers already claimed by contractor demand notes in this cycle.
-    Cancelled notes have note_no = 'CANCELLED'.
+    Returns the starting note number for contractors in the given cycle_month.
+    If an earlier cycle exists in the same financial year (same prefix), continues
+    from the maximum numeric note_no of active contractors in that previous cycle + 1.
+    Otherwise, starts at settings.first_contractor_note_no.
     """
     settings = EstateSettings.get_settings()
     prefix = settings.get_effective_prefix(cycle_month)
-    first_no = get_cycle_first_note_no(cycle_month)
 
-    # Avoid collisions with note numbers used by contractors in the same cycle
-    contractor_note_nos = set(
-        ContractorDemandNote.objects.filter(cycle_month=cycle_month)
-        .exclude(note_no__in=['', None])
-        .values_list('note_no', flat=True)
+    prev_cycle = (
+        BillingCycle.objects.filter(month__lt=cycle_month, is_active=True)
+        .order_by('-month')
+        .first()
     )
+    if not prev_cycle:
+        return settings.first_contractor_note_no
+
+    prev_prefix = settings.get_effective_prefix(prev_cycle.month)
+    if prev_prefix != prefix:
+        return settings.first_contractor_note_no
+
+    prev_notes = ContractorDemandNote.objects.filter(
+        cycle_month=prev_cycle.month,
+        contractor__is_active=True,
+    ).exclude(note_no__in=['', None, 'CANCELLED'])
+
+    max_num = None
+    for n in prev_notes:
+        m = re.search(r'(\d+)$', n.note_no or '')
+        if m:
+            val = int(m.group(1))
+            if max_num is None or val > max_num:
+                max_num = val
+
+    if max_num is not None:
+        return max_num + 1
+
+    return settings.first_contractor_note_no
+
+
+def resequence_shop_note_numbers(cycle_month):
+    """
+    Re-assigns note_no (e.g. IWD/26-27/230, 231...) sequentially to all active,
+    non-cancelled shop demand notes in this billing cycle so there are no number gaps.
+    For the baseline cycle (2026-10), preserves baseline note numbers.
+    Cancelled notes have note_no = 'CANCELLED'.
+    Note numbers for shops are independent from contractor note numbers.
+    """
+    settings = EstateSettings.get_settings()
+    prefix = settings.get_effective_prefix(cycle_month)
+    first_no = get_cycle_first_shop_note_no(cycle_month)
 
     active_notes = (
         ShopDemandNote.objects.filter(cycle_month=cycle_month, shop__is_active=True, is_cancelled=False)
@@ -221,17 +292,22 @@ def resequence_shop_note_numbers(cycle_month):
         .order_by('shop__sl', 'id')
     )
 
+    from .billing_master_data import BASELINE_SHOP_NOTE_NOS
+    is_full_baseline = (
+        cycle_month == '2026-10' and active_notes.count() == len(BASELINE_SHOP_NOTE_NOS)
+    )
+
     curr_no = first_no
     for n in active_notes:
-        expected_no = f"{prefix}{curr_no}"
-        while expected_no in contractor_note_nos:
-            curr_no += 1
+        if is_full_baseline and n.shop.sl in BASELINE_SHOP_NOTE_NOS:
+            expected_no = f"{prefix}{BASELINE_SHOP_NOTE_NOS[n.shop.sl]}"
+        else:
             expected_no = f"{prefix}{curr_no}"
+            curr_no += 1
 
         if n.note_no != expected_no:
             n.note_no = expected_no
             n.save(update_fields=['note_no'])
-        curr_no += 1
 
     cancelled_notes = ShopDemandNote.objects.filter(
         cycle_month=cycle_month, shop__is_active=True, is_cancelled=True
@@ -242,6 +318,42 @@ def resequence_shop_note_numbers(cycle_month):
             cn.save(update_fields=['note_no'])
 
 
+def resequence_contractor_note_numbers(cycle_month):
+    """
+    Assigns note numbers sequentially to active contractor demand notes.
+    For the baseline cycle (2026-10), preserves the official baseline note numbers.
+    For subsequent cycles, assigns sequential numbers continuing from previous cycle.
+    Contractor note numbers are independent from shop note numbers.
+    """
+    settings = EstateSettings.get_settings()
+    prefix = settings.get_effective_prefix(cycle_month)
+    c_first_no = get_cycle_first_contractor_note_no(cycle_month)
+
+    active_notes = (
+        ContractorDemandNote.objects.filter(cycle_month=cycle_month, contractor__is_active=True)
+        .select_related('contractor')
+        .order_by('contractor__sl', 'id')
+    )
+
+    from .billing_master_data import BASELINE_CONTRACTOR_NOTE_NOS
+    is_full_baseline = (
+        cycle_month == '2026-10' and active_notes.count() == len(BASELINE_CONTRACTOR_NOTE_NOS)
+    )
+
+    curr_no = c_first_no
+    for n in active_notes:
+        if is_full_baseline and n.contractor.sl in BASELINE_CONTRACTOR_NOTE_NOS:
+            expected_no = f"{prefix}{BASELINE_CONTRACTOR_NOTE_NOS[n.contractor.sl]}"
+        else:
+            expected_no = f"{prefix}{curr_no}"
+            curr_no += 1
+
+        if not n.note_no or re.match(r'^IWD/\d{2}-\d{2}/\d+$', n.note_no):
+            if n.note_no != expected_no:
+                n.note_no = expected_no
+                n.save(update_fields=['note_no'])
+
+
 def resequence_all_cycles_from(cycle_month):
     """Resequences cycle_month and any subsequent cycles in chronological order."""
     cycle_months = set(
@@ -250,15 +362,20 @@ def resequence_all_cycles_from(cycle_month):
     cycle_months.update(
         ShopDemandNote.objects.filter(cycle_month__gte=cycle_month).values_list('cycle_month', flat=True)
     )
+    cycle_months.update(
+        ContractorDemandNote.objects.filter(cycle_month__gte=cycle_month).values_list('cycle_month', flat=True)
+    )
     for m in sorted(cycle_months):
         resequence_shop_note_numbers(m)
+        resequence_contractor_note_numbers(m)
 
 
 def ensure_cycle_notes(cycle_month):
     ensure_master_shops_and_contractors()
     settings = EstateSettings.get_settings()
     prefix = settings.get_effective_prefix(cycle_month)
-    first_no = get_cycle_first_note_no(cycle_month)
+    first_no = get_cycle_first_shop_note_no(cycle_month)
+    c_first_no = get_cycle_first_contractor_note_no(cycle_month)
     today_str = get_today_iso()
     prev_m = get_prev_month(today_str)
 
@@ -273,9 +390,14 @@ def ensure_cycle_notes(cycle_month):
     existing_shop_notes = {
         n.shop_id: n for n in ShopDemandNote.objects.filter(cycle_month=cycle_month)
     }
+    from .billing_master_data import BASELINE_SHOP_NOTE_NOS, BASELINE_CONTRACTOR_NOTE_NOS
+    is_full_shop_baseline = (cycle_month == '2026-10' and len(shops) == len(BASELINE_SHOP_NOTE_NOS))
     for shop in shops:
         if shop.id not in existing_shop_notes:
-            note_no = f"{prefix}{first_no + shop.sl - 1}"
+            if is_full_shop_baseline and shop.sl in BASELINE_SHOP_NOTE_NOS:
+                note_no = f"{prefix}{BASELINE_SHOP_NOTE_NOS[shop.sl]}"
+            else:
+                note_no = f"{prefix}{first_no + shop.sl - 1}"
             ShopDemandNote.objects.create(
                 shop=shop,
                 cycle_month=cycle_month,
@@ -291,14 +413,18 @@ def ensure_cycle_notes(cycle_month):
                 total_amount=shop.default_water if shop.fixed else Decimal('0'),
                 expiry_date='',
             )
-        elif settings.auto_financial_year:
+        else:
             n = existing_shop_notes[shop.id]
-            m = re.match(r'^IWD/\d{2}-\d{2}/(\d+)$', n.note_no or '')
-            if m:
-                expected_note_no = f"{prefix}{m.group(1)}"
-                if n.note_no != expected_note_no:
-                    n.note_no = expected_note_no
-                    n.save(update_fields=['note_no'])
+            if not n.note_no and is_full_shop_baseline and shop.sl in BASELINE_SHOP_NOTE_NOS:
+                n.note_no = f"{prefix}{BASELINE_SHOP_NOTE_NOS[shop.sl]}"
+                n.save(update_fields=['note_no'])
+            elif settings.auto_financial_year:
+                m = re.match(r'^IWD/\d{2}-\d{2}/(\d+)$', n.note_no or '')
+                if m:
+                    expected_note_no = f"{prefix}{m.group(1)}"
+                    if n.note_no != expected_note_no:
+                        n.note_no = expected_note_no
+                        n.save(update_fields=['note_no'])
 
     resequence_shop_note_numbers(cycle_month)
 
@@ -307,11 +433,14 @@ def ensure_cycle_notes(cycle_month):
     existing_contractor_notes = {
         n.contractor_id: n for n in ContractorDemandNote.objects.filter(cycle_month=cycle_month)
     }
-    shops_count = len(shops)
+    is_full_contractor_baseline = (cycle_month == '2026-10' and len(contractors) == len(BASELINE_CONTRACTOR_NOTE_NOS))
     for contractor in contractors:
         if contractor.id not in existing_contractor_notes:
-            # Contractor note numbers are assigned manually by Estate Office
-            note_no = ''
+            if is_full_contractor_baseline and contractor.sl in BASELINE_CONTRACTOR_NOTE_NOS:
+                note_no = f"{prefix}{BASELINE_CONTRACTOR_NOTE_NOS[contractor.sl]}"
+            else:
+                note_no = f"{prefix}{c_first_no + contractor.sl - 1}"
+
             # Copy meters template from previous cycle or defaults
             prev_note = ContractorDemandNote.objects.filter(contractor=contractor).order_by('-cycle_month').first()
             if prev_note and prev_note.meters:
@@ -340,14 +469,20 @@ def ensure_cycle_notes(cycle_month):
                 meters=meters_template,
                 total_amount=Decimal('0'),
             )
-        elif settings.auto_financial_year:
+        else:
             n = existing_contractor_notes[contractor.id]
-            m = re.match(r'^IWD/\d{2}-\d{2}/(\d+)$', n.note_no or '')
-            if m:
-                expected_note_no = f"{prefix}{m.group(1)}"
-                if n.note_no != expected_note_no:
-                    n.note_no = expected_note_no
-                    n.save(update_fields=['note_no'])
+            if not n.note_no and is_full_contractor_baseline and contractor.sl in BASELINE_CONTRACTOR_NOTE_NOS:
+                n.note_no = f"{prefix}{BASELINE_CONTRACTOR_NOTE_NOS[contractor.sl]}"
+                n.save(update_fields=['note_no'])
+            elif settings.auto_financial_year:
+                m = re.match(r'^IWD/\d{2}-\d{2}/(\d+)$', n.note_no or '')
+                if m:
+                    expected_note_no = f"{prefix}{m.group(1)}"
+                    if n.note_no != expected_note_no:
+                        n.note_no = expected_note_no
+                        n.save(update_fields=['note_no'])
+
+    resequence_contractor_note_numbers(cycle_month)
 
 
 def get_current_cycle(request):
@@ -414,7 +549,8 @@ class ShopListCreateView(APIView):
 
             settings = EstateSettings.get_settings()
             prefix = settings.get_effective_prefix(cycle)
-            note_no = f"{prefix}{settings.first_note_no + shop.sl - 1}"
+            first_no = get_cycle_first_shop_note_no(cycle)
+            note_no = f"{prefix}{first_no + shop.sl - 1}"
             today_str = get_today_iso()
             prev_m = get_prev_month(today_str)
 
@@ -515,6 +651,8 @@ class ShopDetailView(APIView):
                 {'label': str(x.get('label', '')), 'amount': str(x.get('amount', ''))}
                 for x in data['extras']
             ]
+        if 'payments' in data and isinstance(data['payments'], list):
+            note.payments = sanitize_payments(data['payments'])
 
         if 'isCancelled' in data or 'is_cancelled' in data:
             c_val = bool(data.get('isCancelled') if 'isCancelled' in data else data.get('is_cancelled'))
@@ -606,8 +744,19 @@ class ContractorListCreateView(APIView):
 
             settings = EstateSettings.get_settings()
             prefix = settings.get_effective_prefix(cycle)
-            shops_count = Shop.objects.filter(is_active=True).count()
-            note_no = f"{prefix}{settings.first_note_no + shops_count + contractor.sl - 1}"
+            c_first_no = get_cycle_first_contractor_note_no(cycle)
+            existing_c_notes = ContractorDemandNote.objects.filter(
+                cycle_month=cycle, contractor__is_active=True
+            ).exclude(note_no__in=['', None, 'CANCELLED'])
+            max_num = None
+            for cn in existing_c_notes:
+                m = re.search(r'(\d+)$', cn.note_no or '')
+                if m:
+                    val = int(m.group(1))
+                    if max_num is None or val > max_num:
+                        max_num = val
+            next_num = (max_num + 1) if max_num is not None else c_first_no
+            note_no = f"{prefix}{next_num}"
             today_str = get_today_iso()
             prev_m = get_prev_month(today_str)
 
@@ -623,6 +772,8 @@ class ContractorListCreateView(APIView):
                     'total_amount': calculate_contractor_total(meters),
                 }
             )
+            resequence_all_cycles_from(cycle)
+            note.refresh_from_db()
 
         return Response(ContractorDemandNoteSerializer(note).data, status=status.HTTP_201_CREATED)
 
@@ -689,6 +840,8 @@ class ContractorDetailView(APIView):
             note.to_date = str(data.get('to', data.get('to_date', '')))
         if 'meters' in data and isinstance(data['meters'], list):
             note.meters = data['meters']
+        if 'payments' in data and isinstance(data['payments'], list):
+            note.payments = sanitize_payments(data['payments'])
 
         note.total_amount = calculate_contractor_total(note.meters)
         note.save()
@@ -705,8 +858,13 @@ class ContractorDetailView(APIView):
             return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
 
         contractor = note.contractor
+        deleted_sl = contractor.sl
+        cycle_month = note.cycle_month
         contractor.is_active = False
         contractor.save(update_fields=['is_active'])
+        if deleted_sl:
+            Contractor.objects.filter(is_active=True, sl__gt=deleted_sl).update(sl=F('sl') - 1)
+            resequence_all_cycles_from(cycle_month)
         return Response({'ok': True})
 
 
@@ -765,8 +923,25 @@ class ToggleClearanceAlertsView(APIView):
         if not is_clearance_allowed(request.user):
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
         settings_obj = EstateSettings.get_settings()
+        role = getattr(request.user, 'role', '')
+        user_dept = 'all'
+        if role == 'civil_team':
+            user_dept = 'civil'
+        elif role == 'electrical_team':
+            user_dept = 'electrical'
+        elif role in ('hk_inventory_manager', 'supervisor', 'caretaker'):
+            user_dept = 'hk'
+        elif role == 'estate_office':
+            user_dept = 'estate'
+
         return Response({
             'enabled': settings_obj.enable_email_alerts,
+            'civil': settings_obj.enable_civil_alerts,
+            'electrical': settings_obj.enable_electrical_alerts,
+            'hk': settings_obj.enable_hk_alerts,
+            'estate': settings_obj.enable_estate_alerts,
+            'userDept': user_dept,
+            'isMaster': is_clearance_master(request.user),
             'testRecipientEmail': settings_obj.test_recipient_email,
         })
 
@@ -774,14 +949,67 @@ class ToggleClearanceAlertsView(APIView):
         if not is_clearance_allowed(request.user):
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
         settings_obj = EstateSettings.get_settings()
-        if 'enabled' in request.data:
-            settings_obj.enable_email_alerts = bool(request.data['enabled'])
-        else:
-            settings_obj.enable_email_alerts = not settings_obj.enable_email_alerts
-        settings_obj.save(update_fields=['enable_email_alerts'])
+        role = getattr(request.user, 'role', '')
+        is_master = is_clearance_master(request.user)
+
+        user_dept = 'all'
+        if role == 'civil_team':
+            user_dept = 'civil'
+        elif role == 'electrical_team':
+            user_dept = 'electrical'
+        elif role in ('hk_inventory_manager', 'supervisor', 'caretaker'):
+            user_dept = 'hk'
+        elif role == 'estate_office':
+            user_dept = 'estate'
+
+        # Target department to toggle
+        target_dept = request.data.get('department') or user_dept
+
+        # Ensure non-master users can only toggle their own department
+        if not is_master and user_dept != 'all' and target_dept not in (user_dept, None):
+            return Response({'error': f'You can only toggle alerts for your department ({user_dept}).'}, status=status.HTTP_403_FORBIDDEN)
+
+        updated_fields = []
+        msg = ""
+
+        if target_dept == 'civil':
+            new_val = bool(request.data['enabled']) if 'enabled' in request.data else not settings_obj.enable_civil_alerts
+            settings_obj.enable_civil_alerts = new_val
+            updated_fields.append('enable_civil_alerts')
+            msg = f"Civil Team email alerts {'ENABLED' if new_val else 'DISABLED'} successfully."
+        elif target_dept == 'electrical':
+            new_val = bool(request.data['enabled']) if 'enabled' in request.data else not settings_obj.enable_electrical_alerts
+            settings_obj.enable_electrical_alerts = new_val
+            updated_fields.append('enable_electrical_alerts')
+            msg = f"Electrical Team email alerts {'ENABLED' if new_val else 'DISABLED'} successfully."
+        elif target_dept == 'hk':
+            new_val = bool(request.data['enabled']) if 'enabled' in request.data else not settings_obj.enable_hk_alerts
+            settings_obj.enable_hk_alerts = new_val
+            updated_fields.append('enable_hk_alerts')
+            msg = f"Housekeeping email alerts {'ENABLED' if new_val else 'DISABLED'} successfully."
+        elif target_dept == 'estate':
+            new_val = bool(request.data['enabled']) if 'enabled' in request.data else not settings_obj.enable_estate_alerts
+            settings_obj.enable_estate_alerts = new_val
+            updated_fields.append('enable_estate_alerts')
+            msg = f"Estate Office email alerts {'ENABLED' if new_val else 'DISABLED'} successfully."
+        elif target_dept in ('all', 'global') or 'enabled' in request.data:
+            new_val = bool(request.data['enabled']) if 'enabled' in request.data else not settings_obj.enable_email_alerts
+            settings_obj.enable_email_alerts = new_val
+            updated_fields.append('enable_email_alerts')
+            msg = f"Automated email alerts {'ENABLED' if new_val else 'DISABLED'} system-wide."
+
+        if updated_fields:
+            settings_obj.save(update_fields=updated_fields)
+
         return Response({
             'enabled': settings_obj.enable_email_alerts,
-            'message': f"Automated email alerts {'ENABLED' if settings_obj.enable_email_alerts else 'DISABLED'} successfully."
+            'civil': settings_obj.enable_civil_alerts,
+            'electrical': settings_obj.enable_electrical_alerts,
+            'hk': settings_obj.enable_hk_alerts,
+            'estate': settings_obj.enable_estate_alerts,
+            'userDept': user_dept,
+            'isMaster': is_master,
+            'message': msg,
         })
 
 
@@ -1743,6 +1971,74 @@ def _ensure_initial_clearances():
         )
 
 
+def parse_clearance_date_obj(c):
+    """Returns datetime.date or None for a HousingClearance record or date string."""
+    if isinstance(c, datetime.datetime):
+        return c.date()
+    if isinstance(c, datetime.date):
+        return c
+    if isinstance(c, str):
+        date_candidates = [c]
+    else:
+        date_candidates = [
+            getattr(c, 'estate_date_1', None),
+            getattr(c, 'estate_date_3', None),
+            getattr(c, 'estate_date_4', None),
+            getattr(c, 'estate_date_2', None),
+            getattr(c, 'time_stamp', None),
+        ]
+    for d_str in date_candidates:
+        if not d_str:
+            continue
+        trimmed = str(d_str).strip()
+        # ISO YYYY-MM-DD
+        if len(trimmed) == 10 and trimmed[4] == '-' and trimmed[7] == '-':
+            try:
+                return datetime.date.fromisoformat(trimmed)
+            except ValueError:
+                pass
+        # DD-Mon-YYYY or DD-Mon-YY e.g. 14-Jul-26, 6-Jul-2026, 29-Sep-26
+        m_mon = re.match(r'^(\d{1,2})[\/\-\s]([A-Za-z]{3,})[\/\-\s](\d{2,4})$', trimmed)
+        if m_mon:
+            day = int(m_mon.group(1))
+            mon_str = m_mon.group(2).lower()
+            year_val = m_mon.group(3)
+            year = int(f"20{year_val}" if len(year_val) == 2 else year_val)
+            months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+            for idx, m_prefix in enumerate(months, start=1):
+                if mon_str.startswith(m_prefix):
+                    try:
+                        return datetime.date(year, idx, day)
+                    except ValueError:
+                        pass
+        # DD/MM/YYYY or DD/MM/YY
+        m_dmy = re.match(r'^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$', trimmed)
+        if m_dmy:
+            p1, p2 = int(m_dmy.group(1)), int(m_dmy.group(2))
+            year_val = m_dmy.group(3)
+            year = int(f"20{year_val}" if len(year_val) == 2 else year_val)
+            day, month = p1, p2
+            if p1 <= 12 and p2 > 12:
+                day, month = p2, p1
+            try:
+                return datetime.date(year, month, day)
+            except ValueError:
+                pass
+    if getattr(c, 'created_at', None):
+        return c.created_at.date()
+    return None
+
+
+def purge_expired_clearances_trash():
+    """Permanently delete clearances that have been in trash for > 24 hours."""
+    cutoff = timezone.now() - datetime.timedelta(hours=24)
+    expired = HousingClearance.objects.filter(is_deleted=True, deleted_at__lt=cutoff)
+    count = expired.count()
+    if count > 0:
+        expired.delete()
+    return count
+
+
 class HousingClearanceListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1750,10 +2046,11 @@ class HousingClearanceListCreateView(APIView):
         if not is_clearance_allowed(request.user):
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
 
+        purge_expired_clearances_trash()
         ensure_initial_clearances()
         rebalance_active_priorities()
 
-        qs = HousingClearance.objects.filter(is_active=True).select_related('unit')
+        qs = HousingClearance.objects.filter(is_active=True, is_deleted=False).select_related('unit')
         house_type = request.query_params.get('house_type')
         if house_type and house_type != 'all':
             raw = house_type.replace('Type', '').strip()
@@ -1833,7 +2130,7 @@ class HousingClearanceDetailView(APIView):
 
     def get_object(self, pk):
         try:
-            return HousingClearance.objects.select_related('unit').get(pk=pk, is_active=True)
+            return HousingClearance.objects.select_related('unit').get(pk=pk, is_active=True, is_deleted=False)
         except HousingClearance.DoesNotExist:
             return None
 
@@ -2214,14 +2511,195 @@ class HousingClearanceDetailView(APIView):
         if not obj:
             return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
         with transaction.atomic():
+            obj.is_deleted = True
+            obj.deleted_at = timezone.now()
+            obj.deleted_by = request.user
             obj.is_active = False
             obj.priority = ''
-            obj.save(update_fields=['is_active', 'priority'])
+            obj.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by', 'is_active', 'priority'])
             rebalance_active_priorities()
             if obj.unit and obj.unit.status == HousingUnit.Status.UNDER_CLEARANCE:
                 # If no other active clearance, reset unit to vacant
-                has_other = obj.unit.clearances.filter(is_active=True, status='in_progress').exists()
+                has_other = obj.unit.clearances.filter(is_active=True, is_deleted=False, status='in_progress').exists()
                 if not has_other and not obj.unit.current_allotment:
                     obj.unit.status = HousingUnit.Status.VACANT
                     obj.unit.save(update_fields=['status'])
-        return Response({'success': True}, status=status.HTTP_200_OK)
+        return Response({'success': True, 'message': 'Record moved to 24-hour recovery trash.'}, status=status.HTTP_200_OK)
+
+
+class HousingClearanceDeleteHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not is_clearance_master(request.user):
+            return Response({'error': 'Only Admin and Estate Office can delete history records.'}, status=status.HTTP_403_FORBIDDEN)
+
+        purge_expired_clearances_trash()
+
+        # Target completed / allotted clearances
+        qs = HousingClearance.objects.filter(is_active=True, is_deleted=False).filter(
+            models.Q(is_allotted=True) | models.Q(status='completed')
+        )
+
+        data = request.data or {}
+        delete_type = data.get('delete_type', 'all')
+        explicit_ids = data.get('ids')
+
+        from_date_str = data.get('from_date')
+        to_date_str = data.get('to_date')
+        year_val = data.get('year')
+        years_back = data.get('years_back')
+
+        if explicit_ids and isinstance(explicit_ids, list):
+            qs = qs.filter(id__in=explicit_ids)
+        elif delete_type == 'date_range' and (from_date_str or to_date_str):
+            from_d = datetime.date.fromisoformat(from_date_str) if from_date_str else None
+            to_d = datetime.date.fromisoformat(to_date_str) if to_date_str else None
+            matching_ids = []
+            for c in qs:
+                c_d = parse_clearance_date_obj(c)
+                if c_d:
+                    if from_d and c_d < from_d:
+                        continue
+                    if to_d and c_d > to_d:
+                        continue
+                    matching_ids.append(c.id)
+            qs = qs.filter(id__in=matching_ids)
+        elif delete_type == 'month_range' and (from_date_str or to_date_str):
+            try:
+                from_y, from_m = [int(p) for p in from_date_str.split('-')[:2]] if from_date_str else (1900, 1)
+                to_y, to_m = [int(p) for p in to_date_str.split('-')[:2]] if to_date_str else (2100, 12)
+                matching_ids = []
+                for c in qs:
+                    c_d = parse_clearance_date_obj(c)
+                    if c_d:
+                        c_val = c_d.year * 100 + c_d.month
+                        if c_val < (from_y * 100 + from_m) or c_val > (to_y * 100 + to_m):
+                            continue
+                        matching_ids.append(c.id)
+                qs = qs.filter(id__in=matching_ids)
+            except Exception:
+                pass
+        elif delete_type == 'year_range':
+            if year_val:
+                try:
+                    y = int(year_val)
+                    matching_ids = [c.id for c in qs if (parse_clearance_date_obj(c) and parse_clearance_date_obj(c).year == y)]
+                    qs = qs.filter(id__in=matching_ids)
+                except Exception:
+                    pass
+            elif years_back:
+                try:
+                    yb = int(years_back)
+                    cutoff_d = datetime.date.today() - datetime.timedelta(days=365 * yb)
+                    matching_ids = [c.id for c in qs if (parse_clearance_date_obj(c) and parse_clearance_date_obj(c) <= cutoff_d)]
+                    qs = qs.filter(id__in=matching_ids)
+                except Exception:
+                    pass
+
+        target_ids = list(qs.values_list('id', flat=True))
+        if not target_ids:
+            return Response({'error': 'No matching history records found to delete.', 'deleted_count': 0}, status=status.HTTP_400_BAD_REQUEST)
+
+        now = timezone.now()
+        with transaction.atomic():
+            qs.update(
+                is_deleted=True,
+                deleted_at=now,
+                deleted_by=request.user
+            )
+
+        return Response({
+            'success': True,
+            'message': f'{len(target_ids)} records moved to 24-hour recovery trash.',
+            'deleted_count': len(target_ids),
+            'deleted_ids': target_ids,
+        }, status=status.HTTP_200_OK)
+
+
+class HousingClearanceTrashView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not is_clearance_master(request.user):
+            return Response({'error': 'Only Admin and Estate Office can view trash.'}, status=status.HTTP_403_FORBIDDEN)
+
+        purge_expired_clearances_trash()
+
+        qs = HousingClearance.objects.filter(is_deleted=True).select_related('unit').order_by('-deleted_at')
+        serializer = HousingClearanceSerializer(qs, many=True, context={'request': request})
+        return Response({
+            'trash': serializer.data,
+            'total_in_trash': qs.count(),
+        })
+
+
+class HousingClearanceRestoreTrashView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not is_clearance_master(request.user):
+            return Response({'error': 'Only Admin and Estate Office can restore records.'}, status=status.HTTP_403_FORBIDDEN)
+
+        purge_expired_clearances_trash()
+
+        data = request.data or {}
+        ids = data.get('ids')
+        restore_all = data.get('all', False)
+
+        qs = HousingClearance.objects.filter(is_deleted=True)
+        if not restore_all:
+            if not ids or not isinstance(ids, list):
+                return Response({'error': 'Specify ids list or all=True'}, status=status.HTTP_400_BAD_REQUEST)
+            qs = qs.filter(id__in=ids)
+
+        restored_ids = list(qs.values_list('id', flat=True))
+        count = len(restored_ids)
+        if count == 0:
+            return Response({'error': 'No records found to restore.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            qs.update(
+                is_deleted=False,
+                is_active=True,
+                deleted_at=None,
+                deleted_by=None
+            )
+
+        return Response({
+            'success': True,
+            'message': f'{count} records restored successfully.',
+            'restored_count': count,
+            'restored_ids': restored_ids,
+        })
+
+
+class HousingClearancePurgeTrashView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not is_clearance_master(request.user):
+            return Response({'error': 'Only Admin and Estate Office can permanently purge records.'}, status=status.HTTP_403_FORBIDDEN)
+
+        data = request.data or {}
+        ids = data.get('ids')
+        purge_all = data.get('all', False)
+
+        qs = HousingClearance.objects.filter(is_deleted=True)
+        if not purge_all:
+            if not ids or not isinstance(ids, list):
+                return Response({'error': 'Specify ids list or all=True'}, status=status.HTTP_400_BAD_REQUEST)
+            qs = qs.filter(id__in=ids)
+
+        count = qs.count()
+        if count == 0:
+            return Response({'error': 'No records found to purge.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            qs.delete()
+
+        return Response({
+            'success': True,
+            'message': f'{count} records permanently deleted from database.',
+            'purged_count': count,
+        })

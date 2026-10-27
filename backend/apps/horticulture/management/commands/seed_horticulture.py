@@ -118,55 +118,59 @@ WORKER_TEAMS = {
     ],
 }
 
+ZONE_RED = "Academic+Director's residence+Guest House Area"
+ZONE_BLUE = "Housing&Hostel"
+ZONE_BLACK = "Research park"
+
 ZONE_SPECS = [
-    {'name': 'Zone Red', 'color_code': 'red', 'supervisor_username': 'jayanti.thakor'},
-    {'name': 'Zone Blue', 'color_code': 'blue', 'supervisor_username': 'mukesh.solanki'},
-    {'name': 'Zone Black', 'color_code': 'black', 'supervisor_username': 'rajesh.thakor'},
+    {'name': ZONE_RED, 'color_code': 'red', 'supervisor_username': 'jayanti.thakor'},
+    {'name': ZONE_BLUE, 'color_code': 'blue', 'supervisor_username': 'mukesh.solanki'},
+    {'name': ZONE_BLACK, 'color_code': 'black', 'supervisor_username': 'rajesh.thakor'},
 ]
 
 AREA_ZONE_MAP = {
-    22: 'Zone Red',
-    23: 'Zone Red',
-    24: 'Zone Red',
-    29: 'Zone Red',
-    30: 'Zone Black',
-    33: 'Zone Black',
-    35: 'Zone Red',
-    36: 'Zone Blue',
-    15: 'Zone Black',
-    17: 'Zone Black',
-    21: 'Zone Black',
-    34: 'Zone Red',
-    25: 'Zone Red',
-    5: 'Zone Red',
-    1: 'Zone Blue',
-    2: 'Zone Red',
-    16: 'Zone Black',
-    18: 'Zone Blue',
-    19: 'Zone Black',
-    20: 'Zone Blue',
-    3: 'Zone Red',
-    4: 'Zone Blue',
-    6: 'Zone Black',
-    7: 'Zone Black',
-    8: 'Zone Blue',
-    9: 'Zone Blue',
-    10: 'Zone Blue',
-    11: 'Zone Blue',
-    12: 'Zone Blue',
-    13: 'Zone Blue',
-    14: 'Zone Black',
-    26: 'Zone Blue',
-    27: 'Zone Blue',
-    28: 'Zone Blue',
-    31: 'Zone Blue',
-    32: 'Zone Red',
-    37: 'Zone Black',
-    38: 'Zone Red',
-    39: 'Zone Black',
-    40: 'Zone Blue',
-    41: 'Zone Black',
-    42: 'Zone Black',
+    22: ZONE_RED,
+    23: ZONE_RED,
+    24: ZONE_RED,
+    29: ZONE_RED,
+    30: ZONE_BLACK,
+    33: ZONE_BLACK,
+    35: ZONE_RED,
+    36: ZONE_BLUE,
+    15: ZONE_BLACK,
+    17: ZONE_BLACK,
+    21: ZONE_BLACK,
+    34: ZONE_RED,
+    25: ZONE_RED,
+    5: ZONE_RED,
+    1: ZONE_BLUE,
+    2: ZONE_RED,
+    16: ZONE_BLACK,
+    18: ZONE_BLUE,
+    19: ZONE_BLACK,
+    20: ZONE_BLUE,
+    3: ZONE_RED,
+    4: ZONE_BLUE,
+    6: ZONE_BLACK,
+    7: ZONE_BLACK,
+    8: ZONE_BLUE,
+    9: ZONE_BLUE,
+    10: ZONE_BLUE,
+    11: ZONE_BLUE,
+    12: ZONE_BLUE,
+    13: ZONE_BLUE,
+    14: ZONE_BLACK,
+    26: ZONE_BLUE,
+    27: ZONE_BLUE,
+    28: ZONE_BLUE,
+    31: ZONE_BLUE,
+    32: ZONE_RED,
+    37: ZONE_BLACK,
+    38: ZONE_RED,
+    39: ZONE_BLACK,
+    40: ZONE_BLUE,
+    41: ZONE_BLACK,
+    42: ZONE_BLACK,
 }
 
 AREA_SPECS = [
@@ -215,28 +219,28 @@ AREA_SPECS = [
 ]
 
 ROAD_SPECS = [
-    ('A1', 'Zone Red', 'A1 Road'),
-    ('A2', 'Zone Blue', 'A2 Road'),
-    ('B1', 'Zone Red', 'B1 Road'),
-    ('C1', 'Zone Black', 'C1 Road'),
-    ('C2', 'Zone Blue', 'C2 Road'),
-    ('C3', 'Zone Blue', 'C3 Road'),
-    ('D1', 'Zone Blue', 'D1 Road'),
-    ('E1', 'Zone Black', 'E1 Road'),
-    ('E2', 'Zone Black', 'E2 Road'),
-    ('F1', 'Zone Blue', 'F1 Road'),
-    ('F1a', 'Zone Black', 'F1a Road'),
-    ('F2', 'Zone Blue', 'F2 Road'),
-    ('G1', 'Zone Black', 'G1 Road'),
-    ('H1', 'Zone Red', 'H1 Road'),
-    ('H2', 'Zone Blue', 'H2 Road'),
-    ('I1', 'Zone Black', 'I1 Road'),
-    ('I2', 'Zone Red', 'I2 Road'),
-    ('I3', 'Zone Red', 'I3 Road'),
-    ('I4', 'Zone Blue', 'I4 Road'),
-    ('J1', 'Zone Red', 'J1 Road'),
-    ('J2', 'Zone Blue', 'J2 Road'),
-    ('K', 'Zone Black', 'K Road'),
+    ('A1', ZONE_RED, 'A1 Road'),
+    ('A2', ZONE_BLUE, 'A2 Road'),
+    ('B1', ZONE_RED, 'B1 Road'),
+    ('C1', ZONE_BLACK, 'C1 Road'),
+    ('C2', ZONE_BLUE, 'C2 Road'),
+    ('C3', ZONE_BLUE, 'C3 Road'),
+    ('D1', ZONE_BLUE, 'D1 Road'),
+    ('E1', ZONE_BLACK, 'E1 Road'),
+    ('E2', ZONE_BLACK, 'E2 Road'),
+    ('F1', ZONE_BLUE, 'F1 Road'),
+    ('F1a', ZONE_BLACK, 'F1a Road'),
+    ('F2', ZONE_BLUE, 'F2 Road'),
+    ('G1', ZONE_BLACK, 'G1 Road'),
+    ('H1', ZONE_RED, 'H1 Road'),
+    ('H2', ZONE_BLUE, 'H2 Road'),
+    ('I1', ZONE_BLACK, 'I1 Road'),
+    ('I2', ZONE_RED, 'I2 Road'),
+    ('I3', ZONE_RED, 'I3 Road'),
+    ('I4', ZONE_BLUE, 'I4 Road'),
+    ('J1', ZONE_RED, 'J1 Road'),
+    ('J2', ZONE_BLUE, 'J2 Road'),
+    ('K', ZONE_BLACK, 'K Road'),
 ]
 
 TASK_TYPE_SPECS = [
@@ -463,15 +467,21 @@ class Command(BaseCommand):
     def _seed_zones(self, supervisors):
         zones = {}
         for spec in ZONE_SPECS:
-            zone, created = HorticultureZone.objects.get_or_create(
-                name=spec['name'],
-                defaults={
-                    'color_code': spec['color_code'],
-                    'supervisor': supervisors[spec['supervisor_username']],
-                    'notes': '',
-                },
-            )
+            zone = HorticultureZone.objects.filter(color_code=spec['color_code']).first()
+            created = False
+            if not zone:
+                zone, created = HorticultureZone.objects.get_or_create(
+                    name=spec['name'],
+                    defaults={
+                        'color_code': spec['color_code'],
+                        'supervisor': supervisors[spec['supervisor_username']],
+                        'notes': '',
+                    },
+                )
             changed = False
+            if zone.name != spec['name']:
+                zone.name = spec['name']
+                changed = True
             if zone.color_code != spec['color_code']:
                 zone.color_code = spec['color_code']
                 changed = True
@@ -482,7 +492,7 @@ class Command(BaseCommand):
                 zone.notes = ''
                 changed = True
             if changed:
-                zone.save(update_fields=['color_code', 'supervisor', 'notes'])
+                zone.save(update_fields=['name', 'color_code', 'supervisor', 'notes'])
 
             self.stats['zones_created'] += int(created)
             self.stats['zones_updated'] += int(not created and changed)

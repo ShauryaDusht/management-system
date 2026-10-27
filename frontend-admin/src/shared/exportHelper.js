@@ -13,6 +13,7 @@ import {
   AlignmentType,
 } from 'docx'
 import PptxGenJS from 'pptxgenjs'
+import * as XLSX from 'xlsx-js-style'
 
 import { triggerDownload } from './utils'
 
@@ -73,6 +74,28 @@ export function normalizeExportConfig(config) {
         title: config.sectionTitle || '',
         headers: config.headers,
         rows: config.rows,
+      },
+    ]
+  } else if (Array.isArray(config.data) && config.data.length) {
+    let resolvedHeaders = []
+    let resolvedRows = []
+    if (Array.isArray(config.columns) && config.columns.length) {
+      resolvedHeaders = config.columns.map((c) => (typeof c === 'string' ? c : c.header || c.label || c.key || ''))
+      resolvedRows = config.data.map((item) =>
+        config.columns.map((c) => {
+          const k = typeof c === 'string' ? c : c.key
+          return item[k]
+        })
+      )
+    } else {
+      resolvedHeaders = Object.keys(config.data[0])
+      resolvedRows = config.data.map((item) => resolvedHeaders.map((k) => item[k]))
+    }
+    sections = [
+      {
+        title: config.sectionTitle || '',
+        headers: resolvedHeaders,
+        rows: resolvedRows,
       },
     ]
   }
@@ -1068,19 +1091,398 @@ export async function exportToSlides(rawConfig) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 5. EXCEL (.XLSX) EXPORT (SheetJS with Highlights and Bold Headers)
+// ─────────────────────────────────────────────────────────────────────────────
+export function exportToExcel(rawConfig) {
+  const config = normalizeExportConfig(rawConfig)
+  const wb = XLSX.utils.book_new()
+  const aoa = []
+  const headerRowIndices = []
+
+  const isMultiSection = config.sections && config.sections.length > 1
+
+  config.sections.forEach((sec, sIdx) => {
+    if (isMultiSection && sec.title) {
+      aoa.push([sec.title])
+    }
+    if (sec.headers && sec.headers.length) {
+      headerRowIndices.push(aoa.length)
+      aoa.push(sec.headers.map((h) => cleanText(h)))
+    }
+    if (sec.rows && sec.rows.length) {
+      sec.rows.forEach((row) => {
+        if (Array.isArray(row)) {
+          aoa.push(
+            row.map((cell) => {
+              const text = cleanText(cell)
+              if (/^-?\d+(\.\d+)?$/.test(text) && !text.startsWith('0') && text.length < 15) {
+                const num = Number(text)
+                if (!isNaN(num)) return num
+              }
+              return text
+            })
+          )
+        } else if (row && typeof row === 'object') {
+          aoa.push(
+            (sec.headers || []).map((h) => {
+              const text = cleanText(row[h])
+              if (/^-?\d+(\.\d+)?$/.test(text) && !text.startsWith('0') && text.length < 15) {
+                const num = Number(text)
+                if (!isNaN(num)) return num
+              }
+              return text
+            })
+          )
+        }
+      })
+    }
+    if (isMultiSection && sIdx < config.sections.length - 1) {
+      aoa.push([]) // empty row between sections
+    }
+  })
+
+  // If no sections produced data, fallback to empty sheet
+  if (aoa.length === 0) {
+    aoa.push(['No data available'])
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa)
+
+  // Configure row heights (taller for header row)
+  const rowHeights = []
+  for (let r = 0; r < aoa.length; r++) {
+    if (headerRowIndices.includes(r)) {
+      rowHeights.push({ hpt: 26 })
+    } else {
+      rowHeights.push({ hpt: 20 })
+    }
+  }
+  ws['!rows'] = rowHeights
+
+  // Apply styling to all cells: bold & highlighted headers, crisp cell borders
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
+  for (let R = range.s.r; R <= range.e.r; ++R) {
+    const isHeaderRow = headerRowIndices.includes(R)
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellRef = XLSX.utils.encode_cell({ r: R, c: C })
+      const cell = ws[cellRef]
+      if (!cell) continue
+
+      if (isHeaderRow) {
+        cell.s = {
+          font: {
+            bold: true,
+            color: { rgb: 'FFFFFF' },
+            sz: 11,
+            name: 'Calibri',
+          },
+          fill: {
+            fgColor: { rgb: '1E3A2F' }, // Signature IITGN forest green
+          },
+          alignment: {
+            horizontal: 'center',
+            vertical: 'center',
+            wrapText: true,
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: '0F172A' } },
+            bottom: { style: 'medium', color: { rgb: '0F172A' } },
+            left: { style: 'thin', color: { rgb: '334155' } },
+            right: { style: 'thin', color: { rgb: '334155' } },
+          },
+        }
+      } else {
+        const isNum = typeof cell.v === 'number'
+        cell.s = {
+          font: {
+            sz: 10,
+            name: 'Calibri',
+            color: { rgb: '0F172A' },
+          },
+          alignment: {
+            vertical: 'center',
+            horizontal: isNum ? 'right' : 'left',
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          },
+        }
+      }
+    }
+  }
+
+  // Dynamic column widths
+  const colWidths = []
+  aoa.forEach((row) => {
+    if (Array.isArray(row)) {
+      row.forEach((cell, idx) => {
+        const len = String(cell ?? '').length
+        colWidths[idx] = Math.min(Math.max(colWidths[idx] || 12, len + 4), 60)
+      })
+    }
+  })
+  ws['!cols'] = colWidths.map((w) => ({ wch: w }))
+
+  const sheetName = (config.title || 'Report').replace(/[:\\/?*\[\]]/g, ' ').slice(0, 31).trim() || 'Report'
+  XLSX.utils.book_append_sheet(wb, ws, sheetName)
+
+  const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+  const blob = new Blob([wbOut], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
+  const baseName = config.filename.replace(/\.[^.]+$/, '')
+  triggerDownload(blob, `${baseName}.xlsx`)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. PRINT REPORT
+// ─────────────────────────────────────────────────────────────────────────────
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+export function printReport(rawConfig) {
+  const config = normalizeExportConfig(rawConfig)
+
+  const printFrame = document.createElement('iframe')
+  printFrame.style.position = 'fixed'
+  printFrame.style.right = '0'
+  printFrame.style.bottom = '0'
+  printFrame.style.width = '0'
+  printFrame.style.height = '0'
+  printFrame.style.border = '0'
+  document.body.appendChild(printFrame)
+
+  const frameDoc = printFrame.contentWindow.document
+  const now = new Date()
+  const dateStr = `${now.toLocaleDateString('en-IN')} ${now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
+
+  let statsHtml = ''
+  if (config.stats && config.stats.length) {
+    statsHtml = `
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        ${config.stats
+          .map(
+            (s) => `
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 12px;min-width:110px;">
+            <div style="font-size:10px;color:#64748b;text-transform:uppercase;font-weight:600;letter-spacing:0.04em;">${escapeHtml(s.label)}</div>
+            <div style="font-size:14px;font-weight:700;color:#0f172a;margin-top:2px;">${escapeHtml(s.value)}</div>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+    `
+  }
+
+  let metaHtml = ''
+  if (config.metadata && config.metadata.length) {
+    metaHtml = `
+      <div style="font-size:11px;color:#475569;margin-bottom:12px;background:#f1f5f9;padding:6px 10px;border-radius:4px;display:inline-block;">
+        ${config.metadata.map((m) => `<strong>${escapeHtml(m.label)}:</strong> ${escapeHtml(m.value)}`).join(' &nbsp;|&nbsp; ')}
+      </div>
+    `
+  }
+
+  let sectionsHtml = ''
+  config.sections.forEach((sec) => {
+    const secTitle = sec.title
+      ? `<h3 style="font-size:13px;margin:14px 0 6px 0;color:#1e293b;font-weight:700;">${escapeHtml(sec.title)}</h3>`
+      : ''
+    const headersList = (sec.headers || []).map(cleanText)
+    const rowsList = (sec.rows || []).map((r) =>
+      Array.isArray(r) ? r.map(cleanText) : headersList.map((h) => cleanText(r[h]))
+    )
+
+    const tableHeadHtml = headersList.map((h) => `<th>${escapeHtml(h)}</th>`).join('')
+    const tableRowsHtml = rowsList
+      .map(
+        (row, idx) => `
+      <tr class="${idx % 2 === 0 ? 'even' : 'odd'}">
+        ${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}
+      </tr>
+    `
+      )
+      .join('')
+
+    sectionsHtml += `
+      ${secTitle}
+      <table>
+        <thead>
+          <tr>${tableHeadHtml}</tr>
+        </thead>
+        <tbody>
+          ${tableRowsHtml}
+        </tbody>
+      </table>
+    `
+  })
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>${escapeHtml(config.title)}</title>
+        <style>
+          @page {
+            size: auto;
+            margin: 10mm 12mm 12mm 12mm;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #0f172a;
+            background: #fff;
+            margin: 0;
+            padding: 0;
+            font-size: 11px;
+            line-height: 1.4;
+          }
+          .header {
+            margin-bottom: 12px;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 8px;
+          }
+          .brand {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            text-transform: uppercase;
+          }
+          h1 {
+            font-size: 18px;
+            margin: 4px 0 2px 0;
+            color: #0f172a;
+            font-weight: 800;
+          }
+          .sub {
+            font-size: 12px;
+            color: #475569;
+            margin: 2px 0;
+          }
+          .meta {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 4px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            margin-bottom: 14px;
+            font-size: 10px;
+          }
+          thead {
+            display: table-header-group;
+          }
+          tr {
+            page-break-inside: avoid;
+          }
+          th {
+            background-color: #0f172a !important;
+            color: #ffffff !important;
+            font-weight: 700;
+            text-align: left;
+            padding: 6px 8px;
+            border: 1px solid #0f172a;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          td {
+            padding: 5px 8px;
+            border: 1px solid #cbd5e1;
+            vertical-align: top;
+          }
+          tr.odd {
+            background-color: #f8fafc;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .footer {
+            margin-top: 16px;
+            padding-top: 8px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 9px;
+            color: #94a3b8;
+            display: flex;
+            justify-content: space-between;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="brand">IIT Gandhinagar · ${escapeHtml(config.module || 'Campus Operations')}</div>
+          <h1>${escapeHtml(config.title)}</h1>
+          ${config.subtitle ? `<div class="sub">${escapeHtml(config.subtitle)}</div>` : ''}
+          <div class="meta">Generated: ${dateStr}</div>
+        </div>
+        ${metaHtml}
+        ${statsHtml}
+        ${sectionsHtml}
+        <div class="footer">
+          <span>Campus Sanchalika Operations Management System</span>
+          <span>Confidential — Internal Use Only</span>
+        </div>
+      </body>
+    </html>
+  `
+
+  frameDoc.open()
+  frameDoc.write(html)
+  frameDoc.close()
+
+  setTimeout(() => {
+    try {
+      printFrame.contentWindow.focus()
+      printFrame.contentWindow.print()
+    } catch (e) {
+      console.warn('Iframe print fallback to window.print', e)
+      window.print()
+    } finally {
+      setTimeout(() => {
+        if (printFrame.parentNode) {
+          printFrame.parentNode.removeChild(printFrame)
+        }
+      }, 3000)
+    }
+  }, 400)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Unified Dispatcher
 // ─────────────────────────────────────────────────────────────────────────────
 export async function exportReport(format, config) {
-  switch (format) {
+  let targetFormat = format
+  let targetConfig = config
+  if (typeof format === 'object' && format !== null && !config) {
+    targetConfig = format
+    targetFormat = format.format || 'excel'
+  }
+  const fmt = String(targetFormat || '').toLowerCase()
+  switch (fmt) {
+    case 'excel':
+    case 'xlsx':
     case 'csv':
-      return exportToCsv(config)
+      return exportToExcel(targetConfig)
     case 'pdf':
-      return await exportToPdf(config)
+      return await exportToPdf(targetConfig)
+    case 'print':
+      return printReport(targetConfig)
     case 'word':
-      return await exportToWord(config)
+    case 'docx':
+      return await exportToWord(targetConfig)
     case 'slides':
-      return await exportToSlides(config)
+    case 'pptx':
+      return await exportToSlides(targetConfig)
     default:
-      throw new Error(`Unsupported export format: ${format}`)
+      return exportToExcel(targetConfig)
   }
 }

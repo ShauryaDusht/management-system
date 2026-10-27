@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Btn, Card, Modal, Spinner } from '../../components/ui'
 import { inr0, calcMeters, formatDMY, billingLabel, todayISO, prevMonthOf } from './utils'
 import { exportExcel } from '../../shared/utils'
+import PaymentRecordModal from './PaymentRecordModal'
 
 export default function ElectricityTab({
   records = [],
@@ -18,6 +19,7 @@ export default function ElectricityTab({
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [newContractor, setNewContractor] = useState({ name: '', toLine: '', address: '', intro: '', meterLabel: '', rate: '9.55' })
   const [adding, setAdding] = useState(false)
+  const [paymentModalRecord, setPaymentModalRecord] = useState(null)
 
   // Keep bulk controls populated with current values from the records so they are not blank
   useEffect(() => {
@@ -85,7 +87,7 @@ export default function ElectricityTab({
       'Current Reading',
       'Previous Reading',
       'Unit Consumed',
-      'Amount',
+      'Amount (INR)',
       'Signature',
     ]
 
@@ -151,7 +153,17 @@ export default function ElectricityTab({
       }
     })
 
-    rows.push(['TOTAL', '', '', '', '', '', sumUnits, sumAmount, ''])
+    rows.push([
+      'TOTAL',
+      '',
+      '',
+      '',
+      '',
+      '',
+      sumUnits,
+      sumAmount,
+      '',
+    ])
 
     await exportExcel(filename, headers, rows, 'Power Contractors')
   }
@@ -282,6 +294,7 @@ export default function ElectricityTab({
               <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', textAlign: 'center', width: 105 }}>Previous</th>
               <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', textAlign: 'right', width: 95 }}>Units</th>
               <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', textAlign: 'right', width: 115 }}>Amount</th>
+              <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', textAlign: 'center', width: 140 }}>Payment Record</th>
               <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', textAlign: 'center', width: 80 }}>Action</th>
             </tr>
           </thead>
@@ -454,6 +467,96 @@ export default function ElectricityTab({
                   <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: calc.complete ? 'var(--green-900)' : 'var(--text-3)' }}>
                     {calc.complete ? `₹ ${inr0(calc.total)}` : '—'}
                   </td>
+                  <td style={{ padding: '8px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    {(() => {
+                      const pStatus = r.paymentStatus || 'unpaid'
+                      const pPaid = Number(r.totalPaid || 0)
+                      const pDue = r.balanceDue != null ? Number(r.balanceDue) : Math.max(0, calc.total - pPaid)
+
+                      if (pStatus === 'paid') {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setPaymentModalRecord(r)}
+                            title={`Fully Paid: Rs. ${inr0(pPaid)}. Click to view record.`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              padding: '3px 8px',
+                              borderRadius: 14,
+                              background: '#dcfce7',
+                              border: '1px solid #86efac',
+                              color: '#15803d',
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a' }} />
+                            <span>Paid</span>
+                          </button>
+                        )
+                      }
+
+                      if (pStatus === 'partially_paid') {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setPaymentModalRecord(r)}
+                            title={`Paid: Rs. ${inr0(pPaid)} / Rs. ${inr0(calc.total)} • Due: Rs. ${inr0(pDue)}. Click to view/add installments.`}
+                            style={{
+                              display: 'inline-flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: 1,
+                              padding: '3px 8px',
+                              borderRadius: 8,
+                              background: '#fef3c7',
+                              border: '1px solid #fde68a',
+                              color: '#b45309',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#d97706' }} />
+                              <span>Partial: Rs. {inr0(pPaid)}</span>
+                            </div>
+                            <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 600 }}>Due: Rs. {inr0(pDue)}</span>
+                          </button>
+                        )
+                      }
+
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setPaymentModalRecord(r)}
+                          title="No payments recorded yet. Click to record payment."
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '3px 8px',
+                            borderRadius: 14,
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border)',
+                            color: 'var(--text-3)',
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#94a3b8' }} />
+                          <span>Unpaid</span>
+                        </button>
+                      )
+                    })()}
+                  </td>
                   <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                     <Btn
                       size="sm"
@@ -469,7 +572,7 @@ export default function ElectricityTab({
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={10} style={{ padding: 30, textAlign: 'center', color: 'var(--text-3)' }}>
+                <td colSpan={11} style={{ padding: 30, textAlign: 'center', color: 'var(--text-3)' }}>
                   No contractors found matching "{query}".
                 </td>
               </tr>
@@ -545,6 +648,24 @@ export default function ElectricityTab({
           </div>
         </form>
       </Modal>
+
+      {/* Payment Record Modal */}
+      {paymentModalRecord && (
+        <PaymentRecordModal
+          isOpen={Boolean(paymentModalRecord)}
+          onClose={() => setPaymentModalRecord(null)}
+          record={paymentModalRecord}
+          title="Contractor Payment Record"
+          name={paymentModalRecord.name}
+          noteNo={paymentModalRecord.noteNo}
+          totalAmount={calcMeters(paymentModalRecord.meters).total}
+          onSavePayments={async (newPayments) => {
+            await onPatch(paymentModalRecord.id, { payments: newPayments })
+            setPaymentModalRecord((prev) => (prev ? { ...prev, payments: newPayments } : null))
+          }}
+          isReadOnly={isReadOnly}
+        />
+      )}
     </div>
   )
 }

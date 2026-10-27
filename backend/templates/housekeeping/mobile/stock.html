@@ -109,7 +109,7 @@
 {% if active_requests %}
 <div class="sec">Requests In Progress</div>
 {% for req in active_requests %}
-<div class="card" style="padding:10px;border-left:4px solid {% if req.status == 'approved' %}#22c55e{% else %}#f59e0b{% endif %}">
+<div class="card" style="padding:10px;border-left:4px solid {% if req.status == 'approved' or req.status == 'issued' %}#22c55e{% else %}#f59e0b{% endif %}">
   <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
     <div>
       <div style="font-weight:700;font-size:13px">{% if req.item.item_code %}[{{ req.item.item_code }}] {% endif %}{{ req.item_name }}</div>
@@ -126,7 +126,7 @@
       </div>
       {% endif %}
     </div>
-    <span class="bdg {% if req.status == 'approved' %}g{% else %}y{% endif %}">{{ req.get_status_display }}</span>
+    <span class="bdg {% if req.status == 'approved' or req.status == 'issued' %}g{% else %}y{% endif %}">{% if req.status == 'approved' %}Issued{% else %}{{ req.get_status_display }}{% endif %}</span>
   </div>
 </div>
 {% endfor %}

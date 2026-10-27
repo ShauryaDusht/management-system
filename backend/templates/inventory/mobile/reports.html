@@ -64,9 +64,6 @@
       <span class="material-icons-round" style="font-size:16px">arrow_drop_down</span>
     </button>
     <div class="export-menu" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.15);min-width:145px;z-index:100;overflow:hidden">
-      <a href="{% url 'mobile_export_inventory_report_csv' %}?filter={{ status_filter }}{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}&format=csv" onclick="return triggerMobileDownload(this.href)" class="export-menu-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;color:#1e293b;text-decoration:none;border-bottom:1px solid #f1f5f9">
-        <span class="material-icons-round" style="font-size:16px;color:#16a34a">description</span> CSV (.csv)
-      </a>
       <a href="{% url 'mobile_export_inventory_report_csv' %}?filter={{ status_filter }}{% if item_type_filter and item_type_filter != 'all' %}&item_type={{ item_type_filter }}{% endif %}&format=xlsx" onclick="return triggerMobileDownload(this.href)" class="export-menu-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;color:#1e293b;text-decoration:none;border-bottom:1px solid #f1f5f9">
         <span class="material-icons-round" style="font-size:16px;color:#059669">table_view</span> Excel (.xlsx)
       </a>
@@ -214,9 +211,6 @@
       <span class="material-icons-round" style="font-size:16px">arrow_drop_down</span>
     </button>
     <div class="export-menu" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.15);min-width:145px;z-index:100;overflow:hidden">
-      <a href="{% url 'mobile_export_requests_report_csv' %}{% if date_from or date_to %}?{% endif %}{% if date_from %}date_from={{ date_from }}{% endif %}{% if date_from and date_to %}&{% endif %}{% if date_to %}date_to={{ date_to }}{% endif %}{% if date_from or date_to %}&{% else %}?{% endif %}format=csv" onclick="return triggerMobileDownload(this.href)" class="export-menu-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;color:#1e293b;text-decoration:none;border-bottom:1px solid #f1f5f9">
-        <span class="material-icons-round" style="font-size:16px;color:#16a34a">description</span> CSV (.csv)
-      </a>
       <a href="{% url 'mobile_export_requests_report_csv' %}{% if date_from or date_to %}?{% endif %}{% if date_from %}date_from={{ date_from }}{% endif %}{% if date_from and date_to %}&{% endif %}{% if date_to %}date_to={{ date_to }}{% endif %}{% if date_from or date_to %}&{% else %}?{% endif %}format=xlsx" onclick="return triggerMobileDownload(this.href)" class="export-menu-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;color:#1e293b;text-decoration:none;border-bottom:1px solid #f1f5f9">
         <span class="material-icons-round" style="font-size:16px;color:#059669">table_view</span> Excel (.xlsx)
       </a>

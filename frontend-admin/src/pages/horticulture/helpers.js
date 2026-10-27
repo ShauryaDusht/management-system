@@ -71,9 +71,16 @@ export function humanizeSeason(value) {
 
 export function priorityZoneCards(zoneStatus) {
   const list = asList(zoneStatus)
-  const preferred = ['Zone Red', 'Zone Blue', 'Zone Black']
+  const preferred = [
+    "Academic+Director's residence+Guest House Area",
+    'Housing&Hostel',
+    'Research park',
+    'Zone Red',
+    'Zone Blue',
+    'Zone Black',
+  ]
   const map = new Map(list.map((zone) => [zone.zone_name, zone]))
   const matched = preferred.map((name) => map.get(name)).filter(Boolean)
-  if (matched.length === preferred.length) return matched
+  if (matched.length >= 3) return matched.slice(0, 3)
   return list.slice(0, 3)
 }

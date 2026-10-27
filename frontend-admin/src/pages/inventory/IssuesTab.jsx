@@ -57,6 +57,14 @@ function isIssueInMonth(issue, month, year) {
   )
 }
 
+function isWithin24Hours(timestamp) {
+  if (!timestamp) return false
+  const time = new Date(timestamp).getTime()
+  if (Number.isNaN(time)) return false
+  const diffHours = (Date.now() - time) / (1000 * 60 * 60)
+  return diffHours >= 0 && diffHours <= 24
+}
+
 export default function IssuesTab({ userRole, categoryScope = null, excludeCategoryScope = null }) {
   const [issues, setIssues] = useState([])
   const [undoModalIssue, setUndoModalIssue] = useState(null)
@@ -698,15 +706,21 @@ export default function IssuesTab({ userRole, categoryScope = null, excludeCateg
                   </Btn>
                 )}
                 {canManager && !issue.returned_at && !issue.usage_finalized && !issue.is_reversed && (
-                  <Btn
-                    key={`undo-${issue.id}`}
-                    size="sm"
-                    variant="ghost"
-                    style={{ color: '#b91c1c', borderColor: '#fca5a5' }}
-                    onClick={() => setUndoModalIssue(issue)}
-                  >
-                    Undo / Adjust
-                  </Btn>
+                  isWithin24Hours(issue.issued_at) && (!issue.adjustments || issue.adjustments.length === 0) ? (
+                    <Btn
+                      key={`undo-${issue.id}`}
+                      size="sm"
+                      variant="ghost"
+                      style={{ color: '#b91c1c', borderColor: '#fca5a5' }}
+                      onClick={() => setUndoModalIssue(issue)}
+                    >
+                      Undo / Adjust
+                    </Btn>
+                  ) : (
+                    <span key={`final-${issue.id}`} style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                      Completed
+                    </span>
+                  )
                 )}
               </div>,
             ]

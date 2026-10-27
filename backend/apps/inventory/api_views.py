@@ -1,3 +1,4 @@
+from datetime import timedelta
 from django.db import transaction
 from django.db.models import F
 from django.shortcuts import get_object_or_404
@@ -123,6 +124,48 @@ class RejectRequestView(APIView):
         _sync_horticulture_request_status(item_request, ItemRequest.Status.REJECTED)
         from apps.core.notifications import notify_inventory_rejected
         notify_inventory_rejected(item_request, item_request.rejection_reason)
+
+        return Response(ItemRequestSerializer(item_request).data, status=status.HTTP_200_OK)
+
+
+class UndoRejectRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, pk):
+        user = request.user
+        if not user.can_manage_inventory:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            item_request = ItemRequest.objects.select_for_update().get(pk=pk)
+        except ItemRequest.DoesNotExist:
+            return Response({'error': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if item_request.status != ItemRequest.Status.REJECTED:
+            return Response({'error': 'Request is not rejected'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Enforce single undo rule
+        if '[UNDO_REJECTED]' in (item_request.notes or ''):
+            return Response(
+                {'error': 'Only one undo operation is permitted for this request.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check 24-hour window
+        if item_request.reviewed_at and (timezone.now() - item_request.reviewed_at > timedelta(hours=24)):
+            return Response(
+                {'error': 'Undo rejection window (24 hours) has expired.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        item_request.status = ItemRequest.Status.PENDING
+        item_request.approved_by = None
+        item_request.reviewed_at = None
+        item_request.rejection_reason = ''
+        item_request.notes = ((item_request.notes or '').strip() + ' [UNDO_REJECTED]').strip()
+        item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'rejection_reason', 'notes'])
+        _sync_horticulture_request_status(item_request, ItemRequest.Status.PENDING)
 
         return Response(ItemRequestSerializer(item_request).data, status=status.HTTP_200_OK)
 

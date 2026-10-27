@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 from config.admin import admin_site
-from apps.core.portal_views import portal_root, portal_login, portal_logout, portal_logo
+from apps.core.portal_views import portal_root, portal_login, portal_logout, portal_logo, portal_dashboard
 from apps.core.media_views import serve_media_file
 from apps.core.pwa_views import service_worker
 from apps.geo_tracker.urls import public_urlpatterns as geo_public_urlpatterns
@@ -144,6 +144,8 @@ urlpatterns = [
     path('hvac', admin_spa_section_redirect('hvac')),
     path('hvac/', include((hvac_mobile_urlpatterns, 'hvac_mobile'))),
     path('portal/', portal_root),
+    path('portal/dashboard/', portal_dashboard, name='portal_dashboard'),
+    path('portal/dashboard', portal_dashboard),
     path('portal/login/', portal_login, name='portal_login'),
     path('portal/logout/', portal_logout, name='portal_logout'),
 ]

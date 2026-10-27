@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { hkAPI } from '../../api/housekeeping'
 import { Alert, Badge, Btn, Card, DataTable, SelectField, Spinner } from '../../components/ui'
 
-const STATUS_OPTIONS = ['pending', 'approved', 'issued', 'rejected']
+const STATUS_OPTIONS = ['pending', 'issued', 'rejected']
 
 export default function AssignInventoryTab({ userRole, readOnly = false }) {
   const [loading, setLoading] = useState(true)
@@ -24,7 +24,7 @@ export default function AssignInventoryTab({ userRole, readOnly = false }) {
       setRequests(list)
       const initDraft = {}
       list.forEach((r) => {
-        initDraft[r.id] = r.status
+        initDraft[r.id] = r.status === 'approved' ? 'issued' : r.status
       })
       setDraftStatus(initDraft)
     } catch (e) {
@@ -39,7 +39,11 @@ export default function AssignInventoryTab({ userRole, readOnly = false }) {
   }, [])
 
   const filtered = useMemo(
-    () => requests.filter((r) => statusFilter === 'all' || r.status === statusFilter),
+    () => requests.filter((r) => {
+      if (statusFilter === 'all') return true
+      if (statusFilter === 'issued') return r.status === 'issued' || r.status === 'approved'
+      return r.status === statusFilter
+    }),
     [requests, statusFilter]
   )
 
@@ -104,11 +108,11 @@ export default function AssignInventoryTab({ userRole, readOnly = false }) {
               `${r.quantity} ${r.unit || ''}`.trim(),
               r.requested_by_name || '-',
               r.is_urgent ? <Badge key={`u-${r.id}`} value="urgent" /> : '-',
-              <Badge key={`s-${r.id}`} value={r.status} />,
+              <Badge key={`s-${r.id}`} value={r.status === 'approved' ? 'issued' : r.status} />,
               canUpdate ? (
                 <div key={`a-${r.id}`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <SelectField
-                    value={draftStatus[r.id] || r.status}
+                    value={draftStatus[r.id] || (r.status === 'approved' ? 'issued' : r.status)}
                     onChange={(e) => setDraftStatus((p) => ({ ...p, [r.id]: e.target.value }))}
                     style={{ minWidth: 120 }}
                   >
@@ -121,7 +125,7 @@ export default function AssignInventoryTab({ userRole, readOnly = false }) {
                   <Btn
                     size="sm"
                     onClick={() => updateStatus(r.id)}
-                    disabled={savingId === r.id || (draftStatus[r.id] || r.status) === r.status}
+                    disabled={savingId === r.id || (draftStatus[r.id] || (r.status === 'approved' ? 'issued' : r.status)) === r.status}
                   >
                     {savingId === r.id ? 'Saving...' : 'Update'}
                   </Btn>
