@@ -28,7 +28,7 @@ class HorticultureZone(models.Model):
 class HorticultureArea(models.Model):
     area_number = models.PositiveSmallIntegerField(
         unique=True,
-        validators=[MinValueValidator(1), MaxValueValidator(42)],
+        validators=[MinValueValidator(1)],
     )
     name = models.CharField(max_length=200)
     zone = models.ForeignKey(

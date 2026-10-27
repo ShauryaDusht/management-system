@@ -10,7 +10,14 @@ from apps.users.models import normalize_username_value
 from .models import HorticultureInchargeAssignment, HorticultureZone, SeasonSetting, TaskLog, TaskType
 
 User = get_user_model()
-VISIBLE_HORTICULTURE_ZONE_NAMES = {'Zone Red', 'Zone Blue', 'Zone Black'}
+VISIBLE_HORTICULTURE_ZONE_NAMES = {
+    'Zone Red',
+    'Zone Blue',
+    'Zone Black',
+    "Academic+Director's residence+Guest House Area",
+    'Housing&Hostel',
+    'Research park',
+}
 
 
 def _visible_zone_queryset():
@@ -161,8 +168,16 @@ def get_zone_choices_payload(zones):
     return [
         {
             'id': zone.id,
+            'zone_id': zone.id,
             'name': zone.name,
+            'zone_name': zone.name,
             'color': zone.color_code,
+            'supervisor_id': zone.supervisor_id,
+            'supervisor_name': (
+                zone.supervisor.get_full_name() or zone.supervisor.username
+                if getattr(zone, 'supervisor', None)
+                else ''
+            ),
         }
         for zone in zones
     ]

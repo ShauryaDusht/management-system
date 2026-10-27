@@ -427,7 +427,6 @@ export default function ZonesTab() {
           <Input
             type="number"
             min={1}
-            max={42}
             value={areaForm.area_number}
             onChange={(event) => setAreaForm((prev) => ({ ...prev, area_number: event.target.value }))}
           />
