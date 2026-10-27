@@ -79,13 +79,19 @@ label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;lett
 <body>
 <header class="hdr">
   <div class="hdr-l">
-    <img src="/campus-sanchalika-logo.png" alt="Campus Sanchalika" class="brand-logo">
-    <div class="hdr-copy">
-      <span class="hdr-app">Campus Electrical</span>
-      <span class="hdr-ttl">Substation Log</span>
-    </div>
+    <a href="/portal/dashboard/" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
+      <img src="/campus-sanchalika-logo.png" alt="Campus Sanchalika" class="brand-logo">
+      <div class="hdr-copy">
+        <span class="hdr-app">Campus Electrical</span>
+        <span class="hdr-ttl">Substation Log</span>
+      </div>
+    </a>
   </div>
   <div class="hdr-r">
+    <a href="/portal/dashboard/" style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:800; color:#fff; text-decoration:none; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25); padding:4px 8px; border-radius:14px;" title="Go to Unified Staff Portal">
+      <span>🏛️</span>
+      <span>Portal</span>
+    </a>
     <span class="user-badge">{{ request.user.username|default:"Staff" }}</span>
     <form method="post" action="/portal/logout/" style="margin:0" data-logout-form data-redirect-url="/portal/login/">
       {% csrf_token %}

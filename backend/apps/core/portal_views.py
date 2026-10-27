@@ -8,9 +8,12 @@ GET  /portal/        -> if authenticated, redirect to role dashboard; else to lo
 from pathlib import Path
 
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
 from apps.users.models import normalize_username_value
@@ -68,10 +71,73 @@ def get_portal_redirect(user):
 
 def portal_root(request):
     if request.user.is_authenticated and request.user.is_active:
-        if getattr(request.user, 'role', '') == 'admin':
-            return redirect(get_react_admin_url(request))
-        return redirect(get_portal_redirect(request.user))
+        return redirect('/portal/dashboard/')
     return redirect('/portal/login/')
+
+
+@login_required(login_url='/portal/login/')
+@never_cache
+def portal_dashboard(request):
+    """
+    Unified Staff Portal Mobile Dashboard.
+    Provides a touch-friendly operational overview of Substation, WTP, HVAC,
+    Housekeeping, Horticulture, and Lifts for on-field staff.
+    """
+    user = request.user
+    role = getattr(user, 'role', '')
+    now_local = timezone.localtime()
+    today_date = now_local.date()
+
+    t_hour = now_local.hour
+    if 6 <= t_hour < 14:
+        shift_slot = 'R1'
+        shift_label = 'Shift 1 (06:00 - 14:00)'
+    elif 14 <= t_hour < 22:
+        shift_slot = 'R2'
+        shift_label = 'Shift 2 (14:00 - 22:00)'
+    else:
+        shift_slot = 'R3'
+        shift_label = 'Shift 3 (22:00 - 06:00)'
+
+    sub_sheets_count = 0
+    sub_completed_count = 0
+    try:
+        from apps.substation.models import SubstationSheet, SubstationReading
+        sub_sheets_count = SubstationSheet.objects.filter(is_active=True).count()
+        sub_completed_count = SubstationReading.objects.filter(date=today_date, slot=shift_slot, filled__gt=0).count()
+    except Exception:
+        pass
+    sub_pct = int((sub_completed_count / sub_sheets_count * 100)) if sub_sheets_count > 0 else 0
+
+    wtp_logged = False
+    try:
+        from apps.wtp_stp.models import WtpReading
+        wtp_logged = WtpReading.objects.filter(date=today_date, slot=shift_slot).exists()
+    except Exception:
+        pass
+
+    hvac_logged = False
+    try:
+        from apps.hvac.models import HvacReading
+        hvac_logged = HvacReading.objects.filter(date=today_date).exists()
+    except Exception:
+        pass
+
+    context = {
+        'user': user,
+        'role': role,
+        'role_display': user.get_role_display() if hasattr(user, 'get_role_display') else role.replace('_', ' ').title(),
+        'today_str': today_date.strftime('%a, %d %b %Y'),
+        'shift_slot': shift_slot,
+        'shift_label': shift_label,
+        'time_str': now_local.strftime('%H:%M'),
+        'sub_sheets_count': sub_sheets_count,
+        'sub_completed_count': sub_completed_count,
+        'sub_pct': sub_pct,
+        'wtp_logged': wtp_logged,
+        'hvac_logged': hvac_logged,
+    }
+    return render(request, 'core/portal_dashboard.html', context)
 
 
 def portal_logo(_request):
@@ -90,9 +156,7 @@ def portal_logo(_request):
 
 def portal_login(request):
     if request.user.is_authenticated and request.user.is_active:
-        if getattr(request.user, 'role', '') == 'admin':
-            return redirect(get_react_admin_url(request))
-        return redirect(get_portal_redirect(request.user))
+        return redirect('/portal/dashboard/')
 
     error = ''
     if request.method == 'POST':
@@ -120,7 +184,7 @@ def portal_login(request):
             if user.role in ['admin', 'inventory_manager', 'hk_inventory_manager', 'hostel_office', 'engineer']:
                 return redirect(get_portal_redirect(user) if user.role == 'engineer' else get_react_admin_url(request))
             auth_login(request, user)
-            return redirect(get_portal_redirect(user))
+            return redirect('/portal/dashboard/')
         else:
             error = 'Invalid username or password.'
 

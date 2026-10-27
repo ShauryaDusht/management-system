@@ -292,6 +292,15 @@ def mobile_panel_entry(request, sheet_id):
         hourly_cols = []
         current_hour_data = existing_rows.get(f"hr:{req_hour}", {})
 
+        # Previous hour data for >30% exceedance check
+        prev_hour_num = selected_hour_num - 1
+        if prev_hour_num >= 0:
+            prev_hour_data = existing_rows.get(f"hr:h{prev_hour_num:02d}", {}) if existing_rows else {}
+        else:
+            prev_day_date = parsed_date - timedelta(days=1)
+            prev_day_reading = SubstationReading.objects.filter(sheet=sheet.id, date=prev_day_date, slot='day').first()
+            prev_hour_data = (prev_day_reading.rows or {}).get('hr:h23', {}) if prev_day_reading else {}
+
         if hr_table:
             hourly_cols = hr_table.get('cols', [])
             groups_dict = {}
@@ -301,11 +310,13 @@ def mobile_panel_entry(request, sheet_id):
                     groups_dict[g_name] = []
                 c_key = c.get('k')
                 val = current_hour_data.get(c_key, '')
+                prev_val = prev_hour_data.get(c_key, '')
                 groups_dict[g_name].append({
                     'key': c_key,
                     'field': c.get('f', c_key),
                     'label': c.get('l', c_key).upper(),
                     'val': val,
+                    'prev': prev_val,
                 })
             for g_name, cols in groups_dict.items():
                 feeder_groups.append({
@@ -671,10 +682,23 @@ def mobile_panel_entry(request, sheet_id):
             return redirect(f"/substation/entry/{next_panel.id}/?date={selected_date}&slot={next_slot}")
         return redirect(f"/substation/dashboard/?date={selected_date}&slot={selected_slot}")
 
-    # Attach existing values to flat_items
+    # Attach existing and previous shift values to flat_items for 30% exceedance check
+    prev_date = parsed_date
+    if selected_slot == 'R2':
+        prev_slot = 'R1'
+    elif selected_slot == 'R3':
+        prev_slot = 'R2'
+    else:
+        prev_slot = 'R3'
+        prev_date = parsed_date - timedelta(days=1)
+
+    prev_reading = SubstationReading.objects.filter(sheet=sheet.id, date=prev_date, slot=prev_slot).first()
+    prev_rows = prev_reading.rows if prev_reading else {}
+
     for r in input_rows:
         val_map = existing_rows.get(r['id']) or existing_rows.get(r['raw_id']) or {}
         r['val'] = val_map
+        r['prev'] = prev_rows.get(r['id']) or prev_rows.get(r['raw_id']) or {}
 
     context = {
         'sheet': sheet,
