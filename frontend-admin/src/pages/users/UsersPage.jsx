@@ -45,14 +45,13 @@ const ROLES = [
 const HK_ROLES = ['supervisor', 'caretaker']
 const ENGINEER_ROLES = ['plant_engineer', 'hvac_engineer']
 const SUPERVISOR_ROLES = ['supervisor', 'electrical_supervisor', 'wtp_supervisor', 'hvac_supervisor']
+const OPERATOR_ROLES = ['electrical_operator', 'wtp_operator', 'hvac_operator']
 
 const TOP_CARD_FILTERS = [
   { key: 'admin', label: 'Admin', countKey: 'admin', roles: ['admin'] },
   { key: 'engineer', label: 'Engineer', countKey: 'engineer', roles: ENGINEER_ROLES },
   { key: 'supervisor', label: 'Supervisor', countKey: 'supervisor', roles: SUPERVISOR_ROLES },
-  { key: 'electrical_operator', label: 'Substation Operator', countKey: 'electrical_operator', roles: ['electrical_operator'] },
-  { key: 'wtp_operator', label: 'WTP/STP Operator', countKey: 'wtp_operator', roles: ['wtp_operator'] },
-  { key: 'hvac_operator', label: 'HVAC Operator', countKey: 'hvac_operator', roles: ['hvac_operator'] },
+  { key: 'operator', label: 'Operator', countKey: 'operator', roles: OPERATOR_ROLES },
   { key: 'estate_office', label: 'Estate Office', countKey: 'estate_office', roles: ['estate_office'] },
   { key: 'civil_team', label: 'Civil Team', countKey: 'civil_team', roles: ['civil_team'] },
   { key: 'electrical_team', label: 'Electrical Team', countKey: 'electrical_team', roles: ['electrical_team'] },
@@ -276,6 +275,8 @@ export default function UsersPage() {
       matchRole = ENGINEER_ROLES.includes(u.role)
     } else if (roleFilter === 'supervisor') {
       matchRole = SUPERVISOR_ROLES.includes(u.role)
+    } else if (roleFilter === 'operator') {
+      matchRole = OPERATOR_ROLES.includes(u.role)
     } else if (roleFilter === 'engineer_lift') {
       matchRole = u.role === 'engineer'
     } else {
@@ -312,6 +313,7 @@ export default function UsersPage() {
       admin: 0,
       engineer: 0,
       supervisor: 0,
+      operator: 0,
       plant_engineer: 0,
       electrical_supervisor: 0,
       electrical_operator: 0,
@@ -343,6 +345,9 @@ export default function UsersPage() {
       if (SUPERVISOR_ROLES.includes(u.role)) {
         counts.supervisor += 1
       }
+      if (OPERATOR_ROLES.includes(u.role)) {
+        counts.operator += 1
+      }
     })
     return counts
   }, [users])
@@ -353,6 +358,8 @@ export default function UsersPage() {
       scope = 'Engineers (Substation, WTP & HVAC)'
     } else if (roleFilter === 'supervisor') {
       scope = 'Supervisors (All Campus Supervisors)'
+    } else if (roleFilter === 'operator') {
+      scope = 'Operators (Substation, WTP & HVAC)'
     } else if (roleFilter !== 'all') {
       scope = ROLE_LABELS[roleFilter] || TOP_CARD_FILTERS.find((r) => r.key === roleFilter)?.label || roleFilter
     }
@@ -372,6 +379,7 @@ export default function UsersPage() {
         { label: 'Admins', value: roleCounts.admin || 0 },
         { label: 'Engineers', value: roleCounts.engineer || 0 },
         { label: 'Supervisors', value: roleCounts.supervisor || 0 },
+        { label: 'Operators', value: roleCounts.operator || 0 },
         { label: 'Caretakers', value: roleCounts.caretaker || 0 },
       ],
       headers: ['Name', 'Username', 'Pay Code', 'Email', 'Phone', 'Role', 'Area Incharge', 'Status'],
@@ -479,6 +487,9 @@ export default function UsersPage() {
               <option value="wtp_supervisor">↳ WTP/STP Supervisor</option>
               <option value="hvac_supervisor">↳ HVAC Supervisor</option>
               <option value="supervisor">↳ General Supervisor</option>
+              <option value="electrical_operator">↳ Substation Operator</option>
+              <option value="wtp_operator">↳ WTP/STP Operator</option>
+              <option value="hvac_operator">↳ HVAC Operator</option>
             </optgroup>
           </SelectField>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
