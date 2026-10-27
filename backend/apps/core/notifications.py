@@ -75,10 +75,10 @@ def notify_inventory_approved(item_request):
     except Exception as e:
         logger.debug("Failed resolving deep link for inventory approval: %s", e)
 
-    title = "Inventory Request Approved"
-    message = f"Your request for {qty} {unit} of {item_name} has been approved by the manager."
-    status_label = "Approved"
-    dedup_key = f"user:{user.id}:inv_approved:{item_request.id}"
+    title = "Inventory Request Issued"
+    message = f"Your request for {qty} {unit} of {item_name} has been issued by the manager."
+    status_label = "Issued"
+    dedup_key = f"user:{user.id}:inv_issued:{item_request.id}"
 
     from apps.core.models import Notification
     return create_notification(
@@ -90,6 +90,9 @@ def notify_inventory_approved(item_request):
         link=link,
         dedup_key=dedup_key,
     )
+
+
+notify_inventory_issued = notify_inventory_approved
 
 
 def notify_inventory_rejected(item_request, rejection_reason=''):
@@ -178,7 +181,7 @@ def notify_inventory_approval_undone(item_request, reason='', manager=None):
     )
 
 
-def notify_inventory_quantity_adjusted(item_request, old_qty, new_qty, reason='', manager=None):
+def notify_inventory_quantity_adjusted(item_request, old_qty, new_qty, reason='', manager=None, orig_requested_qty=None):
     """
     Notifies supervisor or caretaker when the issued quantity of their request is adjusted.
     """
@@ -196,14 +199,36 @@ def notify_inventory_quantity_adjusted(item_request, old_qty, new_qty, reason=''
         hk_req = HKStockRequest.objects.filter(inventory_request=item_request).first()
         if hk_req and hk_req.area_id:
             link = f'/housekeeping/stock/?area={hk_req.area_id}'
+        else:
+            from apps.horticulture.models import HorticultureStockRequest
+            horti_req = HorticultureStockRequest.objects.filter(inventory_request=item_request).first()
+            if horti_req and horti_req.zone_id:
+                link = f'/horticulture/stock/?zone={horti_req.zone_id}'
+            elif getattr(user, 'role', '') == 'supervisor' and hasattr(user, 'horticulture_supervised_zones') and user.horticulture_supervised_zones.exists():
+                link = '/horticulture/stock/'
     except Exception:
         pass
 
     manager_name = (manager.get_full_name() or manager.username) if manager else 'Manager'
     reason_str = f" Reason: {reason.strip()}" if reason and reason.strip() else ""
     title = "Issued Inventory Quantity Adjusted"
+
+    base_qty = orig_requested_qty if orig_requested_qty is not None else old_qty
+    try:
+        from decimal import Decimal
+        diff = Decimal(str(new_qty)) - Decimal(str(base_qty))
+        if diff > 0:
+            diff_str = f"+{diff}"
+        elif diff < 0:
+            diff_str = f"{diff}"
+        else:
+            diff_str = "0"
+    except Exception:
+        diff_str = "0"
+
     message = (
-        f"Issued quantity for {item_name} was adjusted from {old_qty} to {new_qty} {unit} by {manager_name}.{reason_str}"
+        f"Requested item: {item_name}, Requested qty: {base_qty} {unit}, "
+        f"Given item qty: {new_qty} {unit} ({diff_str} {unit}) by {manager_name}.{reason_str}"
     )
     status_label = "Adjusted"
     import time

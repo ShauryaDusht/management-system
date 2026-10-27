@@ -94,12 +94,48 @@ export function exportCsv(rowsOrFilename, filenameOrHeaders, rowsArg) {
 // Export data as genuine Microsoft Excel (.xlsx) file and trigger download
 export async function exportExcel(filename, headers, rows, sheetName = 'Sheet1') {
   try {
-    const xlsx = await import('xlsx')
+    const xlsx = await import('xlsx-js-style')
     const XLSX = xlsx.default || xlsx
     const aoa = [headers, ...rows]
     const ws = XLSX.utils.aoa_to_sheet(aoa)
+
+    ws['!rows'] = [{ hpt: 26 }, ...Array(Math.max(0, rows.length)).fill({ hpt: 20 })]
+
+    // Style header row (bold, highlighted background)
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellRef = XLSX.utils.encode_cell({ r: 0, c: C })
+      if (ws[cellRef]) {
+        ws[cellRef].s = {
+          font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11, name: 'Calibri' },
+          fill: { fgColor: { rgb: '1E3A2F' } },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          border: {
+            top: { style: 'thin', color: { rgb: '0F172A' } },
+            bottom: { style: 'medium', color: { rgb: '0F172A' } },
+            left: { style: 'thin', color: { rgb: '334155' } },
+            right: { style: 'thin', color: { rgb: '334155' } },
+          },
+        }
+      }
+    }
+
+    // Dynamic column widths
+    const colWidths = (headers || []).map((h, colIdx) => {
+      let maxLen = String(h || '').length
+      for (let r = 0; r < aoa.length; r++) {
+        const cellVal = aoa[r]?.[colIdx]
+        if (cellVal !== undefined && cellVal !== null) {
+          maxLen = Math.max(maxLen, String(cellVal).length)
+        }
+      }
+      return { wch: Math.min(Math.max(maxLen + 4, 12), 60) }
+    })
+    ws['!cols'] = colWidths
+
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, sheetName)
+    const cleanSheet = (sheetName || 'Sheet1').replace(/[:\\/?*\[\]]/g, ' ').slice(0, 31).trim() || 'Sheet1'
+    XLSX.utils.book_append_sheet(wb, ws, cleanSheet)
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
     const blob = new Blob([wbout], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

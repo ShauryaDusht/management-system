@@ -127,7 +127,7 @@ class InAppNotificationSystemTests(TestCase):
         notif = notify_inventory_approved(req)
         self.assertIsNotNone(notif)
         self.assertEqual(notif.user, self.supervisor)
-        self.assertEqual(notif.status_label, 'Approved')
+        self.assertEqual(notif.status_label, 'Issued')
         self.assertIn('Hand Soap Liquid', notif.message)
         self.assertIn('5', notif.message)
         self.assertIn(f'area={self.area.id}', notif.link)
@@ -356,7 +356,7 @@ class InAppNotificationSystemTests(TestCase):
         self.assertIsNotNone(notif)
         self.assertIn('Hand Soap Liquid', notif.message)
         self.assertIn('3', notif.message)
-        self.assertEqual(notif.status_label, 'Approved')
+        self.assertEqual(notif.status_label, 'Issued')
 
     def test_leave_approval_api_integration(self):
         """Verify admin decision on HKInchargeAssignment triggers notification for leave staff."""

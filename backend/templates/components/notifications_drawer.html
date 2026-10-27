@@ -226,7 +226,7 @@
     font-weight: 800;
     text-transform: capitalize;
   }
-  .notif-pill.pill-approved {
+  .notif-pill.pill-approved, .notif-pill.pill-issued {
     background: #d1fae5;
     color: #065f46;
   }
@@ -363,13 +363,27 @@
       var html = notifications.map(function(item) {
         var pillClass = 'pill-default';
         var status = (item.status_label || '').toLowerCase();
-        if (status.indexOf('approved') !== -1) {
-          pillClass = 'pill-approved';
+        if (status.indexOf('approved') !== -1 || status.indexOf('issued') !== -1) {
+          pillClass = 'pill-issued';
         } else if (status.indexOf('rejected') !== -1) {
           pillClass = 'pill-rejected';
         } else if (status.indexOf('usage') !== -1 || status.indexOf('pending') !== -1) {
           pillClass = 'pill-pending';
         }
+
+        var displayTitle = item.title;
+        if (displayTitle === 'Inventory Request Approved') {
+          displayTitle = 'Inventory Request Issued';
+        }
+
+        var displayLabel = item.status_label;
+        if ((displayLabel || '').toLowerCase() === 'approved') {
+          displayLabel = 'Issued';
+        }
+
+        var displayMsg = (item.message || '')
+          .replace(/has been approved by the manager/gi, 'has been issued by the manager')
+          .replace(/has been approved/gi, 'has been issued');
 
         var linkAttr = item.link ? 'data-link="' + item.link + '"' : '';
         var isReadClass = item.is_read ? 'is-read' : '';
@@ -379,13 +393,13 @@
           '  <div class="notif-card-top">',
           '    <div class="notif-card-title">',
           '      <span class="notif-dot"></span>',
-          '      <span>' + escapeHtml(item.title) + '</span>',
+          '      <span>' + escapeHtml(displayTitle) + '</span>',
           '    </div>',
           '    <span class="notif-time">' + escapeHtml(item.time_ago || '') + '</span>',
           '  </div>',
-          '  <div class="notif-msg">' + escapeHtml(item.message) + '</div>',
+          '  <div class="notif-msg">' + escapeHtml(displayMsg) + '</div>',
           '  <div class="notif-card-foot">',
-          item.status_label ? '    <span class="notif-pill ' + pillClass + '">' + escapeHtml(item.status_label) + '</span>' : '<span></span>',
+          displayLabel ? '    <span class="notif-pill ' + pillClass + '">' + escapeHtml(displayLabel) + '</span>' : '<span></span>',
           item.link ? '    <span class="notif-open-link">Open &rarr;</span>' : '',
           '  </div>',
           '</div>'

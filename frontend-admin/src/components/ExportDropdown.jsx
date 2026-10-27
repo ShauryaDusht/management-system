@@ -3,21 +3,6 @@ import { Btn, Spinner } from './ui'
 import { exportReport } from '../shared/exportUtils'
 
 const FORMAT_CONFIG = {
-  csv: {
-    key: 'csv',
-    label: 'CSV (.csv)',
-    icon: (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-        <path d="M8 13h2" />
-        <path d="M8 17h8" />
-        <path d="M14 13h2" />
-      </svg>
-    ),
-    badgeColor: '#0284c7',
-    badgeBg: '#e0f2fe',
-  },
   excel: {
     key: 'excel',
     label: 'Excel (.xlsx)',
@@ -77,7 +62,7 @@ export default function ExportDropdown({
   columns = null,
   getData = null,
   onExport = null,
-  formats = ['csv', 'excel', 'pdf', 'print'],
+  formats = ['excel', 'pdf', 'print'],
   orientation,
   align = 'right',
   style = {},
@@ -96,7 +81,8 @@ export default function ExportDropdown({
 
   const activeFormats = formats
     .map((f) => (typeof f === 'string' ? f.toLowerCase() : f))
-    .filter((f) => FORMAT_CONFIG[f])
+    .map((f) => (f === 'csv' ? 'excel' : f))
+    .filter((f, idx, arr) => FORMAT_CONFIG[f] && arr.indexOf(f) === idx)
 
   const displayLabel = buttonText || label
 
@@ -152,11 +138,12 @@ export default function ExportDropdown({
   }, [open, focusedIndex, activeFormats])
 
   const handleSelectFormat = async (fmtKey) => {
+    const effectiveFormat = fmtKey === 'csv' ? 'excel' : fmtKey
     setOpen(false)
-    setExportingFormat(fmtKey)
+    setExportingFormat(effectiveFormat)
     try {
       if (typeof onExport === 'function') {
-        await onExport(fmtKey, {
+        await onExport(effectiveFormat, {
           title,
           subtitle,
           filename,
@@ -169,7 +156,7 @@ export default function ExportDropdown({
         })
       } else {
         let exportData = {
-          format: fmtKey,
+          format: effectiveFormat,
           title,
           subtitle,
           filename,
@@ -182,7 +169,7 @@ export default function ExportDropdown({
         }
 
         if (typeof getData === 'function') {
-          const dynamic = await getData(fmtKey)
+          const dynamic = await getData(effectiveFormat)
           if (dynamic) {
             exportData = {
               ...exportData,
@@ -194,10 +181,10 @@ export default function ExportDropdown({
         await exportReport(exportData)
       }
       if (typeof onSuccess === 'function') {
-        onSuccess(fmtKey)
+        onSuccess(effectiveFormat)
       }
     } catch (err) {
-      console.error(`Export failed for format ${fmtKey}:`, err)
+      console.error(`Export failed for format ${effectiveFormat}:`, err)
       const errorMsg = err?.message || 'Failed to export report.'
       if (typeof onError === 'function') {
         onError(errorMsg)

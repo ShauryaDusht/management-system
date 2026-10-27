@@ -1661,7 +1661,7 @@ class HKStockRequestStatusUpdateView(RetrieveUpdateAPIView):
         instance = serializer.save()
         if instance.inventory_request:
             from apps.core.notifications import notify_inventory_approved, notify_inventory_rejected
-            if instance.status == 'approved':
+            if instance.status in ('approved', 'issued'):
                 notify_inventory_approved(instance.inventory_request)
             elif instance.status == 'rejected':
                 notify_inventory_rejected(instance.inventory_request)

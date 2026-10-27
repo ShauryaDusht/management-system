@@ -44,6 +44,8 @@ export const inventoryAPI = {
   // reject and markUrgent use the /api/ legacy routes
   rejectRequest: (id, reason) =>
     api.post(`/inventory/api/requests/${id}/reject/`, { rejection_reason: reason }),
+  undoRejectRequest: (id) =>
+    api.post(`/inventory/api/requests/${id}/undo-reject/`),
   markUrgent: (id, isUrgent) =>
     api.post(`/inventory/api/requests/${id}/mark-urgent/`, { is_urgent: isUrgent }),
 

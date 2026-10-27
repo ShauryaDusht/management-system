@@ -1,3 +1,5 @@
+from datetime import timedelta
+from django.utils import timezone
 from django.db import transaction
 from django.db.models import Sum, Value, DecimalField
 from django.db.models.functions import Coalesce
@@ -179,6 +181,23 @@ class ItemRequestSerializer(serializers.ModelSerializer):
     updated_at = serializers.SerializerMethodField()
     issue_id = serializers.SerializerMethodField()
     issue_is_reversed = serializers.SerializerMethodField()
+    issued_at = serializers.SerializerMethodField()
+    already_adjusted = serializers.SerializerMethodField()
+    can_undo_reject = serializers.SerializerMethodField()
+
+    def get_already_adjusted(self, obj):
+        issue = getattr(obj, 'issue', None)
+        return issue.adjustments.exists() if issue else False
+
+    def get_can_undo_reject(self, obj):
+        if obj.status != ItemRequest.Status.REJECTED:
+            return False
+        if '[UNDO_REJECTED]' in (obj.notes or ''):
+            return False
+        ref_time = obj.reviewed_at or obj.requested_at
+        if ref_time and (timezone.now() - ref_time > timedelta(hours=24)):
+            return False
+        return True
 
     def get_issue_id(self, obj):
         issue = getattr(obj, 'issue', None)
@@ -187,6 +206,10 @@ class ItemRequestSerializer(serializers.ModelSerializer):
     def get_issue_is_reversed(self, obj):
         issue = getattr(obj, 'issue', None)
         return getattr(issue, 'is_reversed', False) if issue else False
+
+    def get_issued_at(self, obj):
+        issue = getattr(obj, 'issue', None)
+        return issue.issued_at.isoformat() if (issue and issue.issued_at) else None
 
     def to_internal_value(self, data):
         payload = data.copy()
@@ -512,6 +535,10 @@ class ItemIssueSerializer(serializers.ModelSerializer):
     def get_can_reverse(self, obj):
         if obj.is_reversed:
             return False
+        if obj.issued_at and (timezone.now() - obj.issued_at > timedelta(hours=24)):
+            return False
+        if obj.adjustments.exists():
+            return False
         if obj.returned_at or (obj.returned_quantity is not None and obj.returned_quantity > 0):
             return False
         if obj.usage_finalized:
@@ -524,18 +551,23 @@ class ItemIssueSerializer(serializers.ModelSerializer):
     def get_can_adjust(self, obj):
         if obj.is_reversed:
             return False
+        if obj.issued_at and (timezone.now() - obj.issued_at > timedelta(hours=24)):
+            return False
+        if obj.adjustments.exists():
+            return False
         if obj.returned_at or (obj.returned_quantity is not None and obj.returned_quantity > 0):
             return False
         if obj.usage_finalized:
-            return False
-        consumed = self.get_total_consumed(obj)
-        if obj.issued_quantity <= consumed:
             return False
         return True
 
     def get_cannot_reverse_reason(self, obj):
         if obj.is_reversed:
-            return 'This transaction has already been reversed.'
+            return 'This transaction has already been reversed or rejected.'
+        if obj.issued_at and (timezone.now() - obj.issued_at > timedelta(hours=24)):
+            return 'The 24-hour window to adjust or reject this issue has expired.'
+        if obj.adjustments.exists():
+            return 'Only one undo or adjust operation is permitted, and it has already been performed.'
         if obj.returned_at or (obj.returned_quantity is not None and obj.returned_quantity > 0):
             return 'Cannot reverse or adjust: asset return has already been recorded.'
         if obj.usage_finalized:
@@ -543,7 +575,7 @@ class ItemIssueSerializer(serializers.ModelSerializer):
         consumed = self.get_total_consumed(obj)
         if consumed > 0:
             unit = getattr(getattr(obj.request, 'item', None), 'unit', '') or ''
-            return f"Cannot fully reverse: {consumed} {unit} has already been logged as consumed in downstream reports."
+            return f"Cannot reject request: {consumed} {unit} has already been logged as consumed in downstream reports."
         return ''
 
     class Meta:

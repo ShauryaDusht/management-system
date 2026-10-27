@@ -2,21 +2,21 @@ import { useEffect, useRef, useState } from 'react'
 
 const FORMATS = [
   {
-    key: 'csv',
-    label: 'CSV Spreadsheet',
-    ext: '.csv',
+    key: 'excel',
+    label: 'Excel (.xlsx)',
+    ext: '.xlsx',
     badgeColor: '#16a34a',
     badgeBg: '#dcfce7',
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
         <polyline points="14 2 14 8 20 8" />
-        <line x1="8" y1="13" x2="16" y2="13" />
-        <line x1="8" y1="17" x2="16" y2="17" />
-        <polyline points="10 9 9 9 8 9" />
+        <path d="M8 13l3 4" />
+        <path d="M11 13l-3 4" />
+        <line x1="15" y1="13" x2="15" y2="17" />
       </svg>
     ),
-    description: 'Tabular data for Excel & Sheets',
+    description: 'Tabular data for Microsoft Excel',
   },
   {
     key: 'pdf',
@@ -33,6 +33,21 @@ const FORMATS = [
       </svg>
     ),
     description: 'Formatted printable report',
+  },
+  {
+    key: 'print',
+    label: 'Print',
+    ext: '',
+    badgeColor: '#4b5563',
+    badgeBg: '#f3f4f6',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 9 6 2 18 2 18 9" />
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+        <rect x="6" y="14" width="12" height="8" />
+      </svg>
+    ),
+    description: 'Printable formatted report',
   },
   {
     key: 'word',
@@ -71,8 +86,10 @@ const FORMATS = [
 export default function ExportDropdown({
   label = 'Download',
   onExport,
+  onExportExcel,
   onExportCsv,
   onExportPdf,
+  onExportPrint,
   onExportWord,
   onExportPresentation,
   disabled = false,
@@ -115,23 +132,28 @@ export default function ExportDropdown({
 
   const handleSelect = async (formatKey) => {
     if (disabled || busyFormat) return
-    setBusyFormat(formatKey)
+    const effKey = formatKey === 'csv' ? 'excel' : formatKey
+    setBusyFormat(effKey)
     try {
-      if (formatKey === 'csv' && typeof onExportCsv === 'function') {
+      if (effKey === 'excel' && typeof onExportExcel === 'function') {
+        await onExportExcel()
+      } else if (effKey === 'excel' && typeof onExportCsv === 'function') {
         await onExportCsv()
-      } else if (formatKey === 'pdf' && typeof onExportPdf === 'function') {
+      } else if (effKey === 'pdf' && typeof onExportPdf === 'function') {
         await onExportPdf()
-      } else if (formatKey === 'word' && typeof onExportWord === 'function') {
+      } else if (effKey === 'print' && typeof onExportPrint === 'function') {
+        await onExportPrint()
+      } else if (effKey === 'word' && typeof onExportWord === 'function') {
         await onExportWord()
-      } else if (formatKey === 'slides' && typeof onExportPresentation === 'function') {
+      } else if (effKey === 'slides' && typeof onExportPresentation === 'function') {
         await onExportPresentation()
       } else if (typeof onExport === 'function') {
-        await onExport(formatKey)
+        await onExport(effKey)
       }
       setOpen(false)
     } catch (err) {
       console.error('Export error:', err)
-      window.alert(`Failed to export ${formatKey.toUpperCase()}: ${err.message || err}`)
+      window.alert(`Failed to export ${effKey.toUpperCase()}: ${err.message || err}`)
     } finally {
       setBusyFormat(null)
     }
@@ -141,11 +163,12 @@ export default function ExportDropdown({
   const isSubstation = variant.startsWith('substation')
   const isFiltered = Boolean(fromDate || toDate)
 
-  // Visible formats: if only onExportCsv / onExportPdf passed and no general onExport, show those
+  // Visible formats: if only onExportExcel / onExportCsv / onExportPdf passed and no general onExport, show those
   const visibleFormats = FORMATS.filter((fmt) => {
     if (typeof onExport === 'function') return true
-    if (fmt.key === 'csv') return Boolean(onExportCsv)
+    if (fmt.key === 'excel') return Boolean(onExportExcel || onExportCsv)
     if (fmt.key === 'pdf') return Boolean(onExportPdf)
+    if (fmt.key === 'print') return Boolean(onExportPrint)
     if (fmt.key === 'word') return Boolean(onExportWord)
     if (fmt.key === 'slides') return Boolean(onExportPresentation)
     return true

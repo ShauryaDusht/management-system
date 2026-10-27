@@ -144,7 +144,6 @@ export default function Sidebar() {
       { to: '/dashboard', icon: 'home', label: 'Home' },
       { to: '/housekeeping', icon: 'housekeeping', label: 'Hostel Office' },
       { to: '/inventory', icon: 'inventory', label: 'Inventory Reports' },
-      { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
       { to: '/insights', icon: 'insights', label: 'Insights' },
     ]
     : user?.role === 'hk_inventory_manager'
@@ -163,7 +162,6 @@ export default function Sidebar() {
         badge: badges.housekeeping,
       },
       { to: '/estate', icon: 'estate', label: 'HK Clearances' },
-      { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
       { to: '/insights', icon: 'insights', label: 'Insights' },
       { to: '/users', icon: 'users', label: 'Manage Users' },
     ]

@@ -12,10 +12,11 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .models import LiftLicense, LiftComplianceSetting, LiftLicenseDocument
 from .serializers import LiftLicenseSerializer, LiftLicenseDocumentSerializer, parse_date_flexibly
 from .email_service import send_lift_expiry_alert
+from .permissions import IsLiftLicenseUser, IsLiftLicenseAdmin
 
 
 class LiftLicenseListView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLiftLicenseUser]
 
     def get(self, request):
         queryset = LiftLicense.objects.all()
@@ -95,7 +96,7 @@ class LiftLicenseListView(APIView):
 
 
 class LiftLicenseDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLiftLicenseUser]
 
     def get_object(self, pk):
         try:
@@ -141,7 +142,7 @@ class LiftLicenseDetailView(APIView):
 
 
 class LiftLicenseDocumentsListView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLiftLicenseUser]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request, lift_id):
@@ -234,7 +235,7 @@ class LiftLicenseDocumentsListView(APIView):
 
 
 class LiftLicenseDocumentDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLiftLicenseUser]
 
     def get_object(self, pk):
         try:
@@ -290,7 +291,7 @@ class LiftLicenseDocumentDetailView(APIView):
 
 
 class LiftLicenseStatsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLiftLicenseUser]
 
     def get(self, request):
         setting = LiftComplianceSetting.get_active()
@@ -406,7 +407,7 @@ class LiftLicenseStatsView(APIView):
 
 
 class LiftLicenseConfigView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLiftLicenseAdmin]
 
     def get(self, request):
         setting = LiftComplianceSetting.get_active()
@@ -444,7 +445,7 @@ class LiftLicenseConfigView(APIView):
 
 
 class LiftLicenseTriggerAlertView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLiftLicenseAdmin]
 
     def post(self, request):
         setting = LiftComplianceSetting.get_active()
@@ -460,7 +461,7 @@ class LiftLicenseTriggerAlertView(APIView):
 
 
 class LiftLicenseExportCSVView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLiftLicenseUser]
 
     def get(self, request):
         response = HttpResponse(content_type='text/csv; charset=utf-8')
@@ -502,7 +503,7 @@ class LiftLicenseExportCSVView(APIView):
 
 
 class LiftLicenseExportPDFView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLiftLicenseUser]
 
     def get(self, request):
         import io

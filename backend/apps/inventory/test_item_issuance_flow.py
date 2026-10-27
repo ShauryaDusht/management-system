@@ -116,3 +116,74 @@ class ItemIssuanceWorkflowTests(APITestCase):
         self.assertEqual(res.status_code, 200)
         req.refresh_from_db()
         self.assertTrue(req.is_urgent)
+
+    def test_adjust_quantity_increase(self):
+        """Manager can adjust issued quantity higher than requested quantity"""
+        req = ItemRequest.objects.create(
+            item=self.item,
+            quantity_requested=3,
+            requested_by=self.requester,
+            status=ItemRequest.Status.PENDING,
+            purpose='Office air freshener'
+        )
+        hk_req = HKStockRequest.objects.create(
+            item_name=self.item.name,
+            quantity=3,
+            requested_by=self.requester,
+            inventory_request=req,
+            status='pending'
+        )
+        issue_res = self.client.post(f'/api/inventory/requests/{req.id}/issue/', {'issued_quantity': 3}, format='json')
+        self.assertEqual(issue_res.status_code, 201)
+        issue_id = issue_res.json()['id']
+
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.available_quantity, 17)
+
+        # Increase quantity from 3 to 4
+        adjust_res = self.client.post(
+            f'/api/inventory/issues/{issue_id}/adjust/',
+            {
+                'action': 'adjustment',
+                'new_quantity': 4,
+                'reason': 'Added extra bottle upon request'
+            },
+            format='json'
+        )
+        self.assertEqual(adjust_res.status_code, 200)
+
+        issue = ItemIssue.objects.get(pk=issue_id)
+        self.assertEqual(issue.issued_quantity, 4)
+
+        req.refresh_from_db()
+        self.assertEqual(req.quantity_requested, 4)
+
+        hk_req.refresh_from_db()
+        self.assertEqual(hk_req.quantity, 4)
+
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.available_quantity, 16)
+
+    def test_undo_rejection_restores_pending(self):
+        """Undoing a rejection within 24h restores request to pending"""
+        req = ItemRequest.objects.create(
+            item=self.item,
+            quantity_requested=2,
+            requested_by=self.requester,
+            status=ItemRequest.Status.PENDING
+        )
+        self.client.post(f'/api/inventory/api/requests/{req.id}/reject/', {'rejection_reason': 'Temporary budget hold'}, format='json')
+        req.refresh_from_db()
+        self.assertEqual(req.status, ItemRequest.Status.REJECTED)
+
+        undo_res = self.client.post(f'/api/inventory/api/requests/{req.id}/undo-reject/')
+        self.assertEqual(undo_res.status_code, 200)
+        req.refresh_from_db()
+        self.assertEqual(req.status, ItemRequest.Status.PENDING)
+        self.assertEqual(req.rejection_reason, '')
+
+        # Trying to undo again should fail
+        self.client.post(f'/api/inventory/api/requests/{req.id}/reject/', {'rejection_reason': 'Rejected again'}, format='json')
+        second_undo = self.client.post(f'/api/inventory/api/requests/{req.id}/undo-reject/')
+        self.assertEqual(second_undo.status_code, 400)
+

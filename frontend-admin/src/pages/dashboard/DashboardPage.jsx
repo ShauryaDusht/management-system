@@ -512,15 +512,26 @@ export default function DashboardPage() {
         ? summaryBoxes
         : summaryBoxes.filter((box) => box.label !== 'Horticulture')
 
+  const isHkManager = user?.role === 'hk_inventory_manager'
   const baseStatCards = [
     { label: 'Total Inventory Items',  value: invSummary?.total_items ?? '-',           color: 'var(--green-800)', sub: `${invSummary?.pending_requests ?? 0} requests pending`, to: '/inventory?tab=items' },
     { label: 'Estate Billing Outlets', value: '34 Outlets',                             color: '#854d0e',          sub: '29 shops + 5 power contractors',                           to: '/estate' },
     { label: 'Low Stock Alerts',       value: invSummary?.low_stock_count ?? '-',        color: 'var(--orange-600)', sub: `${invSummary?.out_of_stock_count ?? 0} out of stock`,  to: '/inventory?tab=items' },
     { label: 'HK Tasks Today',         value: hkSummary?.total_tasks ?? '-',            color: 'var(--green-700)', sub: `${hkSummary?.completion_pct ?? 0}% completed`,           to: '/housekeeping?tab=overview' },
     { label: 'HK Workers',             value: hkSummary?.total_workers ?? '-',          color: '#3b82f6',          sub: `${hkSummary?.present_today ?? 0} present today`,          to: '/housekeeping?tab=attendance' },
+    { label: 'Lift Licenses',          value: '46 Campus Lifts',                        color: '#0891b2',          sub: 'Statutory compliance tracking',                            to: '/lifts' },
     { label: 'Substation Panels',      value: '11 HT/LT',                               color: '#0284c7',          sub: 'Campus electrical logging',                               to: '/substation' },
     { label: 'WTP / STP Meters',       value: '4 Stations + 84 Blocks',                 color: '#0e6f8f',          sub: 'Water treatment & tank logs',                             to: '/wtp' },
     { label: 'HVAC Plant Log',         value: '7 Chillers · 24h Telemetry',             color: '#15506b',          sub: 'Central AC & energy telemetry',                           to: '/hvac' },
+    { label: 'Unreturned Assets',      value: invSummary?.unreturned_assets ?? '-',     color: '#f59e0b',          sub: `${invSummary?.overdue_returns ?? 0} overdue`,             to: '/inventory?tab=issues' },
+    { label: 'Pending Stock Req.',     value: hkSummary?.pending_stock_requests ?? '-', color: 'var(--orange-600)', sub: 'Open approval queue',                                    to: '/inventory?tab=requests' },
+  ]
+  const hkManagerCards = [
+    { label: 'Total Inventory Items',  value: invSummary?.total_items ?? '-',           color: 'var(--green-800)', sub: `${invSummary?.pending_requests ?? 0} requests pending`, to: '/inventory?tab=items' },
+    { label: 'Low Stock Alerts',       value: invSummary?.low_stock_count ?? '-',        color: 'var(--orange-600)', sub: `${invSummary?.out_of_stock_count ?? 0} out of stock`,  to: '/inventory?tab=items' },
+    { label: 'HK Tasks Today',         value: hkSummary?.total_tasks ?? '-',            color: 'var(--green-700)', sub: `${hkSummary?.completion_pct ?? 0}% completed`,           to: '/housekeeping?tab=overview' },
+    { label: 'HK Workers',             value: hkSummary?.total_workers ?? '-',          color: '#3b82f6',          sub: `${hkSummary?.present_today ?? 0} present today`,          to: '/housekeeping?tab=attendance' },
+    { label: 'HK Clearances',          value: 'Housing Clearances',                     color: '#854d0e',          sub: 'Quarters inspection records',                              to: '/estate' },
     { label: 'Unreturned Assets',      value: invSummary?.unreturned_assets ?? '-',     color: '#f59e0b',          sub: `${invSummary?.overdue_returns ?? 0} overdue`,             to: '/inventory?tab=issues' },
     { label: 'Pending Stock Req.',     value: hkSummary?.pending_stock_requests ?? '-', color: 'var(--orange-600)', sub: 'Open approval queue',                                    to: '/inventory?tab=requests' },
   ]
@@ -547,7 +558,9 @@ export default function DashboardPage() {
           { label: 'Hostel Areas', value: hkSummary?.total_areas ?? '-', color: 'var(--green-800)', sub: 'Active hostel sections', to: '/housekeeping?tab=directory' },
           { label: 'Inventory Items', value: invSummary?.total_items ?? '-', color: '#7c3aed', sub: 'View-only stock report', to: '/inventory?tab=inventory-report' },
         ]
-        : baseStatCards
+        : isHkManager
+          ? hkManagerCards
+          : baseStatCards
   const completionPct = Number(hkSummary?.completion_pct || 0)
   const heroMetric = isEstateOffice
     ? { value: '34', label: 'Estate billing outlets', progress: 100, color: 'var(--green-800)' }
@@ -562,14 +575,18 @@ export default function DashboardPage() {
       ? 'Horticulture Control Room'
       : isHostelOffice
         ? 'Hostel Office Control Room'
-        : 'Campus Operations Control Room'
+        : isHkManager
+          ? 'Housekeeping & Inventory Control Room'
+          : 'Super Admin Control Room'
   const heroSubtitle = isEstateOffice
     ? 'Manage 29 commercial shops, 5 power contractors, billing cycles, and demand notes.'
     : isHorticultureManager
       ? 'Track zones, due tasks, and field progress from one focused home view.'
       : isHostelOffice
         ? 'Assign hostel work, monitor JRHA and hostel sections, and open inventory reports without admin-only controls.'
-        : 'A cleaner snapshot of stock, housekeeping, horticulture, and campus Estate billing.'
+        : isHkManager
+          ? 'Monitor inventory levels, daily housekeeping tasks, worker attendance, and quarters clearances.'
+          : 'A complete snapshot of stock, housekeeping, horticulture, lift licenses, and campus operations.'
   const quickActions = isEstateOffice
     ? [
       { label: '🏪 Commercial Shops', to: '/estate?tab=shops', primary: true },
@@ -589,18 +606,27 @@ export default function DashboardPage() {
           { label: 'Inventory Report', to: '/inventory?tab=inventory-report' },
           { label: 'Stock Requests', to: '/housekeeping?tab=stock' },
         ]
-        : [
-          { label: 'Housekeeping', to: '/housekeeping?tab=overview', primary: true },
-          { label: 'Substation Log', to: '/substation' },
-          { label: 'WTP/STP Log', to: '/wtp' },
-          { label: 'HVAC Plant Log', to: '/hvac' },
-          { label: 'Estate Billing', to: '/estate' },
-          { label: 'Inventory', to: '/inventory?tab=items' },
-          { label: 'Insights', to: '/insights' },
-        ]
+        : isHkManager
+          ? [
+            { label: 'Housekeeping', to: '/housekeeping?tab=overview', primary: true },
+            { label: 'Inventory', to: '/inventory?tab=items' },
+            { label: 'HK Clearances', to: '/estate' },
+            { label: 'Manage Users', to: '/users' },
+            { label: 'Insights', to: '/insights' },
+          ]
+          : [
+            { label: 'Housekeeping', to: '/housekeeping?tab=overview', primary: true },
+            { label: 'Lift Licenses', to: '/lifts' },
+            { label: 'Substation Log', to: '/substation' },
+            { label: 'WTP/STP Log', to: '/wtp' },
+            { label: 'HVAC Plant Log', to: '/hvac' },
+            { label: 'Estate Billing', to: '/estate' },
+            { label: 'Inventory', to: '/inventory?tab=items' },
+            { label: 'Insights', to: '/insights' },
+          ]
 
   return (
-    <AdminLayout title={isHorticultureManager ? 'Horticulture Home' : isHostelOffice ? 'Hostel Office Dashboard' : 'Admin Dashboard'} subtitle={`Welcome back - ${todayLabel}`}>
+    <AdminLayout title={isHorticultureManager ? 'Horticulture Home' : isHostelOffice ? 'Hostel Office Dashboard' : isHkManager ? 'Housekeeping & Inventory Dashboard' : 'Super Admin Dashboard'} subtitle={`Welcome back - ${todayLabel}`}>
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner size={36} /></div>
       ) : (
