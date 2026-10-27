@@ -280,7 +280,7 @@ export default function MonthlyReport({ defaultMonth }) {
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div>
             <ExportDropdown
               label="Export Monthly Report"
               hasDateFilter={true}
@@ -296,91 +296,6 @@ export default function MonthlyReport({ defaultMonth }) {
               onExportPdf={handleExportPdf}
               disabled={report.rows.length === 0}
             />
-          </div>
-        </div>
-
-        {/* Date Selection Bar Under Export Monthly Report */}
-        <div
-          style={{
-            paddingTop: 12,
-            borderTop: '1px solid var(--hvac-line, #e2e8f0)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 12,
-            background: '#f8fafc',
-            margin: '0 -18px -16px -18px',
-            padding: '12px 18px',
-            borderRadius: '0 0 12px 12px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--hvac-muted, #64748b)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <span>🗓️</span>
-              <span>Report Date Range:</span>
-            </span>
-
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: 0, fontSize: 11, fontWeight: 600, color: '#334155' }}>
-              <span>From:</span>
-              <input
-                type="date"
-                value={fromDate}
-                min={minMonthDate}
-                max={toDate || maxMonthDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                style={{
-                  padding: '4px 8px',
-                  fontSize: 11.5,
-                  fontWeight: 600,
-                  borderRadius: 6,
-                  border: fromDate ? '1.5px solid #0284c7' : '1px solid var(--hvac-line, #cbd5e1)',
-                  background: fromDate ? '#f0f9ff' : '#ffffff',
-                }}
-              />
-            </label>
-
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: 0, fontSize: 11, fontWeight: 700, color: '#0369a1' }}>
-              <span>Report Upto:</span>
-              <input
-                type="date"
-                value={toDate}
-                min={fromDate || minMonthDate}
-                max={maxMonthDate}
-                onChange={(e) => setToDate(e.target.value)}
-                style={{
-                  padding: '4px 8px',
-                  fontSize: 11.5,
-                  fontWeight: 700,
-                  borderRadius: 6,
-                  border: toDate ? '1.5px solid #0284c7' : '1px solid var(--hvac-line, #cbd5e1)',
-                  background: toDate ? '#f0f9ff' : '#ffffff',
-                  color: '#0369a1',
-                }}
-              />
-            </label>
-
-            {isDateFiltered && (
-              <button
-                type="button"
-                onClick={() => { setFromDate(''); setToDate(''); }}
-                style={{
-                  padding: '4px 10px',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  borderRadius: 6,
-                  border: '1px solid #fecaca',
-                  background: '#fef2f2',
-                  color: '#dc2626',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-              >
-                ✕ Reset to Full Month
-              </button>
-            )}
           </div>
         </div>
       </div>

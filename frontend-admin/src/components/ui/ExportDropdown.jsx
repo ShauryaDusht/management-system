@@ -310,7 +310,7 @@ export default function ExportDropdown({
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 10, color: 'var(--text-3, #64748b)', marginBottom: 2 }}>To</label>
+                  <label style={{ display: 'block', fontSize: 10, color: 'var(--text-3, #64748b)', marginBottom: 2 }}>To (Report Upto)</label>
                   <input
                     type="date"
                     value={toDate}
