@@ -986,7 +986,7 @@ export default function BarChart({
       {/* SVG Canvas via Recharts ResponsiveContainer */}
       <div style={{ width: '100%', height, minHeight: height, position: 'relative' }}>
         <ResponsiveContainer width="100%" height="100%" minHeight={height}>
-          <ComposedChart data={activeChartData} margin={{ top: 16, right: 24, left: 20, bottom: 12 }}>
+          <ComposedChart data={activeChartData} margin={{ top: 16, right: 24, left: 20, bottom: 30 }}>
             <defs>
               <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={theme.gradientStart} stopOpacity={0.45} />
@@ -1009,6 +1009,14 @@ export default function BarChart({
               tick={{ fontSize: 11, fill: 'var(--muted)' }}
               interval="preserveStartEnd"
               minTickGap={16}
+              label={{
+                value: activeXLabel,
+                position: 'insideBottom',
+                offset: -18,
+                fill: 'var(--ink)',
+                fontSize: 11,
+                fontWeight: 700,
+              }}
             />
 
             <YAxis
