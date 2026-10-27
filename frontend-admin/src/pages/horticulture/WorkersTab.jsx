@@ -97,7 +97,16 @@ export default function WorkersTab() {
   }, [search, workers, zoneFilter])
 
   const [areaSearch, setAreaSearch] = useState('')
+  const [modalSupervisorFilter, setModalSupervisorFilter] = useState('all')
   const [multiAreaMode, setMultiAreaMode] = useState(false)
+
+  const supervisorOptions = useMemo(() => {
+    const list = new Set()
+    areas.forEach((a) => {
+      if (a.supervisor_name) list.add(a.supervisor_name)
+    })
+    return Array.from(list).sort()
+  }, [areas])
 
   const openEdit = (worker) => {
     const workerAreaIds = asList(worker.assigned_areas).map((area) => Number(area.id))
@@ -111,6 +120,7 @@ export default function WorkersTab() {
     })
     setFormError('')
     setAreaSearch('')
+    setModalSupervisorFilter('all')
     setMultiAreaMode(workerAreaIds.length > 1)
     setModal({ worker })
   }
@@ -119,6 +129,7 @@ export default function WorkersTab() {
     setForm(EMPTY_FORM)
     setFormError('')
     setAreaSearch('')
+    setModalSupervisorFilter('all')
     setMultiAreaMode(false)
     setModal({ mode: 'create' })
   }
@@ -206,9 +217,17 @@ export default function WorkersTab() {
 
   const filteredModalAreas = useMemo(() => {
     const q = areaSearch.trim().toLowerCase()
-    if (!q) return areas
-    return areas.filter((a) => (a.name || '').toLowerCase().includes(q) || (a.zone_name || '').toLowerCase().includes(q))
-  }, [areas, areaSearch])
+    return areas.filter((a) => {
+      if (modalSupervisorFilter !== 'all' && a.supervisor_name !== modalSupervisorFilter) return false
+      if (!q) return true
+      return (
+        String(a.area_number || '').includes(q) ||
+        (a.name || '').toLowerCase().includes(q) ||
+        (a.zone_name || '').toLowerCase().includes(q) ||
+        (a.supervisor_name || '').toLowerCase().includes(q)
+      )
+    })
+  }, [areas, areaSearch, modalSupervisorFilter])
 
   const selectedAreaId = form.area_ids?.[0]
   const targetArea = areas.find((a) => Number(a.id) === Number(selectedAreaId))
@@ -217,6 +236,8 @@ export default function WorkersTab() {
     : []
   const currentWorkerAreaName = modal?.worker?.assigned_areas?.[0]?.name
   const isSwapping = Boolean(
+    modal?.mode !== 'create' &&
+    modal?.worker &&
     !multiAreaMode &&
     selectedAreaId &&
     otherWorkersInSelectedArea.length > 0 &&
@@ -336,12 +357,24 @@ export default function WorkersTab() {
             </label>
           </div>
 
-          <Input
-            placeholder="🔍 Search area (e.g. Central Vista, Gate...)"
-            value={areaSearch}
-            onChange={(e) => setAreaSearch(e.target.value)}
-            style={{ marginBottom: 6, fontSize: 12, padding: '5px 8px' }}
-          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 6 }}>
+            <SelectField
+              value={modalSupervisorFilter}
+              onChange={(e) => setModalSupervisorFilter(e.target.value)}
+              style={{ fontSize: 12, padding: '5px 8px' }}
+            >
+              <option value="all">Filter by Supervisor (All)</option>
+              {supervisorOptions.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </SelectField>
+            <Input
+              placeholder="🔍 Search area name, #no..."
+              value={areaSearch}
+              onChange={(e) => setAreaSearch(e.target.value)}
+              style={{ fontSize: 12, padding: '5px 8px' }}
+            />
+          </div>
 
           <div style={{ border: '1px solid var(--border)', borderRadius: 8, maxHeight: 190, overflow: 'auto', padding: 6 }}>
             {!multiAreaMode && (
@@ -374,14 +407,17 @@ export default function WorkersTab() {
                     checked={isChecked}
                     onChange={() => selectArea(area.id)}
                   />
-                  <span style={{ flex: 1 }}>
-                    {area.name} <span style={{ color: 'var(--text-3)' }}>({area.zone_name || '-'})</span>
+                  <span style={{ flex: 1, fontSize: 12 }}>
+                    <strong>#{area.area_number}:</strong> {area.name}
+                    <span style={{ color: 'var(--text-3)', fontSize: 11, marginLeft: 6 }}>
+                      ({area.zone_name || '-'} • {area.supervisor_name ? `Supervisor: ${area.supervisor_name}` : 'No supervisor'})
+                    </span>
                     {isCurrentWorkerArea && (
                       <span style={{ color: '#16a34a', fontSize: 11, marginLeft: 6, fontWeight: 700 }}>(Current)</span>
                     )}
                     {otherAssigned.length > 0 && !isCurrentWorkerArea && (
-                      <span style={{ color: '#d97706', fontSize: 11, marginLeft: 6, fontWeight: 600 }}>
-                        (Assigned: {otherAssigned.join(', ')}) 🔄
+                      <span style={{ color: '#0284c7', fontSize: 11, marginLeft: 6, fontWeight: 600 }}>
+                        (Assigned: {otherAssigned.join(', ')})
                       </span>
                     )}
                   </span>

@@ -6,9 +6,9 @@ import { asList, getErrorMessage } from '../../shared/utils'
 import { formatDate, getZoneTone, priorityZoneCards, taskChipStyle } from './helpers'
 
 const AREA_FILTERS = [
-  { key: 'red', label: 'Zone Red' },
-  { key: 'blue', label: 'Zone Blue' },
-  { key: 'black', label: 'Zone Black' },
+  { key: 'red', label: "Academic+Director's residence+Guest House Area" },
+  { key: 'blue', label: 'Housing&Hostel' },
+  { key: 'black', label: 'Research park' },
 ]
 
 const taskGridTemplate = 'minmax(180px, 1.2fr) minmax(180px, 1fr) minmax(150px, 0.9fr) minmax(130px, 0.8fr)'

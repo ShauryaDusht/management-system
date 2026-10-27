@@ -21,6 +21,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import generics, status
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -434,6 +435,22 @@ class IsAdminOrHorticultureManager(BasePermission):
         )
 
 
+class IsAdminOrHorticultureStaff(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and user.is_active
+            and (
+                user.is_admin
+                or user.is_horticulture_manager
+                or getattr(user, 'is_supervisor', False)
+                or getattr(user, 'role', '') == 'supervisor'
+            )
+        )
+
+
 class IsHorticultureManager(BasePermission):
     def has_permission(self, request, view):
         user = request.user
@@ -462,8 +479,11 @@ def _zone_order_key(zone_like):
         name = zone_like.get('zone_name', '')
     priority = {
         'Zone Red': 0,
+        "Academic+Director's residence+Guest House Area": 0,
         'Zone Blue': 1,
+        'Housing&Hostel': 1,
         'Zone Black': 2,
+        'Research park': 2,
     }
     return (priority.get(name, 99), name)
 
@@ -871,7 +891,7 @@ class AdminHorticultureZoneDetailAPIView(APIView):
 
 
 class AdminHorticultureAreasAPIView(APIView):
-    permission_classes = [IsAdminOrHorticultureManager]
+    permission_classes = [IsAdminOrHorticultureStaff]
 
     def get(self, request):
         areas = (
@@ -915,8 +935,12 @@ class AdminHorticultureAreaDetailAPIView(APIView):
 
     def delete(self, request, area_id):
         area = self.get_object(area_id)
-        area.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            area.daily_assignments.all().delete()
+            area.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as exc:
+            return Response({'detail': f'Failed to delete area: {str(exc)}'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AdminHorticultureAttendanceAPIView(APIView):
@@ -1086,7 +1110,8 @@ def _normalize_worker_area_ids(data):
 
 
 class AdminHorticultureWorkersAPIView(APIView):
-    permission_classes = [IsAdminOrHorticultureManager]
+    permission_classes = [IsAdminOrHorticultureStaff]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
         serializer = AdminWorkerSerializer(_worker_rows(), many=True, context={'request': request})
@@ -1103,7 +1128,8 @@ class AdminHorticultureWorkersAPIView(APIView):
 
 
 class AdminHorticultureWorkerDetailAPIView(APIView):
-    permission_classes = [IsAdminOrHorticultureManager]
+    permission_classes = [IsAdminOrHorticultureStaff]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_object(self, worker_id):
         return get_object_or_404(_worker_rows(), pk=worker_id)
