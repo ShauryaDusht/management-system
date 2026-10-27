@@ -118,8 +118,8 @@ def portal_dashboard(request):
 
     hvac_logged = False
     try:
-        from apps.hvac.models import HvacReading
-        hvac_logged = HvacReading.objects.filter(date=today_date).exists()
+        from apps.hvac.models import HvacLog
+        hvac_logged = HvacLog.objects.filter(date=today_date).exists()
     except Exception:
         pass
 
