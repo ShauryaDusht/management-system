@@ -35,6 +35,7 @@ const ROLES = [
   'estate_office',
   'civil_team',
   'electrical_team',
+  'engineer',
   'hk_inventory_manager',
   'hostel_office',
   'horticulture_manager',
@@ -42,25 +43,26 @@ const ROLES = [
   'caretaker',
 ]
 const HK_ROLES = ['supervisor', 'caretaker']
-const ROLE_FILTERS = [
-  { key: 'admin', label: 'Admin' },
-  { key: 'plant_engineer', label: 'Substation & WTP Engr' },
-  { key: 'electrical_supervisor', label: 'Substation Supervisor' },
-  { key: 'electrical_operator', label: 'Substation Operator' },
-  { key: 'wtp_supervisor', label: 'WTP/STP Supervisor' },
-  { key: 'wtp_operator', label: 'WTP/STP Operator' },
-  { key: 'hvac_engineer', label: 'HVAC Engineer' },
-  { key: 'hvac_supervisor', label: 'HVAC Supervisor' },
-  { key: 'hvac_operator', label: 'HVAC Operator' },
-  { key: 'estate_office', label: 'Estate Office' },
-  { key: 'civil_team', label: 'Civil Team' },
-  { key: 'electrical_team', label: 'Electrical Team' },
-  { key: 'hk_inventory_manager', label: 'HK / Inv. Manager' },
-  { key: 'hostel_office', label: 'Hostel Office' },
-  { key: 'horticulture_manager', label: 'Horticulture Manager' },
-  { key: 'supervisor', label: 'Supervisor' },
-  { key: 'caretaker', label: 'Caretaker' },
+const ENGINEER_ROLES = ['plant_engineer', 'hvac_engineer']
+const SUPERVISOR_ROLES = ['supervisor', 'electrical_supervisor', 'wtp_supervisor', 'hvac_supervisor']
+
+const TOP_CARD_FILTERS = [
+  { key: 'admin', label: 'Admin', countKey: 'admin', roles: ['admin'] },
+  { key: 'engineer', label: 'Engineer', countKey: 'engineer', roles: ENGINEER_ROLES },
+  { key: 'supervisor', label: 'Supervisor', countKey: 'supervisor', roles: SUPERVISOR_ROLES },
+  { key: 'electrical_operator', label: 'Substation Operator', countKey: 'electrical_operator', roles: ['electrical_operator'] },
+  { key: 'wtp_operator', label: 'WTP/STP Operator', countKey: 'wtp_operator', roles: ['wtp_operator'] },
+  { key: 'hvac_operator', label: 'HVAC Operator', countKey: 'hvac_operator', roles: ['hvac_operator'] },
+  { key: 'estate_office', label: 'Estate Office', countKey: 'estate_office', roles: ['estate_office'] },
+  { key: 'civil_team', label: 'Civil Team', countKey: 'civil_team', roles: ['civil_team'] },
+  { key: 'electrical_team', label: 'Electrical Team', countKey: 'electrical_team', roles: ['electrical_team'] },
+  { key: 'engineer_lift', label: 'Lift License', countKey: 'engineer_lift', roles: ['engineer'] },
+  { key: 'hk_inventory_manager', label: 'HK / Inv. Manager', countKey: 'hk_inventory_manager', roles: ['hk_inventory_manager'] },
+  { key: 'hostel_office', label: 'Hostel Office', countKey: 'hostel_office', roles: ['hostel_office'] },
+  { key: 'horticulture_manager', label: 'Horticulture Manager', countKey: 'horticulture_manager', roles: ['horticulture_manager'] },
+  { key: 'caretaker', label: 'Caretaker', countKey: 'caretaker', roles: ['caretaker'] },
 ]
+
 const ROLE_LABELS = {
   admin: 'Admin',
   plant_engineer: 'Substation & WTP Engr',
@@ -74,6 +76,7 @@ const ROLE_LABELS = {
   estate_office: 'Estate Office',
   civil_team: 'Civil Team',
   electrical_team: 'Electrical Team',
+  engineer: 'Lift License',
   hk_inventory_manager: 'HK / Inventory Manager',
   hostel_office: 'Hostel Office',
   horticulture_manager: 'Horticulture Manager',
@@ -266,7 +269,19 @@ export default function UsersPage() {
   }
 
   const filtered = users.filter((u) => {
-    const matchRole = roleFilter === 'all' ? true : u.role === roleFilter
+    let matchRole = true
+    if (roleFilter === 'all') {
+      matchRole = true
+    } else if (roleFilter === 'engineer') {
+      matchRole = ENGINEER_ROLES.includes(u.role)
+    } else if (roleFilter === 'supervisor') {
+      matchRole = SUPERVISOR_ROLES.includes(u.role)
+    } else if (roleFilter === 'engineer_lift') {
+      matchRole = u.role === 'engineer'
+    } else {
+      matchRole = u.role === roleFilter
+    }
+
     const areaText = Array.isArray(u.areas_incharge) ? u.areas_incharge.join(' ') : ''
     const matchSearch =
       !search ||
@@ -293,7 +308,10 @@ export default function UsersPage() {
 
   const roleCounts = useMemo(() => {
     const counts = {
+      total: users.length,
       admin: 0,
+      engineer: 0,
+      supervisor: 0,
       plant_engineer: 0,
       electrical_supervisor: 0,
       electrical_operator: 0,
@@ -305,25 +323,40 @@ export default function UsersPage() {
       estate_office: 0,
       civil_team: 0,
       electrical_team: 0,
+      engineer_lift: 0,
       hk_inventory_manager: 0,
       hostel_office: 0,
       horticulture_manager: 0,
-      supervisor: 0,
       caretaker: 0,
     }
     users.forEach((u) => {
       if (Object.prototype.hasOwnProperty.call(counts, u.role)) {
         counts[u.role] += 1
       }
+      if (u.role === 'engineer') {
+        counts.engineer_lift += 1
+      }
+      // Merged counts for icon cards:
+      if (ENGINEER_ROLES.includes(u.role)) {
+        counts.engineer += 1
+      }
+      if (SUPERVISOR_ROLES.includes(u.role)) {
+        counts.supervisor += 1
+      }
     })
-    return {
-      total: users.length,
-      ...counts,
-    }
+    return counts
   }, [users])
 
   const handleExportUsers = async (format) => {
-    const scope = roleFilter === 'all' ? 'All Roles' : (ROLE_FILTERS.find((r) => r.key === roleFilter)?.label || roleFilter)
+    let scope = 'All Roles'
+    if (roleFilter === 'engineer') {
+      scope = 'Engineers (Substation, WTP & HVAC)'
+    } else if (roleFilter === 'supervisor') {
+      scope = 'Supervisors (All Campus Supervisors)'
+    } else if (roleFilter !== 'all') {
+      scope = ROLE_LABELS[roleFilter] || TOP_CARD_FILTERS.find((r) => r.key === roleFilter)?.label || roleFilter
+    }
+
     const exportData = {
       filename: `manage_users_${safeFilePart(roleFilter)}_${todayISO()}`,
       module: 'User Administration',
@@ -337,6 +370,7 @@ export default function UsersPage() {
       stats: [
         { label: 'Total Users', value: filtered.length },
         { label: 'Admins', value: roleCounts.admin || 0 },
+        { label: 'Engineers', value: roleCounts.engineer || 0 },
         { label: 'Supervisors', value: roleCounts.supervisor || 0 },
         { label: 'Caretakers', value: roleCounts.caretaker || 0 },
       ],
@@ -391,41 +425,29 @@ export default function UsersPage() {
             Total
           </div>
         </Card>
-        <Card
-          onClick={() => setRoleFilter(roleFilter === 'admin' ? 'all' : 'admin')}
-          style={{
-            cursor: 'pointer',
-            padding: '12px 14px',
-            borderColor: roleFilter === 'admin' ? 'var(--green-700)' : 'var(--border)',
-            background: roleFilter === 'admin' ? '#f0fdf4' : 'var(--surface)',
-          }}
-        >
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green-800)' }}>
-            {roleCounts.admin}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-            Admin
-          </div>
-        </Card>
-        {ROLE_FILTERS.filter((r) => r.key !== 'admin').map((r) => (
-          <Card
-            key={r.key}
-            onClick={() => setRoleFilter(roleFilter === r.key ? 'all' : r.key)}
-            style={{
-              cursor: 'pointer',
-              padding: '12px 14px',
-              borderColor: roleFilter === r.key ? 'var(--green-700)' : 'var(--border)',
-              background: roleFilter === r.key ? '#f0fdf4' : 'var(--surface)',
-            }}
-          >
-            <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green-800)' }}>
-              {roleCounts[r.key]}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-              {r.label}
-            </div>
-          </Card>
-        ))}
+        {TOP_CARD_FILTERS.map((r) => {
+          const isActive =
+            roleFilter === r.key || (r.roles && r.roles.length > 1 && r.roles.includes(roleFilter))
+          return (
+            <Card
+              key={r.key}
+              onClick={() => setRoleFilter(isActive ? 'all' : r.key)}
+              style={{
+                cursor: 'pointer',
+                padding: '12px 14px',
+                borderColor: isActive ? 'var(--green-700)' : 'var(--border)',
+                background: isActive ? '#f0fdf4' : 'var(--surface)',
+              }}
+            >
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green-800)' }}>
+                {roleCounts[r.countKey]}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                {r.label}
+              </div>
+            </Card>
+          )
+        })}
       </div>
 
       <Card noPad>
@@ -447,9 +469,17 @@ export default function UsersPage() {
           />
           <SelectField value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={{ width: 190 }}>
             <option value="all">All Roles</option>
-            {ROLE_FILTERS.map((r) => (
+            {TOP_CARD_FILTERS.map((r) => (
               <option key={r.key} value={r.key}>{r.label}</option>
             ))}
+            <optgroup label="Specific Roles">
+              <option value="plant_engineer">↳ Substation &amp; WTP Engr</option>
+              <option value="hvac_engineer">↳ HVAC Engineer</option>
+              <option value="electrical_supervisor">↳ Substation Supervisor</option>
+              <option value="wtp_supervisor">↳ WTP/STP Supervisor</option>
+              <option value="hvac_supervisor">↳ HVAC Supervisor</option>
+              <option value="supervisor">↳ General Supervisor</option>
+            </optgroup>
           </SelectField>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, color: 'var(--text-3)' }}>{filtered.length} users</span>
