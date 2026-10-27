@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Btn, Card, Modal, Spinner } from '../../components/ui'
 import DemandNoteTemplate from './DemandNoteTemplate'
 import { buildNote, inr, pdfFileName, getExpiryStatus } from './utils'
+import PaymentRecordModal from './PaymentRecordModal'
 
 export default function ShopEditorModal({
   isOpen,
@@ -17,6 +18,7 @@ export default function ShopEditorModal({
   const [pdfBusy, setPdfBusy] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [countdown, setCountdown] = useState(0)
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false)
 
   const rec = records[currentIndex]
 
@@ -439,6 +441,64 @@ export default function ShopEditorModal({
               </div>
             </div>
 
+            {/* Payment Record Card */}
+            {!rec.isCancelled && (
+              <div
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 8,
+                  background: 'var(--surface)',
+                  border: '1.5px solid var(--border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase' }}>
+                    Payment Record
+                  </span>
+                  <span
+                    style={{
+                      padding: '2px 8px',
+                      borderRadius: 12,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      background: rec.paymentStatus === 'paid' ? '#dcfce7' : rec.paymentStatus === 'partially_paid' ? '#fef3c7' : '#f1f5f9',
+                      color: rec.paymentStatus === 'paid' ? '#15803d' : rec.paymentStatus === 'partially_paid' ? '#b45309' : '#64748b',
+                      border: `1px solid ${rec.paymentStatus === 'paid' ? '#86efac' : rec.paymentStatus === 'partially_paid' ? '#fde68a' : '#cbd5e1'}`,
+                    }}
+                  >
+                    {rec.paymentStatus === 'paid' ? 'Fully Paid' : rec.paymentStatus === 'partially_paid' ? 'Partially Paid' : 'Unpaid'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-2)' }}>
+                  <span>Paid: <strong>Rs. {inr(rec.totalPaid || 0)}</strong></span>
+                  <span>Due: <strong style={{ color: Number(rec.balanceDue) > 0 ? '#dc2626' : '#15803d' }}>Rs. {inr(rec.balanceDue != null ? rec.balanceDue : note.total)}</strong></span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentOpen(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border)',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: 'var(--text)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span>Manage Payment & Installments</span>
+                </button>
+              </div>
+            )}
+
             {/* Cancel / Restore demand note for this cycle */}
             {rec.isCancelled ? (
               <div
@@ -524,6 +584,23 @@ export default function ShopEditorModal({
           </div>
         </div>
       </div>
+
+      {/* Payment Record Modal */}
+      {isPaymentOpen && (
+        <PaymentRecordModal
+          isOpen={isPaymentOpen}
+          onClose={() => setIsPaymentOpen(false)}
+          record={rec}
+          title="Shop Payment Record"
+          name={rec?.name}
+          noteNo={rec?.noteNo}
+          totalAmount={note.total}
+          onSavePayments={async (newPayments) => {
+            await onPatch(rec.id, { payments: newPayments })
+          }}
+          isReadOnly={isReadOnly}
+        />
+      )}
     </Modal>
   )
 }

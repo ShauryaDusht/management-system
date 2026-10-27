@@ -15,6 +15,10 @@ from .views import (
     HousingHistoryView,
     HousingClearanceListCreateView,
     HousingClearanceDetailView,
+    HousingClearanceDeleteHistoryView,
+    HousingClearanceTrashView,
+    HousingClearanceRestoreTrashView,
+    HousingClearancePurgeTrashView,
     ToggleClearanceAlertsView,
 )
 
@@ -26,6 +30,10 @@ urlpatterns = [
     path('housing/units/', HousingUnitListView.as_view(), name='estate-housing-units'),
     path('housing/history/', HousingHistoryView.as_view(), name='estate-housing-history'),
     path('housing/clearances/', HousingClearanceListCreateView.as_view(), name='estate-housing-clearances'),
+    path('housing/clearances/delete-history/', HousingClearanceDeleteHistoryView.as_view(), name='estate-clearance-delete-history'),
+    path('housing/clearances/trash/', HousingClearanceTrashView.as_view(), name='estate-clearance-trash'),
+    path('housing/clearances/trash/restore/', HousingClearanceRestoreTrashView.as_view(), name='estate-clearance-trash-restore'),
+    path('housing/clearances/trash/purge/', HousingClearancePurgeTrashView.as_view(), name='estate-clearance-trash-purge'),
     path('housing/clearances/<int:pk>/', HousingClearanceDetailView.as_view(), name='estate-housing-clearance-detail'),
     path('housing/clearances/toggle-alerts/', ToggleClearanceAlertsView.as_view(), name='estate-clearance-toggle-alerts'),
     path('housing/', HousingListCreateView.as_view(), name='estate-housing'),

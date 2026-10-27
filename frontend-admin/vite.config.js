@@ -14,6 +14,9 @@ export default defineConfig({
             res.end()
             return
           }
+          if (req.url === '/iitgn-logo.png' || req.url === '/campus-sanchalika-logo.png') {
+            req.url = `/admin${req.url}`
+          }
           next()
         })
       },

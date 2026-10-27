@@ -239,6 +239,28 @@ def send_handover_alert(clearance, event_type, actor=None, custom_remarks=None):
         logger.warning(f"[Clearance Email Alert] Unknown event_type '{event_type}'")
         return
 
+    # Department-level alert opt-out check
+    if event_type == EVENT_ESTATE_TO_CIVIL:
+        if not getattr(estate_settings, 'enable_civil_alerts', True):
+            logger.info(f"[Clearance Email Alert] Civil Team email alerts are turned OFF. Skipping alert for Quarter {clearance.house_no}.")
+            return
+    elif event_type == EVENT_CIVIL_TO_ELECTRICAL:
+        if not getattr(estate_settings, 'enable_electrical_alerts', True):
+            logger.info(f"[Clearance Email Alert] Electrical Team email alerts are turned OFF. Skipping alert for Quarter {clearance.house_no}.")
+            return
+    elif event_type == EVENT_ELECTRICAL_TO_HK:
+        if not getattr(estate_settings, 'enable_hk_alerts', True):
+            logger.info(f"[Clearance Email Alert] Housekeeping email alerts are turned OFF. Skipping alert for Quarter {clearance.house_no}.")
+            return
+    elif event_type == EVENT_HK_TO_ESTATE:
+        if not getattr(estate_settings, 'enable_estate_alerts', True):
+            logger.info(f"[Clearance Email Alert] Estate Office email alerts are turned OFF. Skipping alert for Quarter {clearance.house_no}.")
+            return
+    elif event_type == EVENT_ESTATE_ALLOTTED:
+        # Quarter is officially allotted; no further handover email alert is sent
+        logger.info(f"[Clearance Email Alert] Quarter {clearance.house_no} officially allotted. No alert email required.")
+        return
+
     # Determine recipient email(s)
     recipients = []
     test_mode = False
@@ -267,10 +289,6 @@ def send_handover_alert(clearance, event_type, actor=None, custom_remarks=None):
             recipients.extend(_parse_emails(hk_email))
         elif event_type == EVENT_HK_TO_ESTATE:
             recipients.extend(_parse_emails(estate_email))
-        elif event_type == EVENT_ESTATE_ALLOTTED:
-            # Quarter is officially allotted; no further handover email alert is sent
-            logger.info(f"[Clearance Email Alert] Quarter {clearance.house_no} officially allotted. No alert email required.")
-            return
 
     # Filter out empty or placeholder entries and deduplicate
     seen = set()

@@ -4,6 +4,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.db import models, transaction
 from django.db.models import F, Max
 from django.db.models.functions import Cast
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -152,6 +153,38 @@ def calculate_contractor_total(meters):
         except Exception:
             continue
     return total
+
+
+def sanitize_payments(payments_list):
+    """Sanitizes installment payment entries for shop & contractor demand notes."""
+    import uuid
+    cleaned = []
+    for p in payments_list:
+        if not isinstance(p, dict):
+            continue
+        amt_raw = str(p.get('amount', '')).strip().replace(',', '')
+        if not amt_raw:
+            continue
+        try:
+            amt_num = float(amt_raw)
+            if amt_num <= 0:
+                continue
+        except (ValueError, TypeError):
+            continue
+
+        p_id = str(p.get('id') or '').strip()
+        if not p_id or p_id.startswith('temp_'):
+            p_id = f"pay_{uuid.uuid4().hex[:8]}"
+
+        cleaned.append({
+            'id': p_id,
+            'amount': f"{amt_num:.2f}",
+            'date': str(p.get('date') or '').strip(),
+            'mode': str(p.get('mode') or 'Online').strip(),
+            'receipt_no': str(p.get('receipt_no') or p.get('receiptNo') or '').strip(),
+            'remarks': str(p.get('remarks') or '').strip(),
+        })
+    return cleaned
 
 
 def get_cycle_first_shop_note_no(cycle_month):
@@ -617,6 +650,8 @@ class ShopDetailView(APIView):
                 {'label': str(x.get('label', '')), 'amount': str(x.get('amount', ''))}
                 for x in data['extras']
             ]
+        if 'payments' in data and isinstance(data['payments'], list):
+            note.payments = sanitize_payments(data['payments'])
 
         if 'isCancelled' in data or 'is_cancelled' in data:
             c_val = bool(data.get('isCancelled') if 'isCancelled' in data else data.get('is_cancelled'))
@@ -804,6 +839,8 @@ class ContractorDetailView(APIView):
             note.to_date = str(data.get('to', data.get('to_date', '')))
         if 'meters' in data and isinstance(data['meters'], list):
             note.meters = data['meters']
+        if 'payments' in data and isinstance(data['payments'], list):
+            note.payments = sanitize_payments(data['payments'])
 
         note.total_amount = calculate_contractor_total(note.meters)
         note.save()
@@ -885,8 +922,25 @@ class ToggleClearanceAlertsView(APIView):
         if not is_clearance_allowed(request.user):
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
         settings_obj = EstateSettings.get_settings()
+        role = getattr(request.user, 'role', '')
+        user_dept = 'all'
+        if role == 'civil_team':
+            user_dept = 'civil'
+        elif role == 'electrical_team':
+            user_dept = 'electrical'
+        elif role in ('hk_inventory_manager', 'supervisor', 'caretaker'):
+            user_dept = 'hk'
+        elif role == 'estate_office':
+            user_dept = 'estate'
+
         return Response({
             'enabled': settings_obj.enable_email_alerts,
+            'civil': settings_obj.enable_civil_alerts,
+            'electrical': settings_obj.enable_electrical_alerts,
+            'hk': settings_obj.enable_hk_alerts,
+            'estate': settings_obj.enable_estate_alerts,
+            'userDept': user_dept,
+            'isMaster': is_clearance_master(request.user),
             'testRecipientEmail': settings_obj.test_recipient_email,
         })
 
@@ -894,14 +948,67 @@ class ToggleClearanceAlertsView(APIView):
         if not is_clearance_allowed(request.user):
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
         settings_obj = EstateSettings.get_settings()
-        if 'enabled' in request.data:
-            settings_obj.enable_email_alerts = bool(request.data['enabled'])
-        else:
-            settings_obj.enable_email_alerts = not settings_obj.enable_email_alerts
-        settings_obj.save(update_fields=['enable_email_alerts'])
+        role = getattr(request.user, 'role', '')
+        is_master = is_clearance_master(request.user)
+
+        user_dept = 'all'
+        if role == 'civil_team':
+            user_dept = 'civil'
+        elif role == 'electrical_team':
+            user_dept = 'electrical'
+        elif role in ('hk_inventory_manager', 'supervisor', 'caretaker'):
+            user_dept = 'hk'
+        elif role == 'estate_office':
+            user_dept = 'estate'
+
+        # Target department to toggle
+        target_dept = request.data.get('department') or user_dept
+
+        # Ensure non-master users can only toggle their own department
+        if not is_master and user_dept != 'all' and target_dept not in (user_dept, None):
+            return Response({'error': f'You can only toggle alerts for your department ({user_dept}).'}, status=status.HTTP_403_FORBIDDEN)
+
+        updated_fields = []
+        msg = ""
+
+        if target_dept == 'civil':
+            new_val = bool(request.data['enabled']) if 'enabled' in request.data else not settings_obj.enable_civil_alerts
+            settings_obj.enable_civil_alerts = new_val
+            updated_fields.append('enable_civil_alerts')
+            msg = f"Civil Team email alerts {'ENABLED' if new_val else 'DISABLED'} successfully."
+        elif target_dept == 'electrical':
+            new_val = bool(request.data['enabled']) if 'enabled' in request.data else not settings_obj.enable_electrical_alerts
+            settings_obj.enable_electrical_alerts = new_val
+            updated_fields.append('enable_electrical_alerts')
+            msg = f"Electrical Team email alerts {'ENABLED' if new_val else 'DISABLED'} successfully."
+        elif target_dept == 'hk':
+            new_val = bool(request.data['enabled']) if 'enabled' in request.data else not settings_obj.enable_hk_alerts
+            settings_obj.enable_hk_alerts = new_val
+            updated_fields.append('enable_hk_alerts')
+            msg = f"Housekeeping email alerts {'ENABLED' if new_val else 'DISABLED'} successfully."
+        elif target_dept == 'estate':
+            new_val = bool(request.data['enabled']) if 'enabled' in request.data else not settings_obj.enable_estate_alerts
+            settings_obj.enable_estate_alerts = new_val
+            updated_fields.append('enable_estate_alerts')
+            msg = f"Estate Office email alerts {'ENABLED' if new_val else 'DISABLED'} successfully."
+        elif target_dept in ('all', 'global') or 'enabled' in request.data:
+            new_val = bool(request.data['enabled']) if 'enabled' in request.data else not settings_obj.enable_email_alerts
+            settings_obj.enable_email_alerts = new_val
+            updated_fields.append('enable_email_alerts')
+            msg = f"Automated email alerts {'ENABLED' if new_val else 'DISABLED'} system-wide."
+
+        if updated_fields:
+            settings_obj.save(update_fields=updated_fields)
+
         return Response({
             'enabled': settings_obj.enable_email_alerts,
-            'message': f"Automated email alerts {'ENABLED' if settings_obj.enable_email_alerts else 'DISABLED'} successfully."
+            'civil': settings_obj.enable_civil_alerts,
+            'electrical': settings_obj.enable_electrical_alerts,
+            'hk': settings_obj.enable_hk_alerts,
+            'estate': settings_obj.enable_estate_alerts,
+            'userDept': user_dept,
+            'isMaster': is_master,
+            'message': msg,
         })
 
 
@@ -1831,6 +1938,67 @@ def ensure_initial_clearances():
         )
 
 
+def parse_clearance_date_obj(c):
+    """Returns datetime.date or None for a HousingClearance record."""
+    date_candidates = [
+        getattr(c, 'estate_date_1', None),
+        getattr(c, 'estate_date_3', None),
+        getattr(c, 'estate_date_4', None),
+        getattr(c, 'estate_date_2', None),
+        getattr(c, 'time_stamp', None),
+    ]
+    for d_str in date_candidates:
+        if not d_str:
+            continue
+        trimmed = str(d_str).strip()
+        # ISO YYYY-MM-DD
+        if len(trimmed) == 10 and trimmed[4] == '-' and trimmed[7] == '-':
+            try:
+                return datetime.date.fromisoformat(trimmed)
+            except ValueError:
+                pass
+        # DD-Mon-YYYY or DD-Mon-YY e.g. 14-Jul-26, 6-Jul-2026, 29-Sep-26
+        m_mon = re.match(r'^(\d{1,2})[\/\-\s]([A-Za-z]{3,})[\/\-\s](\d{2,4})$', trimmed)
+        if m_mon:
+            day = int(m_mon.group(1))
+            mon_str = m_mon.group(2).lower()
+            year_val = m_mon.group(3)
+            year = int(f"20{year_val}" if len(year_val) == 2 else year_val)
+            months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+            for idx, m_prefix in enumerate(months, start=1):
+                if mon_str.startswith(m_prefix):
+                    try:
+                        return datetime.date(year, idx, day)
+                    except ValueError:
+                        pass
+        # DD/MM/YYYY or DD/MM/YY
+        m_dmy = re.match(r'^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$', trimmed)
+        if m_dmy:
+            p1, p2 = int(m_dmy.group(1)), int(m_dmy.group(2))
+            year_val = m_dmy.group(3)
+            year = int(f"20{year_val}" if len(year_val) == 2 else year_val)
+            day, month = p1, p2
+            if p1 <= 12 and p2 > 12:
+                day, month = p2, p1
+            try:
+                return datetime.date(year, month, day)
+            except ValueError:
+                pass
+    if getattr(c, 'created_at', None):
+        return c.created_at.date()
+    return None
+
+
+def purge_expired_clearances_trash():
+    """Permanently delete clearances that have been in trash for > 24 hours."""
+    cutoff = timezone.now() - datetime.timedelta(hours=24)
+    expired = HousingClearance.objects.filter(is_deleted=True, deleted_at__lt=cutoff)
+    count = expired.count()
+    if count > 0:
+        expired.delete()
+    return count
+
+
 class HousingClearanceListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1838,10 +2006,11 @@ class HousingClearanceListCreateView(APIView):
         if not is_clearance_allowed(request.user):
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
 
+        purge_expired_clearances_trash()
         ensure_initial_clearances()
         rebalance_active_priorities()
 
-        qs = HousingClearance.objects.filter(is_active=True).select_related('unit')
+        qs = HousingClearance.objects.filter(is_active=True, is_deleted=False).select_related('unit')
         house_type = request.query_params.get('house_type')
         if house_type and house_type != 'all':
             raw = house_type.replace('Type', '').strip()
@@ -1921,7 +2090,7 @@ class HousingClearanceDetailView(APIView):
 
     def get_object(self, pk):
         try:
-            return HousingClearance.objects.select_related('unit').get(pk=pk, is_active=True)
+            return HousingClearance.objects.select_related('unit').get(pk=pk, is_active=True, is_deleted=False)
         except HousingClearance.DoesNotExist:
             return None
 
@@ -2302,14 +2471,195 @@ class HousingClearanceDetailView(APIView):
         if not obj:
             return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
         with transaction.atomic():
+            obj.is_deleted = True
+            obj.deleted_at = timezone.now()
+            obj.deleted_by = request.user
             obj.is_active = False
             obj.priority = ''
-            obj.save(update_fields=['is_active', 'priority'])
+            obj.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by', 'is_active', 'priority'])
             rebalance_active_priorities()
             if obj.unit and obj.unit.status == HousingUnit.Status.UNDER_CLEARANCE:
                 # If no other active clearance, reset unit to vacant
-                has_other = obj.unit.clearances.filter(is_active=True, status='in_progress').exists()
+                has_other = obj.unit.clearances.filter(is_active=True, is_deleted=False, status='in_progress').exists()
                 if not has_other and not obj.unit.current_allotment:
                     obj.unit.status = HousingUnit.Status.VACANT
                     obj.unit.save(update_fields=['status'])
-        return Response({'success': True}, status=status.HTTP_200_OK)
+        return Response({'success': True, 'message': 'Record moved to 24-hour recovery trash.'}, status=status.HTTP_200_OK)
+
+
+class HousingClearanceDeleteHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not is_clearance_master(request.user):
+            return Response({'error': 'Only Admin and Estate Office can delete history records.'}, status=status.HTTP_403_FORBIDDEN)
+
+        purge_expired_clearances_trash()
+
+        # Target completed / allotted clearances
+        qs = HousingClearance.objects.filter(is_active=True, is_deleted=False).filter(
+            models.Q(is_allotted=True) | models.Q(status='completed')
+        )
+
+        data = request.data or {}
+        delete_type = data.get('delete_type', 'all')
+        explicit_ids = data.get('ids')
+
+        from_date_str = data.get('from_date')
+        to_date_str = data.get('to_date')
+        year_val = data.get('year')
+        years_back = data.get('years_back')
+
+        if explicit_ids and isinstance(explicit_ids, list):
+            qs = qs.filter(id__in=explicit_ids)
+        elif delete_type == 'date_range' and (from_date_str or to_date_str):
+            from_d = datetime.date.fromisoformat(from_date_str) if from_date_str else None
+            to_d = datetime.date.fromisoformat(to_date_str) if to_date_str else None
+            matching_ids = []
+            for c in qs:
+                c_d = parse_clearance_date_obj(c)
+                if c_d:
+                    if from_d and c_d < from_d:
+                        continue
+                    if to_d and c_d > to_d:
+                        continue
+                    matching_ids.append(c.id)
+            qs = qs.filter(id__in=matching_ids)
+        elif delete_type == 'month_range' and (from_date_str or to_date_str):
+            try:
+                from_y, from_m = [int(p) for p in from_date_str.split('-')[:2]] if from_date_str else (1900, 1)
+                to_y, to_m = [int(p) for p in to_date_str.split('-')[:2]] if to_date_str else (2100, 12)
+                matching_ids = []
+                for c in qs:
+                    c_d = parse_clearance_date_obj(c)
+                    if c_d:
+                        c_val = c_d.year * 100 + c_d.month
+                        if c_val < (from_y * 100 + from_m) or c_val > (to_y * 100 + to_m):
+                            continue
+                        matching_ids.append(c.id)
+                qs = qs.filter(id__in=matching_ids)
+            except Exception:
+                pass
+        elif delete_type == 'year_range':
+            if year_val:
+                try:
+                    y = int(year_val)
+                    matching_ids = [c.id for c in qs if (parse_clearance_date_obj(c) and parse_clearance_date_obj(c).year == y)]
+                    qs = qs.filter(id__in=matching_ids)
+                except Exception:
+                    pass
+            elif years_back:
+                try:
+                    yb = int(years_back)
+                    cutoff_d = datetime.date.today() - datetime.timedelta(days=365 * yb)
+                    matching_ids = [c.id for c in qs if (parse_clearance_date_obj(c) and parse_clearance_date_obj(c) <= cutoff_d)]
+                    qs = qs.filter(id__in=matching_ids)
+                except Exception:
+                    pass
+
+        target_ids = list(qs.values_list('id', flat=True))
+        if not target_ids:
+            return Response({'error': 'No matching history records found to delete.', 'deleted_count': 0}, status=status.HTTP_400_BAD_REQUEST)
+
+        now = timezone.now()
+        with transaction.atomic():
+            qs.update(
+                is_deleted=True,
+                deleted_at=now,
+                deleted_by=request.user
+            )
+
+        return Response({
+            'success': True,
+            'message': f'{len(target_ids)} records moved to 24-hour recovery trash.',
+            'deleted_count': len(target_ids),
+            'deleted_ids': target_ids,
+        }, status=status.HTTP_200_OK)
+
+
+class HousingClearanceTrashView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not is_clearance_master(request.user):
+            return Response({'error': 'Only Admin and Estate Office can view trash.'}, status=status.HTTP_403_FORBIDDEN)
+
+        purge_expired_clearances_trash()
+
+        qs = HousingClearance.objects.filter(is_deleted=True).select_related('unit').order_by('-deleted_at')
+        serializer = HousingClearanceSerializer(qs, many=True, context={'request': request})
+        return Response({
+            'trash': serializer.data,
+            'total_in_trash': qs.count(),
+        })
+
+
+class HousingClearanceRestoreTrashView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not is_clearance_master(request.user):
+            return Response({'error': 'Only Admin and Estate Office can restore records.'}, status=status.HTTP_403_FORBIDDEN)
+
+        purge_expired_clearances_trash()
+
+        data = request.data or {}
+        ids = data.get('ids')
+        restore_all = data.get('all', False)
+
+        qs = HousingClearance.objects.filter(is_deleted=True)
+        if not restore_all:
+            if not ids or not isinstance(ids, list):
+                return Response({'error': 'Specify ids list or all=True'}, status=status.HTTP_400_BAD_REQUEST)
+            qs = qs.filter(id__in=ids)
+
+        restored_ids = list(qs.values_list('id', flat=True))
+        count = len(restored_ids)
+        if count == 0:
+            return Response({'error': 'No records found to restore.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            qs.update(
+                is_deleted=False,
+                is_active=True,
+                deleted_at=None,
+                deleted_by=None
+            )
+
+        return Response({
+            'success': True,
+            'message': f'{count} records restored successfully.',
+            'restored_count': count,
+            'restored_ids': restored_ids,
+        })
+
+
+class HousingClearancePurgeTrashView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not is_clearance_master(request.user):
+            return Response({'error': 'Only Admin and Estate Office can permanently purge records.'}, status=status.HTTP_403_FORBIDDEN)
+
+        data = request.data or {}
+        ids = data.get('ids')
+        purge_all = data.get('all', False)
+
+        qs = HousingClearance.objects.filter(is_deleted=True)
+        if not purge_all:
+            if not ids or not isinstance(ids, list):
+                return Response({'error': 'Specify ids list or all=True'}, status=status.HTTP_400_BAD_REQUEST)
+            qs = qs.filter(id__in=ids)
+
+        count = qs.count()
+        if count == 0:
+            return Response({'error': 'No records found to purge.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            qs.delete()
+
+        return Response({
+            'success': True,
+            'message': f'{count} records permanently deleted from database.',
+            'purged_count': count,
+        })

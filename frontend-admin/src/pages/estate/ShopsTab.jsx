@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Btn, Card, Modal, Spinner } from '../../components/ui'
 import { inr, calcNote, formatDMY, monthLabel, monthRange, todayISO, prevMonthOf, getExpiryStatus } from './utils'
 import { exportExcel } from '../../shared/utils'
+import PaymentRecordModal from './PaymentRecordModal'
 
 export default function ShopsTab({
   records = [],
@@ -20,6 +21,7 @@ export default function ShopsTab({
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [newShop, setNewShop] = useState({ name: '', address: '', fixed: false, rate: '9.55', water: '320', expiryDate: '' })
   const [adding, setAdding] = useState(false)
+  const [paymentModalRecord, setPaymentModalRecord] = useState(null)
 
   const alertDays = Number(settings?.expiryAlertDays) || 30
 
@@ -315,6 +317,7 @@ export default function ShopsTab({
               <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', width: 200 }}>Billing Month</th>
               <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', textAlign: 'center', width: 130 }}>Unit Consumed</th>
               <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', textAlign: 'right', width: 130 }}>Recovery Amt</th>
+              <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', textAlign: 'center', width: 140 }}>Payment Record</th>
               <th style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', textAlign: 'center', width: 80 }}>Action</th>
             </tr>
           </thead>
@@ -506,6 +509,98 @@ export default function ShopsTab({
                   <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: isCancelled ? 'var(--text-3)' : empty ? 'var(--text-3)' : 'var(--green-900)' }}>
                     {isCancelled ? <span style={{ color: 'var(--text-3)' }}>₹ 0.00</span> : empty ? <span style={{ color: 'var(--text-3)' }}>—</span> : `₹ ${inr(c.total)}`}
                   </td>
+                  <td style={{ padding: '8px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    {isCancelled ? (
+                      <span style={{ color: 'var(--text-3)', fontSize: 12 }}>—</span>
+                    ) : (() => {
+                      const pStatus = r.paymentStatus || 'unpaid'
+                      const pPaid = Number(r.totalPaid || 0)
+                      const pDue = r.balanceDue != null ? Number(r.balanceDue) : Math.max(0, c.total - pPaid)
+
+                      if (pStatus === 'paid') {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setPaymentModalRecord(r)}
+                            title={`Fully Paid: Rs. ${inr(pPaid)}. Click to view record.`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              padding: '3px 8px',
+                              borderRadius: 14,
+                              background: '#dcfce7',
+                              border: '1px solid #86efac',
+                              color: '#15803d',
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a' }} />
+                            <span>Paid</span>
+                          </button>
+                        )
+                      }
+
+                      if (pStatus === 'partially_paid') {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setPaymentModalRecord(r)}
+                            title={`Paid: Rs. ${inr(pPaid)} / Rs. ${inr(c.total)} • Due: Rs. ${inr(pDue)}. Click to view/add installments.`}
+                            style={{
+                              display: 'inline-flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: 1,
+                              padding: '3px 8px',
+                              borderRadius: 8,
+                              background: '#fef3c7',
+                              border: '1px solid #fde68a',
+                              color: '#b45309',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#d97706' }} />
+                              <span>Partial: Rs. {inr(pPaid)}</span>
+                            </div>
+                            <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 600 }}>Due: Rs. {inr(pDue)}</span>
+                          </button>
+                        )
+                      }
+
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setPaymentModalRecord(r)}
+                          title="No payments recorded yet. Click to record payment."
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '3px 8px',
+                            borderRadius: 14,
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border)',
+                            color: 'var(--text-3)',
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#94a3b8' }} />
+                          <span>Unpaid</span>
+                        </button>
+                      )
+                    })()}
+                  </td>
                   <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                     <Btn
                       size="sm"
@@ -521,7 +616,7 @@ export default function ShopsTab({
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} style={{ padding: 30, textAlign: 'center', color: 'var(--text-3)' }}>
+                <td colSpan={9} style={{ padding: 30, textAlign: 'center', color: 'var(--text-3)' }}>
                   No shops found matching "{query}".
                 </td>
               </tr>
@@ -607,6 +702,24 @@ export default function ShopsTab({
           </div>
         </form>
       </Modal>
+
+      {/* Payment Record Modal */}
+      {paymentModalRecord && (
+        <PaymentRecordModal
+          isOpen={Boolean(paymentModalRecord)}
+          onClose={() => setPaymentModalRecord(null)}
+          record={paymentModalRecord}
+          title="Shop Payment Record"
+          name={paymentModalRecord.name}
+          noteNo={paymentModalRecord.noteNo}
+          totalAmount={calcNote(paymentModalRecord).total}
+          onSavePayments={async (newPayments) => {
+            await onPatch(paymentModalRecord.id, { payments: newPayments })
+            setPaymentModalRecord((prev) => (prev ? { ...prev, payments: newPayments } : null))
+          }}
+          isReadOnly={isReadOnly}
+        />
+      )}
     </div>
   )
 }
