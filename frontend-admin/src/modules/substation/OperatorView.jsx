@@ -10,8 +10,10 @@ import {
   isEnergy,
   num,
   flagInfo,
+  checkReadingExceedance,
 } from './sheetsData';
 import { SubstationApi as ApiClient } from './substationApi';
+import ExceedanceModal from './ExceedanceModal';
 
 export default function OperatorView({
   docs,
@@ -29,6 +31,8 @@ export default function OperatorView({
   const [dirty, setDirty] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showExceedanceModal, setShowExceedanceModal] = useState(false);
+  const [pendingExceedances, setPendingExceedances] = useState([]);
 
   // Combine static sheets with dynamic LT substations from layout config
   const allSheets = useMemo(() => {
@@ -223,7 +227,57 @@ export default function OperatorView({
   const isOperatorUser = user?.role === 'operator' || user?.role === 'electrical_operator';
   const isLockedForOperator = isOperatorUser && Boolean(savedDoc && savedDoc.filled > 0) && editWindowInfo.expired;
 
-  const handleSave = async () => {
+  // Scan current draft values to detect any reading that exceeds previous reading by > 30%
+  const getExceededReadings = () => {
+    const list = [];
+    activeSheet.tables.forEach((t) => {
+      const rows = getVisibleRows(t);
+      rows.forEach(({ r, ri }) => {
+        if (r.head) return;
+        t.cols.forEach((c) => {
+          const val = draft[t.id + ':' + r.id]?.[c.k];
+          if (val === '' || val == null) return;
+          const prevVal = getPrevValue(t, ri, c, rows);
+          let prevDelta = null;
+          if (isEnergy(c)) {
+            const pd = latestBefore(activeSheet.id, date, slot);
+            const ppd = pd ? latestBefore(activeSheet.id, pd.date, pd.slot) : null;
+            const targetRow = rows[ri]?.r;
+            const prevPrevVal = ppd && targetRow ? num(ppd.rows?.[t.id + ':' + targetRow.id]?.[c.k]) : null;
+            if (prevVal != null && prevPrevVal != null && prevVal >= prevPrevVal) {
+              prevDelta = prevVal - prevPrevVal;
+            }
+          }
+          const exc = checkReadingExceedance(val, prevVal, c, { prevDelta });
+          if (exc) {
+            list.push({
+              tableId: t.id,
+              tableTitle: t.title,
+              rowId: r.id,
+              rowLabel: r.label,
+              sn: r.sn,
+              colKey: c.k,
+              colLabel: c.l || c.k,
+              field: c.f,
+              prev: exc.prev,
+              curr: exc.curr,
+              pct: exc.pct,
+              unit: exc.unit,
+              reason: exc.reason,
+              type: exc.type,
+            });
+          }
+        });
+      });
+    });
+    return list;
+  };
+
+  const currentExceedances = useMemo(() => {
+    return getExceededReadings();
+  }, [draft, activeSheet, date, slot, docs]);
+
+  const handleSave = async (forceConfirm = false) => {
     if (isLockedForOperator) {
       setSaveMsg('The 10-minute edit window has expired. Contact Shift Engineer for revisions.');
       return;
@@ -259,7 +313,18 @@ export default function OperatorView({
       return;
     }
 
+    // CHECK FOR > 30% EXCEEDANCE BEFORE SAVING
+    if (!forceConfirm) {
+      const exceeded = getExceededReadings();
+      if (exceeded.length > 0) {
+        setPendingExceedances(exceeded);
+        setShowExceedanceModal(true);
+        return; // Pause save until operator reviews or explicitly confirms!
+      }
+    }
+
     setSaving(true);
+    setShowExceedanceModal(false);
     const docTime = time || nowHM();
     const doc = {
       _id: currentDocId,
@@ -276,11 +341,14 @@ export default function OperatorView({
       section: activeSheet.section,
       substation: activeSheet.name,
       panelName: activeSheet.full || activeSheet.name,
+      exceedances: pendingExceedances.length > 0 ? pendingExceedances : currentExceedances,
+      exceedanceConfirmed: forceConfirm || Boolean(pendingExceedances.length === 0 && currentExceedances.length === 0),
     };
 
     try {
       await onSaveDoc(doc);
       setDirty(false);
+      setPendingExceedances([]);
       setSaveMsg(`Successfully saved at ${new Date().toLocaleTimeString()}!`);
     } catch (err) {
       setSaveMsg(`Failed to save: ${err.message}`);
@@ -608,23 +676,49 @@ export default function OperatorView({
                         </td>
                         {table.cols.map((col, ci) => {
                           const cellVal = draft[table.id + ':' + r.id]?.[col.k] ?? '';
-                          const prevVal = isEnergy(col) ? getPrevValue(table, ri, col, visibleRows) : null;
-                          const [flag, why] = flagInfo(col, cellVal, prevVal);
+                          const prevVal = getPrevValue(table, ri, col, visibleRows);
+                          let prevDelta = null;
+                          if (isEnergy(col)) {
+                            const pd = latestBefore(activeSheet.id, date, slot);
+                            const ppd = pd ? latestBefore(activeSheet.id, pd.date, pd.slot) : null;
+                            const targetRow = visibleRows[ri]?.r;
+                            const prevPrevVal = ppd && targetRow ? num(ppd.rows?.[table.id + ':' + targetRow.id]?.[col.k]) : null;
+                            if (prevVal != null && prevPrevVal != null && prevVal >= prevPrevVal) {
+                              prevDelta = prevVal - prevPrevVal;
+                            }
+                          }
+                          const exc = checkReadingExceedance(cellVal, prevVal, col, { prevDelta });
+                          const [flag, why] = flagInfo(col, cellVal, prevVal, { prevDelta });
                           const isGroupBorder = table.cols[ci - 1]?.g !== col.g && ci > 0;
 
                           return (
                             <td key={col.k} className={isGroupBorder ? 'gb' : ''}>
-                              <input
-                                className={`num-input ${col.txt ? 'txt' : ''} ${flag}`}
-                                type={col.txt ? 'text' : 'text'}
-                                inputMode={col.txt ? 'text' : 'decimal'}
-                                value={cellVal}
-                                placeholder={prevVal != null ? String(prevVal) : ''}
-                                title={why || (prevVal != null ? `Previous reading: ${prevVal}` : '')}
-                                onChange={(e) =>
-                                  handleCellChange(table.id, r.id, col.k, e.target.value, col, prevVal)
-                                }
-                              />
+                              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                                <input
+                                  className={`num-input ${col.txt ? 'txt' : ''} ${flag}`}
+                                  type={col.txt ? 'text' : 'text'}
+                                  inputMode={col.txt ? 'text' : 'decimal'}
+                                  value={cellVal}
+                                  placeholder={prevVal != null ? String(prevVal) : ''}
+                                  title={why || (prevVal != null ? `Previous reading: ${prevVal}` : '')}
+                                  onChange={(e) =>
+                                    handleCellChange(table.id, r.id, col.k, e.target.value, col, prevVal)
+                                  }
+                                />
+                                {exc && (
+                                  <span
+                                    className="spike-pill"
+                                    title={exc.reason}
+                                    onClick={() => {
+                                      setPendingExceedances(currentExceedances);
+                                      setShowExceedanceModal(true);
+                                    }}
+                                    style={{ cursor: 'pointer' }}
+                                  >
+                                    +{exc.pct}% 🔺
+                                  </span>
+                                )}
+                              </div>
                             </td>
                           );
                         })}
@@ -666,26 +760,66 @@ export default function OperatorView({
           )}
         </div>
 
-        <button
-          className="btn btn-primary"
-          onClick={handleSave}
-          disabled={saving || isLockedForOperator}
-          style={isLockedForOperator ? { opacity: 0.6, cursor: 'not-allowed', background: '#64748b' } : {}}
-        >
-          <Save size={16} />
-          <span>
-            {saving
-              ? 'Saving readings…'
-              : isLockedForOperator
-              ? '🔒 Locked (Edit Window Expired)'
-              : editWindowInfo.active
-              ? `Update Shift ${slot} (Edit Window Active)`
-              : activeSheet.mode === 'hourly' || activeSheet.id === 'newht' || activeSheet.id === 'oldht'
-              ? 'Save Hourly Readings (24h)'
-              : `Save Shift ${slot} Readings`}
-          </span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {currentExceedances.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                setPendingExceedances(currentExceedances);
+                setShowExceedanceModal(true);
+              }}
+              style={{
+                backgroundColor: '#fff7ed',
+                border: '1.5px solid #fdba74',
+                color: '#c2410c',
+                fontWeight: 700,
+                padding: '8px 14px',
+              }}
+              title="Click to view all readings exceeding baseline by > 30%"
+            >
+              <AlertTriangle size={15} />
+              <span>{currentExceedances.length} High Reading{currentExceedances.length > 1 ? 's' : ''} (&gt; 30%)</span>
+            </button>
+          )}
+
+          <button
+            className="btn btn-primary"
+            onClick={() => handleSave(false)}
+            disabled={saving || isLockedForOperator}
+            style={isLockedForOperator ? { opacity: 0.6, cursor: 'not-allowed', background: '#64748b' } : {}}
+          >
+            <Save size={16} />
+            <span>
+              {saving
+                ? 'Saving readings…'
+                : isLockedForOperator
+                ? '🔒 Locked (Edit Window Expired)'
+                : editWindowInfo.active
+                ? `Update Shift ${slot} (Edit Window Active)`
+                : activeSheet.mode === 'hourly' || activeSheet.id === 'newht' || activeSheet.id === 'oldht'
+                ? 'Save Hourly Readings (24h)'
+                : `Save Shift ${slot} Readings`}
+            </span>
+          </button>
+        </div>
       </div>
+
+      {/* Operator Exceedance Confirmation Modal */}
+      <ExceedanceModal
+        open={showExceedanceModal}
+        onClose={() => setShowExceedanceModal(false)}
+        onConfirm={() => handleSave(true)}
+        mode="operator"
+        items={pendingExceedances.length > 0 ? pendingExceedances : currentExceedances}
+        metadata={{
+          substationName: activeSheet.name,
+          date,
+          slot,
+          operatorName: operator,
+        }}
+        saving={saving}
+      />
     </div>
   );
 }

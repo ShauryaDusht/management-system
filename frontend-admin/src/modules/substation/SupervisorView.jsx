@@ -12,6 +12,7 @@ import {
   History,
   CheckCircle,
   AlertCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   BASE_SHEETS,
@@ -21,9 +22,11 @@ import {
   isEnergy,
   num,
   flagInfo,
+  checkReadingExceedance,
 } from './sheetsData';
 import { SubstationApi as ApiClient } from './substationApi';
 import ExportDropdown from '../../components/ui/ExportDropdown';
+import ExceedanceModal from './ExceedanceModal';
 
 export default function SupervisorView({
   docs,
@@ -39,6 +42,15 @@ export default function SupervisorView({
   const [isEditing, setIsEditing] = useState(false);
   const [edits, setEdits] = useState({});
   const [statusMsg, setStatusMsg] = useState('');
+  const [showSupervisorModal, setShowSupervisorModal] = useState(false);
+  const [showEditExceedModal, setShowEditExceedModal] = useState(false);
+  const [pendingEditExceedances, setPendingEditExceedances] = useState([]);
+
+  const yesterdayDate = useMemo(() => {
+    const d = new Date(date);
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  }, [date]);
 
   // Admin cannot edit readings - ensure editing mode is disabled for admin
   React.useEffect(() => {
@@ -165,10 +177,184 @@ export default function SupervisorView({
     return n;
   }, [edits, docs]);
 
-  const handleSaveEdits = async () => {
+  // Compute operator readings that exceed previous shift baseline by > 30%
+  const activeExceedances = useMemo(() => {
+    const list = [];
+    if (!activeSheet || !activeSheet.tables) return list;
+
+    if (activeSheet.mode === 'snapshot') {
+      activeSheet.slots.forEach((sl, slotIdx) => {
+        const d = docs.find((doc) => doc._id === docId(activeSheet.id, date, sl));
+        if (!d || !d.rows) return;
+
+        // Previous doc: preceding slot on same date, or last slot of yesterday
+        let pd = null;
+        if (slotIdx > 0) {
+          pd = docs.find((doc) => doc._id === docId(activeSheet.id, date, activeSheet.slots[slotIdx - 1]));
+        } else {
+          pd = docs.find((doc) => doc._id === docId(activeSheet.id, yesterdayDate, activeSheet.slots[activeSheet.slots.length - 1]));
+        }
+
+        // Two docs back for energy delta comparison
+        let ppd = null;
+        if (slotIdx > 1) {
+          ppd = docs.find((doc) => doc._id === docId(activeSheet.id, date, activeSheet.slots[slotIdx - 2]));
+        } else if (slotIdx === 1) {
+          ppd = docs.find((doc) => doc._id === docId(activeSheet.id, yesterdayDate, activeSheet.slots[activeSheet.slots.length - 1]));
+        }
+
+        activeSheet.tables.forEach((t) => {
+          const visibleRows = getVisibleRows(t);
+          visibleRows.forEach(({ r, ri }) => {
+            if (r.head) return;
+            t.cols.forEach((c) => {
+              const val = d.rows?.[t.id + ':' + r.id]?.[c.k];
+              if (val === '' || val == null) return;
+              const prevVal = pd?.rows?.[t.id + ':' + r.id]?.[c.k];
+              let prevDelta = null;
+              if (isEnergy(c) && prevVal != null) {
+                const prevPrevVal = ppd?.rows?.[t.id + ':' + r.id]?.[c.k];
+                if (prevPrevVal != null && num(prevVal) >= num(prevPrevVal)) {
+                  prevDelta = num(prevVal) - num(prevPrevVal);
+                }
+              }
+
+              const exc = checkReadingExceedance(val, prevVal, c, { prevDelta });
+              if (exc) {
+                list.push({
+                  slot: sl,
+                  shiftLabel: `Shift ${slotIdx + 1} (${sl})`,
+                  time: d.time || '–',
+                  operator: d.operator || 'Operator',
+                  tableTitle: t.title,
+                  rowLabel: r.label,
+                  sn: r.sn,
+                  colLabel: c.l || c.k,
+                  field: c.f,
+                  prev: exc.prev,
+                  curr: exc.curr,
+                  pct: exc.pct,
+                  unit: exc.unit,
+                  reason: exc.reason,
+                  type: exc.type,
+                  docId: d._id,
+                  rowKey: `${t.id}:${r.id}`,
+                  colKey: c.k,
+                });
+              }
+            });
+          });
+        });
+      });
+    } else {
+      // Hourly sheet (newht / oldht)
+      const d = docs.find((doc) => doc._id === docId(activeSheet.id, date, 'day'));
+      if (d && d.rows) {
+        const pd = docs.find((doc) => doc._id === docId(activeSheet.id, yesterdayDate, 'day'));
+        activeSheet.tables.forEach((t) => {
+          t.rows.forEach((r, ri) => {
+            t.cols.forEach((c) => {
+              const val = d.rows?.[t.id + ':' + r.id]?.[c.k];
+              if (val === '' || val == null) return;
+              let prevVal = null;
+              if (ri > 0) {
+                prevVal = d.rows?.[t.id + ':' + t.rows[ri - 1].id]?.[c.k];
+              } else if (pd) {
+                prevVal = pd.rows?.[t.id + ':' + t.rows[t.rows.length - 1].id]?.[c.k];
+              }
+              const exc = checkReadingExceedance(val, prevVal, c);
+              if (exc) {
+                list.push({
+                  slot: 'day',
+                  shiftLabel: r.label || `Hour ${ri}`,
+                  time: r.label || '–',
+                  operator: d.operator || 'Operator',
+                  tableTitle: t.title,
+                  rowLabel: r.label,
+                  sn: '',
+                  colLabel: c.l || c.k,
+                  field: c.f,
+                  prev: exc.prev,
+                  curr: exc.curr,
+                  pct: exc.pct,
+                  unit: exc.unit,
+                  reason: exc.reason,
+                  type: exc.type,
+                  docId: d._id,
+                  rowKey: `${t.id}:${r.id}`,
+                  colKey: c.k,
+                });
+              }
+            });
+          });
+        });
+      }
+    }
+    return list;
+  }, [docs, activeSheet, date, yesterdayDate]);
+
+  // Scan newly edited cells for > 30% exceedance
+  const getExceededEdits = () => {
+    const list = [];
+    Object.entries(edits).forEach(([dId, rows]) => {
+      const doc = docs.find((d) => d._id === dId);
+      if (!doc) return;
+      const sheet = allSheets.find((s) => s.id === doc.sheet);
+      if (!sheet) return;
+
+      Object.entries(rows).forEach(([rk, cols]) => {
+        Object.entries(cols).forEach(([ck, val]) => {
+          if (val === '') return;
+          const t = sheet.tables.find((x) => x.id === rk.split(':')[0]);
+          const c = t && t.cols.find((x) => x.k === ck);
+          if (!c) return;
+
+          let prevVal = null;
+          const slotIdx = sheet.slots.indexOf(doc.slot);
+          if (slotIdx > 0) {
+            const pd = docs.find((x) => x._id === docId(sheet.id, doc.date, sheet.slots[slotIdx - 1]));
+            prevVal = pd?.rows?.[rk]?.[ck];
+          } else {
+            const pd = docs.find((x) => x._id === docId(sheet.id, yesterdayDate, sheet.slots[sheet.slots.length - 1]));
+            prevVal = pd?.rows?.[rk]?.[ck];
+          }
+
+          const exc = checkReadingExceedance(val, prevVal, c);
+          if (exc) {
+            const rowObj = t.rows.find((r) => r.id === rk.split(':')[1]);
+            list.push({
+              tableTitle: t.title,
+              rowLabel: rowObj?.label || rk,
+              sn: rowObj?.sn || '',
+              colLabel: c.l || c.k,
+              field: c.f,
+              prev: exc.prev,
+              curr: exc.curr,
+              pct: exc.pct,
+              unit: exc.unit,
+              reason: exc.reason,
+              type: exc.type,
+            });
+          }
+        });
+      });
+    });
+    return list;
+  };
+
+  const handleSaveEdits = async (forceConfirm = false) => {
     if (!editCount) {
       setIsEditing(false);
       return;
+    }
+
+    if (!forceConfirm) {
+      const exceeded = getExceededEdits();
+      if (exceeded.length > 0) {
+        setPendingEditExceedances(exceeded);
+        setShowEditExceedModal(true);
+        return;
+      }
     }
 
     const writes = [];
@@ -240,6 +426,8 @@ export default function SupervisorView({
       setStatusMsg(`Saved corrections in ${writes.length} shift log(s).`);
       setIsEditing(false);
       setEdits({});
+      setShowEditExceedModal(false);
+      setPendingEditExceedances([]);
     } catch (e) {
       setStatusMsg(`Error saving corrections: ${e.message}`);
     }
@@ -490,6 +678,48 @@ export default function SupervisorView({
         </div>
       )}
 
+      {/* Operator Exceedance Alert Banner for Supervisor & Engineer */}
+      {activeExceedances.length > 0 && (
+        <div
+          className="banner warn"
+          style={{
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
+            backgroundColor: '#fff7ed',
+            borderColor: '#fdba74',
+            padding: '12px 18px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <AlertTriangle size={18} style={{ color: '#ea580c', flexShrink: 0 }} />
+            <span style={{ color: '#9a3412', fontSize: '13px' }}>
+              <strong>{activeExceedances.length} Operator Reading Alert(s) Detected:</strong> Readings filled by operator for {activeSheet.name} ({date}) exceed the previous shift baseline by over 30%.
+            </span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => setShowSupervisorModal(true)}
+            style={{
+              backgroundColor: '#ffffff',
+              border: '1.5px solid #ea580c',
+              color: '#c2410c',
+              fontWeight: 700,
+              padding: '6px 14px',
+              fontSize: '12.5px',
+              boxShadow: '0 1px 3px rgba(234, 88, 12, 0.15)',
+              cursor: 'pointer',
+            }}
+          >
+            <span>⚡ View Exceeded Readings Popup</span>
+          </button>
+        </div>
+      )}
+
       {/* Substation Tiles Grid */}
       <div className="tiles-grid">
         {sheetsInSection.map((s) => {
@@ -624,18 +854,46 @@ export default function SupervisorView({
 
                             if (num(displayVal) != null) vals.push(num(displayVal));
 
+                            let prevSlotVal = null;
+                            if (i > 0) {
+                              prevSlotVal = shiftDocs[i - 1]?.rows?.[rowKey]?.[activeCol.k];
+                            } else {
+                              const prevDayDoc = docs.find((doc) => doc._id === docId(activeSheet.id, yesterdayDate, activeSheet.slots[activeSheet.slots.length - 1]));
+                              prevSlotVal = prevDayDoc?.rows?.[rowKey]?.[activeCol.k];
+                            }
+                            const cellExc = checkReadingExceedance(displayVal, prevSlotVal, activeCol);
+
                             return (
                               <td key={sl} className="gb">
                                 {isEditing && d ? (
-                                  <input
-                                    className="num-input"
-                                    value={displayVal}
-                                    onChange={(e) =>
-                                      handleEditCell(docKey, rowKey, activeCol.k, e.target.value)
-                                    }
-                                  />
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                    <input
+                                      className={`num-input ${cellExc ? 'spike' : ''}`}
+                                      value={displayVal}
+                                      onChange={(e) =>
+                                        handleEditCell(docKey, rowKey, activeCol.k, e.target.value)
+                                      }
+                                    />
+                                    {cellExc && (
+                                      <span className="spike-pill" title={cellExc.reason}>
+                                        +{cellExc.pct}% 🔺
+                                      </span>
+                                    )}
+                                  </div>
                                 ) : (
-                                  <span>{displayVal || '–'}</span>
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%', gap: '4px' }}>
+                                    <span>{displayVal || '–'}</span>
+                                    {cellExc && (
+                                      <span
+                                        className="spike-pill"
+                                        title={cellExc.reason}
+                                        onClick={() => setShowSupervisorModal(true)}
+                                        style={{ cursor: 'pointer' }}
+                                      >
+                                        +{cellExc.pct}% 🔺
+                                      </span>
+                                    )}
+                                  </div>
                                 )}
                               </td>
                             );
@@ -811,6 +1069,38 @@ export default function SupervisorView({
           </table>
         </div>
       </div>
+
+      {/* Supervisor/Engineer View Modal for Operator Exceeded Readings */}
+      <ExceedanceModal
+        open={showSupervisorModal}
+        onClose={() => setShowSupervisorModal(false)}
+        onConfirm={() => {
+          setShowSupervisorModal(false);
+          setIsEditing(true);
+        }}
+        mode="supervisor"
+        items={activeExceedances}
+        metadata={{
+          substationName: activeSheet.name,
+          date,
+          operatorName: activeExceedances[0]?.operator || 'Shift Operator',
+        }}
+      />
+
+      {/* Supervisor Edit Confirmation Modal */}
+      <ExceedanceModal
+        open={showEditExceedModal}
+        onClose={() => setShowEditExceedModal(false)}
+        onConfirm={() => handleSaveEdits(true)}
+        mode="operator"
+        items={pendingEditExceedances}
+        metadata={{
+          substationName: activeSheet.name,
+          date,
+          operatorName: user?.name || 'Engineer',
+        }}
+      />
     </div>
   );
 }
+
