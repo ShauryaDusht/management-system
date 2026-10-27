@@ -88,6 +88,8 @@ export default function ExportDropdown({
   onToDateChange = null,
   onClearDates = null,
   dateLabel = '',
+  minDate = '',
+  maxDate = '',
 }) {
   const [open, setOpen] = useState(false)
   const [busyFormat, setBusyFormat] = useState(null)
@@ -293,6 +295,8 @@ export default function ExportDropdown({
                   <input
                     type="date"
                     value={fromDate}
+                    min={minDate || undefined}
+                    max={toDate || maxDate || undefined}
                     onChange={(e) => onFromDateChange && onFromDateChange(e.target.value)}
                     style={{
                       width: '100%',
@@ -306,10 +310,12 @@ export default function ExportDropdown({
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 10, color: 'var(--text-3, #64748b)', marginBottom: 2 }}>To</label>
+                  <label style={{ display: 'block', fontSize: 10, color: 'var(--text-3, #64748b)', marginBottom: 2 }}>To (Report Upto)</label>
                   <input
                     type="date"
                     value={toDate}
+                    min={fromDate || minDate || undefined}
+                    max={maxDate || undefined}
                     onChange={(e) => onToDateChange && onToDateChange(e.target.value)}
                     style={{
                       width: '100%',

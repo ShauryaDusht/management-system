@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
@@ -129,6 +129,11 @@ class StationReadingsView(APIView):
             }
         )
         if not created:
+            user = request.user
+            is_sup = (getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False) or getattr(user, 'role', '') in ('wtp_supervisor', 'electrical_supervisor'))
+            if not is_sup:
+                if reading.created_at and (timezone.now() - reading.created_at) > timedelta(minutes=10):
+                    return Response({'error': 'The 10-minute edit window has expired. Contact Shift Engineer for any revisions.'}, status=status.HTTP_403_FORBIDDEN)
             current_values = dict(reading.values or {})
             current_values.update(values)
             reading.values = current_values
@@ -237,6 +242,11 @@ class BlockReadingsView(APIView):
             }
         )
         if not created:
+            user = request.user
+            is_sup = (getattr(user, 'is_admin', False) or getattr(user, 'is_superuser', False) or getattr(user, 'is_plant_engineer', False) or getattr(user, 'role', '') in ('wtp_supervisor', 'electrical_supervisor'))
+            if not is_sup:
+                if doc.created_at and (timezone.now() - doc.created_at) > timedelta(minutes=10):
+                    return Response({'error': 'The 10-minute edit window has expired. Contact Shift Engineer for any revisions.'}, status=status.HTTP_403_FORBIDDEN)
             current = dict(doc.readings or {})
             current.update(clean_readings)
             doc.readings = current

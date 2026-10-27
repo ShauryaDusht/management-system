@@ -76,7 +76,18 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       <div>
         <div style="font-weight:800;font-size:13px">Locked (Read-Only Mode)</div>
-        <div style="font-size:12px;margin-top:3px;line-height:1.4">Reading for <b>{{ selected_hour_label }}</b> has been recorded by <b>{{ reading.operator|default:"Operator" }}</b>. Operators have access to <b>enter new readings only</b> and cannot edit already logged hours. Contact Shift Engineer for any revisions.</div>
+        <div style="font-size:12px;margin-top:3px;line-height:1.4">Reading for <b>{{ selected_hour_label }}</b> was recorded by <b>{{ reading.operator|default:"Operator" }}</b>. The 10-minute operator edit window has expired. Contact Shift Engineer for any revisions.</div>
+      </div>
+    </div>
+  {% elif edit_window_active and not is_supervisor %}
+    <div class="alert-box" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;border:1.5px solid #86efac;background:#f0fdf4;color:#166534;padding:12px 14px;border-radius:10px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+          <div style="font-weight:800;font-size:13px">⏱️ 10-Minute Editable Window Active</div>
+          <span id="window-timer-hourly" style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:800;font-family:'DM Mono',monospace;">{{ remaining_minutes }}m remaining</span>
+        </div>
+        <div style="font-size:12px;margin-top:3px;line-height:1.4">Reading recorded by <b>{{ reading.operator|default:"Operator" }}</b>. You have 10 minutes from logging to correct/update any readings. After 10 minutes, editing will automatically lock.</div>
       </div>
     </div>
   {% elif is_current_hour_logged and is_supervisor %}
@@ -160,7 +171,7 @@
           {% for col in g.cols %}
             <div>
               <label style="font-size:10px; margin-bottom:3px;">{{ col.label }}</label>
-              <input type="number" step="any" name="col_{{ col.key }}" value="{{ col.val }}" placeholder="{{ col.label }}" style="padding:8px 10px; font-size:13px;">
+              <input type="number" step="any" name="col_{{ col.key }}" value="{{ col.val }}" placeholder="{{ col.label }}" style="padding:8px 10px; font-size:13px;" class="reading-num-input" data-feeder="{{ g.name }}" data-col="{{ col.label }}" data-prev="{{ col.prev|default:'' }}">
             </div>
           {% endfor %}
         </div>
@@ -226,7 +237,7 @@
       {% if not is_locked %}
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
           <button type="submit" name="save_this_hour" class="btn-primary" style="font-size:14px; padding:13px; box-shadow:0 8px 24px rgba(2,132,199,.4);">
-            {% if is_current_hour_logged and is_supervisor %}Update {{ selected_hour_label }} (Engineer Revision){% else %}Save {{ selected_hour_label }}{% endif %}
+            {% if is_current_hour_logged and is_supervisor %}Update {{ selected_hour_label }} (Engineer Revision){% elif edit_window_active %}Update {{ selected_hour_label }} (10-Min Edit Window Active){% elif is_current_hour_logged %}Update {{ selected_hour_label }}{% else %}Save {{ selected_hour_label }}{% endif %}
           </button>
           <button type="submit" name="save_next_hour" class="btn-secondary" style="font-size:14px; padding:13px;">
             Save & Next Hour →
@@ -259,7 +270,18 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       <div>
         <div style="font-weight:800;font-size:13px">Locked (Read-Only Mode)</div>
-        <div style="font-size:12px;margin-top:3px;line-height:1.4">Shift <b>{{ current_slot }}</b> reading for <b>{{ display_name }}</b> was submitted by <b>{{ reading.operator|default:"Operator" }}</b>. Operators have access to <b>enter new readings only</b> and cannot edit already logged panels. Contact Shift Engineer for any revisions.</div>
+        <div style="font-size:12px;margin-top:3px;line-height:1.4">Shift <b>{{ current_slot }}</b> reading for <b>{{ display_name }}</b> was submitted by <b>{{ reading.operator|default:"Operator" }}</b>. The 10-minute operator edit window has expired. Contact Shift Engineer for any revisions.</div>
+      </div>
+    </div>
+  {% elif edit_window_active and not is_supervisor %}
+    <div class="alert-box" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;border:1.5px solid #86efac;background:#f0fdf4;color:#166534;padding:12px 14px;border-radius:10px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:gap:6px">
+          <div style="font-weight:800;font-size:13px">⏱️ 10-Minute Editable Window Active</div>
+          <span id="window-timer-snapshot" style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:800;font-family:'DM Mono',monospace;">{{ remaining_minutes }}m remaining</span>
+        </div>
+        <div style="font-size:12px;margin-top:3px;line-height:1.4">Reading recorded by <b>{{ reading.operator|default:"Operator" }}</b>. You have 10 minutes from logging to correct/update any readings. After 10 minutes, editing will automatically lock.</div>
       </div>
     </div>
   {% elif is_panel_logged and is_supervisor %}
@@ -363,31 +385,31 @@
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
             <div>
               <label style="font-size:10px;">Vol ({% if sheet.section == 'HT' %}kV{% else %}V{% endif %})</label>
-              <input type="number" step="0.01" name="row_{{ row.id }}_vol" value="{{ row.val.vol }}" placeholder="{% if sheet.section == 'HT' %}11.00{% else %}230.0{% endif %}" style="padding:8px 10px; font-size:13px;">
+              <input type="number" step="0.01" name="row_{{ row.id }}_vol" value="{{ row.val.vol }}" placeholder="{% if sheet.section == 'HT' %}11.00{% else %}230.0{% endif %}" style="padding:8px 10px; font-size:13px;" class="reading-num-input" data-feeder="{{ row.label }}" data-col="Voltage" data-prev="{{ row.prev.vol|default:'' }}">
             </div>
             <div>
               <label style="font-size:10px;">PF (0.80 - 1.00)</label>
-              <input type="number" step="0.01" name="row_{{ row.id }}_pf" value="{{ row.val.pf }}" placeholder="0.98" style="padding:8px 10px; font-size:13px;">
+              <input type="number" step="0.01" name="row_{{ row.id }}_pf" value="{{ row.val.pf }}" placeholder="0.98" style="padding:8px 10px; font-size:13px;" class="reading-num-input" data-feeder="{{ row.label }}" data-col="PF" data-prev="{{ row.prev.pf|default:'' }}">
             </div>
           </div>
 
           <div style="margin-top:8px;">
             <label style="font-size:10px;">kWh (Meter Reading)</label>
-            <input type="number" step="any" name="row_{{ row.id }}_kwh" value="{{ row.val.kwh }}" placeholder="e.g. 124560" style="padding:8px 10px; font-size:13px;">
+            <input type="number" step="any" name="row_{{ row.id }}_kwh" value="{{ row.val.kwh }}" placeholder="e.g. 124560" style="padding:8px 10px; font-size:13px;" class="reading-num-input" data-feeder="{{ row.label }}" data-col="kWh" data-prev="{{ row.prev.kwh|default:'' }}">
           </div>
 
           <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; margin-top:8px;">
             <div>
               <label style="font-size:10px;">A1 (Amps)</label>
-              <input type="number" step="0.1" name="row_{{ row.id }}_a1" value="{{ row.val.a1 }}" placeholder="A1" style="padding:8px 10px; font-size:13px;">
+              <input type="number" step="0.1" name="row_{{ row.id }}_a1" value="{{ row.val.a1 }}" placeholder="A1" style="padding:8px 10px; font-size:13px;" class="reading-num-input" data-feeder="{{ row.label }}" data-col="A1 Current" data-prev="{{ row.prev.a1|default:'' }}">
             </div>
             <div>
               <label style="font-size:10px;">A2 (Amps)</label>
-              <input type="number" step="0.1" name="row_{{ row.id }}_a2" value="{{ row.val.a2 }}" placeholder="A2" style="padding:8px 10px; font-size:13px;">
+              <input type="number" step="0.1" name="row_{{ row.id }}_a2" value="{{ row.val.a2 }}" placeholder="A2" style="padding:8px 10px; font-size:13px;" class="reading-num-input" data-feeder="{{ row.label }}" data-col="A2 Current" data-prev="{{ row.prev.a2|default:'' }}">
             </div>
             <div>
               <label style="font-size:10px;">A3 (Amps)</label>
-              <input type="number" step="0.1" name="row_{{ row.id }}_a3" value="{{ row.val.a3 }}" placeholder="A3" style="padding:8px 10px; font-size:13px;">
+              <input type="number" step="0.1" name="row_{{ row.id }}_a3" value="{{ row.val.a3 }}" placeholder="A3" style="padding:8px 10px; font-size:13px;" class="reading-num-input" data-feeder="{{ row.label }}" data-col="A3 Current" data-prev="{{ row.prev.a3|default:'' }}">
             </div>
           </div>
         </div>
@@ -398,7 +420,7 @@
     <div style="position:sticky; bottom:70px; z-index:90; margin-top:16px; background:#f0f4f2; padding-top:8px;">
       {% if not is_locked %}
         <button type="submit" class="btn-primary" style="font-size:15px; padding:14px; box-shadow:0 8px 24px rgba(2,132,199,.4);">
-          {% if is_panel_logged and is_supervisor %}Update Shift {{ current_slot }} (Engineer Revision){% else %}Save Shift {{ current_slot }} Reading{% endif %}
+          {% if is_panel_logged and is_supervisor %}Update Shift {{ current_slot }} (Engineer Revision){% elif edit_window_active %}Update Shift {{ current_slot }} (10-Min Edit Window Active){% elif is_panel_logged %}Update Shift {{ current_slot }} Reading{% else %}Save Shift {{ current_slot }} Reading{% endif %}
         </button>
         {% if next_panel %}
           <button type="submit" name="save_next" class="btn-secondary" style="margin-top:8px; font-size:14px; padding:12px;">
@@ -432,5 +454,354 @@
     </a>
   </div>
 {% endif %}
+
+<!-- Top Alert Banner for Exceedances -->
+<div id="exceedanceTopBanner" style="display:none; margin:12px 0; background:linear-gradient(135deg, #fff1f2, #ffe4e6); border:1.5px solid #fecdd3; border-radius:12px; padding:12px 14px; box-shadow:0 4px 14px rgba(225,29,72,0.12);">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:20px;">⚠️</span>
+      <div>
+        <div style="font-size:12.5px; font-weight:800; color:#9f1239;">
+          High Reading Alert(s) Detected
+        </div>
+        <div id="exceedanceBannerSub" style="font-size:11px; color:#be123c; font-weight:600;">
+          Readings exceed previous shift by > 30%
+        </div>
+      </div>
+    </div>
+    <button type="button" onclick="openExceedanceModal()" style="border:none; background:#be123c; color:#fff; font-size:11.5px; font-weight:800; padding:6px 12px; border-radius:8px; cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(190,18,60,0.3);">
+      View Modal
+    </button>
+  </div>
+</div>
+
+<!-- Mobile Exceedance Popup Confirmation Modal -->
+<div id="mobileExceedanceModal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,0.72); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:flex-end; justify-content:center;">
+  <div style="background:#ffffff; width:100%; max-width:540px; max-height:86vh; border-radius:24px 24px 0 0; padding:20px 18px 24px; box-shadow:0 -12px 40px rgba(0,0,0,0.35); display:flex; flex-direction:column; animation:slideUpDrawer .25s cubic-bezier(0.16, 1, 0.3, 1);">
+    
+    <!-- Drawer Handle -->
+    <div style="width:40px; height:4px; background:#cbd5e1; border-radius:4px; margin:0 auto 14px;"></div>
+
+    <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:12px;">
+      <div style="width:42px; height:42px; border-radius:12px; background:#fff1f2; color:#e11d48; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:1.5px solid #fecdd3;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:16px; font-weight:800; color:#0f172a; line-height:1.2;">
+          High Reading Alert (>30%)
+        </div>
+        <div style="font-size:11.5px; color:#be123c; font-weight:700; margin-top:2px;">
+          Operator Reading Verification Required
+        </div>
+        <div style="font-size:11px; color:#64748b; margin-top:1px;">
+          The following reading(s) exceed previous values by more than 30%.
+        </div>
+      </div>
+      <button type="button" onclick="closeExceedanceModal()" style="border:none; background:#f1f5f9; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:#64748b; font-weight:700; cursor:pointer;">
+        ✕
+      </button>
+    </div>
+
+    <!-- Scrollable Exceeded Items List -->
+    <div id="exceedanceItemsList" style="overflow-y:auto; max-height:42vh; padding-right:2px; display:flex; flex-direction:column; gap:8px; margin-bottom:14px; -webkit-overflow-scrolling:touch;">
+      <!-- Populated dynamically via JS -->
+    </div>
+
+    <!-- Guidance note -->
+    <div style="font-size:11.5px; color:#475569; background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:9px 12px; margin-bottom:14px; line-height:1.35; display:flex; align-items:flex-start; gap:6px;">
+      <span style="font-size:14px; flex-shrink:0;">ℹ️</span>
+      <span><b>Operator Check:</b> Verify there is no typographical mistake (extra zero, decimal point shift) before saving to campus substation log.</span>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+      <button type="button" onclick="reviewAndCorrectExceedances()" class="btn-outline" style="border:1.5px solid #cbd5e1; color:#334155; font-size:13px; padding:12px 10px; font-weight:700; border-radius:12px;">
+        ✏️ Review & Edit
+      </button>
+      <button type="button" onclick="confirmAndSaveAnyway()" class="btn-primary" style="background:linear-gradient(135deg, #e11d48, #be123c); font-size:13px; padding:12px 10px; font-weight:700; border-radius:12px; box-shadow:0 4px 16px rgba(225,29,72,0.35);">
+        Confirm & Save Anyway
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes slideUpDrawer {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.reading-num-input.spike-input {
+  background: #fff1f2 !important;
+  border-color: #f43f5e !important;
+  color: #be123c !important;
+  font-weight: 800 !important;
+  box-shadow: 0 0 0 2px rgba(244,63,94,0.18) !important;
+}
+.spike-tag {
+  font-size: 10px;
+  font-weight: 800;
+  color: #e11d48;
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  animation: fadeIn 0.2s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<script>
+let pendingFormSubmission = null;
+window.__bypassExceedanceCheck = false;
+
+function checkExceedance(val, prevVal, colLabel) {
+  if (val === null || val === undefined || val === '') return null;
+  if (prevVal === null || prevVal === undefined || prevVal === '') return null;
+  const num = parseFloat(val);
+  const prev = parseFloat(prevVal);
+  if (isNaN(num) || isNaN(prev)) return null;
+
+  const col = (colLabel || '').toLowerCase();
+
+  // Current checks (A1, A2, A3, current, amps)
+  if (col.includes('a1') || col.includes('a2') || col.includes('a3') || col.includes('current') || col.includes('amps')) {
+    if (prev > 0) {
+      const pct = ((num - prev) / prev) * 100;
+      const diff = num - prev;
+      if (pct > 30 && diff >= 3.0) {
+        return {
+          type: 'CURRENT_SURGE',
+          pct: Math.round(pct),
+          diff: diff.toFixed(1),
+          prev,
+          val: num,
+          unit: 'A',
+          msg: `Current surged by +${Math.round(pct)}% (${prev}A → ${num}A)`
+        };
+      }
+    }
+  }
+
+  // Voltage checks
+  if (col.includes('vol') || col.includes('kv')) {
+    if (prev > 0) {
+      const pct = ((num - prev) / prev) * 100;
+      const diff = num - prev;
+      const minDiff = (prev < 50) ? 0.5 : 15.0; // HT kV vs LT V
+      if (pct > 30 && diff >= minDiff) {
+        return {
+          type: 'VOLTAGE_SURGE',
+          pct: Math.round(pct),
+          diff: diff.toFixed(1),
+          prev,
+          val: num,
+          unit: (prev < 50) ? 'kV' : 'V',
+          msg: `Voltage surged by +${Math.round(pct)}% (${prev} → ${num})`
+        };
+      }
+    }
+  }
+
+  // kWh leap or meter rollback
+  if (col.includes('kwh') || col.includes('meter')) {
+    if (prev > 0) {
+      if (num < prev) {
+        return {
+          type: 'METER_ROLLBACK',
+          pct: 0,
+          diff: (num - prev).toFixed(0),
+          prev,
+          val: num,
+          unit: 'kWh',
+          msg: `Reading decreased from ${prev} to ${num} (Meter rollback?)`
+        };
+      }
+      const pct = ((num - prev) / prev) * 100;
+      if (pct > 30) {
+        return {
+          type: 'KWH_SPIKE',
+          pct: Math.round(pct),
+          diff: (num - prev).toFixed(0),
+          prev,
+          val: num,
+          unit: 'kWh',
+          msg: `Cumulative meter leaped by +${Math.round(pct)}% (${prev} → ${num})`
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function evaluateSingleInput(inp) {
+  const prevVal = inp.getAttribute('data-prev');
+  const col = inp.getAttribute('data-col') || '';
+  const feeder = inp.getAttribute('data-feeder') || 'Feeder';
+  const val = inp.value;
+
+  const result = checkExceedance(val, prevVal, col);
+  const parent = inp.parentElement;
+
+  // Remove existing spike tag if any
+  const existingTag = parent.querySelector('.spike-tag');
+  if (existingTag) existingTag.remove();
+
+  if (result) {
+    inp.classList.add('spike-input');
+    const tag = document.createElement('div');
+    tag.className = 'spike-tag';
+    tag.innerHTML = `<span>🔺</span><span>+${result.pct}% jump</span>`;
+    parent.appendChild(tag);
+    return { ...result, feeder, col, element: inp };
+  } else {
+    inp.classList.remove('spike-input');
+    return null;
+  }
+}
+
+function scanAllExceedances() {
+  const inputs = document.querySelectorAll('.reading-num-input');
+  const exceedances = [];
+  inputs.forEach(inp => {
+    const res = evaluateSingleInput(inp);
+    if (res) exceedances.push(res);
+  });
+  return exceedances;
+}
+
+function openExceedanceModal() {
+  const exceedances = scanAllExceedances();
+  const listEl = document.getElementById('exceedanceItemsList');
+  if (!listEl) return;
+
+  if (exceedances.length === 0) {
+    listEl.innerHTML = '<div style="text-align:center; padding:16px; color:#64748b; font-size:12px;">No high reading exceedances detected.</div>';
+  } else {
+    listEl.innerHTML = exceedances.map(item => `
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-left:4px solid #e11d48; border-radius:10px; padding:10px 12px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+          <div>
+            <div style="font-size:13px; font-weight:800; color:#0f172a;">${item.feeder}</div>
+            <div style="font-size:11px; color:#64748b; font-weight:600;">${item.col}</div>
+          </div>
+          <span style="background:#fff1f2; color:#be123c; border:1px solid #fecdd3; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:800;">
+            +${item.pct}% 🔺
+          </span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-top:6px; background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #f1f5f9;">
+          <span style="color:#64748b;">Previous: <b style="color:#334155;">${item.prev} ${item.unit || ''}</b></span>
+          <span style="color:#0284c7;">→</span>
+          <span style="color:#be123c;">Entered: <b>${item.val} ${item.unit || ''}</b></span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const modal = document.getElementById('mobileExceedanceModal');
+  if (modal) {
+    modal.style.display = 'flex';
+  }
+}
+
+function closeExceedanceModal() {
+  const modal = document.getElementById('mobileExceedanceModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function reviewAndCorrectExceedances() {
+  closeExceedanceModal();
+  const firstSpike = document.querySelector('.reading-num-input.spike-input');
+  if (firstSpike) {
+    firstSpike.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    firstSpike.focus();
+  }
+}
+
+function confirmAndSaveAnyway() {
+  window.__bypassExceedanceCheck = true;
+  closeExceedanceModal();
+  if (pendingFormSubmission) {
+    // If submit button was clicked, create and dispatch
+    const btn = pendingFormSubmission.submitter;
+    const form = pendingFormSubmission.form;
+    if (btn && btn.name) {
+      const hiddenInput = document.createElement('input');
+      hiddenInput.type = 'hidden';
+      hiddenInput.name = btn.name;
+      hiddenInput.value = btn.value || '1';
+      form.appendChild(hiddenInput);
+    }
+    form.submit();
+  } else {
+    const form = document.querySelector('form');
+    if (form) form.submit();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Attach live input listeners
+  const inputs = document.querySelectorAll('.reading-num-input');
+  inputs.forEach(inp => {
+    inp.addEventListener('input', () => {
+      evaluateSingleInput(inp);
+    });
+    inp.addEventListener('change', () => {
+      evaluateSingleInput(inp);
+    });
+  });
+
+  // Initial check on load
+  const initialSpikes = scanAllExceedances();
+  const banner = document.getElementById('exceedanceTopBanner');
+  const bannerSub = document.getElementById('exceedanceBannerSub');
+  if (initialSpikes.length > 0 && banner) {
+    banner.style.display = 'block';
+    if (bannerSub) {
+      bannerSub.textContent = `${initialSpikes.length} reading(s) exceed previous shift by > 30%`;
+    }
+  }
+
+  // Intercept all form submissions
+  document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+      if (window.__bypassExceedanceCheck) return;
+
+      const spikes = scanAllExceedances();
+      if (spikes.length > 0) {
+        e.preventDefault();
+        pendingFormSubmission = { form: form, submitter: e.submitter };
+        openExceedanceModal();
+      }
+    });
+  });
+});
+
+{% if edit_window_active and not is_supervisor %}
+(function() {
+  let sec = {{ remaining_seconds }};
+  const timerElHourly = document.getElementById('window-timer-hourly');
+  const timerElSnapshot = document.getElementById('window-timer-snapshot');
+  const iv = setInterval(() => {
+    sec--;
+    if (sec <= 0) {
+      clearInterval(iv);
+      if (timerElHourly) timerElHourly.textContent = 'Expired';
+      if (timerElSnapshot) timerElSnapshot.textContent = 'Expired';
+      window.location.reload();
+    } else {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      const str = `${m}m ${s < 10 ? '0' : ''}${s}s remaining`;
+      if (timerElHourly) timerElHourly.textContent = str;
+      if (timerElSnapshot) timerElSnapshot.textContent = str;
+    }
+  }, 1000);
+})();
+{% endif %}
+</script>
 
 {% endblock %}

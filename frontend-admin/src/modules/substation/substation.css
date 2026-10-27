@@ -668,3 +668,44 @@
   .substation-theme-wrapper .data-table td { padding: 5px 7px; font-size: 12px; }
   .substation-theme-wrapper .num-input { width: 72px; padding: 4px; font-size: 12px; }
 }
+
+/* > 30% Exceedance & Spike Indicators */
+.substation-theme-wrapper .num-input.spike {
+  background: #fff7ed !important;
+  border-color: #ea580c !important;
+  color: #c2410c !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.22);
+}
+
+.substation-theme-wrapper .spike-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+

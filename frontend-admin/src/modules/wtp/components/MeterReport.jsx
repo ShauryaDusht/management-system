@@ -309,12 +309,38 @@ export default function MeterReport({ rows, stationMeters = [], user, onReload, 
       }))
     : null;
 
+  const allChartData = useMemo(() => {
+    return dt.map((r) => {
+      const point = {
+        date: r.date,
+        label: rlab(r, view),
+        title: rlab(r, view),
+        value: 0,
+      };
+      if (isAllMeters) {
+        let sum = 0;
+        for (const f of cums) {
+          const val = r[f.k] != null && r[f.k] >= 0 ? r[f.k] : 0;
+          point[f.k] = val;
+          sum += val;
+        }
+        point.value = sum;
+      } else {
+        const val = r[selF.k] != null && r[selF.k] >= 0 ? r[selF.k] : 0;
+        point.value = val;
+        point.title = `${rlab(r, view)}: ${fmt(val, 2)} ${selF.cu}`;
+      }
+      return point;
+    });
+  }, [dt, isAllMeters, cums, selF, view]);
+
   const chart = useMemo(() => {
-    const validRows = dt.slice(-30);
+    const validRows = (view === 'year' || view === 'month') ? dt : dt.slice(-30);
     if (isAllMeters) {
       return validRows.map((r) => {
         const point = {
-          label: view === 'shift' && r.shift ? `${r.date.slice(5)} S${r.shift}` : r.date.slice(5),
+          date: r.date,
+          label: view === 'year' ? r.date : view === 'month' ? r.date : (view === 'shift' && r.shift ? `${r.date.slice(5)} S${r.shift}` : r.date.slice(5)),
           title: rlab(r, view),
           value: 0,
         };
@@ -332,7 +358,8 @@ export default function MeterReport({ rows, stationMeters = [], user, onReload, 
     return validRows
       .filter((r) => r[selF.k] != null && r[selF.k] >= 0)
       .map((r) => ({
-        label: view === 'shift' && r.shift ? `${r.date.slice(5)} S${r.shift}` : r.date.slice(5),
+        date: r.date,
+        label: view === 'year' ? r.date : view === 'month' ? r.date : (view === 'shift' && r.shift ? `${r.date.slice(5)} S${r.shift}` : r.date.slice(5)),
         value: r[selF.k],
         title: `${rlab(r, view)}: ${fmt(r[selF.k], 2)} ${selF.cu}`,
       }));
@@ -346,6 +373,8 @@ export default function MeterReport({ rows, stationMeters = [], user, onReload, 
   }, [fromDate, toDate]);
 
   const viewLabel =
+    view === 'year' ? (dateLabel ? `Annual Total (${dateLabel})` : 'Annual Total Consumption') :
+    view === 'month' ? (dateLabel ? `Monthly Total (${dateLabel})` : 'Monthly Total Consumption') :
     view === '7days' ? (dateLabel ? `7 days ending ${dateLabel}` : 'Last 7 days') :
     view === '15days' ? (dateLabel ? `15 days ending ${dateLabel}` : 'Last 15 days') :
     view === '30days' ? (dateLabel ? `30 days ending ${dateLabel}` : 'Last 30 days') :
@@ -403,6 +432,8 @@ export default function MeterReport({ rows, stationMeters = [], user, onReload, 
               <option value="7days">Last 7 days</option>
               <option value="15days">Last 15 days</option>
               <option value="30days">Last 30 days</option>
+              <option value="month">📅 Monthly total (Per month)</option>
+              <option value="year">📆 Yearly trend (Per year)</option>
             </select>
           </label>
           <label style={{ flex: '1.35 1 0', minWidth: 0 }}>Consumption trend (last 30 readings)
@@ -427,6 +458,7 @@ export default function MeterReport({ rows, stationMeters = [], user, onReload, 
         </div>
         <BarChart
           data={chart}
+          allData={allChartData}
           unit={isAllMeters ? 'CUM' : selF.cu}
           title={
             isAllMeters
@@ -436,7 +468,7 @@ export default function MeterReport({ rows, stationMeters = [], user, onReload, 
           metricName={isAllMeters ? 'Consumption' : selF.label}
           color="water"
           multiSeries={meterMultiSeries}
-          height={290}
+          height={420}
           defaultChartType="bar"
         />
       </div>

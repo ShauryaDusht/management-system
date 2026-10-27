@@ -457,7 +457,109 @@ export const nowHM = () => {
   );
 };
 
-export function flagInfo(c, raw, prev) {
+export function checkReadingExceedance(currRaw, prevRaw, col, extra = {}) {
+  if (currRaw == null || currRaw === '' || col?.txt) return null;
+  const curr = num(currRaw);
+  if (curr == null) return null;
+
+  // Power Factor handled by flagInfo
+  if (col?.f === 'pf') return null;
+
+  const prev = prevRaw != null && prevRaw !== '' ? num(prevRaw) : null;
+
+  // 1. Cumulative Energy Meters (kWh, MWh)
+  if (isEnergy(col)) {
+    if (prev != null && prev > 0 && curr > prev) {
+      const jumpPct = ((curr - prev) / prev) * 100;
+      // Single-shift cumulative meter count jump > 30% (e.g. extra digit typed or meter replaced)
+      if (jumpPct >= 30) {
+        return {
+          type: 'energy_jump',
+          pct: Math.round(jumpPct * 10) / 10,
+          prev,
+          curr,
+          colLabel: col.l || 'kWh',
+          unit: col.f === 'mwh' ? 'MWh' : 'kWh',
+          reason: `Meter reading jumped by ${Math.round(jumpPct)}% (> 30%) in a single slot`,
+        };
+      }
+
+      // Check shift consumption delta vs previous shift consumption delta
+      const currDelta = curr - prev;
+      const prevDelta = extra.prevDelta != null ? num(extra.prevDelta) : null;
+      if (prevDelta != null && prevDelta > 0 && currDelta > prevDelta * 1.30 && (currDelta - prevDelta) >= 50) {
+        const consPct = ((currDelta - prevDelta) / prevDelta) * 100;
+        return {
+          type: 'consumption_spike',
+          pct: Math.round(consPct * 10) / 10,
+          prev: prevDelta,
+          curr: currDelta,
+          colLabel: `${col.l || 'kWh'} (Delta)`,
+          unit: col.f === 'mwh' ? 'MWh' : 'kWh',
+          reason: `Shift consumption (${Math.round(currDelta)} ${col.f === 'mwh' ? 'MWh' : 'kWh'}) exceeds previous shift (${Math.round(prevDelta)}) by ${Math.round(consPct)}% (> 30%)`,
+        };
+      }
+    }
+    return null;
+  }
+
+  // 2. Voltage (V or kV)
+  if (col?.f === 'vol') {
+    if (prev != null && prev > 0 && curr > prev) {
+      const vPct = ((curr - prev) / prev) * 100;
+      if (vPct >= 30 && (curr - prev) >= 10) {
+        return {
+          type: 'voltage_spike',
+          pct: Math.round(vPct * 10) / 10,
+          prev,
+          curr,
+          colLabel: col.l || 'Voltage',
+          unit: col.r?.[0] < 50 ? 'kV' : 'V',
+          reason: `Voltage increased by ${Math.round(vPct)}% (> 30% surge)`,
+        };
+      }
+    }
+    return null;
+  }
+
+  // 3. Currents (A1, A2, A3) & General Loads
+  if (prev != null && prev > 0 && curr > prev) {
+    const diff = curr - prev;
+    const pct = (diff / prev) * 100;
+    const isCurrent = col?.f === 'a1' || col?.f === 'a2' || col?.f === 'a3';
+    const minDiff = isCurrent ? 3 : 2;
+    const minPrev = isCurrent ? 2 : 1;
+
+    if (prev >= minPrev && diff >= minDiff && pct >= 30) {
+      return {
+        type: 'current_spike',
+        pct: Math.round(pct * 10) / 10,
+        prev,
+        curr,
+        colLabel: col.l || col.k?.toUpperCase() || 'Current',
+        unit: 'A',
+        reason: `Exceeds previous shift reading (${prev} A) by ${Math.round(pct)}% (> 30% load surge)`,
+      };
+    }
+  } else if ((prev === 0 || prev == null) && curr >= 15) {
+    const isCurrent = col?.f === 'a1' || col?.f === 'a2' || col?.f === 'a3';
+    if (isCurrent) {
+      return {
+        type: 'surge_from_zero',
+        pct: 100,
+        prev: 0,
+        curr,
+        colLabel: col.l || 'Current',
+        unit: 'A',
+        reason: `Feeder energized from 0A to ${curr}A (High Load Surge)`,
+      };
+    }
+  }
+
+  return null;
+}
+
+export function flagInfo(c, raw, prev, extra = {}) {
   if (raw === '' || raw == null || c.txt) return ['', ''];
   const n = num(raw);
   if (n == null) return ['bad', 'Not a valid number'];
@@ -471,8 +573,13 @@ export function flagInfo(c, raw, prev) {
   if (isEnergy(c) && prev != null && n < prev) {
     return ['bad', `Reading is lower than previous reading (${prev})`];
   }
+  const exceed = checkReadingExceedance(raw, prev, c, extra);
+  if (exceed) {
+    return ['spike', `⚠️ Reading exceeds previous reading by ${exceed.pct}% (> 30% surge)`];
+  }
   return ['', ''];
 }
 
 export const trKva = (cfg, t) => (cfg.kva && num(cfg.kva[t.id])) ?? t.kva;
 export const lvAmp = (kva) => Math.round(kva / (1.7320508 * 0.415));
+

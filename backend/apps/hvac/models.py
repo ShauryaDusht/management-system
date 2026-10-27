@@ -189,13 +189,15 @@ class HvacLog(models.Model):
         return {
             '_id': self.id,
             'id': self.id,
-            'date': self.date.isoformat(),
+            'date': self.date.isoformat() if hasattr(self.date, 'isoformat') else str(self.date),
             'time': self.time,
             'slot': self.slot,
             'shift': str(self.shift),
             'operator': self.operator,
             'setpoint': self.setpoint,
             'ts': self.ts or int(self.created_at.timestamp() * 1000) if self.created_at else 0,
+            'createdAt': self.created_at.isoformat() if self.created_at else None,
+            'updatedAt': self.updated_at.isoformat() if self.updated_at else None,
             'v': self.derived_values,
             'alerts': self.alerts,
         }

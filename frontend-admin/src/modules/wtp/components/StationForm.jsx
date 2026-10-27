@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '../api';
 import { STATIONS, SHIFTS, GROUPS, FIELDS, JMT, getMergedGroups, getMergedFields } from '../config';
 import { fmt, today } from '../lib/format';
@@ -45,7 +45,7 @@ function Hint({ f, rows = [], date, shift, value }) {
   );
 }
 
-export default function StationForm({ rows = [], user, onSaved, stationMeters = [] }) {
+export default function StationForm({ rows = [], readings = [], user, onSaved, stationMeters = [] }) {
   const [station, setStation] = useState('wtp');
   const [shift, setShift] = useState(1);
   const [date, setDate] = useState(today());
@@ -53,12 +53,53 @@ export default function StationForm({ rows = [], user, onSaved, stationMeters = 
   const [vals, setVals] = useState({});
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const isJm = station === 'jm';
   const allGroups = getMergedGroups(stationMeters);
   const allFields = getMergedFields(stationMeters);
   const groups = allGroups.filter((g) => g.st === station);
   const stationName = STATIONS.find((s) => s.id === station).name;
+
+  // Find exact station reading document
+  const existingDoc = readings.find(
+    (r) => r.date === date && Number(r.shift) === Number(shift) && r.station === station
+  );
+
+  const isOperator = user?.role === 'operator' || user?.role === 'wtp_operator';
+
+  // Calculate 10-minute edit window for existing records
+  const editWindowInfo = useMemo(() => {
+    if (!existingDoc || !isOperator) {
+      return { active: false, expired: false, minutesRemaining: 0, secondsRemaining: 0 };
+    }
+    const hasValues = existingDoc.values && Object.keys(existingDoc.values).length > 0;
+    if (!hasValues) {
+      return { active: false, expired: false, minutesRemaining: 0, secondsRemaining: 0 };
+    }
+    const ts = existingDoc.createdAt
+      ? new Date(existingDoc.createdAt).getTime()
+      : (existingDoc.updatedAt ? new Date(existingDoc.updatedAt).getTime() : 0);
+    if (!ts) {
+      return { active: false, expired: true, minutesRemaining: 0, secondsRemaining: 0 };
+    }
+    const diffMs = now - ts;
+    const windowMs = 10 * 60 * 1000;
+    if (diffMs > windowMs) {
+      return { active: false, expired: true, minutesRemaining: 0, secondsRemaining: 0 };
+    }
+    const remSec = Math.max(0, Math.floor((windowMs - diffMs) / 1000));
+    const remMin = Math.max(1, Math.ceil(remSec / 60));
+    return { active: true, expired: false, minutesRemaining: remMin, secondsRemaining: remSec };
+  }, [existingDoc, isOperator, now]);
+
+  const hasExistingValues = Boolean(existingDoc && existingDoc.values && Object.keys(existingDoc.values).length > 0);
+  const isLockedForOperator = isOperator && hasExistingValues && editWindowInfo.expired;
 
   // Pre-fill existing readings for date and shift when switching station, date, or shift
   useEffect(() => {
@@ -74,6 +115,9 @@ export default function StationForm({ rows = [], user, onSaved, stationMeters = 
 
   const submit = async (e) => {
     e.preventDefault();
+    if (isLockedForOperator) {
+      return setMsg({ err: 'The 10-minute edit window has expired. Contact Shift Engineer for any revisions.' });
+    }
     setBusy(true);
     setMsg(null);
     try {
@@ -108,6 +152,74 @@ export default function StationForm({ rows = [], user, onSaved, stationMeters = 
     <form onSubmit={submit}>
       {msg?.ok && <div className="msg ok">{msg.ok}</div>}
       {msg?.err && <div className="msg err">{msg.err}</div>}
+
+      {isLockedForOperator && (
+        <div
+          style={{
+            background: '#fffbeb',
+            border: '1.5px solid #fde68a',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            marginBottom: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            color: '#92400e',
+          }}
+        >
+          <span style={{ fontSize: '20px' }}>🔒</span>
+          <div>
+            <strong style={{ fontSize: '13px', display: 'block' }}>
+              Locked (Read-Only Mode)
+            </strong>
+            <span style={{ fontSize: '12px' }}>
+              Readings logged by <strong>{existingDoc?.by || 'Operator'}</strong>. The <strong>10-minute operator edit window has expired</strong>. Locked in Read-Only mode. Contact Shift Engineer / Supervisor for any revisions.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {isOperator && hasExistingValues && editWindowInfo.active && (
+        <div
+          style={{
+            background: '#f0fdf4',
+            border: '1.5px solid #86efac',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            marginBottom: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+            flexWrap: 'wrap',
+            color: '#166534',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '20px' }}>⏱️</span>
+            <div>
+              <strong style={{ fontSize: '13px', display: 'block' }}>
+                10-Minute Editable Window Active
+              </strong>
+              <span style={{ fontSize: '12px' }}>
+                Readings logged by <strong>{existingDoc?.by || 'Operator'}</strong>. You have 10 minutes from creation to update/correct values.
+              </span>
+            </div>
+          </div>
+          <span
+            style={{
+              background: '#dcfce7',
+              color: '#15803d',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              fontWeight: 800,
+              fontSize: '12px',
+            }}
+          >
+            ⏳ {Math.floor(editWindowInfo.secondsRemaining / 60)}:{String(editWindowInfo.secondsRemaining % 60).padStart(2, '0')} remaining
+          </span>
+        </div>
+      )}
 
       {user?.role !== 'operator' && (
         <div
@@ -217,6 +329,7 @@ export default function StationForm({ rows = [], user, onSaved, stationMeters = 
                     type="number"
                     step="any"
                     inputMode="decimal"
+                    disabled={isLockedForOperator}
                     value={vals[f.k] ?? ''}
                     onChange={(e) => setVals({ ...vals, [f.k]: e.target.value })}
                     placeholder={isJm ? (shift === 1 ? 'Initial value' : 'Final value') : (f.unit ? `in ${f.unit}` : '')}
@@ -231,8 +344,20 @@ export default function StationForm({ rows = [], user, onSaved, stationMeters = 
         return groups.map(renderCard);
       })()}
 
-      <button className="primary" disabled={busy}>
-        {busy ? 'Saving…' : user?.role !== 'operator' ? '💾 Save Corrections / Readings' : 'Save readings'}
+      <button
+        className="primary"
+        disabled={busy || isLockedForOperator}
+        style={isLockedForOperator ? { opacity: 0.6, cursor: 'not-allowed', background: '#64748b' } : {}}
+      >
+        {busy
+          ? 'Saving…'
+          : isLockedForOperator
+          ? '🔒 Locked (Edit Window Expired)'
+          : editWindowInfo.active
+          ? `Update Readings (Edit Window Active: ${Math.floor(editWindowInfo.secondsRemaining / 60)}:${String(editWindowInfo.secondsRemaining % 60).padStart(2, '0')})`
+          : user?.role !== 'operator'
+          ? '💾 Save Corrections / Readings'
+          : 'Save readings'}
       </button>
     </form>
   );

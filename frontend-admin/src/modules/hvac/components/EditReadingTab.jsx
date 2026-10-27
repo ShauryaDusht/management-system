@@ -127,6 +127,21 @@ export default function EditReadingTab({
   };
 
   const existingEntry = slotLogsMap[slot];
+  const editWindowInfo = useMemo(() => {
+    if (!existingEntry || !isOperator) return { active: false, expired: false, minutesRemaining: 0, secondsRemaining: 0 };
+    const ts = existingEntry.createdAt ? new Date(existingEntry.createdAt).getTime() : (existingEntry.ts || 0);
+    if (!ts) return { active: false, expired: true, minutesRemaining: 0, secondsRemaining: 0 };
+    const diffMs = Date.now() - ts;
+    const windowMs = 10 * 60 * 1000;
+    if (diffMs > windowMs) {
+      return { active: false, expired: true, minutesRemaining: 0, secondsRemaining: 0 };
+    }
+    const remSec = Math.max(0, Math.floor((windowMs - diffMs) / 1000));
+    const remMin = Math.max(1, Math.ceil(remSec / 60));
+    return { active: true, expired: false, minutesRemaining: remMin, secondsRemaining: remSec };
+  }, [existingEntry, isOperator]);
+
+  const isLockedForOperator = isOperator && Boolean(existingEntry) && editWindowInfo.expired;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -227,6 +242,63 @@ export default function EditReadingTab({
           }}
         >
           {msg.text}
+        </div>
+      )}
+
+      {isLockedForOperator && (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 8,
+            fontWeight: 700,
+            fontSize: 13,
+            background: '#fffbeb',
+            color: '#92400e',
+            border: '1.5px solid #fde68a',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <span style={{ fontSize: 18 }}>🔒</span>
+          <div>
+            <div style={{ fontWeight: 800 }}>Locked (Read-Only Mode)</div>
+            <div style={{ fontSize: 12, fontWeight: 500, marginTop: 2 }}>
+              The 10-minute operator edit window has expired for this slot. If any corrections are needed, please contact the Shift Engineer.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isOperator && existingEntry && editWindowInfo.active && (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 8,
+            fontWeight: 700,
+            fontSize: 13,
+            background: '#f0fdf4',
+            color: '#166534',
+            border: '1.5px solid #86efac',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>⏱️</span>
+            <div>
+              <div style={{ fontWeight: 800 }}>10-Minute Editable Window Active</div>
+              <div style={{ fontSize: 12, fontWeight: 500, marginTop: 2 }}>
+                Reading logged by <b>{existingEntry.operator || 'Operator'}</b>. You have 10 minutes from creation to update/correct values.
+              </div>
+            </div>
+          </div>
+          <span style={{ background: '#dcfce7', color: '#15803d', padding: '3px 10px', borderRadius: 6, fontSize: 12, fontWeight: 800 }}>
+            {editWindowInfo.minutesRemaining} min remaining
+          </span>
         </div>
       )}
 
@@ -689,24 +761,36 @@ export default function EditReadingTab({
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || isLockedForOperator}
               style={{
                 padding: '10px 24px',
                 borderRadius: 8,
-                background: isOperator
+                background: isLockedForOperator
+                  ? '#94a3b8'
+                  : isOperator
                   ? 'linear-gradient(135deg, #166534 0%, #10b981 100%)'
                   : 'linear-gradient(135deg, #15506b 0%, #0284c7 100%)',
                 color: '#fff',
                 fontWeight: 800,
                 fontSize: 13.5,
                 border: 'none',
-                cursor: saving ? 'not-allowed' : 'pointer',
-                boxShadow: isOperator
+                cursor: (saving || isLockedForOperator) ? 'not-allowed' : 'pointer',
+                boxShadow: isLockedForOperator
+                  ? 'none'
+                  : isOperator
                   ? '0 4px 12px rgba(16, 185, 129, 0.3)'
                   : '0 4px 12px rgba(2, 132, 199, 0.3)',
               }}
             >
-              {saving ? 'Saving...' : isOperator ? '💾 Submit Slot Readings' : '💾 Save Slot Readings'}
+              {saving
+                ? 'Saving...'
+                : isLockedForOperator
+                ? '🔒 Locked (Edit Window Expired)'
+                : isOperator && existingEntry
+                ? '💾 Update Slot Readings (Edit Window Active)'
+                : isOperator
+                ? '💾 Submit Slot Readings'
+                : '💾 Save Slot Readings'}
             </button>
           </div>
         </div>

@@ -86,8 +86,40 @@ export function daily(rows) {
   });
 }
 
-// view 'shift' (optionally one shift), 'day' (shifts added up per date), '7days', '15days', or '30days'
+// view 'shift' (optionally one shift), 'day' (shifts added up per date), '7days', '15days', '30days', 'month', or 'year'
 export function dRows(d, view, ash) {
+  if (view === 'month') {
+    const m = new Map();
+    for (const r of d) {
+      if (!r.date) continue;
+      const monthKey = r.date.slice(0, 7);
+      let o = m.get(monthKey);
+      if (!o) { o = { date: monthKey, month: monthKey }; m.set(monthKey, o); }
+      for (const f of CUMS) {
+        if (r[f.k] != null && r[f.k] >= 0) {
+          o[f.k] = Number(((o[f.k] || 0) + r[f.k]).toFixed(3));
+        }
+      }
+    }
+    return [...m.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  if (view === 'year') {
+    const m = new Map();
+    for (const r of d) {
+      if (!r.date) continue;
+      const yearKey = r.date.slice(0, 4);
+      let o = m.get(yearKey);
+      if (!o) { o = { date: yearKey, year: yearKey }; m.set(yearKey, o); }
+      for (const f of CUMS) {
+        if (r[f.k] != null && r[f.k] >= 0) {
+          o[f.k] = Number(((o[f.k] || 0) + r[f.k]).toFixed(3));
+        }
+      }
+    }
+    return [...m.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }
+
   if (view === 'day' || view === '7days' || view === '15days' || view === '30days') {
     const m = new Map();
     for (const r of d) {
@@ -104,7 +136,21 @@ export function dRows(d, view, ash) {
   return ash === 'all' ? d : d.filter((r) => String(r.shift) === String(ash));
 }
 
-export const rlab = (r, view) => (view !== 'shift' || !r.shift ? r.date : `${r.date} · S${r.shift}`);
+export const rlab = (r, view) => {
+  if (view === 'year') return `${r.date} (Annual Total)`;
+  if (view === 'month') {
+    const parts = (r.date || '').split('-');
+    if (parts.length >= 2) {
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const mIdx = parseInt(parts[1], 10) - 1;
+      const mName = monthNames[mIdx] || parts[1];
+      return `${mName} ${parts[0]}`;
+    }
+    return r.date;
+  }
+  if (view !== 'shift' || !r.shift) return r.date;
+  return `${r.date} · S${r.shift}`;
+};
 export const plab = (p) => `${p.date}${p.shift ? ' S' + p.shift : ''}`;
 export const latest = (rows, k) => [...rows].reverse().find((r) => r[k] != null);
 

@@ -188,6 +188,7 @@ export default function WtpPage() {
                 {operatorMode === 'station' ? (
                   <StationForm
                     rows={rows}
+                    readings={readings}
                     user={user}
                     onSaved={loadData}
                     stationMeters={stationMeters}

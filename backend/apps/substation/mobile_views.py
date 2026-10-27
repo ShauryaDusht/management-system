@@ -1,4 +1,4 @@
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
@@ -292,6 +292,15 @@ def mobile_panel_entry(request, sheet_id):
         hourly_cols = []
         current_hour_data = existing_rows.get(f"hr:{req_hour}", {})
 
+        # Previous hour data for >30% exceedance check
+        prev_hour_num = selected_hour_num - 1
+        if prev_hour_num >= 0:
+            prev_hour_data = existing_rows.get(f"hr:h{prev_hour_num:02d}", {}) if existing_rows else {}
+        else:
+            prev_day_date = parsed_date - timedelta(days=1)
+            prev_day_reading = SubstationReading.objects.filter(sheet=sheet.id, date=prev_day_date, slot='day').first()
+            prev_hour_data = (prev_day_reading.rows or {}).get('hr:h23', {}) if prev_day_reading else {}
+
         if hr_table:
             hourly_cols = hr_table.get('cols', [])
             groups_dict = {}
@@ -301,11 +310,13 @@ def mobile_panel_entry(request, sheet_id):
                     groups_dict[g_name] = []
                 c_key = c.get('k')
                 val = current_hour_data.get(c_key, '')
+                prev_val = prev_hour_data.get(c_key, '')
                 groups_dict[g_name].append({
                     'key': c_key,
                     'field': c.get('f', c_key),
                     'label': c.get('l', c_key).upper(),
                     'val': val,
+                    'prev': prev_val,
                 })
             for g_name, cols in groups_dict.items():
                 feeder_groups.append({
@@ -334,14 +345,31 @@ def mobile_panel_entry(request, sheet_id):
 
         is_torrent_logged = bool(torrent_data and any(v != '' and v is not None for v in torrent_data.values()))
         is_current_hour_logged = bool(current_hour_data and any(v != '' and v is not None for v in current_hour_data.values()))
-        is_locked = is_current_hour_logged and is_operator
+
+        OPERATOR_EDIT_WINDOW_MINUTES = 10
+        can_operator_edit = False
+        remaining_minutes = 0
+        remaining_seconds = 0
+        edit_window_active = False
+
+        if is_current_hour_logged:
+            ts = existing_reading.updated_at if (existing_reading and existing_reading.updated_at) else (existing_reading.created_at if existing_reading else None)
+            if ts:
+                elapsed = timezone.now() - ts
+                if elapsed <= timedelta(minutes=OPERATOR_EDIT_WINDOW_MINUTES):
+                    can_operator_edit = True
+                    edit_window_active = True
+                    remaining_seconds = max(0, int((timedelta(minutes=OPERATOR_EDIT_WINDOW_MINUTES) - elapsed).total_seconds()))
+                    remaining_minutes = max(1, (remaining_seconds + 59) // 60)
+
+        is_locked = is_current_hour_logged and is_operator and (not can_operator_edit)
 
         # POST handling for hourly
         if request.method == 'POST':
             is_torrent_save = 'save_torrent' in request.POST
 
             if not is_torrent_save and is_locked:
-                messages.error(request, f"Permission Denied: Hour {selected_hour_label} reading is already recorded. Operators cannot edit logged readings. Contact Shift Engineer for any revisions.")
+                messages.error(request, f"Permission Denied: The 10-minute edit window for Hour {selected_hour_label} has expired. Contact Shift Engineer for any revisions.")
                 return redirect(f"/substation/entry/{sheet.id}/?date={selected_date}&hour={req_hour}")
 
             operator_name = request.POST.get('operator', '').strip()
@@ -465,6 +493,10 @@ def mobile_panel_entry(request, sheet_id):
             'selected_hour_label': selected_hour_label,
             'is_current_hour_logged': is_current_hour_logged,
             'is_locked': is_locked,
+            'edit_window_active': edit_window_active,
+            'remaining_minutes': remaining_minutes,
+            'remaining_seconds': remaining_seconds,
+            'can_operator_edit': can_operator_edit,
             'is_supervisor': is_supervisor,
             'is_operator': is_operator,
             'hours_nav': hours_nav,
@@ -556,11 +588,28 @@ def mobile_panel_entry(request, sheet_id):
     existing_reading = SubstationReading.objects.filter(doc_id=doc_id).first()
     existing_rows = existing_reading.rows if existing_reading else {}
     is_panel_logged = bool(existing_reading and existing_reading.filled > 0)
-    is_locked = is_panel_logged and is_operator
+
+    OPERATOR_EDIT_WINDOW_MINUTES = 10
+    can_operator_edit = False
+    remaining_minutes = 0
+    remaining_seconds = 0
+    edit_window_active = False
+
+    if is_panel_logged and existing_reading:
+        ts = existing_reading.created_at or existing_reading.updated_at
+        if ts:
+            elapsed = timezone.now() - ts
+            if elapsed <= timedelta(minutes=OPERATOR_EDIT_WINDOW_MINUTES):
+                can_operator_edit = True
+                edit_window_active = True
+                remaining_seconds = max(0, int((timedelta(minutes=OPERATOR_EDIT_WINDOW_MINUTES) - elapsed).total_seconds()))
+                remaining_minutes = max(1, (remaining_seconds + 59) // 60)
+
+    is_locked = is_panel_logged and is_operator and (not can_operator_edit)
 
     if request.method == 'POST':
         if is_locked:
-            messages.error(request, f"Permission Denied: Shift {selected_slot} reading for {display_name} is already recorded. Operators cannot edit logged readings. Contact Shift Engineer for any revisions.")
+            messages.error(request, f"Permission Denied: The 10-minute edit window for {display_name} (Shift {selected_slot}) has expired. Contact Shift Engineer for any revisions.")
             return redirect(f"/substation/dashboard/?date={selected_date}&slot={selected_slot}")
 
         operator_name = request.POST.get('operator', '').strip()
@@ -633,10 +682,23 @@ def mobile_panel_entry(request, sheet_id):
             return redirect(f"/substation/entry/{next_panel.id}/?date={selected_date}&slot={next_slot}")
         return redirect(f"/substation/dashboard/?date={selected_date}&slot={selected_slot}")
 
-    # Attach existing values to flat_items
+    # Attach existing and previous shift values to flat_items for 30% exceedance check
+    prev_date = parsed_date
+    if selected_slot == 'R2':
+        prev_slot = 'R1'
+    elif selected_slot == 'R3':
+        prev_slot = 'R2'
+    else:
+        prev_slot = 'R3'
+        prev_date = parsed_date - timedelta(days=1)
+
+    prev_reading = SubstationReading.objects.filter(sheet=sheet.id, date=prev_date, slot=prev_slot).first()
+    prev_rows = prev_reading.rows if prev_reading else {}
+
     for r in input_rows:
         val_map = existing_rows.get(r['id']) or existing_rows.get(r['raw_id']) or {}
         r['val'] = val_map
+        r['prev'] = prev_rows.get(r['id']) or prev_rows.get(r['raw_id']) or {}
 
     context = {
         'sheet': sheet,
@@ -656,6 +718,10 @@ def mobile_panel_entry(request, sheet_id):
         'reading': existing_reading,
         'is_panel_logged': is_panel_logged,
         'is_locked': is_locked,
+        'edit_window_active': edit_window_active,
+        'remaining_minutes': remaining_minutes,
+        'remaining_seconds': remaining_seconds,
+        'can_operator_edit': can_operator_edit,
         'is_supervisor': is_supervisor,
         'is_operator': is_operator,
         'rows': flat_items,
