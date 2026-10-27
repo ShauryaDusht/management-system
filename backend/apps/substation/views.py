@@ -397,6 +397,7 @@ class TorrentBillsView(APIView):
         bill.customer_id = customer_id
         bill.tariff = tariff
         bill.contract_demand_kw = contract_demand_kw
+        bill.billing_demand_kw = billing_demand_kw
         bill.meter_no = meter_no
         bill.multiplier = multiplier
 

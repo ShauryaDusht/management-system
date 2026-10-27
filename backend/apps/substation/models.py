@@ -178,7 +178,8 @@ class TorrentBill(models.Model):
         if self.kw_present is not None and self.kw_present > 0:
             diff_kw = float(self.kw_present) - float(self.kw_past or 0.0) if self.kw_past else float(self.kw_present)
             self.kw_consumed = round(diff_kw * mult, 2)
-            self.billing_demand_kw = self.kw_consumed
+            if not self.billing_demand_kw or self.billing_demand_kw <= 0:
+                self.billing_demand_kw = self.kw_consumed
 
         # Active Energy KWH
         if self.kwh_present is not None and self.kwh_past is not None:

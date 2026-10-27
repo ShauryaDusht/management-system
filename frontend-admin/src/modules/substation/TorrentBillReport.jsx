@@ -42,6 +42,7 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
     tariff: 'HTMD1',
     panNo: 'AAAT17352M',
     contractDemandKw: 3200.0,
+    billingDemandKw: 0,
     multiplier: 2500.0,
 
     // Meter readings
@@ -127,6 +128,7 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
     setFormData({
       ...initialFormState,
       month: nextMonth,
+      billingDemandKw: 0,
       kwPast: 0,
       kwhPast: latest?.kwhPresent || 0,
       touKwhPast: latest?.touKwhPresent || 0,
@@ -152,6 +154,7 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
       tariff: b.tariff || 'HTMD1',
       panNo: b.panNo || 'AAAT17352M',
       contractDemandKw: b.contractDemandKw || 3200.0,
+      billingDemandKw: b.billingDemandKw || 0,
       multiplier: b.multiplier || 2500.0,
 
       kwPresent: b.kwPresent || 0,
@@ -613,8 +616,8 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
         </div>
       </div>
 
-      {/* Top 6 KPI Metric Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
+      {/* Top 4 KPI Metric Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
         {/* Card 1: Total Bill Amount */}
         <div
           className="card"
@@ -656,7 +659,7 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
           </div>
         </div>
 
-        {/* Card 3: Demand & Contract */}
+        {/* Card 3: Billing Demand (KW) */}
         <div
           className="card"
           style={{
@@ -666,37 +669,17 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
           }}
         >
           <div style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', color: '#0f766e', letterSpacing: '0.5px' }}>
-            RECORDED DEMAND (RD)
+            BILLING DEMAND (KW)
           </div>
           <div style={{ fontSize: 24, fontWeight: 900, color: '#0f766e', margin: '6px 0 2px' }}>
             {fmtNum(currentBill?.billingDemandKw, 1)} <span style={{ fontSize: 14, fontWeight: 700 }}>KW</span>
           </div>
           <div style={{ fontSize: 11.5, color: '#64748b' }}>
-            {Math.round(((currentBill?.billingDemandKw || 2832.5) / (currentBill?.contractDemandKw || 3200)) * 100)}% of 3,200 KW Sanctioned
+            {Math.round(((currentBill?.billingDemandKw || 2832.5) / (currentBill?.contractDemandKw || 3200)) * 100)}% of 3,200 KW Sanctioned Demand
           </div>
         </div>
 
-        {/* Card 4: Avg Power Factor */}
-        <div
-          className="card"
-          style={{
-            borderTop: '5px solid #8b5cf6',
-            padding: 16,
-            background: 'linear-gradient(180deg, #ffffff 0%, #faf5ff 100%)',
-          }}
-        >
-          <div style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', color: '#6d28d9', letterSpacing: '0.5px' }}>
-            AVG POWER FACTOR %
-          </div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: '#6d28d9', margin: '6px 0 2px' }}>
-            {fmtNum(currentBill?.avgPowerFactor, 0)}%
-          </div>
-          <div style={{ fontSize: 11.5, color: '#16a34a', fontWeight: 700 }}>
-            ✓ Target ≥ 90% (Zero PF Penalty)
-          </div>
-        </div>
-
-        {/* Card 5: Peak TOU Units */}
+        {/* Card 4: Peak TOU Units */}
         <div
           className="card"
           style={{
@@ -713,26 +696,6 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
           </div>
           <div style={{ fontSize: 11.5, color: '#64748b' }}>
             {currentBill?.touRatioPct ? `${currentBill.touRatioPct}%` : '32.76%'} of total consumption
-          </div>
-        </div>
-
-        {/* Card 6: Security Deposit */}
-        <div
-          className="card"
-          style={{
-            borderTop: '5px solid #0284c7',
-            padding: 16,
-            background: 'linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%)',
-          }}
-        >
-          <div style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', color: '#0369a1', letterSpacing: '0.5px' }}>
-            SECURITY DEPOSIT HELD
-          </div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: '#0369a1', margin: '6px 0 2px' }}>
-            {fmtCurrency(currentBill?.securityDepositHeld, 0)}
-          </div>
-          <div style={{ fontSize: 11.5, color: '#dc2626', fontWeight: 600 }}>
-            Addl Req: {fmtCurrency(currentBill?.additionalSecurityRequired, 0)}
           </div>
         </div>
       </div>
@@ -1573,6 +1536,43 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
                       onChange={(e) => setFormData({ ...formData, multiplier: parseFloat(e.target.value) || 2500 })}
                       style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #cbd5e1', fontSize: 13, fontWeight: 700 }}
                     />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#00843D', marginBottom: 4 }}>
+                      Billing Demand (KW) *
+                    </label>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input
+                        type="number"
+                        step="0.1"
+                        required
+                        placeholder="e.g. 2832.5"
+                        value={formData.billingDemandKw}
+                        onChange={(e) => setFormData({ ...formData, billingDemandKw: parseFloat(e.target.value) || 0 })}
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '2px solid #00843D', fontSize: 13, fontWeight: 800, color: '#00843D' }}
+                      />
+                      {formCalculations.kwConsumed > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, billingDemandKw: formCalculations.kwConsumed }))}
+                          title="Copy calculated KW from meter"
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: 6,
+                            background: '#f0fdf4',
+                            border: '1px solid #86efac',
+                            color: '#166534',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Auto {formCalculations.kwConsumed}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
