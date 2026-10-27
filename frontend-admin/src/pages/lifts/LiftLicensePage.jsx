@@ -293,7 +293,8 @@ export default function LiftLicensePage() {
   }
 
   const handleDeleteDoc = async (doc) => {
-    if (!window.confirm(`Are you sure you want to delete certificate "${doc.title || doc.file_name}"?`)) {
+    const docName = doc.title || doc.file_name || doc.license_no || 'this certificate'
+    if (!window.confirm(`Are you sure you want to delete certificate "${docName}"?`)) {
       return
     }
     try {
@@ -1055,86 +1056,6 @@ export default function LiftLicensePage() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                {/* Filter Pills */}
-                <div style={{ display: 'flex', background: '#fff', border: '1px solid #fca5a5', borderRadius: 8, padding: 2, gap: 2, flexWrap: 'wrap' }}>
-                  {[
-                    { id: 'all', label: `All (${alerts.length})` },
-                    { id: '30', label: `≤30d (${alerts.filter((a) => a.tier === '30' && !a.is_applied).length})` },
-                    { id: '60', label: `60d (${alerts.filter((a) => a.tier === '60' && !a.is_applied).length})` },
-                    { id: '90', label: `90d (${alerts.filter((a) => a.tier === '90' && !a.is_applied).length})` },
-                    { id: 'expired', label: `Expired (${alerts.filter((a) => a.tier === 'expired' && !a.is_applied).length})` },
-                    { id: 'applied', label: `⏳ Applied (${alerts.filter((a) => a.is_applied).length})` },
-                  ].map((btn) => (
-                    <button
-                      key={btn.id}
-                      type="button"
-                      onClick={() => setAlertTierFilter(btn.id)}
-                      style={{
-                        border: 'none',
-                        background: alertTierFilter === btn.id ? '#991b1b' : 'transparent',
-                        color: alertTierFilter === btn.id ? '#fff' : '#7f1d1d',
-                        fontWeight: 700,
-                        fontSize: 11,
-                        padding: '4px 8px',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      {btn.label}
-                    </button>
-                  ))}
-                </div>
-
-                {!isEngineer && (
-                  <>
-                    {/* Direct Send Alert Button */}
-                    <button
-                      type="button"
-                      onClick={handleTriggerEmailAlert}
-                      disabled={sendingAlert}
-                      style={{
-                        background: '#991b1b',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 6,
-                        padding: '6px 12px',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: sendingAlert ? 'wait' : 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        boxShadow: '0 2px 6px rgba(153,27,27,0.25)',
-                        opacity: sendingAlert ? 0.7 : 1,
-                      }}
-                      title="Send immediate alert email for 30, 60 & 90 days expiring lifts"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect width="20" height="16" x="2" y="4" rx="2" />
-                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-                      </svg>
-                      {sendingAlert ? 'Sending Email...' : 'Send Alert Email Now'}
-                    </button>
-
-                    {noticeFeedback && (
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: '#15803d',
-                          background: '#dcfce7',
-                          border: '1px solid #86efac',
-                          borderRadius: 6,
-                          padding: '4px 8px',
-                        }}
-                      >
-                        ✓ {noticeFeedback}
-                      </span>
-                    )}
-                  </>
-                )}
-
                 <button
                   type="button"
                   onClick={() => setAlertsExpanded(!alertsExpanded)}
@@ -1253,27 +1174,29 @@ export default function LiftLicensePage() {
                       </div>
 
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenApplyModal(item)}
-                          style={{
-                            background: isApplied ? '#f5f3ff' : '#ede9fe',
-                            color: '#6d28d9',
-                            border: '1px solid #c4b5fd',
-                            borderRadius: 6,
-                            padding: '6px 10px',
-                            fontSize: 11,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            whiteSpace: 'nowrap',
-                          }}
-                          title={isApplied ? 'Update renewal application details' : 'Record that renewal application was submitted'}
-                        >
-                          <span>{isApplied ? '📝 Applied ✎' : '📝 Mark as Applied'}</span>
-                        </button>
+                        {isEngineer && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenApplyModal(item)}
+                            style={{
+                              background: isApplied ? '#f5f3ff' : '#ede9fe',
+                              color: '#6d28d9',
+                              border: '1px solid #c4b5fd',
+                              borderRadius: 6,
+                              padding: '6px 10px',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={isApplied ? 'Update renewal application details' : 'Record that renewal application was submitted'}
+                          >
+                            <span>{isApplied ? '📝 Applied ✎' : '📝 Mark as Applied'}</span>
+                          </button>
+                        )}
                         <Btn size="sm" variant="secondary" onClick={() => handleOpenEdit(item)}>
                           Update
                         </Btn>
@@ -2253,7 +2176,7 @@ export default function LiftLicensePage() {
                             </div>
 
                             {/* Actions for active document */}
-                            <div style={{ display: 'flex', gap: 8 }}>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                               <button
                                 type="button"
                                 onClick={() => window.open(generateImageUrl(activeDocument.pdf_url), '_blank')}
@@ -2291,6 +2214,27 @@ export default function LiftLicensePage() {
                                 }}
                               >
                                 <span>⬇️</span> Download
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDoc(activeDocument)}
+                                style={{
+                                  background: '#fff1f2',
+                                  color: '#b91c1c',
+                                  border: '1px solid #fecaca',
+                                  padding: '7px 12px',
+                                  borderRadius: 7,
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 5,
+                                  transition: 'all 0.15s ease',
+                                }}
+                                title="Delete active certificate"
+                              >
+                                <span>🗑️</span> Delete
                               </button>
                             </div>
                           </div>

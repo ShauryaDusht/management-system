@@ -62,6 +62,8 @@ const TOP_CARD_FILTERS = [
   { key: 'caretaker', label: 'Caretaker', countKey: 'caretaker', roles: ['caretaker'] },
 ]
 
+const ROLE_FILTERS = TOP_CARD_FILTERS
+
 const ROLE_LABELS = {
   admin: 'Admin',
   plant_engineer: 'Substation & WTP Engr',
@@ -138,6 +140,9 @@ function areaInchargeText(user) {
   }
   if (user.role === 'hvac_engineer' || user.role === 'hvac_supervisor' || user.role === 'hvac_operator') {
     return 'HVAC Plants & Chillers'
+  }
+  if (user.role === 'engineer') {
+    return 'Lift Licenses & Elevators'
   }
   return HK_ROLES.includes(user.role) ? 'Not assigned' : 'All areas'
 }
@@ -378,6 +383,7 @@ export default function UsersPage() {
         { label: 'Total Users', value: filtered.length },
         { label: 'Admins', value: roleCounts.admin || 0 },
         { label: 'Engineers', value: roleCounts.engineer || 0 },
+        { label: 'Lift License', value: roleCounts.engineer_lift || 0 },
         { label: 'Supervisors', value: roleCounts.supervisor || 0 },
         { label: 'Operators', value: roleCounts.operator || 0 },
         { label: 'Caretakers', value: roleCounts.caretaker || 0 },

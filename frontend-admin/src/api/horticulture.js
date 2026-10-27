@@ -13,8 +13,14 @@ export const horticultureAPI = {
     }),
   getSupervisors: () => api.get('/horticulture/admin/supervisors/'),
   getWorkers: () => api.get('/horticulture/admin/workers/'),
-  createWorker: (data) => api.post('/horticulture/admin/workers/', data),
-  updateWorker: (id, data) => api.patch(`/horticulture/admin/workers/${id}/`, data),
+  createWorker: (data) =>
+    api.post('/horticulture/admin/workers/', data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {},
+    }),
+  updateWorker: (id, data) =>
+    api.patch(`/horticulture/admin/workers/${id}/`, data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {},
+    }),
   deleteWorker: (id) => api.delete(`/horticulture/admin/workers/${id}/`),
   getWorkerReport: (id, month, year) =>
     api.get(`/horticulture/admin/workers/${id}/report/`, { params: { month, year } }),
@@ -36,6 +42,7 @@ export const horticultureAPI = {
   createAreaTaskAssignment: (data) => api.post('/horticulture/admin/area-task-assignments/', data),
   updateAreaTaskAssignment: (id, data) => api.patch(`/horticulture/admin/area-task-assignments/${id}/`, data),
   deleteAreaTaskAssignment: (id) => api.delete(`/horticulture/admin/area-task-assignments/${id}/`),
+  swapAreaTaskAssignments: (data) => api.post('/horticulture/admin/area-task-assignments/swap/', data),
   listTaskTypes: () => api.get('/horticulture/admin/task-types/'),
   createTaskType: (data) => api.post('/horticulture/admin/task-types/', data),
   updateTaskType: (id, data) => api.patch(`/horticulture/admin/task-types/${id}/`, data),

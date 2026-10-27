@@ -71,6 +71,19 @@ def admin_portal_redirect(request):
         return HttpResponseRedirect(f'http://{host}:5173/admin/')
     return HttpResponseRedirect('/admin/')
 
+
+def admin_spa_wildcard_redirect(request, section):
+    query = request.META.get('QUERY_STRING', '')
+    if settings.DEBUG:
+        host = request.get_host().split(':')[0]
+        target = f'http://{host}:5173/admin/{section}'
+    else:
+        target = f'/admin/{section}'
+    if query:
+        target = f'{target}?{query}'
+    return HttpResponseRedirect(target)
+
+
 urlpatterns = [
     path('', backend_root),
     path('', include('apps.core.urls')),
@@ -80,6 +93,7 @@ urlpatterns = [
     path('admin-portal', admin_portal_redirect),
     path('admin/', legacy_admin_redirect),
     path('admin', legacy_admin_redirect),
+    path('admin/<path:section>', admin_spa_wildcard_redirect),
     path('manage/', legacy_admin_redirect),
     path('manage', legacy_admin_redirect),
     path('login/', portal_login, name='portal_login_alias'),

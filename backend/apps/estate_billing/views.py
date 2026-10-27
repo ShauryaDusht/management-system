@@ -1,5 +1,6 @@
 import datetime
 import re
+from contextlib import contextmanager
 from decimal import Decimal, ROUND_HALF_UP
 from django.db import models, transaction
 from django.db.models import F, Max
@@ -905,7 +906,32 @@ INITIAL_HOUSING_RECORDS = [
 ]
 
 
+@contextmanager
+def first_run_seed_lock():
+    """
+    Serialise first-run seeding across gunicorn workers.
+
+    The seeders below follow "if the table is empty, insert the official rows". The admin page fires
+    several API calls at once, so without a lock two workers can both see an empty table and both insert
+    (every flat appeared twice on the live server). This takes a row lock on the EstateSettings singleton
+    (PostgreSQL); a second worker waits, then re-checks inside the lock and finds the rows already there.
+    """
+    with transaction.atomic():
+        EstateSettings.get_settings()
+        EstateSettings.objects.select_for_update().get(singleton='main')
+        yield
+
+
 def ensure_master_housing_inventory():
+    needs_seed = not HousingUnit.objects.exists() or not HousingAllotment.objects.filter(is_active=True).exists()
+    if needs_seed:
+        with first_run_seed_lock():
+            _ensure_master_housing_inventory()  # re-checks emptiness while holding the lock
+    else:
+        _ensure_master_housing_inventory()
+
+
+def _ensure_master_housing_inventory():
     """Seeds the fixed 435 quarters from Google Sheet and maps active allotments."""
     if not HousingUnit.objects.exists():
         units_to_create = []
@@ -1647,6 +1673,13 @@ INITIAL_CLEARANCES = [
 
 
 def ensure_initial_clearances():
+    if HousingClearance.objects.filter(is_active=True).exists():
+        return
+    with first_run_seed_lock():
+        _ensure_initial_clearances()  # re-checks emptiness while holding the lock
+
+
+def _ensure_initial_clearances():
     if HousingClearance.objects.filter(is_active=True).exists():
         return
     for item in INITIAL_CLEARANCES:
