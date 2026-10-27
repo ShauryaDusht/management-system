@@ -38,6 +38,7 @@ export default function StaffAttendanceTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [exportingAbsent, setExportingAbsent] = useState(false)
+  const [exportingPresent, setExportingPresent] = useState(false)
 
   const load = async (selectedDate) => {
     setLoading(true)
@@ -114,6 +115,39 @@ export default function StaffAttendanceTab() {
     await exportReport(format, exportData)
   }
 
+  const handleExportPresent = async (format) => {
+    const presentRows = rows.filter((r) => r.status === 'present')
+    if (!presentRows.length) return
+    setExportingPresent(true)
+    try {
+      const exportData = {
+        filename: `housekeeping_present_staff_${date}`,
+        module: 'Housekeeping Operations',
+        title: 'Housekeeping Present Staff Report',
+        subtitle: `List of present staff on ${date}`,
+        metadata: [
+          { label: 'Date', value: date },
+          { label: 'Total Present', value: totals.present },
+        ],
+        stats: [
+          { label: 'Total Staff', value: totals.total },
+          { label: 'Present Count', value: totals.present },
+        ],
+        headers: ['Staff Name', 'Pay Code', 'Area', 'Role', 'Status'],
+        rows: presentRows.map((r) => [
+          r.staff_name || '-',
+          r.staff_pay_code || '-',
+          Array.isArray(r.staff_areas) && r.staff_areas.length ? r.staff_areas.join('; ') : '-',
+          r.staff_role || '-',
+          'Present',
+        ]),
+      }
+      await exportReport(format, exportData)
+    } finally {
+      setExportingPresent(false)
+    }
+  }
+
   const handleExportAbsent = async (format) => {
     const absentRows = rows.filter((r) => r.status === 'absent')
     if (format === 'csv') {
@@ -171,9 +205,16 @@ export default function StaffAttendanceTab() {
             disabled={!rows.length}
           />
         </Card>
-        <Card>
-          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Present</div>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.present}</div>
+        <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Present</div>
+            <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.present}</div>
+          </div>
+          <ExportDropdown
+            label="Present"
+            onExport={handleExportPresent}
+            disabled={exportingPresent || !totals.present}
+          />
         </Card>
         <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <div>
