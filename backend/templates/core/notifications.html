@@ -28,15 +28,15 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">
       <div style="display:flex;align-items:center;gap:6px">
         {% if not notif.is_read %}<span style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block"></span>{% endif %}
-        <span style="font-weight:{% if not notif.is_read %}800{% else %}700{% endif %};font-size:14px;color:#111827">{{ notif.title }}</span>
+        <span style="font-weight:{% if not notif.is_read %}800{% else %}700{% endif %};font-size:14px;color:#111827">{% if notif.title == 'Inventory Request Approved' %}Inventory Request Issued{% else %}{{ notif.title }}{% endif %}</span>
       </div>
       <span style="font-size:11px;color:#6b7280;white-space:nowrap">{{ notif.created_at|date:"d M, H:i" }}</span>
     </div>
     <div style="font-size:13px;color:#374151;line-height:1.4;margin:6px 0 10px 0">{{ notif.message }}</div>
     <div style="display:flex;justify-content:space-between;align-items:center">
       {% if notif.status_label %}
-      <span class="bdg {% if 'approved' in notif.status_label|lower %}g{% elif 'rejected' in notif.status_label|lower %}r{% elif 'pending' in notif.status_label|lower or 'usage' in notif.status_label|lower %}y{% else %}gr{% endif %}">
-        {{ notif.status_label }}
+      <span class="bdg {% if 'approved' in notif.status_label|lower or 'issued' in notif.status_label|lower %}g{% elif 'rejected' in notif.status_label|lower %}r{% elif 'pending' in notif.status_label|lower or 'usage' in notif.status_label|lower %}y{% else %}gr{% endif %}">
+        {% if notif.status_label|lower == 'approved' %}Issued{% else %}{{ notif.status_label }}{% endif %}
       </span>
       {% else %}
       <span></span>

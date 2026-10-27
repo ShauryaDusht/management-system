@@ -2,7 +2,7 @@ from django.urls import path
 
 from .api_views import (
     AdjustStockView,
-    RejectRequestView, MarkUrgentView,
+    RejectRequestView, MarkUrgentView, UndoRejectRequestView,
 )
 from .views import (
     CategoryListCreateView,
@@ -83,6 +83,7 @@ urlpatterns = [
     # used by the frontend. They are kept intentionally and are NOT duplicates.
     path('api/items/<int:pk>/adjust-stock/', AdjustStockView.as_view(), name='item-adjust-stock'),
     path('api/requests/<int:pk>/reject/', RejectRequestView.as_view(), name='api-request-reject'),
+    path('api/requests/<int:pk>/undo-reject/', UndoRejectRequestView.as_view(), name='api-request-undo-reject'),
     path('api/requests/<int:pk>/mark-urgent/', MarkUrgentView.as_view(), name='api-request-mark-urgent'),
 ]
 

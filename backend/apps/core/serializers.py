@@ -44,3 +44,16 @@ class NotificationSerializer(serializers.ModelSerializer):
     def get_created_at_formatted(self, obj):
         local_time = timezone.localtime(obj.created_at)
         return local_time.strftime('%d %b %Y, %I:%M %p')
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Normalize "Approved" -> "Issued" for inventory request notifications
+        if data.get('notification_type') == Notification.NotificationType.INVENTORY_APPROVED or 'Inventory Request Approved' in (data.get('title') or ''):
+            if data.get('title') == 'Inventory Request Approved':
+                data['title'] = 'Inventory Request Issued'
+            if (data.get('status_label') or '').lower() == 'approved':
+                data['status_label'] = 'Issued'
+            if data.get('message'):
+                data['message'] = data['message'].replace('has been approved by the manager', 'has been issued by the manager').replace('has been approved', 'has been issued')
+        return data
+

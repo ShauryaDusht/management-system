@@ -79,8 +79,7 @@ export default function RequestsReportTab({ categoryScope = null, excludeCategor
     return {
       total: requests.length,
       pending: requests.filter((r) => r.status === 'pending').length,
-      approved: requests.filter((r) => r.status === 'approved').length,
-      issued: requests.filter((r) => r.status === 'issued').length,
+      issued: requests.filter((r) => r.status === 'issued' || r.status === 'approved').length,
       rejected: requests.filter((r) => r.status === 'rejected').length,
     }
   }, [requests])
@@ -102,7 +101,6 @@ export default function RequestsReportTab({ categoryScope = null, excludeCategor
       stats: [
         { label: 'Total Requests', value: stats.total },
         { label: 'Pending', value: stats.pending },
-        { label: 'Approved', value: stats.approved },
         { label: 'Issued', value: stats.issued },
         { label: 'Rejected', value: stats.rejected },
       ],
@@ -112,7 +110,7 @@ export default function RequestsReportTab({ categoryScope = null, excludeCategor
         r.item_code || '—',
         r.item || '-',
         r.quantity ?? 0,
-        String(r.status || '').toUpperCase(),
+        (r.status === 'approved' ? 'ISSUED' : String(r.status || '')).toUpperCase(),
         r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '-',
         r.reviewed_by || '-',
         r.issued_at ? new Date(r.issued_at).toLocaleString('en-IN') : '-',
@@ -205,10 +203,9 @@ export default function RequestsReportTab({ categoryScope = null, excludeCategor
           </div>
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(120px, 11vw, 170px), 1fr))', gap: 10, padding: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(140px, 14vw, 220px), 1fr))', gap: 12, padding: 14 }}>
               <StatCard label="Total Requests" value={stats.total} icon="TT" color="#1d4ed8" />
               <StatCard label="Pending" value={stats.pending} icon="PN" color="#f59e0b" />
-              <StatCard label="Approved" value={stats.approved} icon="AP" color="#16a34a" />
               <StatCard label="Issued" value={stats.issued} icon="IS" color="#7c3aed" />
               <StatCard label="Rejected" value={stats.rejected} icon="RJ" color="#dc2626" />
             </div>
@@ -219,7 +216,7 @@ export default function RequestsReportTab({ categoryScope = null, excludeCategor
                 r.item_code || '—',
                 r.item,
                 r.quantity,
-                String(r.status || '').toUpperCase(),
+                (r.status === 'approved' ? 'ISSUED' : String(r.status || '')).toUpperCase(),
                 r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '-',
                 r.reviewed_by || '-',
                 r.issued_at ? new Date(r.issued_at).toLocaleString('en-IN') : '-',

@@ -8,7 +8,7 @@ export default function UndoAdjustIssueModal({
   onClose,
   onSuccess,
 }) {
-  const [action, setAction] = useState('reversal') // 'reversal' | 'adjustment'
+  const [action, setAction] = useState('adjustment') // 'reject' | 'adjustment'
   const [newQuantity, setNewQuantity] = useState('')
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
@@ -22,24 +22,46 @@ export default function UndoAdjustIssueModal({
   const availableStock = Number(issue?.item_available_quantity ?? 0)
   const unit = issue?.item_unit || 'units'
 
-  const canReverse = consumedQty === 0 && !issue?.returned_at && !issue?.usage_finalized && !issue?.is_reversed
-  const cannotReverseReason = consumedQty > 0
-    ? `${consumedQty} ${unit} have already been reported as used or consumed. Downstream usage cannot be undone to Pending.`
+  const issuedAtTime = issue?.issued_at ? new Date(issue.issued_at).getTime() : null
+  const isPast24h = issuedAtTime ? (Date.now() - issuedAtTime) > 24 * 60 * 60 * 1000 : false
+  const alreadyAdjusted = adjustments.length > 0 || Boolean(issue?.already_adjusted)
+
+  const canReverse = !isPast24h && !alreadyAdjusted && consumedQty === 0 && !issue?.returned_at && !issue?.usage_finalized && !issue?.is_reversed
+  const canAdjust = !isPast24h && !alreadyAdjusted && !issue?.returned_at && !issue?.usage_finalized && !issue?.is_reversed
+
+  const cannotReverseReason = isPast24h
+    ? 'The 24-hour window to adjust or reject this issue has expired.'
+    : alreadyAdjusted
+    ? 'Only one undo/adjust operation is permitted, and it has already been performed.'
+    : consumedQty > 0
+    ? `${consumedQty} ${unit} have already been reported as used or consumed. Downstream usage cannot be undone.`
     : issue?.returned_at
     ? 'This asset has already been returned.'
     : issue?.usage_finalized
     ? 'Consumable usage has already been finalized.'
     : issue?.is_reversed
-    ? 'This issue has already been undone.'
+    ? 'This issue has already been reversed or rejected.'
+    : ''
+
+  const cannotAdjustReason = isPast24h
+    ? 'The 24-hour window to adjust or reject this issue has expired.'
+    : alreadyAdjusted
+    ? 'Only one undo/adjust operation is permitted, and it has already been performed.'
+    : issue?.returned_at
+    ? 'This asset has already been returned.'
+    : issue?.usage_finalized
+    ? 'Consumable usage has already been finalized.'
+    : issue?.is_reversed
+    ? 'This issue has already been reversed or rejected.'
     : ''
 
   useEffect(() => {
     if (open && issue) {
       setError('')
       setReason('')
-      setNewQuantity(String(currentQty > 1 ? currentQty - 1 : currentQty))
-      // Default to adjustment if reversal is blocked
-      setAction(canReverse ? 'reversal' : 'adjustment')
+      setNewQuantity(String(currentQty))
+      // Default to adjustment (as in the issue adjustment workflow)
+      setAction('adjustment')
 
       // Fetch audit history
       if (issue.id) {
@@ -70,24 +92,34 @@ export default function UndoAdjustIssueModal({
     e.preventDefault()
     setError('')
 
+    if (isPast24h) {
+      setError('The 24-hour window to adjust or reject this issue has expired.')
+      return
+    }
+
+    if (alreadyAdjusted) {
+      setError('Only one undo/adjust operation is permitted, and it has already been performed.')
+      return
+    }
+
     const trimmedReason = reason.trim()
     if (!trimmedReason) {
       setError('Please provide a reason for this operation.')
       return
     }
 
-    if (action === 'reversal') {
+    if (action === 'reject' || action === 'reversal') {
       if (!canReverse) {
-        setError(cannotReverseReason || 'Cannot undo this approval.')
+        setError(cannotReverseReason || 'Cannot reject this request.')
         return
       }
     } else {
-      if (Number.isNaN(numNewQty) || numNewQty <= 0) {
-        setError('Adjusted quantity must be a positive number.')
+      if (!canAdjust) {
+        setError(cannotAdjustReason || 'Cannot adjust this issue.')
         return
       }
-      if (numNewQty > originalQty) {
-        setError(`Adjusted quantity cannot exceed the original quantity of ${originalQty} ${unit}.`)
+      if (Number.isNaN(numNewQty) || numNewQty <= 0) {
+        setError('Adjusted quantity must be a positive number.')
         return
       }
       if (numNewQty < consumedQty) {
@@ -109,7 +141,7 @@ export default function UndoAdjustIssueModal({
     setLoading(true)
     try {
       const payload = {
-        action,
+        action: (action === 'reject' || action === 'reversal') ? 'reject' : 'adjustment',
         reason: trimmedReason,
         ...(action === 'adjustment' ? { new_quantity: numNewQty } : {}),
       }
@@ -143,15 +175,15 @@ export default function UndoAdjustIssueModal({
             Cancel
           </Btn>
           <Btn
-            variant={action === 'reversal' ? 'danger' : 'primary'}
+            variant={(action === 'reject' || action === 'reversal') ? 'danger' : 'primary'}
             onClick={handleSubmit}
-            disabled={loading || (action === 'reversal' && !canReverse)}
+            disabled={loading || ((action === 'reject' || action === 'reversal') ? !canReverse : !canAdjust)}
           >
             {loading
               ? 'Processing...'
-              : action === 'reversal'
-              ? 'Confirm Undo to Pending'
-              : 'Save Quantity Adjustment'}
+              : (action === 'reject' || action === 'reversal')
+              ? 'Confirm Rejection'
+              : 'Confirm & Apply'}
           </Btn>
         </div>
       }
@@ -201,14 +233,14 @@ export default function UndoAdjustIssueModal({
 
         {/* Action Selection Tabs / Radio Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          {/* Card 1: Undo Entire Approval */}
+          {/* Card 1: Reject */}
           <div
-            onClick={() => canReverse && setAction('reversal')}
+            onClick={() => canReverse && setAction('reject')}
             style={{
               padding: '12px 14px',
               borderRadius: 10,
-              border: `2px solid ${action === 'reversal' ? 'var(--red-600, #dc2626)' : 'var(--border)'}`,
-              background: action === 'reversal' ? 'rgba(220, 38, 38, 0.05)' : 'var(--surface)',
+              border: `2px solid ${(action === 'reject' || action === 'reversal') ? 'var(--red-600, #dc2626)' : 'var(--border)'}`,
+              background: (action === 'reject' || action === 'reversal') ? 'rgba(220, 38, 38, 0.05)' : 'var(--surface)',
               cursor: canReverse ? 'pointer' : 'not-allowed',
               opacity: canReverse ? 1 : 0.6,
               transition: 'all 0.15s ease',
@@ -218,17 +250,17 @@ export default function UndoAdjustIssueModal({
               <input
                 type="radio"
                 name="undoAction"
-                checked={action === 'reversal'}
+                checked={action === 'reject' || action === 'reversal'}
                 disabled={!canReverse}
-                onChange={() => canReverse && setAction('reversal')}
+                onChange={() => canReverse && setAction('reject')}
                 style={{ cursor: canReverse ? 'pointer' : 'not-allowed' }}
               />
-              <span style={{ fontWeight: 700, fontSize: 14, color: action === 'reversal' ? '#dc2626' : 'var(--text)' }}>
-                Undo Entire Approval
+              <span style={{ fontWeight: 700, fontSize: 14, color: (action === 'reject' || action === 'reversal') ? '#dc2626' : 'var(--text)' }}>
+                Reject
               </span>
             </div>
             <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '4px 0 0 22px', lineHeight: 1.4 }}>
-              Revert request status to <strong>Pending</strong>, restore all <strong>{currentQty} {unit}</strong> to stock, and return to the manager's pending queue for re-approval or rejection.
+              Reject this request, restore all <strong>{currentQty} {unit}</strong> to warehouse stock, and mark the request as Rejected.
             </p>
             {!canReverse && (
               <div style={{ fontSize: 11, color: '#dc2626', marginTop: 6, marginLeft: 22, fontWeight: 500 }}>
@@ -239,13 +271,14 @@ export default function UndoAdjustIssueModal({
 
           {/* Card 2: Adjust Issued Quantity */}
           <div
-            onClick={() => setAction('adjustment')}
+            onClick={() => canAdjust && setAction('adjustment')}
             style={{
               padding: '12px 14px',
               borderRadius: 10,
               border: `2px solid ${action === 'adjustment' ? 'var(--green-700, #15803d)' : 'var(--border)'}`,
               background: action === 'adjustment' ? 'rgba(21, 128, 61, 0.05)' : 'var(--surface)',
-              cursor: 'pointer',
+              cursor: canAdjust ? 'pointer' : 'not-allowed',
+              opacity: canAdjust ? 1 : 0.6,
               transition: 'all 0.15s ease',
             }}
           >
@@ -254,21 +287,27 @@ export default function UndoAdjustIssueModal({
                 type="radio"
                 name="undoAction"
                 checked={action === 'adjustment'}
-                onChange={() => setAction('adjustment')}
-                style={{ cursor: 'pointer' }}
+                disabled={!canAdjust}
+                onChange={() => canAdjust && setAction('adjustment')}
+                style={{ cursor: canAdjust ? 'pointer' : 'not-allowed' }}
               />
               <span style={{ fontWeight: 700, fontSize: 14, color: action === 'adjustment' ? '#15803d' : 'var(--text)' }}>
                 Adjust Issued Quantity
               </span>
             </div>
             <p style={{ fontSize: 12, color: 'var(--text-2)', margin: '4px 0 0 22px', lineHeight: 1.4 }}>
-              Keep the request <strong>Approved & Issued</strong>. Correct the issued quantity and return only the excess difference to stock.
+              Keep the request <strong>Approved & Issued</strong>. Correct the issued quantity (can be increased or decreased according to stock).
             </p>
+            {!canAdjust && (
+              <div style={{ fontSize: 11, color: '#dc2626', marginTop: 6, marginLeft: 22, fontWeight: 500 }}>
+                ⚠️ {cannotAdjustReason}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Action Detail & Quantity Input */}
-        {action === 'reversal' ? (
+        {(action === 'reject' || action === 'reversal') ? (
           <div
             style={{
               background: 'rgba(220, 38, 38, 0.04)',
@@ -279,34 +318,30 @@ export default function UndoAdjustIssueModal({
             }}
           >
             <div style={{ fontWeight: 600, color: '#b91c1c', marginBottom: 4 }}>
-              Impact of Undo Entire Approval:
+              Impact of Rejecting Request:
             </div>
             <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--text-2)', lineHeight: 1.5 }}>
               <li>
                 <strong>+{currentQty} {unit}</strong> will be returned to warehouse stock (New stock: <strong>{projectedStockReversal} {unit}</strong>).
               </li>
               <li>
-                Request will return to <strong>Pending</strong> state with original requested quantity of <strong>{originalQty} {unit}</strong>.
+                Request will be marked as <strong>Rejected</strong>.
               </li>
               <li>
-                Supervisor will be notified that previous approval was undone and request is pending again.
-              </li>
-              <li>
-                Request will reappear in Pending Requests with normal <strong>Issue</strong> and <strong>Reject</strong> buttons.
+                Supervisor will be notified that the request was rejected.
               </li>
             </ul>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <Field label={`Correct Issued Quantity (${unit})`}>
+            <Field label={`Adjusted Issued Quantity (${unit}) - can be greater or less than requested`}>
               <Input
                 type="number"
                 min={consumedQty > 0 ? consumedQty : 0.01}
-                max={originalQty}
                 step="any"
                 value={newQuantity}
                 onChange={(e) => setNewQuantity(e.target.value)}
-                placeholder={`Between ${consumedQty} and ${originalQty}`}
+                placeholder={`Current: ${currentQty} ${unit} (Min: ${consumedQty})`}
               />
             </Field>
 
