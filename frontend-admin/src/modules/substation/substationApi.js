@@ -38,6 +38,27 @@ export class SubstationApi {
     return res.data
   }
 
+  // Torrent Power Electricity Bills API
+  static async getTorrentBills() {
+    const res = await api.get('/substation/torrent/')
+    return res.data
+  }
+
+  static async getTorrentBill(month) {
+    const res = await api.get(`/substation/torrent/${encodeURIComponent(month)}/`)
+    return res.data
+  }
+
+  static async saveTorrentBill(data) {
+    const res = await api.put('/substation/torrent/', data)
+    return res.data
+  }
+
+  static async deleteTorrentBill(month) {
+    const res = await api.delete(`/substation/torrent/${encodeURIComponent(month)}/`)
+    return res.data
+  }
+
   static exportCsv(filename, rows) {
     const csvContent = rows
       .map((row) =>

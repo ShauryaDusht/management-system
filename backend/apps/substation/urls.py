@@ -5,6 +5,7 @@ from .views import (
     SubstationQueryView,
     SubstationDocView,
     SubstationSummaryView,
+    TorrentBillsView,
 )
 
 urlpatterns = [
@@ -15,4 +16,11 @@ urlpatterns = [
     path('doc/<str:coll>/<str:doc_id>', SubstationDocView.as_view(), name='substation-doc'),
     path('doc/<str:coll>/<str:doc_id>/', SubstationDocView.as_view(), name='substation-doc-slash'),
     path('summary/', SubstationSummaryView.as_view(), name='substation-summary'),
+
+    # Torrent Power Electricity Bill
+    path('torrent', TorrentBillsView.as_view(), name='substation-torrent'),
+    path('torrent/', TorrentBillsView.as_view(), name='substation-torrent-slash'),
+    path('torrent/<str:month>', TorrentBillsView.as_view(), name='substation-torrent-month'),
+    path('torrent/<str:month>/', TorrentBillsView.as_view(), name='substation-torrent-month-slash'),
 ]
+
