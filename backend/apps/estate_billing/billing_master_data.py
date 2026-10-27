@@ -474,6 +474,55 @@ MASTER_CONTRACTORS_DATA = [
     },
 ]
 
+BASELINE_SHOP_NOTE_NOS = {
+    1: 230,
+    2: 231,
+    3: 232,
+    4: 234,
+    5: 235,
+    6: 236,
+    7: 237,
+    8: 238,
+    9: 239,
+    10: 240,
+    11: 241,
+    12: 242,
+    13: 243,
+    14: 244,
+    15: 245,
+    16: 246,
+    17: 247,
+    18: 248,
+    19: 249,
+    20: 250,
+    21: 251,
+    22: 252,
+    23: 253,
+    24: 254,
+    25: 255,
+    26: 256,
+    27: 257,
+    28: 258,
+    29: 259,
+}
+
+BASELINE_CONTRACTOR_NOTE_NOS = {
+    1: 228,
+    2: 229,
+    3: 233,
+    4: 260,
+    5: 261,
+    6: 262,
+}
+
+for s_data in MASTER_SHOPS_DATA:
+    if s_data['sl'] in BASELINE_SHOP_NOTE_NOS:
+        s_data['note_no'] = f"IWD/26-27/{BASELINE_SHOP_NOTE_NOS[s_data['sl']]}"
+
+for c_data in MASTER_CONTRACTORS_DATA:
+    if c_data['sl'] in BASELINE_CONTRACTOR_NOTE_NOS:
+        c_data['note_no'] = f"IWD/26-27/{BASELINE_CONTRACTOR_NOTE_NOS[c_data['sl']]}"
+
 SEED_SHOPS = MASTER_SHOPS_DATA
 SEED_CONTRACTORS = MASTER_CONTRACTORS_DATA
 
@@ -637,7 +686,13 @@ def populate_baseline_bills(cycle_month='2026-10'):
     for data in MASTER_SHOPS_DATA:
         shop = Shop.objects.filter(name=data['name'], is_active=True).first()
         note = ShopDemandNote.objects.filter(shop=shop, cycle_month=cycle_month).first() if shop else None
-        if not note or note.units or note.fixed or note.total_amount:
+        if not note:
+            summary['shop_notes_skipped'] += 1
+            continue
+        if not note.note_no and data.get('note_no'):
+            note.note_no = data['note_no']
+            note.save(update_fields=['note_no'])
+        if note.units or note.fixed or note.total_amount:
             summary['shop_notes_skipped'] += 1
             continue
         note.units = data.get('units', '')
@@ -654,8 +709,14 @@ def populate_baseline_bills(cycle_month='2026-10'):
     for data in MASTER_CONTRACTORS_DATA:
         contractor = Contractor.objects.filter(name=data['name'], is_active=True).first()
         note = ContractorDemandNote.objects.filter(contractor=contractor, cycle_month=cycle_month).first() if contractor else None
-        has_readings = bool(note) and any((m.get('current') or m.get('previous')) for m in (note.meters or []))
-        if not note or has_readings or note.total_amount:
+        if not note:
+            summary['contractor_notes_skipped'] += 1
+            continue
+        if not note.note_no and data.get('note_no'):
+            note.note_no = data['note_no']
+            note.save(update_fields=['note_no'])
+        has_readings = any((m.get('current') or m.get('previous')) for m in (note.meters or []))
+        if has_readings or note.total_amount:
             summary['contractor_notes_skipped'] += 1
             continue
         note.date = data.get('date', '')

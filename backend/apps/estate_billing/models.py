@@ -44,7 +44,11 @@ class EstateSettings(models.Model):
         default=True,
         help_text="Automatically update financial year in note prefix (e.g. IWD/26-27/)"
     )
-    first_note_no = models.PositiveIntegerField(default=259)
+    first_note_no = models.PositiveIntegerField(default=230)
+    first_contractor_note_no = models.PositiveIntegerField(
+        default=228,
+        help_text="Starting note number for contractors in baseline cycle"
+    )
     payment_note = models.TextField(
         default=(
             'The amount may be deposited to IIT Gandhinagar account and '

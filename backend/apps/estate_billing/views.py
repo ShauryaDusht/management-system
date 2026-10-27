@@ -154,7 +154,7 @@ def calculate_contractor_total(meters):
     return total
 
 
-def get_cycle_first_note_no(cycle_month):
+def get_cycle_first_shop_note_no(cycle_month):
     """
     Returns the starting note number for shops in the given cycle_month.
     If an earlier cycle exists in the same financial year (same prefix), continues
@@ -196,23 +196,61 @@ def get_cycle_first_note_no(cycle_month):
     return settings.first_note_no
 
 
-def resequence_shop_note_numbers(cycle_month):
+get_cycle_first_note_no = get_cycle_first_shop_note_no
+
+
+def get_cycle_first_contractor_note_no(cycle_month):
     """
-    Re-assigns note_no (e.g. IWD/26-27/196, 197...) sequentially to all active,
-    non-cancelled shop demand notes in this billing cycle so there are no number gaps.
-    Skips any note numbers already claimed by contractor demand notes in this cycle.
-    Cancelled notes have note_no = 'CANCELLED'.
+    Returns the starting note number for contractors in the given cycle_month.
+    If an earlier cycle exists in the same financial year (same prefix), continues
+    from the maximum numeric note_no of active contractors in that previous cycle + 1.
+    Otherwise, starts at settings.first_contractor_note_no.
     """
     settings = EstateSettings.get_settings()
     prefix = settings.get_effective_prefix(cycle_month)
-    first_no = get_cycle_first_note_no(cycle_month)
 
-    # Avoid collisions with note numbers used by contractors in the same cycle
-    contractor_note_nos = set(
-        ContractorDemandNote.objects.filter(cycle_month=cycle_month)
-        .exclude(note_no__in=['', None])
-        .values_list('note_no', flat=True)
+    prev_cycle = (
+        BillingCycle.objects.filter(month__lt=cycle_month, is_active=True)
+        .order_by('-month')
+        .first()
     )
+    if not prev_cycle:
+        return settings.first_contractor_note_no
+
+    prev_prefix = settings.get_effective_prefix(prev_cycle.month)
+    if prev_prefix != prefix:
+        return settings.first_contractor_note_no
+
+    prev_notes = ContractorDemandNote.objects.filter(
+        cycle_month=prev_cycle.month,
+        contractor__is_active=True,
+    ).exclude(note_no__in=['', None, 'CANCELLED'])
+
+    max_num = None
+    for n in prev_notes:
+        m = re.search(r'(\d+)$', n.note_no or '')
+        if m:
+            val = int(m.group(1))
+            if max_num is None or val > max_num:
+                max_num = val
+
+    if max_num is not None:
+        return max_num + 1
+
+    return settings.first_contractor_note_no
+
+
+def resequence_shop_note_numbers(cycle_month):
+    """
+    Re-assigns note_no (e.g. IWD/26-27/230, 231...) sequentially to all active,
+    non-cancelled shop demand notes in this billing cycle so there are no number gaps.
+    For the baseline cycle (2026-10), preserves baseline note numbers.
+    Cancelled notes have note_no = 'CANCELLED'.
+    Note numbers for shops are independent from contractor note numbers.
+    """
+    settings = EstateSettings.get_settings()
+    prefix = settings.get_effective_prefix(cycle_month)
+    first_no = get_cycle_first_shop_note_no(cycle_month)
 
     active_notes = (
         ShopDemandNote.objects.filter(cycle_month=cycle_month, shop__is_active=True, is_cancelled=False)
@@ -220,17 +258,22 @@ def resequence_shop_note_numbers(cycle_month):
         .order_by('shop__sl', 'id')
     )
 
+    from .billing_master_data import BASELINE_SHOP_NOTE_NOS
+    is_full_baseline = (
+        cycle_month == '2026-10' and active_notes.count() == len(BASELINE_SHOP_NOTE_NOS)
+    )
+
     curr_no = first_no
     for n in active_notes:
-        expected_no = f"{prefix}{curr_no}"
-        while expected_no in contractor_note_nos:
-            curr_no += 1
+        if is_full_baseline and n.shop.sl in BASELINE_SHOP_NOTE_NOS:
+            expected_no = f"{prefix}{BASELINE_SHOP_NOTE_NOS[n.shop.sl]}"
+        else:
             expected_no = f"{prefix}{curr_no}"
+            curr_no += 1
 
         if n.note_no != expected_no:
             n.note_no = expected_no
             n.save(update_fields=['note_no'])
-        curr_no += 1
 
     cancelled_notes = ShopDemandNote.objects.filter(
         cycle_month=cycle_month, shop__is_active=True, is_cancelled=True
@@ -241,6 +284,42 @@ def resequence_shop_note_numbers(cycle_month):
             cn.save(update_fields=['note_no'])
 
 
+def resequence_contractor_note_numbers(cycle_month):
+    """
+    Assigns note numbers sequentially to active contractor demand notes.
+    For the baseline cycle (2026-10), preserves the official baseline note numbers.
+    For subsequent cycles, assigns sequential numbers continuing from previous cycle.
+    Contractor note numbers are independent from shop note numbers.
+    """
+    settings = EstateSettings.get_settings()
+    prefix = settings.get_effective_prefix(cycle_month)
+    c_first_no = get_cycle_first_contractor_note_no(cycle_month)
+
+    active_notes = (
+        ContractorDemandNote.objects.filter(cycle_month=cycle_month, contractor__is_active=True)
+        .select_related('contractor')
+        .order_by('contractor__sl', 'id')
+    )
+
+    from .billing_master_data import BASELINE_CONTRACTOR_NOTE_NOS
+    is_full_baseline = (
+        cycle_month == '2026-10' and active_notes.count() == len(BASELINE_CONTRACTOR_NOTE_NOS)
+    )
+
+    curr_no = c_first_no
+    for n in active_notes:
+        if is_full_baseline and n.contractor.sl in BASELINE_CONTRACTOR_NOTE_NOS:
+            expected_no = f"{prefix}{BASELINE_CONTRACTOR_NOTE_NOS[n.contractor.sl]}"
+        else:
+            expected_no = f"{prefix}{curr_no}"
+            curr_no += 1
+
+        if not n.note_no or re.match(r'^IWD/\d{2}-\d{2}/\d+$', n.note_no):
+            if n.note_no != expected_no:
+                n.note_no = expected_no
+                n.save(update_fields=['note_no'])
+
+
 def resequence_all_cycles_from(cycle_month):
     """Resequences cycle_month and any subsequent cycles in chronological order."""
     cycle_months = set(
@@ -249,15 +328,20 @@ def resequence_all_cycles_from(cycle_month):
     cycle_months.update(
         ShopDemandNote.objects.filter(cycle_month__gte=cycle_month).values_list('cycle_month', flat=True)
     )
+    cycle_months.update(
+        ContractorDemandNote.objects.filter(cycle_month__gte=cycle_month).values_list('cycle_month', flat=True)
+    )
     for m in sorted(cycle_months):
         resequence_shop_note_numbers(m)
+        resequence_contractor_note_numbers(m)
 
 
 def ensure_cycle_notes(cycle_month):
     ensure_master_shops_and_contractors()
     settings = EstateSettings.get_settings()
     prefix = settings.get_effective_prefix(cycle_month)
-    first_no = get_cycle_first_note_no(cycle_month)
+    first_no = get_cycle_first_shop_note_no(cycle_month)
+    c_first_no = get_cycle_first_contractor_note_no(cycle_month)
     today_str = get_today_iso()
     prev_m = get_prev_month(today_str)
 
@@ -272,9 +356,14 @@ def ensure_cycle_notes(cycle_month):
     existing_shop_notes = {
         n.shop_id: n for n in ShopDemandNote.objects.filter(cycle_month=cycle_month)
     }
+    from .billing_master_data import BASELINE_SHOP_NOTE_NOS, BASELINE_CONTRACTOR_NOTE_NOS
+    is_full_shop_baseline = (cycle_month == '2026-10' and len(shops) == len(BASELINE_SHOP_NOTE_NOS))
     for shop in shops:
         if shop.id not in existing_shop_notes:
-            note_no = f"{prefix}{first_no + shop.sl - 1}"
+            if is_full_shop_baseline and shop.sl in BASELINE_SHOP_NOTE_NOS:
+                note_no = f"{prefix}{BASELINE_SHOP_NOTE_NOS[shop.sl]}"
+            else:
+                note_no = f"{prefix}{first_no + shop.sl - 1}"
             ShopDemandNote.objects.create(
                 shop=shop,
                 cycle_month=cycle_month,
@@ -290,14 +379,18 @@ def ensure_cycle_notes(cycle_month):
                 total_amount=shop.default_water if shop.fixed else Decimal('0'),
                 expiry_date='',
             )
-        elif settings.auto_financial_year:
+        else:
             n = existing_shop_notes[shop.id]
-            m = re.match(r'^IWD/\d{2}-\d{2}/(\d+)$', n.note_no or '')
-            if m:
-                expected_note_no = f"{prefix}{m.group(1)}"
-                if n.note_no != expected_note_no:
-                    n.note_no = expected_note_no
-                    n.save(update_fields=['note_no'])
+            if not n.note_no and is_full_shop_baseline and shop.sl in BASELINE_SHOP_NOTE_NOS:
+                n.note_no = f"{prefix}{BASELINE_SHOP_NOTE_NOS[shop.sl]}"
+                n.save(update_fields=['note_no'])
+            elif settings.auto_financial_year:
+                m = re.match(r'^IWD/\d{2}-\d{2}/(\d+)$', n.note_no or '')
+                if m:
+                    expected_note_no = f"{prefix}{m.group(1)}"
+                    if n.note_no != expected_note_no:
+                        n.note_no = expected_note_no
+                        n.save(update_fields=['note_no'])
 
     resequence_shop_note_numbers(cycle_month)
 
@@ -306,11 +399,14 @@ def ensure_cycle_notes(cycle_month):
     existing_contractor_notes = {
         n.contractor_id: n for n in ContractorDemandNote.objects.filter(cycle_month=cycle_month)
     }
-    shops_count = len(shops)
+    is_full_contractor_baseline = (cycle_month == '2026-10' and len(contractors) == len(BASELINE_CONTRACTOR_NOTE_NOS))
     for contractor in contractors:
         if contractor.id not in existing_contractor_notes:
-            # Contractor note numbers are assigned manually by Estate Office
-            note_no = ''
+            if is_full_contractor_baseline and contractor.sl in BASELINE_CONTRACTOR_NOTE_NOS:
+                note_no = f"{prefix}{BASELINE_CONTRACTOR_NOTE_NOS[contractor.sl]}"
+            else:
+                note_no = f"{prefix}{c_first_no + contractor.sl - 1}"
+
             # Copy meters template from previous cycle or defaults
             prev_note = ContractorDemandNote.objects.filter(contractor=contractor).order_by('-cycle_month').first()
             if prev_note and prev_note.meters:
@@ -339,14 +435,20 @@ def ensure_cycle_notes(cycle_month):
                 meters=meters_template,
                 total_amount=Decimal('0'),
             )
-        elif settings.auto_financial_year:
+        else:
             n = existing_contractor_notes[contractor.id]
-            m = re.match(r'^IWD/\d{2}-\d{2}/(\d+)$', n.note_no or '')
-            if m:
-                expected_note_no = f"{prefix}{m.group(1)}"
-                if n.note_no != expected_note_no:
-                    n.note_no = expected_note_no
-                    n.save(update_fields=['note_no'])
+            if not n.note_no and is_full_contractor_baseline and contractor.sl in BASELINE_CONTRACTOR_NOTE_NOS:
+                n.note_no = f"{prefix}{BASELINE_CONTRACTOR_NOTE_NOS[contractor.sl]}"
+                n.save(update_fields=['note_no'])
+            elif settings.auto_financial_year:
+                m = re.match(r'^IWD/\d{2}-\d{2}/(\d+)$', n.note_no or '')
+                if m:
+                    expected_note_no = f"{prefix}{m.group(1)}"
+                    if n.note_no != expected_note_no:
+                        n.note_no = expected_note_no
+                        n.save(update_fields=['note_no'])
+
+    resequence_contractor_note_numbers(cycle_month)
 
 
 def get_current_cycle(request):
@@ -413,7 +515,8 @@ class ShopListCreateView(APIView):
 
             settings = EstateSettings.get_settings()
             prefix = settings.get_effective_prefix(cycle)
-            note_no = f"{prefix}{settings.first_note_no + shop.sl - 1}"
+            first_no = get_cycle_first_shop_note_no(cycle)
+            note_no = f"{prefix}{first_no + shop.sl - 1}"
             today_str = get_today_iso()
             prev_m = get_prev_month(today_str)
 
@@ -605,8 +708,19 @@ class ContractorListCreateView(APIView):
 
             settings = EstateSettings.get_settings()
             prefix = settings.get_effective_prefix(cycle)
-            shops_count = Shop.objects.filter(is_active=True).count()
-            note_no = f"{prefix}{settings.first_note_no + shops_count + contractor.sl - 1}"
+            c_first_no = get_cycle_first_contractor_note_no(cycle)
+            existing_c_notes = ContractorDemandNote.objects.filter(
+                cycle_month=cycle, contractor__is_active=True
+            ).exclude(note_no__in=['', None, 'CANCELLED'])
+            max_num = None
+            for cn in existing_c_notes:
+                m = re.search(r'(\d+)$', cn.note_no or '')
+                if m:
+                    val = int(m.group(1))
+                    if max_num is None or val > max_num:
+                        max_num = val
+            next_num = (max_num + 1) if max_num is not None else c_first_no
+            note_no = f"{prefix}{next_num}"
             today_str = get_today_iso()
             prev_m = get_prev_month(today_str)
 
@@ -622,6 +736,8 @@ class ContractorListCreateView(APIView):
                     'total_amount': calculate_contractor_total(meters),
                 }
             )
+            resequence_all_cycles_from(cycle)
+            note.refresh_from_db()
 
         return Response(ContractorDemandNoteSerializer(note).data, status=status.HTTP_201_CREATED)
 
@@ -704,8 +820,13 @@ class ContractorDetailView(APIView):
             return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
 
         contractor = note.contractor
+        deleted_sl = contractor.sl
+        cycle_month = note.cycle_month
         contractor.is_active = False
         contractor.save(update_fields=['is_active'])
+        if deleted_sl:
+            Contractor.objects.filter(is_active=True, sl__gt=deleted_sl).update(sl=F('sl') - 1)
+            resequence_all_cycles_from(cycle_month)
         return Response({'ok': True})
 
 

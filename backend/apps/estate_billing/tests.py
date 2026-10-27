@@ -290,16 +290,16 @@ class EstateBillingTestCase(TestCase):
         ensure_cycle_notes('2026-10')
         notes_10 = list(ShopDemandNote.objects.filter(cycle_month='2026-10', shop__is_active=True).order_by('shop__sl'))
         self.assertEqual(len(notes_10), 2)
-        # In test DB, default first_note_no is 259
-        self.assertEqual(notes_10[0].note_no, 'IWD/26-27/259')
-        self.assertEqual(notes_10[1].note_no, 'IWD/26-27/260')
+        # In test DB, default first_note_no is 230
+        self.assertEqual(notes_10[0].note_no, 'IWD/26-27/230')
+        self.assertEqual(notes_10[1].note_no, 'IWD/26-27/231')
 
-        # Next cycle 2026-11 must start at 261
+        # Next cycle 2026-11 must start at 232
         ensure_cycle_notes('2026-11')
         notes_11 = list(ShopDemandNote.objects.filter(cycle_month='2026-11', shop__is_active=True).order_by('shop__sl'))
         self.assertEqual(len(notes_11), 2)
-        self.assertEqual(notes_11[0].note_no, 'IWD/26-27/261')
-        self.assertEqual(notes_11[1].note_no, 'IWD/26-27/262')
+        self.assertEqual(notes_11[0].note_no, 'IWD/26-27/232')
+        self.assertEqual(notes_11[1].note_no, 'IWD/26-27/233')
 
     def test_cancel_shop_demand_note_resequencing(self):
         self.client.force_authenticate(user=self.estate_user)
@@ -315,7 +315,7 @@ class EstateBillingTestCase(TestCase):
         notes_10 = list(ShopDemandNote.objects.filter(cycle_month='2026-10', shop__is_active=True).order_by('shop__sl'))
         first_note_id = notes_10[0].id
 
-        # Cancel shop 1: note_no becomes 'CANCELLED', amount becomes 0, shop 2 gets 259
+        # Cancel shop 1: note_no becomes 'CANCELLED', amount becomes 0, shop 2 gets 230
         patch_res = self.client.patch(
             f'/api/estate/shops/{first_note_id}/',
             {'isCancelled': True},
@@ -326,6 +326,29 @@ class EstateBillingTestCase(TestCase):
         self.assertEqual(patch_res.data['noteNo'], 'CANCELLED')
         self.assertEqual(Decimal(str(patch_res.data['total_amount'])), Decimal('0'))
 
-        # Shop 2 note should now take note number 259
+        # Shop 2 note should now take note number 230
         shop_2_note = ShopDemandNote.objects.get(id=notes_10[1].id)
-        self.assertEqual(shop_2_note.note_no, 'IWD/26-27/259')
+        self.assertEqual(shop_2_note.note_no, 'IWD/26-27/230')
+
+    def test_independent_contractor_note_numbers_across_cycles(self):
+        self.client.force_authenticate(user=self.estate_user)
+        # Add a second contractor
+        Contractor.objects.create(
+            sl=2,
+            name='Second Contractor Ltd',
+            to_line='CPWD 2',
+            is_active=True,
+        )
+        ensure_cycle_notes('2026-10')
+        c_notes_10 = list(ContractorDemandNote.objects.filter(cycle_month='2026-10', contractor__is_active=True).order_by('contractor__sl'))
+        self.assertEqual(len(c_notes_10), 2)
+        # Contractor starts at default first_contractor_note_no (228)
+        self.assertEqual(c_notes_10[0].note_no, 'IWD/26-27/228')
+        self.assertEqual(c_notes_10[1].note_no, 'IWD/26-27/229')
+
+        # Next cycle 2026-11 must continue from max (229) + 1 = 230
+        ensure_cycle_notes('2026-11')
+        c_notes_11 = list(ContractorDemandNote.objects.filter(cycle_month='2026-11', contractor__is_active=True).order_by('contractor__sl'))
+        self.assertEqual(len(c_notes_11), 2)
+        self.assertEqual(c_notes_11[0].note_no, 'IWD/26-27/230')
+        self.assertEqual(c_notes_11[1].note_no, 'IWD/26-27/231')

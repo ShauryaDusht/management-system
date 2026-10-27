@@ -18,6 +18,7 @@ class EstateSettingsSerializer(serializers.ModelSerializer):
     noteNoPrefix = serializers.CharField(source='note_no_prefix')
     autoFinancialYear = serializers.BooleanField(source='auto_financial_year')
     firstNoteNo = serializers.IntegerField(source='first_note_no')
+    firstContractorNoteNo = serializers.IntegerField(source='first_contractor_note_no', required=False)
     paymentNote = serializers.CharField(source='payment_note')
     expiryAlertDays = serializers.IntegerField(source='expiry_alert_days', required=False)
     enableEmailAlerts = serializers.BooleanField(source='enable_email_alerts', required=False)
@@ -35,6 +36,7 @@ class EstateSettingsSerializer(serializers.ModelSerializer):
             'noteNoPrefix',
             'autoFinancialYear',
             'firstNoteNo',
+            'firstContractorNoteNo',
             'paymentNote',
             'bank',
             'expiryAlertDays',
@@ -69,6 +71,8 @@ class EstateSettingsSerializer(serializers.ModelSerializer):
             instance.auto_financial_year = validated_data['auto_financial_year']
         if 'first_note_no' in validated_data:
             instance.first_note_no = validated_data['first_note_no']
+        if 'first_contractor_note_no' in validated_data:
+            instance.first_contractor_note_no = validated_data['first_contractor_note_no']
         if 'payment_note' in validated_data:
             instance.payment_note = validated_data['payment_note']
         if 'bank' in validated_data:

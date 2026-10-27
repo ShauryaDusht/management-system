@@ -1968,6 +1968,45 @@ export default function HousingStatusTab({ onReloadHousing, isReadOnly: propRead
             </span>
           )}
 
+          {/* Universal Email Alerts Toggle for All Departments */}
+          <button
+            type="button"
+            onClick={handleToggleAlerts}
+            disabled={togglingAlerts}
+            title={
+              alertsEnabled
+                ? 'Automated department handover email alerts are currently ACTIVE. Click to turn OFF.'
+                : 'Automated department handover email alerts are currently PAUSED. Click to turn ON.'
+            }
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '7px 12px',
+              borderRadius: 8,
+              border: `1.5px solid ${alertsEnabled ? '#86efac' : '#cbd5e1'}`,
+              background: alertsEnabled ? '#f0fdf4' : '#f8fafc',
+              color: alertsEnabled ? '#15803d' : '#64748b',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: togglingAlerts ? 'wait' : 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease',
+              boxShadow: alertsEnabled ? '0 1px 3px rgba(34,197,94,0.15)' : 'none',
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: alertsEnabled ? '#22c55e' : '#94a3b8',
+                boxShadow: alertsEnabled ? '0 0 6px #22c55e' : 'none',
+              }}
+            />
+            <span>{alertsEnabled ? 'Email Alerts: ON' : 'Email Alerts: OFF'}</span>
+          </button>
+
           {isMaster && !isReadOnly && (
             <button
               type="button"
