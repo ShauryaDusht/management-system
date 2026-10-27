@@ -1,33 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Package,
-  ClipboardList,
-  Leaf,
-  Building2,
-  ShieldCheck,
-  Zap,
-  Droplets,
-  Fan,
-  BarChart3,
-  Users,
-} from 'lucide-react'
 
 import { useAuth } from '../context/AuthContext'
 import { APP_LOGO_PATH, APP_NAME, APP_TAGLINE } from '../shared/constants'
-
-const CAMPUS_MODULES = [
-  { icon: Package, title: 'Inventory', desc: 'Stock, requests & issues' },
-  { icon: ClipboardList, title: 'Housekeeping', desc: 'Tasks & attendance' },
-  { icon: Leaf, title: 'Horticulture', desc: 'Zones, trees & geo-map' },
-  { icon: Building2, title: 'Estate Office', desc: 'Billing & clearances' },
-  { icon: ShieldCheck, title: 'Lift Licenses', desc: 'Inspections & safety' },
-  { icon: Zap, title: 'Substation Log', desc: 'Transformers & feeders' },
-  { icon: Droplets, title: 'WTP / STP', desc: 'Water treatment meters' },
-  { icon: Fan, title: 'HVAC Plant', desc: 'Chillers & cooling logs' },
-  { icon: BarChart3, title: 'Reports & Insights', desc: 'KPIs & monthly exports' },
-  { icon: Users, title: 'Administration', desc: 'Roles & portal access' },
-]
 
 function getLandingRoute(user) {
   const role = user?.role
@@ -115,22 +90,26 @@ export default function LoginPage() {
             </div>
           </div>
           <p>
-            Unified campus operations workspace for facilities, utilities, estate, and operations management.
+            Unified operations workspace for inventory, housekeeping, horticulture, reporting, and user administration.
           </p>
 
           <div className="feature-grid">
-            {CAMPUS_MODULES.map((mod) => {
-              const Icon = mod.icon
-              return (
-                <div key={mod.title} className="feature-card">
-                  <div className="feature-card-header">
-                    <Icon size={12} className="feature-icon" strokeWidth={2.2} />
-                    <strong>{mod.title}</strong>
-                  </div>
-                  <span>{mod.desc}</span>
-                </div>
-              )
-            })}
+            <div>
+              <strong>Inventory</strong>
+              <span>Stock, requests, and issue flow</span>
+            </div>
+            <div>
+              <strong>Housekeeping</strong>
+              <span>Tasks, attendance, and relievers</span>
+            </div>
+            <div>
+              <strong>Horticulture</strong>
+              <span>Zone and supervisor controls</span>
+            </div>
+            <div>
+              <strong>Reports</strong>
+              <span>Weekly and monthly exports</span>
+            </div>
           </div>
 
           <small>Authorized staff access only.</small>
@@ -243,10 +222,10 @@ export default function LoginPage() {
         .auth-layout {
           position: relative;
           width: 100%;
-          max-width: 1050px;
+          max-width: 1020px;
           min-height: 620px;
           display: grid;
-          grid-template-columns: 1.15fr 0.85fr;
+          grid-template-columns: 1.1fr 0.9fr;
           border: 1px solid var(--border);
           border-radius: 22px;
           overflow: hidden;
@@ -257,27 +236,27 @@ export default function LoginPage() {
         .auth-left {
           background: linear-gradient(145deg, #1a3c34 0%, #2d4a3e 42%, #3d6b55 100%);
           color: #fff;
-          padding: 32px 30px;
+          padding: 42px;
           display: flex;
           flex-direction: column;
         }
 
         .badge {
           width: fit-content;
-          padding: 4px 10px;
+          padding: 5px 11px;
           border-radius: 999px;
           border: 1px solid rgba(255, 255, 255, 0.24);
           font-size: 11px;
           font-weight: 800;
           letter-spacing: 0.08em;
           background: rgba(255, 255, 255, 0.08);
-          margin-bottom: 12px;
+          margin-bottom: 14px;
           color: #fef3c7;
         }
 
         .auth-left h1 {
           margin: 0;
-          font-size: clamp(26px, 2.6vw, 36px);
+          font-size: clamp(28px, 3vw, 40px);
           line-height: 1.08;
           letter-spacing: -0.02em;
         }
@@ -285,13 +264,13 @@ export default function LoginPage() {
         .brand-lockup {
           display: flex;
           align-items: center;
-          gap: 14px;
+          gap: 16px;
         }
 
         .brand-logo {
-          width: 68px;
-          height: 68px;
-          border-radius: 18px;
+          width: 82px;
+          height: 82px;
+          border-radius: 24px;
           background: rgba(255, 255, 255, 0.98);
           padding: 4px;
           box-shadow: 0 14px 28px rgba(8, 22, 18, 0.24);
@@ -299,8 +278,8 @@ export default function LoginPage() {
         }
 
         .brand-kicker {
-          margin-bottom: 5px;
-          font-size: 10.5px;
+          margin-bottom: 8px;
+          font-size: 11px;
           font-weight: 800;
           letter-spacing: 0.08em;
           color: rgba(255, 255, 255, 0.72);
@@ -308,71 +287,41 @@ export default function LoginPage() {
         }
 
         .auth-left p {
-          margin: 8px 0 16px;
-          font-size: 12.5px;
+          margin: 12px 0 24px;
+          font-size: 14px;
           color: rgba(255, 255, 255, 0.82);
-          max-width: 440px;
-          line-height: 1.4;
+          max-width: 420px;
         }
 
         .feature-grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 6px;
-          margin-bottom: 16px;
+          gap: 10px;
         }
 
-        .feature-card {
-          border: 1px solid rgba(255, 255, 255, 0.16);
-          border-radius: 8px;
-          background: rgba(255, 255, 255, 0.07);
-          padding: 6px 9px;
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          backdrop-filter: blur(4px);
-          transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+        .feature-grid > div {
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 11px;
+          background: rgba(255, 255, 255, 0.08);
+          padding: 10px 11px;
+          display: grid;
+          gap: 4px;
         }
 
-        .feature-card:hover {
-          background: rgba(255, 255, 255, 0.12);
-          border-color: rgba(255, 255, 255, 0.28);
-          transform: translateY(-1px);
-        }
-
-        .feature-card-header {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-
-        .feature-icon {
-          color: #86efac;
-          flex-shrink: 0;
-        }
-
-        .feature-card strong {
-          font-size: 11.5px;
+        .feature-grid strong {
+          font-size: 13px;
           font-weight: 700;
-          color: #ffffff;
-          letter-spacing: -0.01em;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
         }
 
-        .feature-card span {
-          font-size: 10px;
-          color: rgba(255, 255, 255, 0.72);
-          line-height: 1.25;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+        .feature-grid span {
+          font-size: 11px;
+          color: rgba(255, 255, 255, 0.78);
+          line-height: 1.35;
         }
 
         .auth-left small {
           margin-top: auto;
-          font-size: 11.5px;
+          font-size: 12px;
           color: rgba(255, 255, 255, 0.74);
         }
 
@@ -508,8 +457,7 @@ export default function LoginPage() {
           }
 
           .feature-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 6px;
+            grid-template-columns: 1fr;
           }
 
           .auth-right {
