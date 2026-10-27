@@ -111,6 +111,7 @@ body{background:#f4f2ed;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSy
   </div>
 
   <div class="module-grid">
+    {% if show_substation %}
     <!-- 1. Substation Log -->
     <div class="module-card" style="border-left: 4px solid #c2622a;">
       <div class="card-top">
@@ -138,6 +139,9 @@ body{background:#f4f2ed;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSy
       </div>
     </div>
 
+    {% endif %}
+
+    {% if show_wtp %}
     <!-- 2. WTP & STP Water Systems -->
     <div class="module-card" style="border-left: 4px solid #0284c7;">
       <div class="card-top">
@@ -165,6 +169,9 @@ body{background:#f4f2ed;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSy
       </div>
     </div>
 
+    {% endif %}
+
+    {% if show_hvac %}
     <!-- 3. HVAC Plant System -->
     <div class="module-card" style="border-left: 4px solid #16a34a;">
       <div class="card-top">
@@ -192,6 +199,9 @@ body{background:#f4f2ed;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSy
       </div>
     </div>
 
+    {% endif %}
+
+    {% if show_housekeeping %}
     <!-- 4. Housekeeping & Sanitation -->
     <div class="module-card" style="border-left: 4px solid #7e22ce;">
       <div class="card-top">
@@ -217,6 +227,9 @@ body{background:#f4f2ed;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSy
       </div>
     </div>
 
+    {% endif %}
+
+    {% if show_horticulture %}
     <!-- 5. Horticulture & Grounds -->
     <div class="module-card" style="border-left: 4px solid #047857;">
       <div class="card-top">
@@ -241,6 +254,13 @@ body{background:#f4f2ed;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSy
         </a>
       </div>
     </div>
+    {% endif %}
+
+    {% if not show_substation and not show_wtp and not show_hvac and not show_housekeeping and not show_horticulture %}
+    <div class="module-card" style="border-left: 4px solid #716b66;">
+      <div class="module-desc">No modules are assigned to your role yet. Please contact the administrator.</div>
+    </div>
+    {% endif %}
   </div>
 </div>
 
@@ -252,24 +272,30 @@ body{background:#f4f2ed;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSy
       <span>Portal</span>
     </div>
   </a>
+  {% if show_substation %}
   <a href="/substation/dashboard/">
     <div class="nav-item">
       <svg viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>
       <span>Substation</span>
     </div>
   </a>
+  {% endif %}
+  {% if show_wtp %}
   <a href="/wtp/dashboard/">
     <div class="nav-item">
       <svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
       <span>WTP/STP</span>
     </div>
   </a>
+  {% endif %}
+  {% if show_hvac %}
   <a href="/hvac/dashboard/">
     <div class="nav-item">
       <svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/></svg>
       <span>HVAC</span>
     </div>
   </a>
+  {% endif %}
 </nav>
 
 </body>

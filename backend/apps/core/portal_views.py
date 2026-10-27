@@ -17,6 +17,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
 from apps.users.models import normalize_username_value, resolve_username_alias
+from apps.core.module_access import can_use_module, is_admin_user
 
 
 def _is_hostel_office_login(user):
@@ -47,7 +48,10 @@ def get_portal_redirect(user, request=None):
     role = getattr(user, 'role', '')
     if role == 'horticulture_manager':
         return '/horticulture/dashboard/'
-    if role in ['plant_engineer', 'electrical_supervisor', 'electrical_operator']:
+    if role == 'plant_engineer':
+        # spans Substation, WTP/STP and HVAC, so the unified portal is the useful home
+        return '/portal/dashboard/'
+    if role in ['electrical_supervisor', 'electrical_operator']:
         return '/substation/dashboard/'
     if role in ['wtp_supervisor', 'wtp_operator']:
         return '/wtp/dashboard/'
@@ -72,11 +76,17 @@ def get_portal_redirect(user, request=None):
     return '/portal/login/'
 
 
+def landing_url(user, request=None):
+    """Where a signed-in person starts: their own module home, never someone else's modules."""
+    url = get_portal_redirect(user, request)
+    return '/portal/dashboard/' if url == '/portal/login/' else url
+
+
 def portal_root(request):
     if request.user.is_authenticated and request.user.is_active:
         if getattr(request.user, 'role', '') == 'admin':
             return redirect(get_react_admin_url(request))
-        return redirect('/portal/dashboard/')
+        return redirect(landing_url(request.user, request))
     return redirect('/portal/login/')
 
 
@@ -128,9 +138,23 @@ def portal_dashboard(request):
     except Exception:
         pass
 
+    # Only offer the modules this person can actually use.
+    admin_user = is_admin_user(user)
+    has_horticulture_zone = role == 'supervisor' and user.horticulture_supervised_zones.exists()
+    has_housekeeping_area = role == 'supervisor' and user.hk_areas.exists()
+    show_housekeeping = admin_user or role in ('caretaker', 'hk_inventory_manager', 'inventory_manager', 'hostel_office') or (
+        role == 'supervisor' and (has_housekeeping_area or not has_horticulture_zone)
+    )
+    show_horticulture = admin_user or role == 'horticulture_manager' or has_horticulture_zone
+
     context = {
         'user': user,
         'role': role,
+        'show_substation': can_use_module(user, 'substation'),
+        'show_wtp': can_use_module(user, 'wtp'),
+        'show_hvac': can_use_module(user, 'hvac'),
+        'show_housekeeping': show_housekeeping,
+        'show_horticulture': show_horticulture,
         'role_display': user.get_role_display() if hasattr(user, 'get_role_display') else role.replace('_', ' ').title(),
         'today_str': today_date.strftime('%a, %d %b %Y'),
         'shift_slot': shift_slot,
@@ -163,7 +187,7 @@ def portal_login(request):
     if request.user.is_authenticated and request.user.is_active:
         if getattr(request.user, 'role', '') == 'admin':
             return redirect(get_react_admin_url(request))
-        return redirect('/portal/dashboard/')
+        return redirect(landing_url(request.user, request))
 
     error = ''
     if request.method == 'POST':
@@ -178,7 +202,7 @@ def portal_login(request):
             if user.role in ['admin', 'inventory_manager', 'hk_inventory_manager', 'hostel_office', 'engineer', 'civil_team', 'electrical_team', 'estate_office']:
                 return redirect(get_portal_redirect(user, request))
             auth_login(request, user)
-            return redirect('/portal/dashboard/')
+            return redirect(landing_url(user, request))
         else:
             error = 'Invalid username or password.'
 
