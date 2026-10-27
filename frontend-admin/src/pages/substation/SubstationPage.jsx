@@ -14,6 +14,7 @@ import ReportsView from '../../modules/substation/ReportsView'
 import LayoutManager from '../../modules/substation/LayoutManager'
 import SubstationOverviewTab from './SubstationOverviewTab'
 import OperatorsManagerTab from '../../components/OperatorsManagerTab'
+import TorrentBillReport from '../../modules/substation/TorrentBillReport'
 import '../../modules/substation/substation.css'
 
 export default function SubstationPage() {
@@ -50,6 +51,7 @@ export default function SubstationPage() {
         { key: 'overview', label: 'Campus Overview', icon: '⚡' },
         { key: 'flash', label: 'R-01 Flash Report', icon: '⚡' },
         { key: 'reports', label: 'Reports & Analytics', icon: '📊' },
+        { key: 'torrent', label: 'Torrent Bill', icon: '⚡' },
         { key: 'operators', label: 'Operators (Add / Remove)', icon: '👥' },
       ]
     }
@@ -59,6 +61,7 @@ export default function SubstationPage() {
       { key: 'layout', label: 'Substations & Incomers', icon: '🏢' },
       { key: 'flash', label: 'R-01 Flash Report', icon: '⚡' },
       { key: 'reports', label: 'Reports & Analytics', icon: '📊' },
+      { key: 'torrent', label: 'Torrent Bill', icon: '⚡' },
     ]
   }, [isOperator, isSupervisor, isAdmin])
 
@@ -352,7 +355,16 @@ export default function SubstationPage() {
               />
             )}
 
-            {/* 6. Substation Operators Management (Supervisor only - removed from Admin) */}
+            {/* 6. Torrent Power Electricity Bill Audit (Supervisor & Admin) */}
+            {activeTab === 'torrent' && (
+              <TorrentBillReport
+                user={user}
+                isSupervisor={isSupervisor}
+                isAdmin={isAdmin}
+              />
+            )}
+
+            {/* 7. Substation Operators Management (Supervisor only - removed from Admin) */}
             {activeTab === 'operators' && isSupervisor && (
               <OperatorsManagerTab
                 department="electrical"

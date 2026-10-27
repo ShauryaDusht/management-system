@@ -3,6 +3,7 @@ import {
   TIME_SLOTS,
   CHILLERS,
   PUMP_GROUPS,
+  PUMP_RATED_LIMITS,
   COOLING_TOWERS,
   PANELS,
   WATER_METERS,
@@ -26,6 +27,30 @@ export default function EditReadingTab({
   const [values, setValues] = useState({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
+
+  // Section 2 & 3 open/collapse state
+  const [pumpsSectionOpen, setPumpsSectionOpen] = useState(true);
+  const [towersSectionOpen, setTowersSectionOpen] = useState(true);
+  const [openPumpGroups, setOpenPumpGroups] = useState({ pri: true, sec: true, con: true });
+
+  const runningPumpsCount = useMemo(() => {
+    let count = 0;
+    PUMP_GROUPS.forEach(([grpKey, , pumpList]) => {
+      pumpList.forEach((pName) => {
+        const k = grpKey + pName.replace(/\s+/g, '');
+        if (values[k] === 'on') count++;
+      });
+    });
+    return count;
+  }, [values]);
+
+  const totalPumpsCount = useMemo(() => {
+    return PUMP_GROUPS.reduce((acc, [, , list]) => acc + list.length, 0);
+  }, []);
+
+  const runningTowersCount = useMemo(() => {
+    return COOLING_TOWERS.filter(([ctKey]) => values[ctKey] === 'on').length;
+  }, [values]);
 
   useEffect(() => {
     if (initialSlot !== undefined && initialSlot !== null && initialSlot >= 0 && initialSlot < 24) {
@@ -600,92 +625,399 @@ export default function EditReadingTab({
           </div>
         </div>
 
-        {/* 2. Pumps Status */}
-        <div className="hvac-card">
-          <div className="hvac-card-header">
+        {/* 2. Pumps Status & Telemetry */}
+        <details
+          open={pumpsSectionOpen}
+          className="hvac-card"
+          style={{ transition: 'all 0.2s', padding: pumpsSectionOpen ? 18 : '14px 18px' }}
+        >
+          <summary
+            onClick={(e) => {
+              e.preventDefault();
+              setPumpsSectionOpen((prev) => !prev);
+            }}
+            className="hvac-card-header"
+            style={{
+              cursor: 'pointer',
+              userSelect: 'none',
+              listStyle: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: pumpsSectionOpen ? 14 : 0,
+            }}
+          >
             <div className="hvac-card-title">
+              <span style={{ fontSize: 13, transform: pumpsSectionOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block' }}>
+                ▶
+              </span>
               <span>2. Pumps Operational Status</span>
             </div>
-            <small style={{ color: 'var(--hvac-muted)' }}>Click pump button to toggle On / Off</small>
-          </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span className="pill pill-green" style={{ fontSize: 11, fontWeight: 700 }}>
+                {runningPumpsCount} / {totalPumpsCount} Running
+              </span>
+              <small style={{ color: 'var(--hvac-muted)', fontSize: 12 }}>
+                {pumpsSectionOpen ? 'Click to collapse' : 'Click to open section'}
+              </small>
+            </div>
+          </summary>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {PUMP_GROUPS.map(([grpKey, grpLabel, pumpList]) => (
-              <div key={grpKey}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--hvac-teal)', marginBottom: 6 }}>
-                  {grpLabel} Pumps ({pumpList.length} Units):
+          {pumpsSectionOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {PUMP_GROUPS.map(([grpKey, grpLabel, pumpList]) => {
+                const isGroupOpen = openPumpGroups[grpKey] ?? true;
+                const groupRunningCount = pumpList.filter((pName) => {
+                  const k = grpKey + pName.replace(/\s+/g, '');
+                  return values[k] === 'on';
+                }).length;
+
+                return (
+                  <details
+                    key={grpKey}
+                    open={isGroupOpen}
+                    style={{
+                      border: '1.5px solid var(--hvac-line)',
+                      borderRadius: 10,
+                      padding: 12,
+                      background: '#ffffff',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <summary
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setOpenPumpGroups((prev) => ({ ...prev, [grpKey]: !(prev[grpKey] ?? true) }));
+                      }}
+                      style={{
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        listStyle: 'none',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontWeight: 800,
+                        marginBottom: isGroupOpen ? 10 : 0,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 11, transform: isGroupOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block', color: 'var(--hvac-teal)' }}>
+                          ▶
+                        </span>
+                        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--hvac-teal)' }}>
+                          {grpLabel} Pumps ({pumpList.length} Units)
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span className={groupRunningCount > 0 ? 'pill pill-green' : 'pill pill-gray'} style={{ fontSize: 10.5 }}>
+                          {groupRunningCount} / {pumpList.length} Running
+                        </span>
+                        <small style={{ fontSize: 11, color: 'var(--hvac-muted)' }}>
+                          {isGroupOpen ? 'Collapse' : 'Expand'}
+                        </small>
+                      </div>
+                    </summary>
+
+                    {isGroupOpen && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {/* Quick Toggle Status Strip */}
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', marginBottom: 6 }}>
+                            Quick Status Toggle (click to toggle On / Off):
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {pumpList.map((pName) => {
+                              const k = grpKey + pName.replace(/\s+/g, '');
+                              const isOn = values[k] === 'on';
+                              return (
+                                <button
+                                  key={k}
+                                  type="button"
+                                  disabled={isLockedForOperator}
+                                  onClick={() => handleTogglePump(k)}
+                                  style={{
+                                    padding: '5px 11px',
+                                    borderRadius: 6,
+                                    border: isOn ? '1.5px solid #16a34a' : '1px solid var(--hvac-line)',
+                                    background: isOn ? '#dcfce7' : '#f8fafc',
+                                    color: isOn ? '#166534' : 'var(--hvac-muted)',
+                                    fontWeight: 700,
+                                    fontSize: 11.5,
+                                    cursor: isLockedForOperator ? 'not-allowed' : 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 5,
+                                  }}
+                                >
+                                  <span>{isOn ? '🟢' : '⚪'}</span>
+                                  <span>{pName}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Pump Telemetry Cards Grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 10 }}>
+                          {pumpList.map((pName) => {
+                            const k = grpKey + pName.replace(/\s+/g, '');
+                            const isOn = values[k] === 'on';
+                            const limit = PUMP_RATED_LIMITS[k];
+                            const vVal = values[`${k}_v`] ?? '';
+                            const aVal = values[`${k}_a`] ?? '';
+                            const isOverAmp = limit?.maxA && aVal !== '' && Number(aVal) >= limit.maxA;
+                            const isOverVolt = limit?.maxV && vVal !== '' && Number(vVal) >= limit.maxV;
+
+                            return (
+                              <div
+                                key={k}
+                                style={{
+                                  background: (isOverAmp || isOverVolt) ? '#fff1f2' : isOn ? '#f0fdf4' : '#f8fafc',
+                                  padding: 10,
+                                  borderRadius: 8,
+                                  border: (isOverAmp || isOverVolt)
+                                    ? '1.5px solid #ef4444'
+                                    : isOn
+                                    ? '1.5px solid #86efac'
+                                    : '1px solid var(--hvac-line)',
+                                  transition: 'all 0.2s',
+                                }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                  <span style={{ fontSize: 12, fontWeight: 800, color: '#0c2535' }}>
+                                    {pName.startsWith('NA') ? `${grpLabel} ${pName}` : `${grpLabel} Pump ${pName}`}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    disabled={isLockedForOperator}
+                                    onClick={() => handleTogglePump(k)}
+                                    style={{
+                                      border: 'none',
+                                      background: isOn ? '#dcfce7' : '#e2e8f0',
+                                      color: isOn ? '#166534' : '#64748b',
+                                      padding: '2px 8px',
+                                      borderRadius: 4,
+                                      cursor: isLockedForOperator ? 'not-allowed' : 'pointer',
+                                      fontSize: 10.5,
+                                      fontWeight: 800,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 4,
+                                    }}
+                                  >
+                                    <span>{isOn ? '🟢 Running' : '⚪ Standby'}</span>
+                                  </button>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                                  <div>
+                                    <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--hvac-muted)' }}>
+                                      Volts (V)
+                                    </label>
+                                    <input
+                                      type="number"
+                                      step="any"
+                                      disabled={isLockedForOperator}
+                                      value={vVal}
+                                      onChange={(e) => handleValChange(`${k}_v`, e.target.value)}
+                                      placeholder="415"
+                                      style={{
+                                        width: '100%',
+                                        padding: '5px 7px',
+                                        borderRadius: 6,
+                                        border: isOverVolt ? '1.5px solid #ef4444' : '1px solid var(--hvac-line)',
+                                        fontSize: 12,
+                                        background: isLockedForOperator ? '#f1f5f9' : '#ffffff',
+                                      }}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--hvac-muted)' }}>
+                                      Current (A)
+                                    </label>
+                                    <input
+                                      type="number"
+                                      step="any"
+                                      disabled={isLockedForOperator}
+                                      value={aVal}
+                                      onChange={(e) => handleValChange(`${k}_a`, e.target.value)}
+                                      placeholder={limit?.maxA ? String(limit.maxA) : '21.5'}
+                                      style={{
+                                        width: '100%',
+                                        padding: '5px 7px',
+                                        borderRadius: 6,
+                                        border: isOverAmp ? '1.5px solid #ef4444' : '1px solid var(--hvac-line)',
+                                        fontSize: 12,
+                                        background: isLockedForOperator ? '#f1f5f9' : '#ffffff',
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </details>
+                );
+              })}
+            </div>
+          )}
+        </details>
+
+        {/* 3. Cooling Towers */}
+        <details
+          open={towersSectionOpen}
+          className="hvac-card"
+          style={{ transition: 'all 0.2s', padding: towersSectionOpen ? 18 : '14px 18px' }}
+        >
+          <summary
+            onClick={(e) => {
+              e.preventDefault();
+              setTowersSectionOpen((prev) => !prev);
+            }}
+            className="hvac-card-header"
+            style={{
+              cursor: 'pointer',
+              userSelect: 'none',
+              listStyle: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: towersSectionOpen ? 14 : 0,
+            }}
+          >
+            <div className="hvac-card-title">
+              <span style={{ fontSize: 13, transform: towersSectionOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block' }}>
+                ▶
+              </span>
+              <span>3. Cooling Towers</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span className="pill pill-blue" style={{ fontSize: 11, fontWeight: 700 }}>
+                {runningTowersCount} / {COOLING_TOWERS.length} Running
+              </span>
+              <small style={{ color: 'var(--hvac-muted)', fontSize: 12 }}>
+                {towersSectionOpen ? 'Click to collapse' : 'Click to open section'}
+              </small>
+            </div>
+          </summary>
+
+          {towersSectionOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Quick Toggle Status Strip */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', marginBottom: 6 }}>
+                  Quick Status Toggle (click to toggle operational status):
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {pumpList.map((pName) => {
-                    const k = grpKey + pName.replace(/\s+/g, '');
-                    const isOn = values[k] === 'on';
+                  {COOLING_TOWERS.map(([ctKey, ctName]) => {
+                    const isOn = values[ctKey] === 'on';
                     return (
                       <button
-                        key={k}
+                        key={ctKey}
                         type="button"
-                        onClick={() => handleTogglePump(k)}
+                        disabled={isLockedForOperator}
+                        onClick={() => handleTogglePump(ctKey)}
                         style={{
                           padding: '6px 12px',
                           borderRadius: 6,
-                          border: isOn ? '1.5px solid #16a34a' : '1px solid var(--hvac-line)',
-                          background: isOn ? '#dcfce7' : '#f8fafc',
-                          color: isOn ? '#166534' : 'var(--hvac-muted)',
+                          border: isOn ? '1.5px solid #0284c7' : '1px solid var(--hvac-line)',
+                          background: isOn ? '#e0f2fe' : '#f8fafc',
+                          color: isOn ? '#0369a1' : 'var(--hvac-muted)',
                           fontWeight: 700,
                           fontSize: 12,
-                          cursor: 'pointer',
+                          cursor: isLockedForOperator ? 'not-allowed' : 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 5,
                         }}
                       >
                         <span>{isOn ? '🟢' : '⚪'}</span>
-                        <span>{pName}</span>
+                        <span>{ctName}</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* 3. Cooling Towers */}
-        <div className="hvac-card">
-          <div className="hvac-card-header">
-            <div className="hvac-card-title">
-              <span>3. Cooling Towers</span>
+              {/* Individual Cooling Towers with Fan Telemetry */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
+                {COOLING_TOWERS.map(([ctKey, ctName, fanCount = 2]) => {
+                  const isOn = values[ctKey] === 'on';
+                  return (
+                    <div
+                      key={ctKey}
+                      style={{
+                        background: isOn ? '#f0f9ff' : '#f8fafc',
+                        border: isOn ? '1.5px solid #7dd3fc' : '1px solid var(--hvac-line)',
+                        borderRadius: 8,
+                        padding: 10,
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 800, color: '#0c2535' }}>
+                          {ctName}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={isLockedForOperator}
+                          onClick={() => handleTogglePump(ctKey)}
+                          style={{
+                            border: 'none',
+                            background: isOn ? '#e0f2fe' : '#e2e8f0',
+                            color: isOn ? '#0369a1' : '#64748b',
+                            padding: '2px 8px',
+                            borderRadius: 4,
+                            cursor: isLockedForOperator ? 'not-allowed' : 'pointer',
+                            fontSize: 10.5,
+                            fontWeight: 800,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                        >
+                          <span>{isOn ? '🟢 Running' : '⚪ Standby'}</span>
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${fanCount > 2 ? 2 : fanCount}, 1fr)`, gap: 6 }}>
+                        {Array.from({ length: fanCount }, (_, idx) => {
+                          const fNum = idx + 1;
+                          const fKey = `${ctKey}_f${fNum}`;
+                          return (
+                            <div key={fKey}>
+                              <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--hvac-muted)' }}>
+                                Fan {fNum} (A)
+                              </label>
+                              <input
+                                type="number"
+                                step="any"
+                                disabled={isLockedForOperator}
+                                value={values[fKey] ?? ''}
+                                onChange={(e) => handleValChange(fKey, e.target.value)}
+                                placeholder="e.g. 18.2"
+                                style={{
+                                  width: '100%',
+                                  padding: '5px 7px',
+                                  borderRadius: 6,
+                                  border: '1px solid var(--hvac-line)',
+                                  fontSize: 12,
+                                  background: isLockedForOperator ? '#f1f5f9' : '#ffffff',
+                                }}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <small style={{ color: 'var(--hvac-muted)' }}>Toggle operational status</small>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {COOLING_TOWERS.map(([ctKey, ctName]) => {
-              const isOn = values[ctKey] === 'on';
-              return (
-                <button
-                  key={ctKey}
-                  type="button"
-                  onClick={() => handleTogglePump(ctKey)}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 6,
-                    border: isOn ? '1.5px solid #0284c7' : '1px solid var(--hvac-line)',
-                    background: isOn ? '#e0f2fe' : '#f8fafc',
-                    color: isOn ? '#0369a1' : 'var(--hvac-muted)',
-                    fontWeight: 700,
-                    fontSize: 12,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                  }}
-                >
-                  <span>{isOn ? '🟢' : '⚪'}</span>
-                  <span>{ctName}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+          )}
+        </details>
 
         {/* 4. Electrical Panels & Water Meters */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>

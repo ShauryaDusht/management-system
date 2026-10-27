@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 from datetime import datetime, date, timedelta
 
 from django.db.models import Q
@@ -8,7 +9,7 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import SubstationSheet, SubstationReading, SubstationConfigDoc
+from .models import SubstationSheet, SubstationReading, SubstationConfigDoc, TorrentBill
 
 
 class IsSubstationStaff(permissions.BasePermission):
@@ -262,3 +263,180 @@ class SubstationSummaryView(APIView):
                 'updated_at': latest_reading.updated_at.isoformat() if latest_reading else None,
             } if latest_reading else None,
         })
+
+
+class TorrentBillsView(APIView):
+    """
+    CRUD View for Torrent Power Monthly Bills and Substation Telemetry Reconciliation.
+    Supervisors & Admins have full read/write/delete access.
+    Staff members have read access.
+    """
+    def get_permissions(self):
+        if self.request.method in ('PUT', 'POST', 'DELETE'):
+            return [IsSubstationSupervisorOrAdmin()]
+        return [IsSubstationStaff()]
+
+    def get(self, request, month=None):
+        if month:
+            try:
+                bill = TorrentBill.objects.get(month=month)
+                return Response(bill.to_dict())
+            except TorrentBill.DoesNotExist:
+                return Response({'error': f"Torrent bill for month '{month}' not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        bills = TorrentBill.objects.all().order_by('-month')
+        return Response([b.to_dict() for b in bills])
+
+    def put(self, request, month=None):
+        data = request.data or {}
+        m = month or data.get('month')
+        if not m or not re.match(r'^\d{4}-\d{2}$', str(m)):
+            return Response({'error': 'Month must be in YYYY-MM format (e.g. 2026-09)'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Helper to parse float safely
+        def safe_float(v, default=0.0):
+            if v is None or v == '':
+                return default
+            try:
+                return float(v)
+            except (ValueError, TypeError):
+                return default
+
+        kw_present = safe_float(data.get('kwPresent'))
+        kw_past = safe_float(data.get('kwPast'))
+        kwh_present = safe_float(data.get('kwhPresent'))
+        kwh_past = safe_float(data.get('kwhPast'))
+        tou_kwh_present = safe_float(data.get('touKwhPresent'))
+        tou_kwh_past = safe_float(data.get('touKwhPast'))
+        kvah_present = safe_float(data.get('kvahPresent'))
+        kvah_past = safe_float(data.get('kvahPast'))
+        slrt_present = safe_float(data.get('slrtPresent'))
+        slrt_past = safe_float(data.get('slrtPast'))
+        multiplier = safe_float(data.get('multiplier'), 2500.0)
+
+        total_bill_amount = safe_float(data.get('totalBillAmount'))
+        net_energy_charges = safe_float(data.get('netEnergyCharges'))
+        fppas_charges = safe_float(data.get('fppasCharges'))
+        demand_charges = safe_float(data.get('demandCharges'))
+        electricity_duty = safe_float(data.get('electricityDuty'))
+        other_charges = safe_float(data.get('otherCharges'))
+
+        security_deposit_held = safe_float(data.get('securityDepositHeld'), 15106279.0)
+        additional_security_required = safe_float(data.get('additionalSecurityRequired'), 3172600.0)
+        previous_payment_amount = safe_float(data.get('previousPaymentAmount'))
+        previous_payment_date = str(data.get('previousPaymentDate', '')).strip()
+
+        contract_demand_kw = safe_float(data.get('contractDemandKw'), 3200.0)
+        billing_demand_kw = safe_float(data.get('billingDemandKw'), 0.0)
+        avg_power_factor = safe_float(data.get('avgPowerFactor'), 100.0)
+        internal_logged_kwh = safe_float(data.get('internalLoggedKwh'), 0.0)
+
+        meter_no = str(data.get('meterNo', '6877522')).strip()
+        bill_no = str(data.get('billNo', '')).strip()
+        bill_date = str(data.get('billDate', '')).strip()
+        reading_date = str(data.get('readingDate', '')).strip()
+        due_date = str(data.get('dueDate', '')).strip()
+        distribution_date = str(data.get('distributionDate', '')).strip()
+        customer_id = str(data.get('customerId', '100164311')).strip()
+        tariff = str(data.get('tariff', 'HTMD1')).strip()
+        status_val = str(data.get('status', 'Pending')).strip()
+        remarks = str(data.get('remarks', '')).strip()
+
+        by_user = data.get('by') or (
+            request.user.get_full_name() if hasattr(request.user, 'get_full_name') and request.user.get_full_name()
+            else request.user.username
+        )
+
+        bill, _ = TorrentBill.objects.get_or_create(
+            month=m,
+            defaults={
+                'bill_date': bill_date,
+                'reading_date': reading_date,
+                'due_date': due_date,
+                'distribution_date': distribution_date,
+                'bill_no': bill_no,
+                'customer_id': customer_id,
+                'tariff': tariff,
+                'contract_demand_kw': contract_demand_kw,
+                'billing_demand_kw': billing_demand_kw,
+                'avg_power_factor': avg_power_factor,
+                'meter_no': meter_no,
+                'multiplier': multiplier,
+                'kw_present': kw_present,
+                'kw_past': kw_past,
+                'kwh_present': kwh_present,
+                'kwh_past': kwh_past,
+                'tou_kwh_present': tou_kwh_present,
+                'tou_kwh_past': tou_kwh_past,
+                'kvah_present': kvah_present,
+                'kvah_past': kvah_past,
+                'slrt_present': slrt_present,
+                'slrt_past': slrt_past,
+                'total_bill_amount': total_bill_amount,
+                'net_energy_charges': net_energy_charges,
+                'fppas_charges': fppas_charges,
+                'demand_charges': demand_charges,
+                'electricity_duty': electricity_duty,
+                'other_charges': other_charges,
+                'security_deposit_held': security_deposit_held,
+                'additional_security_required': additional_security_required,
+                'previous_payment_amount': previous_payment_amount,
+                'previous_payment_date': previous_payment_date,
+                'internal_logged_kwh': internal_logged_kwh,
+                'status': status_val,
+                'remarks': remarks,
+                'by': by_user,
+            }
+        )
+
+        bill.bill_date = bill_date
+        bill.reading_date = reading_date
+        bill.due_date = due_date
+        bill.distribution_date = distribution_date
+        bill.bill_no = bill_no
+        bill.customer_id = customer_id
+        bill.tariff = tariff
+        bill.contract_demand_kw = contract_demand_kw
+        bill.billing_demand_kw = billing_demand_kw
+        bill.meter_no = meter_no
+        bill.multiplier = multiplier
+
+        bill.kw_present = kw_present
+        bill.kw_past = kw_past
+        bill.kwh_present = kwh_present
+        bill.kwh_past = kwh_past
+        bill.tou_kwh_present = tou_kwh_present
+        bill.tou_kwh_past = tou_kwh_past
+        bill.kvah_present = kvah_present
+        bill.kvah_past = kvah_past
+        bill.slrt_present = slrt_present
+        bill.slrt_past = slrt_past
+
+        bill.total_bill_amount = total_bill_amount
+        bill.net_energy_charges = net_energy_charges
+        bill.fppas_charges = fppas_charges
+        bill.demand_charges = demand_charges
+        bill.electricity_duty = electricity_duty
+        bill.other_charges = other_charges
+
+        bill.security_deposit_held = security_deposit_held
+        bill.additional_security_required = additional_security_required
+        bill.previous_payment_amount = previous_payment_amount
+        bill.previous_payment_date = previous_payment_date
+        bill.internal_logged_kwh = internal_logged_kwh
+        bill.status = status_val
+        bill.remarks = remarks
+        bill.by = by_user
+
+        bill.save()
+        return Response(bill.to_dict())
+
+    def delete(self, request, month=None):
+        if not month:
+            return Response({'error': 'Month parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            bill = TorrentBill.objects.get(month=month)
+            bill.delete()
+            return Response({'ok': True, 'message': f"Torrent bill for {month} deleted successfully"})
+        except TorrentBill.DoesNotExist:
+            return Response({'error': f"Torrent bill for {month} not found"}, status=status.HTTP_404_NOT_FOUND)
