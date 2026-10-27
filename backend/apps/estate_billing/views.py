@@ -1939,14 +1939,21 @@ def ensure_initial_clearances():
 
 
 def parse_clearance_date_obj(c):
-    """Returns datetime.date or None for a HousingClearance record."""
-    date_candidates = [
-        getattr(c, 'estate_date_1', None),
-        getattr(c, 'estate_date_3', None),
-        getattr(c, 'estate_date_4', None),
-        getattr(c, 'estate_date_2', None),
-        getattr(c, 'time_stamp', None),
-    ]
+    """Returns datetime.date or None for a HousingClearance record or date string."""
+    if isinstance(c, datetime.datetime):
+        return c.date()
+    if isinstance(c, datetime.date):
+        return c
+    if isinstance(c, str):
+        date_candidates = [c]
+    else:
+        date_candidates = [
+            getattr(c, 'estate_date_1', None),
+            getattr(c, 'estate_date_3', None),
+            getattr(c, 'estate_date_4', None),
+            getattr(c, 'estate_date_2', None),
+            getattr(c, 'time_stamp', None),
+        ]
     for d_str in date_candidates:
         if not d_str:
             continue
