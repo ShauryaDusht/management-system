@@ -300,6 +300,9 @@ export default function DailyPlantStatus({
             const rla = latestLog?.v[`c${n}_rla`];
             const dt = (ein != null && eout != null) ? +(Number(ein) - Number(eout)).toFixed(2) : null;
             const isDtHigh = isRunning && dt != null && dt > 4.0;
+            const l1 = latestLog?.v[`c${n}_l1`];
+            const v1 = latestLog?.v[`c${n}_v1`] ?? latestLog?.v[`c${n}_vab`];
+            const oilL = latestLog?.v[`c${n}_oilL`];
 
             return (
               <div
@@ -320,6 +323,31 @@ export default function DailyPlantStatus({
                     )}
                     <br />
                     RLA: {rla ?? '–'}%
+                    {(l1 != null || v1 != null) && (
+                      <div style={{ fontSize: 11, color: 'var(--hvac-muted)', marginTop: 2 }}>
+                        {l1 != null && `I: ${l1} A`}
+                        {l1 != null && v1 != null && ' · '}
+                        {v1 != null && `V: ${v1} V`}
+                      </div>
+                    )}
+                    {oilL && (
+                      <div style={{ marginTop: 4 }}>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 800,
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            background: oilL === 'dry' ? '#fee2e2' : '#f0fdf4',
+                            color: oilL === 'dry' ? '#991b1b' : '#166534',
+                            border: `1px solid ${oilL === 'dry' ? '#f87171' : '#bbf7d0'}`,
+                            display: 'inline-block',
+                          }}
+                        >
+                          {oilL === 'dry' ? '🚨 Oil Sensor: Dry' : '✓ Oil: Wet (OK)'}
+                        </span>
+                      </div>
+                    )}
                     {isDtHigh && (
                       <div style={{ marginTop: 6 }}>
                         <span

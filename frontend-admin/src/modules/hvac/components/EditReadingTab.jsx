@@ -126,7 +126,30 @@ export default function EditReadingTab({
       Object.entries(values).forEach(([k, v]) => {
         if (v !== '' && v !== null && v !== undefined) {
           const num = Number(v);
-          cleanV[k] = !Number.isNaN(num) && typeof v !== 'boolean' && v !== 'on' && v !== 'off' ? num : v;
+          cleanV[k] = !Number.isNaN(num) && typeof v !== 'boolean' && v !== 'on' && v !== 'off' && v !== 'wet' && v !== 'dry' ? num : v;
+        }
+      });
+
+      // Synchronize voltage aliases (v1 <-> vab, v2 <-> vbc, v3 <-> vca)
+      CHILLERS.forEach(([num]) => {
+        const p = `c${num}_`;
+        if (cleanV[`${p}v1`] !== undefined && cleanV[`${p}vab`] === undefined) {
+          cleanV[`${p}vab`] = cleanV[`${p}v1`];
+        }
+        if (cleanV[`${p}v2`] !== undefined && cleanV[`${p}vbc`] === undefined) {
+          cleanV[`${p}vbc`] = cleanV[`${p}v2`];
+        }
+        if (cleanV[`${p}v3`] !== undefined && cleanV[`${p}vca`] === undefined) {
+          cleanV[`${p}vca`] = cleanV[`${p}v3`];
+        }
+        if (cleanV[`${p}vab`] !== undefined && cleanV[`${p}v1`] === undefined) {
+          cleanV[`${p}v1`] = cleanV[`${p}vab`];
+        }
+        if (cleanV[`${p}vbc`] !== undefined && cleanV[`${p}v2`] === undefined) {
+          cleanV[`${p}v2`] = cleanV[`${p}vbc`];
+        }
+        if (cleanV[`${p}vca`] !== undefined && cleanV[`${p}v3`] === undefined) {
+          cleanV[`${p}v3`] = cleanV[`${p}vca`];
         }
       });
 
@@ -423,6 +446,13 @@ export default function EditReadingTab({
               const condP = values[`${prefix}condP`] ?? '';
               const drift = values[`${prefix}drift`] ?? '';
               const oilP = values[`${prefix}oilP`] ?? '';
+              const oilL = values[`${prefix}oilL`] ?? '';
+              const l1 = values[`${prefix}l1`] ?? '';
+              const l2 = values[`${prefix}l2`] ?? '';
+              const l3 = values[`${prefix}l3`] ?? '';
+              const v1 = values[`${prefix}v1`] ?? values[`${prefix}vab`] ?? '';
+              const v2 = values[`${prefix}v2`] ?? values[`${prefix}vbc`] ?? '';
+              const v3 = values[`${prefix}v3`] ?? values[`${prefix}vca`] ?? '';
 
               const isRunning = status === 'on' || evapOut !== '';
 
@@ -438,7 +468,7 @@ export default function EditReadingTab({
                   style={{
                     border: isDtHigh ? '2px solid #ef4444' : '1.5px solid var(--hvac-line)',
                     borderRadius: 10,
-                    padding: 12,
+                    padding: 14,
                     background: isDtHigh ? '#fff5f5' : isRunning ? '#f8fafc' : '#ffffff',
                     transition: 'all 0.2s',
                   }}
@@ -458,6 +488,20 @@ export default function EditReadingTab({
                       ) : (
                         <span className="pill pill-gray" style={{ fontSize: 11 }}>Standby</span>
                       )}
+                      {oilL === 'dry' && (
+                        <span
+                          className="pill pill-red"
+                          style={{
+                            fontSize: 10.5,
+                            fontWeight: 800,
+                            background: '#fee2e2',
+                            color: '#991b1b',
+                            border: '1px solid #f87171',
+                          }}
+                        >
+                          ⚠️ Oil Dry
+                        </span>
+                      )}
                       {isDtHigh && (
                         <span
                           className="pill pill-red"
@@ -475,11 +519,10 @@ export default function EditReadingTab({
                     </div>
                   </summary>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginTop: 12 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
                     {isDtHigh && (
                       <div
                         style={{
-                          gridColumn: '1 / -1',
                           background: '#fee2e2',
                           border: '1.5px solid #ef4444',
                           borderRadius: 8,
@@ -498,125 +541,246 @@ export default function EditReadingTab({
                         </div>
                       </div>
                     )}
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)' }}>Status</label>
-                      <select
-                        value={status}
-                        onChange={(e) => handleValChange(`${prefix}st`, e.target.value)}
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}
-                      >
-                        <option value="">-- Standby --</option>
-                        <option value="on">🟢 Running</option>
-                        <option value="off">⚪ Off</option>
-                      </select>
+
+                    {/* Status & Load */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>STATUS</label>
+                        <select
+                          value={status}
+                          onChange={(e) => handleValChange(`${prefix}st`, e.target.value)}
+                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13, fontWeight: 600 }}
+                        >
+                          <option value="">-- Select --</option>
+                          <option value="on">🟢 Running (On)</option>
+                          <option value="off">⚪ Standby (Off)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>% RLA</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={rla}
+                          onChange={(e) => handleValChange(`${prefix}rla`, e.target.value)}
+                          placeholder="e.g. 52.4"
+                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                        />
+                      </div>
                     </div>
 
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)' }}>% RLA</label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={rla}
-                        onChange={(e) => handleValChange(`${prefix}rla`, e.target.value)}
-                        placeholder="e.g. 52.4"
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}
-                      />
+                    {/* Evaporator (Chilled Water) */}
+                    <div style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          EVAPORATOR (CHILLED WATER)
+                        </span>
+                        {dt !== null && (
+                          <span style={{ fontSize: 11, fontWeight: 800, color: isDtHigh ? '#dc2626' : '#0369a1', background: isDtHigh ? '#fee2e2' : '#e0f2fe', padding: '2px 8px', borderRadius: 999 }}>
+                            ΔT: {dt}°C
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>ENTERING °C</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={evapIn}
+                            onChange={(e) => handleValChange(`${prefix}evapIn`, e.target.value)}
+                            placeholder="10.2"
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>LEAVING °C</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={evapOut}
+                            onChange={(e) => handleValChange(`${prefix}evapOut`, e.target.value)}
+                            placeholder="7.0"
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>PRESS. (KPA)</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={evapP}
+                            onChange={(e) => handleValChange(`${prefix}evapP`, e.target.value)}
+                            placeholder="295"
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                          />
+                        </div>
+                      </div>
                     </div>
 
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)' }}>Evap In (°C)</label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={evapIn}
-                        onChange={(e) => handleValChange(`${prefix}evapIn`, e.target.value)}
-                        placeholder="10.2"
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}
-                      />
+                    {/* Condenser (Cooling Water) */}
+                    <div style={{ background: '#fff7ed', padding: '10px 14px', borderRadius: 8, border: '1px solid #ffedd5' }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: '#c2410c', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+                        CONDENSER (COOLING WATER)
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>ENTERING °C</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={condIn}
+                            onChange={(e) => handleValChange(`${prefix}condIn`, e.target.value)}
+                            placeholder="29.5"
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>LEAVING °C</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={condOut}
+                            onChange={(e) => handleValChange(`${prefix}condOut`, e.target.value)}
+                            placeholder="33.0"
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>PRESS. (KPA)</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={condP}
+                            onChange={(e) => handleValChange(`${prefix}condP`, e.target.value)}
+                            placeholder="620"
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                          />
+                        </div>
+                      </div>
                     </div>
 
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)' }}>Evap Out (°C)</label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={evapOut}
-                        onChange={(e) => handleValChange(`${prefix}evapOut`, e.target.value)}
-                        placeholder="6.8"
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}
-                      />
+                    {/* Oil & Refrigerant Diff */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>REFRIG DIFF (KPA)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={drift}
+                          onChange={(e) => handleValChange(`${prefix}drift`, e.target.value)}
+                          placeholder="e.g. 150"
+                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>OIL PRESS (KPA)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={oilP}
+                          onChange={(e) => handleValChange(`${prefix}oilP`, e.target.value)}
+                          placeholder="e.g. 305"
+                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>OIL LEVEL</label>
+                        <select
+                          value={oilL}
+                          onChange={(e) => handleValChange(`${prefix}oilL`, e.target.value)}
+                          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13, fontWeight: 600 }}
+                        >
+                          <option value="">--</option>
+                          <option value="wet">Wet (OK)</option>
+                          <option value="dry">Dry (Alert)</option>
+                        </select>
+                      </div>
                     </div>
 
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)' }}>Evap P (kPa)</label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={evapP}
-                        onChange={(e) => handleValChange(`${prefix}evapP`, e.target.value)}
-                        placeholder="350"
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)' }}>Cond In (°C)</label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={condIn}
-                        onChange={(e) => handleValChange(`${prefix}condIn`, e.target.value)}
-                        placeholder="28.4"
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)' }}>Cond Out (°C)</label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={condOut}
-                        onChange={(e) => handleValChange(`${prefix}condOut`, e.target.value)}
-                        placeholder="33.1"
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)' }}>Cond P (kPa)</label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={condP}
-                        onChange={(e) => handleValChange(`${prefix}condP`, e.target.value)}
-                        placeholder="840"
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)' }}>Refrig Diff (kPa)</label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={drift}
-                        onChange={(e) => handleValChange(`${prefix}drift`, e.target.value)}
-                        placeholder="180"
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)' }}>Oil Press (kPa)</label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={oilP}
-                        onChange={(e) => handleValChange(`${prefix}oilP`, e.target.value)}
-                        placeholder="520"
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}
-                      />
+                    {/* Currents & Voltage */}
+                    <div style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+                        CURRENTS & VOLTAGE
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>L1 (A)</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={l1}
+                            onChange={(e) => handleValChange(`${prefix}l1`, e.target.value)}
+                            placeholder="280"
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>L2 (A)</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={l2}
+                            onChange={(e) => handleValChange(`${prefix}l2`, e.target.value)}
+                            placeholder="280"
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>L3 (A)</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={l3}
+                            onChange={(e) => handleValChange(`${prefix}l3`, e.target.value)}
+                            placeholder="280"
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>V1 (V)</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={v1}
+                            onChange={(e) => {
+                              handleValChange(`${prefix}v1`, e.target.value);
+                              handleValChange(`${prefix}vab`, e.target.value);
+                            }}
+                            placeholder="415"
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>V2 (V)</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={v2}
+                            onChange={(e) => {
+                              handleValChange(`${prefix}v2`, e.target.value);
+                              handleValChange(`${prefix}vbc`, e.target.value);
+                            }}
+                            placeholder="415"
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--hvac-muted)', display: 'block', marginBottom: 4 }}>V3 (V)</label>
+                          <input
+                            type="number"
+                            step="any"
+                            value={v3}
+                            onChange={(e) => {
+                              handleValChange(`${prefix}v3`, e.target.value);
+                              handleValChange(`${prefix}vca`, e.target.value);
+                            }}
+                            placeholder="415"
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 13 }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </details>
