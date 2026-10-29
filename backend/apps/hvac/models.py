@@ -242,3 +242,49 @@ class HvacSupervisorLog(models.Model):
             'createdAt': self.created_at.isoformat() if self.created_at else None,
             'updatedAt': self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+class HvacImportBatch(models.Model):
+    """
+    Tracks bulk historical CSV/Excel data imports by the HVAC Engineer.
+    Stores newly created log IDs and snapshots of pre-existing records so that
+    any batch can be cleanly undone (reverted).
+    """
+    batch_id = models.CharField(max_length=64, primary_key=True)
+    filename = models.CharField(max_length=255, blank=True)
+    imported_by = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    total_records = models.IntegerField(default=0)
+    created_count = models.IntegerField(default=0)
+    updated_count = models.IntegerField(default=0)
+    date_min = models.DateField(null=True, blank=True)
+    date_max = models.DateField(null=True, blank=True)
+    created_ids = models.JSONField(default=list, blank=True)
+    previous_states = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=20, default='active')  # 'active', 'reverted'
+    reverted_at = models.DateTimeField(null=True, blank=True)
+    reverted_by = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'HVAC Import Batch'
+        verbose_name_plural = 'HVAC Import Batches'
+
+    def __str__(self):
+        return f"Import Batch {self.batch_id} ({self.filename}) - {self.total_records} rows ({self.status})"
+
+    def to_dict(self):
+        return {
+            'batch_id': self.batch_id,
+            'filename': self.filename,
+            'imported_by': self.imported_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'total_records': self.total_records,
+            'created_count': self.created_count,
+            'updated_count': self.updated_count,
+            'date_min': self.date_min.isoformat() if self.date_min else None,
+            'date_max': self.date_max.isoformat() if self.date_max else None,
+            'status': self.status,
+            'reverted_at': self.reverted_at.isoformat() if self.reverted_at else None,
+            'reverted_by': self.reverted_by,
+        }

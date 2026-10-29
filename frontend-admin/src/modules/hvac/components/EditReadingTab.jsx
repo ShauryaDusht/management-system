@@ -1188,13 +1188,13 @@ export default function EditReadingTab({
           {/* Main Incomer Panels */}
           <div className="hvac-card" style={{ margin: 0 }}>
             <div className="hvac-card-title" style={{ marginBottom: 10 }}>
-              <span>4. Main Power Panels (MWh)</span>
+              <span>4. Energy Panels &amp; Makeup Water &middot; Main Power Panels</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {PANELS.map(([pKey, pLabel]) => (
                 <div key={pKey} style={{ background: '#f8fafc', padding: 10, borderRadius: 8, border: '1px solid var(--hvac-line)' }}>
                   <div style={{ fontSize: 12, fontWeight: 800, color: '#0c2535', marginBottom: 6 }}>{pLabel}</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 8 }}>
                     <div>
                       <label style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--hvac-muted)' }}>Energy (MWh)</label>
                       <input
@@ -1202,7 +1202,18 @@ export default function EditReadingTab({
                         step="any"
                         value={values[`${pKey}_mwh`] ?? ''}
                         onChange={(e) => handleValChange(`${pKey}_mwh`, e.target.value)}
-                        placeholder="e.g. 1420.5"
+                        placeholder="e.g. 6945.5"
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--hvac-muted)' }}>Current (Amp)</label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={values[`${pKey}_amp`] ?? ''}
+                        onChange={(e) => handleValChange(`${pKey}_amp`, e.target.value)}
+                        placeholder="e.g. 74.2"
                         style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}
                       />
                     </div>
@@ -1213,7 +1224,7 @@ export default function EditReadingTab({
                         step="any"
                         value={values[`${pKey}_pf`] ?? ''}
                         onChange={(e) => handleValChange(`${pKey}_pf`, e.target.value)}
-                        placeholder="0.98"
+                        placeholder="0.95"
                         style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}
                       />
                     </div>

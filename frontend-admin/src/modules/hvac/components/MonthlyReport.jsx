@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { CHILLERS, runningChillers, deriveLogValues } from '../config';
+import { CHILLERS, PANELS, runningChillers, deriveLogValues } from '../config';
 import HvacApi from '../hvacApi';
 import ExportDropdown from '../../../components/ui/ExportDropdown';
 
-export default function MonthlyReport({ defaultMonth }) {
+export default function MonthlyReport({ defaultMonth, isHvacEngineer = false, onOpenImport }) {
   const [month, setMonth] = useState(defaultMonth || new Date().toISOString().slice(0, 7));
   const [monthLogs, setMonthLogs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -99,17 +99,25 @@ export default function MonthlyReport({ defaultMonth }) {
 
     const rows = Object.keys(days).sort().map((d) => {
       const arr = days[d].sort((a, b) => a.slot - b.slot);
-      const e1 = rd(arr, 'pn1_mwh');
-      const e2 = rd(arr, 'pn2_mwh');
+      const panelVals = {};
+      let totE = 0;
+      let hasE = false;
+      PANELS.forEach(([pKey]) => {
+        const val = rd(arr, `${pKey}_mwh`);
+        panelVals[pKey] = val;
+        if (val != null) {
+          totE += val;
+          hasE = true;
+        }
+      });
       const w1 = rd(arr, 'wm1_kl');
       const w2 = rd(arr, 'wm2_kl');
       const w3 = rd(arr, 'wm3_kl') ?? rd(arr, 'wm_chilled_kl');
       return {
         date: d,
         count: arr.length,
-        p1: e1,
-        p2: e2,
-        totalEnergy: sm(e1, e2),
+        ...panelVals,
+        totalEnergy: hasE ? Number(totE.toFixed(2)) : null,
         w1,
         w2,
         w3,
@@ -119,8 +127,10 @@ export default function MonthlyReport({ defaultMonth }) {
 
     // Totals
     const totCount = rows.reduce((acc, r) => acc + r.count, 0);
-    const totP1 = rows.reduce((acc, r) => acc + (r.p1 || 0), 0);
-    const totP2 = rows.reduce((acc, r) => acc + (r.p2 || 0), 0);
+    const panelTotals = {};
+    PANELS.forEach(([pKey]) => {
+      panelTotals[pKey] = Number(rows.reduce((acc, r) => acc + (r[pKey] || 0), 0).toFixed(2));
+    });
     const totEnergy = rows.reduce((acc, r) => acc + (r.totalEnergy || 0), 0);
     const totW1 = rows.reduce((acc, r) => acc + (r.w1 || 0), 0);
     const totW2 = rows.reduce((acc, r) => acc + (r.w2 || 0), 0);
@@ -137,8 +147,7 @@ export default function MonthlyReport({ defaultMonth }) {
       rows,
       totals: {
         count: totCount,
-        p1: Number(totP1.toFixed(2)),
-        p2: Number(totP2.toFixed(2)),
+        ...panelTotals,
         totalEnergy: Number(totEnergy.toFixed(2)),
         w1: Number(totW1.toFixed(2)),
         w2: Number(totW2.toFixed(2)),
@@ -158,12 +167,11 @@ export default function MonthlyReport({ defaultMonth }) {
     const csvRows = [
       ['HVAC Monthly Consumption Report', `${month}${titleSuffix}`],
       [],
-      ['Date', 'Readings Logged', 'Panel 1 MWh', 'Panel 2 MWh', 'Total Energy MWh', 'Old Water kL', 'New Water kL', 'Chilled Water kL', 'Total Water kL'],
+      ['Date', 'Readings Logged', ...PANELS.map(([, pLabel]) => `${pLabel} MWh`), 'Total Energy MWh', 'Old Water kL', 'New Water kL', 'Chilled Water kL', 'Total Water kL'],
       ...report.rows.map((r) => [
         r.date,
         r.count,
-        r.p1 ?? '',
-        r.p2 ?? '',
+        ...PANELS.map(([pKey]) => r[pKey] ?? ''),
         r.totalEnergy ?? '',
         r.w1 ?? '',
         r.w2 ?? '',
@@ -173,8 +181,7 @@ export default function MonthlyReport({ defaultMonth }) {
       [
         'Total',
         report.totals.count,
-        report.totals.p1,
-        report.totals.p2,
+        ...PANELS.map(([pKey]) => report.totals[pKey]),
         report.totals.totalEnergy,
         report.totals.w1,
         report.totals.w2,
@@ -194,12 +201,11 @@ export default function MonthlyReport({ defaultMonth }) {
       ? `_${dateFilterLabel.toLowerCase().replace(/[\s\:]+/g, '_')}`
       : '';
     const pdfRows = [
-      ['Date', 'Slots', 'Panel 1 MWh', 'Panel 2 MWh', 'Total Energy', 'Old kL', 'New kL', 'Chilled kL', 'Total Water'],
+      ['Date', 'Slots', ...PANELS.map(([, pLabel]) => `${pLabel} MWh`), 'Total Energy', 'Old kL', 'New kL', 'Chilled kL', 'Total Water'],
       ...report.rows.map((r) => [
         r.date,
         String(r.count),
-        r.p1 != null ? String(r.p1) : '–',
-        r.p2 != null ? String(r.p2) : '–',
+        ...PANELS.map(([pKey]) => (r[pKey] != null ? String(r[pKey]) : '–')),
         r.totalEnergy != null ? `${r.totalEnergy} MWh` : '–',
         r.w1 != null ? String(r.w1) : '–',
         r.w2 != null ? String(r.w2) : '–',
@@ -209,8 +215,7 @@ export default function MonthlyReport({ defaultMonth }) {
       [
         'TOTAL',
         String(report.totals.count),
-        String(report.totals.p1),
-        String(report.totals.p2),
+        ...PANELS.map(([pKey]) => String(report.totals[pKey])),
         `${report.totals.totalEnergy} MWh`,
         String(report.totals.w1),
         String(report.totals.w2),
@@ -280,7 +285,35 @@ export default function MonthlyReport({ defaultMonth }) {
             )}
           </div>
 
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {onOpenImport && isHvacEngineer && (
+              <button
+                type="button"
+                onClick={onOpenImport}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '7px 12px',
+                  borderRadius: 8,
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  border: '1.5px solid #0f766e',
+                  background: 'rgba(15, 118, 110, 0.08)',
+                  color: '#0f766e',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Bulk import past months or historical telemetry CSV logs into HVAC database"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Import CSV
+              </button>
+            )}
             <ExportDropdown
               label="Export Monthly Report"
               hasDateFilter={true}
@@ -360,8 +393,9 @@ export default function MonthlyReport({ defaultMonth }) {
                   <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid var(--hvac-line)' }}>
                     <th style={{ padding: '8px 12px', textAlign: 'left' }}>Date</th>
                     <th style={{ padding: '8px 12px', textAlign: 'center' }}>Slots Logged</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'right' }}>Panel 1 MWh</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'right' }}>Panel 2 MWh</th>
+                    {PANELS.map(([pKey, pLabel]) => (
+                      <th key={pKey} style={{ padding: '8px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>{pLabel} MWh</th>
+                    ))}
                     <th style={{ padding: '8px 12px', textAlign: 'right' }}>Total Energy MWh</th>
                     <th style={{ padding: '8px 12px', textAlign: 'right' }}>Old kL</th>
                     <th style={{ padding: '8px 12px', textAlign: 'right' }}>New kL</th>
@@ -376,8 +410,11 @@ export default function MonthlyReport({ defaultMonth }) {
                       <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                         <span className="pill pill-gray">{r.count} / 24</span>
                       </td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{r.p1 ?? '–'}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{r.p2 ?? '–'}</td>
+                      {PANELS.map(([pKey]) => (
+                        <td key={pKey} style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace' }}>
+                          {r[pKey] ?? '–'}
+                        </td>
+                      ))}
                       <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 800, color: '#0284c7' }}>
                         {r.totalEnergy != null ? `${r.totalEnergy}` : '–'}
                       </td>
@@ -391,7 +428,7 @@ export default function MonthlyReport({ defaultMonth }) {
                   ))}
                   {report.rows.length === 0 && (
                     <tr>
-                      <td colSpan="9" style={{ padding: 24, textAlign: 'center', color: 'var(--hvac-muted)' }}>
+                      <td colSpan={6 + PANELS.length} style={{ padding: 24, textAlign: 'center', color: 'var(--hvac-muted)' }}>
                         No records found for {month}{dateFilterLabel ? ` (${dateFilterLabel})` : ''}.
                       </td>
                     </tr>
@@ -402,8 +439,11 @@ export default function MonthlyReport({ defaultMonth }) {
                         {isDateFiltered ? `Total Consumption (${dateFilterLabel})` : 'Total Monthly Consumption'}
                       </td>
                       <td style={{ padding: '10px 12px', textAlign: 'center' }}>{report.totals.count}</td>
-                      <td style={{ padding: '10px 12px', textAlign: 'right' }}>{report.totals.p1}</td>
-                      <td style={{ padding: '10px 12px', textAlign: 'right' }}>{report.totals.p2}</td>
+                      {PANELS.map(([pKey]) => (
+                        <td key={pKey} style={{ padding: '10px 12px', textAlign: 'right' }}>
+                          {report.totals[pKey]}
+                        </td>
+                      ))}
                       <td style={{ padding: '10px 12px', textAlign: 'right', color: '#0284c7', fontSize: 13.5 }}>
                         {report.totals.totalEnergy} MWh
                       </td>

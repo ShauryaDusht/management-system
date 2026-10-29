@@ -86,29 +86,42 @@ def mobile_dashboard(request):
             'rla': latest_vals.get(f'{prefix}rla'),
         })
 
-    # Energy calculations
-    p1_open = logs[0].values.get('pn1_mwh') if logs and logs[0].values.get('pn1_mwh') is not None else None
-    p1_close = logs[-1].values.get('pn1_mwh') if logs and logs[-1].values.get('pn1_mwh') is not None else None
-    p1_cons = max(0, round(float(p1_close) - float(p1_open), 2)) if (p1_open is not None and p1_close is not None) else None
+    # Energy calculations (Panels 1 to 5)
+    panel_cons = []
+    for pi in range(1, 6):
+        p_open = logs[0].values.get(f'pn{pi}_mwh') if logs and logs[0].values.get(f'pn{pi}_mwh') is not None else None
+        p_close = logs[-1].values.get(f'pn{pi}_mwh') if logs and logs[-1].values.get(f'pn{pi}_mwh') is not None else None
+        p_c = None
+        if p_open is not None and p_close is not None:
+            try:
+                p_c = max(0, round(float(p_close) - float(p_open), 2))
+            except (ValueError, TypeError):
+                p_c = None
+        panel_cons.append(p_c)
 
-    p2_open = logs[0].values.get('pn2_mwh') if logs and logs[0].values.get('pn2_mwh') is not None else None
-    p2_close = logs[-1].values.get('pn2_mwh') if logs and logs[-1].values.get('pn2_mwh') is not None else None
-    p2_cons = max(0, round(float(p2_close) - float(p2_open), 2)) if (p2_open is not None and p2_close is not None) else None
-
-    total_energy = round((p1_cons or 0) + (p2_cons or 0), 2) if (p1_cons is not None or p2_cons is not None) else None
+    p1_cons, p2_cons, p3_cons, p4_cons, p5_cons = panel_cons
+    total_energy = round(sum(c for c in panel_cons if c is not None), 2) if any(c is not None for c in panel_cons) else None
 
     # Water calculations (Old, New, Chilled)
+    def safe_diff(c_val, o_val):
+        if c_val is None or o_val is None:
+            return None
+        try:
+            return max(0, round(float(c_val) - float(o_val), 2))
+        except (ValueError, TypeError):
+            return None
+
     wm1_open = logs[0].values.get('wm1_kl') if logs and logs[0].values.get('wm1_kl') is not None else None
     wm1_close = logs[-1].values.get('wm1_kl') if logs and logs[-1].values.get('wm1_kl') is not None else None
-    wm1_cons = max(0, round(float(wm1_close) - float(wm1_open), 2)) if (wm1_open is not None and wm1_close is not None) else None
+    wm1_cons = safe_diff(wm1_close, wm1_open)
 
     wm2_open = logs[0].values.get('wm2_kl') if logs and logs[0].values.get('wm2_kl') is not None else None
     wm2_close = logs[-1].values.get('wm2_kl') if logs and logs[-1].values.get('wm2_kl') is not None else None
-    wm2_cons = max(0, round(float(wm2_close) - float(wm2_open), 2)) if (wm2_open is not None and wm2_close is not None) else None
+    wm2_cons = safe_diff(wm2_close, wm2_open)
 
     wm3_open = (logs[0].values.get('wm3_kl') if logs[0].values.get('wm3_kl') is not None else logs[0].values.get('wm_chilled_kl')) if logs else None
     wm3_close = (logs[-1].values.get('wm3_kl') if logs[-1].values.get('wm3_kl') is not None else logs[-1].values.get('wm_chilled_kl')) if logs else None
-    wm3_cons = max(0, round(float(wm3_close) - float(wm3_open), 2)) if (wm3_open is not None and wm3_close is not None) else None
+    wm3_cons = safe_diff(wm3_close, wm3_open)
 
     total_water = round((wm1_cons or 0) + (wm2_cons or 0) + (wm3_cons or 0), 2) if (wm1_cons is not None or wm2_cons is not None or wm3_cons is not None) else None
 
@@ -259,6 +272,9 @@ def mobile_dashboard(request):
         'total_energy': total_energy,
         'p1_cons': p1_cons,
         'p2_cons': p2_cons,
+        'p3_cons': p3_cons,
+        'p4_cons': p4_cons,
+        'p5_cons': p5_cons,
         'total_water': total_water,
         'wm1_cons': wm1_cons,
         'wm2_cons': wm2_cons,
@@ -469,22 +485,16 @@ def mobile_entry(request):
             'fans': fans,
         })
 
-    # Panels: Panel 1, Panel 2
+    # Panels: Panels 1 to 5
     panels_data = [
         {
-            'num': 1,
-            'name': 'HVAC Panel 1',
-            'mwh': vals.get('pn1_mwh', ''),
-            'amp': vals.get('pn1_amp', ''),
-            'pf': vals.get('pn1_pf', ''),
-        },
-        {
-            'num': 2,
-            'name': 'HVAC Panel 2',
-            'mwh': vals.get('pn2_mwh', ''),
-            'amp': vals.get('pn2_amp', ''),
-            'pf': vals.get('pn2_pf', ''),
-        },
+            'num': i,
+            'name': f'HVAC Panel {i}',
+            'mwh': vals.get(f'pn{i}_mwh', ''),
+            'amp': vals.get(f'pn{i}_amp', ''),
+            'pf': vals.get(f'pn{i}_pf', ''),
+        }
+        for i in range(1, 6)
     ]
 
     # Water Meters: Old, New, Chilled
@@ -587,27 +597,41 @@ def mobile_flash(request):
                     'has_reached': True,
                 })
 
-    p1_open = logs[0].values.get('pn1_mwh') if logs and logs[0].values.get('pn1_mwh') is not None else None
-    p1_close = logs[-1].values.get('pn1_mwh') if logs and logs[-1].values.get('pn1_mwh') is not None else None
-    p1_cons = max(0, round(float(p1_close) - float(p1_open), 2)) if (p1_open is not None and p1_close is not None) else None
+    # Energy calculations (Panels 1 to 5)
+    panel_cons = []
+    for pi in range(1, 6):
+        p_open = logs[0].values.get(f'pn{pi}_mwh') if logs and logs[0].values.get(f'pn{pi}_mwh') is not None else None
+        p_close = logs[-1].values.get(f'pn{pi}_mwh') if logs and logs[-1].values.get(f'pn{pi}_mwh') is not None else None
+        p_c = None
+        if p_open is not None and p_close is not None:
+            try:
+                p_c = max(0, round(float(p_close) - float(p_open), 2))
+            except (ValueError, TypeError):
+                p_c = None
+        panel_cons.append(p_c)
 
-    p2_open = logs[0].values.get('pn2_mwh') if logs and logs[0].values.get('pn2_mwh') is not None else None
-    p2_close = logs[-1].values.get('pn2_mwh') if logs and logs[-1].values.get('pn2_mwh') is not None else None
-    p2_cons = max(0, round(float(p2_close) - float(p2_open), 2)) if (p2_open is not None and p2_close is not None) else None
+    p1_cons, p2_cons, p3_cons, p4_cons, p5_cons = panel_cons
+    total_energy = round(sum(c for c in panel_cons if c is not None), 2) if any(c is not None for c in panel_cons) else None
 
-    total_energy = round((p1_cons or 0) + (p2_cons or 0), 2) if (p1_cons is not None or p2_cons is not None) else None
+    def safe_diff_flash(c_val, o_val):
+        if c_val is None or o_val is None:
+            return None
+        try:
+            return max(0, round(float(c_val) - float(o_val), 2))
+        except (ValueError, TypeError):
+            return None
 
     wm1_open = logs[0].values.get('wm1_kl') if logs and logs[0].values.get('wm1_kl') is not None else None
     wm1_close = logs[-1].values.get('wm1_kl') if logs and logs[-1].values.get('wm1_kl') is not None else None
-    wm1_cons = max(0, round(float(wm1_close) - float(wm1_open), 2)) if (wm1_open is not None and wm1_close is not None) else None
+    wm1_cons = safe_diff_flash(wm1_close, wm1_open)
 
     wm2_open = logs[0].values.get('wm2_kl') if logs and logs[0].values.get('wm2_kl') is not None else None
     wm2_close = logs[-1].values.get('wm2_kl') if logs and logs[-1].values.get('wm2_kl') is not None else None
-    wm2_cons = max(0, round(float(wm2_close) - float(wm2_open), 2)) if (wm2_open is not None and wm2_close is not None) else None
+    wm2_cons = safe_diff_flash(wm2_close, wm2_open)
 
     wm3_open = (logs[0].values.get('wm3_kl') if logs[0].values.get('wm3_kl') is not None else logs[0].values.get('wm_chilled_kl')) if logs else None
     wm3_close = (logs[-1].values.get('wm3_kl') if logs[-1].values.get('wm3_kl') is not None else logs[-1].values.get('wm_chilled_kl')) if logs else None
-    wm3_cons = max(0, round(float(wm3_close) - float(wm3_open), 2)) if (wm3_open is not None and wm3_close is not None) else None
+    wm3_cons = safe_diff_flash(wm3_close, wm3_open)
 
     total_water = round((wm1_cons or 0) + (wm2_cons or 0) + (wm3_cons or 0), 2) if (wm1_cons is not None or wm2_cons is not None or wm3_cons is not None) else None
 
@@ -622,6 +646,9 @@ def mobile_flash(request):
         'total_energy': total_energy,
         'p1_cons': p1_cons,
         'p2_cons': p2_cons,
+        'p3_cons': p3_cons,
+        'p4_cons': p4_cons,
+        'p5_cons': p5_cons,
         'total_water': total_water,
         'wm1_cons': wm1_cons,
         'wm2_cons': wm2_cons,

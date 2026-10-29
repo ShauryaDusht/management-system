@@ -21,7 +21,9 @@ export default function DailyPlantStatus({
   onDateChange,
   isSupervisor = false,
   isSupervisorOrEngineer = true,
+  isHvacEngineer = false,
   onNavigateToEdit,
+  onOpenImport,
 }) {
   const [shiftFilter, setShiftFilter] = useState('');
   const [metricKey, setMetricKey] = useState('c5_dt');
@@ -82,12 +84,14 @@ export default function DailyPlantStatus({
       }
       const open = records[0].v[`${k}_mwh`];
       const close = records[records.length - 1].v[`${k}_mwh`];
-      const cons = Math.max(0, close - open);
+      const numOpen = Number(open);
+      const numClose = Number(close);
+      const cons = (!isNaN(numOpen) && !isNaN(numClose)) ? Math.max(0, numClose - numOpen) : null;
 
-      const amps = dayLogs.map((r) => r.v[`${k}_amp`]).filter((x) => x != null);
+      const amps = dayLogs.map((r) => Number(r.v[`${k}_amp`])).filter((x) => !isNaN(x) && x > 0);
       const avgAmp = amps.length ? amps.reduce((a, b) => a + b, 0) / amps.length : null;
 
-      const pfs = dayLogs.map((r) => r.v[`${k}_pf`]).filter((x) => x != null);
+      const pfs = dayLogs.map((r) => Number(r.v[`${k}_pf`])).filter((x) => !isNaN(x) && x > 0);
       const avgPf = pfs.length ? pfs.reduce((a, b) => a + b, 0) / pfs.length : null;
 
       return {
@@ -108,14 +112,16 @@ export default function DailyPlantStatus({
     // Shifts breakdown
     const shiftData = [1, 2, 3].map((s) => {
       const sLogs = dayLogs.filter((r) => shiftKey(r) === String(s));
-      const p1Cons = sLogs.length && sLogs[sLogs.length - 1].v.pn1_mwh != null && sLogs[0].v.pn1_mwh != null
-        ? Math.max(0, sLogs[sLogs.length - 1].v.pn1_mwh - sLogs[0].v.pn1_mwh)
-        : null;
-      const p2Cons = sLogs.length && sLogs[sLogs.length - 1].v.pn2_mwh != null && sLogs[0].v.pn2_mwh != null
-        ? Math.max(0, sLogs[sLogs.length - 1].v.pn2_mwh - sLogs[0].v.pn2_mwh)
-        : null;
-      const sTot = (p1Cons || 0) + (p2Cons || 0);
-      return { shift: `Shift ${s}`, p1: f2(p1Cons), p2: f2(p2Cons), total: f2(sTot) };
+      let sTot = 0;
+      let hasAny = false;
+      PANELS.forEach(([pKey]) => {
+        if (sLogs.length && sLogs[sLogs.length - 1].v[`${pKey}_mwh`] != null && sLogs[0].v[`${pKey}_mwh`] != null) {
+          const c = Math.max(0, sLogs[sLogs.length - 1].v[`${pKey}_mwh`] - sLogs[0].v[`${pKey}_mwh`]);
+          sTot += c;
+          hasAny = true;
+        }
+      });
+      return { shift: `Shift ${s}`, total: hasAny ? f2(sTot) : '0.00' };
     });
 
     return { panels: panelsData, totalCons: f2(totalCons), shifts: shiftData };
@@ -168,17 +174,17 @@ export default function DailyPlantStatus({
 
   // Export handlers
   const handleExportCsv = () => {
+    const panelHeaders = PANELS.map(([, pLabel]) => `${pLabel} MWh`);
     const rows = [
       ['Date', selectedDate],
-      ['Time', 'Shift', 'Operator', 'Set Point °C', 'Chillers On', 'Panel 1 MWh', 'Panel 2 MWh', 'Old Water kL', 'New Water kL', 'Chilled Water kL', 'Alerts Count'],
+      ['Time', 'Shift', 'Operator', 'Set Point °C', 'Chillers On', ...panelHeaders, 'Old Water kL', 'New Water kL', 'Chilled Water kL', 'Alerts Count'],
       ...dayLogs.map((l) => [
         l.time,
         `Shift ${shiftKey(l)}`,
         l.operator || '',
         l.setpoint ?? '',
         runningChillers(l.v).map((c) => c[1]).join('; '),
-        l.v.pn1_mwh ?? '',
-        l.v.pn2_mwh ?? '',
+        ...PANELS.map(([pKey]) => l.v[`${pKey}_mwh`] ?? ''),
         l.v.wm1_kl ?? '',
         l.v.wm2_kl ?? '',
         l.v.wm3_kl ?? l.v.wm_chilled_kl ?? '',
@@ -189,16 +195,16 @@ export default function DailyPlantStatus({
   };
 
   const handleExportPdf = () => {
+    const panelPdfHeaders = PANELS.map(([pKey]) => `${pKey.toUpperCase()} MWh`);
     const rows = [
-      ['Time', 'Shift', 'Operator', 'SP °C', 'Chillers On', 'P1 MWh', 'P2 MWh', 'Old kL', 'New kL', 'Chilled kL', 'Alerts'],
+      ['Time', 'Shift', 'Operator', 'SP °C', 'Chillers On', ...panelPdfHeaders, 'Old kL', 'New kL', 'Chilled kL', 'Alerts'],
       ...dayLogs.map((l) => [
         l.time,
         `Shift ${shiftKey(l)}`,
         l.operator || '',
         l.setpoint != null ? String(l.setpoint) : '–',
         runningChillers(l.v).map((c) => c[1]).join(', ') || 'None',
-        l.v.pn1_mwh != null ? String(l.v.pn1_mwh) : '–',
-        l.v.pn2_mwh != null ? String(l.v.pn2_mwh) : '–',
+        ...PANELS.map(([pKey]) => (l.v[`${pKey}_mwh`] != null ? String(l.v[`${pKey}_mwh`]) : '–')),
         l.v.wm1_kl != null ? String(l.v.wm1_kl) : '–',
         l.v.wm2_kl != null ? String(l.v.wm2_kl) : '–',
         l.v.wm3_kl != null ? String(l.v.wm3_kl) : (l.v.wm_chilled_kl != null ? String(l.v.wm_chilled_kl) : '–'),
@@ -239,7 +245,35 @@ export default function DailyPlantStatus({
             </label>
           </div>
 
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {onOpenImport && isHvacEngineer && (
+              <button
+                type="button"
+                onClick={onOpenImport}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '7px 12px',
+                  borderRadius: 8,
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  border: '1.5px solid #0f766e',
+                  background: 'rgba(15, 118, 110, 0.08)',
+                  color: '#0f766e',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Bulk import past months or historical telemetry CSV logs into HVAC database"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Import CSV
+              </button>
+            )}
             <ExportDropdown
               label="Export Daily Log"
               onExportCsv={handleExportCsv}
@@ -661,8 +695,9 @@ export default function DailyPlantStatus({
                 <th style={{ padding: '8px 10px', textAlign: 'left' }}>Operator</th>
                 <th style={{ padding: '8px 10px', textAlign: 'right' }}>Set Point</th>
                 <th style={{ padding: '8px 10px', textAlign: 'left' }}>Chillers Running</th>
-                <th style={{ padding: '8px 10px', textAlign: 'right' }}>Panel 1 MWh</th>
-                <th style={{ padding: '8px 10px', textAlign: 'right' }}>Panel 2 MWh</th>
+                {PANELS.map(([pKey, pLabel]) => (
+                  <th key={pKey} style={{ padding: '8px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>{pLabel} MWh</th>
+                ))}
                 <th style={{ padding: '8px 10px', textAlign: 'center' }}>Alerts</th>
                 {isSupervisor && <th style={{ padding: '8px 10px', textAlign: 'center' }}>Action</th>}
               </tr>
@@ -690,8 +725,11 @@ export default function DailyPlantStatus({
                     <td style={{ padding: '8px 10px' }}>
                       {runChillers.length ? runChillers.map((c) => c[1]).join(', ') : <span style={{ color: 'var(--hvac-muted)' }}>None</span>}
                     </td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace' }}>{l.v.pn1_mwh ?? '–'}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace' }}>{l.v.pn2_mwh ?? '–'}</td>
+                    {PANELS.map(([pKey]) => (
+                      <td key={pKey} style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace' }}>
+                        {l.v[`${pKey}_mwh`] ?? '–'}
+                      </td>
+                    ))}
                     <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                       {logAlerts.length > 0 ? (
                         <span className="pill pill-red">{logAlerts.length}</span>
