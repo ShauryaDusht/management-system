@@ -1,4 +1,6 @@
+import csv
 from datetime import timedelta
+from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
@@ -1376,6 +1378,259 @@ class UserUsageLogsView(APIView):
             'month': month,
             'year': year,
             'items': results,
+        })
+
+
+class ItemUsageReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        params = getattr(request, 'query_params', getattr(request, 'GET', {}))
+        category = params.get('category')
+        exclude_category = params.get('exclude_category')
+        area = params.get('area')
+        person = params.get('person')
+        item = params.get('item')
+        date_from = params.get('date_from')
+        date_to = params.get('date_to')
+        month = params.get('month')
+        year = params.get('year')
+        download = params.get('download')
+
+        qs = ItemUsageLog.objects.select_related(
+            'issue',
+            'issue__request',
+            'issue__request__item',
+            'issue__request__item__category',
+            'issue__request__requested_by',
+            'logged_by',
+        ).order_by('-logged_at')
+
+        # Filter by category
+        if category:
+            if str(category).isdigit():
+                qs = qs.filter(issue__request__item__category_id=category)
+            else:
+                qs = qs.filter(
+                    dm.Q(issue__request__item__category__name__iexact=category)
+                    | dm.Q(issue__request__item__category__name__icontains='Horticulture')
+                    | dm.Q(issue__request__purpose__icontains='[Horticulture')
+                )
+
+        if exclude_category:
+            if str(exclude_category).isdigit():
+                qs = qs.exclude(issue__request__item__category_id=exclude_category)
+            else:
+                qs = qs.exclude(
+                    dm.Q(issue__request__item__category__name__iexact=exclude_category)
+                    | dm.Q(issue__request__item__category__name__icontains='Horticulture')
+                    | dm.Q(issue__request__purpose__icontains='[Horticulture')
+                )
+
+        # Collect all available filter options across the category scope before applying specific query filters
+        from apps.horticulture.models import HorticultureStockRequest, HorticultureArea
+        from apps.housekeeping.models import HKStockRequest
+
+        avail_areas = set()
+        avail_items = set()
+        avail_people = set()
+
+        if category and 'horticulture' in str(category).lower():
+            try:
+                for ha in HorticultureArea.objects.filter(is_active=True).values_list('name', flat=True):
+                    avail_areas.add(ha)
+            except Exception:
+                pass
+
+        scope_logs = list(qs)
+        scope_req_ids = [l.issue.request_id for l in scope_logs if l.issue and l.issue.request_id]
+        scope_horti_map = {
+            hr.inventory_request_id: hr.area.name
+            for hr in HorticultureStockRequest.objects.filter(inventory_request_id__in=scope_req_ids).select_related('area')
+            if hr.area
+        }
+        scope_hk_map = {
+            hr.inventory_request_id: hr.area.name
+            for hr in HKStockRequest.objects.filter(inventory_request_id__in=scope_req_ids).select_related('area')
+            if hr.area
+        }
+
+        for l in scope_logs:
+            issue = l.issue
+            req = issue.request if issue else None
+            it = req.item if req else None
+            if it and it.name:
+                avail_items.add(it.name)
+            if l.logged_by:
+                name = l.logged_by.get_full_name() or l.logged_by.username
+                if name:
+                    avail_people.add(name)
+            if req and req.requested_by:
+                name = req.requested_by.get_full_name() or req.requested_by.username
+                if name:
+                    avail_people.add(name)
+            an = None
+            if req:
+                an = scope_horti_map.get(req.id) or scope_hk_map.get(req.id)
+                if not an and req.purpose:
+                    p = req.purpose
+                    if p.startswith('[Horticulture - '):
+                        end = p.find(']')
+                        if end > 16:
+                            an = p[16:end]
+                    elif p.startswith('[HK - '):
+                        end = p.find(']')
+                        if end > 6:
+                            an = p[6:end]
+            if an:
+                avail_areas.add(an)
+
+        # Date filtering
+        if date_from:
+            qs = qs.filter(logged_at__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(logged_at__date__lte=date_to)
+        if month and str(month).isdigit():
+            qs = qs.filter(logged_at__month=int(month))
+        if year and str(year).isdigit():
+            qs = qs.filter(logged_at__year=int(year))
+
+        # Item filtering
+        if item and item != 'all':
+            if str(item).isdigit():
+                qs = qs.filter(issue__request__item_id=item)
+            else:
+                qs = qs.filter(issue__request__item__name__iexact=item)
+
+        # Person filtering
+        if person and person != 'all':
+            qs = qs.filter(
+                dm.Q(logged_by__username=person)
+                | dm.Q(logged_by__first_name__icontains=person)
+                | dm.Q(logged_by__last_name__icontains=person)
+                | dm.Q(issue__request__requested_by__username=person)
+                | dm.Q(issue__request__requested_by__first_name__icontains=person)
+                | dm.Q(issue__request__requested_by__last_name__icontains=person)
+            )
+
+        logs_list = list(qs)
+        req_ids = [l.issue.request_id for l in logs_list if l.issue and l.issue.request_id]
+
+        horti_req_map = {
+            hr.inventory_request_id: hr.area.name
+            for hr in HorticultureStockRequest.objects.filter(inventory_request_id__in=req_ids).select_related('area')
+            if hr.area
+        }
+        hk_req_map = {
+            hr.inventory_request_id: hr.area.name
+            for hr in HKStockRequest.objects.filter(inventory_request_id__in=req_ids).select_related('area')
+            if hr.area
+        }
+
+        rows = []
+        item_agg = {}
+        area_agg = {}
+
+        for log in logs_list:
+            issue = log.issue
+            req = issue.request if issue else None
+            item_obj = req.item if req else None
+
+            area_name = None
+            if req:
+                area_name = horti_req_map.get(req.id) or hk_req_map.get(req.id)
+                if not area_name:
+                    p = req.purpose or ''
+                    if p.startswith('[Horticulture - '):
+                        end = p.find(']')
+                        if end > 16:
+                            area_name = p[16:end]
+                    elif p.startswith('[HK - '):
+                        end = p.find(']')
+                        if end > 6:
+                            area_name = p[6:end]
+
+            if not area_name:
+                area_name = 'General'
+
+            if area and area != 'all' and area_name.lower() != area.lower():
+                continue
+
+            qty = float(log.quantity_used) if log.quantity_used is not None else 0.0
+            item_name = item_obj.name if item_obj else '—'
+            unit = item_obj.unit if item_obj else ''
+
+            if item_name not in item_agg:
+                item_agg[item_name] = {'item_name': item_name, 'unit': unit, 'total_used': 0.0, 'log_count': 0}
+            item_agg[item_name]['total_used'] = round(item_agg[item_name]['total_used'] + qty, 2)
+            item_agg[item_name]['log_count'] += 1
+
+            if area_name not in area_agg:
+                area_agg[area_name] = {'area_name': area_name, 'log_count': 0, 'items': set()}
+            area_agg[area_name]['log_count'] += 1
+            area_agg[area_name]['items'].add(item_name)
+
+            rows.append({
+                'id': log.id,
+                'logged_at': log.logged_at.isoformat() if log.logged_at else None,
+                'date': log.logged_at.strftime('%Y-%m-%d') if log.logged_at else '',
+                'time': log.logged_at.strftime('%I:%M %p') if log.logged_at else '',
+                'item_id': item_obj.id if item_obj else None,
+                'item_name': item_name,
+                'item_code': item_obj.item_code if item_obj else '—',
+                'item_unit': unit,
+                'category': item_obj.category.name if item_obj and item_obj.category else '',
+                'quantity_used': qty,
+                'purpose': log.purpose or '',
+                'notes': log.notes or '',
+                'logged_by': log.logged_by.get_full_name() or log.logged_by.username if log.logged_by else '—',
+                'requested_by': req.requested_by.get_full_name() or req.requested_by.username if req and req.requested_by else '—',
+                'area_name': area_name,
+                'issue_id': issue.id if issue else None,
+                'issued_quantity': float(issue.issued_quantity) if issue and issue.issued_quantity else 0.0,
+                'issued_at': issue.issued_at.strftime('%Y-%m-%d') if issue and issue.issued_at else '',
+            })
+
+        area_summary = [
+            {'area_name': k, 'log_count': v['log_count'], 'items_used': sorted(list(v['items']))}
+            for k, v in sorted(area_agg.items(), key=lambda x: -x[1]['log_count'])
+        ]
+        item_summary = sorted(item_agg.values(), key=lambda x: -x['total_used'])
+
+        if download == 'csv':
+            response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+            filename = f"usage_report_{timezone.localdate()}.csv"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            writer = csv.writer(response)
+            writer.writerow([
+                'Log ID', 'Date', 'Time', 'Area', 'Item Name', 'Item Code',
+                'Quantity Used', 'Unit', 'Purpose / Work Done',
+                'Reported By', 'Requested By', 'Issue ID', 'Issued Qty', 'Issued Date'
+            ])
+            for r in rows:
+                writer.writerow([
+                    r['id'], r['date'], r['time'], r['area_name'], r['item_name'], r['item_code'],
+                    r['quantity_used'], r['item_unit'], r['purpose'],
+                    r['logged_by'], r['requested_by'], r['issue_id'], r['issued_quantity'], r['issued_at']
+                ])
+            return response
+
+        total_qty = sum(r['quantity_used'] for r in rows)
+        return Response({
+            'summary': {
+                'total_logs': len(rows),
+                'total_quantity_used': round(total_qty, 2),
+                'unique_items_count': len(item_agg),
+                'unique_areas_count': len(area_agg),
+            },
+            'filters': {
+                'areas': sorted(list(avail_areas)),
+                'items': sorted(list(avail_items)),
+                'people': sorted(list(avail_people)),
+            },
+            'item_summary': item_summary,
+            'area_summary': area_summary,
+            'logs': rows,
         })
 
 

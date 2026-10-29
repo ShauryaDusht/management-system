@@ -14,6 +14,7 @@ from .views import (
     ReviewRequestView, IssueItemView,
     ItemIssueListView, AdjustOrReverseIssueView, IssueAdjustmentHistoryView,
     ReturnAssetView, FinalizeConsumableView, IssueUsageLogView,
+    ItemUsageReportView,
     UserActivityView,
     UserUsageLogsView,
     DashboardSummaryView,
@@ -70,6 +71,7 @@ urlpatterns = [
     path('issues/<int:pk>/return/', ReturnAssetView.as_view(), name='issue-return'),
     path('issues/<int:pk>/finalize/', FinalizeConsumableView.as_view(), name='issue-finalize'),
     path('issues/<int:pk>/log-usage/', IssueUsageLogView.as_view(), name='issue-log-usage'),
+    path('usage-report/', ItemUsageReportView.as_view(), name='usage-report'),
 
     # ── User activity (admin) ────────────────────────────────────────────────
     path('activity/users/<int:user_id>/', UserActivityView.as_view(), name='user-activity'),

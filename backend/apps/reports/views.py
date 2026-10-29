@@ -2165,6 +2165,8 @@ class AreaIssuesReportView(APIView):
         area_class = request.query_params.get('area_class', 'all')
         area_name = request.query_params.get('area_name', '')
         download = request.query_params.get('download', '')
+        category = request.query_params.get('category')
+        exclude_category = request.query_params.get('exclude_category')
 
         try:
             month = int(month) if month else None
@@ -2177,6 +2179,8 @@ class AreaIssuesReportView(APIView):
             year=year,
             area_class=area_class,
             area_name=area_name,
+            category=category,
+            exclude_category=exclude_category,
         )
 
         if download == 'csv':

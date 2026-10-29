@@ -12,6 +12,7 @@ import ItemsTab from '../inventory/ItemsTab'
 import ReportTab from '../inventory/ReportTab'
 import RequestsTab from '../inventory/RequestsTab'
 import StockLogTab from '../inventory/StockLogTab'
+import UsageReportTab from '../inventory/UsageReportTab'
 import RequestsReportTab from '../reports/RequestsReportTab'
 
 export default function HorticultureStockPage() {
@@ -52,6 +53,7 @@ export default function HorticultureStockPage() {
         countTone: 'red',
       },
       { key: 'issues', label: 'Issued Items', icon: '🔄' },
+      { key: 'usage-report', label: 'Usage Report', icon: '📊' },
       { key: 'stocklog', label: 'Stock Log', icon: '🧾' },
       { key: 'inventory-report', label: 'Inventory Report', icon: 'IR' },
       { key: 'request-report', label: 'Request Report', icon: 'RR' },
@@ -117,6 +119,12 @@ export default function HorticultureStockPage() {
       {active === 'issues' && (
         <IssuesTab
           userRole={user?.role}
+          categoryScope="Garden & Horticulture Equipment"
+        />
+      )}
+
+      {active === 'usage-report' && (
+        <UsageReportTab
           categoryScope="Garden & Horticulture Equipment"
         />
       )}

@@ -1739,7 +1739,7 @@ def horticulture_supervisor_required(fn):
             return redirect(f'/portal/login/?next={request.path}')
         if not request.user.is_active:
             return redirect('/portal/login/')
-        if request.user.role not in ['supervisor', 'horticulture_manager']:
+        if request.user.role not in ['supervisor', 'horticulture_manager', 'admin'] and not request.user.is_superuser:
             return HttpResponseForbidden()
         return fn(request, *args, **kwargs)
 

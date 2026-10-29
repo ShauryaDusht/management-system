@@ -968,18 +968,39 @@ def _area_class_label(area_type: str, area_name: str) -> str:
     return 'others'
 
 
-def generate_area_issues_report(month=None, year=None, area_class='all', area_name=None):
+def generate_area_issues_report(month=None, year=None, area_class='all', area_name=None, category=None, exclude_category=None):
     """
     Generate area-wise issued items report.
     If month/year given, filter by that period. Otherwise all time.
     """
     from apps.inventory.models import ItemIssue, ItemRequest
     from apps.housekeeping.models import HKStockRequest
+    from django.db import models as dm
 
     qs = ItemIssue.objects.select_related(
-        'request', 'request__item', 'request__requested_by',
+        'request', 'request__item', 'request__item__category', 'request__requested_by',
         'issued_by'
     ).order_by('-issued_at')
+
+    if category:
+        if str(category).isdigit():
+            qs = qs.filter(request__item__category_id=category)
+        else:
+            qs = qs.filter(
+                dm.Q(request__item__category__name__iexact=category)
+                | dm.Q(request__item__category__name__icontains='Horticulture')
+                | dm.Q(request__purpose__icontains='[Horticulture')
+            )
+
+    if exclude_category:
+        if str(exclude_category).isdigit():
+            qs = qs.exclude(request__item__category_id=exclude_category)
+        else:
+            qs = qs.exclude(
+                dm.Q(request__item__category__name__iexact=exclude_category)
+                | dm.Q(request__item__category__name__icontains='Horticulture')
+                | dm.Q(request__purpose__icontains='[Horticulture')
+            )
 
     if month and year:
         last_day = calendar.monthrange(year, month)[1]
@@ -990,7 +1011,7 @@ def generate_area_issues_report(month=None, year=None, area_class='all', area_na
     target_area_name = area_name
     rows = []
     for issue in qs:
-        # Get area from HKStockRequest
+        # Get area from HKStockRequest or HorticultureStockRequest
         issue_area_name = None
         issue_area_type = None
         try:
@@ -1004,11 +1025,28 @@ def generate_area_issues_report(month=None, year=None, area_class='all', area_na
             pass
 
         if not issue_area_name:
+            try:
+                from apps.horticulture.models import HorticultureStockRequest
+                horti_req = HorticultureStockRequest.objects.filter(
+                    inventory_request=issue.request
+                ).select_related('area').first()
+                if horti_req and horti_req.area:
+                    issue_area_name = horti_req.area.name
+                    issue_area_type = 'horticulture'
+            except Exception:
+                pass
+
+        if not issue_area_name:
             purpose = getattr(issue.request, 'purpose', '') or ''
             if purpose.startswith('[HK - '):
                 end = purpose.find(']')
                 if end > 6:
                     issue_area_name = purpose[6:end]
+            elif purpose.startswith('[Horticulture - '):
+                end = purpose.find(']')
+                if end > 16:
+                    issue_area_name = purpose[16:end]
+                    issue_area_type = 'horticulture'
 
         rows.append({
             'issue_id': issue.id,
