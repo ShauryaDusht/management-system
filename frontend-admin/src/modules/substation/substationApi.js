@@ -54,6 +54,15 @@ export class SubstationApi {
     return res.data
   }
 
+  static async updateContractDemand(month, { contractDemandKw, remarks = '', applyFuture = false }) {
+    const res = await api.patch(`/substation/torrent/${encodeURIComponent(month)}/`, {
+      contractDemandKw,
+      remarks,
+      applyFuture,
+    })
+    return res.data
+  }
+
   static async deleteTorrentBill(month) {
     const res = await api.delete(`/substation/torrent/${encodeURIComponent(month)}/`)
     return res.data

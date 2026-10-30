@@ -359,6 +359,7 @@ export default function SubstationPage() {
             {activeTab === 'torrent' && (
               <TorrentBillReport
                 user={user}
+                authUser={authUser}
                 isSupervisor={isSupervisor}
                 isAdmin={isAdmin}
               />
