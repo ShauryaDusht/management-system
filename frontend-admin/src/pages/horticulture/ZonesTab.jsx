@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 
+import { useAuth } from '../../context/AuthContext'
 import { horticultureAPI } from '../../api/horticulture'
 import { Alert, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
 import { exportReport } from '../../shared/exportHelper'
@@ -170,6 +171,7 @@ function TaskStatusCard({ task, taskType }) {
 }
 
 export default function ZonesTab() {
+  const { isReadOnly } = useAuth()
   const [summaryLoading, setSummaryLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
   const [error, setError] = useState('')
@@ -388,7 +390,7 @@ export default function ZonesTab() {
               Add or remove horticulture areas across all zones.
             </div>
           </div>
-          <Btn size="sm" onClick={openAddArea} disabled={!zones.length}>+ Add Area</Btn>
+          <Btn size="sm" onClick={openAddArea} disabled={isReadOnly || !zones.length} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""}>+ Add Area</Btn>
         </div>
 
         {areasLoading ? (
@@ -403,7 +405,7 @@ export default function ZonesTab() {
               area.name,
               area.zone_name || '-',
               area.supervisor_name || '-',
-              <Btn key={`remove-${area.id}`} size="sm" variant="ghost" onClick={() => removeArea(area)}>Remove</Btn>,
+              <Btn key={`remove-${area.id}`} size="sm" variant="ghost" disabled={isReadOnly} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !isReadOnly && removeArea(area)}>Remove</Btn>,
             ])}
             emptyMsg="No horticulture areas found."
           />

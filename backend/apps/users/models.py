@@ -85,8 +85,13 @@ class User(AbstractUser):
         ESTATE_OFFICE = 'estate_office', 'Estate Office'
         CIVIL_TEAM = 'civil_team', 'Civil Team'
         ELECTRICAL_TEAM = 'electrical_team', 'Electrical Team'
+        TECHNICAL_ASSISTANT = 'technical_assistant', 'Technical Assistant'
 
     role = models.CharField(max_length=30, choices=Role.choices, default=Role.SUPERVISOR)
+    can_edit = models.BooleanField(
+        default=False,
+        help_text="Allow edit access for Technical Assistant role (default False / View-only)."
+    )
     phone = models.CharField(max_length=15, blank=True)
     pay_code = models.CharField(max_length=20, blank=True)
     profile_photo = models.ImageField(upload_to='users/photos/', null=True, blank=True)
@@ -179,7 +184,7 @@ class User(AbstractUser):
 
     @property
     def can_manage_housekeeping(self):
-        return self.is_admin or self.is_hk_inventory_manager
+        return self.is_admin or self.is_hk_inventory_manager or self.is_technical_assistant
 
     @property
     def can_view_admin_reports(self):
@@ -187,6 +192,7 @@ class User(AbstractUser):
             self.is_admin
             or self.is_hk_inventory_manager
             or self.is_horticulture_manager
+            or self.is_technical_assistant
         )
 
     @property
@@ -217,6 +223,18 @@ class User(AbstractUser):
     @property
     def is_electrical_team(self):
         return self.role == self.Role.ELECTRICAL_TEAM
+
+    @property
+    def is_technical_assistant(self):
+        return self.role == self.Role.TECHNICAL_ASSISTANT
+
+    @property
+    def can_perform_edits(self):
+        if self.is_admin:
+            return True
+        if self.is_technical_assistant:
+            return bool(self.can_edit)
+        return True
 
 
 def resolve_username_alias(raw_val):

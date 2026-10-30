@@ -44,16 +44,17 @@ const HVAC_ALLOWED = [
   'hvac_operator',
 ]
 
-const ADMIN_OR_HK_INVENTORY = ['admin', 'hk_inventory_manager', 'horticulture_manager']
-const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'estate_office', 'civil_team', 'electrical_team']
-const HK_INVENTORY_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office']
-const HK_PORTAL_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office', 'supervisor']
-const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager', 'supervisor']
-const GEO_TRACKER_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'supervisor']
-const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'estate_office']
+const ADMIN_OR_HK_INVENTORY = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'technical_assistant']
+const ADMIN_DASHBOARD_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'estate_office', 'civil_team', 'electrical_team', 'technical_assistant']
+const HK_INVENTORY_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'technical_assistant']
+const HK_PORTAL_ALLOWED = ['admin', 'hk_inventory_manager', 'hostel_office', 'supervisor', 'technical_assistant']
+const HORTICULTURE_ALLOWED = ['admin', 'horticulture_manager', 'supervisor', 'technical_assistant']
+const GEO_TRACKER_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'supervisor', 'technical_assistant']
+const INSIGHTS_ALLOWED = ['admin', 'hk_inventory_manager', 'horticulture_manager', 'hostel_office', 'estate_office', 'technical_assistant']
 const LIFTS_ALLOWED = ['admin', 'engineer']
 const ESTATE_ALLOWED = ['admin', 'estate_office', 'civil_team', 'electrical_team', 'hk_inventory_manager']
 const PROFILE_ALLOWED = [
+  'technical_assistant',
   'admin',
   'horticulture_manager',
   'estate_office',
@@ -72,6 +73,7 @@ const PROFILE_ALLOWED = [
   'hvac_operator',
 ]
 const ALL_PORTAL_ROLES = [
+  'technical_assistant',
   'admin',
   'hk_inventory_manager',
   'horticulture_manager',
@@ -98,6 +100,7 @@ function getLandingRoute(user) {
     ? 'hostel_office'
     : user?.role
   if (role === 'admin') return '/dashboard'
+  if (role === 'technical_assistant') return '/dashboard'
   if (role === 'estate_office') return '/dashboard'
   if (role === 'civil_team') return '/estate'
   if (role === 'electrical_team') return '/estate'

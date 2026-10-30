@@ -109,6 +109,7 @@ def _can_manage_housekeeping(user):
         and (
             user.is_admin
             or getattr(user, 'is_hk_inventory_manager', False)
+            or getattr(user, 'role', '') == 'technical_assistant'
         )
     )
 
@@ -612,6 +613,8 @@ class HKSupervisorSwitchView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
+        if getattr(request.user, 'role', '') == 'technical_assistant' and not getattr(request.user, 'can_edit', False):
+            return Response({'detail': 'Technical Assistant has read-only access. Contact admin for edit rights.'}, status=403)
         if not (_can_manage_housekeeping(request.user) or _is_hostel_office(request.user)):
             return Response({'detail': 'Permission denied.'}, status=403)
 
@@ -929,6 +932,8 @@ class HKTemporaryStaffAreaAssignmentListCreateView(APIView):
         return Response(HKTemporaryStaffAreaAssignmentSerializer(qs, many=True).data)
 
     def post(self, request):
+        if getattr(request.user, 'role', '') == 'technical_assistant' and not getattr(request.user, 'can_edit', False):
+            return Response({'detail': 'Technical Assistant has read-only access. Contact admin for edit rights.'}, status=403)
         if not (_can_manage_housekeeping(request.user) or _is_hostel_office(request.user)):
             return Response({'detail': 'Permission denied.'}, status=403)
 
@@ -1014,6 +1019,8 @@ class HKTemporaryStaffAreaAssignmentRevokeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
+        if getattr(request.user, 'role', '') == 'technical_assistant' and not getattr(request.user, 'can_edit', False):
+            return Response({'detail': 'Technical Assistant has read-only access. Contact admin for edit rights.'}, status=403)
         if not (_can_manage_housekeeping(request.user) or _is_hostel_office(request.user)):
             return Response({'detail': 'Permission denied.'}, status=403)
         qs = HKTemporaryStaffAreaAssignment.objects.select_related('staff', 'area')

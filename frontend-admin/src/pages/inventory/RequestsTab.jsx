@@ -21,7 +21,7 @@ import {
 import UndoAdjustIssueModal from './UndoAdjustIssueModal'
 
 export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, isCaretaker: isCaretakerProp, categoryScope = null, excludeCategoryScope = null }) {
-  const { isSupervisor: authSupervisor, isCaretaker: authCaretaker } = useAuth()
+  const { isSupervisor: authSupervisor, isCaretaker: authCaretaker, isReadOnly } = useAuth()
   const isSupervisor = isSupervisorProp !== undefined ? isSupervisorProp : authSupervisor
   const isCaretaker = isCaretakerProp !== undefined ? isCaretakerProp : authCaretaker
   const { refresh: refreshBadges } = useNotifications()
@@ -61,8 +61,8 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
   })
 
   const canCreate = isSupervisor || isCaretaker
-  const canReview = userRole === 'admin' || userRole === 'hk_inventory_manager' || userRole === 'horticulture_manager' || userRole === 'inventory_manager'
-  const canCreatePurchase = userRole === 'admin' || userRole === 'hk_inventory_manager' || userRole === 'horticulture_manager' || userRole === 'inventory_manager'
+  const canReview = userRole === 'admin' || userRole === 'hk_inventory_manager' || userRole === 'horticulture_manager' || userRole === 'inventory_manager' || userRole === 'technical_assistant'
+  const canCreatePurchase = userRole === 'admin' || userRole === 'hk_inventory_manager' || userRole === 'horticulture_manager' || userRole === 'inventory_manager' || userRole === 'technical_assistant'
 
   const { run: runAction, error: actionError, clearError } = useAsyncAction()
   const { loading, error: loadError, reload } = useAsyncLoad(async () => {
@@ -364,7 +364,7 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
           <div style={{ fontWeight: 700 }}>Pending Requests</div>
           <div style={{ display: 'flex', gap: 8 }}>
             {canCreatePurchase && (
-              <Btn variant="orange" onClick={openPurchaseModal}>
+              <Btn variant="orange" disabled={isReadOnly} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !isReadOnly && openPurchaseModal()}>
                 + Purchase Request
               </Btn>
             )}
@@ -412,16 +412,18 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
                       <Btn
                         size="sm"
                         variant="success"
-                        onClick={() => issueRequest(r)}
-                        disabled={actingId === r.id}
+                        onClick={() => !isReadOnly && issueRequest(r)}
+                        disabled={actingId === r.id || isReadOnly}
+                        title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""}
                       >
                         {actingId === r.id ? 'Issuing...' : 'Issue Item'}
                       </Btn>
                       <Btn
                         size="sm"
                         variant="danger"
-                        onClick={() => setRejectTarget(r)}
-                        disabled={actingId === r.id}
+                        onClick={() => !isReadOnly && setRejectTarget(r)}
+                        disabled={actingId === r.id || isReadOnly}
+                        title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""}
                       >
                         Reject
                       </Btn>

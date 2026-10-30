@@ -21,6 +21,7 @@ const ALLOWED_PORTAL_ROLES = [
   'hvac_operator',
   'supervisor',
   'operator',
+  'technical_assistant',
 ]
 
 function normalizePortalUser(user) {
@@ -105,6 +106,9 @@ export function AuthProvider({ children }) {
   const isElectricalTeam = user?.role === 'electrical_team'
   const isSupervisor = user?.role === 'supervisor'
   const isCaretaker = user?.role === 'caretaker'
+  const isTechnicalAssistant = user?.role === 'technical_assistant'
+  const canEdit = Boolean(isAdmin || user?.can_edit)
+  const isReadOnly = Boolean(isTechnicalAssistant && !user?.can_edit)
 
   const value = {
     user,
@@ -125,6 +129,9 @@ export function AuthProvider({ children }) {
     isAnyManager,
     isSupervisor,
     isCaretaker,
+    isTechnicalAssistant,
+    canEdit,
+    isReadOnly,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

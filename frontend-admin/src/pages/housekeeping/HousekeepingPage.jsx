@@ -25,7 +25,7 @@ const tabFallback = (
 )
 
 export default function HousekeepingPage() {
-  const { user } = useAuth()
+  const { user, isReadOnly } = useAuth()
   const { badges, markSeen } = useNotifications()
   const [searchParams, setSearchParams] = useSearchParams()
   const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
@@ -40,7 +40,7 @@ export default function HousekeepingPage() {
         { key: 'staff_attendance', label: 'Staff Attendance' },
         { key: 'workers', label: 'Workers' },
       ]
-      if (['admin', 'hk_inventory_manager', 'hostel_office'].includes(user?.role)) {
+      if (['admin', 'hk_inventory_manager', 'hostel_office', 'technical_assistant'].includes(user?.role)) {
         base.push({ key: 'temporary_areas', label: 'Temporary Areas' })
         base.push({ key: 'schedule', label: 'Schedule' })
         base.push({
@@ -50,10 +50,10 @@ export default function HousekeepingPage() {
           countTone: 'red',
         })
       }
-      if (['admin', 'hk_inventory_manager', 'hostel_office'].includes(user?.role)) {
+      if (['admin', 'hk_inventory_manager', 'hostel_office', 'technical_assistant'].includes(user?.role)) {
         base.push({ key: 'stock', label: 'Stock Requests' })
       }
-      if (['admin', 'hk_inventory_manager', 'hostel_office'].includes(user?.role)) {
+      if (['admin', 'hk_inventory_manager', 'hostel_office', 'technical_assistant'].includes(user?.role)) {
         base.push({ key: 'gallery', label: 'Gallery' })
       }
       return base
@@ -114,7 +114,7 @@ export default function HousekeepingPage() {
           <StaffAttendanceTab />
         </Suspense>
       )}
-      {active === 'workers' && <WorkersTab readOnly={isHostelOffice} hostelOnly={isHostelOffice} />}
+      {active === 'workers' && <WorkersTab readOnly={isHostelOffice || isReadOnly} hostelOnly={isHostelOffice} />}
       {active === 'temporary_areas' && (
         <Suspense fallback={tabFallback}>
           <TemporaryAreaAssignmentsTab hostelOnly={isHostelOffice} />
@@ -122,18 +122,18 @@ export default function HousekeepingPage() {
       )}
       {active === 'schedule' && (
         <Suspense fallback={tabFallback}>
-          <ScheduleTab readOnly={isHostelOffice} hostelOnly={isHostelOffice} />
+          <ScheduleTab readOnly={isHostelOffice || isReadOnly} hostelOnly={isHostelOffice} />
         </Suspense>
       )}
-      {active === 'stock' && <AssignInventoryTab userRole={user?.role} readOnly={isHostelOffice} />}
+      {active === 'stock' && <AssignInventoryTab userRole={user?.role} readOnly={isHostelOffice || isReadOnly} />}
       {active === 'incharge_approvals' && (
         <Suspense fallback={tabFallback}>
-          <InchargeApprovalsTab readOnly={isHostelOffice} />
+          <InchargeApprovalsTab readOnly={isHostelOffice || isReadOnly} />
         </Suspense>
       )}
       {active === 'gallery' && (
         <Suspense fallback={tabFallback}>
-          <GalleryTab readOnly={isHostelOffice} />
+          <GalleryTab readOnly={isHostelOffice || isReadOnly} />
         </Suspense>
       )}
     </AdminLayout>

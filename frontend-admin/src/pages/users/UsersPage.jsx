@@ -41,6 +41,7 @@ const ROLES = [
   'horticulture_manager',
   'supervisor',
   'caretaker',
+  'technical_assistant',
 ]
 const HK_ROLES = ['supervisor', 'caretaker']
 const ENGINEER_ROLES = ['plant_engineer', 'hvac_engineer']
@@ -60,6 +61,7 @@ const TOP_CARD_FILTERS = [
   { key: 'hostel_office', label: 'Hostel Office', countKey: 'hostel_office', roles: ['hostel_office'] },
   { key: 'horticulture_manager', label: 'Horticulture Manager', countKey: 'horticulture_manager', roles: ['horticulture_manager'] },
   { key: 'caretaker', label: 'Caretaker', countKey: 'caretaker', roles: ['caretaker'] },
+  { key: 'technical_assistant', label: 'Tech Assistant', countKey: 'technical_assistant', roles: ['technical_assistant'] },
 ]
 
 const ROLE_FILTERS = TOP_CARD_FILTERS
@@ -83,6 +85,7 @@ const ROLE_LABELS = {
   horticulture_manager: 'Horticulture Manager',
   supervisor: 'Supervisor',
   caretaker: 'Caretaker',
+  technical_assistant: 'Technical Assistant',
 }
 const DEPRECATED_MANAGER_USERNAMES = new Set(['inventory.manager', 'housekeeping.manager', 'hostel.manager'])
 const EMPTY = {
@@ -95,6 +98,7 @@ const EMPTY = {
   role: 'supervisor',
   area_ids: [],
   password: '',
+  can_edit: false,
 }
 const FIRST_NAME_SUFFIXES = ['chandra', 'kumar', 'sinh', 'bhai']
 
@@ -148,7 +152,7 @@ function areaInchargeText(user) {
 }
 
 export default function UsersPage() {
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, isReadOnly } = useAuth()
   const [users, setUsers] = useState([])
   const [areas, setAreas] = useState([])
   const [search, setSearch] = useState('')
@@ -177,7 +181,7 @@ export default function UsersPage() {
   const canEditUser = (targetUser) => !isLimitedUserManager || targetUser.role !== 'admin'
 
   const openCreate = () => {
-    setForm({ ...EMPTY, role: 'supervisor' })
+    setForm({ ...EMPTY, role: 'supervisor', can_edit: false })
     setFormError('')
     setModal({ mode: 'create' })
   }
@@ -196,6 +200,7 @@ export default function UsersPage() {
       pay_code: u.pay_code || '',
       role: u.role || 'supervisor',
       area_ids: Array.isArray(u.assigned_area_ids) ? u.assigned_area_ids : [],
+      can_edit: Boolean(u.can_edit),
       password: '',
     })
     setFormError('')
@@ -226,6 +231,7 @@ export default function UsersPage() {
           phone: form.phone,
           pay_code: form.pay_code || '',
           role: form.role,
+          can_edit: Boolean(form.can_edit),
           area_ids: HK_ROLES.includes(form.role) ? form.area_ids : [],
         }
         if (modal.mode === 'create' || standardizedUsername !== modal.user?.username) {
@@ -335,6 +341,7 @@ export default function UsersPage() {
       hostel_office: 0,
       horticulture_manager: 0,
       caretaker: 0,
+      technical_assistant: 0,
     }
     users.forEach((u) => {
       if (Object.prototype.hasOwnProperty.call(counts, u.role)) {
@@ -409,7 +416,7 @@ export default function UsersPage() {
       subtitle={`${users.length} total users across all roles`}
       actions={(
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Btn onClick={openCreate}>+ Add User</Btn>
+          <Btn onClick={openCreate} disabled={isReadOnly} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""}>+ Add User</Btn>
         </div>
       )}
     >
@@ -529,7 +536,23 @@ export default function UsersPage() {
               </span>,
               u.email || '-',
               u.phone || '-',
-              <Badge key={`role-${u.id}`} value={u.role} />,
+              <div key={`role-${u.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <Badge value={u.role} />
+                {u.role === 'technical_assistant' && (
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '1px 6px',
+                    borderRadius: 4,
+                    width: 'fit-content',
+                    background: u.can_edit ? '#dcfce7' : '#f3f4f6',
+                    color: u.can_edit ? '#15803d' : '#6b7280',
+                    border: u.can_edit ? '1px solid #86efac' : '1px solid #d1d5db'
+                  }}>
+                    {u.can_edit ? 'Can Edit' : 'Read Only'}
+                  </span>
+                )}
+              </div>,
               <div key={`areas-${u.id}`} style={{ fontSize: 12, color: 'var(--text-2)', maxWidth: 280 }}>
                 {areaInchargeText(u)}
               </div>,
@@ -546,10 +569,10 @@ export default function UsersPage() {
               <div key={`actions-${u.id}`} style={{ display: 'flex', gap: 6 }}>
                 {canEditUser(u) ? (
                   <>
-                    <Btn size="sm" variant="ghost" onClick={() => openEdit(u)}>
+                    <Btn size="sm" variant="ghost" disabled={isReadOnly} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !isReadOnly && openEdit(u)}>
                       Edit
                     </Btn>
-                    <Btn size="sm" variant="danger" onClick={() => setDeleteTarget(u)}>
+                    <Btn size="sm" variant="danger" disabled={isReadOnly} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !isReadOnly && setDeleteTarget(u)}>
                       Delete
                     </Btn>
                   </>
@@ -619,6 +642,25 @@ export default function UsersPage() {
             ))}
           </SelectField>
         </Field>
+
+        {form.role === 'technical_assistant' && (
+          <Field label="Edit Permissions">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '6px 0' }}>
+              <input
+                type="checkbox"
+                checked={Boolean(form.can_edit)}
+                onChange={(e) => setForm((p) => ({ ...p, can_edit: e.target.checked }))}
+                style={{ width: 16, height: 16, cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
+                Allow Edit & Action Rights (Default: Read-Only / View Only)
+              </span>
+            </label>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+              When enabled, this Technical Assistant can assign tasks, issue inventory, and modify records. By default, they have view-only access.
+            </div>
+          </Field>
+        )}
 
         <Field label="Areas Incharge">
           {HK_ROLES.includes(form.role) ? (

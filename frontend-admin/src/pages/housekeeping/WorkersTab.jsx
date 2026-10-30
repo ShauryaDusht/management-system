@@ -356,7 +356,7 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
               onExport={handleExportWorkers}
               disabled={loading || csvRows.length === 0}
             />
-            {!readOnly && <Btn size="sm" onClick={openCreate}>+ Add Worker</Btn>}
+            <Btn size="sm" disabled={readOnly} title={readOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !readOnly && openCreate()}>+ Add Worker</Btn>
           </div>
         </div>
 
@@ -375,7 +375,7 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
               'Phone',
               'Pay Code',
               'Reliever',
-              ...(readOnly ? [] : ['Edit']),
+              'Edit',
               'Report',
             ]}
             rows={visibleWorkers.map((w) => [
@@ -387,9 +387,7 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
               w.phone || '-',
               w.pay_code || '-',
               w.is_reliever ? <span key={`r-${w.id}`} style={{ display: 'inline-block', background: '#fff7ed', color: '#c2410c', padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700 }}>Reliever</span> : '-',
-              ...(readOnly ? [] : [
-                <Btn key={`a-${w.id}`} size="sm" variant="ghost" onClick={() => openEdit(w)}>Edit</Btn>,
-              ]),
+              <Btn key={`a-${w.id}`} size="sm" variant="ghost" disabled={readOnly} title={readOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !readOnly && openEdit(w)}>Edit</Btn>,
               <Btn key={`report-${w.id}`} size="sm" variant="secondary" onClick={() => setReportWorker(w)}>Report</Btn>,
             ])}
             emptyMsg="No workers found for selected segment/filter."

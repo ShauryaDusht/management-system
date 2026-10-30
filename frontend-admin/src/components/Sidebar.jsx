@@ -77,6 +77,8 @@ export default function Sidebar() {
     user?.role === 'hvac_supervisor' ||
     user?.role === 'hvac_operator'
 
+  const isTechnicalAssistant = user?.role === 'technical_assistant'
+
   const navItems = isEngineer
     ? [
       { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
@@ -164,6 +166,33 @@ export default function Sidebar() {
       { to: '/estate', icon: 'estate', label: 'HK Clearances' },
       { to: '/insights', icon: 'insights', label: 'Insights' },
       { to: '/users', icon: 'users', label: 'Manage Users' },
+    ]
+    : isTechnicalAssistant
+    ? [
+      { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+      {
+        to: '/inventory', icon: 'inventory', label: 'Inventory',
+        badge: badges.inventory,
+        badgeYellow: false,
+        extraBadge: badges.lowStock,
+        extraYellow: true,
+        extraTitle: 'low stock items',
+      },
+      {
+        to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
+        badge: badges.housekeeping,
+      },
+      { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
+      {
+        to: '/horticulture-stock',
+        icon: 'inventory',
+        label: 'Horticulture Inventory',
+        badge: badges.horticultureInventory,
+      },
+      { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
+      { to: '/insights', icon: 'insights', label: 'Insights' },
+      { to: '/users', icon: 'users', label: 'Manage Users' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
     ]
     : [
       { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { useAuth } from '../../context/AuthContext'
 import { horticultureAPI } from '../../api/horticulture'
 import { Alert, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
 import { asList, getErrorMessage, triggerDownload } from '../../shared/utils'
@@ -31,6 +32,7 @@ function csvValue(value) {
 }
 
 export default function WorkersTab() {
+  const { isReadOnly } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -278,7 +280,7 @@ export default function WorkersTab() {
               onExport={handleExportWorkers}
               disabled={loading || !visibleWorkers.length}
             />
-            <Btn size="sm" onClick={openCreate}>+ Add Worker</Btn>
+            <Btn size="sm" disabled={isReadOnly} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !isReadOnly && openCreate()}>+ Add Worker</Btn>
           </div>
         </div>
 
@@ -297,7 +299,7 @@ export default function WorkersTab() {
               worker.phone || '-',
               worker.pay_code || '-',
               worker.is_active ? 'Active' : 'Inactive',
-              <Btn key={`edit-${worker.id}`} size="sm" variant="ghost" onClick={() => openEdit(worker)}>Edit</Btn>,
+              <Btn key={`edit-${worker.id}`} size="sm" variant="ghost" disabled={isReadOnly} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !isReadOnly && openEdit(worker)}>Edit</Btn>,
               <Btn key={`report-${worker.id}`} size="sm" variant="secondary" onClick={() => setReportWorker(worker)}>Report</Btn>,
             ])}
             emptyMsg="No horticulture workers found for selected filters."

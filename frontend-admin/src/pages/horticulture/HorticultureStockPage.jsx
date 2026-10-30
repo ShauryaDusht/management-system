@@ -17,7 +17,7 @@ import RequestsReportTab from '../reports/RequestsReportTab'
 
 export default function HorticultureStockPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const { user } = useAuth()
+  const { user, canEdit, isTechnicalAssistant } = useAuth()
   const { badges, markSeen } = useNotifications()
   const [hortPendingCount, setHortPendingCount] = useState(null)
 
@@ -104,21 +104,21 @@ export default function HorticultureStockPage() {
 
       {active === 'items' && (
         <ItemsTab
-          userRole={user?.role}
+          userRole={isTechnicalAssistant ? (canEdit ? 'admin' : 'technical_assistant') : user?.role}
           initialCategory="Garden & Horticulture Equipment"
         />
       )}
 
       {active === 'requests' && (
         <RequestsTab
-          userRole={user?.role}
+          userRole={isTechnicalAssistant ? (canEdit ? 'admin' : 'technical_assistant') : user?.role}
           categoryScope="Garden & Horticulture Equipment"
         />
       )}
 
       {active === 'issues' && (
         <IssuesTab
-          userRole={user?.role}
+          userRole={isTechnicalAssistant ? (canEdit ? 'admin' : 'technical_assistant') : user?.role}
           categoryScope="Garden & Horticulture Equipment"
         />
       )}
@@ -131,7 +131,7 @@ export default function HorticultureStockPage() {
 
       {active === 'stocklog' && (
         <StockLogTab
-          userRole={user?.role}
+          userRole={isTechnicalAssistant ? (canEdit ? 'admin' : 'technical_assistant') : user?.role}
           categoryScope="Garden & Horticulture Equipment"
         />
       )}

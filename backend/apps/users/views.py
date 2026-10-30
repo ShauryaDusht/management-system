@@ -2,7 +2,7 @@ from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, SAFE_METHODS
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -45,8 +45,8 @@ def _hostel_office_area_q():
 def _get_managed_operator_roles(user):
     if not user or not user.is_authenticated:
         return set()
-    if user.is_admin or getattr(user, 'is_hk_inventory_manager', False) or user.is_superuser:
-        return None  # None indicates unrestricted admin / HK manager access
+    if user.is_admin or getattr(user, 'is_hk_inventory_manager', False) or user.is_superuser or getattr(user, 'role', '') == User.Role.TECHNICAL_ASSISTANT:
+        return None  # None indicates full users list access
     allowed = set()
     role = getattr(user, 'role', '')
     if role == User.Role.PLANT_ENGINEER:
@@ -124,6 +124,9 @@ class UserListCreateView(generics.ListCreateAPIView):
     POST /api/auth/users/   — Admin & Supervisors: create new operator/user
     """
     def get_permissions(self):
+        user = getattr(self.request, 'user', None)
+        if self.request.method not in SAFE_METHODS and getattr(user, 'role', '') == User.Role.TECHNICAL_ASSISTANT and not getattr(user, 'can_edit', False):
+            raise PermissionDenied('Technical Assistant has read-only access. Contact admin for edit rights.')
         return [IsAuthenticated()]
 
     def get_queryset(self):
@@ -161,6 +164,8 @@ class UserListCreateView(generics.ListCreateAPIView):
         return UserSerializer
 
     def perform_create(self, serializer):
+        if getattr(self.request.user, 'role', '') == User.Role.TECHNICAL_ASSISTANT and not getattr(self.request.user, 'can_edit', False):
+            raise PermissionDenied('Technical Assistant has read-only access. Contact admin for edit rights.')
         managed_roles = _get_managed_operator_roles(self.request.user)
         if managed_roles is not None:
             incoming_role = serializer.validated_data.get('role')
@@ -183,6 +188,9 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UserSerializer
 
     def get_permissions(self):
+        user = getattr(self.request, 'user', None)
+        if self.request.method not in SAFE_METHODS and getattr(user, 'role', '') == User.Role.TECHNICAL_ASSISTANT and not getattr(user, 'can_edit', False):
+            raise PermissionDenied('Technical Assistant has read-only access. Contact admin for edit rights.')
         return [IsAuthenticated()]
 
     def get_queryset(self):
@@ -193,6 +201,8 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         return qs
 
     def perform_update(self, serializer):
+        if getattr(self.request.user, 'role', '') == User.Role.TECHNICAL_ASSISTANT and not getattr(self.request.user, 'can_edit', False):
+            raise PermissionDenied('Technical Assistant has read-only access. Contact admin for edit rights.')
         managed_roles = _get_managed_operator_roles(self.request.user)
         if managed_roles is not None:
             if serializer.instance.role not in managed_roles:
@@ -241,6 +251,8 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         serializer.save()
 
     def perform_destroy(self, instance):
+        if getattr(self.request.user, 'role', '') == User.Role.TECHNICAL_ASSISTANT and not getattr(self.request.user, 'can_edit', False):
+            raise PermissionDenied('Technical Assistant has read-only access. Contact admin for edit rights.')
         managed_roles = _get_managed_operator_roles(self.request.user)
         if managed_roles is not None:
             if instance.role not in managed_roles:

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { useAuth } from '../../context/AuthContext'
 import { horticultureAPI } from '../../api/horticulture'
 import { inventoryAPI } from '../../api/inventory'
 import { Alert, Badge, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal, SelectField, Spinner } from '../../components/ui'
@@ -545,6 +546,7 @@ function DeleteAreaModal({ open, supervisor, zones, allAreas, onClose, onSuccess
 }
 
 export default function SupervisorsTab() {
+  const { isReadOnly } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [rows, setRows] = useState([])
@@ -716,18 +718,20 @@ export default function SupervisorsTab() {
                 <Btn
                   size="sm"
                   variant="secondary"
+                  disabled={isReadOnly}
                   style={{ color: 'var(--green-800)', borderColor: 'rgba(61, 107, 85, 0.4)' }}
-                  onClick={() => handleOpenAddArea(row)}
-                  title={`Add Area for ${toDisplayName(row)}`}
+                  onClick={() => !isReadOnly && handleOpenAddArea(row)}
+                  title={isReadOnly ? "Read-only mode: requires edit permission from admin" : `Add Area for ${toDisplayName(row)}`}
                 >
                   + Add Area
                 </Btn>
                 <Btn
                   size="sm"
                   variant="ghost"
+                  disabled={isReadOnly}
                   style={{ color: '#dc2626', borderColor: 'rgba(220, 38, 38, 0.3)' }}
-                  onClick={() => handleOpenDeleteArea(row)}
-                  title={`Delete Area from ${toDisplayName(row)}`}
+                  onClick={() => !isReadOnly && handleOpenDeleteArea(row)}
+                  title={isReadOnly ? "Read-only mode: requires edit permission from admin" : `Delete Area from ${toDisplayName(row)}`}
                 >
                   Delete Area
                 </Btn>

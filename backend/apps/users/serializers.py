@@ -82,6 +82,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'full_name': user.get_full_name(),
             'role': response_role,
             'actual_role': user.role,
+            'can_edit': getattr(user, 'can_edit', False),
             'phone': user.phone,
             'portal_redirect': self._get_portal_redirect(user),
         }
@@ -113,6 +114,7 @@ class UserSerializer(serializers.ModelSerializer):
             'role',
             'phone',
             'pay_code',
+            'can_edit',
             'profile_photo',
             'profile_photo_url',
             'is_active',

@@ -51,6 +51,7 @@ class IsInventoryReportViewer(IsAuthenticated):
                 or getattr(user, 'is_inventory_manager', False)
                 or getattr(user, 'is_hk_inventory_manager', False)
                 or getattr(user, 'is_horticulture_manager', False)
+                or getattr(user, 'role', '') == 'technical_assistant'
                 or _is_hostel_office(user)
             )
         )
