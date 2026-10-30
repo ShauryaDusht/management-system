@@ -414,7 +414,7 @@ export default function MonthlyReport({ defaultMonth, isHvacEngineer = false, on
             <div className="hvac-kpi-card">
               <span>Month Total Energy</span>
               <b>{report.totals.totalEnergy} MWh</b>
-              <small>Across Panel 1 & 2</small>
+              <small>Across HVAC Panels 1 to 5</small>
             </div>
             <div className="hvac-kpi-card">
               <span>Month Total Water</span>

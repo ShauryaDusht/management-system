@@ -313,7 +313,7 @@ export default function DailyPlantStatus({
         <div className="hvac-kpi-card">
           <span>Total Energy Cons.</span>
           <b>{energyReport.totalCons} MWh</b>
-          <small>Across Panel 1 & 2</small>
+          <small>Across HVAC Panels 1 to 5</small>
         </div>
       </div>
 
