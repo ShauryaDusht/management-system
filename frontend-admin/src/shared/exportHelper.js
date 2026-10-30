@@ -1470,8 +1470,9 @@ export async function exportReport(format, config) {
   switch (fmt) {
     case 'excel':
     case 'xlsx':
-    case 'csv':
       return exportToExcel(targetConfig)
+    case 'csv':
+      return exportToCsv(targetConfig)
     case 'pdf':
       return await exportToPdf(targetConfig)
     case 'print':

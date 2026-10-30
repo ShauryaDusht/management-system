@@ -230,6 +230,76 @@ export default function MonthlyReport({ defaultMonth, isHvacEngineer = false, on
     );
   };
 
+  const handleExportChillerCsv = () => {
+    const titleSuffix = dateFilterLabel ? ` (${dateFilterLabel})` : '';
+    const fileSuffix = dateFilterLabel
+      ? `_${dateFilterLabel.toLowerCase().replace(/[\s\:]+/g, '_')}`
+      : '';
+    const maxPossibleHrs = report.rows.length * 24;
+    const totalHours = report.chillerHours.reduce((acc, c) => acc + (c.hours || 0), 0);
+    const csvRows = [
+      ['HVAC Chiller Operating Hours Breakdown', `${month}${titleSuffix}`],
+      isDateFiltered
+        ? [`Filter Scope: ${dateFilterLabel} (${report.rows.length} active days, max ${maxPossibleHrs} hrs/chiller)`]
+        : [`Period: ${month} (${report.rows.length} active days, max ${maxPossibleHrs} hrs/chiller)`],
+      [],
+      ['Unit #', 'Chiller Name', 'Capacity (TR)', 'Total Operating Hours', 'Utilization (%)'],
+      ...report.chillerHours.map((c) => {
+        const utilPct = maxPossibleHrs > 0 ? ((c.hours / maxPossibleHrs) * 100).toFixed(1) : '0.0';
+        return [
+          `Chiller ${c.num}`,
+          c.name,
+          `${c.tr} TR`,
+          c.hours,
+          `${utilPct}%`,
+        ];
+      }),
+      [],
+      [
+        'Total',
+        'All Units',
+        `${CHILLERS.reduce((acc, c) => acc + (c[2] || 0), 0)} TR`,
+        totalHours,
+        '',
+      ],
+    ];
+    HvacApi.exportCsv(`hvac_chiller_operating_hours_${month}${fileSuffix}.csv`, csvRows);
+  };
+
+  const handleExportChillerPdf = () => {
+    const titleSuffix = dateFilterLabel ? ` (${dateFilterLabel})` : '';
+    const fileSuffix = dateFilterLabel
+      ? `_${dateFilterLabel.toLowerCase().replace(/[\s\:]+/g, '_')}`
+      : '';
+    const maxPossibleHrs = report.rows.length * 24;
+    const totalHours = report.chillerHours.reduce((acc, c) => acc + (c.hours || 0), 0);
+    const pdfRows = [
+      ['Unit #', 'Chiller Name', 'Capacity (TR)', 'Total Operating Hours', 'Utilization %'],
+      ...report.chillerHours.map((c) => {
+        const utilPct = maxPossibleHrs > 0 ? ((c.hours / maxPossibleHrs) * 100).toFixed(1) : '0.0';
+        return [
+          `Chiller ${c.num}`,
+          c.name,
+          `${c.tr} TR`,
+          `${c.hours} hrs`,
+          `${utilPct}%`,
+        ];
+      }),
+      [
+        'TOTAL',
+        'All Units',
+        `${CHILLERS.reduce((acc, c) => acc + (c[2] || 0), 0)} TR`,
+        `${totalHours} hrs`,
+        '–',
+      ],
+    ];
+    HvacApi.exportPdf(
+      `hvac_chiller_operating_hours_${month}${fileSuffix}.pdf`,
+      pdfRows,
+      `HVAC Chiller Operating Hours Breakdown - ${month}${titleSuffix}`
+    );
+  };
+
   return (
     <div>
       {/* Controls Card */}
@@ -461,7 +531,7 @@ export default function MonthlyReport({ defaultMonth, isHvacEngineer = false, on
           </div>
 
           {/* Chiller Running Hours */}
-          <div className="hvac-card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="hvac-card" style={{ padding: 0, overflow: 'visible' }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--hvac-line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 15, color: '#0c2535', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -477,11 +547,21 @@ export default function MonthlyReport({ defaultMonth, isHvacEngineer = false, on
                   {isDateFiltered ? ` across selected ${report.rows.length} days` : ''}
                 </small>
               </div>
-              {isDateFiltered && (
-                <span style={{ fontSize: 11.5, color: '#0369a1', fontWeight: 700, background: '#f0f9ff', padding: '3px 10px', borderRadius: 8, border: '1px solid #bae6fd' }}>
-                  Max Window: {report.rows.length * 24} hrs/chiller
-                </span>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                {isDateFiltered && (
+                  <span style={{ fontSize: 11.5, color: '#0369a1', fontWeight: 700, background: '#f0f9ff', padding: '3px 10px', borderRadius: 8, border: '1px solid #bae6fd' }}>
+                    Max Window: {report.rows.length * 24} hrs/chiller
+                  </span>
+                )}
+                <ExportDropdown
+                  label="Export Breakdown"
+                  onExportCsv={handleExportChillerCsv}
+                  onExportPdf={handleExportChillerPdf}
+                  disabled={report.chillerHours.length === 0}
+                  size="sm"
+                  align="right"
+                />
+              </div>
             </div>
 
             <div className="hvac-scroll">
