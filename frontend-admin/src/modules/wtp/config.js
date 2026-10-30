@@ -65,7 +65,7 @@ export const GROUPS = [
     ['cl_wsc1', 'WSC-I Chlorine', 'gm'],
   ]),
   group('wsc3', 'Chlorine used this shift', [
-    ['t', 'WSC-3 Irrigation', 'CUM', 1],
+    ['t', 'WSC-3 Irrigation', 'gm', 1],
     ['cl_wsc3', 'WSC-III Chlorine', 'gm'],
   ]),
   group('jm', 'Tank levels', [
