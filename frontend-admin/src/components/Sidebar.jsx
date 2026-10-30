@@ -1,4 +1,5 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useNotifications } from '../context/NotificationContext'
 import { APP_LOGO_PATH, APP_NAME, APP_TAGLINE } from '../shared/constants'
@@ -13,11 +14,21 @@ if (typeof document !== 'undefined' && !document.getElementById('sidebar-hover-s
       --sidebar-link-bg: rgba(255, 255, 255, 0.08);
       --sidebar-link-color: #fff;
     }
+    .sidebar-group-btn:hover {
+      --sidebar-link-bg: rgba(255, 255, 255, 0.08);
+      --sidebar-link-color: #fff;
+    }
     @media screen and (max-width: 1023px) {
       .sidebar-brand-text,
       .sidebar-nav-label,
-      .sidebar-user-text {
+      .sidebar-user-text,
+      .sidebar-chevron {
         display: none !important;
+      }
+      .sidebar-sub-menu {
+        padding-left: 0 !important;
+        margin-left: 0 !important;
+        border-left: none !important;
       }
       .sidebar-nav-link {
         justify-content: center !important;
@@ -59,6 +70,54 @@ export default function Sidebar() {
   const { user, logout } = useAuth()
   const { badges } = useNotifications()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const getInitialActiveGroup = () => {
+    const path = location.pathname
+    if (
+      ['/inventory', '/housekeeping', '/horticulture', '/geo-tracker', '/horticulture-stock', '/horticulture/stock', '/horticulture-inventory'].some((p) =>
+        path.startsWith(p)
+      )
+    ) {
+      return 'ilo'
+    }
+    if (
+      ['/lifts', '/substation', '/wtp', '/wtp-stp', '/hvac', '/hvac-engineer'].some((p) =>
+        path.startsWith(p)
+      )
+    ) {
+      return 'electrical'
+    }
+    return null
+  }
+
+  // Accordion mode: Only one dropdown section can be open at a time
+  const [activeGroup, setActiveGroup] = useState(getInitialActiveGroup)
+
+  const toggleGroup = (key) => {
+    setActiveGroup((prev) => (prev === key ? null : key))
+  }
+
+  useEffect(() => {
+    const path = location.pathname
+    if (
+      ['/inventory', '/housekeeping', '/horticulture', '/geo-tracker', '/horticulture-stock', '/horticulture/stock', '/horticulture-inventory'].some((p) =>
+        path.startsWith(p)
+      )
+    ) {
+      setActiveGroup('ilo')
+    } else if (
+      ['/lifts', '/substation', '/wtp', '/wtp-stp', '/hvac', '/hvac-engineer'].some((p) =>
+        path.startsWith(p)
+      )
+    ) {
+      setActiveGroup('electrical')
+    }
+  }, [location.pathname])
+
+  const iloBadgeCount = (badges.inventory || 0) + (badges.housekeeping || 0) + (badges.horticultureInventory || 0)
+  const iloExtraBadge = badges.lowStock || 0
+
   const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
 
   const isEngineer = user?.role === 'engineer'
@@ -85,146 +144,191 @@ export default function Sidebar() {
       { to: '/profile', icon: 'users', label: 'Profile' },
     ]
     : isPlantEngineer
-    ? [
-      { to: '/substation', icon: 'substation', label: 'Substation Log' },
-      { to: '/wtp', icon: 'water', label: 'WTP/STP Meters' },
-      { to: '/profile', icon: 'users', label: 'Profile' },
-    ]
-    : isElectrical
-    ? [
-      { to: '/substation', icon: 'substation', label: 'Substation Log' },
-      { to: '/profile', icon: 'users', label: 'Profile' },
-    ]
-    : isWtp
-    ? [
-      { to: '/wtp', icon: 'water', label: 'WTP/STP Meters' },
-      { to: '/profile', icon: 'users', label: 'Profile' },
-    ]
-    : isHvac
-    ? [
-      {
-        to: '/hvac',
-        icon: 'hvac',
-        label:
-          user?.role === 'hvac_engineer'
-            ? 'HVAC Engineer Portal'
-            : user?.role === 'hvac_supervisor'
-            ? 'HVAC Supervisor Portal'
-            : user?.role === 'hvac_operator'
-            ? 'HVAC Operator Portal'
-            : 'HVAC Plant Log',
-      },
-      { to: '/profile', icon: 'users', label: 'Profile' },
-    ]
-    : user?.role === 'civil_team'
-    ? [
-      { to: '/estate', icon: 'estate', label: 'Civil Clearances' },
-      { to: '/profile', icon: 'users', label: 'Profile' },
-    ]
-    : user?.role === 'electrical_team'
-    ? [
-      { to: '/estate', icon: 'estate', label: 'Electrical Clearances' },
-      { to: '/profile', icon: 'users', label: 'Profile' },
-    ]
-    : user?.role === 'estate_office'
-    ? [
-      { to: '/dashboard', icon: 'estate', label: 'Dashboard' },
-      { to: '/insights', icon: 'insights', label: 'Insights' },
-      { to: '/profile', icon: 'users', label: 'Profile' },
-    ]
-    : user?.role === 'horticulture_manager'
-    ? [
-      { to: '/dashboard', icon: 'home', label: 'Home' },
-      { to: '/horticulture-stock', icon: 'inventory', label: 'Horticulture Inventory' },
-      { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
-      { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
-      { to: '/insights', icon: 'insights', label: 'Insights' },
-      { to: '/profile', icon: 'users', label: 'Profile' },
-    ]
-    : isHostelOffice
-    ? [
-      { to: '/dashboard', icon: 'home', label: 'Home' },
-      { to: '/housekeeping', icon: 'housekeeping', label: 'Hostel Office' },
-      { to: '/inventory', icon: 'inventory', label: 'Inventory Reports' },
-      { to: '/insights', icon: 'insights', label: 'Insights' },
-    ]
-    : user?.role === 'hk_inventory_manager'
-    ? [
-      { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
-      {
-        to: '/inventory', icon: 'inventory', label: 'Inventory',
-        badge: badges.inventory,
-        badgeYellow: false,
-        extraBadge: badges.lowStock,
-        extraYellow: true,
-        extraTitle: 'low stock items',
-      },
-      {
-        to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
-        badge: badges.housekeeping,
-      },
-      { to: '/estate', icon: 'estate', label: 'HK Clearances' },
-      { to: '/insights', icon: 'insights', label: 'Insights' },
-      { to: '/users', icon: 'users', label: 'Manage Users' },
-    ]
-    : isTechnicalAssistant
-    ? [
-      { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
-      {
-        to: '/inventory', icon: 'inventory', label: 'Inventory',
-        badge: badges.inventory,
-        badgeYellow: false,
-        extraBadge: badges.lowStock,
-        extraYellow: true,
-        extraTitle: 'low stock items',
-      },
-      {
-        to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
-        badge: badges.housekeeping,
-      },
-      { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
-      {
-        to: '/horticulture-stock',
-        icon: 'inventory',
-        label: 'Horticulture Inventory',
-        badge: badges.horticultureInventory,
-      },
-      { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
-      { to: '/insights', icon: 'insights', label: 'Insights' },
-      { to: '/users', icon: 'users', label: 'Manage Users' },
-      { to: '/profile', icon: 'users', label: 'Profile' },
-    ]
-    : [
-      { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
-      {
-        to: '/inventory', icon: 'inventory', label: 'Inventory',
-        badge: badges.inventory,
-        badgeYellow: false,
-        extraBadge: badges.lowStock,
-        extraYellow: true,
-        extraTitle: 'low stock items',
-      },
-      {
-        to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
-        badge: badges.housekeeping,
-      },
-      { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
-      {
-        to: '/horticulture-stock',
-        icon: 'inventory',
-        label: 'Horticulture Inventory',
-        badge: badges.horticultureInventory,
-      },
-      { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
-      { to: '/estate', icon: 'estate', label: 'Estate' },
-      { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
-      { to: '/substation', icon: 'substation', label: 'Substation Log' },
-      { to: '/wtp', icon: 'water', label: 'WTP / STP Meters' },
-      { to: '/hvac', icon: 'hvac', label: 'HVAC Plant Log' },
-      { to: '/insights', icon: 'insights', label: 'Insights' },
-      { to: '/users', icon: 'users', label: 'Manage Users' },
-      { to: '/profile', icon: 'users', label: 'Profile' },
-    ]
+      ? [
+        { to: '/substation', icon: 'substation', label: 'Substation Log' },
+        { to: '/wtp', icon: 'water', label: 'WTP/STP Meters' },
+        { to: '/profile', icon: 'users', label: 'Profile' },
+      ]
+      : isElectrical
+        ? [
+          { to: '/substation', icon: 'substation', label: 'Substation Log' },
+          { to: '/profile', icon: 'users', label: 'Profile' },
+        ]
+        : isWtp
+          ? [
+            { to: '/wtp', icon: 'water', label: 'WTP/STP Meters' },
+            { to: '/profile', icon: 'users', label: 'Profile' },
+          ]
+          : isHvac
+            ? [
+              {
+                to: '/hvac',
+                icon: 'hvac',
+                label:
+                  user?.role === 'hvac_engineer'
+                    ? 'HVAC Engineer Portal'
+                    : user?.role === 'hvac_supervisor'
+                      ? 'HVAC Supervisor Portal'
+                      : user?.role === 'hvac_operator'
+                        ? 'HVAC Operator Portal'
+                        : 'HVAC Plant Log',
+              },
+              { to: '/profile', icon: 'users', label: 'Profile' },
+            ]
+            : user?.role === 'civil_team'
+              ? [
+                { to: '/estate', icon: 'estate', label: 'Civil Clearances' },
+                { to: '/profile', icon: 'users', label: 'Profile' },
+              ]
+              : user?.role === 'electrical_team'
+                ? [
+                  { to: '/estate', icon: 'estate', label: 'Electrical Clearances' },
+                  { to: '/profile', icon: 'users', label: 'Profile' },
+                ]
+                : user?.role === 'estate_office'
+                  ? [
+                    { to: '/dashboard', icon: 'estate', label: 'Dashboard' },
+                    { to: '/insights', icon: 'insights', label: 'Insights' },
+                    { to: '/profile', icon: 'users', label: 'Profile' },
+                  ]
+                  : user?.role === 'horticulture_manager'
+                    ? [
+                      { to: '/dashboard', icon: 'home', label: 'Home' },
+                      { to: '/horticulture-stock', icon: 'inventory', label: 'Horticulture Inventory' },
+                      { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
+                      { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
+                      { to: '/insights', icon: 'insights', label: 'Insights' },
+                      { to: '/profile', icon: 'users', label: 'Profile' },
+                    ]
+                    : isHostelOffice
+                      ? [
+                        { to: '/dashboard', icon: 'home', label: 'Home' },
+                        { to: '/housekeeping', icon: 'housekeeping', label: 'Hostel Office' },
+                        { to: '/inventory', icon: 'inventory', label: 'Inventory Reports' },
+                        { to: '/insights', icon: 'insights', label: 'Insights' },
+                      ]
+                      : user?.role === 'hk_inventory_manager'
+                        ? [
+                          { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+                          {
+                            to: '/inventory', icon: 'inventory', label: 'Inventory',
+                            badge: badges.inventory,
+                            badgeYellow: false,
+                            extraBadge: badges.lowStock,
+                            extraYellow: true,
+                            extraTitle: 'low stock items',
+                          },
+                          {
+                            to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping',
+                            badge: badges.housekeeping,
+                          },
+                          { to: '/estate', icon: 'estate', label: 'HK Clearances' },
+                          { to: '/insights', icon: 'insights', label: 'Insights' },
+                          { to: '/users', icon: 'users', label: 'Manage Users' },
+                        ]
+                        : isTechnicalAssistant
+                          ? [
+                            { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+                            {
+                              key: 'ilo',
+                              label: 'ILO',
+                              icon: 'housekeeping',
+                              isGroup: true,
+                              children: [
+                                {
+                                  to: '/inventory',
+                                  icon: 'inventory',
+                                  label: 'Inventory',
+                                  badge: badges.inventory,
+                                  badgeYellow: false,
+                                  extraBadge: badges.lowStock,
+                                  extraYellow: true,
+                                  extraTitle: 'low stock items',
+                                },
+                                {
+                                  to: '/housekeeping',
+                                  icon: 'housekeeping',
+                                  label: 'Housekeeping',
+                                  badge: badges.housekeeping,
+                                },
+                                { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
+                                { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
+                                {
+                                  to: '/horticulture-stock',
+                                  icon: 'inventory',
+                                  label: 'Horticulture Inventory',
+                                  badge: badges.horticultureInventory,
+                                },
+                              ],
+                            },
+                            { to: '/estate', icon: 'estate', label: 'Estate' },
+                            {
+                              key: 'electrical',
+                              label: 'Electrical',
+                              icon: 'substation',
+                              isGroup: true,
+                              children: [
+                                { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
+                                { to: '/substation', icon: 'substation', label: 'Substation Log' },
+                                { to: '/wtp', icon: 'water', label: 'WTP / STP Meters' },
+                                { to: '/hvac', icon: 'hvac', label: 'HVAC Plant Log' },
+                              ],
+                            },
+                            { to: '/insights', icon: 'insights', label: 'Insights' },
+                            { to: '/users', icon: 'users', label: 'Manage Users' },
+                            { to: '/profile', icon: 'users', label: 'Profile' },
+                          ]
+                          : [
+                            { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+                            {
+                              key: 'ilo',
+                              label: 'ILO',
+                              icon: 'housekeeping',
+                              isGroup: true,
+                              children: [
+                                {
+                                  to: '/inventory',
+                                  icon: 'inventory',
+                                  label: 'Inventory',
+                                  badge: badges.inventory,
+                                  badgeYellow: false,
+                                  extraBadge: badges.lowStock,
+                                  extraYellow: true,
+                                  extraTitle: 'low stock items',
+                                },
+                                {
+                                  to: '/housekeeping',
+                                  icon: 'housekeeping',
+                                  label: 'Housekeeping',
+                                  badge: badges.housekeeping,
+                                },
+                                { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
+                                { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
+                                {
+                                  to: '/horticulture-stock',
+                                  icon: 'inventory',
+                                  label: 'Horticulture Inventory',
+                                  badge: badges.horticultureInventory,
+                                },
+                              ],
+                            },
+                            { to: '/estate', icon: 'estate', label: 'Estate' },
+                            {
+                              key: 'electrical',
+                              label: 'Electrical',
+                              icon: 'substation',
+                              isGroup: true,
+                              children: [
+                                { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
+                                { to: '/substation', icon: 'substation', label: 'Substation Log' },
+                                { to: '/wtp', icon: 'water', label: 'WTP / STP Meters' },
+                                { to: '/hvac', icon: 'hvac', label: 'HVAC Plant Log' },
+                              ],
+                            },
+                            { to: '/insights', icon: 'insights', label: 'Insights' },
+                            { to: '/users', icon: 'users', label: 'Manage Users' },
+                            { to: '/profile', icon: 'users', label: 'Profile' },
+                          ]
 
   const handleLogout = async () => {
     await logout()
@@ -286,54 +390,204 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: '12px 10px', overflowY: 'auto' }}>
-        {navItems.map(({ to, icon, label, badge, badgeYellow, extraBadge, extraYellow, extraTitle }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) => `sidebar-nav-link${isActive ? ' is-active' : ''}`}
-            style={({ isActive }) => ({
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '10px 12px',
-              borderRadius: 9,
-              marginBottom: 3,
-              color: isActive ? '#fff' : 'var(--sidebar-link-color, rgba(255,255,255,0.65))',
-              background: isActive ? 'rgba(255,255,255,0.14)' : 'var(--sidebar-link-bg, transparent)',
-              fontWeight: isActive ? 700 : 500,
-              fontSize: 13,
-              transition: 'all 0.15s',
-            })}
-          >
-            <IconMark
-              icon={icon}
-              label={label}
-              color="#ffffff"
-              size={28}
-              style={{
-                borderRadius: 8,
-                background: 'rgba(255,255,255,0.10)',
-                border: '1px solid rgba(255,255,255,0.18)',
-                flexShrink: 0,
-              }}
-            />
+        {navItems.map((item) => {
+          if (item.isGroup) {
+            const isOpen = activeGroup === item.key
+            const isChildActive = item.children.some((child) =>
+              location.pathname === child.to || location.pathname.startsWith(`${child.to}/`)
+            )
+            const groupBadgeCount = item.key === 'ilo' ? iloBadgeCount : 0
+            const groupExtraBadge = item.key === 'ilo' ? iloExtraBadge : 0
 
-            {/* Label */}
-            <span className="sidebar-nav-label" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+            return (
+              <div key={item.key} style={{ marginBottom: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(item.key)}
+                  className={`sidebar-nav-link sidebar-group-btn${isChildActive ? ' has-active-child' : ''}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '10px 12px',
+                    borderRadius: 9,
+                    width: '100%',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    color: isChildActive ? '#fff' : 'var(--sidebar-link-color, rgba(255,255,255,0.75))',
+                    background: isChildActive ? 'rgba(255,255,255,0.08)' : 'var(--sidebar-link-bg, transparent)',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <IconMark
+                    icon={item.icon}
+                    label={item.label}
+                    color="#ffffff"
+                    size={28}
+                    style={{
+                      borderRadius: 8,
+                      background: isChildActive ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.10)',
+                      border: '1px solid rgba(255,255,255,0.18)',
+                      flexShrink: 0,
+                    }}
+                  />
 
-            {/* Low stock yellow badge (shows alongside red) */}
-            {extraBadge > 0 && (
-              <span title={`${extraBadge} ${extraTitle || ''}`}>
-                <Badge count={extraBadge} yellow={extraYellow} />
-              </span>
-            )}
+                  {/* Label */}
+                  <span className="sidebar-nav-label" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {item.label}
+                  </span>
 
-            {/* Main red badge */}
-            {badge > 0 && (
-              <Badge count={badge} yellow={badgeYellow} />
-            )}
-          </NavLink>
-        ))}
+                  {/* Group Badges when collapsed */}
+                  {!isOpen && groupExtraBadge > 0 && (
+                    <Badge count={groupExtraBadge} yellow={true} />
+                  )}
+                  {!isOpen && groupBadgeCount > 0 && (
+                    <Badge count={groupBadgeCount} yellow={false} />
+                  )}
+
+                  {/* Dropdown Chevron */}
+                  <svg
+                    className="sidebar-chevron"
+                    width={14}
+                    height={14}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{
+                      transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                      opacity: 0.75,
+                      flexShrink: 0,
+                      marginLeft: 4,
+                    }}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {/* Dropdown Children */}
+                {isOpen && (
+                  <div
+                    className="sidebar-sub-menu"
+                    style={{
+                      paddingLeft: 10,
+                      marginTop: 2,
+                      marginBottom: 4,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                      borderLeft: '2px solid rgba(255,255,255,0.12)',
+                      marginLeft: 23,
+                    }}
+                  >
+                    {item.children.map((child) => (
+                      <NavLink
+                        key={child.to}
+                        to={child.to}
+                        className={({ isActive }) => `sidebar-nav-link${isActive ? ' is-active' : ''}`}
+                        style={({ isActive }) => ({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 9,
+                          padding: '7px 10px',
+                          borderRadius: 8,
+                          color: isActive ? '#fff' : 'var(--sidebar-link-color, rgba(255,255,255,0.68))',
+                          background: isActive ? 'rgba(255,255,255,0.14)' : 'var(--sidebar-link-bg, transparent)',
+                          fontWeight: isActive ? 700 : 500,
+                          fontSize: 12.5,
+                          textDecoration: 'none',
+                          transition: 'all 0.15s',
+                        })}
+                      >
+                        <IconMark
+                          icon={child.icon}
+                          label={child.label}
+                          color="#ffffff"
+                          size={24}
+                          style={{
+                            borderRadius: 6,
+                            background: 'rgba(255,255,255,0.08)',
+                            border: '1px solid rgba(255,255,255,0.14)',
+                            flexShrink: 0,
+                          }}
+                        />
+
+                        {/* Child Label */}
+                        <span className="sidebar-nav-label" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {child.label}
+                        </span>
+
+                        {child.extraBadge > 0 && (
+                          <span title={`${child.extraBadge} ${child.extraTitle || ''}`}>
+                            <Badge count={child.extraBadge} yellow={child.extraYellow} />
+                          </span>
+                        )}
+
+                        {child.badge > 0 && (
+                          <Badge count={child.badge} yellow={child.badgeYellow} />
+                        )}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          }
+
+          // Top-level item
+          const { to, icon, label, badge, badgeYellow, extraBadge, extraYellow, extraTitle } = item
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) => `sidebar-nav-link${isActive ? ' is-active' : ''}`}
+              style={({ isActive }) => ({
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '10px 12px',
+                borderRadius: 9,
+                marginBottom: 3,
+                color: isActive ? '#fff' : 'var(--sidebar-link-color, rgba(255,255,255,0.65))',
+                background: isActive ? 'rgba(255,255,255,0.14)' : 'var(--sidebar-link-bg, transparent)',
+                fontWeight: isActive ? 700 : 500,
+                fontSize: 13,
+                transition: 'all 0.15s',
+              })}
+            >
+              <IconMark
+                icon={icon}
+                label={label}
+                color="#ffffff"
+                size={28}
+                style={{
+                  borderRadius: 8,
+                  background: 'rgba(255,255,255,0.10)',
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  flexShrink: 0,
+                }}
+              />
+
+              <span className="sidebar-nav-label" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+
+              {extraBadge > 0 && (
+                <span title={`${extraBadge} ${extraTitle || ''}`}>
+                  <Badge count={extraBadge} yellow={extraYellow} />
+                </span>
+              )}
+
+              {badge > 0 && (
+                <Badge count={badge} yellow={badgeYellow} />
+              )}
+            </NavLink>
+          )
+        })}
       </nav>
 
       {/* User + Logout */}
