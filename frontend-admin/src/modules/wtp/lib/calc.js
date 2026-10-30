@@ -40,7 +40,7 @@ export function calcMeterDelta(curr, prev, coef = 1, meterKey = null) {
   if (delta < 0) {
     // Condition: Jab 10000 ke baad 0 par roll over ho tabhi change ho.
     // Agar 10000 se zyada reading ho to change NAHI ho.
-    const isOver10k = p > 10000 || c > 10000 || meterKey === 'c' || meterKey === 'f';
+    const isOver10k = p > 10000 || c > 10000 || meterKey === 'b' || meterKey === 'c' || meterKey === 'f';
     if (!isOver10k && p <= 10000 && p >= 5000 && c < p && c < 5000 && c >= 0) {
       const rolledDelta = (10000 - p) + c;
       if (rolledDelta >= 0 && rolledDelta < 10000) {
@@ -66,7 +66,7 @@ export function isMeterRollover(curr, prev, meterKey = null) {
   if (isNaN(c) || isNaN(p)) return false;
 
   // Agar 10,000 se zyada reading ho ya WTP bulk meter ho, to rollover change nahi hoga
-  if (p > 10000 || c > 10000 || meterKey === 'c' || meterKey === 'f') return false;
+  if (p > 10000 || c > 10000 || meterKey === 'b' || meterKey === 'c' || meterKey === 'f') return false;
 
   // Jab 10000 ke baad 0 par roll over ho tabhi true
   return c < p && p >= 5000 && p <= 10000 && c < 5000 && c >= 0;

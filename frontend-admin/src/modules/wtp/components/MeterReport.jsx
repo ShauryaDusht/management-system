@@ -488,7 +488,7 @@ export default function MeterReport({ rows, stationMeters = [], user, onReload, 
               {[...dt].reverse().map((r) => (
                 <tr key={rlab(r, view)}>
                   <td className="l">{rlab(r, view)}</td>
-                  {cums.map((f) => <td key={f.k} className={r[f.k] < 0 ? 'warn' : ''} title={r[f.k] < 0 ? 'Meter reset or entry error' : ''}>{fmt(r[f.k], 2)}</td>)}
+                  {cums.map((f) => <td key={f.k} className={r[f.k] < 0 ? 'warn' : ''} title={r[f.k] < 0 ? 'Meter reset or entry error' : ''}>{fmt(r[f.k], f.cu === 'MLD' ? 3 : 2)}</td>)}
                 </tr>
               ))}
             </tbody>
@@ -502,7 +502,7 @@ export default function MeterReport({ rows, stationMeters = [], user, onReload, 
                     const totalVal = dt.reduce((acc, r) => acc + (r[f.k] != null && r[f.k] >= 0 ? r[f.k] : 0), 0);
                     return (
                       <td key={f.k} style={{ fontWeight: 700, color: 'var(--water)' }}>
-                        {fmt(totalVal, 2)}
+                        {fmt(totalVal, f.cu === 'MLD' ? 3 : 2)}
                       </td>
                     );
                   })}
@@ -517,7 +517,7 @@ export default function MeterReport({ rows, stationMeters = [], user, onReload, 
                       const avg = totalVal / dt.length;
                       return (
                         <td key={f.k} style={{ fontWeight: 600, color: 'var(--muted)', fontSize: '12px' }}>
-                          {fmt(avg, 2)}
+                          {fmt(avg, f.cu === 'MLD' ? 3 : 2)}
                         </td>
                       );
                     })}

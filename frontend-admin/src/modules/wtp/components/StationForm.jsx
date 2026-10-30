@@ -37,7 +37,7 @@ function Hint({ f, rows = [], date, shift, value }) {
       {hasDiff && (
         <span style={{ display: 'block', marginTop: '2px', color: diff >= 0 ? 'var(--ok)' : 'var(--amber)', fontWeight: 500 }}>
           {f.cum
-            ? `Net flow: ${fmt(diff, 2)} CUM${isRolled ? ' 🔄 (10,000 CUM WSC / STP Rollover Detected)' : ''} (prev: ${fmt(prevVal, 2)})`
+            ? `Net flow: ${fmt(diff, f.cu === 'MLD' ? 3 : 2)} ${f.cu || 'CUM'}${isRolled ? ' 🔄 (10,000 CUM WSC / STP Rollover Detected)' : ''} (prev: ${fmt(prevVal, f.cu === 'MLD' ? 3 : 2)})`
             : `Water discharged (today): ${fmt(diff, 2)} m ≈ ${fmt(diffCum, 1)} CUM`}
         </span>
       )}

@@ -23,7 +23,7 @@ const group = (st, name, fields) => ({
 
 export const GROUPS = [
   group('wtp', 'Incoming & treatment', [
-    ['b', 'Incoming Narmada flow meter', 'MLD'],
+    ['b', 'Incoming Narmada flow meter', 'MLD', 1],
     ['c', 'After treatment flow meter', 'CUM', 1],
     ['d', 'pH', ''],
     ['e', 'Turbidity', 'NTU'],
