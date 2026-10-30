@@ -301,7 +301,7 @@ export default function MeterManager({ blockMeters = [], stationMeters = [], rel
                     step="any"
                     value={wscCoef}
                     onChange={(e) => setWscCoef(e.target.value)}
-                    placeholder="1 or 3.7854"
+                    placeholder="1 or 3785.4"
                   />
                 </label>
               </div>

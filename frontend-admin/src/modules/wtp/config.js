@@ -33,10 +33,10 @@ export const GROUPS = [
     ['g', 'WSC-2 Hostel – Fresh', 'CUM', 1],
     ['h', 'WSC-2 Hostel – Recycle', 'CUM', 1],
   ]),
-  // WSC-I meters read in USMG; 3.7854 = 3785.4 litres ÷ 1000 → reported in CUM
+  // WSC-I meters read in USMG; 1 USMG = 3785.4 CUM (m3)
   group('stp', 'WSC-I', [
-    ['i', 'WSC-I Fresh Water', 'USMG', 1, 3.7854],
-    ['j', 'WSC-I Recycle Water', 'USMG', 1, 3.7854],
+    ['i', 'WSC-I Fresh Water', 'USMG', 1, 3785.4],
+    ['j', 'WSC-I Recycle Water', 'USMG', 1, 3785.4],
   ]),
   group('stp', 'Sewage pumping', [
     ['m', 'SPS-1 Housing', 'CUM', 1],
