@@ -44,9 +44,21 @@ const ROLES = [
   'technical_assistant',
 ]
 const HK_ROLES = ['supervisor', 'caretaker']
+// Roles a housekeeping/inventory manager is allowed to see and manage
+const HK_CORE_ROLES = [
+  { key: 'admin', label: 'Admin', countKey: 'admin', roles: ['admin'] },
+  { key: 'hk_inventory_manager', label: 'HK / Inv. Manager', countKey: 'hk_inventory_manager', roles: ['hk_inventory_manager'] },
+  { key: 'hostel_office', label: 'Hostel Office', countKey: 'hostel_office', roles: ['hostel_office'] },
+  { key: 'horticulture_manager', label: 'Horticulture Manager', countKey: 'horticulture_manager', roles: ['horticulture_manager'] },
+  { key: 'supervisor', label: 'Supervisor', countKey: 'supervisor', roles: ['supervisor'] },
+  { key: 'caretaker', label: 'Caretaker', countKey: 'caretaker', roles: ['caretaker'] },
+]
+const HK_CORE_ROLE_KEYS = new Set(HK_CORE_ROLES.map((r) => r.key))
+
 const ENGINEER_ROLES = ['plant_engineer', 'hvac_engineer']
 const SUPERVISOR_ROLES = ['supervisor', 'electrical_supervisor', 'wtp_supervisor', 'hvac_supervisor']
 const OPERATOR_ROLES = ['electrical_operator', 'wtp_operator', 'hvac_operator']
+const MERGED_COUNT_KEYS = new Set(['engineer', 'supervisor', 'operator'])
 
 const TOP_CARD_FILTERS = [
   { key: 'admin', label: 'Admin', countKey: 'admin', roles: ['admin'] },
@@ -177,7 +189,18 @@ export default function UsersPage() {
 
   const error = actionError || loadError
   const isLimitedUserManager = ['hk_inventory_manager'].includes(currentUser?.role)
-  const editableRoles = isLimitedUserManager ? ROLES.filter((role) => role !== 'admin') : ROLES
+  const visibleRoleFilters = isLimitedUserManager ? HK_CORE_ROLES : ROLE_FILTERS
+
+  const scopedUsers = useMemo(() => {
+    if (isLimitedUserManager) {
+      return users.filter((u) => HK_CORE_ROLE_KEYS.has(u.role))
+    }
+    return users
+  }, [isLimitedUserManager, users])
+
+  const editableRoles = isLimitedUserManager
+    ? HK_CORE_ROLES.filter((role) => role.key !== 'admin').map((r) => r.key)
+    : ROLES
   const canEditUser = (targetUser) => !isLimitedUserManager || targetUser.role !== 'admin'
 
   const openCreate = () => {
@@ -278,7 +301,7 @@ export default function UsersPage() {
     })
   }
 
-  const filtered = users.filter((u) => {
+  const filtered = scopedUsers.filter((u) => {
     let matchRole = true
     if (roleFilter === 'all') {
       matchRole = true
@@ -320,7 +343,7 @@ export default function UsersPage() {
 
   const roleCounts = useMemo(() => {
     const counts = {
-      total: users.length,
+      total: scopedUsers.length,
       admin: 0,
       engineer: 0,
       supervisor: 0,
@@ -343,8 +366,8 @@ export default function UsersPage() {
       caretaker: 0,
       technical_assistant: 0,
     }
-    users.forEach((u) => {
-      if (Object.prototype.hasOwnProperty.call(counts, u.role)) {
+    scopedUsers.forEach((u) => {
+      if (!MERGED_COUNT_KEYS.has(u.role) && Object.prototype.hasOwnProperty.call(counts, u.role)) {
         counts[u.role] += 1
       }
       if (u.role === 'engineer') {
@@ -362,7 +385,7 @@ export default function UsersPage() {
       }
     })
     return counts
-  }, [users])
+  }, [scopedUsers])
 
   const handleExportUsers = async (format) => {
     let scope = 'All Roles'
@@ -373,7 +396,7 @@ export default function UsersPage() {
     } else if (roleFilter === 'operator') {
       scope = 'Operators (Substation, WTP & HVAC)'
     } else if (roleFilter !== 'all') {
-      scope = ROLE_LABELS[roleFilter] || TOP_CARD_FILTERS.find((r) => r.key === roleFilter)?.label || roleFilter
+      scope = ROLE_LABELS[roleFilter] || visibleRoleFilters.find((r) => r.key === roleFilter)?.label || roleFilter
     }
 
     const exportData = {
@@ -413,7 +436,11 @@ export default function UsersPage() {
   return (
     <AdminLayout
       title="Manage Users"
-      subtitle={`${users.length} total users across all roles`}
+      subtitle={
+        isLimitedUserManager
+          ? `${scopedUsers.length} housekeeping & operations users`
+          : `${users.length} total users across all roles`
+      }
       actions={(
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Btn onClick={openCreate} disabled={isReadOnly} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""}>+ Add User</Btn>
@@ -446,7 +473,7 @@ export default function UsersPage() {
             Total
           </div>
         </Card>
-        {TOP_CARD_FILTERS.map((r) => {
+        {visibleRoleFilters.map((r) => {
           const isActive =
             roleFilter === r.key || (r.roles && r.roles.length > 1 && r.roles.includes(roleFilter))
           return (
@@ -490,7 +517,7 @@ export default function UsersPage() {
           />
           <SelectField value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={{ width: 190 }}>
             <option value="all">All Roles</option>
-            {TOP_CARD_FILTERS.map((r) => (
+            {visibleRoleFilters.map((r) => (
               <option key={r.key} value={r.key}>{r.label}</option>
             ))}
             <optgroup label="Specific Roles">

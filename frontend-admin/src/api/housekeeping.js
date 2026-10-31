@@ -90,4 +90,6 @@ export const hkAPI = {
     api.patch(`/housekeeping/stock-requests/${id}/status/`, { status }),
   getAlerts: () => api.get('/housekeeping/alerts/'),
   getDashboardSummary: () => api.get('/housekeeping/dashboard-summary/'),
+  getProfile: () => api.get('/housekeeping/profile/'),
+  updateProfile: (data) => api.patch('/housekeeping/profile/', data),
 }

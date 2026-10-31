@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1a3a2a">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="/static/geo_tracker/vendor/leaflet/leaflet.css"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#edeae4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;color:#1f2937;padding-bottom:40px}
@@ -170,19 +170,145 @@ select option[disabled]{color:#9ca3af}
   color:#334155;font-size:10.5px;font-weight:700;cursor:pointer;margin-right:4px;transition:all .15s
 }
 .quick-pill:hover{background:#cbd5e1}
+
+/* ── Connectivity Status Banner ── */
+.conn-banner{margin-bottom:12px;border-radius:12px;padding:11px 14px;font-size:13px;transition:all .3s ease}
+.conn-online{background:#dcfce7;border:1.5px solid #86efac;color:#166534}
+.conn-offline{background:#fef3c7;border:1.5px solid #f59e0b;color:#92400e}
+.conn-header{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px}
+.conn-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}
+.conn-online .conn-dot{background:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.2)}
+.conn-offline .conn-dot{background:#d97706;box-shadow:0 0 0 3px rgba(217,119,6,.2);animation:pulseDot 2s infinite}
+@keyframes pulseDot{0%{opacity:1}50%{opacity:.4}100%{opacity:1}}
+.conn-body{font-size:11.5px;margin-top:5px;line-height:1.4;font-weight:500}
+.conn-list{margin:4px 0 0 16px;padding:0;font-size:11px}
+.conn-list li{margin-bottom:2px}
+
+/* ── Record Management Drawer & Modals ── */
+.drawer-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:900;backdrop-filter:blur(2px)}
+.drawer-panel{
+  position:fixed;bottom:0;left:0;right:0;max-height:92vh;background:#f8fafc;
+  border-top-left-radius:20px;border-top-right-radius:20px;z-index:950;
+  display:flex;flex-direction:column;box-shadow:0 -6px 24px rgba(0,0,0,.25);
+  transform:translateY(100%);transition:transform .28s cubic-bezier(.33,1,.68,1);
+}
+.drawer-panel.open{transform:translateY(0)}
+.drawer-drag-pill{width:40px;height:4px;background:#cbd5e1;border-radius:2px;margin:8px auto 4px auto}
+.drawer-header{padding:10px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;background:#fff;border-top-left-radius:20px;border-top-right-radius:20px}
+.drawer-title{font-size:15px;font-weight:800;color:#1a3a2a;display:flex;align-items:center;gap:6px}
+.drawer-close{background:none;border:none;font-size:22px;color:#64748b;cursor:pointer;padding:0 4px;line-height:1}
+.drawer-body{padding:14px 12px;overflow-y:auto;flex:1}
+
+/* Dashboard Metric Cards */
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+@media(max-width:420px){.metric-grid{grid-template-columns:repeat(3,1fr)}}
+.metric-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px 6px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.metric-val{font-size:16px;font-weight:800;color:#0f172a}
+.metric-lbl{font-size:9.5px;font-weight:700;color:#64748b;text-transform:uppercase;margin-top:2px}
+
+/* Filter Pills */
+.filter-bar{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;-webkit-overflow-scrolling:touch}
+.filter-bar::-webkit-scrollbar{display:none}
+.drawer-filter-pill{
+  padding:5px 11px;border-radius:16px;background:#e2e8f0;color:#475569;
+  font-size:11.5px;font-weight:700;border:none;cursor:pointer;white-space:nowrap;transition:all .15s
+}
+.drawer-filter-pill.active{background:#1a3a2a;color:#fff}
+
+/* Record Item Cards */
+.record-item-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.record-item-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.record-type-icon{font-size:20px;line-height:1}
+.record-name-title{font-size:13.5px;font-weight:800;color:#111827}
+.record-meta-sub{font-size:11px;color:#64748b;margin-top:2px}
+.tracking-pill{display:inline-block;padding:1px 6px;border-radius:10px;background:#e0f2fe;color:#0369a1;font-size:10px;font-weight:800}
+.record-item-body{margin-top:8px;padding-top:8px;border-top:1px dashed #f1f5f9}
+.record-meta-grid{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:#475569}
+.card-error-notice{background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:600;margin-top:8px}
+.record-item-actions{display:flex;gap:6px;margin-top:10px;justify-content:flex-end}
+.btn-card-action{padding:6px 11px;border-radius:8px;border:none;font-size:11px;font-weight:800;cursor:pointer}
+.btn-details{background:#f1f5f9;color:#334155}
+.btn-retry{background:#16a34a;color:#fff}
+.btn-conflict{background:#d97706;color:#fff}
+
+/* Status Chips */
+.status-chip{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:800;white-space:nowrap}
+.badge-synced{background:#dcfce7;color:#166534}
+.badge-partial{background:#ede9fe;color:#5b21b6}
+.badge-uploading{background:#e0f2fe;color:#0369a1}
+.badge-failed{background:#fee2e2;color:#991b1b}
+.badge-auth{background:#fef3c7;color:#92400e}
+.badge-attention{background:#fef3c7;border:1px solid #d97706;color:#b45309}
+.badge-local{background:#f1f5f9;color:#475569}
+
+/* Modals */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(2px)}
+.modal-box{background:#fff;border-radius:16px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.detail-section-title{font-size:11px;font-weight:800;color:#1a3a2a;text-transform:uppercase;margin:12px 0 6px 0;letter-spacing:.05em}
+.detail-row{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #f8fafc}
+.detail-row span{color:#64748b}
+.detail-row strong{color:#111827}
+.photo-inspect-card{display:flex;align-items:center;gap:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;margin-bottom:8px}
+.photo-inspect-thumb{width:56px;height:56px;object-fit:cover;border-radius:8px;flex-shrink:0}
+.photo-inspect-placeholder{width:56px;height:56px;background:#e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.conflict-card-alert{background:#fef2f2;border:1.5px solid #f87171;border-radius:10px;padding:10px;margin-bottom:12px}
 </style>
 </head>
 <body>
 
-<div class="hdr">
-  <img class="brand-logo" src="/campus-sanchalika-logo.png" alt="Campus Sanchalika">
-  <div class="hdr-copy">
-    <span class="hdr-app">Campus Sanchalika</span>
-    <span class="hdr-ttl">🌿 Plant Record Submission</span>
+<div class="hdr" style="justify-content:space-between">
+  <div style="display:flex;align-items:center;gap:10px">
+    <img class="brand-logo" src="/campus-sanchalika-logo.png" alt="Campus Sanchalika">
+    <div class="hdr-copy">
+      <span class="hdr-app">Campus Sanchalika</span>
+      <span class="hdr-ttl">🌿 Plant Record Submission</span>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <div id="localRecordBadge" style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.18);padding:5px 9px;border-radius:20px;font-size:11.5px;font-weight:700;color:#fff;cursor:pointer" title="Tap to manage local records">
+      <span>📦 Saved:</span>
+      <span id="savedCount">0</span>
+    </div>
+    <button type="button" id="syncNowBtn" style="background:#16a34a;color:#fff;border:none;border-radius:20px;padding:5px 10px;font-size:11.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 6px rgba(0,0,0,0.2);transition:all 0.15s ease;" title="Synchronize locally saved records with the server">
+      <span id="syncIcon">🔄</span>
+      <span id="syncText">Sync Now</span>
+    </button>
+    <button type="button" id="manageRecordsBtn" style="background:#0e6b94;color:#fff;border:none;border-radius:20px;padding:5px 10px;font-size:11.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 6px rgba(0,0,0,0.2);transition:all 0.15s ease;" title="Open Record Management &amp; Sync Dashboard">
+      <span>📋</span>
+      <span>Records</span>
+      <span id="drawerCount" style="background:rgba(255,255,255,0.25);padding:1px 6px;border-radius:10px;font-size:10px">0</span>
+    </button>
   </div>
 </div>
 
 <div class="page">
+  <!-- Connectivity Status Banner -->
+  <div id="connectivityBanner" class="conn-banner conn-online">
+    <div class="conn-header">
+      <span class="conn-dot"></span>
+      <span id="connTitle">GeoTracker — Online (SSO Network Connected)</span>
+    </div>
+    <div class="conn-body" id="connBody">
+      <span id="connDesc">Server connection available. Cached shell and local offline storage active.</span>
+      <ul id="connList" class="conn-list" style="display:none">
+        <li>Local record creation available</li>
+        <li>Local photographs available (with automatic compression)</li>
+        <li>Cached varieties and campus areas active</li>
+        <li>Your records are saved on this device. They have not yet been uploaded to Campus Sanchalika.</li>
+      </ul>
+      <!-- Live Sync Progress Indicator -->
+      <div id="syncProgressWrap" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed rgba(0,0,0,0.15)">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;font-weight:700">
+          <span id="syncProgressText">⏳ Syncing records…</span>
+          <span id="syncProgressPercent">0%</span>
+        </div>
+        <div style="height:6px;background:rgba(0,0,0,0.1);border-radius:3px;overflow:hidden;margin-top:4px">
+          <div id="syncProgressBar" style="height:100%;width:0%;background:#16a34a;border-radius:3px;transition:width 0.3s ease"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="flash-area"></div>
 
   <form id="plantForm" enctype="multipart/form-data">
@@ -273,6 +399,9 @@ select option[disabled]{color:#9ca3af}
         <div class="map-instructions">
           <span>Pan &amp; zoom to the plant, then tap Confirm</span>
           <button type="button" class="map-confirm-btn" id="mapConfirmBtn">✓ Confirm pin</button>
+        </div>
+        <div id="mapOfflineNotice" style="display:none;background:#fef3c7;border-bottom:1px solid #f59e0b;padding:8px 12px;font-size:11px;color:#92400e;line-height:1.4;">
+          <strong>⚠️ Offline Map Notice:</strong> Satellite &amp; road map tiles require an active connection. GPS positioning and manual coordinate entry remain fully operational. You can still confirm pins using the crosshair.
         </div>
         <div id="pinMap"></div>
         <div class="map-crosshair"></div>
@@ -526,6 +655,19 @@ select option[disabled]{color:#9ca3af}
         <label for="photo">Capture / Upload Photo</label>
         <input type="file" id="photo" name="photo" accept="image/*" capture="environment" required>
         <img id="photoPreview" class="photo-preview" alt="Preview">
+
+        <!-- Client-Side Compression Status & Metrics Display -->
+        <div id="photoCompressionInfo" style="display:none;margin-top:8px;padding:9px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:11.5px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+            <span id="compressStatusText" style="font-weight:700;color:#0369a1;">⏳ Processing image…</span>
+            <span id="compressBadge" style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:12px;background:#e0f2fe;color:#0369a1;">PROCESSING</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;color:#475569;font-size:11px;">
+            <span>Original: <strong id="origSizeText">–</strong></span>
+            <span>Compressed: <strong id="compSizeText">–</strong></span>
+            <span id="reductionText" style="color:#166534;font-weight:700;"></span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -536,7 +678,14 @@ select option[disabled]{color:#9ca3af}
   </form>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/geo_tracker/vendor/leaflet/leaflet.js"></script>
+<script src="/static/geo_tracker/js/geotrackerOfflineDB.js?v=cs-v4.1"></script>
+<script src="/static/geo_tracker/js/geotrackerPhotoStorage.js?v=cs-v4.1"></script>
+<script src="/static/geo_tracker/js/geotrackerImageCompressor.js?v=cs-v4.1"></script>
+<script src="/static/geo_tracker/js/geotrackerReferenceData.js?v=cs-v4.1"></script>
+<script src="/static/geo_tracker/js/geotrackerRecordStorage.js?v=cs-v4.1"></script>
+<script src="/static/geo_tracker/js/geotrackerSyncEngine.js?v=cs-v4.1"></script>
+<script src="/static/geo_tracker/js/geotrackerManagementUI.js?v=cs-v4.1"></script>
 <script>
 // ── Variety select ────────────────────────────────────────────────────────
 var varietySelect = document.getElementById('variety');
@@ -1307,6 +1456,10 @@ var mapPinLng   = null;
 function initMap() {
   if (leafletMap) return;  // already initialised
 
+  if (window.L && L.Icon && L.Icon.Default) {
+    L.Icon.Default.imagePath = '/static/geo_tracker/vendor/leaflet/images/';
+  }
+
   leafletMap = L.map('pinMap', {
     center:         CAMPUS_CENTER,
     zoom:           18,
@@ -1319,10 +1472,21 @@ function initMap() {
   });
 
   // OpenStreetMap standard tiles — free, no API key
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  var tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 19
-  }).addTo(leafletMap);
+  });
+  tileLayer.on('tileerror', function() {
+    var notice = document.getElementById('mapOfflineNotice');
+    if (notice) notice.style.display = 'block';
+  });
+  tileLayer.on('load', function() {
+    if (navigator.onLine) {
+      var notice = document.getElementById('mapOfflineNotice');
+      if (notice) notice.style.display = 'none';
+    }
+  });
+  tileLayer.addTo(leafletMap);
 
   // Faint campus boundary rectangle so user knows the allowed area
   L.rectangle(CAMPUS_BOUNDS, {
@@ -1377,6 +1541,10 @@ document.getElementById('mapBtn').addEventListener('click', function() {
     note.style.display = 'block';
     mapOpen = true;
     this.textContent = '✕ Close map';
+    var notice = document.getElementById('mapOfflineNotice');
+    if (notice) {
+      notice.style.display = !navigator.onLine ? 'block' : 'none';
+    }
     setTimeout(function() {
       initMap();
       if (leafletMap) leafletMap.invalidateSize();
@@ -1432,12 +1600,108 @@ document.getElementById('mapConfirmBtn').addEventListener('click', function() {
   closeMapPicker();
 });
 
-// ── Photo preview ─────────────────────────────────────────────────────────
+// ── Photo preview and Client-Side Compression ─────────────────────────────
+var currentCompressedPhoto = null;
+var activeCompressionPromise = null;
+
 document.getElementById('photo').addEventListener('change', function(e) {
-  var file    = e.target.files[0];
+  var file = e.target.files && e.target.files[0];
   var preview = document.getElementById('photoPreview');
-  if (file) { preview.src = URL.createObjectURL(file); preview.style.display = 'block'; }
-  else      { preview.style.display = 'none'; }
+  var compInfo = document.getElementById('photoCompressionInfo');
+  var statusText = document.getElementById('compressStatusText');
+  var badge = document.getElementById('compressBadge');
+  var origText = document.getElementById('origSizeText');
+  var compText = document.getElementById('compSizeText');
+  var reductText = document.getElementById('reductionText');
+
+  if (!file) {
+    if (preview) preview.style.display = 'none';
+    if (compInfo) compInfo.style.display = 'none';
+    currentCompressedPhoto = null;
+    activeCompressionPromise = null;
+    return;
+  }
+
+  // Display immediate preview
+  if (preview) {
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = 'block';
+  }
+
+  if (compInfo) compInfo.style.display = 'block';
+  if (statusText) statusText.textContent = '⏳ Compressing image…';
+  if (badge) {
+    badge.textContent = 'PROCESSING';
+    badge.style.background = '#e0f2fe';
+    badge.style.color = '#0369a1';
+  }
+  if (origText) {
+    origText.textContent = window.GeoTrackerImageCompressor
+      ? window.GeoTrackerImageCompressor.formatBytes(file.size)
+      : (Math.round(file.size / 1024) + ' KB');
+  }
+  if (compText) compText.textContent = '…';
+  if (reductText) reductText.textContent = '';
+
+  if (window.GeoTrackerImageCompressor) {
+    activeCompressionPromise = window.GeoTrackerImageCompressor.compressImage(file)
+      .then(function(result) {
+        currentCompressedPhoto = {
+          blob: result.blob,
+          original_size: result.originalSize,
+          compressed_size: result.compressedSize,
+          filename: file.name
+        };
+
+        if (statusText) {
+          statusText.textContent = result.compressed
+            ? '✓ Compression completed'
+            : '✓ Original image retained';
+        }
+        if (badge) {
+          badge.textContent = 'READY';
+          badge.style.background = '#dcfce7';
+          badge.style.color = '#166534';
+        }
+        if (compText) {
+          compText.textContent = window.GeoTrackerImageCompressor.formatBytes(result.compressedSize);
+        }
+        if (reductText) {
+          if (result.reductionPercent > 0) {
+            reductText.textContent = '(Reduced by ' + result.reductionPercent + '%)';
+          } else {
+            reductText.textContent = '';
+          }
+        }
+        return currentCompressedPhoto;
+      })
+      .catch(function(err) {
+        console.warn('[PhotoCompression] Compression failed, retaining original:', err);
+        currentCompressedPhoto = {
+          blob: file,
+          original_size: file.size,
+          compressed_size: file.size,
+          filename: file.name
+        };
+        if (statusText) statusText.textContent = '⚠️ Original photograph retained';
+        if (badge) {
+          badge.textContent = 'ORIGINAL';
+          badge.style.background = '#fef3c7';
+          badge.style.color = '#92400e';
+        }
+        if (compText) {
+          compText.textContent = window.GeoTrackerImageCompressor.formatBytes(file.size);
+        }
+        return currentCompressedPhoto;
+      });
+  } else {
+    currentCompressedPhoto = {
+      blob: file,
+      original_size: file.size,
+      compressed_size: file.size,
+      filename: file.name
+    };
+  }
 });
 
 // ── Form submit ───────────────────────────────────────────────────────────
@@ -1446,61 +1710,178 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
   var btn  = document.getElementById('submitBtn');
   var icon = document.getElementById('submitIcon');
   var text = document.getElementById('submitText');
-  btn.disabled = true; icon.textContent = '⏳'; text.textContent = 'Submitting…';
-
-  var formData = new FormData(this);
+  btn.disabled = true; icon.textContent = '⏳'; text.textContent = 'Saving locally…';
 
   var selectedRadio = document.querySelector('input[name="plant_type_display"]:checked');
   var curType = selectedRadio ? selectedRadio.value.toLowerCase() : (plantTypeInput.value || '').toLowerCase();
   var isPlotType = curType === 'shrub' || curType === 'creeper';
 
-  if (!isPlotType) {
-    // Tree and Plant: individual plant count is 1
-    formData.set('plant_count', '1');
-    formData.delete('length_m');
-    formData.delete('width_m');
-    formData.delete('total_area_m');
-    formData.delete('plant_spacing_cm');
-    formData.delete('plant_spacing_m');
-    formData.delete('planting_pattern');
-    formData.delete('area_shape');
-  } else {
-    // Shrub and Creeper: remove single tree fields
-    formData.delete('height_m');
-    formData.delete('girth_cm');
-    formData.delete('canopy_area_m');
+  // Extract form fields
+  var varietyEl = document.getElementById('variety');
+  var varietyId = varietyEl ? varietyEl.value : '';
+  var selectedOpt = varietyEl && varietyEl.selectedIndex >= 0 ? varietyEl.options[varietyEl.selectedIndex] : null;
 
-    // Extract calculated total plants
+  var plantType = curType || (selectedOpt ? selectedOpt.getAttribute('data-type') : '') || 'tree';
+  var localName = (selectedOpt ? selectedOpt.getAttribute('data-name') : '') || (document.getElementById('local_name') ? document.getElementById('local_name').value : '');
+  var scientificName = (selectedOpt ? selectedOpt.getAttribute('data-scientific') : '') || (document.getElementById('scientific_name') ? document.getElementById('scientific_name').value : '');
+
+  var latVal = document.getElementById('latitude') ? document.getElementById('latitude').value : '';
+  var lngVal = document.getElementById('longitude') ? document.getElementById('longitude').value : '';
+  var gpsAcc = document.getElementById('gps_accuracy_m') ? document.getElementById('gps_accuracy_m').value : '';
+  var zoneVal = document.getElementById('zone') ? document.getElementById('zone').value : '';
+  var condVal = document.getElementById('condition') ? document.getElementById('condition').value : 'good';
+  var notesVal = document.getElementById('notes') ? document.getElementById('notes').value : '';
+
+  if (!varietyId) {
+    showFlash('✗ Please select a plant variety.', 'err');
+    btn.disabled = false; icon.textContent = '🌿'; text.textContent = 'Submit Record';
+    return;
+  }
+  if (!latVal || !lngVal) {
+    showFlash('✗ Location coordinates are required. Use GPS or Map pin.', 'err');
+    btn.disabled = false; icon.textContent = '🌿'; text.textContent = 'Submit Record';
+    return;
+  }
+  if (!zoneVal) {
+    showFlash('✗ Please select a Campus Area.', 'err');
+    btn.disabled = false; icon.textContent = '🌿'; text.textContent = 'Submit Record';
+    return;
+  }
+
+  var photoInput = document.getElementById('photo');
+  var photoFile = photoInput && photoInput.files && photoInput.files.length > 0 ? photoInput.files[0] : null;
+  if (!photoFile && !currentCompressedPhoto) {
+    showFlash('✗ A photograph of the plant is required.', 'err');
+    btn.disabled = false; icon.textContent = '🌿'; text.textContent = 'Submit Record';
+    return;
+  }
+
+  // Build structured record object for IndexedDB
+  var recordFields = {
+    plant_type: plantType,
+    variety: varietyId,
+    local_name: localName,
+    scientific_name: scientificName,
+    latitude: latVal,
+    longitude: lngVal,
+    gps_accuracy_m: gpsAcc,
+    zone: zoneVal,
+    condition: condVal,
+    notes: notesVal
+  };
+
+  if (!isPlotType) {
+    recordFields.plant_count = 1;
+    var h = document.getElementById('height_m');
+    var g = document.getElementById('girth_cm');
+    var c = document.getElementById('canopy_area_m');
+    if (h && h.value) recordFields.height_m = h.value;
+    if (g && g.value) recordFields.girth_cm = g.value;
+    if (c && c.value) recordFields.canopy_area_m = c.value;
+  } else {
     var totalPlantsEl = document.getElementById('sumTotalPlants');
     var rawCount = totalPlantsEl ? totalPlantsEl.textContent.replace(/,/g, '').trim() : '1';
     var parsedCount = parseInt(rawCount, 10);
-    var plantCount = isNaN(parsedCount) || parsedCount <= 0 ? 1 : parsedCount;
-    formData.set('plant_count', plantCount);
+    recordFields.plant_count = isNaN(parsedCount) || parsedCount <= 0 ? 1 : parsedCount;
 
     var shapeVal = document.querySelector('input[name="area_shape"]:checked');
-    var shapeName = shapeVal ? shapeVal.value : 'rectangle';
-    formData.set('area_shape', shapeName);
+    recordFields.area_shape = shapeVal ? shapeVal.value : 'rectangle';
 
     var spacingInp = document.getElementById('plant_spacing_cm') || document.getElementById('plant_spacing_m');
-    var spacingVal = (spacingInp ? spacingInp.value : '') || '25';
-    formData.set('plant_spacing_cm', spacingVal);
+    recordFields.plant_spacing_cm = (spacingInp ? spacingInp.value : '') || '25';
 
     var patternVal = document.getElementById('planting_pattern') ? document.getElementById('planting_pattern').value : 'square';
-    formData.set('planting_pattern', patternVal || 'square');
+    recordFields.planting_pattern = patternVal || 'square';
 
-    // Append plot & total plants spec into notes and keep structured fields
-    var areaVal = document.getElementById('total_area_m').value;
-    var notesField = document.getElementById('notes');
+    var areaVal = document.getElementById('total_area_m') ? document.getElementById('total_area_m').value : '';
     if (areaVal && parseFloat(areaVal) > 0) {
-      formData.set('total_area_m', areaVal);
-      var specNote = '[Plot: ' + shapeName.charAt(0).toUpperCase() + shapeName.slice(1) + ' ' + areaVal + ' m² | Spacing: ' + spacingVal + 'cm (' + patternVal + ') | Total Plants: ' + plantCount.toLocaleString() + ']';
-      if (notesField && !notesField.value.includes('[Plot:')) {
-        notesField.value = (notesField.value ? notesField.value + '\n' : '') + specNote;
-        formData.set('notes', notesField.value);
+      recordFields.total_area_m = areaVal;
+      var specNote = '[Plot: ' + recordFields.area_shape.charAt(0).toUpperCase() + recordFields.area_shape.slice(1) + ' ' + areaVal + ' m² | Spacing: ' + recordFields.plant_spacing_cm + 'cm (' + recordFields.planting_pattern + ') | Total Plants: ' + recordFields.plant_count.toLocaleString() + ']';
+      if (recordFields.notes && !recordFields.notes.includes('[Plot:')) {
+        recordFields.notes = (recordFields.notes ? recordFields.notes + '\n' : '') + specNote;
       }
     }
   }
 
+  // Wait for any pending compression to finish before writing to storage
+  var photoPromise = activeCompressionPromise
+    ? activeCompressionPromise
+    : Promise.resolve(currentCompressedPhoto || (photoFile ? {
+        blob: photoFile,
+        filename: photoFile.name || 'plant_photo.jpg',
+        original_size: photoFile.size,
+        compressed_size: photoFile.size
+      } : null));
+
+  photoPromise.then(function(photoItem) {
+    if (!photoItem && photoFile) {
+      photoItem = {
+        blob: photoFile,
+        filename: photoFile.name || 'plant_photo.jpg',
+        original_size: photoFile.size,
+        compressed_size: photoFile.size
+      };
+    }
+
+    if (window.GeoTrackerRecordStorage) {
+      return window.GeoTrackerRecordStorage.saveRecordWithPhotos(recordFields, photoItem ? [photoItem] : [])
+        .then(function(result) {
+          var shortId = result.record.submission_id ? result.record.submission_id.slice(0, 8) : 'local';
+          var msg = '✓ Record Saved Locally! (ID: ' + shortId + '…) Your record is safely saved on this device. It will be uploaded to Campus Sanchalika during synchronization.';
+          showFlash(msg, 'ok');
+
+          // Reset form for continuous recording
+          document.getElementById('plantForm').reset();
+          plantTypeInput.value = '';
+          currentCompressedPhoto = null;
+          activeCompressionPromise = null;
+          generatedBlocks = [];
+          generatedLength = 0;
+          generatedWidth = 0;
+
+          var defShape = document.querySelector('input[name="area_shape"][value="rectangle"]');
+          if (defShape) defShape.checked = true;
+          var rectCont = document.getElementById('shapeRectContainer');
+          var squareCont = document.getElementById('shapeSquareContainer');
+          var circleCont = document.getElementById('shapeCircleContainer');
+          if (rectCont) rectCont.style.display = 'block';
+          if (squareCont) squareCont.style.display = 'none';
+          if (circleCont) circleCont.style.display = 'none';
+
+          var spacingInp = document.getElementById('plant_spacing_cm') || document.getElementById('plant_spacing_m');
+          if (spacingInp) spacingInp.value = '25';
+          var patternSel = document.getElementById('planting_pattern');
+          if (patternSel) patternSel.value = 'square';
+
+          syncVarietyOptions();
+          recalculateMeasurements();
+          document.getElementById('photoPreview').style.display = 'none';
+          var compInfo = document.getElementById('photoCompressionInfo');
+          if (compInfo) compInfo.style.display = 'none';
+          document.getElementById('gpsStatus').textContent = '';
+          document.getElementById('accBarWrap').style.display = 'none';
+          document.getElementById('accBadge').style.display   = 'none';
+          closeMapPicker();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+
+          updateSavedCountBadge();
+          btn.disabled = false; icon.textContent = '🌿'; text.textContent = 'Submit Record';
+        });
+    } else {
+      var formData = new FormData(document.getElementById('plantForm'));
+      submitRecordOnline(formData, btn, icon, text);
+    }
+  }).catch(function(err) {
+    console.error('[GeoTracker] Local persistence failure:', err);
+    var errText = (err && err.name === 'QuotaExceededError')
+      ? 'Storage quota exceeded on this device. Please free storage space.'
+      : ('Storage error: could not save record locally. ' + (err.message || err));
+    showFlash('✗ ' + errText, 'err');
+    btn.disabled = false; icon.textContent = '🌿'; text.textContent = 'Submit Record';
+  });
+});
+
+function submitRecordOnline(formData, btn, icon, text) {
   fetch('/geo/submit/record/', {
     method: 'POST', body: formData,
     headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') },
@@ -1512,25 +1893,6 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
       showFlash(msg, 'ok');
       document.getElementById('plantForm').reset();
       plantTypeInput.value = '';
-      generatedBlocks = [];
-      generatedLength = 0;
-      generatedWidth = 0;
-      // Reset shape to rectangle
-      var defShape = document.querySelector('input[name="area_shape"][value="rectangle"]');
-      if (defShape) defShape.checked = true;
-      var rectCont = document.getElementById('shapeRectContainer');
-      var squareCont = document.getElementById('shapeSquareContainer');
-      var circleCont = document.getElementById('shapeCircleContainer');
-      if (rectCont) rectCont.style.display = 'block';
-      if (squareCont) squareCont.style.display = 'none';
-      if (circleCont) circleCont.style.display = 'none';
-
-      // Reset spacing and pattern
-      var spacingInp = document.getElementById('plant_spacing_cm') || document.getElementById('plant_spacing_m');
-      if (spacingInp) spacingInp.value = '25';
-      var patternSel = document.getElementById('planting_pattern');
-      if (patternSel) patternSel.value = 'square';
-
       syncVarietyOptions();
       recalculateMeasurements();
       document.getElementById('photoPreview').style.display = 'none';
@@ -1545,13 +1907,13 @@ document.getElementById('plantForm').addEventListener('submit', function(e) {
         : 'Submission failed. Please check your inputs.';
       showFlash('✗ ' + errs, 'err');
     }
-    btn.disabled = false; icon.textContent = '🌿'; text.textContent = 'Submit Record';
+    if (btn) { btn.disabled = false; icon.textContent = '🌿'; text.textContent = 'Submit Record'; }
   })
   .catch(function() {
     showFlash('✗ Network error. Please try again.', 'err');
-    btn.disabled = false; icon.textContent = '🌿'; text.textContent = 'Submit Record';
+    if (btn) { btn.disabled = false; icon.textContent = '🌿'; text.textContent = 'Submit Record'; }
   });
-});
+}
 
 function showFlash(msg, type) {
   var area = document.getElementById('flash-area');
@@ -1559,6 +1921,253 @@ function showFlash(msg, type) {
   area.scrollIntoView({ behavior: 'smooth' });
   if (type === 'ok') setTimeout(function(){ area.innerHTML = ''; }, 6000);
 }
+
+// ── Offline Persistence Initialization ─────────────────────────────────────
+function updateSavedCountBadge() {
+  if (window.GeoTrackerRecordStorage) {
+    window.GeoTrackerRecordStorage.getSyncSummary().then(function(summary) {
+      var countEl = document.getElementById('savedCount');
+      if (countEl) {
+        var pending = (summary.saved_locally || 0) + (summary.pending_sync || 0);
+        countEl.textContent = pending;
+      }
+    }).catch(function(){});
+  }
+}
+
+// ── Service Worker & Connectivity Manager ──────────────────────────────────
+function updateConnectivityStatus() {
+  var isOnline = navigator.onLine;
+  var banner = document.getElementById('connectivityBanner');
+  var title = document.getElementById('connTitle');
+  var desc = document.getElementById('connDesc');
+  var list = document.getElementById('connList');
+  var mapNotice = document.getElementById('mapOfflineNotice');
+
+  if (!banner || !title || !desc) return;
+
+  if (isOnline) {
+    banner.className = 'conn-banner conn-online';
+    title.textContent = '🌿 GeoTracker — Online (SSO Network Connected)';
+    desc.textContent = 'Server connection available. Cached shell and local offline storage active.';
+    if (list) list.style.display = 'none';
+    if (mapNotice && leafletMap) mapNotice.style.display = 'none';
+  } else {
+    banner.className = 'conn-banner conn-offline';
+    title.textContent = '🌿 GeoTracker — Offline Mode';
+    desc.textContent = 'Operating without network connectivity. All records and photographs are securely stored locally on this device.';
+    if (list) list.style.display = 'block';
+    if (mapNotice && mapOpen) mapNotice.style.display = 'block';
+  }
+
+  // Check if offline and reference data was never seeded
+  if (!isOnline && window.GeoTrackerReferenceData) {
+    window.GeoTrackerReferenceData.getCachedVarieties().then(function(vars) {
+      if (!vars || vars.length === 0) {
+        showFlash('⚠️ First-time Setup: GeoTracker was opened offline without prior online initialization. Please connect to Campus Wi-Fi once to download the latest plant varieties and campus areas.', 'err');
+      }
+    }).catch(function(){});
+  }
+}
+
+window.addEventListener('online', updateConnectivityStatus);
+window.addEventListener('offline', updateConnectivityStatus);
+
+// Register shared Campus Sanchalika Service Worker
+if ('serviceWorker' in navigator) {
+  if (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(function(reg) {
+          console.log('[GeoTracker SW] Service Worker registered with scope:', reg.scope);
+        })
+        .catch(function(err) {
+          console.warn('[GeoTracker SW] Registration failed:', err);
+        });
+    });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  updateConnectivityStatus();
+
+  // Wire up manual Sync Now button and Sync Engine events
+  var syncBtn = document.getElementById('syncNowBtn');
+  var syncIcon = document.getElementById('syncIcon');
+  var syncText = document.getElementById('syncText');
+  var syncProgressWrap = document.getElementById('syncProgressWrap');
+  var syncProgressText = document.getElementById('syncProgressText');
+  var syncProgressBar = document.getElementById('syncProgressBar');
+  var syncProgressPercent = document.getElementById('syncProgressPercent');
+
+  if (syncBtn && window.GeoTrackerSyncEngine) {
+    syncBtn.addEventListener('click', function() {
+      syncBtn.disabled = true;
+      if (syncIcon) syncIcon.textContent = '⏳';
+      if (syncText) syncText.textContent = 'Syncing…';
+
+      window.GeoTrackerSyncEngine.syncNow(true).then(function(result) {
+        updateSavedCountBadge();
+        if (result.stopped && (result.reason === 'unreachable' || result.reason === 'network_unavailable')) {
+          showFlash('⚠️ Server unreachable. Records remain safely saved on this device.', 'err');
+        } else if (result.stopped && result.reason === 'auth_required') {
+          showFlash('⚠️ Institutional network connection required to synchronize. Connect to IITGN Wi-Fi.', 'err');
+        } else if (result.stopped && result.reason === 'no_area_permissions') {
+          showFlash('⚠️ Campus area validation failed for these records.', 'err');
+        } else if (result.synced !== undefined) {
+          if (result.synced > 0 && result.failed === 0) {
+            showFlash('✓ Successfully synchronized ' + result.synced + ' record(s) and photographs!', 'ok');
+          } else if (result.synced > 0 && result.failed > 0) {
+            showFlash('✓ Synchronized ' + result.synced + ' record(s); ' + result.failed + ' pending retry.', 'ok');
+          } else if (result.total === 0) {
+            showFlash('✓ All records are already synchronized.', 'ok');
+          }
+        }
+      }).catch(function(err) {
+        console.error('Manual sync failed:', err);
+        showFlash('✗ Synchronization failed: ' + (err.message || err), 'err');
+      }).finally(function() {
+        syncBtn.disabled = false;
+        if (syncIcon) syncIcon.textContent = '🔄';
+        if (syncText) syncText.textContent = 'Sync Now';
+        if (syncProgressWrap) syncProgressWrap.style.display = 'none';
+      });
+    });
+
+    window.GeoTrackerSyncEngine.on('statusChange', function(state) {
+      if (state.status === 'syncing') {
+        if (syncBtn) {
+          syncBtn.disabled = true;
+          if (syncIcon) syncIcon.textContent = '⏳';
+          if (syncText) syncText.textContent = 'Syncing…';
+        }
+        if (syncProgressWrap) {
+          syncProgressWrap.style.display = 'block';
+          if (syncProgressText) syncProgressText.textContent = state.message;
+          if (state.progress && state.progress.total > 0) {
+            var pct = Math.round((state.progress.current / state.progress.total) * 100);
+            if (syncProgressBar) syncProgressBar.style.width = pct + '%';
+            if (syncProgressPercent) syncProgressPercent.textContent = pct + '%';
+          }
+        }
+      } else {
+        if (syncBtn) {
+          syncBtn.disabled = false;
+          if (syncIcon) syncIcon.textContent = '🔄';
+          if (syncText) syncText.textContent = 'Sync Now';
+        }
+        if (syncProgressWrap && state.status !== 'syncing') {
+          syncProgressWrap.style.display = 'none';
+        }
+      }
+      updateSavedCountBadge();
+    });
+  }
+
+  if (window.GeoTrackerDB) {
+    window.GeoTrackerDB.openDB().then(function() {
+      // Request persistence
+      window.GeoTrackerDB.requestPersistence();
+
+      // Seed reference data from DOM into IndexedDB for offline use
+      if (window.GeoTrackerReferenceData) {
+        window.GeoTrackerReferenceData.seedFromDOM();
+        window.GeoTrackerReferenceData.populateSelectsFromCache();
+      }
+
+      updateSavedCountBadge();
+    }).catch(function(err) {
+      console.warn('[OfflineDB] Initialization error:', err);
+    });
+  }
+});
 </script>
+
+<!-- Record Management Drawer -->
+<div id="recordDrawerOverlay" class="drawer-overlay" style="display:none"></div>
+<div id="recordDrawer" class="drawer-panel">
+  <div class="drawer-drag-pill"></div>
+  <div class="drawer-header">
+    <div class="drawer-title">
+      <span>📋</span>
+      <span>GeoTracker Sync Dashboard</span>
+    </div>
+    <button type="button" class="drawer-close" id="closeDrawerBtn" title="Close Drawer">&times;</button>
+  </div>
+  <div class="drawer-body">
+    <!-- Live Metric Counters -->
+    <div class="metric-grid">
+      <div class="metric-card" style="border-top:3px solid #1a3a2a">
+        <div class="metric-val" id="cntTotal">0</div>
+        <div class="metric-lbl">Total</div>
+      </div>
+      <div class="metric-card" style="border-top:3px solid #16a34a">
+        <div class="metric-val" id="cntSynced" style="color:#16a34a">0</div>
+        <div class="metric-lbl">Synced</div>
+      </div>
+      <div class="metric-card" style="border-top:3px solid #0e6b94">
+        <div class="metric-val" id="cntPending" style="color:#0e6b94">0</div>
+        <div class="metric-lbl">Pending</div>
+      </div>
+      <div class="metric-card" style="border-top:3px solid #7c3aed">
+        <div class="metric-val" id="cntUploading" style="color:#7c3aed">0</div>
+        <div class="metric-lbl">Uploading</div>
+      </div>
+      <div class="metric-card" style="border-top:3px solid #dc2626">
+        <div class="metric-val" id="cntFailed" style="color:#dc2626">0</div>
+        <div class="metric-lbl">Failed</div>
+      </div>
+      <div class="metric-card" style="border-top:3px solid #d97706">
+        <div class="metric-val" id="cntAuth" style="color:#d97706">0</div>
+        <div class="metric-lbl">Auth Req</div>
+      </div>
+      <div class="metric-card" style="border-top:3px solid #b45309">
+        <div class="metric-val" id="cntAttention" style="color:#b45309">0</div>
+        <div class="metric-lbl">Attention</div>
+      </div>
+    </div>
+
+    <!-- Quick Action Bar -->
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button type="button" class="submit-btn" style="flex:1;padding:9px 12px;font-size:12px;box-shadow:none" onclick="if(window.GeoTrackerSyncEngine) window.GeoTrackerSyncEngine.syncNow(true)">
+        <span>🔄</span>
+        <span>Sync All Now</span>
+      </button>
+      <button type="button" id="retryAllFailedBtn" class="gps-btn" style="flex:1;padding:9px 12px;font-size:12px;background:#d97706;justify-content:center">
+        <span>🔁</span>
+        <span>Retry Failed</span>
+      </button>
+    </div>
+
+    <!-- Status Filter Pills -->
+    <div class="filter-bar">
+      <button type="button" class="drawer-filter-pill active" data-filter="all">All Records</button>
+      <button type="button" class="drawer-filter-pill" data-filter="pending">Pending</button>
+      <button type="button" class="drawer-filter-pill" data-filter="synced">Synced</button>
+      <button type="button" class="drawer-filter-pill" data-filter="failed">Failed</button>
+      <button type="button" class="drawer-filter-pill" data-filter="auth_required">Auth Required</button>
+      <button type="button" class="drawer-filter-pill" data-filter="needs_attention">Needs Attention</button>
+    </div>
+
+    <!-- Records List Container -->
+    <div id="recordsListContainer">
+      <div style="text-align:center;padding:20px;color:#6b7280;font-size:12px">Loading local records…</div>
+    </div>
+  </div>
+</div>
+
+<!-- Detailed Record Inspector Modal -->
+<div id="recordDetailModal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div id="recordDetailContent"></div>
+  </div>
+</div>
+
+<!-- Conflict Resolution Modal -->
+<div id="conflictModal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div id="conflictModalContent"></div>
+  </div>
+</div>
 </body>
 </html>

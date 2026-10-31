@@ -92,38 +92,123 @@ export function exportCsv(rowsOrFilename, filenameOrHeaders, rowsArg) {
 }
 
 // Export data as genuine Microsoft Excel (.xlsx) file and trigger download
-export async function exportExcel(filename, headers, rows, sheetName = 'Sheet1') {
+export async function exportExcel(filename, headers, rows, sheetName = 'Sheet1', customTitle = '') {
   try {
     const xlsx = await import('xlsx-js-style')
     const XLSX = xlsx.default || xlsx
-    const aoa = [headers, ...rows]
+    const aoa = []
+    const merges = []
+
+    const maxCols = Math.max(1, (headers || []).length)
+    let titleRowIndex = -1
+    let spacerRowIndex = -1
+    let headerRowIndex = 0
+
+    // Resolve title: customTitle > sheetName (if not default 'Sheet1') > cleaned filename
+    let resolvedTitle = customTitle
+    if (!resolvedTitle && sheetName && sheetName !== 'Sheet1') {
+      resolvedTitle = sheetName
+    }
+    if (!resolvedTitle && filename) {
+      const base = filename.replace(/\.[^/.]+$/, '').replace(/_\d{4}-\d{2}-\d{2}.*$/, '')
+      resolvedTitle = base.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+      if (!/report|register|log|list/i.test(resolvedTitle)) {
+        resolvedTitle += ' Report'
+      }
+    }
+
+    if (resolvedTitle) {
+      titleRowIndex = aoa.length
+      aoa.push([resolvedTitle, ...Array(Math.max(0, maxCols - 1)).fill('')])
+      if (maxCols > 1) {
+        merges.push({ s: { r: titleRowIndex, c: 0 }, e: { r: titleRowIndex, c: maxCols - 1 } })
+      }
+      spacerRowIndex = aoa.length
+      aoa.push([])
+    }
+
+    headerRowIndex = aoa.length
+    aoa.push(headers || [])
+    ;(rows || []).forEach((row) => aoa.push(row))
+
     const ws = XLSX.utils.aoa_to_sheet(aoa)
 
-    ws['!rows'] = [{ hpt: 26 }, ...Array(Math.max(0, rows.length)).fill({ hpt: 20 })]
+    // Configure row heights
+    const rowHeights = []
+    for (let r = 0; r < aoa.length; r++) {
+      if (r === titleRowIndex) {
+        rowHeights.push({ hpt: 32 })
+      } else if (r === headerRowIndex) {
+        rowHeights.push({ hpt: 26 })
+      } else if (r === spacerRowIndex || aoa[r].length === 0) {
+        rowHeights.push({ hpt: 10 })
+      } else {
+        rowHeights.push({ hpt: 20 })
+      }
+    }
+    ws['!rows'] = rowHeights
 
-    // Style header row (bold, highlighted background)
+    if (merges.length > 0) {
+      ws['!merges'] = merges
+    }
+
+    // Style title row, header row, and data cells
     const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const cellRef = XLSX.utils.encode_cell({ r: 0, c: C })
-      if (ws[cellRef]) {
-        ws[cellRef].s = {
-          font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11, name: 'Calibri' },
-          fill: { fgColor: { rgb: '1E3A2F' } },
-          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-          border: {
-            top: { style: 'thin', color: { rgb: '0F172A' } },
-            bottom: { style: 'medium', color: { rgb: '0F172A' } },
-            left: { style: 'thin', color: { rgb: '334155' } },
-            right: { style: 'thin', color: { rgb: '334155' } },
-          },
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      const isTitle = R === titleRowIndex
+      const isHeader = R === headerRowIndex
+      const isSpacer = R === spacerRowIndex
+
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellRef = XLSX.utils.encode_cell({ r: R, c: C })
+        const cell = ws[cellRef]
+        if (!cell) continue
+
+        if (isTitle) {
+          cell.s = {
+            font: { bold: true, color: { rgb: '1A3C34' }, sz: 14, name: 'Calibri' },
+            fill: { fgColor: { rgb: 'E8F5E9' } },
+            alignment: { horizontal: 'left', vertical: 'center', indent: 1 },
+            border: {
+              top: { style: 'thin', color: { rgb: 'A5D6A7' } },
+              bottom: { style: 'thin', color: { rgb: 'A5D6A7' } },
+              left: { style: 'thin', color: { rgb: 'A5D6A7' } },
+              right: { style: 'thin', color: { rgb: 'A5D6A7' } },
+            },
+          }
+        } else if (isHeader) {
+          cell.s = {
+            font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11, name: 'Calibri' },
+            fill: { fgColor: { rgb: '1E3A2F' } },
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+            border: {
+              top: { style: 'thin', color: { rgb: '0F172A' } },
+              bottom: { style: 'medium', color: { rgb: '0F172A' } },
+              left: { style: 'thin', color: { rgb: '334155' } },
+              right: { style: 'thin', color: { rgb: '334155' } },
+            },
+          }
+        } else if (!isSpacer) {
+          const isNum = typeof cell.v === 'number'
+          cell.s = {
+            font: { sz: 10, name: 'Calibri', color: { rgb: '0F172A' } },
+            alignment: { vertical: 'center', horizontal: isNum ? 'right' : 'left' },
+            border: {
+              top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+              right: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            },
+          }
         }
       }
     }
 
-    // Dynamic column widths
+    // Dynamic column widths (ignoring title and spacer rows)
     const colWidths = (headers || []).map((h, colIdx) => {
       let maxLen = String(h || '').length
       for (let r = 0; r < aoa.length; r++) {
+        if (r === titleRowIndex || r === spacerRowIndex) continue
         const cellVal = aoa[r]?.[colIdx]
         if (cellVal !== undefined && cellVal !== null) {
           maxLen = Math.max(maxLen, String(cellVal).length)

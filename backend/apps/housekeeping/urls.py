@@ -71,7 +71,8 @@ api_urlpatterns = [
     path('promote-task-to-daily/', api_views.HKPromoteTaskToDailyView.as_view(), name='hk-api-promote-task-to-daily'),
     path('alerts/', api_views.HKAlertListView.as_view(), name='hk-api-alerts'),
     path('dashboard-summary/', api_views.HKDashboardSummaryView.as_view(), name='hk-api-dashboard'),
+    path('profile/', api_views.HKProfileView.as_view(), name='hk-api-profile'),
 ]
 
-urlpatterns = htmx_patterns + api_urlpatterns
+urlpatterns = api_urlpatterns + htmx_patterns
 

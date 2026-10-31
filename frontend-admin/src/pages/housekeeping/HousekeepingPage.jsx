@@ -17,6 +17,7 @@ const InchargeApprovalsTab = lazy(() => import('./InchargeApprovalsTab'))
 const GalleryTab = lazy(() => import('./GalleryTab'))
 const ScheduleTab = lazy(() => import('./ScheduleTab'))
 const TemporaryAreaAssignmentsTab = lazy(() => import('./TemporaryAreaAssignmentsTab'))
+const ProfileTab = lazy(() => import('./ProfileTab'))
 
 const tabFallback = (
   <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
@@ -56,9 +57,13 @@ export default function HousekeepingPage() {
       if (['admin', 'hk_inventory_manager', 'hostel_office', 'technical_assistant'].includes(user?.role)) {
         base.push({ key: 'gallery', label: 'Gallery' })
       }
+      const isSuperAdmin = user?.role === 'admin' || user?.is_superuser
+      if (!isSuperAdmin) {
+        base.push({ key: 'profile', label: 'Profile' })
+      }
       return base
     },
-    [badges.housekeeping, isHostelOffice, user?.role]
+    [badges.housekeeping, isHostelOffice, user?.is_superuser, user?.role]
   )
 
   const validTabs = useMemo(() => tabs.map((t) => t.key), [tabs])
@@ -134,6 +139,11 @@ export default function HousekeepingPage() {
       {active === 'gallery' && (
         <Suspense fallback={tabFallback}>
           <GalleryTab readOnly={isHostelOffice || isReadOnly} />
+        </Suspense>
+      )}
+      {active === 'profile' && (
+        <Suspense fallback={tabFallback}>
+          <ProfileTab />
         </Suspense>
       )}
     </AdminLayout>

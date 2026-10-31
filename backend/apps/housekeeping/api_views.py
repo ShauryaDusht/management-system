@@ -84,6 +84,42 @@ def _area_group(area):
     return 'others'
 
 
+def _academic_block_number(area):
+    if not area:
+        return None
+    name = (area.name or '').strip()
+    m = re.match(r'^Academic Block\s+(\d+)$', name, re.IGNORECASE)
+    if m:
+        try:
+            return int(m.group(1))
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def _is_old_academic_area(area):
+    if not area:
+        return False
+    name = (area.name or '').strip()
+    if name in {'Old Academic Common Area', 'Old Academic Reliever'}:
+        return True
+    block_no = _academic_block_number(area)
+    return bool(block_no and 1 <= block_no <= 9)
+
+
+def _is_new_academic_area(area):
+    if not area:
+        return False
+    name = (area.name or '').strip()
+    if name in {
+        'Academic Block 10', 'Academic Block 11', 'Academic Block 12', 'Academic Block 13',
+        'New Academic Common Area', 'New AB U-Shape', 'New Academic Reliever',
+    }:
+        return True
+    block_no = _academic_block_number(area)
+    return bool(block_no and 10 <= block_no <= 13)
+
+
 def _filter_workers_by_section(qs, section_filter):
     if section_filter == 'all':
         return qs
@@ -674,8 +710,12 @@ class HKSupervisorSwitchView(APIView):
 
         area_ids = [link.area_id for link in area_links]
         area_names = [link.area.name for link in area_links if link.area]
+        reassigned_areas = [link.area for link in area_links if link.area]
         source_name = source_staff.get_full_name() or source_staff.username
         target_name = target_staff.get_full_name() or target_staff.username
+
+        is_old_academic = any(_is_old_academic_area(a) for a in reassigned_areas)
+        is_new_academic = any(_is_new_academic_area(a) for a in reassigned_areas)
 
         with transaction.atomic():
             if mode == 'permanent':
@@ -687,9 +727,54 @@ class HKSupervisorSwitchView(APIView):
                     )
                     if created:
                         created_count += 1
+
+                area_ids_to_remove = set(area_ids)
+
+                if is_old_academic:
+                    old_reliever_area = HKArea.objects.filter(name='Old Academic Reliever', is_active=True).first()
+                    if old_reliever_area:
+                        _, rel_created = HKUserArea.objects.get_or_create(
+                            user=target_staff,
+                            area=old_reliever_area,
+                        )
+                        if rel_created:
+                            created_count += 1
+                        HKWorker.objects.filter(
+                            area=old_reliever_area,
+                            is_active=True,
+                        ).update(supervisor=target_staff)
+
+                        source_remaining_areas = HKUserArea.objects.filter(
+                            user=source_staff,
+                            area__is_active=True,
+                        ).exclude(area_id__in=area_ids)
+                        if any(_is_old_academic_area(ua.area) for ua in source_remaining_areas.select_related('area')):
+                            area_ids_to_remove.discard(old_reliever_area.id)
+
+                if is_new_academic:
+                    new_reliever_area = HKArea.objects.filter(name='New Academic Reliever', is_active=True).first()
+                    if new_reliever_area:
+                        _, rel_created = HKUserArea.objects.get_or_create(
+                            user=target_staff,
+                            area=new_reliever_area,
+                        )
+                        if rel_created:
+                            created_count += 1
+                        HKWorker.objects.filter(
+                            area=new_reliever_area,
+                            is_active=True,
+                        ).update(supervisor=target_staff)
+
+                        source_remaining_areas = HKUserArea.objects.filter(
+                            user=source_staff,
+                            area__is_active=True,
+                        ).exclude(area_id__in=area_ids)
+                        if any(_is_new_academic_area(ua.area) for ua in source_remaining_areas.select_related('area')):
+                            area_ids_to_remove.discard(new_reliever_area.id)
+
                 removed_count = HKUserArea.objects.filter(
                     user=source_staff,
-                    area_id__in=area_ids,
+                    area_id__in=area_ids_to_remove,
                 ).delete()[0]
                 worker_count = HKWorker.objects.filter(
                     area_id__in=area_ids,
@@ -771,6 +856,34 @@ class HKSupervisorSwitchView(APIView):
                 if assignment_created:
                     assignment_created_count += 1
                 assignment_ids.append(str(assignment.id))
+
+            if is_old_academic:
+                old_reliever_area = HKArea.objects.filter(name='Old Academic Reliever', is_active=True).first()
+                if old_reliever_area:
+                    HKTemporaryStaffAreaAssignment.objects.update_or_create(
+                        staff=target_staff,
+                        area=old_reliever_area,
+                        start_date=effective_date,
+                        end_date=end_date,
+                        defaults={
+                            'assigned_by': request.user,
+                            'note': 'Temporary supervisor switch from admin panel.',
+                        },
+                    )
+
+            if is_new_academic:
+                new_reliever_area = HKArea.objects.filter(name='New Academic Reliever', is_active=True).first()
+                if new_reliever_area:
+                    HKTemporaryStaffAreaAssignment.objects.update_or_create(
+                        staff=target_staff,
+                        area=new_reliever_area,
+                        start_date=effective_date,
+                        end_date=end_date,
+                        defaults={
+                            'assigned_by': request.user,
+                            'note': 'Temporary supervisor switch from admin panel.',
+                        },
+                    )
 
             _push_incharge_notice(
                 target_staff,
@@ -2410,4 +2523,109 @@ class HKAdminGalleryTaskZipView(HKHostelGalleryReadMixin, APIView):
         response = HttpResponse(mem_file.getvalue(), content_type='application/zip')
         response['Content-Disposition'] = f'attachment; filename="task_{task_id}_photos.zip"'
         return response
+
+
+class HKProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        from apps.users.serializers import UserSerializer
+        user_data = UserSerializer(user, context={'request': request}).data
+
+        # Assigned housekeeping areas
+        permanent_areas = list(
+            HKUserArea.objects.filter(user=user, area__is_active=True)
+            .select_related('area')
+            .order_by('area__name')
+        )
+        areas_data = [
+            {
+                'id': link.area.id,
+                'name': link.area.name,
+                'area_type': link.area.area_type,
+            }
+            for link in permanent_areas
+            if link.area
+        ]
+
+        # Temporary assignments currently active
+        today = timezone.localdate()
+        temp_assignments = list(
+            HKTemporaryStaffAreaAssignment.objects.filter(
+                staff=user,
+                start_date__lte=today,
+                end_date__gte=today,
+                revoked_at__isnull=True,
+                area__is_active=True,
+            ).select_related('area')
+        )
+        temp_areas_data = [
+            {
+                'id': ta.area.id,
+                'name': ta.area.name,
+                'start_date': ta.start_date.isoformat(),
+                'end_date': ta.end_date.isoformat(),
+                'note': ta.note,
+            }
+            for ta in temp_assignments
+            if ta.area
+        ]
+
+        # Worker supervision counts
+        area_ids = [a['id'] for a in areas_data] + [a['id'] for a in temp_areas_data]
+        supervised_workers = HKWorker.objects.filter(
+            is_active=True
+        ).filter(
+            Q(supervisor=user) | Q(area_id__in=area_ids)
+        ).distinct()
+
+        worker_stats = {
+            'total': supervised_workers.count(),
+            'floor': supervised_workers.filter(worker_type='floor').count(),
+            'washroom': supervised_workers.filter(worker_type='washroom').count(),
+            'relievers': supervised_workers.filter(is_reliever=True).count(),
+        }
+
+        # Recent leaves
+        recent_leaves = list(
+            HKLeaveRequest.objects.filter(staff=user)
+            .select_related('area')
+            .order_by('-leave_date')[:5]
+        )
+        leaves_data = [
+            {
+                'id': lr.id,
+                'leave_date': lr.leave_date.isoformat(),
+                'area_name': 'All Assigned Areas' if lr.all_areas else (lr.area.name if lr.area else '-'),
+                'status': lr.status,
+                'status_display': lr.get_status_display(),
+                'reason': lr.reason,
+            }
+            for lr in recent_leaves
+        ]
+
+        return Response({
+            'user': user_data,
+            'areas': areas_data,
+            'temporary_areas': temp_areas_data,
+            'worker_stats': worker_stats,
+            'recent_leaves': leaves_data,
+        })
+
+    def patch(self, request):
+        user = request.user
+        allowed_fields = ['first_name', 'last_name', 'email', 'phone']
+        updated = False
+        for f in allowed_fields:
+            if f in request.data:
+                setattr(user, f, (request.data.get(f) or '').strip())
+                updated = True
+        if 'profile_photo' in request.FILES:
+            user.profile_photo = request.FILES['profile_photo']
+            updated = True
+        if updated:
+            user.save()
+        from apps.users.serializers import UserSerializer
+        return Response(UserSerializer(user, context={'request': request}).data)
 

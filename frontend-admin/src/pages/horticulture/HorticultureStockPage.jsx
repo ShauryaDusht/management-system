@@ -14,6 +14,7 @@ import RequestsTab from '../inventory/RequestsTab'
 import StockLogTab from '../inventory/StockLogTab'
 import UsageReportTab from '../inventory/UsageReportTab'
 import RequestsReportTab from '../reports/RequestsReportTab'
+import InventoryDepartmentHeader from '../inventory/InventoryDepartmentHeader'
 
 export default function HorticultureStockPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -98,6 +99,8 @@ export default function HorticultureStockPage() {
       title="Horticulture Inventory"
       subtitle="Stock overview, requests, issued assets, replenishment logs, and reports"
     >
+      <InventoryDepartmentHeader currentDepartment="horticulture" />
+
       <div style={{ marginBottom: 14 }}>
         <Tabs tabs={tabConfig} active={active} onChange={onTabChange} />
       </div>

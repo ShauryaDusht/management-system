@@ -120,11 +120,12 @@ def _format_hk_request_tx(hk_req):
         has_issue = False
 
     # Determine status_category and status_label
-    if hk_req.status == 'rejected' or inv_status == 'rejected':
+    if hk_req.status == 'rejected' or inv_status == 'rejected' or (issue and issue.is_reversed):
         status_category = 'rejected'
         status_label = 'Rejected'
         badge_class = 'bdg r'
-        relevant_dt_local = reviewed_at_local or req_created_local
+        outstanding_qty = Decimal('0.00')
+        relevant_dt_local = reviewed_at_local or (timezone.localtime(issue.reversed_at) if (issue and issue.reversed_at) else None) or req_created_local
     elif has_issue or hk_req.status == 'issued':
         status_category = 'issued'
         if total_used > Decimal('0'):
@@ -246,13 +247,19 @@ def _format_standalone_issue_tx(issue):
             'logged_by': log.logged_by.get_full_name() or log.logged_by.username if log.logged_by else '',
         })
 
-    outstanding_qty = max(Decimal('0.00'), issued_qty - total_used)
-    status_category = 'issued'
-    if total_used > Decimal('0'):
+    if issue.is_reversed or inv_req.status == 'rejected':
+        status_category = 'rejected'
+        status_label = 'Rejected'
+        badge_class = 'bdg r'
+        outstanding_qty = Decimal('0.00')
+        relevant_dt_local = timezone.localtime(issue.reversed_at) if issue.reversed_at else issued_at_local
+    elif total_used > Decimal('0'):
+        status_category = 'issued'
         status_label = 'Usage Submitted'
         badge_class = 'bdg g'
         relevant_dt_local = timezone.localtime(issue.usage_logs.all()[0].logged_at) if issue.usage_logs.exists() else issued_at_local
     else:
+        status_category = 'issued'
         status_label = 'Usage Pending'
         badge_class = 'bdg y'
         relevant_dt_local = issued_at_local

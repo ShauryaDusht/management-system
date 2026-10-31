@@ -146,6 +146,20 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
     }
   }, [areaById, areaClassFilter, selectedArea])
 
+  const isOldAcademic = (areaName) => {
+    if (!areaName) return false
+    if (['Old Academic Common Area', 'Old Academic Reliever'].includes(areaName)) return true
+    const m = String(areaName).match(/^Academic Block\s+(\d+)$/i)
+    return m ? Number(m[1]) >= 1 && Number(m[1]) <= 9 : false
+  }
+
+  const isNewAcademic = (areaName) => {
+    if (!areaName) return false
+    if (['New Academic Common Area', 'New AB U-Shape', 'New Academic Reliever'].includes(areaName)) return true
+    const m = String(areaName).match(/^Academic Block\s+(\d+)$/i)
+    return m ? Number(m[1]) >= 10 && Number(m[1]) <= 13 : false
+  }
+
   const visibleWorkers = useMemo(() => {
     let list = workers
     if (areaClassFilter !== 'all') {
@@ -155,8 +169,26 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
       })
     }
     if (selectedArea) {
-      list = list.filter((w) => String(w.area) === String(selectedArea))
+      const selAreaObj = areaById.get(Number(selectedArea))
+      const selName = selAreaObj?.name || ''
+      if (isOldAcademic(selName)) {
+        list = list.filter((w) => {
+          if (String(w.area) === String(selectedArea)) return true
+          const wAreaObj = areaById.get(w.area)
+          return w.is_reliever && wAreaObj?.name === 'Old Academic Reliever'
+        })
+      } else if (isNewAcademic(selName)) {
+        list = list.filter((w) => {
+          if (String(w.area) === String(selectedArea)) return true
+          const wAreaObj = areaById.get(w.area)
+          return w.is_reliever && wAreaObj?.name === 'New Academic Reliever'
+        })
+      } else {
+        list = list.filter((w) => String(w.area) === String(selectedArea))
+      }
     }
+    const seen = new Set()
+    list = list.filter((w) => !seen.has(w.id) && seen.add(w.id))
     const query = search.trim().toLowerCase()
     if (query) {
       list = list.filter((w) =>

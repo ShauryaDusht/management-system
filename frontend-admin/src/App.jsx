@@ -222,7 +222,7 @@ export default function App() {
             path="/horticulture-stock"
             element={
               <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
-                <HorticultureStockPage />
+                <Navigate to="/inventory/horticulture" replace />
               </ProtectedRoute>
             }
           />
@@ -230,7 +230,7 @@ export default function App() {
             path="/horticulture-inventory"
             element={
               <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
-                <HorticultureStockPage />
+                <Navigate to="/inventory/horticulture" replace />
               </ProtectedRoute>
             }
           />
@@ -238,7 +238,7 @@ export default function App() {
             path="/horticulture/stock"
             element={
               <ProtectedRoute allowedRoles={HORTICULTURE_ALLOWED}>
-                <HorticultureStockPage />
+                <Navigate to="/inventory/horticulture" replace />
               </ProtectedRoute>
             }
           />

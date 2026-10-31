@@ -1098,12 +1098,84 @@ export function exportToExcel(rawConfig) {
   const wb = XLSX.utils.book_new()
   const aoa = []
   const headerRowIndices = []
+  const sectionTitleRowIndices = []
+  const spacerRowIndices = []
+  const merges = []
+
+  // Determine maximum column count across all sections to span title merges properly
+  let maxCols = 1
+  ;(config.sections || []).forEach((sec) => {
+    if (sec.headers && sec.headers.length > maxCols) {
+      maxCols = sec.headers.length
+    }
+    if (sec.rows && sec.rows.length) {
+      sec.rows.forEach((row) => {
+        if (Array.isArray(row) && row.length > maxCols) {
+          maxCols = row.length
+        }
+      })
+    }
+  })
+
+  let titleRowIndex = -1
+  let subtitleRowIndex = -1
+  let metaRowIndex = -1
+  let statsRowIndex = -1
+
+  // Prominently render report title, subtitle, and metadata at the top of the worksheet
+  if (config.title) {
+    titleRowIndex = aoa.length
+    aoa.push([cleanText(config.title), ...Array(Math.max(0, maxCols - 1)).fill('')])
+    if (maxCols > 1) {
+      merges.push({ s: { r: titleRowIndex, c: 0 }, e: { r: titleRowIndex, c: maxCols - 1 } })
+    }
+
+    if (config.subtitle) {
+      subtitleRowIndex = aoa.length
+      aoa.push([cleanText(config.subtitle), ...Array(Math.max(0, maxCols - 1)).fill('')])
+      if (maxCols > 1) {
+        merges.push({ s: { r: subtitleRowIndex, c: 0 }, e: { r: subtitleRowIndex, c: maxCols - 1 } })
+      }
+    }
+
+    const genDateStr = `Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} at ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
+    const metaParts = [genDateStr]
+    if (config.metadata && config.metadata.length) {
+      config.metadata.forEach((m) => {
+        if (m.label && m.value !== undefined && m.value !== null && m.value !== '') {
+          metaParts.push(`${m.label}: ${m.value}`)
+        }
+      })
+    }
+    metaRowIndex = aoa.length
+    aoa.push([metaParts.join('   •   '), ...Array(Math.max(0, maxCols - 1)).fill('')])
+    if (maxCols > 1) {
+      merges.push({ s: { r: metaRowIndex, c: 0 }, e: { r: metaRowIndex, c: maxCols - 1 } })
+    }
+
+    if (config.stats && config.stats.length) {
+      const statsStr = config.stats.map((st) => `${st.label}: ${st.value}`).join('   |   ')
+      statsRowIndex = aoa.length
+      aoa.push([statsStr, ...Array(Math.max(0, maxCols - 1)).fill('')])
+      if (maxCols > 1) {
+        merges.push({ s: { r: statsRowIndex, c: 0 }, e: { r: statsRowIndex, c: maxCols - 1 } })
+      }
+    }
+
+    spacerRowIndices.push(aoa.length)
+    aoa.push([]) // empty row separator between title block and table
+  }
 
   const isMultiSection = config.sections && config.sections.length > 1
 
   config.sections.forEach((sec, sIdx) => {
     if (isMultiSection && sec.title) {
-      aoa.push([sec.title])
+      const secRowIdx = aoa.length
+      sectionTitleRowIndices.push(secRowIdx)
+      aoa.push([cleanText(sec.title), ...Array(Math.max(0, maxCols - 1)).fill('')])
+      if (maxCols > 1) {
+        merges.push({ s: { r: secRowIdx, c: 0 }, e: { r: secRowIdx, c: maxCols - 1 } })
+      }
     }
     if (sec.headers && sec.headers.length) {
       headerRowIndices.push(aoa.length)
@@ -1137,6 +1209,7 @@ export function exportToExcel(rawConfig) {
       })
     }
     if (isMultiSection && sIdx < config.sections.length - 1) {
+      spacerRowIndices.push(aoa.length)
       aoa.push([]) // empty row between sections
     }
   })
@@ -1148,27 +1221,137 @@ export function exportToExcel(rawConfig) {
 
   const ws = XLSX.utils.aoa_to_sheet(aoa)
 
-  // Configure row heights (taller for header row)
+  // Configure row heights (taller for title and headers)
   const rowHeights = []
   for (let r = 0; r < aoa.length; r++) {
-    if (headerRowIndices.includes(r)) {
+    if (r === titleRowIndex) {
+      rowHeights.push({ hpt: 32 })
+    } else if (r === subtitleRowIndex) {
+      rowHeights.push({ hpt: 20 })
+    } else if (r === metaRowIndex || r === statsRowIndex) {
+      rowHeights.push({ hpt: 18 })
+    } else if (sectionTitleRowIndices.includes(r)) {
+      rowHeights.push({ hpt: 24 })
+    } else if (headerRowIndices.includes(r)) {
       rowHeights.push({ hpt: 26 })
+    } else if (spacerRowIndices.includes(r) || aoa[r].length === 0) {
+      rowHeights.push({ hpt: 10 })
     } else {
       rowHeights.push({ hpt: 20 })
     }
   }
   ws['!rows'] = rowHeights
 
-  // Apply styling to all cells: bold & highlighted headers, crisp cell borders
+  if (merges.length > 0) {
+    ws['!merges'] = merges
+  }
+
+  // Apply styling to all cells: title banner, bold & highlighted headers, crisp cell borders
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
   for (let R = range.s.r; R <= range.e.r; ++R) {
+    const isTitle = R === titleRowIndex
+    const isSubtitle = R === subtitleRowIndex
+    const isMeta = R === metaRowIndex
+    const isStats = R === statsRowIndex
+    const isSectionTitle = sectionTitleRowIndices.includes(R)
     const isHeaderRow = headerRowIndices.includes(R)
+    const isSpacer = spacerRowIndices.includes(R)
+
     for (let C = range.s.c; C <= range.e.c; ++C) {
       const cellRef = XLSX.utils.encode_cell({ r: R, c: C })
       const cell = ws[cellRef]
       if (!cell) continue
 
-      if (isHeaderRow) {
+      if (isTitle) {
+        cell.s = {
+          font: {
+            bold: true,
+            color: { rgb: '1A3C34' }, // Signature IITGN deep pine green
+            sz: 14,
+            name: 'Calibri',
+          },
+          fill: {
+            fgColor: { rgb: 'E8F5E9' }, // Soft sage green tint
+          },
+          alignment: {
+            horizontal: 'left',
+            vertical: 'center',
+            indent: 1,
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: 'A5D6A7' } },
+            bottom: { style: 'thin', color: { rgb: 'A5D6A7' } },
+            left: { style: 'thin', color: { rgb: 'A5D6A7' } },
+            right: { style: 'thin', color: { rgb: 'A5D6A7' } },
+          },
+        }
+      } else if (isSubtitle) {
+        cell.s = {
+          font: {
+            italic: true,
+            color: { rgb: '334155' },
+            sz: 10,
+            name: 'Calibri',
+          },
+          fill: {
+            fgColor: { rgb: 'F8FAFC' },
+          },
+          alignment: {
+            horizontal: 'left',
+            vertical: 'center',
+            indent: 1,
+          },
+          border: {
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          },
+        }
+      } else if (isMeta || isStats) {
+        cell.s = {
+          font: {
+            color: isStats ? { rgb: '1E3A2F' } : { rgb: '64748B' },
+            bold: Boolean(isStats),
+            sz: 9,
+            name: 'Calibri',
+          },
+          fill: {
+            fgColor: { rgb: 'F8FAFC' },
+          },
+          alignment: {
+            horizontal: 'left',
+            vertical: 'center',
+            indent: 1,
+          },
+          border: {
+            bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          },
+        }
+      } else if (isSectionTitle) {
+        cell.s = {
+          font: {
+            bold: true,
+            color: { rgb: '1A3C34' },
+            sz: 11,
+            name: 'Calibri',
+          },
+          fill: {
+            fgColor: { rgb: 'F1F5F9' },
+          },
+          alignment: {
+            horizontal: 'left',
+            vertical: 'center',
+            indent: 1,
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: 'CBD5E1' } },
+            bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
+            left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+            right: { style: 'thin', color: { rgb: 'CBD5E1' } },
+          },
+        }
+      } else if (isHeaderRow) {
         cell.s = {
           font: {
             bold: true,
@@ -1191,7 +1374,7 @@ export function exportToExcel(rawConfig) {
             right: { style: 'thin', color: { rgb: '334155' } },
           },
         }
-      } else {
+      } else if (!isSpacer) {
         const isNum = typeof cell.v === 'number'
         cell.s = {
           font: {
@@ -1214,9 +1397,21 @@ export function exportToExcel(rawConfig) {
     }
   }
 
-  // Dynamic column widths
+  // Dynamic column widths (ignoring title/subtitle/meta rows so col A is not overly stretched)
   const colWidths = []
-  aoa.forEach((row) => {
+  aoa.forEach((row, rIdx) => {
+    if (
+      rIdx === titleRowIndex ||
+      rIdx === subtitleRowIndex ||
+      rIdx === metaRowIndex ||
+      rIdx === statsRowIndex ||
+      sectionTitleRowIndices.includes(rIdx) ||
+      spacerRowIndices.includes(rIdx) ||
+      !row ||
+      row.length === 0
+    ) {
+      return
+    }
     if (Array.isArray(row)) {
       row.forEach((cell, idx) => {
         const len = String(cell ?? '').length
@@ -1224,6 +1419,9 @@ export function exportToExcel(rawConfig) {
       })
     }
   })
+  for (let c = 0; c < maxCols; c++) {
+    if (!colWidths[c]) colWidths[c] = 14
+  }
   ws['!cols'] = colWidths.map((w) => ({ wch: w }))
 
   const sheetName = (config.title || 'Report').replace(/[:\\/?*\[\]]/g, ' ').slice(0, 31).trim() || 'Report'

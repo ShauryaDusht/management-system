@@ -56,7 +56,7 @@ from apps.inventory.request_permissions import (
     user_can_request_item,
 )
 from apps.users.models import normalize_username_value
-from apps.inventory.models import ItemIssue, ItemUsageLog
+from apps.inventory.models import ItemIssue, ItemRequest, ItemUsageLog
 
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
@@ -471,21 +471,21 @@ def _format_reliever_options(relievers, user=None, target_worker=None, date=None
         elif rel_paycode in SUPERVISOR_RELIEVER_PAYCODES or getattr(getattr(rel, "area", None), "name", "") == "Deep Cleaning":
             is_busy = is_reliever_busy_for_target(rel, target_worker, date, area) if target_worker else False
             rel.is_busy = is_busy
+            label = f"{rel.name} · Deep Cleaning · #{rel.pay_code}"
             if is_busy:
-                rel.reliever_label = f"{rel.name} · Deep Cleaning · #{rel.pay_code} · Busy"
-            else:
-                rel.reliever_label = f"{rel.name} · Deep Cleaning · #{rel.pay_code}"
+                label += " · Busy"
+            rel.reliever_label = label
         else:
             is_busy = is_reliever_busy_for_target(rel, target_worker, date, area) if target_worker else False
             rel.is_busy = is_busy
+            label = f"{rel.name}"
+            if rel.area:
+                label += f" · {rel.area.name}"
+            if rel.pay_code:
+                label += f" · #{rel.pay_code}"
             if is_busy:
-                label = f"{rel.name}"
-                if rel.area:
-                    label += f" · {rel.area.name}"
-                if rel.pay_code:
-                    label += f" #{rel.pay_code}"
                 label += " · Busy"
-                rel.reliever_label = label
+            rel.reliever_label = label
 
         formatted.append(rel)
     return formatted
@@ -547,16 +547,36 @@ def _attendance_relievers_for_area(area, user=None):
     if area_bucket(area) == "hostels":
         return _hostel_relievers_for_area(qs, area)
 
-    # 5. Caretaker role: preserve existing caretaker reliever behavior for JRHA and Academic
+    # 4b. Academic Block Reliever pools (for supervisors, caretakers, and managers):
+    if _uses_academic_reliever_pool(area):
+        return (
+            qs.filter(
+                dm.Q(is_reliever=True, area__name="Old Academic Reliever")
+                | dm.Q(is_reliever=True, area=area)
+                | dm.Q(pay_code__in=SUPERVISOR_RELIEVER_PAYCODES)
+            )
+            .distinct()
+            .annotate(pay_code_num=Cast("pay_code", dm.IntegerField()))
+            .order_by("pay_code_num", "name")
+        )
+
+    if _uses_new_academic_reliever_pool(area):
+        return (
+            qs.filter(
+                dm.Q(is_reliever=True, area__name="New Academic Reliever")
+                | dm.Q(is_reliever=True, area=area)
+                | dm.Q(pay_code__in=SUPERVISOR_RELIEVER_PAYCODES)
+            )
+            .distinct()
+            .annotate(pay_code_num=Cast("pay_code", dm.IntegerField()))
+            .order_by("pay_code_num", "name")
+        )
+
+    # 5. Caretaker role: preserve existing caretaker reliever behavior for JRHA
     if user and getattr(user, "role", "") == "caretaker":
         if _is_jrha_area(area):
             return qs.filter(area__name__in=JRHA_AREA_NAMES).exclude(area=area).order_by("area__name", "name")
 
-        if _uses_academic_reliever_pool(area):
-            return qs.filter(is_reliever=True, area__name__iexact="Old Academic Reliever").order_by("name")
-
-        if _uses_new_academic_reliever_pool(area):
-            return qs.filter(is_reliever=True, area__name__iexact="New Academic Reliever").order_by("name")
 
         return qs.none()
 
@@ -587,15 +607,20 @@ def _shared_display_worker_qs_for_area(area):
             name__iexact="Rakesh Ishvarbhai Parmar",
         )
 
-    if area.name != "Academic Block 8":
-        return HKWorker.objects.none()
+    if _uses_academic_reliever_pool(area):
+        q = dm.Q(area__name="Old Academic Reliever", is_reliever=True)
+        if area.name == "Academic Block 8":
+            q |= dm.Q(pay_code="309", name__iexact="Parmar Nikulkumar Punjabhai")
+        return HKWorker.objects.filter(is_active=True).filter(q)
 
-    return HKWorker.objects.filter(
-        is_active=True,
-    ).filter(
-        dm.Q(area__name="Old Academic Reliever", is_reliever=True)
-        | dm.Q(pay_code="309", name__iexact="Parmar Nikulkumar Punjabhai")
-    )
+    if _uses_new_academic_reliever_pool(area):
+        return HKWorker.objects.filter(
+            is_active=True,
+            area__name="New Academic Reliever",
+            is_reliever=True,
+        )
+
+    return HKWorker.objects.none()
 
 
 def display_workers_for_area(area):
@@ -1129,6 +1154,10 @@ def _build_usage_issues(user, area=None, limit=None):
         )
     ).filter(
         Q(request__requested_by=user) & area_filter
+    ).exclude(
+        is_reversed=True
+    ).exclude(
+        request__status=ItemRequest.Status.REJECTED
     ).order_by('-issued_at')
 
     issues = []
@@ -3779,7 +3808,10 @@ def hk_log_usage(request, pk):
         ),
         pk=pk,
         request__requested_by=user,
+        is_reversed=False,
     )
+    if issue.request.status == ItemRequest.Status.REJECTED:
+        return HttpResponseForbidden("Cannot report usage on a rejected request.")
 
     hk_req = getattr(issue.request, "hkstockrequest", None)
     issue_area = hk_req.area if hk_req else None
@@ -3827,30 +3859,33 @@ def hk_log_usage(request, pk):
                 .select_related('request__item', 'request__requested_by')
                 .get(pk=pk, request__requested_by=user)
             )
-            total_used = ItemUsageLog.objects.filter(issue=issue).aggregate(
-                total=Coalesce(
-                    Sum('quantity_used'),
-                    Value(0),
-                    output_field=DecimalField(max_digits=10, decimal_places=2),
-                )
-            )['total']
-            remaining = Decimal(issue.issued_quantity) - total_used
-            if remaining <= 0:
-                error = "All issued quantity has already been logged."
-            elif quantity_used > remaining:
-                remaining_display = remaining.quantize(Decimal("0.01"))
-                error = (
-                    f"Cannot exceed remaining quantity ({remaining_display} "
-                    f"{issue.request.item.unit})."
-                )
+            if issue.is_reversed or issue.request.status == ItemRequest.Status.REJECTED:
+                error = "Cannot report usage on a rejected or reversed request."
             else:
-                ItemUsageLog.objects.create(
-                    issue=issue,
-                    quantity_used=quantity_used,
-                    purpose=purpose,
-                    notes=notes,
-                    logged_by=user,
-                )
+                total_used = ItemUsageLog.objects.filter(issue=issue).aggregate(
+                    total=Coalesce(
+                        Sum('quantity_used'),
+                        Value(0),
+                        output_field=DecimalField(max_digits=10, decimal_places=2),
+                    )
+                )['total']
+                remaining = Decimal(issue.issued_quantity) - total_used
+                if remaining <= 0:
+                    error = "All issued quantity has already been logged."
+                elif quantity_used > remaining:
+                    remaining_display = remaining.quantize(Decimal("0.01"))
+                    error = (
+                        f"Cannot exceed remaining quantity ({remaining_display} "
+                        f"{issue.request.item.unit})."
+                    )
+                else:
+                    ItemUsageLog.objects.create(
+                        issue=issue,
+                        quantity_used=quantity_used,
+                        purpose=purpose,
+                        notes=notes,
+                        logged_by=user,
+                    )
 
     if error is None:
         if target_area:

@@ -11,6 +11,9 @@ from .views import (
     GeoTrackerStatsView,
     GeoTrackerVarietyDetailView,
     GeoTrackerAreasView,
+    GeoTrackerSyncStatusView,
+    GeoTrackerSyncRecordsView,
+    GeoTrackerSyncPhotosView,
 )
 
 # Public routes (no auth)
@@ -19,8 +22,11 @@ public_urlpatterns = [
     path('submit/record/', geo_submit_record, name='geo-submit-record'),
 ]
 
-# API routes (JWT auth via admin frontend)
+# API routes (JWT auth / session auth)
 urlpatterns = [
+    path('sync/status/', GeoTrackerSyncStatusView.as_view(), name='geo-sync-status'),
+    path('sync/records/', GeoTrackerSyncRecordsView.as_view(), name='geo-sync-records'),
+    path('sync/records/<str:submission_id>/photos/', GeoTrackerSyncPhotosView.as_view(), name='geo-sync-photos'),
     path('records/export/', GeoTrackerExportCSVView.as_view(), name='geo-export-csv'),
     path('records/', GeoTrackerRecordsView.as_view(), name='geo-records'),
     path('records/<int:pk>/', GeoTrackerRecordDetailView.as_view(), name='geo-record-detail'),

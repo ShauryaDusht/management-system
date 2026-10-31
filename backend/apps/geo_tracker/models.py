@@ -1,6 +1,7 @@
 from decimal import Decimal
+import uuid
 from django.core.files.uploadedfile import UploadedFile
-from django.db import models
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 
 from .utils import compress_image_to_max_kb
@@ -160,6 +161,13 @@ class PlantVariety(models.Model):
 
 
 class PlantRecord(models.Model):
+    submission_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        db_index=True,
+        editable=False,
+        help_text='Unique submission UUID for idempotent creation and offline sync',
+    )
     # max_length=9 → 1 (type) + 3 (area code) + 5 (number) = 9
     tracking_id = models.CharField(max_length=9, unique=True, editable=False)
     plant_type = models.CharField(max_length=10, choices=PlantType.choices)
@@ -253,6 +261,11 @@ class PlantRecord(models.Model):
     )
 
     submitted_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True, help_text='Timestamp of last record modification')
+    version = models.PositiveIntegerField(
+        default=1,
+        help_text='Integer version counter for optimistic concurrency control',
+    )
 
     class Meta:
         ordering = ['-submitted_at']
@@ -265,8 +278,8 @@ class PlantRecord(models.Model):
     # -----------------------------------------------------------------------
 
     def save(self, *args, **kwargs):
-        if not self.tracking_id:
-            self.tracking_id = self._generate_tracking_id()
+        if not self.submission_id:
+            self.submission_id = uuid.uuid4()
 
         # `self.photo.file` is only an UploadedFile (InMemoryUploadedFile /
         # TemporaryUploadedFile) when a *new* file has just been attached —
@@ -277,6 +290,21 @@ class PlantRecord(models.Model):
             compressed = compress_image_to_max_kb(self.photo.file)
             if compressed is not None:
                 self.photo.save(self.photo.name, compressed, save=False)
+
+        if not self.tracking_id:
+            for attempt in range(5):
+                self.tracking_id = self._generate_tracking_id()
+                try:
+                    with transaction.atomic():
+                        return super().save(*args, **kwargs)
+                except IntegrityError as e:
+                    err_msg = str(e).lower()
+                    if 'tracking_id' in err_msg or 'unique' in err_msg:
+                        self.tracking_id = ''
+                        if attempt == 4:
+                            raise
+                    else:
+                        raise
 
         return super().save(*args, **kwargs)
 
@@ -322,4 +350,51 @@ class CampusAreaConfig(models.Model):
         ordering = ['label']
 
     def __str__(self):
-        return f"{self.label} ({self.code})"
+        return f"{self.label} ({self.code})"
+
+
+class PlantRecordPhoto(models.Model):
+    photo_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        db_index=True,
+        editable=False,
+        help_text='Unique photograph UUID for idempotent upload',
+    )
+    record = models.ForeignKey(
+        PlantRecord,
+        on_delete=models.CASCADE,
+        related_name='photos',
+        help_text='Associated plant record',
+    )
+    photo = models.ImageField(upload_to='geo_tracker/photos/')
+    original_filename = models.CharField(max_length=255, blank=True)
+    file_size = models.PositiveIntegerField(null=True, blank=True, help_text='File size in bytes')
+    mime_type = models.CharField(max_length=50, blank=True, help_text='MIME type (e.g. image/jpeg)')
+    uploaded_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['uploaded_at']
+        verbose_name = 'Plant record photo'
+        verbose_name_plural = 'Plant record photos'
+
+    def __str__(self):
+        return f"Photo {self.photo_id} for {self.record.tracking_id}"
+
+    def save(self, *args, **kwargs):
+        if self.photo and isinstance(self.photo.file, UploadedFile):
+            compressed = compress_image_to_max_kb(self.photo.file)
+            if compressed is not None:
+                self.photo.save(self.photo.name, compressed, save=False)
+            if hasattr(self.photo.file, 'size') and not self.file_size:
+                self.file_size = self.photo.file.size
+
+        super().save(*args, **kwargs)
+
+        # Integration with PlantRecord.photo:
+        # If the parent record does not have a primary photo set, set it now so legacy
+        # views, admin maps, and exports continue displaying it seamlessly.
+        if not self.record.photo:
+            self.record.photo = self.photo
+            self.record.save(update_fields=['photo'])
+

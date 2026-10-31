@@ -19,7 +19,11 @@ def _sync_horticulture_request_status(item_request, status_value):
         hk_req = HKStockRequest.objects.filter(inventory_request=item_request).first()
         if hk_req:
             hk_req.status = status_value
-            hk_req.save(update_fields=['status'])
+            if status_value == ItemRequest.Status.REJECTED:
+                hk_req.covered_quantity = 0
+                hk_req.save(update_fields=['status', 'covered_quantity'])
+            else:
+                hk_req.save(update_fields=['status'])
     except Exception:
         pass
     try:
@@ -146,7 +150,14 @@ class UndoRejectRequestView(APIView):
             return Response({'error': 'Request is not rejected'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Enforce single undo rule
-        if '[UNDO_REJECTED]' in (item_request.notes or ''):
+        if item_request.undo_consumed or '[UNDO_REJECTED]' in (item_request.notes or ''):
+            return Response(
+                {'error': 'Only one undo operation is permitted for this request.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        issue = getattr(item_request, 'issue', None)
+        if issue and (issue.is_reversed or issue.adjustments.exists()):
             return Response(
                 {'error': 'Only one undo operation is permitted for this request.'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -163,8 +174,9 @@ class UndoRejectRequestView(APIView):
         item_request.approved_by = None
         item_request.reviewed_at = None
         item_request.rejection_reason = ''
+        item_request.undo_consumed = True
         item_request.notes = ((item_request.notes or '').strip() + ' [UNDO_REJECTED]').strip()
-        item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'rejection_reason', 'notes'])
+        item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'rejection_reason', 'notes', 'undo_consumed'])
         _sync_horticulture_request_status(item_request, ItemRequest.Status.PENDING)
 
         return Response(ItemRequestSerializer(item_request).data, status=status.HTTP_200_OK)

@@ -119,7 +119,11 @@ def _sync_horticulture_request_status(item_request, status_value):
         hk_req = HKStockRequest.objects.filter(inventory_request=item_request).first()
         if hk_req:
             hk_req.status = status_value
-            hk_req.save(update_fields=['status'])
+            if status_value == ItemRequest.Status.REJECTED:
+                hk_req.covered_quantity = 0
+                hk_req.save(update_fields=['status', 'covered_quantity'])
+            else:
+                hk_req.save(update_fields=['status'])
     except Exception:
         pass
     try:
@@ -613,6 +617,12 @@ class IssueItemView(APIView):
         except ItemRequest.DoesNotExist:
             return Response({'detail': 'Request not found or already actioned.'}, status=404)
 
+        if item_request.undo_consumed or (hasattr(item_request, 'issue') and item_request.issue.is_reversed):
+            return Response(
+                {'detail': 'Cannot issue a request that has already been finalized or reversed.'},
+                status=400,
+            )
+
         was_pending = item_request.status == ItemRequest.Status.PENDING
 
         issued_qty = request.data.get('issued_quantity', item_request.quantity_requested)
@@ -760,7 +770,7 @@ class ItemIssueListView(generics.ListAPIView):
                 )
         include_reversed = params.get('include_reversed')
         if not (include_reversed and str(include_reversed).lower() in ['true', '1']):
-            qs = qs.filter(is_reversed=False)
+            qs = qs.filter(is_reversed=False).exclude(request__status=ItemRequest.Status.REJECTED)
 
         if getattr(user, 'role', '') in ['supervisor', 'caretaker']:
             return qs.filter(request__requested_by=user)
@@ -834,12 +844,24 @@ class AdjustOrReverseIssueView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        item = Item.objects.select_for_update().get(pk=issue.request.item_id)
+        item_request = ItemRequest.objects.select_for_update().get(pk=issue.request_id)
+
+        if item_request.undo_consumed or issue.is_reversed or issue.adjustments.exists():
+            return Response(
+                {'detail': 'Only one undo/adjust operation is permitted for this request.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if item_request.status == ItemRequest.Status.REJECTED:
+            return Response(
+                {'detail': 'This request has already been rejected.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         total_consumed = issue.usage_logs.aggregate(
             c=Coalesce(Sum('quantity_used'), Value(0), output_field=DecimalField(max_digits=10, decimal_places=2))
         )['c'] or Decimal('0')
-
-        item = Item.objects.select_for_update().get(pk=issue.request.item_id)
-        item_request = ItemRequest.objects.select_for_update().get(pk=issue.request_id)
 
         # ── ACTION 1: REJECT REQUEST (RESTORE STOCK & REJECT) ──────────────────
         if action in ['reject', 'reversal', 'undo']:
@@ -874,8 +896,9 @@ class AdjustOrReverseIssueView(APIView):
             item_request.reviewed_at = timezone.now()
             item_request.rejection_reason = reason
             item_request.units_remaining = item.available_quantity
+            item_request.undo_consumed = True
             item_request.save(update_fields=[
-                'status', 'approved_by', 'reviewed_at', 'rejection_reason', 'units_remaining'
+                'status', 'approved_by', 'reviewed_at', 'rejection_reason', 'units_remaining', 'undo_consumed'
             ])
 
             # 4. Sync with horticulture & HKStockRequest to rejected
@@ -980,7 +1003,8 @@ class AdjustOrReverseIssueView(APIView):
 
             # Update request
             item_request.quantity_requested = int(new_quantity)
-            item_request.save(update_fields=['quantity_requested'])
+            item_request.undo_consumed = True
+            item_request.save(update_fields=['quantity_requested', 'undo_consumed'])
 
             # Update RequisitionItem if exists
             try:
@@ -1233,6 +1257,9 @@ class IssueUsageLogView(APIView):
             issue = self._get_issue(user, pk, for_update=True)
         except ItemIssue.DoesNotExist:
             return Response({'detail': 'Issue record not found.'}, status=404)
+
+        if issue.is_reversed or issue.request.status == ItemRequest.Status.REJECTED:
+            return Response({'detail': 'Cannot log usage for a reversed or rejected issue.'}, status=400)
 
         raw_qty = request.data.get('quantity_used')
         purpose = (request.data.get('purpose') or '').strip()
@@ -1701,18 +1728,21 @@ class DashboardSummaryView(APIView):
         unreturned_assets = ItemIssue.objects.filter(
             request__item__item_type='asset',
             returned_at__isnull=True,
-        ).count()
+            is_reversed=False,
+        ).exclude(request__status=ItemRequest.Status.REJECTED).count()
 
         unfinalized_consumables = ItemIssue.objects.filter(
             request__item__item_type='consumable',
             usage_finalized=False,
-        ).count()
+            is_reversed=False,
+        ).exclude(request__status=ItemRequest.Status.REJECTED).count()
 
         overdue_returns = ItemIssue.objects.filter(
             request__item__item_type='asset',
             returned_at__isnull=True,
             expected_return_date__lt=timezone.now().date(),
-        ).count()
+            is_reversed=False,
+        ).exclude(request__status=ItemRequest.Status.REJECTED).count()
 
         return Response({
             'total_items': total_items,

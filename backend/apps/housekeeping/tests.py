@@ -1542,3 +1542,372 @@ class HostelCommonAreaRelieverManagementTests(TestCase):
         })
         self.assertEqual(post_resp.status_code, 400)
 
+
+class AcademicRelieverSwitchingAndAttendanceTests(TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from apps.housekeeping.models import HKArea, HKUserArea, HKWorker, HKAttendanceRecord
+
+        User = get_user_model()
+        self.manager = User.objects.create_user(
+            username='hk_manager_test',
+            password='pass',
+            role='admin',
+        )
+        self.supervisor_a = User.objects.create_user(
+            username='sup_a_test',
+            password='pass',
+            role='supervisor',
+            first_name='Supervisor',
+            last_name='Alpha',
+        )
+        self.supervisor_b = User.objects.create_user(
+            username='sup_b_test',
+            password='pass',
+            role='supervisor',
+            first_name='Supervisor',
+            last_name='Beta',
+        )
+
+        # Old Academic areas
+        self.old_block_1 = HKArea.objects.create(name='Academic Block 1', area_type='academic', is_active=True)
+        self.old_block_2 = HKArea.objects.create(name='Academic Block 2', area_type='academic', is_active=True)
+        self.old_common = HKArea.objects.create(name='Old Academic Common Area', area_type='academic', is_active=True)
+        self.old_reliever_area = HKArea.objects.create(name='Old Academic Reliever', area_type='academic', is_active=True)
+
+        # New Academic areas
+        self.new_block_10 = HKArea.objects.create(name='Academic Block 10', area_type='academic', is_active=True)
+        self.new_block_11 = HKArea.objects.create(name='Academic Block 11', area_type='academic', is_active=True)
+        self.new_common = HKArea.objects.create(name='New Academic Common Area', area_type='academic', is_active=True)
+        self.new_reliever_area = HKArea.objects.create(name='New Academic Reliever', area_type='academic', is_active=True)
+
+        # Old Academic Relievers
+        self.old_rel_1 = HKWorker.objects.create(
+            name='Old Reliever 1',
+            pay_code='281',
+            area=self.old_reliever_area,
+            supervisor=self.supervisor_a,
+            worker_type='reliever',
+            shift='day',
+            is_active=True,
+            is_reliever=True,
+        )
+        self.old_rel_2 = HKWorker.objects.create(
+            name='Old Reliever 2',
+            pay_code='253',
+            area=self.old_reliever_area,
+            supervisor=self.supervisor_a,
+            worker_type='reliever',
+            shift='day',
+            is_active=True,
+            is_reliever=True,
+        )
+
+        # New Academic Relievers
+        self.new_rel_1 = HKWorker.objects.create(
+            name='New Reliever 1',
+            pay_code='361',
+            area=self.new_reliever_area,
+            supervisor=self.supervisor_b,
+            worker_type='reliever',
+            shift='day',
+            is_active=True,
+            is_reliever=True,
+        )
+        self.new_rel_2 = HKWorker.objects.create(
+            name='New Reliever 2',
+            pay_code='390',
+            area=self.new_reliever_area,
+            supervisor=self.supervisor_b,
+            worker_type='reliever',
+            shift='day',
+            is_active=True,
+            is_reliever=True,
+        )
+
+        # Permanent workers in areas
+        self.perm_old_1 = HKWorker.objects.create(
+            name='Perm Worker Old 1',
+            pay_code='101',
+            area=self.old_block_1,
+            supervisor=self.supervisor_a,
+            worker_type='floor',
+            shift='day',
+            is_active=True,
+            is_reliever=False,
+        )
+        self.perm_new_1 = HKWorker.objects.create(
+            name='Perm Worker New 1',
+            pay_code='102',
+            area=self.new_block_10,
+            supervisor=self.supervisor_b,
+            worker_type='floor',
+            shift='day',
+            is_active=True,
+            is_reliever=False,
+        )
+        self.common_reliever = HKWorker.objects.create(
+            name='Common Reliever 1',
+            pay_code='303',
+            worker_type='reliever',
+            shift='day',
+            is_active=True,
+            is_reliever=True,
+        )
+
+        # Initial assignments: Sup A has Old Block 1, Old Block 2, Old Reliever Area
+        HKUserArea.objects.create(user=self.supervisor_a, area=self.old_block_1)
+        HKUserArea.objects.create(user=self.supervisor_a, area=self.old_block_2)
+        HKUserArea.objects.create(user=self.supervisor_a, area=self.old_reliever_area)
+
+        # Sup B has New Block 10, New Block 11, New Reliever Area
+        HKUserArea.objects.create(user=self.supervisor_b, area=self.new_block_10)
+        HKUserArea.objects.create(user=self.supervisor_b, area=self.new_block_11)
+        HKUserArea.objects.create(user=self.supervisor_b, area=self.new_reliever_area)
+
+    def test_old_academic_area_switch_preserves_and_auto_assigns_relievers(self):
+        from apps.housekeeping.htmx_views import display_workers_for_area, _attendance_relievers_for_area
+        from apps.housekeeping.models import HKUserArea
+
+        self.client.force_login(self.manager)
+        switch_url = reverse('hk-api-supervisor-switch', args=[self.supervisor_a.id])
+
+        # Switch Old Block 1 to Supervisor B
+        resp = self.client.post(switch_url, {
+            'target_staff': self.supervisor_b.id,
+            'mode': 'permanent',
+            'area': self.old_block_1.id,
+        }, format='json')
+        self.assertEqual(resp.status_code, 200)
+
+        # Verify Supervisor B now has Old Academic Reliever area assigned
+        self.assertTrue(
+            HKUserArea.objects.filter(user=self.supervisor_b, area=self.old_reliever_area).exists()
+        )
+        # Verify Supervisor A STILL has Old Academic Reliever area because they still have Old Block 2
+        self.assertTrue(
+            HKUserArea.objects.filter(user=self.supervisor_a, area=self.old_reliever_area).exists()
+        )
+
+        # Verify Attendance Dashboard for Old Block 1 includes the Old Academic Relievers
+        workers = display_workers_for_area(self.old_block_1)
+        worker_names = [w.name for w in workers]
+        self.assertIn('Perm Worker Old 1', worker_names)
+        self.assertIn('Old Reliever 1', worker_names)
+        self.assertIn('Old Reliever 2', worker_names)
+        self.assertNotIn('New Reliever 1', worker_names)
+
+        # Verify reliever dropdown for Old Block 1 contains Old Academic relievers and common relievers
+        relievers = list(_attendance_relievers_for_area(self.old_block_1, user=self.supervisor_b))
+        rel_names = [r.name for r in relievers]
+        self.assertIn('Old Reliever 1', rel_names)
+        self.assertIn('Old Reliever 2', rel_names)
+        self.assertIn('Common Reliever 1', rel_names)
+        self.assertNotIn('New Reliever 1', rel_names)
+
+    def test_new_academic_area_switch_preserves_and_auto_assigns_relievers(self):
+        from apps.housekeeping.htmx_views import display_workers_for_area, _attendance_relievers_for_area
+        from apps.housekeeping.models import HKUserArea
+
+        self.client.force_login(self.manager)
+        switch_url = reverse('hk-api-supervisor-switch', args=[self.supervisor_b.id])
+
+        # Switch New Block 10 to Supervisor A
+        resp = self.client.post(switch_url, {
+            'target_staff': self.supervisor_a.id,
+            'mode': 'permanent',
+            'area': self.new_block_10.id,
+        }, format='json')
+        self.assertEqual(resp.status_code, 200)
+
+        # Verify Supervisor A now has New Academic Reliever area assigned
+        self.assertTrue(
+            HKUserArea.objects.filter(user=self.supervisor_a, area=self.new_reliever_area).exists()
+        )
+        # Verify Supervisor B STILL has New Academic Reliever area because they still have New Block 11
+        self.assertTrue(
+            HKUserArea.objects.filter(user=self.supervisor_b, area=self.new_reliever_area).exists()
+        )
+
+        # Verify Attendance Dashboard for New Block 10 includes New Academic Relievers
+        workers = display_workers_for_area(self.new_block_10)
+        worker_names = [w.name for w in workers]
+        self.assertIn('Perm Worker New 1', worker_names)
+        self.assertIn('New Reliever 1', worker_names)
+        self.assertIn('New Reliever 2', worker_names)
+        self.assertNotIn('Old Reliever 1', worker_names)
+
+    def test_repeated_switching_idempotent_no_duplicates(self):
+        from apps.housekeeping.htmx_views import display_workers_for_area
+        from apps.housekeeping.models import HKUserArea
+
+        self.client.force_login(self.manager)
+
+        # Switch Old Block 1 from Sup A to Sup B
+        url_a = reverse('hk-api-supervisor-switch', args=[self.supervisor_a.id])
+        resp1 = self.client.post(url_a, {
+            'target_staff': self.supervisor_b.id,
+            'mode': 'permanent',
+            'area': self.old_block_1.id,
+        }, format='json')
+        self.assertEqual(resp1.status_code, 200)
+
+        # Switch Old Block 1 again from Sup B back to Sup A
+        url_b = reverse('hk-api-supervisor-switch', args=[self.supervisor_b.id])
+        resp2 = self.client.post(url_b, {
+            'target_staff': self.supervisor_a.id,
+            'mode': 'permanent',
+            'area': self.old_block_1.id,
+        }, format='json')
+        self.assertEqual(resp2.status_code, 200)
+
+        # Switch Old Block 1 third time from Sup A to Sup B
+        resp3 = self.client.post(url_a, {
+            'target_staff': self.supervisor_b.id,
+            'mode': 'permanent',
+            'area': self.old_block_1.id,
+        }, format='json')
+        self.assertEqual(resp3.status_code, 200)
+
+        # Check HKUserArea has exactly 1 entry for (supervisor_b, old_reliever_area)
+        count_rel = HKUserArea.objects.filter(user=self.supervisor_b, area=self.old_reliever_area).count()
+        self.assertEqual(count_rel, 1)
+
+        # Verify no duplicate entries in display_workers_for_area
+        workers = display_workers_for_area(self.old_block_1)
+        worker_ids = [w.id for w in workers]
+        self.assertEqual(len(worker_ids), len(set(worker_ids)))
+
+    def test_strict_separation_between_old_and_new_relievers(self):
+        from apps.housekeeping.htmx_views import (
+            display_workers_for_area,
+            _attendance_relievers_for_area,
+            _format_reliever_options,
+        )
+
+        # Old Block 1 must ONLY have Old Relievers in display workers
+        old_workers = display_workers_for_area(self.old_block_1)
+        old_rel_names = [w.name for w in old_workers if w.is_reliever]
+        self.assertEqual(sorted(old_rel_names), ['Old Reliever 1', 'Old Reliever 2'])
+
+        # Dropdown for Old Block 1 contains Old Relievers + Common Relievers (paycode sorted)
+        old_dropdown = list(_attendance_relievers_for_area(self.old_block_1, user=self.supervisor_a))
+        old_names = [r.name for r in old_dropdown]
+        self.assertIn('Old Reliever 1', old_names)
+        self.assertIn('Old Reliever 2', old_names)
+        self.assertIn('Common Reliever 1', old_names)
+        self.assertNotIn('New Reliever 1', old_names)
+        self.assertNotIn('New Reliever 2', old_names)
+
+        old_paycodes = [int(r.pay_code) for r in old_dropdown]
+        self.assertEqual(old_paycodes, sorted(old_paycodes))
+
+        # Formatted labels must not have phone numbers
+        formatted_old = _format_reliever_options(old_dropdown, user=self.supervisor_a, area=self.old_block_1)
+        for rel in formatted_old:
+            self.assertNotIn('9999999999', getattr(rel, 'reliever_label', ''))
+            self.assertIn(f'#{rel.pay_code}', getattr(rel, 'reliever_label', ''))
+
+        # New Block 10 must ONLY have New Relievers in display workers
+        new_workers = display_workers_for_area(self.new_block_10)
+        new_rel_names = [w.name for w in new_workers if w.is_reliever]
+        self.assertEqual(sorted(new_rel_names), ['New Reliever 1', 'New Reliever 2'])
+
+        # Dropdown for New Block 10 contains New Relievers + Common Relievers (paycode sorted)
+        new_dropdown = list(_attendance_relievers_for_area(self.new_block_10, user=self.supervisor_b))
+        new_names = [r.name for r in new_dropdown]
+        self.assertIn('New Reliever 1', new_names)
+        self.assertIn('New Reliever 2', new_names)
+        self.assertIn('Common Reliever 1', new_names)
+        self.assertNotIn('Old Reliever 1', new_names)
+        self.assertNotIn('Old Reliever 2', new_names)
+
+        new_paycodes = [int(r.pay_code) for r in new_dropdown]
+        self.assertEqual(new_paycodes, sorted(new_paycodes))
+
+        formatted_new = _format_reliever_options(new_dropdown, user=self.supervisor_b, area=self.new_block_10)
+        for rel in formatted_new:
+            self.assertNotIn('9999999999', getattr(rel, 'reliever_label', ''))
+            self.assertIn(f'#{rel.pay_code}', getattr(rel, 'reliever_label', ''))
+
+    def test_temporary_supervisor_switch_preserves_relievers_and_creates_temp_assignment(self):
+        from apps.housekeeping.models import HKTemporaryStaffAreaAssignment
+        from apps.housekeeping.htmx_views import get_user_areas
+
+        self.client.force_login(self.manager)
+        switch_url = reverse('hk-api-supervisor-switch', args=[self.supervisor_a.id])
+
+        # Temporary switch for 2 days
+        resp = self.client.post(switch_url, {
+            'target_staff': self.supervisor_b.id,
+            'mode': 'temporary',
+            'date': timezone.localdate().isoformat(),
+            'duration_days': 2,
+            'area': self.old_block_1.id,
+        }, format='json')
+        self.assertEqual(resp.status_code, 200)
+
+        # Check HKTemporaryStaffAreaAssignment created for old_reliever_area
+        temp_assign = HKTemporaryStaffAreaAssignment.objects.filter(
+            staff=self.supervisor_b,
+            area=self.old_reliever_area,
+        ).first()
+        self.assertIsNotNone(temp_assign)
+        self.assertTrue(temp_assign.is_active_now)
+
+        # Verify get_user_areas for supervisor B includes old_reliever_area
+        user_areas = get_user_areas(self.supervisor_b)
+        self.assertTrue(user_areas.filter(id=self.old_reliever_area.id).exists())
+
+    def test_housekeeping_profile_get_and_patch(self):
+        self.client.force_login(self.supervisor_a)
+        url = reverse('hk-api-profile')
+
+        # GET profile
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['user']['username'], self.supervisor_a.username)
+        # Verify areas are returned
+        area_names = [a['name'] for a in data['areas']]
+        self.assertIn('Academic Block 1', area_names)
+        self.assertIn('Academic Block 2', area_names)
+        # Verify worker stats
+        self.assertIn('total', data['worker_stats'])
+        self.assertGreaterEqual(data['worker_stats']['total'], 1)
+
+        # PATCH profile
+        import json
+        patch_resp = self.client.patch(
+            url,
+            json.dumps({
+                'phone': '9876543210',
+                'first_name': 'UpdatedMukesh',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(patch_resp.status_code, 200)
+        self.supervisor_a.refresh_from_db()
+        self.assertEqual(self.supervisor_a.phone, '9876543210')
+        self.assertEqual(self.supervisor_a.first_name, 'UpdatedMukesh')
+
+    def test_auth_me_patch(self):
+        import json
+        self.client.force_login(self.supervisor_b)
+        url = reverse('me')
+
+        patch_resp = self.client.patch(
+            url,
+            json.dumps({
+                'phone': '9123456789',
+                'last_name': 'UpdatedParmar',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(patch_resp.status_code, 200)
+        self.supervisor_b.refresh_from_db()
+        self.assertEqual(self.supervisor_b.phone, '9123456789')
+        self.assertEqual(self.supervisor_b.last_name, 'UpdatedParmar')
+
+
+
