@@ -40,6 +40,8 @@ def get_requester_area_issues_qs(user, area, item):
         Q(request__item__item_type=Item.ItemType.ASSET) & Q(returned_at__isnull=False)
     ).exclude(
         is_reversed=True
+    ).exclude(
+        request__status=ItemRequest.Status.REJECTED
     ).distinct()
     return qs
 

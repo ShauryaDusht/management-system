@@ -145,6 +145,7 @@ export default function Sidebar() {
       { to: '/housekeeping', icon: 'housekeeping', label: 'Hostel Office' },
       { to: '/inventory', icon: 'inventory', label: 'Inventory Reports' },
       { to: '/insights', icon: 'insights', label: 'Insights' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
     ]
     : user?.role === 'hk_inventory_manager'
     ? [
@@ -164,12 +165,18 @@ export default function Sidebar() {
       { to: '/estate', icon: 'estate', label: 'HK Clearances' },
       { to: '/insights', icon: 'insights', label: 'Insights' },
       { to: '/users', icon: 'users', label: 'Manage Users' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
+    ]
+    : user?.role === 'supervisor'
+    ? [
+      { to: '/housekeeping', icon: 'housekeeping', label: 'Housekeeping' },
+      { to: '/profile', icon: 'users', label: 'Profile' },
     ]
     : [
       { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
       {
         to: '/inventory', icon: 'inventory', label: 'Inventory',
-        badge: badges.inventory,
+        badge: (badges.inventory || 0) + (badges.horticultureInventory || 0),
         badgeYellow: false,
         extraBadge: badges.lowStock,
         extraYellow: true,
@@ -180,12 +187,6 @@ export default function Sidebar() {
         badge: badges.housekeeping,
       },
       { to: '/horticulture', icon: 'horticulture', label: 'Horticulture' },
-      {
-        to: '/horticulture-stock',
-        icon: 'inventory',
-        label: 'Horticulture Inventory',
-        badge: badges.horticultureInventory,
-      },
       { to: '/geo-tracker', icon: 'map', label: 'Plant Map' },
       { to: '/estate', icon: 'estate', label: 'Estate' },
       { to: '/lifts', icon: 'lift', label: 'Lift Licenses' },
@@ -309,7 +310,22 @@ export default function Sidebar() {
 
       {/* User + Logout */}
       <div style={{ padding: '12px 14px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-        <div className="sidebar-user-block" style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
+        <NavLink
+          to="/profile"
+          title="View Profile"
+          className="sidebar-user-block"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 9,
+            marginBottom: 10,
+            textDecoration: 'none',
+            padding: '4px 6px',
+            borderRadius: 8,
+            transition: 'background 0.15s ease',
+            cursor: 'pointer',
+          }}
+        >
           <div
             style={{
               width: 34, height: 34, borderRadius: '50%',
@@ -328,7 +344,7 @@ export default function Sidebar() {
               {user?.role === 'engineer' ? 'Electrical (Lift)' : user?.role === 'plant_engineer' ? 'Substation & WTP Engineer' : user?.role === 'electrical_supervisor' ? 'Substation Supervisor' : user?.role === 'wtp_supervisor' ? 'WTP / STP Supervisor' : user?.role === 'hvac_engineer' ? 'HVAC Engineer' : user?.role === 'hvac_supervisor' ? 'HVAC Supervisor' : user?.role === 'supervisor' ? 'Operations Supervisor' : user?.role === 'hvac_operator' ? 'HVAC Operator' : (user?.role || '').replaceAll('_', ' ')}
             </div>
           </div>
-        </div>
+        </NavLink>
         <button
           onClick={handleLogout}
           style={{

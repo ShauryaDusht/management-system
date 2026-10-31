@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 
 import { Tabs } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
@@ -12,6 +12,9 @@ import MonthlyReportTab from './MonthlyReportTab'
 import RequestsTab from './RequestsTab'
 import StockLogTab from './StockLogTab'
 import ReportTab from './ReportTab'
+import HorticultureStockPage from '../horticulture/HorticultureStockPage'
+import InventoryDepartmentHeader from './InventoryDepartmentHeader'
+import InventorySelectView from './InventorySelectView'
 
 const BASE_TAB_CONFIG = [
   { key: 'items', label: 'Items', icon: '📦' },
@@ -24,13 +27,56 @@ const BASE_TAB_CONFIG = [
 const REQUEST_REPORT_TAB = { key: 'request-report', label: 'Request Report', icon: 'RR' }
 
 export default function InventoryPage() {
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const { badges, markSeen } = useNotifications()
+
   const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
+  const isHorticultureManager = user?.role === 'horticulture_manager'
   const inventoryRole = isHostelOffice ? 'hostel_office' : user?.role
   const canViewReports = user?.is_superuser || user?.role === 'admin' || user?.role === 'inventory_manager' || user?.role === 'hk_inventory_manager' || user?.role === 'horticulture_manager' || isHostelOffice
 
+  const path = location.pathname.toLowerCase()
+  const deptParam = searchParams.get('dept') || searchParams.get('section')
+
+  // Detect which department is active
+  const isHorticulture = path.includes('/horticulture') || deptParam === 'horticulture' || isHorticultureManager
+  const isHousekeeping = path.includes('/housekeeping') || deptParam === 'housekeeping' || isHostelOffice
+
+  // If Horticulture is selected, render the dedicated Horticulture Inventory dashboard
+  if (isHorticulture) {
+    return <HorticultureStockPage />
+  }
+
+  // If neither department is explicitly opened (and not restricted by role like hostel_office), render the Selection Hub
+  if (!isHousekeeping && !isHostelOffice) {
+    return <InventorySelectView />
+  }
+
+  // Otherwise, render Housekeeping Inventory Dashboard
+  return (
+    <HousekeepingInventoryDashboard
+      searchParams={searchParams}
+      setSearchParams={setSearchParams}
+      userRole={inventoryRole}
+      isHostelOffice={isHostelOffice}
+      canViewReports={canViewReports}
+      badges={badges}
+      markSeen={markSeen}
+    />
+  )
+}
+
+function HousekeepingInventoryDashboard({
+  searchParams,
+  setSearchParams,
+  userRole,
+  isHostelOffice,
+  canViewReports,
+  badges,
+  markSeen,
+}) {
   const tabConfig = useMemo(() => {
     const visibleBase = isHostelOffice
       ? BASE_TAB_CONFIG.filter((tab) => ['items', 'requests', 'issues', 'stocklog'].includes(tab.key))
@@ -91,29 +137,31 @@ export default function InventoryPage() {
 
   return (
     <AdminLayout
-      title={isHostelOffice ? 'Inventory Reports' : 'Inventory Management'}
+      title={isHostelOffice ? 'Inventory Reports' : 'Housekeeping Inventory'}
       subtitle={isHostelOffice ? 'View stock, requests, issued items, and inventory reports' : 'Stock overview, requests, issued assets, replenishment logs, and reports'}
     >
+      <InventoryDepartmentHeader currentDepartment="housekeeping" />
+
       <div style={{ marginBottom: 14 }}>
         <Tabs tabs={tabConfig} active={active} onChange={onTabChange} />
       </div>
 
-      {active === 'items' && <ItemsTab userRole={inventoryRole} />}
+      {active === 'items' && <ItemsTab userRole={userRole} />}
       {active === 'requests' && (
         <RequestsTab
-          userRole={inventoryRole}
+          userRole={userRole}
           excludeCategoryScope="Garden & Horticulture Equipment"
         />
       )}
       {active === 'issues' && (
         <IssuesTab
-          userRole={inventoryRole}
+          userRole={userRole}
           excludeCategoryScope="Garden & Horticulture Equipment"
         />
       )}
       {active === 'stocklog' && (
         <StockLogTab
-          userRole={inventoryRole}
+          userRole={userRole}
           excludeCategoryScope="Garden & Horticulture Equipment"
         />
       )}

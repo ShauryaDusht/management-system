@@ -186,13 +186,22 @@ class ItemRequestSerializer(serializers.ModelSerializer):
     can_undo_reject = serializers.SerializerMethodField()
 
     def get_already_adjusted(self, obj):
+        if getattr(obj, 'undo_consumed', False):
+            return True
         issue = getattr(obj, 'issue', None)
-        return issue.adjustments.exists() if issue else False
+        if issue and (issue.is_reversed or issue.adjustments.exists()):
+            return True
+        return False
 
     def get_can_undo_reject(self, obj):
         if obj.status != ItemRequest.Status.REJECTED:
             return False
+        if getattr(obj, 'undo_consumed', False):
+            return False
         if '[UNDO_REJECTED]' in (obj.notes or ''):
+            return False
+        issue = getattr(obj, 'issue', None)
+        if issue and (issue.is_reversed or issue.adjustments.exists()):
             return False
         ref_time = obj.reviewed_at or obj.requested_at
         if ref_time and (timezone.now() - ref_time > timedelta(hours=24)):
@@ -532,8 +541,21 @@ class ItemIssueSerializer(serializers.ModelSerializer):
             )
         )['total']
 
+    already_adjusted = serializers.SerializerMethodField()
+
+    def get_already_adjusted(self, obj):
+        req = getattr(obj, 'request', None)
+        if req and getattr(req, 'undo_consumed', False):
+            return True
+        return obj.adjustments.exists() or obj.is_reversed
+
     def get_can_reverse(self, obj):
         if obj.is_reversed:
+            return False
+        req = getattr(obj, 'request', None)
+        if req and getattr(req, 'undo_consumed', False):
+            return False
+        if req and getattr(req, 'status', None) == ItemRequest.Status.REJECTED:
             return False
         if obj.issued_at and (timezone.now() - obj.issued_at > timedelta(hours=24)):
             return False
@@ -551,6 +573,11 @@ class ItemIssueSerializer(serializers.ModelSerializer):
     def get_can_adjust(self, obj):
         if obj.is_reversed:
             return False
+        req = getattr(obj, 'request', None)
+        if req and getattr(req, 'undo_consumed', False):
+            return False
+        if req and getattr(req, 'status', None) == ItemRequest.Status.REJECTED:
+            return False
         if obj.issued_at and (timezone.now() - obj.issued_at > timedelta(hours=24)):
             return False
         if obj.adjustments.exists():
@@ -564,10 +591,13 @@ class ItemIssueSerializer(serializers.ModelSerializer):
     def get_cannot_reverse_reason(self, obj):
         if obj.is_reversed:
             return 'This transaction has already been reversed or rejected.'
+        req = getattr(obj, 'request', None)
+        if req and getattr(req, 'status', None) == ItemRequest.Status.REJECTED:
+            return 'This request has already been rejected.'
+        if (req and getattr(req, 'undo_consumed', False)) or obj.adjustments.exists():
+            return 'Only one undo or adjust operation is permitted, and it has already been performed.'
         if obj.issued_at and (timezone.now() - obj.issued_at > timedelta(hours=24)):
             return 'The 24-hour window to adjust or reject this issue has expired.'
-        if obj.adjustments.exists():
-            return 'Only one undo or adjust operation is permitted, and it has already been performed.'
         if obj.returned_at or (obj.returned_quantity is not None and obj.returned_quantity > 0):
             return 'Cannot reverse or adjust: asset return has already been recorded.'
         if obj.usage_finalized:
@@ -586,7 +616,7 @@ class ItemIssueSerializer(serializers.ModelSerializer):
             'issued_quantity', 'original_quantity', 'issued_at',
             'is_reversed', 'reversed_at', 'reversed_by', 'reversed_by_name', 'reversal_reason',
             'item_available_quantity', 'can_reverse', 'can_adjust', 'cannot_reverse_reason',
-            'adjustments',
+            'already_adjusted', 'adjustments',
             'expected_return_date', 'returned_quantity', 'returned_at',
             'condition_on_return', 'return_recorded_by', 'return_recorded_by_name',
             'actual_quantity_used', 'usage_finalized', 'usage_finalized_at',

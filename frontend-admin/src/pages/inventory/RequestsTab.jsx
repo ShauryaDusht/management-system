@@ -501,7 +501,7 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
                 </Btn>
               </div>
             ) : canReview && r.status === 'issued' ? (
-              isWithin24Hours(r.issued_at || r.reviewed_at) && !r.is_reversed && !r.already_adjusted ? (
+              isWithin24Hours(r.issued_at || r.reviewed_at) && !r.is_reversed && !r.already_adjusted && !r.undo_consumed ? (
                 <Btn
                   key={`act-undo-${r.id}`}
                   size="sm"
@@ -518,7 +518,7 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
                 </span>
               )
             ) : canReview && r.status === 'rejected' ? (
-              isWithin24Hours(r.reviewed_at || r.updated_at) && r.can_undo_reject !== false ? (
+              isWithin24Hours(r.reviewed_at || r.updated_at) && r.can_undo_reject !== false && !r.undo_consumed && !r.is_reversed ? (
                 <div key={`act-rej-${r.id}`} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   <Btn
                     size="sm"
@@ -536,9 +536,16 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
                   )}
                 </div>
               ) : (
-                <span key={`act-final-${r.id}`} style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                  Closed
-                </span>
+                <div key={`act-final-${r.id}`} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                    Closed
+                  </span>
+                  {r.rejection_reason && (
+                    <span style={{ fontSize: 11, color: '#991b1b' }} title={r.rejection_reason}>
+                      Reason set
+                    </span>
+                  )}
+                </div>
               )
             ) : (
               '—'

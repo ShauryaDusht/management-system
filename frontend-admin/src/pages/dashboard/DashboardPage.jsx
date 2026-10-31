@@ -514,26 +514,26 @@ export default function DashboardPage() {
 
   const isHkManager = user?.role === 'hk_inventory_manager'
   const baseStatCards = [
-    { label: 'Total Inventory Items',  value: invSummary?.total_items ?? '-',           color: 'var(--green-800)', sub: `${invSummary?.pending_requests ?? 0} requests pending`, to: '/inventory?tab=items' },
+    { label: 'Total Inventory Items',  value: invSummary?.total_items ?? '-',           color: 'var(--green-800)', sub: `${invSummary?.pending_requests ?? 0} requests pending`, to: '/inventory/housekeeping?tab=items' },
     { label: 'Estate Billing Outlets', value: '34 Outlets',                             color: '#854d0e',          sub: '29 shops + 5 power contractors',                           to: '/estate' },
-    { label: 'Low Stock Alerts',       value: invSummary?.low_stock_count ?? '-',        color: 'var(--orange-600)', sub: `${invSummary?.out_of_stock_count ?? 0} out of stock`,  to: '/inventory?tab=items' },
+    { label: 'Low Stock Alerts',       value: invSummary?.low_stock_count ?? '-',        color: 'var(--orange-600)', sub: `${invSummary?.out_of_stock_count ?? 0} out of stock`,  to: '/inventory/housekeeping?tab=items' },
     { label: 'HK Tasks Today',         value: hkSummary?.total_tasks ?? '-',            color: 'var(--green-700)', sub: `${hkSummary?.completion_pct ?? 0}% completed`,           to: '/housekeeping?tab=overview' },
     { label: 'HK Workers',             value: hkSummary?.total_workers ?? '-',          color: '#3b82f6',          sub: `${hkSummary?.present_today ?? 0} present today`,          to: '/housekeeping?tab=attendance' },
     { label: 'Lift Licenses',          value: '46 Campus Lifts',                        color: '#0891b2',          sub: 'Statutory compliance tracking',                            to: '/lifts' },
     { label: 'Substation Panels',      value: '11 HT/LT',                               color: '#0284c7',          sub: 'Campus electrical logging',                               to: '/substation' },
     { label: 'WTP / STP Meters',       value: '4 Stations + 84 Blocks',                 color: '#0e6f8f',          sub: 'Water treatment & tank logs',                             to: '/wtp' },
     { label: 'HVAC Plant Log',         value: '7 Chillers · 24h Telemetry',             color: '#15506b',          sub: 'Central AC & energy telemetry',                           to: '/hvac' },
-    { label: 'Unreturned Assets',      value: invSummary?.unreturned_assets ?? '-',     color: '#f59e0b',          sub: `${invSummary?.overdue_returns ?? 0} overdue`,             to: '/inventory?tab=issues' },
-    { label: 'Pending Stock Req.',     value: hkSummary?.pending_stock_requests ?? '-', color: 'var(--orange-600)', sub: 'Open approval queue',                                    to: '/inventory?tab=requests' },
+    { label: 'Unreturned Assets',      value: invSummary?.unreturned_assets ?? '-',     color: '#f59e0b',          sub: `${invSummary?.overdue_returns ?? 0} overdue`,             to: '/inventory/housekeeping?tab=issues' },
+    { label: 'Pending Stock Req.',     value: hkSummary?.pending_stock_requests ?? '-', color: 'var(--orange-600)', sub: 'Open approval queue',                                    to: '/inventory/housekeeping?tab=requests' },
   ]
   const hkManagerCards = [
-    { label: 'Total Inventory Items',  value: invSummary?.total_items ?? '-',           color: 'var(--green-800)', sub: `${invSummary?.pending_requests ?? 0} requests pending`, to: '/inventory?tab=items' },
-    { label: 'Low Stock Alerts',       value: invSummary?.low_stock_count ?? '-',        color: 'var(--orange-600)', sub: `${invSummary?.out_of_stock_count ?? 0} out of stock`,  to: '/inventory?tab=items' },
+    { label: 'Total Inventory Items',  value: invSummary?.total_items ?? '-',           color: 'var(--green-800)', sub: `${invSummary?.pending_requests ?? 0} requests pending`, to: '/inventory/housekeeping?tab=items' },
+    { label: 'Low Stock Alerts',       value: invSummary?.low_stock_count ?? '-',        color: 'var(--orange-600)', sub: `${invSummary?.out_of_stock_count ?? 0} out of stock`,  to: '/inventory/housekeeping?tab=items' },
     { label: 'HK Tasks Today',         value: hkSummary?.total_tasks ?? '-',            color: 'var(--green-700)', sub: `${hkSummary?.completion_pct ?? 0}% completed`,           to: '/housekeeping?tab=overview' },
     { label: 'HK Workers',             value: hkSummary?.total_workers ?? '-',          color: '#3b82f6',          sub: `${hkSummary?.present_today ?? 0} present today`,          to: '/housekeeping?tab=attendance' },
     { label: 'HK Clearances',          value: 'Housing Clearances',                     color: '#854d0e',          sub: 'Quarters inspection records',                              to: '/estate' },
-    { label: 'Unreturned Assets',      value: invSummary?.unreturned_assets ?? '-',     color: '#f59e0b',          sub: `${invSummary?.overdue_returns ?? 0} overdue`,             to: '/inventory?tab=issues' },
-    { label: 'Pending Stock Req.',     value: hkSummary?.pending_stock_requests ?? '-', color: 'var(--orange-600)', sub: 'Open approval queue',                                    to: '/inventory?tab=requests' },
+    { label: 'Unreturned Assets',      value: invSummary?.unreturned_assets ?? '-',     color: '#f59e0b',          sub: `${invSummary?.overdue_returns ?? 0} overdue`,             to: '/inventory/housekeeping?tab=issues' },
+    { label: 'Pending Stock Req.',     value: hkSummary?.pending_stock_requests ?? '-', color: 'var(--orange-600)', sub: 'Open approval queue',                                    to: '/inventory/housekeeping?tab=requests' },
   ]
   const statCards = isEstateOffice
     ? [
@@ -547,7 +547,7 @@ export default function DashboardPage() {
         { label: 'Horticulture Tasks', value: hortiTotal || '-', color: 'var(--green-700)', sub: `${Number(hortiCounts.on_track || 0)} on track`, to: '/horticulture?tab=schedule' },
         { label: 'Due Soon', value: Number(hortiCounts.due_soon || 0), color: 'var(--orange-600)', sub: `${Number(hortiCounts.overdue || 0)} overdue`, to: '/horticulture?tab=worker_selection' },
         { label: 'Active Areas', value: hortiSummary?.total_areas ?? '-', color: '#3b82f6', sub: 'Horticulture coverage', to: '/horticulture?tab=zones' },
-        { label: 'Horticulture Inventory', value: hortiStockTotal || (hortiStockSummary ? '0' : '-'), color: 'var(--green-800)', sub: `${hortiStockItems.low_stock || 0} low stock items`, to: '/horticulture-stock' },
+        { label: 'Horticulture Inventory', value: hortiStockTotal || (hortiStockSummary ? '0' : '-'), color: 'var(--green-800)', sub: `${hortiStockItems.low_stock || 0} low stock items`, to: '/inventory/horticulture' },
       ]
       : isHostelOffice
         ? [
@@ -597,7 +597,7 @@ export default function DashboardPage() {
       ? [
         { label: 'Schedule', to: '/horticulture?tab=schedule', primary: true },
         { label: 'Zones', to: '/horticulture?tab=zones' },
-        { label: 'Inventory', to: '/horticulture-stock' },
+        { label: 'Inventory', to: '/inventory/horticulture' },
       ]
       : isHostelOffice
         ? [
@@ -609,7 +609,7 @@ export default function DashboardPage() {
         : isHkManager
           ? [
             { label: 'Housekeeping', to: '/housekeeping?tab=overview', primary: true },
-            { label: 'Inventory', to: '/inventory?tab=items' },
+            { label: 'Inventory', to: '/inventory/housekeeping?tab=items' },
             { label: 'HK Clearances', to: '/estate' },
             { label: 'Manage Users', to: '/users' },
             { label: 'Insights', to: '/insights' },
@@ -621,7 +621,7 @@ export default function DashboardPage() {
             { label: 'WTP/STP Log', to: '/wtp' },
             { label: 'HVAC Plant Log', to: '/hvac' },
             { label: 'Estate Billing', to: '/estate' },
-            { label: 'Inventory', to: '/inventory?tab=items' },
+            { label: 'Inventory', to: '/inventory' },
             { label: 'Insights', to: '/insights' },
           ]
 
@@ -645,7 +645,7 @@ export default function DashboardPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 24 }}>
             {[
               canViewInventory ? { title: 'Inventory', subtitle: 'Stock overview', data: invDonut, total: invSummary?.total_items, label: 'Items', palette: DONUT_PALETTE, to: '/inventory' } : null,
-              isHorticultureManager ? { title: 'Horticulture Inventory', subtitle: 'Garden & Equipment stock', data: hortiStockDonut, total: hortiStockTotal || 25, label: 'Items', palette: DONUT_PALETTE, to: '/horticulture-stock' } : null,
+              isHorticultureManager ? { title: 'Horticulture Inventory', subtitle: 'Garden & Equipment stock', data: hortiStockDonut, total: hortiStockTotal || 25, label: 'Items', palette: DONUT_PALETTE, to: '/inventory/horticulture' } : null,
               canViewHousekeeping ? { title: isHostelOffice ? 'Hostel Housekeeping' : 'Housekeeping', subtitle: isHostelOffice ? 'Hostel tasks today' : 'Today tasks', data: hkDonutData, total: hkSummary?.total_tasks, label: hkHasAct ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/housekeeping' } : null,
               canViewHorticulture && !isHorticultureManager ? { title: 'Horticulture', subtitle: 'Task status', data: hortiDonutData, total: hortiTotal, label: hortiTotal > 0 ? 'Tasks' : 'No Activity', palette: DONUT_PALETTE, to: '/horticulture' } : null,
             ].filter(Boolean).map(card => (

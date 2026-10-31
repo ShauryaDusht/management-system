@@ -64,6 +64,10 @@ def get_unaccounted_item_quantity(user, item, area=None):
 
     issues = ItemIssue.objects.filter(issue_filter).exclude(
         Q(request__item__item_type=Item.ItemType.ASSET) & Q(returned_at__isnull=False)
+    ).exclude(
+        is_reversed=True
+    ).exclude(
+        request__status=ItemRequest.Status.REJECTED
     ).distinct()
 
     total_outstanding = Decimal("0.00")

@@ -24,13 +24,16 @@ export default function UndoAdjustIssueModal({
 
   const issuedAtTime = issue?.issued_at ? new Date(issue.issued_at).getTime() : null
   const isPast24h = issuedAtTime ? (Date.now() - issuedAtTime) > 24 * 60 * 60 * 1000 : false
-  const alreadyAdjusted = adjustments.length > 0 || Boolean(issue?.already_adjusted)
+  const alreadyAdjusted = adjustments.length > 0 || Boolean(issue?.already_adjusted) || Boolean(issue?.undo_consumed)
+  const isRejected = issue?.status === 'rejected'
 
-  const canReverse = !isPast24h && !alreadyAdjusted && consumedQty === 0 && !issue?.returned_at && !issue?.usage_finalized && !issue?.is_reversed
-  const canAdjust = !isPast24h && !alreadyAdjusted && !issue?.returned_at && !issue?.usage_finalized && !issue?.is_reversed
+  const canReverse = !isPast24h && !alreadyAdjusted && !isRejected && consumedQty === 0 && !issue?.returned_at && !issue?.usage_finalized && !issue?.is_reversed
+  const canAdjust = !isPast24h && !alreadyAdjusted && !isRejected && !issue?.returned_at && !issue?.usage_finalized && !issue?.is_reversed
 
   const cannotReverseReason = isPast24h
     ? 'The 24-hour window to adjust or reject this issue has expired.'
+    : isRejected
+    ? 'This request has already reached the final rejected state.'
     : alreadyAdjusted
     ? 'Only one undo/adjust operation is permitted, and it has already been performed.'
     : consumedQty > 0
@@ -45,6 +48,8 @@ export default function UndoAdjustIssueModal({
 
   const cannotAdjustReason = isPast24h
     ? 'The 24-hour window to adjust or reject this issue has expired.'
+    : isRejected
+    ? 'This request has already reached the final rejected state.'
     : alreadyAdjusted
     ? 'Only one undo/adjust operation is permitted, and it has already been performed.'
     : issue?.returned_at

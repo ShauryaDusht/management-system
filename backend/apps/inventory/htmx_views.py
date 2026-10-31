@@ -408,6 +408,10 @@ def mobile_issued_items(request):
             Value(0),
             output_field=DecimalField(max_digits=10, decimal_places=2),
         )
+    ).exclude(
+        is_reversed=True
+    ).exclude(
+        request__status=ItemRequest.Status.REJECTED
     ).order_by('-issued_at')
 
     if not is_manager:
@@ -448,7 +452,10 @@ def mobile_log_usage(request, pk):
         ),
         pk=pk,
         request__requested_by=request.user,
+        is_reversed=False,
     )
+    if issue.request.status == ItemRequest.Status.REJECTED:
+        return redirect('mobile_issued_items')
 
     raw_qty = request.POST.get('quantity_used', '').strip()
     purpose = request.POST.get('purpose', '').strip()
@@ -480,29 +487,32 @@ def mobile_log_usage(request, pk):
                 .select_related('request__item', 'request__requested_by')
                 .get(pk=pk, request__requested_by=request.user)
             )
-            total_used = ItemUsageLog.objects.filter(issue=issue).aggregate(
-                total=Coalesce(
-                    Sum('quantity_used'),
-                    Value(0),
-                    output_field=DecimalField(max_digits=10, decimal_places=2),
-                )
-            )['total']
-            remaining = Decimal(issue.issued_quantity) - total_used
-            if remaining <= 0:
-                error = 'All issued quantity has already been logged.'
-            elif quantity_used > remaining:
-                remaining_display = remaining.quantize(Decimal('0.01'))
-                error = (
-                    f'Cannot exceed remaining quantity ({remaining_display} '
-                    f'{issue.request.item.unit}).'
-                )
+            if issue.is_reversed or issue.request.status == ItemRequest.Status.REJECTED:
+                error = 'Cannot report usage on a rejected or reversed request.'
             else:
-                ItemUsageLog.objects.create(
-                    issue=issue,
-                    quantity_used=quantity_used,
-                    purpose=purpose,
-                    logged_by=request.user,
-                )
+                total_used = ItemUsageLog.objects.filter(issue=issue).aggregate(
+                    total=Coalesce(
+                        Sum('quantity_used'),
+                        Value(0),
+                        output_field=DecimalField(max_digits=10, decimal_places=2),
+                    )
+                )['total']
+                remaining = Decimal(issue.issued_quantity) - total_used
+                if remaining <= 0:
+                    error = 'All issued quantity has already been logged.'
+                elif quantity_used > remaining:
+                    remaining_display = remaining.quantize(Decimal('0.01'))
+                    error = (
+                        f'Cannot exceed remaining quantity ({remaining_display} '
+                        f'{issue.request.item.unit}).'
+                    )
+                else:
+                    ItemUsageLog.objects.create(
+                        issue=issue,
+                        quantity_used=quantity_used,
+                        purpose=purpose,
+                        logged_by=request.user,
+                    )
         if error is None:
             return redirect('mobile_issued_items')
 
@@ -518,7 +528,13 @@ def mobile_log_usage(request, pk):
             Value(0),
             output_field=DecimalField(max_digits=10, decimal_places=2),
         )
-    ).filter(request__requested_by=request.user).order_by('-issued_at')
+    ).filter(
+        request__requested_by=request.user
+    ).exclude(
+        is_reversed=True
+    ).exclude(
+        request__status=ItemRequest.Status.REJECTED
+    ).order_by('-issued_at')
 
     paginator = Paginator(issues_qs, 15)
     page_obj = paginator.get_page(1)

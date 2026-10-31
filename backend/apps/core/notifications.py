@@ -321,6 +321,8 @@ def check_and_send_usage_reminders(force_time=False, target_date=None):
                 output_field=DecimalField(max_digits=10, decimal_places=2),
             )
         )
+        .filter(is_reversed=False)
+        .exclude(request__status='rejected')
     )
 
     created_count = 0
@@ -328,6 +330,8 @@ def check_and_send_usage_reminders(force_time=False, target_date=None):
     for issue in issues_qs:
         req = getattr(issue, 'request', None)
         if not req or not req.requested_by or not req.requested_by.is_active:
+            continue
+        if issue.is_reversed or req.status == 'rejected':
             continue
 
         item = req.item

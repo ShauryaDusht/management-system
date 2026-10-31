@@ -96,6 +96,8 @@ label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4
     <button class="nav {% block n3 %}{% endblock %}">✅<span>Attendance</span></button></a>
   <a href="/housekeeping/stock/{% if selected_area %}?area={{ selected_area.id }}{% endif %}">
     <button class="nav {% block n4 %}{% endblock %}">📦<span>Stock</span></button></a>
+  <a href="/housekeeping/profile/">
+    <button class="nav {% block n5 %}{% endblock %}">👤<span>Profile</span></button></a>
 </div>
 {% endif %}
 {% endblock %}

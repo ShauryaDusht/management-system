@@ -106,6 +106,8 @@ class MeView(APIView):
     """
     GET /api/auth/me/
     Returns current logged-in user's info.
+    PATCH /api/auth/me/
+    Updates current logged-in user's basic info.
     """
     permission_classes = [IsAuthenticated]
 
@@ -113,6 +115,26 @@ class MeView(APIView):
         serializer = UserSerializer(request.user, context={'request': request})
         data = dict(serializer.data)
         if request.user.username == 'hostel.office':
+            data['actual_role'] = data.get('role')
+            data['role'] = User.Role.HK_INVENTORY_MANAGER
+        return Response(data)
+
+    def patch(self, request):
+        user = request.user
+        allowed_fields = ['first_name', 'last_name', 'email', 'phone']
+        updated = False
+        for f in allowed_fields:
+            if f in request.data:
+                setattr(user, f, (request.data.get(f) or '').strip())
+                updated = True
+        if 'profile_photo' in request.FILES:
+            user.profile_photo = request.FILES['profile_photo']
+            updated = True
+        if updated:
+            user.save()
+        serializer = UserSerializer(user, context={'request': request})
+        data = dict(serializer.data)
+        if user.username == 'hostel.office':
             data['actual_role'] = data.get('role')
             data['role'] = User.Role.HK_INVENTORY_MANAGER
         return Response(data)

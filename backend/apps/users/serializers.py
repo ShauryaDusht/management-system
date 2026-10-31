@@ -159,7 +159,8 @@ class UserSerializer(serializers.ModelSerializer):
         return image_field_url(self.context.get('request'), obj.profile_photo)
 
     def _apply_area_assignments(self, user, area_ids):
-        from apps.housekeeping.models import HKArea, HKUserArea
+        from apps.housekeeping.models import HKArea, HKUserArea, HKWorker
+        from apps.housekeeping.api_views import _is_old_academic_area, _is_new_academic_area
 
         if area_ids is None:
             return
@@ -170,9 +171,29 @@ class UserSerializer(serializers.ModelSerializer):
         if missing:
             raise serializers.ValidationError({'area_ids': [f'Invalid area ids: {missing}']})
 
+        # Preserve any existing staff hidden reliever areas currently assigned to user
+        for link in user.hk_areas.all():
+            if link.area and link.area.name in STAFF_HIDDEN_AREA_NAMES:
+                requested_ids.add(link.area_id)
+
+        # Auto-include academic reliever areas if user has or receives academic blocks
+        assigned_areas = list(HKArea.objects.filter(id__in=requested_ids, is_active=True))
+        if any(_is_old_academic_area(a) for a in assigned_areas):
+            old_reliever = HKArea.objects.filter(name='Old Academic Reliever', is_active=True).first()
+            if old_reliever:
+                requested_ids.add(old_reliever.id)
+                HKWorker.objects.filter(area=old_reliever, is_active=True).update(supervisor=user)
+
+        if any(_is_new_academic_area(a) for a in assigned_areas):
+            new_reliever = HKArea.objects.filter(name='New Academic Reliever', is_active=True).first()
+            if new_reliever:
+                requested_ids.add(new_reliever.id)
+                HKWorker.objects.filter(area=new_reliever, is_active=True).update(supervisor=user)
+
         HKUserArea.objects.filter(user=user).exclude(area_id__in=requested_ids).delete()
         for area_id in requested_ids:
             HKUserArea.objects.get_or_create(user=user, area_id=area_id)
+        HKWorker.objects.filter(area_id__in=requested_ids, is_active=True).update(supervisor=user)
 
     def update(self, instance, validated_data):
         _validate_removed_role(validated_data)

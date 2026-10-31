@@ -205,6 +205,11 @@ class ItemRequest(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     is_urgent = models.BooleanField(default=False)
     rejection_reason = models.TextField(blank=True)
+    undo_consumed = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='Indicates whether the one-time undo or adjustment allowance for this request has been consumed.',
+    )
     requested_at = models.DateTimeField(auto_now_add=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
 

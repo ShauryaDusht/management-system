@@ -183,6 +183,7 @@ class HKInchargeAssignmentAdmin(admin.ModelAdmin):
         'area__name',
     )
     readonly_fields = ('created_at', 'updated_at')
+    
     date_hierarchy = 'leave_date'
 
 
@@ -192,3 +193,4 @@ class HKInchargeNotificationAdmin(admin.ModelAdmin):
     list_filter = ('level', 'is_seen')
     search_fields = ('user__username', 'message')
     date_hierarchy = 'created_at'
+
