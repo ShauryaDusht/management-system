@@ -19,6 +19,23 @@ const FORMATS = [
     description: 'Tabular data for Microsoft Excel',
   },
   {
+    key: 'csv',
+    label: 'CSV (.csv)',
+    ext: '.csv',
+    badgeColor: '#0d9488',
+    badgeBg: '#ccfbf1',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0d9488" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <path d="M8 13h8" />
+        <path d="M8 17h8" />
+        <path d="M10 9H8" />
+      </svg>
+    ),
+    description: 'Comma-separated values spreadsheet',
+  },
+  {
     key: 'pdf',
     label: 'PDF Document',
     ext: '.pdf',
@@ -134,28 +151,29 @@ export default function ExportDropdown({
 
   const handleSelect = async (formatKey) => {
     if (disabled || busyFormat) return
-    const effKey = formatKey === 'csv' ? 'excel' : formatKey
-    setBusyFormat(effKey)
+    setBusyFormat(formatKey)
     try {
-      if (effKey === 'excel' && typeof onExportExcel === 'function') {
-        await onExportExcel()
-      } else if (effKey === 'excel' && typeof onExportCsv === 'function') {
+      if (formatKey === 'csv' && typeof onExportCsv === 'function') {
         await onExportCsv()
-      } else if (effKey === 'pdf' && typeof onExportPdf === 'function') {
+      } else if (formatKey === 'excel' && typeof onExportExcel === 'function') {
+        await onExportExcel()
+      } else if (formatKey === 'excel' && typeof onExportCsv === 'function') {
+        await onExportCsv()
+      } else if (formatKey === 'pdf' && typeof onExportPdf === 'function') {
         await onExportPdf()
-      } else if (effKey === 'print' && typeof onExportPrint === 'function') {
+      } else if (formatKey === 'print' && typeof onExportPrint === 'function') {
         await onExportPrint()
-      } else if (effKey === 'word' && typeof onExportWord === 'function') {
+      } else if (formatKey === 'word' && typeof onExportWord === 'function') {
         await onExportWord()
-      } else if (effKey === 'slides' && typeof onExportPresentation === 'function') {
+      } else if (formatKey === 'slides' && typeof onExportPresentation === 'function') {
         await onExportPresentation()
       } else if (typeof onExport === 'function') {
-        await onExport(effKey)
+        await onExport(formatKey)
       }
       setOpen(false)
     } catch (err) {
       console.error('Export error:', err)
-      window.alert(`Failed to export ${effKey.toUpperCase()}: ${err.message || err}`)
+      window.alert(`Failed to export ${formatKey.toUpperCase()}: ${err.message || err}`)
     } finally {
       setBusyFormat(null)
     }
@@ -165,10 +183,11 @@ export default function ExportDropdown({
   const isSubstation = variant.startsWith('substation')
   const isFiltered = Boolean(fromDate || toDate)
 
-  // Visible formats: if only onExportExcel / onExportCsv / onExportPdf passed and no general onExport, show those
+  // Visible formats: if specific callbacks provided, show those matching formats
   const visibleFormats = FORMATS.filter((fmt) => {
     if (typeof onExport === 'function') return true
-    if (fmt.key === 'excel') return Boolean(onExportExcel || onExportCsv)
+    if (fmt.key === 'excel') return Boolean(onExportExcel)
+    if (fmt.key === 'csv') return Boolean(onExportCsv)
     if (fmt.key === 'pdf') return Boolean(onExportPdf)
     if (fmt.key === 'print') return Boolean(onExportPrint)
     if (fmt.key === 'word') return Boolean(onExportWord)

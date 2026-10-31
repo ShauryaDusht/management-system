@@ -52,6 +52,56 @@ export const HvacApi = {
     return res.data;
   },
 
+  importData: async (file, preview = false) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (preview) {
+      formData.append('preview', 'true');
+    }
+    const res = await api.post('/hvac/import-csv/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+
+  importCsv: async (file, preview = false) => {
+    return HvacApi.importData(file, preview);
+  },
+
+  undoImport: async (batchId = null) => {
+    const res = await api.post('/hvac/import-undo/', batchId ? { batch_id: batchId } : {});
+    return res.data;
+  },
+
+  getImportHistory: async () => {
+    const res = await api.get('/hvac/import-history/');
+    return res.data;
+  },
+
+  downloadTemplate: async (format = 'xlsx') => {
+    const res = await api.get('/hvac/import-template/', {
+      params: { format },
+      responseType: 'blob',
+    });
+    const isXlsx = format === 'xlsx';
+    const mimeType = isXlsx
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : 'text/csv;charset=utf-8;';
+    const filename = isXlsx
+      ? 'hvac_plant_telemetry_template.xlsx'
+      : 'hvac_plant_log_template.csv';
+
+    const blob = new Blob([res.data], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  },
+
   exportCsv: (filename, rows) => {
     if (!rows || !rows.length) return;
     const csvContent = rows

@@ -268,13 +268,23 @@ class SubstationSummaryView(APIView):
 class TorrentBillsView(APIView):
     """
     CRUD View for Torrent Power Monthly Bills and Substation Telemetry Reconciliation.
-    Supervisors & Admins have full read/write/delete access.
-    Staff members have read access.
+    Supervisors & Admins have full read/write/delete access for operational data.
+    Sanctioned Contract Demand edits (whenever electrical load increases) are strictly
+    restricted to Super Admin.
     """
     def get_permissions(self):
-        if self.request.method in ('PUT', 'POST', 'DELETE'):
+        if self.request.method in ('PUT', 'POST', 'DELETE', 'PATCH'):
             return [IsSubstationSupervisorOrAdmin()]
         return [IsSubstationStaff()]
+
+    def _is_super_admin(self, user):
+        if not user or not user.is_authenticated:
+            return False
+        return bool(
+            getattr(user, 'is_superuser', False) or
+            getattr(user, 'is_admin', False) or
+            getattr(user, 'role', '') == 'admin'
+        )
 
     def get(self, request, month=None):
         if month:
@@ -326,7 +336,46 @@ class TorrentBillsView(APIView):
         previous_payment_amount = safe_float(data.get('previousPaymentAmount'))
         previous_payment_date = str(data.get('previousPaymentDate', '')).strip()
 
-        contract_demand_kw = safe_float(data.get('contractDemandKw'), 3200.0)
+        # SUPER ADMIN CHECK FOR CONTRACT DEMAND:
+        # Contract Demand reflects sanctioned utility grid capacity with Torrent Power Ltd.
+        # Only Super Admin is permitted to alter this when campus load increases.
+        existing_bill = TorrentBill.objects.filter(month=m).first()
+        incoming_demand = safe_float(data.get('contractDemandKw'), None)
+        is_super = self._is_super_admin(request.user)
+
+        if existing_bill is not None:
+            if incoming_demand is not None and abs(incoming_demand - existing_bill.contract_demand_kw) > 0.001:
+                if not is_super:
+                    return Response(
+                        {
+                            'error': (
+                                f"Permission Denied: Only Super Admin can modify Sanctioned Contract Demand "
+                                f"(attempted to alter {existing_bill.contract_demand_kw:g} KW to {incoming_demand:g} KW)."
+                            )
+                        },
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                contract_demand_kw = incoming_demand
+            else:
+                contract_demand_kw = existing_bill.contract_demand_kw
+        else:
+            latest_bill = TorrentBill.objects.order_by('-month').first()
+            default_demand = latest_bill.contract_demand_kw if latest_bill else 3200.0
+            if incoming_demand is not None and abs(incoming_demand - default_demand) > 0.001:
+                if not is_super:
+                    return Response(
+                        {
+                            'error': (
+                                f"Permission Denied: Only Super Admin can set a custom Sanctioned Contract Demand "
+                                f"(default sanctioned load is {default_demand:g} KW)."
+                            )
+                        },
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                contract_demand_kw = incoming_demand
+            else:
+                contract_demand_kw = incoming_demand if (incoming_demand is not None and is_super) else default_demand
+
         billing_demand_kw = safe_float(data.get('billingDemandKw'), 0.0)
         avg_power_factor = safe_float(data.get('avgPowerFactor'), 100.0)
         internal_logged_kwh = safe_float(data.get('internalLoggedKwh'), 0.0)
@@ -430,6 +479,71 @@ class TorrentBillsView(APIView):
 
         bill.save()
         return Response(bill.to_dict())
+
+    def patch(self, request, month=None):
+        """
+        Dedicated endpoint for Super Admin to update Sanctioned Contract Demand
+        whenever campus electrical load increases.
+        Allows applying load increases to the current month and optionally to future months.
+        """
+        if not self._is_super_admin(request.user):
+            return Response(
+                {'error': 'Permission Denied: Sanctioned Contract Demand can only be modified by Super Admin.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        data = request.data or {}
+        m = month or data.get('month')
+        if not m or not re.match(r'^\d{4}-\d{2}$', str(m)):
+            return Response({'error': 'Month must be in YYYY-MM format (e.g. 2026-09)'}, status=status.HTTP_400_BAD_REQUEST)
+
+        def safe_float(v, default=None):
+            if v is None or v == '':
+                return default
+            try:
+                return float(v)
+            except (ValueError, TypeError):
+                return default
+
+        new_demand = safe_float(data.get('contractDemandKw'))
+        if new_demand is None or new_demand <= 0:
+            return Response({'error': 'Contract Demand must be a valid positive number in KW (e.g. 3500.0)'}, status=status.HTTP_400_BAD_REQUEST)
+
+        remarks = str(data.get('remarks', '')).strip()
+        apply_future = bool(data.get('applyFuture', False))
+
+        try:
+            bill = TorrentBill.objects.get(month=m)
+        except TorrentBill.DoesNotExist:
+            return Response({'error': f"Torrent bill for month '{m}' not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        old_demand = bill.contract_demand_kw
+        bill.contract_demand_kw = new_demand
+        admin_name = request.user.get_full_name() or request.user.username
+        audit_note = f"[Super Admin {admin_name} Load Update: {old_demand:g} KW -> {new_demand:g} KW. {remarks}]".strip()
+        if bill.remarks:
+            bill.remarks = f"{bill.remarks}\n{audit_note}"
+        else:
+            bill.remarks = audit_note
+        bill.save()
+
+        updated_count = 1
+        if apply_future:
+            future_bills = TorrentBill.objects.filter(month__gt=m)
+            for fb in future_bills:
+                fb.contract_demand_kw = new_demand
+                fb_note = f"[Applied Contract Demand increase: {new_demand:g} KW from {m}]"
+                fb.remarks = f"{fb.remarks}\n{fb_note}".strip() if fb.remarks else fb_note
+                fb.save(update_fields=['contract_demand_kw', 'remarks', 'updated_at'])
+                updated_count += 1
+
+        return Response({
+            'ok': True,
+            'message': f"Contract demand successfully updated to {new_demand:g} KW for {m}" + (f" and {updated_count - 1} subsequent months." if apply_future and updated_count > 1 else "."),
+            'bill': bill.to_dict(),
+            'updatedCount': updated_count,
+            'contractDemandKw': new_demand,
+        })
 
     def delete(self, request, month=None):
         if not month:

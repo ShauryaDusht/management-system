@@ -82,6 +82,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'full_name': user.get_full_name(),
             'role': response_role,
             'actual_role': user.role,
+            'is_superuser': user.is_superuser,
+            'is_admin': user.is_admin,
             'phone': user.phone,
             'portal_redirect': self._get_portal_redirect(user),
         }
@@ -94,6 +96,8 @@ class UserSerializer(serializers.ModelSerializer):
     assigned_area_ids = serializers.SerializerMethodField()
     profile_photo_url = serializers.SerializerMethodField()
     profile_photo = serializers.ImageField(required=False, allow_null=True)
+    is_superuser = serializers.BooleanField(read_only=True)
+    is_admin = serializers.BooleanField(read_only=True)
     area_ids = serializers.ListField(
         child=serializers.IntegerField(min_value=1),
         write_only=True,
@@ -111,6 +115,8 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name',
             'full_name',
             'role',
+            'is_superuser',
+            'is_admin',
             'phone',
             'pay_code',
             'profile_photo',
@@ -121,7 +127,7 @@ class UserSerializer(serializers.ModelSerializer):
             'area_ids',
             'password',
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'is_superuser', 'is_admin']
 
     def get_full_name(self, obj):
         return obj.get_full_name() or obj.username

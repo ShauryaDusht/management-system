@@ -10,6 +10,7 @@ import FlashReport from '../../modules/hvac/components/FlashReport';
 import MonthlyReport from '../../modules/hvac/components/MonthlyReport';
 import EditReadingTab from '../../modules/hvac/components/EditReadingTab';
 import OperatorsManagerTab from '../../components/OperatorsManagerTab';
+import HvacImportModal from '../../modules/hvac/components/HvacImportModal';
 
 import '../../modules/hvac/hvac.css';
 
@@ -18,7 +19,7 @@ export default function HvacPage({ defaultTab }) {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const isOperator = authUser?.role === 'hvac_operator' || authUser?.role === 'operator';
-  const isHvacEngineer = authUser?.role === 'hvac_engineer';
+  const isHvacEngineer = authUser?.role === 'hvac_engineer' || Boolean(authUser?.is_superuser);
   const isEngineer = isHvacEngineer;
   const isSupervisor = authUser?.role === 'hvac_supervisor';
   const isAdmin = !isOperator && !isSupervisor && !isEngineer;
@@ -94,6 +95,7 @@ export default function HvacPage({ defaultTab }) {
   }, [loadData]);
 
   const [selectedSlot, setSelectedSlot] = useState(0);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const handleTabChange = (key) => {
     setActiveTab(key);
@@ -140,6 +142,38 @@ export default function HvacPage({ defaultTab }) {
             active={activeTab}
             onChange={handleTabChange}
           />
+
+          {isHvacEngineer && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setImportModalOpen(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  background: 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 9,
+                  padding: '8px 15px',
+                  fontWeight: 700,
+                  fontSize: 12.5,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(15, 118, 110, 0.28)',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Bulk import past months or historical telemetry Excel (.xlsx/.xls) or CSV logs with 1-click Undo support"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Import Excel / CSV
+              </button>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -178,7 +212,9 @@ export default function HvacPage({ defaultTab }) {
                 onDateChange={setSelectedDate}
                 isSupervisor={canEdit}
                 isSupervisorOrEngineer={isSupervisorOrEngineer || canEdit}
+                isHvacEngineer={isHvacEngineer}
                 onNavigateToEdit={handleNavigateToEdit}
+                onOpenImport={isHvacEngineer ? () => setImportModalOpen(true) : null}
               />
             )}
 
@@ -194,6 +230,8 @@ export default function HvacPage({ defaultTab }) {
             {activeTab === 'monthly' && !isOperator && (
               <MonthlyReport
                 defaultMonth={selectedDate.slice(0, 7)}
+                isHvacEngineer={isHvacEngineer}
+                onOpenImport={isHvacEngineer ? () => setImportModalOpen(true) : null}
               />
             )}
 
@@ -208,7 +246,22 @@ export default function HvacPage({ defaultTab }) {
             )}
           </div>
         )}
+
+        {/* Historical CSV Ingestion Modal (HVAC Engineer Only) */}
+        {isHvacEngineer && (
+          <HvacImportModal
+            open={importModalOpen}
+            onClose={() => setImportModalOpen(false)}
+            onSuccess={(res) => {
+              if (res?.date_max) {
+                setSelectedDate(res.date_max);
+              }
+              loadData();
+            }}
+          />
+        )}
       </div>
     </AdminLayout>
   );
 }
+

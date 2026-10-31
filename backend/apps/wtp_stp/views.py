@@ -207,7 +207,12 @@ class BlockReadingsView(APIView):
             return [IsWtpSupervisorOrAdmin()]
         return [IsWtpStaff()]
 
-    def get(self, request):
+    def get(self, request, month=None):
+        if month:
+            docs = BlockReading.objects.filter(month=month)
+            if not docs.exists():
+                return Response({'error': f'No readings found for {month}'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(docs.first().to_dict())
         docs = BlockReading.objects.all().order_by('month')
         return Response([b.to_dict() for b in docs])
 

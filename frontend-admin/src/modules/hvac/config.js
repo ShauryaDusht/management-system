@@ -99,6 +99,9 @@ export const COOLING_TOWERS = [
 export const PANELS = [
   ['pn1', 'HVAC Panel 1'],
   ['pn2', 'HVAC Panel 2'],
+  ['pn3', 'HVAC Panel 3'],
+  ['pn4', 'HVAC Panel 4'],
+  ['pn5', 'HVAC Panel 5'],
 ];
 
 export const WATER_METERS = [

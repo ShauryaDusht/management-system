@@ -112,6 +112,7 @@ export default function Sidebar() {
             ? 'HVAC Operator Portal'
             : 'HVAC Plant Log',
       },
+      ...(user?.role === 'hvac_engineer' ? [{ to: '/lifts', icon: 'lift', label: 'Lift Licenses' }] : []),
       { to: '/profile', icon: 'users', label: 'Profile' },
     ]
     : user?.role === 'civil_team'

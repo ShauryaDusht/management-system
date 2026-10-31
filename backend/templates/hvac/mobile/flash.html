@@ -62,7 +62,7 @@
       {% if total_energy is not None %}{{ total_energy }} MWh{% else %}–{% endif %}
     </div>
     <div style="font-size:10.5px;color:#716b66;margin-top:2px">
-      P1: {{ p1_cons|default:"–" }} &middot; P2: {{ p2_cons|default:"–" }}
+      P1: {{ p1_cons|default:"–" }} &middot; P2: {{ p2_cons|default:"–" }} &middot; P3: {{ p3_cons|default:"–" }} &middot; P4: {{ p4_cons|default:"–" }} &middot; P5: {{ p5_cons|default:"–" }}
     </div>
   </div>
 
@@ -89,6 +89,10 @@
           <th style="padding:9px 10px;text-align:right;white-space:nowrap">SP &deg;C</th>
           <th style="padding:9px 10px;text-align:left;white-space:nowrap">Chillers Running</th>
           <th style="padding:9px 10px;text-align:right;white-space:nowrap">P1 MWh</th>
+          <th style="padding:9px 10px;text-align:right;white-space:nowrap">P2 MWh</th>
+          <th style="padding:9px 10px;text-align:right;white-space:nowrap">P3 MWh</th>
+          <th style="padding:9px 10px;text-align:right;white-space:nowrap">P4 MWh</th>
+          <th style="padding:9px 10px;text-align:right;white-space:nowrap">P5 MWh</th>
           <th style="padding:9px 10px;text-align:right;white-space:nowrap">Old kL</th>
           <th style="padding:9px 10px;text-align:right;white-space:nowrap">New kL</th>
           <th style="padding:9px 10px;text-align:right;white-space:nowrap">Chilled kL</th>
@@ -109,6 +113,9 @@
             <td style="padding:8px 10px;white-space:nowrap;font-size:11.5px;color:#15803d;font-weight:600">{{ l.running_names }}</td>
             <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.pn1_mwh|default:"–" }}</td>
             <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.pn2_mwh|default:"–" }}</td>
+            <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.pn3_mwh|default:"–" }}</td>
+            <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.pn4_mwh|default:"–" }}</td>
+            <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.pn5_mwh|default:"–" }}</td>
             <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.wm1_kl|default:"–" }}</td>
             <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.wm2_kl|default:"–" }}</td>
             <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace">{{ l.values.wm3_kl|default:"–" }}</td>

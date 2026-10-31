@@ -23,7 +23,7 @@ const group = (st, name, fields) => ({
 
 export const GROUPS = [
   group('wtp', 'Incoming & treatment', [
-    ['b', 'Incoming Narmada flow meter', 'MLD'],
+    ['b', 'Incoming Narmada flow meter', 'MLD', 1],
     ['c', 'After treatment flow meter', 'CUM', 1],
     ['d', 'pH', ''],
     ['e', 'Turbidity', 'NTU'],
@@ -33,10 +33,10 @@ export const GROUPS = [
     ['g', 'WSC-2 Hostel – Fresh', 'CUM', 1],
     ['h', 'WSC-2 Hostel – Recycle', 'CUM', 1],
   ]),
-  // WSC-I meters read in USMG; 3.7854 = 3785.4 litres ÷ 1000 → reported in CUM
+  // WSC-I meters read in USMG; 1 USMG = 3785.4 CUM (m3)
   group('stp', 'WSC-I', [
-    ['i', 'WSC-I Fresh Water', 'USMG', 1, 3.7854],
-    ['j', 'WSC-I Recycle Water', 'USMG', 1, 3.7854],
+    ['i', 'WSC-I Fresh Water', 'USMG', 1, 3785.4],
+    ['j', 'WSC-I Recycle Water', 'USMG', 1, 3785.4],
   ]),
   group('stp', 'Sewage pumping', [
     ['m', 'SPS-1 Housing', 'CUM', 1],
@@ -65,7 +65,7 @@ export const GROUPS = [
     ['cl_wsc1', 'WSC-I Chlorine', 'gm'],
   ]),
   group('wsc3', 'Chlorine used this shift', [
-    ['t', 'WSC-3 Irrigation', 'CUM', 1],
+    ['t', 'WSC-3 Irrigation', 'gm', 1],
     ['cl_wsc3', 'WSC-III Chlorine', 'gm'],
   ]),
   group('jm', 'Tank levels', [

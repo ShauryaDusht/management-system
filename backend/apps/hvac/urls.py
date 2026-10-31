@@ -7,6 +7,10 @@ from .views import (
     HvacOverviewView,
     HvacSupervisorLogView,
     HvacPumpRatingsView,
+    HvacImportCsvView,
+    HvacImportUndoView,
+    HvacImportHistoryView,
+    HvacImportTemplateView,
 )
 
 urlpatterns = [
@@ -17,4 +21,11 @@ urlpatterns = [
     path('overview/', HvacOverviewView.as_view(), name='hvac-overview'),
     path('supervisor/', HvacSupervisorLogView.as_view(), name='hvac-supervisor-log'),
     path('pump-ratings/', HvacPumpRatingsView.as_view(), name='hvac-pump-ratings'),
+    path('import-csv/', HvacImportCsvView.as_view(), name='hvac-import-csv'),
+    path('import-data/', HvacImportCsvView.as_view(), name='hvac-import-data'),
+    path('import-undo/', HvacImportUndoView.as_view(), name='hvac-import-undo'),
+    path('import-history/', HvacImportHistoryView.as_view(), name='hvac-import-history'),
+    path('import-template/', HvacImportTemplateView.as_view(), name='hvac-import-template'),
 ]
+
+

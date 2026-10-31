@@ -18,8 +18,8 @@ class IsLiftLicenseUser(BasePermission):
         if getattr(user, 'is_hk_inventory_manager', False):
             return False
 
-        # Super admin / admin or lift engineer
-        if user.is_superuser or getattr(user, 'is_admin', False) or role in ('admin', 'engineer'):
+        # Super admin / admin or lift engineer or HVAC engineer
+        if user.is_superuser or getattr(user, 'is_admin', False) or role in ('admin', 'engineer', 'hvac_engineer'):
             return True
 
         return False

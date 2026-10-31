@@ -16,12 +16,34 @@ function fmtCurrency(val, decimals = 2) {
   return `₹ ${fmtNum(val, decimals)}`
 }
 
-export default function TorrentBillReport({ user, isSupervisor = true, isAdmin = false }) {
+export default function TorrentBillReport({ user, authUser, isSupervisor = true, isAdmin = false }) {
+  // Super Admin Check: Contract Demand changes on utility load increase are strictly Super Admin only
+  const isSuperAdmin = useMemo(() => {
+    return Boolean(
+      authUser?.is_superuser ||
+      authUser?.is_admin ||
+      authUser?.role === 'admin' ||
+      user?.role === 'admin'
+    )
+  }, [authUser, user])
+
   const [bills, setBills] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [successMsg, setSuccessMsg] = useState(null)
+
+  // Super Admin Dedicated Contract Demand Update Modal State
+  const [demandModalOpen, setDemandModalOpen] = useState(false)
+  const [demandForm, setDemandForm] = useState({
+    month: '',
+    contractDemandKw: 3200,
+    remarks: '',
+    applyFuture: true,
+  })
+  const [demandSaving, setDemandSaving] = useState(false)
+  const [demandError, setDemandError] = useState(null)
+  const [demandSuccessMsg, setDemandSuccessMsg] = useState(null)
 
   // Current active billing month selected in the report view
   const [selectedMonth, setSelectedMonth] = useState('2026-09')
@@ -128,6 +150,7 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
     setFormData({
       ...initialFormState,
       month: nextMonth,
+      contractDemandKw: latest?.contractDemandKw || 3200.0,
       billingDemandKw: 0,
       kwPast: 0,
       kwhPast: latest?.kwhPresent || 0,
@@ -188,6 +211,70 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
     setIsModalOpen(true)
   }
 
+  // Super Admin: Open Demand Update Modal
+  const handleOpenDemandModal = (b = currentBill) => {
+    if (!b) return
+    setDemandForm({
+      month: b.month || selectedMonth,
+      contractDemandKw: b.contractDemandKw || 3200,
+      remarks: '',
+      applyFuture: true,
+    })
+    setDemandError(null)
+    setDemandSuccessMsg(null)
+    setDemandModalOpen(true)
+  }
+
+  // Super Admin: Save Sanctioned Contract Demand
+  const handleSaveDemand = async (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    if (!isSuperAdmin) {
+      setDemandError('Permission Denied: Only Super Admin can modify Sanctioned Contract Demand.')
+      return
+    }
+    const kw = Number(demandForm.contractDemandKw)
+    if (!kw || kw <= 0) {
+      setDemandError('Please enter a valid positive Contract Demand in KW (e.g. 3500).')
+      return
+    }
+
+    try {
+      setDemandSaving(true)
+      setDemandError(null)
+      const res = await SubstationApi.updateContractDemand(demandForm.month, {
+        contractDemandKw: kw,
+        remarks: demandForm.remarks,
+        applyFuture: demandForm.applyFuture,
+      })
+
+      // Update local state immediately for fast response
+      setBills((prev) =>
+        prev.map((bill) => {
+          if (bill.month === demandForm.month) {
+            return { ...bill, contractDemandKw: kw, ...(res?.bill || {}) }
+          }
+          if (demandForm.applyFuture && bill.month > demandForm.month) {
+            return { ...bill, contractDemandKw: kw }
+          }
+          return bill
+        })
+      )
+
+      setDemandSuccessMsg(res?.message || `Sanctioned Contract Demand updated to ${kw} KW successfully.`)
+      setTimeout(() => {
+        setDemandSuccessMsg(null)
+        setDemandModalOpen(false)
+        loadBills()
+      }, 1200)
+    } catch (err) {
+      console.warn('Failed to update contract demand:', err)
+      const msg = err?.response?.data?.error || err.message || 'Failed to update Sanctioned Contract Demand.'
+      setDemandError(msg)
+    } finally {
+      setDemandSaving(false)
+    }
+  }
+
   // Live calculations for the form modal
   const formCalculations = useMemo(() => {
     const mult = Number(formData.multiplier) || 2500.0
@@ -242,6 +329,9 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
 
       const payload = {
         ...formData,
+        contractDemandKw: isSuperAdmin
+          ? (formData.contractDemandKw || 3200.0)
+          : (currentBill?.contractDemandKw || formData.contractDemandKw || 3200.0),
         by: user?.name || user?.username || 'Electrical Engineer',
       }
 
@@ -507,11 +597,15 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
                   cursor: 'pointer',
                 }}
               >
-                {bills.map((b) => (
-                  <option key={b.month} value={b.month}>
-                    {b.month} ({b.billDate ? `Bill: ${b.billDate}` : 'Recorded'})
-                  </option>
-                ))}
+                {bills.length === 0 ? (
+                  <option value="">No bills recorded</option>
+                ) : (
+                  bills.map((b) => (
+                    <option key={b.month} value={b.month}>
+                      {b.month} ({b.billDate ? `Bill: ${b.billDate}` : 'Recorded'})
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -570,51 +664,103 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
         </div>
 
         {/* Technical Substation Badges Strip */}
-        <div
-          style={{
-            marginTop: 18,
-            padding: '12px 18px',
-            background: '#ffffff',
-            borderRadius: 10,
-            border: '1px solid #cbd5e1',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 20,
-            alignItems: 'center',
-            fontSize: 12.5,
-          }}
-        >
-          <div>
-            <span style={{ color: '#64748b', fontWeight: 600 }}>CONTRACT DEMAND: </span>
-            <strong style={{ color: '#0f172a' }}>{fmtNum(currentBill?.contractDemandKw || 3200, 0)} KW</strong>
+        {currentBill && (
+          <div
+            style={{
+              marginTop: 18,
+              padding: '12px 18px',
+              background: '#ffffff',
+              borderRadius: 10,
+              border: '1px solid #cbd5e1',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 20,
+              alignItems: 'center',
+              fontSize: 12.5,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>CONTRACT DEMAND: </span>
+                <strong style={{ color: '#0f172a', fontSize: 13.5 }}>{fmtNum(currentBill?.contractDemandKw || 3200, 0)} KW</strong>
+              </div>
+              {isSuperAdmin ? (
+                <button
+                  type="button"
+                  id="btn-edit-contract-demand"
+                  onClick={() => handleOpenDemandModal(currentBill)}
+                  title="Super Admin Only: Update Sanctioned Contract Demand when electrical load increases"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '3px 8px',
+                    borderRadius: 6,
+                    border: '1px solid #93c5fd',
+                    background: 'linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)',
+                    color: '#1d4ed8',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 2px rgba(29, 78, 216, 0.08)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span>✏️</span> Edit Demand
+                </button>
+              ) : (
+                <span
+                  title="Sanctioned Contract Demand is locked. Only Super Admin can modify it when campus electrical load increases."
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    padding: '2px 7px',
+                    borderRadius: 5,
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    color: '#64748b',
+                    fontSize: 10.5,
+                    fontWeight: 600,
+                    cursor: 'help',
+                  }}
+                >
+                  <span>🔒</span> Super Admin Only
+                </span>
+              )}
+            </div>
+            <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
+            <div>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>BILLING DEMAND: </span>
+              <strong style={{ color: '#00843D' }}>{fmtNum(currentBill?.billingDemandKw || 0, 1)} KW</strong>
+            </div>
+            <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
+            <div>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>METER NO: </span>
+              <strong style={{ color: '#0f172a' }}>{currentBill?.meterNo || '–'}</strong>
+            </div>
+            <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
+            <div>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>MULTIPLIER: </span>
+              <strong style={{ color: '#004F9F' }}>{fmtNum(currentBill?.multiplier || 2500, 2)}</strong>
+            </div>
+            <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
+            <div>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>READING DATE: </span>
+              <strong style={{ color: '#0f172a' }}>{currentBill?.readingDate || '–'}</strong>
+            </div>
+            <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
+            <div>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>BILL DATE: </span>
+              <strong style={{ color: '#0f172a' }}>{currentBill?.billDate || '–'}</strong>
+            </div>
           </div>
-          <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
-          <div>
-            <span style={{ color: '#64748b', fontWeight: 600 }}>BILLING DEMAND: </span>
-            <strong style={{ color: '#00843D' }}>{fmtNum(currentBill?.billingDemandKw || 2832.5, 1)} KW</strong>
-          </div>
-          <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
-          <div>
-            <span style={{ color: '#64748b', fontWeight: 600 }}>METER NO: </span>
-            <strong style={{ color: '#0f172a' }}>{currentBill?.meterNo || '6877522'}</strong>
-          </div>
-          <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
-          <div>
-            <span style={{ color: '#64748b', fontWeight: 600 }}>MULTIPLIER: </span>
-            <strong style={{ color: '#004F9F' }}>{fmtNum(currentBill?.multiplier || 2500, 2)}</strong>
-          </div>
-          <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
-          <div>
-            <span style={{ color: '#64748b', fontWeight: 600 }}>READING DATE: </span>
-            <strong style={{ color: '#0f172a' }}>{currentBill?.readingDate || '30/09/26'}</strong>
-          </div>
-          <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
-          <div>
-            <span style={{ color: '#64748b', fontWeight: 600 }}>BILL DATE: </span>
-            <strong style={{ color: '#0f172a' }}>{currentBill?.billDate || '03/10/26'}</strong>
-          </div>
-        </div>
+        )}
       </div>
+
+      {/* Top 4 KPI Metric Cards & Detailed Breakdown */}
+      {currentBill && (
+        <>
 
       {/* Top 4 KPI Metric Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
@@ -675,7 +821,7 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
             {fmtNum(currentBill?.billingDemandKw, 1)} <span style={{ fontSize: 14, fontWeight: 700 }}>KW</span>
           </div>
           <div style={{ fontSize: 11.5, color: '#64748b' }}>
-            {Math.round(((currentBill?.billingDemandKw || 2832.5) / (currentBill?.contractDemandKw || 3200)) * 100)}% of 3,200 KW Sanctioned Demand
+            {Math.round(((currentBill?.billingDemandKw || 2832.5) / (currentBill?.contractDemandKw || 3200)) * 100)}% of {fmtNum(currentBill?.contractDemandKw || 3200, 0)} KW Sanctioned Demand
           </div>
         </div>
 
@@ -1230,6 +1376,8 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
           </div>
         </div>
       </div>
+        </>
+      )}
 
       {/* Historical Monthly Bills Table */}
       <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
@@ -1536,6 +1684,49 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
                       onChange={(e) => setFormData({ ...formData, multiplier: parseFloat(e.target.value) || 2500 })}
                       style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #cbd5e1', fontSize: 13, fontWeight: 700 }}
                     />
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: isSuperAdmin ? '#004F9F' : '#475569' }}>
+                        Contract Demand (KW) *
+                      </label>
+                      {isSuperAdmin ? (
+                        <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#eff6ff', color: '#1d4ed8', fontWeight: 700, border: '1px solid #bfdbfe' }}>
+                          👑 Super Admin
+                        </span>
+                      ) : (
+                        <span title="Locked: Only Super Admin can edit sanctioned contract demand" style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#f1f5f9', color: '#64748b', fontWeight: 600, border: '1px solid #cbd5e1' }}>
+                          🔒 Super Admin Only
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      step="1"
+                      min="100"
+                      max="25000"
+                      disabled={!isSuperAdmin}
+                      value={formData.contractDemandKw}
+                      onChange={(e) => isSuperAdmin && setFormData({ ...formData, contractDemandKw: parseFloat(e.target.value) || 3200 })}
+                      title={isSuperAdmin ? "Sanctioned Contract Demand in KW (editable for Super Admin when load increases)" : "Sanctioned Contract Demand is managed by Super Admin"}
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        border: isSuperAdmin ? '1.5px solid #004F9F' : '1.5px solid #cbd5e1',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        background: isSuperAdmin ? '#ffffff' : '#f8fafc',
+                        color: isSuperAdmin ? '#0f172a' : '#64748b',
+                        cursor: isSuperAdmin ? 'text' : 'not-allowed',
+                      }}
+                    />
+                    {!isSuperAdmin && (
+                      <span style={{ fontSize: 10, color: '#94a3b8', marginTop: 2, display: 'block' }}>
+                        Sanctioned grid load (Super Admin only)
+                      </span>
+                    )}
                   </div>
 
                   <div>
@@ -1891,6 +2082,338 @@ export default function TorrentBillReport({ user, isSupervisor = true, isAdmin =
                   }}
                 >
                   {saving ? 'Saving...' : editMode ? 'Update Bill' : 'Save Torrent Bill'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Super Admin Dedicated Sanctioned Contract Demand Update Modal */}
+      {demandModalOpen && isSuperAdmin && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16,
+            backdropFilter: 'blur(3px)',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !demandSaving) setDemandModalOpen(false)
+          }}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: 12,
+              width: '100%',
+              maxWidth: 580,
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden',
+              border: '1px solid #cbd5e1',
+              animation: 'fadeIn 0.15s ease-out',
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: '18px 24px',
+                background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                color: '#ffffff',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>⚡</span>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#ffffff' }}>
+                    Update Sanctioned Contract Demand
+                  </h3>
+                  <span
+                    style={{
+                      background: 'rgba(59, 130, 246, 0.25)',
+                      color: '#93c5fd',
+                      border: '1px solid rgba(147, 197, 253, 0.3)',
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      padding: '2px 7px',
+                      borderRadius: 4,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.4px',
+                    }}
+                  >
+                    👑 Super Admin Only
+                  </span>
+                </div>
+                <p style={{ margin: '4px 0 0 0', fontSize: 11.5, color: '#94a3b8' }}>
+                  IIT Gandhinagar Substation &bull; Torrent Power Ltd. Sanctioned Grid Load (Billing Month: <strong>{demandForm.month}</strong>)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => !demandSaving && setDemandModalOpen(false)}
+                style={{
+                  border: 'none',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  color: '#e2e8f0',
+                  fontSize: 18,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content Form */}
+            <form onSubmit={handleSaveDemand} style={{ padding: '20px 24px' }}>
+              {demandError && (
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    background: '#fef2f2',
+                    border: '1px solid #fca5a5',
+                    borderRadius: 8,
+                    color: '#991b1b',
+                    fontSize: 12.5,
+                    marginBottom: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <span>⚠️</span> {demandError}
+                </div>
+              )}
+
+              {demandSuccessMsg && (
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    background: '#f0fdf4',
+                    border: '1px solid #86efac',
+                    borderRadius: 8,
+                    color: '#166534',
+                    fontSize: 12.5,
+                    marginBottom: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <span>✅</span> {demandSuccessMsg}
+                </div>
+              )}
+
+              {/* Informative Context Card */}
+              <div
+                style={{
+                  padding: '12px 14px',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 8,
+                  marginBottom: 18,
+                  fontSize: 12,
+                  color: '#475569',
+                  lineHeight: 1.5,
+                }}
+              >
+                <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>ℹ️</span> Electrical Campus Load Expansion Protocol
+                </div>
+                Whenever IITGN adds new buildings (e.g. Research Park, New Academic Blocks, Academic Hostels),
+                the sanctioned Contract Demand with Torrent Power is officially increased. Use this option to update
+                the base contract capacity for billing reconciliation and maximum demand penalty audits.
+              </div>
+
+              {/* Current vs New Demand Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>
+                    Current Sanctioned Load
+                  </label>
+                  <div
+                    style={{
+                      padding: '9px 12px',
+                      background: '#f1f5f9',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: 6,
+                      fontSize: 14,
+                      fontWeight: 800,
+                      color: '#334155',
+                    }}
+                  >
+                    {fmtNum(currentBill?.contractDemandKw || 3200, 0)} KW
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#004F9F', marginBottom: 4 }}>
+                    New Contract Demand (KW) *
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="100"
+                    max="25000"
+                    required
+                    value={demandForm.contractDemandKw}
+                    onChange={(e) => setDemandForm({ ...demandForm, contractDemandKw: parseFloat(e.target.value) || '' })}
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      border: '2px solid #004F9F',
+                      borderRadius: 6,
+                      fontSize: 14,
+                      fontWeight: 800,
+                      color: '#004F9F',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Quick Preset Chips */}
+              <div style={{ marginBottom: 16 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 6 }}>
+                  Quick Load Presets:
+                </span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {[
+                    { label: '3,200 KW (Base)', val: 3200 },
+                    { label: '3,500 KW (+300 KW)', val: 3500 },
+                    { label: '3,800 KW (+600 KW)', val: 3800 },
+                    { label: '4,000 KW (+800 KW)', val: 4000 },
+                    { label: '4,500 KW (+1.3 MW)', val: 4500 },
+                    { label: '5,000 KW (+1.8 MW)', val: 5000 },
+                  ].map((p) => {
+                    const isSelected = Number(demandForm.contractDemandKw) === p.val
+                    return (
+                      <button
+                        key={p.val}
+                        type="button"
+                        onClick={() => setDemandForm({ ...demandForm, contractDemandKw: p.val })}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          fontSize: 11.5,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          border: isSelected ? '1.5px solid #004F9F' : '1px solid #cbd5e1',
+                          background: isSelected ? '#eff6ff' : '#ffffff',
+                          color: isSelected ? '#004F9F' : '#475569',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Remarks / Sanction Letter reference */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                  Reason / Torrent Sanction Reference Note (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Sanctioned load enhanced as per Torrent Power order Ref #TP/IITGN/2026/092 for Research Park"
+                  value={demandForm.remarks}
+                  onChange={(e) => setDemandForm({ ...demandForm, remarks: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: 6,
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: 12.5,
+                    resize: 'none',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              </div>
+
+              {/* Apply to Future Months Checkbox */}
+              <div
+                style={{
+                  padding: '10px 14px',
+                  background: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: 8,
+                  marginBottom: 20,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  id="chk-apply-future"
+                  checked={demandForm.applyFuture}
+                  onChange={(e) => setDemandForm({ ...demandForm, applyFuture: e.target.checked })}
+                  style={{ marginTop: 2, cursor: 'pointer', accentColor: '#16a34a' }}
+                />
+                <label htmlFor="chk-apply-future" style={{ fontSize: 12, color: '#166534', cursor: 'pointer' }}>
+                  <strong>Apply permanently to subsequent future months</strong>
+                  <div style={{ fontSize: 11, color: '#15803d', marginTop: 1 }}>
+                    Contract load enhancements are permanent utility amendments. Checking this updates all subsequent billing records to this new sanctioned demand.
+                  </div>
+                </label>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 10, borderTop: '1px solid #e2e8f0' }}>
+                <button
+                  type="button"
+                  disabled={demandSaving}
+                  onClick={() => setDemandModalOpen(false)}
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: 6,
+                    border: '1.5px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#475569',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={demandSaving}
+                  style={{
+                    padding: '8px 22px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: '#004F9F',
+                    color: '#ffffff',
+                    fontSize: 13,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(0, 79, 159, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  {demandSaving ? 'Updating Demand...' : 'Update Contract Demand'}
                 </button>
               </div>
             </form>

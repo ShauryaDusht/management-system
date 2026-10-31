@@ -24,7 +24,7 @@ function Hint({ f, rows = [], date, shift, value }) {
 
   const hasDiff = !Number.isNaN(v) && prevVal != null && !Number.isNaN(prevVal);
   const isRolled = f.cum && hasDiff && isMeterRollover(v, prevVal, f.k);
-  const diff = hasDiff ? (f.cum ? calcMeterDelta(v, prevVal, 1, f.k) : prevVal - v) : null;
+  const diff = hasDiff ? (f.cum ? calcMeterDelta(v, prevVal, f.coef || 1, f.k) : prevVal - v) : null;
   const diffCum = hasDiff && jm ? (diff / jm.h) * jm.cap : null;
 
   if (Number.isNaN(v) || (!jm && !hasDiff)) return null;
@@ -37,7 +37,7 @@ function Hint({ f, rows = [], date, shift, value }) {
       {hasDiff && (
         <span style={{ display: 'block', marginTop: '2px', color: diff >= 0 ? 'var(--ok)' : 'var(--amber)', fontWeight: 500 }}>
           {f.cum
-            ? `Net flow: ${fmt(diff, 2)} CUM${isRolled ? ' 🔄 (10,000 CUM WSC / STP Rollover Detected)' : ''} (prev: ${fmt(prevVal, 2)})`
+            ? `Net flow: ${fmt(diff, f.cu === 'MLD' ? 3 : 2)} ${f.cu || 'CUM'}${isRolled ? ' 🔄 (10,000 CUM WSC / STP Rollover Detected)' : ''} (prev: ${fmt(prevVal, f.cu === 'MLD' ? 3 : 2)})`
             : `Water discharged (today): ${fmt(diff, 2)} m ≈ ${fmt(diffCum, 1)} CUM`}
         </span>
       )}
@@ -324,7 +324,7 @@ export default function StationForm({ rows = [], readings = [], user, onSaved, s
             <div className="grid">
               {g.fields.map((f) => (
                 <label key={f.k}>
-                  {f.label}{f.unit && ` (${f.unit}${f.coef !== 1 ? ' · reports ×3785.4 ÷ 1000 = CUM' : ''})`}
+                  {f.label}{f.unit && ` (${f.unit}${f.coef && f.coef !== 1 ? ` · reports ×${f.coef} = CUM` : ''})`}
                   <input
                     type="number"
                     step="any"

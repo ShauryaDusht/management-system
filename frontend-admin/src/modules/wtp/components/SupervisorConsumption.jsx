@@ -189,7 +189,7 @@ export default function SupervisorConsumption({ rows = [], stationMeters = [] })
         return {
           label: lbl,
           value: r[currentChartField.k],
-          title: `${r.date}${r.shift ? ` Shift ${r.shift}` : ''}: ${fmt(r[currentChartField.k], 2)} ${currentChartField.cu || 'CUM'}`,
+          title: `${r.date}${r.shift ? ` Shift ${r.shift}` : ''}: ${fmt(r[currentChartField.k], currentChartField.cu === 'MLD' ? 3 : 2)} ${currentChartField.cu || 'CUM'}`,
         };
       });
   }, [displayRows, currentChartField, viewType]);
@@ -253,14 +253,14 @@ export default function SupervisorConsumption({ rows = [], stationMeters = [] })
     const dataRows = [...displayRows].reverse().map((r) => [
       r.date,
       ...(viewType === 'shift' ? [`Shift ${r.shift}`, r.by || '–'] : [`${r.shiftsCount || 'All'} shifts`]),
-      ...stationCums.map((f) => (r[f.k] != null ? fmt(r[f.k], 2) : '–')),
+      ...stationCums.map((f) => (r[f.k] != null ? fmt(r[f.k], f.cu === 'MLD' ? 3 : 2) : '–')),
     ]);
 
     // Totals row at the bottom
     const totalRow = [
       'TOTAL CONSUMPTION',
       ...(viewType === 'shift' ? ['', ''] : ['']),
-      ...stationCums.map((f) => fmt(totals[f.k]?.sum, 2)),
+      ...stationCums.map((f) => fmt(totals[f.k]?.sum, f.cu === 'MLD' ? 3 : 2)),
     ];
 
     const rangeLabel =
@@ -544,7 +544,7 @@ export default function SupervisorConsumption({ rows = [], stationMeters = [] })
             Consumption Log Table ({viewType === 'day' ? 'Daily Aggregated Totals' : 'Per Shift Readings'})
           </h2>
           <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
-            Showing {displayRows.length} rows · Values in CUM (cubic metres)
+            Showing {displayRows.length} rows · Values in designated meter units (CUM / MLD)
           </span>
         </div>
 
@@ -609,7 +609,7 @@ export default function SupervisorConsumption({ rows = [], stationMeters = [] })
                           title={isRolled ? '10,000 CUM WSC / STP Meter Rollover Automatically Detected' : isNegative ? 'Meter reset or reading anomaly' : ''}
                           style={{ fontWeight: val != null ? 500 : 400 }}
                         >
-                          {val != null ? fmt(val, 2) : '–'}
+                          {val != null ? fmt(val, f.cu === 'MLD' ? 3 : 2) : '–'}
                           {isRolled && (
                             <span
                               title="10,000 CUM WSC / STP Meter Rollover Detected"
@@ -636,20 +636,20 @@ export default function SupervisorConsumption({ rows = [], stationMeters = [] })
               <tfoot style={{ position: 'sticky', bottom: 0, background: 'var(--field)', zIndex: 1, borderTop: '2px solid var(--water)' }}>
                 <tr>
                   <td className="l" style={{ fontWeight: 700, color: 'var(--water)' }}>
-                    TOTAL (CUM)
+                    TOTAL
                   </td>
                   {viewType === 'shift' && <td style={{ textAlign: 'center', fontWeight: 600 }}>–</td>}
                   {viewType === 'shift' && <td style={{ fontWeight: 600 }}>–</td>}
                   {stationCums.map((f) => (
                     <td key={f.k} style={{ fontWeight: 700, color: 'var(--water)' }}>
-                      {fmt(totals[f.k]?.sum, 2)}
+                      {fmt(totals[f.k]?.sum, f.cu === 'MLD' ? 3 : 2)}
                     </td>
                   ))}
                 </tr>
                 {kpiStats.uniqueDays > 1 && (
                   <tr>
                     <td className="l" style={{ fontWeight: 600, color: 'var(--muted)', fontSize: '12px' }}>
-                      AVG / DAY (CUM)
+                      AVG / DAY
                     </td>
                     {viewType === 'shift' && <td></td>}
                     {viewType === 'shift' && <td></td>}
@@ -657,7 +657,7 @@ export default function SupervisorConsumption({ rows = [], stationMeters = [] })
                       const avg = (totals[f.k]?.sum || 0) / kpiStats.uniqueDays;
                       return (
                         <td key={f.k} style={{ fontWeight: 600, color: 'var(--muted)', fontSize: '12px' }}>
-                          {fmt(avg, 2)}
+                          {fmt(avg, f.cu === 'MLD' ? 3 : 2)}
                         </td>
                       );
                     })}
