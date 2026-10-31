@@ -24,12 +24,17 @@ class PlantRecordPhotoSerializer(serializers.ModelSerializer):
         read_only_fields = ['photo_id', 'uploaded_at']
 
     def get_photo_url(self, obj):
-        if not obj.photo:
+        target_photo = obj.photo
+        if not target_photo:
+            first_p = obj.photos.first()
+            if first_p and first_p.photo:
+                target_photo = first_p.photo
+        if not target_photo:
             return None
         request = self.context.get('request')
         if request:
-            return request.build_absolute_uri(obj.photo.url)
-        return obj.photo.url
+            return request.build_absolute_uri(target_photo.url)
+        return target_photo.url
 
 
 class PlantRecordSerializer(serializers.ModelSerializer):
@@ -62,12 +67,17 @@ class PlantRecordSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'submission_id', 'tracking_id', 'submitted_at', 'updated_at', 'version']
 
     def get_photo_url(self, obj):
-        if not obj.photo:
+        target_photo = obj.photo
+        if not target_photo:
+            first_p = obj.photos.first()
+            if first_p and first_p.photo:
+                target_photo = first_p.photo
+        if not target_photo:
             return None
         request = self.context.get('request')
         if request:
-            return request.build_absolute_uri(obj.photo.url)
-        return obj.photo.url
+            return request.build_absolute_uri(target_photo.url)
+        return target_photo.url
 
 
 class PlantRecordUpdateSerializer(serializers.ModelSerializer):
