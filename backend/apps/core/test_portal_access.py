@@ -59,8 +59,16 @@ class LoginLandingTests(PortalAccessBase):
         self.assertEqual(self.landing(self.wtp_op), '/wtp/dashboard/')
         self.assertEqual(self.landing(self.elec_op), '/substation/dashboard/')
 
-    def test_plant_engineer_lands_on_the_unified_portal(self):
-        self.assertEqual(self.landing(self.plant), '/portal/dashboard/')
+    def test_plant_engineer_lands_on_the_substation_home(self):
+        self.assertEqual(self.landing(self.plant), '/substation/dashboard/')
+
+    def test_role_without_a_portal_home_does_not_loop(self):
+        # housekeeping_manager is a retired role with no home; it used to bounce login -> login forever
+        retired = make_user('retired', 'housekeeping_manager')
+        client = self.client_for(retired)
+        response = client.get('/portal/login/', secure=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'no portal modules assigned')
 
     def test_already_signed_in_person_is_sent_home_too(self):
         response = self.client_for(self.horti_sup).get('/portal/login/', secure=True)
@@ -115,32 +123,6 @@ class PlantModuleAccessTests(PortalAccessBase):
             self.assertEqual(HvacLog.objects.count(), 0, f'{user.username} must not be able to write HVAC logs')
         self.client_for(self.hvac_op).post(url, data=data, secure=True)
         self.assertEqual(HvacLog.objects.count(), 1)
-
-
-class UnifiedPortalCardsTests(PortalAccessBase):
-    LINKS = {
-        'substation': 'href="/substation/dashboard/" class="sub-btn',
-        'wtp': 'href="/wtp/dashboard/" class="sub-btn',
-        'hvac': 'href="/hvac/dashboard/" class="sub-btn',
-        'housekeeping': 'href="/housekeeping/dashboard/" class="sub-btn',
-        'horticulture': 'href="/horticulture/dashboard/" class="sub-btn',
-    }
-
-    def shown(self, user):
-        response = self.client_for(user).get('/portal/dashboard/', secure=True)
-        self.assertEqual(response.status_code, 200)
-        content = response.content.decode()
-        return {name for name, marker in self.LINKS.items() if marker in content}
-
-    def test_cards_match_the_role(self):
-        self.assertEqual(self.shown(self.horti_sup), {'horticulture'})
-        self.assertEqual(self.shown(self.hk_sup), {'housekeeping'})
-        self.assertEqual(self.shown(self.caretaker), {'housekeeping'})
-        self.assertEqual(self.shown(self.hvac_op), {'hvac'})
-        self.assertEqual(self.shown(self.wtp_op), {'wtp'})
-        self.assertEqual(self.shown(self.elec_op), {'substation'})
-        self.assertEqual(self.shown(self.plant), {'substation', 'wtp', 'hvac'})
-        self.assertEqual(self.shown(self.admin), set(self.LINKS))
 
 
 class TenMinuteEditWindowVisibilityTests(PortalAccessBase):
