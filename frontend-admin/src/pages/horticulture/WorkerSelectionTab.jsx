@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
 
 import { horticultureAPI } from '../../api/horticulture'
 import ConfirmModal from '../../shared/components/ConfirmModal'
@@ -15,6 +16,7 @@ const EMPTY_FORM = {
 }
 
 export default function WorkerSelectionTab() {
+  const { isReadOnly } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -398,11 +400,13 @@ export default function WorkerSelectionTab() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, alignItems: 'center' }}>
               <Btn
                 onClick={submit}
-                disabled={saving}
+                disabled={saving || isReadOnly}
+                title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
+                  opacity: isReadOnly ? 0.6 : 1,
                   background: swapAlert?.currentTaskName ? '#d97706' : undefined,
                   color: swapAlert?.currentTaskName ? '#fff' : undefined,
                 }}
@@ -432,14 +436,15 @@ export default function WorkerSelectionTab() {
               <Btn
                 size="sm"
                 variant="outline"
-                onClick={() => setSwapModal({ sourceRow: row, targetAssignmentId: '' })}
-                title="Swap task with another area"
+                disabled={isReadOnly}
+                onClick={() => !isReadOnly && setSwapModal({ sourceRow: row, targetAssignmentId: '' })}
+                title={isReadOnly ? "Read-only mode: requires edit permission from admin" : "Swap task with another area"}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
               >
                 🔄 Swap
               </Btn>
-              <Btn size="sm" variant="ghost" onClick={() => openEdit(row)}>Edit</Btn>
-              <Btn size="sm" variant="danger" onClick={() => setDeleteTarget(row)}>Delete</Btn>
+              <Btn size="sm" variant="ghost" disabled={isReadOnly} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !isReadOnly && openEdit(row)}>Edit</Btn>
+              <Btn size="sm" variant="danger" disabled={isReadOnly} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !isReadOnly && setDeleteTarget(row)}>Delete</Btn>
             </div>,
           ])}
           emptyMsg="No area tasks assigned for this date."

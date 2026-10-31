@@ -69,6 +69,14 @@ export const inventoryAPI = {
   getUserUsageLogs: (userId, month, year) =>
     api.get(`/inventory/users/${userId}/usage-logs/`, { params: { month, year } }),
 
+  // ── Usage Report ───────────────────────────────────────────────────────────
+  getUsageReport: (params = {}) => api.get('/inventory/usage-report/', { params }),
+  downloadUsageReportCSV: (params = {}) =>
+    api.get('/inventory/usage-report/', {
+      params: { ...params, download: 'csv' },
+      responseType: 'blob',
+    }),
+
   // ── User activity (admin) ──────────────────────────────────────────────────
   // UNUSED - no UI implemented yet
   getUserActivity: (userId) => api.get(`/inventory/activity/users/${userId}/`),
@@ -76,6 +84,12 @@ export const inventoryAPI = {
 
 // ── Reports API ────────────────────────────────────────────────────────────
 // Kept as a separate export since it belongs to the reports domain, not inventory.
+export const getUsageReport = (params = {}) => api.get('/inventory/usage-report/', { params })
+export const downloadUsageReportCSV = (params = {}) =>
+  api.get('/inventory/usage-report/', {
+    params: { ...params, download: 'csv' },
+    responseType: 'blob',
+  })
 export const getInventoryReport = (params = {}) => api.get('/reports/inventory/', { params })
 export const getRequestsReport = (params = {}) => api.get('/reports/requests/', { params })
 export const listMonthly = () => api.get('/reports/monthly/')
@@ -137,6 +151,12 @@ export const reportsAPI = {
   getAreaIssuesReport: (params = {}) => api.get('/reports/area-issues/', { params }),
   downloadAreaIssuesCSV: (params = {}) =>
     api.get('/reports/area-issues/', {
+      params: { ...params, download: 'csv' },
+      responseType: 'blob',
+    }),
+  getUsageReport: (params = {}) => api.get('/inventory/usage-report/', { params }),
+  downloadUsageReportCSV: (params = {}) =>
+    api.get('/inventory/usage-report/', {
       params: { ...params, download: 'csv' },
       responseType: 'blob',
     }),

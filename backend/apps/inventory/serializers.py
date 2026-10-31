@@ -479,6 +479,9 @@ class ItemIssueSerializer(serializers.ModelSerializer):
     item_code = serializers.CharField(source='request.item.item_code', read_only=True)
     item_type = serializers.CharField(source='request.item.item_type', read_only=True)
     item_unit = serializers.CharField(source='request.item.unit', read_only=True)
+    category_name = serializers.CharField(source='request.item.category.name', read_only=True)
+    item_category = serializers.CharField(source='request.item.category.name', read_only=True)
+    purpose = serializers.CharField(source='request.purpose', read_only=True)
     requested_by_name = serializers.CharField(source='request.requested_by.get_full_name', read_only=True)
     return_recorded_by_name = serializers.CharField(source='return_recorded_by.get_full_name', read_only=True)
     reversed_by_name = serializers.CharField(source='reversed_by.get_full_name', read_only=True)
@@ -486,6 +489,8 @@ class ItemIssueSerializer(serializers.ModelSerializer):
     area_name = serializers.SerializerMethodField()
     area_type = serializers.SerializerMethodField()
     total_consumed = serializers.SerializerMethodField()
+    usage_dates = serializers.SerializerMethodField()
+    latest_usage_at = serializers.SerializerMethodField()
     can_reverse = serializers.SerializerMethodField()
     can_adjust = serializers.SerializerMethodField()
     cannot_reverse_reason = serializers.SerializerMethodField()
@@ -501,12 +506,25 @@ class ItemIssueSerializer(serializers.ModelSerializer):
                 return hk_req.area.name
         except Exception:
             pass
-        # fallback: extract from purpose like "[HK - Hostel A] reason"
+        try:
+            from apps.horticulture.models import HorticultureStockRequest
+            horti_req = HorticultureStockRequest.objects.filter(
+                inventory_request=obj.request
+            ).select_related('area').first()
+            if horti_req and horti_req.area:
+                return horti_req.area.name
+        except Exception:
+            pass
+        # fallback: extract from purpose like "[HK - Hostel A] reason" or "[Horticulture - Area] reason"
         purpose = getattr(obj.request, 'purpose', '') or ''
         if purpose.startswith('[HK - '):
             end = purpose.find(']')
             if end > 6:
                 return purpose[6:end]
+        if purpose.startswith('[Horticulture - '):
+            end = purpose.find(']')
+            if end > 16:
+                return purpose[16:end]
         return None
 
     def get_area_type(self, obj):
@@ -519,6 +537,18 @@ class ItemIssueSerializer(serializers.ModelSerializer):
                 return hk_req.area.area_type
         except Exception:
             pass
+        try:
+            from apps.horticulture.models import HorticultureStockRequest
+            horti_req = HorticultureStockRequest.objects.filter(
+                inventory_request=obj.request
+            ).select_related('area').first()
+            if horti_req and horti_req.area:
+                return 'horticulture'
+        except Exception:
+            pass
+        purpose = getattr(obj.request, 'purpose', '') or ''
+        if purpose.startswith('[Horticulture - '):
+            return 'horticulture'
         return None
 
     def get_total_consumed(self, obj):
@@ -531,6 +561,13 @@ class ItemIssueSerializer(serializers.ModelSerializer):
                 output_field=DecimalField(max_digits=10, decimal_places=2),
             )
         )['total']
+
+    def get_usage_dates(self, obj):
+        return [str(d) for d in obj.usage_logs.values_list('logged_at__date', flat=True)]
+
+    def get_latest_usage_at(self, obj):
+        latest = obj.usage_logs.order_by('-logged_at').first()
+        return latest.logged_at if latest else None
 
     def get_can_reverse(self, obj):
         if obj.is_reversed:
@@ -582,6 +619,7 @@ class ItemIssueSerializer(serializers.ModelSerializer):
         model = ItemIssue
         fields = [
             'id', 'request', 'item_name', 'item_code', 'item_type', 'item_unit',
+            'category_name', 'item_category', 'purpose',
             'requested_by_name', 'area_name', 'area_type', 'issued_by', 'issued_by_name',
             'issued_quantity', 'original_quantity', 'issued_at',
             'is_reversed', 'reversed_at', 'reversed_by', 'reversed_by_name', 'reversal_reason',
@@ -590,7 +628,7 @@ class ItemIssueSerializer(serializers.ModelSerializer):
             'expected_return_date', 'returned_quantity', 'returned_at',
             'condition_on_return', 'return_recorded_by', 'return_recorded_by_name',
             'actual_quantity_used', 'usage_finalized', 'usage_finalized_at',
-            'notes', 'total_consumed',
+            'notes', 'total_consumed', 'usage_dates', 'latest_usage_at',
         ]
         read_only_fields = [
             'id', 'issued_by', 'issued_at',

@@ -14,6 +14,7 @@ import ZonesTab from './ZonesTab'
 const WorkerSelectionTab = lazy(() => import('./WorkerSelectionTab'))
 const ScheduleTab = lazy(() => import('./ScheduleTab'))
 const GalleryTab = lazy(() => import('./GalleryTab'))
+const InsightsTab = lazy(() => import('../insights/InsightsPage'))
 
 const tabFallback = (
   <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
@@ -36,6 +37,7 @@ export default function HorticulturePage() {
         { key: 'worker_selection', label: 'Task Assign' },
         { key: 'schedule', label: 'Schedule' },
         { key: 'gallery', label: 'Gallery' },
+        { key: 'insights', label: 'Insights' },
       ]
       if (isHorticultureManager) {
         base.push({ key: 'manager', label: 'Manager' })
@@ -98,6 +100,11 @@ export default function HorticulturePage() {
       {active === 'gallery' && (
         <Suspense fallback={tabFallback}>
           <GalleryTab />
+        </Suspense>
+      )}
+      {active === 'insights' && (
+        <Suspense fallback={tabFallback}>
+          <InsightsTab embedded={true} defaultDepartment="horticulture" hideDepartmentSelector={true} />
         </Suspense>
       )}
       {active === 'manager' && isHorticultureManager && <ManagerTab />}

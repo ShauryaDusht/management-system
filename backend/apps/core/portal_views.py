@@ -54,7 +54,7 @@ def get_portal_redirect(user, request=None):
         return get_react_admin_url(request, 'lifts')
     if role in ['civil_team', 'electrical_team']:
         return get_react_admin_url(request, 'estate')
-    if role in ['inventory_manager', 'hk_inventory_manager', 'hostel_office', 'estate_office']:
+    if role in ['inventory_manager', 'hk_inventory_manager', 'hostel_office', 'estate_office', 'technical_assistant']:
         return get_react_admin_url(request, 'dashboard')
     if role == 'supervisor':
         has_horticulture_zone = user.horticulture_supervised_zones.exists()

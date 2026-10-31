@@ -427,27 +427,27 @@ def _decide_horti_incharge_assignment(assignment, decision, acted_by_user, note=
 class IsAdminOrHorticultureManager(BasePermission):
     def has_permission(self, request, view):
         user = request.user
-        return bool(
-            user
-            and user.is_authenticated
-            and user.is_active
-            and (user.is_admin or user.is_horticulture_manager)
-        )
+        if not (user and user.is_authenticated and user.is_active):
+            return False
+        if getattr(user, 'role', '') == 'technical_assistant':
+            from rest_framework.permissions import SAFE_METHODS
+            return request.method in SAFE_METHODS or bool(getattr(user, 'can_edit', False))
+        return bool(user.is_admin or user.is_horticulture_manager)
 
 
 class IsAdminOrHorticultureStaff(BasePermission):
     def has_permission(self, request, view):
         user = request.user
+        if not (user and user.is_authenticated and user.is_active):
+            return False
+        if getattr(user, 'role', '') == 'technical_assistant':
+            from rest_framework.permissions import SAFE_METHODS
+            return request.method in SAFE_METHODS or bool(getattr(user, 'can_edit', False))
         return bool(
-            user
-            and user.is_authenticated
-            and user.is_active
-            and (
-                user.is_admin
-                or user.is_horticulture_manager
-                or getattr(user, 'is_supervisor', False)
-                or getattr(user, 'role', '') == 'supervisor'
-            )
+            user.is_admin
+            or user.is_horticulture_manager
+            or getattr(user, 'is_supervisor', False)
+            or getattr(user, 'role', '') == 'supervisor'
         )
 
 
@@ -1739,7 +1739,7 @@ def horticulture_supervisor_required(fn):
             return redirect(f'/portal/login/?next={request.path}')
         if not request.user.is_active:
             return redirect('/portal/login/')
-        if request.user.role not in ['supervisor', 'horticulture_manager']:
+        if request.user.role not in ['supervisor', 'horticulture_manager', 'admin'] and not request.user.is_superuser:
             return HttpResponseForbidden()
         return fn(request, *args, **kwargs)
 

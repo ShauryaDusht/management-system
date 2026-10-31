@@ -90,7 +90,7 @@ export default function LoginPage() {
             </div>
           </div>
           <p>
-            Unified operations workspace for inventory, housekeeping, horticulture, reporting, and user administration.
+            Unified operations workspace for inventory, housekeeping, horticulture, estate, electrical, reporting, and user administration.
           </p>
 
           <div className="feature-grid">
@@ -105,6 +105,14 @@ export default function LoginPage() {
             <div>
               <strong>Horticulture</strong>
               <span>Zone and supervisor controls</span>
+            </div>
+            <div>
+              <strong>Estate</strong>
+              <span>Clearances, housing, and billing</span>
+            </div>
+            <div>
+              <strong>Electrical</strong>
+              <span>Lifts, substation, WTP, and HVAC</span>
             </div>
             <div>
               <strong>Reports</strong>

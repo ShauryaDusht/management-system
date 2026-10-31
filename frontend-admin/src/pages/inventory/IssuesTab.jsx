@@ -47,14 +47,56 @@ function isIssueCompleted(issue) {
   return consumed >= issued && issued > 0
 }
 
-function isIssueInMonth(issue, month, year) {
-  if (!issue?.issued_at) return false
-  const issuedDate = new Date(issue.issued_at)
-  if (Number.isNaN(issuedDate.getTime())) return false
-  return (
-    issuedDate.getUTCMonth() + 1 === Number(month) &&
-    issuedDate.getUTCFullYear() === Number(year)
-  )
+function isIssueInMonth(issue, month, year, isHorticulture = false) {
+  if (!isHorticulture) {
+    if (!issue?.issued_at) return false
+    const issuedDate = new Date(issue.issued_at)
+    if (Number.isNaN(issuedDate.getTime())) return false
+    return (
+      issuedDate.getUTCMonth() + 1 === Number(month) &&
+      issuedDate.getUTCFullYear() === Number(year)
+    )
+  }
+
+  const targetM = Number(month)
+  const targetY = Number(year)
+
+  if (issue?.issued_at) {
+    const issuedDate = new Date(issue.issued_at)
+    if (!Number.isNaN(issuedDate.getTime())) {
+      if (
+        (issuedDate.getMonth() + 1 === targetM && issuedDate.getFullYear() === targetY) ||
+        (issuedDate.getUTCMonth() + 1 === targetM && issuedDate.getUTCFullYear() === targetY)
+      ) {
+        return true
+      }
+    }
+  }
+
+  if (Array.isArray(issue?.usage_dates) && issue.usage_dates.length > 0) {
+    for (const d of issue.usage_dates) {
+      if (d) {
+        const parts = d.split('-').map(Number)
+        if (parts.length >= 2 && parts[0] === targetY && parts[1] === targetM) {
+          return true
+        }
+      }
+    }
+  }
+
+  if (issue?.latest_usage_at) {
+    const latestDate = new Date(issue.latest_usage_at)
+    if (!Number.isNaN(latestDate.getTime())) {
+      if (
+        (latestDate.getMonth() + 1 === targetM && latestDate.getFullYear() === targetY) ||
+        (latestDate.getUTCMonth() + 1 === targetM && latestDate.getUTCFullYear() === targetY)
+      ) {
+        return true
+      }
+    }
+  }
+
+  return false
 }
 
 function isWithin24Hours(timestamp) {
@@ -66,6 +108,7 @@ function isWithin24Hours(timestamp) {
 }
 
 export default function IssuesTab({ userRole, categoryScope = null, excludeCategoryScope = null }) {
+  const isHorticulture = Boolean(categoryScope)
   const [issues, setIssues] = useState([])
   const [undoModalIssue, setUndoModalIssue] = useState(null)
 
@@ -85,8 +128,8 @@ export default function IssuesTab({ userRole, categoryScope = null, excludeCateg
   const [selectedArea, setSelectedArea] = useState('all')
   const [personFilter, setPersonFilter] = useState('all')
   const [itemFilter, setItemFilter] = useState('all')
-  const [dateFrom, setDateFrom] = useState(todayISO())
-  const [dateTo, setDateTo] = useState(todayISO())
+  const [dateFrom, setDateFrom] = useState(categoryScope ? '' : todayISO())
+  const [dateTo, setDateTo] = useState(categoryScope ? '' : todayISO())
 
   const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1)
   const [reportYear, setReportYear] = useState(new Date().getFullYear())
@@ -171,7 +214,7 @@ export default function IssuesTab({ userRole, categoryScope = null, excludeCateg
       })
     }
     if (!dateFrom && !dateTo) {
-      list = list.filter((issue) => isIssueInMonth(issue, reportMonth, reportYear))
+      list = list.filter((issue) => isIssueInMonth(issue, reportMonth, reportYear, isHorticulture))
     }
     if (areaClass !== 'all') {
       list = list.filter((issue) => getAreaClass(issue.area_type, issue.area_name) === areaClass)
@@ -185,20 +228,27 @@ export default function IssuesTab({ userRole, categoryScope = null, excludeCateg
     if (itemFilter !== 'all') {
       list = list.filter((issue) => (issue.item_name || '') === itemFilter)
     }
-    if (dateFrom) {
-      const from = new Date(`${dateFrom}T00:00:00`)
+    if (dateFrom || dateTo) {
+      const from = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null
+      const to = dateTo ? new Date(`${dateTo}T23:59:59`) : null
+      const fromStr = dateFrom || '1970-01-01'
+      const toStr = dateTo || '2099-12-31'
       list = list.filter((issue) => {
-        if (!issue.issued_at) return false
-        const issued = new Date(issue.issued_at)
-        return issued >= from
-      })
-    }
-    if (dateTo) {
-      const to = new Date(`${dateTo}T23:59:59`)
-      list = list.filter((issue) => {
-        if (!issue.issued_at) return false
-        const issued = new Date(issue.issued_at)
-        return issued <= to
+        const issued = issue.issued_at ? new Date(issue.issued_at) : null
+        const issuedInRange = (!from || (issued && issued >= from)) && (!to || (issued && issued <= to))
+
+        if (!isHorticulture) {
+          return issuedInRange
+        }
+
+        let usageInRange = false
+        if (Array.isArray(issue.usage_dates) && issue.usage_dates.length > 0) {
+          usageInRange = issue.usage_dates.some((d) => d >= fromStr && d <= toStr)
+        } else if (issue.latest_usage_at) {
+          const latestUsed = new Date(issue.latest_usage_at)
+          usageInRange = (!from || latestUsed >= from) && (!to || latestUsed <= to)
+        }
+        return issuedInRange || usageInRange
       })
     }
     return list
@@ -285,6 +335,8 @@ export default function IssuesTab({ userRole, categoryScope = null, excludeCateg
           month: reportMonth,
           year: reportYear,
         }
+        if (categoryScope) params.category = categoryScope
+        if (excludeCategoryScope) params.exclude_category = excludeCategoryScope
         if (areaClass !== 'all') params.area_class = areaClass
         if (selectedArea !== 'all') params.area_name = selectedArea
 
@@ -305,6 +357,8 @@ export default function IssuesTab({ userRole, categoryScope = null, excludeCateg
         month: reportMonth,
         year: reportYear,
       }
+      if (categoryScope) params.category = categoryScope
+      if (excludeCategoryScope) params.exclude_category = excludeCategoryScope
       if (areaClass !== 'all') params.area_class = areaClass
       if (selectedArea !== 'all') params.area_name = selectedArea
 
@@ -638,8 +692,8 @@ export default function IssuesTab({ userRole, categoryScope = null, excludeCateg
             onClick={() => {
               setPersonFilter('all')
               setItemFilter('all')
-              setDateFrom('')
-              setDateTo('')
+              setDateFrom(categoryScope ? '' : todayISO())
+              setDateTo(categoryScope ? '' : todayISO())
             }}
           >
             Clear Filters

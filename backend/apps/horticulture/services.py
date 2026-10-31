@@ -21,7 +21,10 @@ VISIBLE_HORTICULTURE_ZONE_NAMES = {
 
 
 def _visible_zone_queryset():
-    return HorticultureZone.objects.filter(name__in=VISIBLE_HORTICULTURE_ZONE_NAMES)
+    qs = HorticultureZone.objects.filter(name__in=VISIBLE_HORTICULTURE_ZONE_NAMES)
+    if qs.exists():
+        return qs
+    return HorticultureZone.objects.all()
 
 
 def build_seed_worker_username(full_name, pay_code):
@@ -35,6 +38,8 @@ def build_seed_worker_username(full_name, pay_code):
 
 
 def get_supervisor_zones(supervisor):
+    if getattr(supervisor, 'role', '') in ['horticulture_manager', 'admin'] or getattr(supervisor, 'is_superuser', False):
+        return get_horticulture_zones()
     today = timezone.localdate()
     temporary_zone_ids = HorticultureInchargeAssignment.objects.filter(
         assigned_staff=supervisor,

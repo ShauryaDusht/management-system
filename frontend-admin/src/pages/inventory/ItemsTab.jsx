@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
 
 import { asList, todayISO } from '../../shared/utils'
 import { exportReport } from '../../shared/exportHelper'
@@ -59,6 +60,7 @@ const UNIT_OPTIONS = [
 ]
 
 export default function ItemsTab({ userRole, initialCategory = null }) {
+  const { isReadOnly } = useAuth()
   const { run: runAction, saving, error: actionError, clearError } = useAsyncAction()
   const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
@@ -456,9 +458,12 @@ export default function ItemsTab({ userRole, initialCategory = null }) {
               onExport={handleExportItems}
               disabled={loading || filtered.length === 0}
             />
-            {canAdmin && (
+            {(canAdmin || isReadOnly) && (
               <Btn
+                disabled={isReadOnly}
+                title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""}
                 onClick={() => {
+                  if (isReadOnly) return
                   clearError()
                   setFormErrors({})
                   setNewItem(getInitialNewItem())
@@ -488,8 +493,8 @@ export default function ItemsTab({ userRole, initialCategory = null }) {
             `₹${parseFloat(it.total_value || 0).toFixed(2)}`,
             <Badge key={`st-${it.id}`} value={itemStatus(it)} />,
             <div key={`act-${it.id}`} style={{ display: 'flex', gap: 6 }}>
-              {canAdmin && (
-                <Btn size="sm" variant="secondary" onClick={() => openEdit(it)}>
+              {(canAdmin || isReadOnly) && (
+                <Btn size="sm" variant="secondary" disabled={isReadOnly} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !isReadOnly && openEdit(it)}>
                   Edit
                 </Btn>
               )}

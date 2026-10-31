@@ -25,11 +25,11 @@ const REQUEST_REPORT_TAB = { key: 'request-report', label: 'Request Report', ico
 
 export default function InventoryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const { user } = useAuth()
+  const { user, canEdit, isTechnicalAssistant } = useAuth()
   const { badges, markSeen } = useNotifications()
   const isHostelOffice = user?.role === 'hostel_office' || user?.actual_role === 'hostel_office' || user?.username === 'hostel.office'
-  const inventoryRole = isHostelOffice ? 'hostel_office' : user?.role
-  const canViewReports = user?.is_superuser || user?.role === 'admin' || user?.role === 'inventory_manager' || user?.role === 'hk_inventory_manager' || user?.role === 'horticulture_manager' || isHostelOffice
+  const inventoryRole = isHostelOffice ? 'hostel_office' : (isTechnicalAssistant ? (canEdit ? 'admin' : 'technical_assistant') : user?.role)
+  const canViewReports = user?.is_superuser || user?.role === 'admin' || user?.role === 'inventory_manager' || user?.role === 'hk_inventory_manager' || user?.role === 'horticulture_manager' || isHostelOffice || user?.role === 'technical_assistant'
 
   const tabConfig = useMemo(() => {
     const visibleBase = isHostelOffice
