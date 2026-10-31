@@ -1,3 +1,17 @@
+import os
+import sys
+
+# Support direct script execution / IDE test runner
+if not os.environ.get('DJANGO_SETTINGS_MODULE'):
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+import django
+django.setup()
+
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -164,3 +178,11 @@ class TorrentContractDemandSecurityTests(TestCase):
         self.assertEqual(self.bill_sep.contract_demand_kw, 3800.0)
         # Future month updated
         self.assertEqual(self.bill_oct.contract_demand_kw, 3800.0)
+
+
+if __name__ == '__main__':
+    from django.test.runner import DiscoverRunner
+    runner = DiscoverRunner(verbosity=2)
+    failures = runner.run_tests(['apps.substation.test_torrent_demand'])
+    sys.exit(bool(failures))
+
