@@ -597,11 +597,15 @@ export default function TorrentBillReport({ user, authUser, isSupervisor = true,
                   cursor: 'pointer',
                 }}
               >
-                {bills.map((b) => (
-                  <option key={b.month} value={b.month}>
-                    {b.month} ({b.billDate ? `Bill: ${b.billDate}` : 'Recorded'})
-                  </option>
-                ))}
+                {bills.length === 0 ? (
+                  <option value="">No bills recorded</option>
+                ) : (
+                  bills.map((b) => (
+                    <option key={b.month} value={b.month}>
+                      {b.month} ({b.billDate ? `Bill: ${b.billDate}` : 'Recorded'})
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -660,97 +664,103 @@ export default function TorrentBillReport({ user, authUser, isSupervisor = true,
         </div>
 
         {/* Technical Substation Badges Strip */}
-        <div
-          style={{
-            marginTop: 18,
-            padding: '12px 18px',
-            background: '#ffffff',
-            borderRadius: 10,
-            border: '1px solid #cbd5e1',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 20,
-            alignItems: 'center',
-            fontSize: 12.5,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div>
-              <span style={{ color: '#64748b', fontWeight: 600 }}>CONTRACT DEMAND: </span>
-              <strong style={{ color: '#0f172a', fontSize: 13.5 }}>{fmtNum(currentBill?.contractDemandKw || 3200, 0)} KW</strong>
+        {currentBill && (
+          <div
+            style={{
+              marginTop: 18,
+              padding: '12px 18px',
+              background: '#ffffff',
+              borderRadius: 10,
+              border: '1px solid #cbd5e1',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 20,
+              alignItems: 'center',
+              fontSize: 12.5,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>CONTRACT DEMAND: </span>
+                <strong style={{ color: '#0f172a', fontSize: 13.5 }}>{fmtNum(currentBill?.contractDemandKw || 3200, 0)} KW</strong>
+              </div>
+              {isSuperAdmin ? (
+                <button
+                  type="button"
+                  id="btn-edit-contract-demand"
+                  onClick={() => handleOpenDemandModal(currentBill)}
+                  title="Super Admin Only: Update Sanctioned Contract Demand when electrical load increases"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '3px 8px',
+                    borderRadius: 6,
+                    border: '1px solid #93c5fd',
+                    background: 'linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)',
+                    color: '#1d4ed8',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 2px rgba(29, 78, 216, 0.08)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span>✏️</span> Edit Demand
+                </button>
+              ) : (
+                <span
+                  title="Sanctioned Contract Demand is locked. Only Super Admin can modify it when campus electrical load increases."
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    padding: '2px 7px',
+                    borderRadius: 5,
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    color: '#64748b',
+                    fontSize: 10.5,
+                    fontWeight: 600,
+                    cursor: 'help',
+                  }}
+                >
+                  <span>🔒</span> Super Admin Only
+                </span>
+              )}
             </div>
-            {isSuperAdmin ? (
-              <button
-                type="button"
-                id="btn-edit-contract-demand"
-                onClick={() => handleOpenDemandModal(currentBill)}
-                title="Super Admin Only: Update Sanctioned Contract Demand when electrical load increases"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  padding: '3px 8px',
-                  borderRadius: 6,
-                  border: '1px solid #93c5fd',
-                  background: 'linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)',
-                  color: '#1d4ed8',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 2px rgba(29, 78, 216, 0.08)',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <span>✏️</span> Edit Demand
-              </button>
-            ) : (
-              <span
-                title="Sanctioned Contract Demand is locked. Only Super Admin can modify it when campus electrical load increases."
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 3,
-                  padding: '2px 7px',
-                  borderRadius: 5,
-                  background: '#f1f5f9',
-                  border: '1px solid #cbd5e1',
-                  color: '#64748b',
-                  fontSize: 10.5,
-                  fontWeight: 600,
-                  cursor: 'help',
-                }}
-              >
-                <span>🔒</span> Super Admin Only
-              </span>
-            )}
+            <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
+            <div>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>BILLING DEMAND: </span>
+              <strong style={{ color: '#00843D' }}>{fmtNum(currentBill?.billingDemandKw || 0, 1)} KW</strong>
+            </div>
+            <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
+            <div>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>METER NO: </span>
+              <strong style={{ color: '#0f172a' }}>{currentBill?.meterNo || '–'}</strong>
+            </div>
+            <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
+            <div>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>MULTIPLIER: </span>
+              <strong style={{ color: '#004F9F' }}>{fmtNum(currentBill?.multiplier || 2500, 2)}</strong>
+            </div>
+            <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
+            <div>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>READING DATE: </span>
+              <strong style={{ color: '#0f172a' }}>{currentBill?.readingDate || '–'}</strong>
+            </div>
+            <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
+            <div>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>BILL DATE: </span>
+              <strong style={{ color: '#0f172a' }}>{currentBill?.billDate || '–'}</strong>
+            </div>
           </div>
-          <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
-          <div>
-            <span style={{ color: '#64748b', fontWeight: 600 }}>BILLING DEMAND: </span>
-            <strong style={{ color: '#00843D' }}>{fmtNum(currentBill?.billingDemandKw || 2832.5, 1)} KW</strong>
-          </div>
-          <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
-          <div>
-            <span style={{ color: '#64748b', fontWeight: 600 }}>METER NO: </span>
-            <strong style={{ color: '#0f172a' }}>{currentBill?.meterNo || '6877522'}</strong>
-          </div>
-          <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
-          <div>
-            <span style={{ color: '#64748b', fontWeight: 600 }}>MULTIPLIER: </span>
-            <strong style={{ color: '#004F9F' }}>{fmtNum(currentBill?.multiplier || 2500, 2)}</strong>
-          </div>
-          <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
-          <div>
-            <span style={{ color: '#64748b', fontWeight: 600 }}>READING DATE: </span>
-            <strong style={{ color: '#0f172a' }}>{currentBill?.readingDate || '30/09/26'}</strong>
-          </div>
-          <div style={{ width: 1, height: 16, background: '#cbd5e1' }} />
-          <div>
-            <span style={{ color: '#64748b', fontWeight: 600 }}>BILL DATE: </span>
-            <strong style={{ color: '#0f172a' }}>{currentBill?.billDate || '03/10/26'}</strong>
-          </div>
-        </div>
+        )}
       </div>
+
+      {/* Top 4 KPI Metric Cards & Detailed Breakdown */}
+      {currentBill && (
+        <>
 
       {/* Top 4 KPI Metric Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
@@ -1366,6 +1376,8 @@ export default function TorrentBillReport({ user, authUser, isSupervisor = true,
           </div>
         </div>
       </div>
+        </>
+      )}
 
       {/* Historical Monthly Bills Table */}
       <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
