@@ -311,7 +311,7 @@ class GeoTrackerSyncRecordsView(APIView):
                     p_uuid = uuid.UUID(str(raw_photo_id))
                 except (ValueError, TypeError):
                     pass
-            PlantRecordPhoto.objects.get_or_create(
+            plant_photo, _ = PlantRecordPhoto.objects.get_or_create(
                 photo_id=p_uuid,
                 defaults={
                     'record': record,
@@ -321,6 +321,9 @@ class GeoTrackerSyncRecordsView(APIView):
                     'mime_type': getattr(photo_file, 'content_type', ''),
                 }
             )
+            if not record.photo and plant_photo.photo:
+                record.photo = plant_photo.photo
+                record.save(update_fields=['photo'])
 
         return Response({
             'success': True,
@@ -424,6 +427,9 @@ class GeoTrackerSyncPhotosView(APIView):
                     file_size=getattr(photo_file, 'size', None),
                     mime_type=getattr(photo_file, 'content_type', ''),
                 )
+                if not record.photo and plant_photo.photo:
+                    record.photo = plant_photo.photo
+                    record.save(update_fields=['photo'])
         except IntegrityError:
             # Race condition: concurrent duplicate photo upload
             existing_photo = PlantRecordPhoto.objects.filter(photo_id=photo_uuid).first()

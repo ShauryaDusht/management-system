@@ -25,6 +25,7 @@ import { ExportDropdown } from '../../components/ui'
 import AdminLayout from '../../layout/AdminLayout'
 import ConfirmModal from '../../shared/components/ConfirmModal'
 import { exportReport } from '../../shared/exportHelper'
+import { generateImageUrl } from '../../shared/imageUrls'
 
 // ---------------------------------------------------------------------------
 // eFlora of Gandhinagar – Tree Information Database
@@ -402,6 +403,29 @@ function buildClusterIcon(cluster) {
 }
 
 // ---------------------------------------------------------------------------
+// Photo extractor & normalizer for plant records
+// ---------------------------------------------------------------------------
+
+export function extractRecordPhotos(record) {
+  if (!record) return []
+  const list = []
+  if (Array.isArray(record.photos) && record.photos.length > 0) {
+    for (const item of record.photos) {
+      if (typeof item === 'string' && item) {
+        list.push(generateImageUrl(item))
+      } else if (item && typeof item === 'object') {
+        const u = item.photo_url || item.photo || item.url
+        if (u) list.push(generateImageUrl(u))
+      }
+    }
+  }
+  if (list.length === 0 && record.photo_url) {
+    list.push(generateImageUrl(record.photo_url))
+  }
+  return list
+}
+
+// ---------------------------------------------------------------------------
 // Image Lightbox
 // ---------------------------------------------------------------------------
 
@@ -457,7 +481,8 @@ function Lightbox({ images, startIndex = 0, onClose }) {
     setZoom(z => Math.min(Math.max(z - e.deltaY * 0.001, 0.5), 4))
   }
 
-  const src = images[idx]
+  const rawSrc = images[idx]
+  const src = typeof rawSrc === 'object' && rawSrc ? generateImageUrl(rawSrc.photo_url || rawSrc.url || rawSrc.photo) : generateImageUrl(rawSrc)
 
   return (
     <div
@@ -1555,7 +1580,7 @@ export default function GeoTrackerPage() {
 
       const tcfg  = TYPE_CONFIG[r.plant_type] || TYPE_CONFIG.tree
       const ccfg  = CONDITION_CONFIG[r.condition] || CONDITION_CONFIG.good
-      const photos = r.photos || (r.photo_url ? [r.photo_url] : [])
+      const photos = extractRecordPhotos(r)
 
       marker.bindPopup(buildPopupHtml(r, tcfg, ccfg, photos), {
         maxWidth: 260,
@@ -1715,7 +1740,7 @@ export default function GeoTrackerPage() {
   }
 
   function openLightbox(record) {
-    const images = record.photos || (record.photo_url ? [record.photo_url] : [])
+    const images = extractRecordPhotos(record)
     if (images.length) setLightbox({ images, index: 0 })
   }
 
@@ -2154,7 +2179,7 @@ export default function GeoTrackerPage() {
           {selectedRecord && (() => {
             const tcfg = TYPE_CONFIG[selectedRecord.plant_type] || TYPE_CONFIG.tree
             const ccfg = CONDITION_CONFIG[selectedRecord.condition] || CONDITION_CONFIG.good
-            const photos = selectedRecord.photos || (selectedRecord.photo_url ? [selectedRecord.photo_url] : [])
+            const photos = extractRecordPhotos(selectedRecord)
             return (
               <TreeDetailPanel
                 record={selectedRecord}
