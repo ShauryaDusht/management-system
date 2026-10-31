@@ -491,6 +491,37 @@ def _format_reliever_options(relievers, user=None, target_worker=None, date=None
     return formatted
 
 
+def _hostel_relievers_for_area(qs, area):
+    area_name = getattr(area, "name", "") or ""
+    assigned = HOSTEL_RELIEVER_ASSIGNMENTS.get(area_name)
+    assigned_q = dm.Q()
+    if assigned:
+        pay_codes = [c for c in assigned.get("pay_codes", []) if c]
+        names = [n for n in assigned.get("names", []) if n]
+        if pay_codes:
+            assigned_q |= dm.Q(pay_code__in=pay_codes)
+        if names:
+            assigned_q |= dm.Q(name__in=names)
+
+    pool_q = (
+        dm.Q(area__name__iexact="Hostels Reliever")
+        | dm.Q(area__name__iexact="Hostel Reliever")
+        | dm.Q(area__name__iexact="Hostels Relievers")
+        | dm.Q(area__name__iexact="Hostel Relievers")
+    )
+
+    reliever_q = (assigned_q | pool_q) if assigned_q else pool_q
+    matches = qs.filter(reliever_q).distinct().order_by("name")
+    if matches.exists():
+        return matches
+
+    fallback = qs.filter(is_reliever=True, area__area_type="hostel").distinct().order_by("name")
+    if fallback.exists():
+        return fallback
+
+    return qs.filter(is_reliever=True).order_by("name")
+
+
 def _attendance_relievers_for_area(area, user=None):
     qs = HKWorker.objects.filter(is_active=True).select_related("area")
     if not area:
@@ -512,19 +543,20 @@ def _attendance_relievers_for_area(area, user=None):
             .order_by("pay_code_num", "name")
         )
 
-    # 4. Caretaker role: preserve existing caretaker reliever behavior
+    # 4. Hostels: all hostel areas (managed by caretakers or administrators)
+    if area_bucket(area) == "hostels":
+        return _hostel_relievers_for_area(qs, area)
+
+    # 5. Caretaker role: preserve existing caretaker reliever behavior for JRHA and Academic
     if user and getattr(user, "role", "") == "caretaker":
         if _is_jrha_area(area):
             return qs.filter(area__name__in=JRHA_AREA_NAMES).exclude(area=area).order_by("area__name", "name")
 
-        if area_bucket(area) == "hostels":
-            return qs.filter(is_reliever=True, area__name="Hostels Reliever").order_by("name")
-
         if _uses_academic_reliever_pool(area):
-            return qs.filter(is_reliever=True, area__name="Old Academic Reliever").order_by("name")
+            return qs.filter(is_reliever=True, area__name__iexact="Old Academic Reliever").order_by("name")
 
         if _uses_new_academic_reliever_pool(area):
-            return qs.filter(is_reliever=True, area__name="New Academic Reliever").order_by("name")
+            return qs.filter(is_reliever=True, area__name__iexact="New Academic Reliever").order_by("name")
 
         return qs.none()
 
@@ -532,10 +564,8 @@ def _attendance_relievers_for_area(area, user=None):
     if not user:
         if _is_jrha_area(area):
             return qs.filter(area__name__in=JRHA_AREA_NAMES).exclude(area=area).order_by("area__name", "name")
-        if area_bucket(area) == "hostels":
-            return qs.filter(is_reliever=True, area__name="Hostels Reliever").order_by("name")
 
-    # 5. Eligible supervisor-managed areas (and managers viewing supervisor areas):
+    # 6. Eligible supervisor-managed areas (and managers viewing supervisor areas):
     # Return master list of 6 relievers sorted in ascending numerical paycode order
     return (
         qs.filter(pay_code__in=SUPERVISOR_RELIEVER_PAYCODES)
