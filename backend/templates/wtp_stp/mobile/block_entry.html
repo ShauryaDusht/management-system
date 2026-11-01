@@ -79,10 +79,10 @@
   {% endif %}
 </form>
 
-<script>
 {% if edit_window_active and not is_supervisor %}
+<script>
 (function() {
-  let sec = {{ remaining_seconds }};
+  let sec = Number('{{ remaining_seconds|default:0 }}');
   const timerEl = document.getElementById('window-timer-block');
   const iv = setInterval(() => {
     sec--;
@@ -97,7 +97,7 @@
     }
   }, 1000);
 })();
-{% endif %}
 </script>
+{% endif %}
 {% endwith %}
 {% endblock %}

@@ -779,10 +779,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+</script>
 
 {% if edit_window_active and not is_supervisor %}
+<script>
 (function() {
-  let sec = {{ remaining_seconds }};
+  let sec = Number('{{ remaining_seconds|default:0 }}');
   const timerElHourly = document.getElementById('window-timer-hourly');
   const timerElSnapshot = document.getElementById('window-timer-snapshot');
   const iv = setInterval(() => {
@@ -801,7 +803,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }, 1000);
 })();
-{% endif %}
 </script>
+{% endif %}
 
 {% endblock %}
