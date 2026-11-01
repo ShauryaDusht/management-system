@@ -8,7 +8,15 @@ from django.utils import timezone
 
 from apps.users.models import User, unique_standard_username
 
-from .models import HvacLog, HvacSupervisorLog, CHILLERS, derive_values, check_alerts, PUMP_RATED_LIMITS
+from .models import (
+    HvacLog,
+    HvacSupervisorLog,
+    CHILLERS,
+    derive_values,
+    check_alerts,
+    PUMP_RATED_LIMITS,
+    get_active_pump_ratings,
+)
 from .views import TIME_SLOTS
 
 
@@ -102,12 +110,12 @@ def mobile_dashboard(request):
     p1_cons, p2_cons, p3_cons, p4_cons, p5_cons = panel_cons
     total_energy = round(sum(c for c in panel_cons if c is not None), 2) if any(c is not None for c in panel_cons) else None
 
-    # Water calculations (Old, New, Chilled)
+    # Water calculations (Old, New, Chilled) - 3 decimals for exact litre precision
     def safe_diff(c_val, o_val):
         if c_val is None or o_val is None:
             return None
         try:
-            return max(0, round(float(c_val) - float(o_val), 2))
+            return max(0, round(float(c_val) - float(o_val), 3))
         except (ValueError, TypeError):
             return None
 
@@ -123,7 +131,7 @@ def mobile_dashboard(request):
     wm3_close = (logs[-1].values.get('wm3_kl') if logs[-1].values.get('wm3_kl') is not None else logs[-1].values.get('wm_chilled_kl')) if logs else None
     wm3_cons = safe_diff(wm3_close, wm3_open)
 
-    total_water = round((wm1_cons or 0) + (wm2_cons or 0) + (wm3_cons or 0), 2) if (wm1_cons is not None or wm2_cons is not None or wm3_cons is not None) else None
+    total_water = round((wm1_cons or 0) + (wm2_cons or 0) + (wm3_cons or 0), 3) if (wm1_cons is not None or wm2_cons is not None or wm3_cons is not None) else None
 
     # Pump rated limits daily analysis (Supervisor & Engineer Portals)
     pumps_daily = []
@@ -131,7 +139,7 @@ def mobile_dashboard(request):
     slot_pump_alerts = {s: [] for s in range(24)}
 
     if is_supervisor:
-        for p_key, limit in PUMP_RATED_LIMITS.items():
+        for p_key, limit in get_active_pump_ratings().items():
             peak_a = None
             peak_v = None
             reached_events = []
@@ -349,8 +357,10 @@ def mobile_entry(request):
                 continue
             val = val.strip()
             if val != '':
+                is_wm = k.startswith('wm') or 'water' in k
+                decimals = 3 if is_wm else 2
                 try:
-                    v[k] = round(float(val), 2)
+                    v[k] = round(float(val), decimals)
                 except ValueError:
                     v[k] = val
 
@@ -572,7 +582,7 @@ def mobile_flash(request):
     pumps_daily = []
     pumps_reached_count = 0
     if is_supervisor:
-        for p_key, limit in PUMP_RATED_LIMITS.items():
+        for p_key, limit in get_active_pump_ratings().items():
             peak_a = None
             has_reached = False
             for l in logs:
@@ -617,7 +627,7 @@ def mobile_flash(request):
         if c_val is None or o_val is None:
             return None
         try:
-            return max(0, round(float(c_val) - float(o_val), 2))
+            return max(0, round(float(c_val) - float(o_val), 3))
         except (ValueError, TypeError):
             return None
 
@@ -633,7 +643,7 @@ def mobile_flash(request):
     wm3_close = (logs[-1].values.get('wm3_kl') if logs[-1].values.get('wm3_kl') is not None else logs[-1].values.get('wm_chilled_kl')) if logs else None
     wm3_cons = safe_diff_flash(wm3_close, wm3_open)
 
-    total_water = round((wm1_cons or 0) + (wm2_cons or 0) + (wm3_cons or 0), 2) if (wm1_cons is not None or wm2_cons is not None or wm3_cons is not None) else None
+    total_water = round((wm1_cons or 0) + (wm2_cons or 0) + (wm3_cons or 0), 3) if (wm1_cons is not None or wm2_cons is not None or wm3_cons is not None) else None
 
     return render(request, 'hvac/mobile/flash.html', {
         'date': date_str,

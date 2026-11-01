@@ -104,6 +104,40 @@ export default function DailyPumpIconBar({
     return () => window.removeEventListener('hvac_pump_ratings_changed', handleRatingsChanged);
   }, []);
 
+  // Fetch active persistent pump ratings from backend database on mount
+  useEffect(() => {
+    let isMounted = true;
+    HvacApi.getPumpRatings()
+      .then((res) => {
+        if (!isMounted) return;
+        const incoming = res?.frontendRatings || res?.ratings;
+        if (incoming && typeof incoming === 'object') {
+          const formatted = {};
+          Object.entries(incoming).forEach(([k, v]) => {
+            if (!v) return;
+            const maxA = v.maxA !== undefined ? Number(v.maxA) : Number(v.max_a);
+            const maxV = v.maxV !== undefined ? Number(v.maxV) : Number(v.max_v);
+            formatted[k] = {
+              name: v.name || activeLimits[k]?.name || k,
+              maxA: isNaN(maxA) ? (activeLimits[k]?.maxA || 0) : maxA,
+              maxV: isNaN(maxV) ? (activeLimits[k]?.maxV || 0) : maxV,
+              ratedA: v.ratedA || v.range_a || `${maxA}A`,
+              ratedV: v.ratedV || v.range_v || `${maxV}V`,
+            };
+          });
+          const merged = { ...getActivePumpLimits(), ...formatted };
+          setActiveLimits(merged);
+          saveCustomPumpLimits(merged);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch pump ratings from backend API, using local:', err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Modal State for Setting Ratings
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [modalPumpKey, setModalPumpKey] = useState('pri1');
@@ -243,8 +277,22 @@ export default function DailyPumpIconBar({
     saveCustomPumpLimits(batchDraft);
     setActiveLimits(batchDraft);
 
+    const payloadRatings = {};
+    Object.entries(batchDraft).forEach(([k, v]) => {
+      payloadRatings[k] = {
+        max_a: v.maxA,
+        max_v: v.maxV,
+        range_a: v.ratedA,
+        range_v: v.ratedV,
+        maxA: v.maxA,
+        maxV: v.maxV,
+        ratedA: v.ratedA,
+        ratedV: v.ratedV,
+      };
+    });
+
     try {
-      await HvacApi.savePumpRatings({ ratings: batchDraft });
+      await HvacApi.savePumpRatings({ ratings: payloadRatings });
     } catch (err) {
       console.warn('Backend API batch sync skipped/offline:', err);
     }

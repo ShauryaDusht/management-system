@@ -52,7 +52,9 @@ export function AuthProvider({ children }) {
           setUnauthorized(false)
         })
         .catch(() => {
-          localStorage.clear()
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+          localStorage.removeItem('user')
           setUser(null)
           setUnauthorized(false)
         })
@@ -87,7 +89,9 @@ export function AuthProvider({ children }) {
     try {
       if (refresh) await authAPI.logout(refresh)
     } catch { /* ignore */ }
-    localStorage.clear()
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('user')
     setUser(null)
     setUnauthorized(false)
   }, [])
