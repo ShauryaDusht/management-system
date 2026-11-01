@@ -272,7 +272,8 @@ def can_manage_housekeeping_user(user):
     return getattr(user, "role", "") in HOUSEKEEPING_MANAGER_ROLES
 
 
-SUPERVISOR_EXCLUDED_AREA_IDS = {1, 18, 24, 25, 26}
+# Matched by name only: database ids differ between installs (id 1 is Aibaan on production),
+# so an id-based rule silently strips the reliever option from an unrelated hostel.
 SUPERVISOR_EXCLUDED_AREA_NAMES = {
     "Canteen, Gate-01 and Gate-02",
     "Canteen Gate-01",
@@ -297,8 +298,6 @@ def is_ganesh_jayesh_user(user):
 
 def is_supervisor_excluded_area(area):
     if not area:
-        return True
-    if getattr(area, "id", None) in SUPERVISOR_EXCLUDED_AREA_IDS:
         return True
     if getattr(area, "name", "") in SUPERVISOR_EXCLUDED_AREA_NAMES:
         return True
@@ -537,7 +536,7 @@ def _attendance_relievers_for_area(area, user=None):
         return qs.none()
 
     # 1. Ganesh Jayesh exclusion: no reliever option for his account or Deep Cleaning
-    if is_ganesh_jayesh_user(user) or area.name == "Deep Cleaning" or getattr(area, "id", None) == 23:
+    if is_ganesh_jayesh_user(user) or area.name == "Deep Cleaning":
         return qs.none()
 
     # 2. Excluded areas: reject 6 areas explicitly
@@ -655,7 +654,7 @@ def effective_workers_for_area(area, date=None):
 
     outgoing_reliever_ids = set()
     # Ganesh Jayesh's Deep Cleaning workers must not be removed from his roster.
-    if not (area.name == "Deep Cleaning" or getattr(area, "id", None) == 23):
+    if area.name != "Deep Cleaning":
         outgoing_reliever_ids = set(
             HKRelieverSubstitution.objects.filter(
                 date=date,

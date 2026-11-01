@@ -1165,6 +1165,33 @@ class SupervisorRelieverIntegrationTests(TestCase):
             relievers = list(_attendance_relievers_for_area(area, user=caretaker))
             self.assertTrue(any(r.id == pool_worker.id for r in relievers), hostel_name)
 
+    def test_reliever_exclusion_is_by_area_name_not_database_id(self):
+        # Production has Aibaan at id 1; the exclusion once keyed on ids {1, 18, 23, 24, 25, 26}
+        # and stripped the reliever option from whichever hostel happened to own one of them.
+        from apps.housekeeping.htmx_views import (
+            _attendance_relievers_for_area, is_supervisor_excluded_area,
+        )
+        User = get_user_model()
+        caretaker = User.objects.create_user(username='aibaan_caretaker', password='pass', role='caretaker')
+        pool_area, _ = HKArea.objects.get_or_create(
+            name='Hostels Reliever',
+            defaults={'area_type': 'hostel', 'is_active': True},
+        )
+        pool_worker = HKWorker.objects.create(
+            name='Pool Reliever', pay_code='778', area=pool_area, worker_type='reliever',
+            shift='day', is_active=True, is_reliever=True,
+        )
+        for area_id in (1, 18, 23, 24, 25, 26):
+            area = HKArea(id=area_id, name='Aibaan', area_type='hostel', is_active=True)
+            self.assertFalse(is_supervisor_excluded_area(area), area_id)
+            relievers = list(_attendance_relievers_for_area(area, user=caretaker))
+            self.assertTrue(any(r.id == pool_worker.id for r in relievers), area_id)
+
+        # the excluded areas are still excluded, whatever their id is
+        canteen = HKArea(id=1, name='Canteen, Gate-01 and Gate-02', area_type='guesthouse', is_active=True)
+        self.assertTrue(is_supervisor_excluded_area(canteen))
+        self.assertEqual(list(_attendance_relievers_for_area(canteen, user=caretaker)), [])
+
 
 class HostelCommonAreaRelieverManagementTests(TestCase):
     def setUp(self):
