@@ -125,6 +125,10 @@ def area_bucket(area):
         return "academic"
     if n.startswith("Academic Block "):
         return "academic"
+    if n in HOSTEL_AREA_NAMES:
+        # the named hostels are hostels even where area_type was never set on this database;
+        # otherwise their caretakers fall through to "no relievers"
+        return "hostels"
     if area.area_type == "hostel":
         return "hostels"
     if area.area_type == "academic":
@@ -239,6 +243,11 @@ def _mark_staff_present_from_task(user, date):
         staff_att.save(update_fields=["status", "source", "note"])
     return staff_att
 
+
+HOSTEL_AREA_NAMES = {
+    "Aibaan", "Beauki", "Chimair", "Duven", "Emiet", "Firpeal",
+    "Griwiksh", "Hiqom", "Ijokha", "Jurqia", "Kyzeel", "Lekhaag",
+}
 
 HOSTEL_RELIEVER_ASSIGNMENTS = {
     "Aibaan": {"names": ["Anju Ben", "Anju ben"]},

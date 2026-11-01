@@ -1143,6 +1143,28 @@ class SupervisorRelieverIntegrationTests(TestCase):
         # Preserves caretaker relievers from Hostels Reliever area
         self.assertTrue(any(r.id == hostel_reliever.id for r in caretaker_relievers))
 
+    def test_caretaker_of_a_named_hostel_gets_relievers_even_without_area_type(self):
+        # A hostel whose area_type was never set (blank/other) must still be treated as a hostel,
+        # otherwise its caretaker is offered no relievers at all.
+        User = get_user_model()
+        caretaker = User.objects.create_user(username='anita_like', password='pass', role='caretaker')
+        pool_area, _ = HKArea.objects.get_or_create(
+            name='Hostels Reliever',
+            defaults={'area_type': 'hostel', 'is_active': True},
+        )
+        pool_worker = HKWorker.objects.create(
+            name='Pool Reliever', pay_code='778', area=pool_area, worker_type='reliever',
+            shift='day', is_active=True, is_reliever=True,
+        )
+        for hostel_name in ('Chimair', 'Beauki', 'Firpeal'):
+            area = HKArea.objects.create(name=hostel_name, area_type='other', is_active=True)
+            HKUserArea.objects.create(user=caretaker, area=area)
+
+            from apps.housekeeping.htmx_views import _attendance_relievers_for_area, area_bucket
+            self.assertEqual(area_bucket(area), 'hostels', hostel_name)
+            relievers = list(_attendance_relievers_for_area(area, user=caretaker))
+            self.assertTrue(any(r.id == pool_worker.id for r in relievers), hostel_name)
+
 
 class HostelCommonAreaRelieverManagementTests(TestCase):
     def setUp(self):
