@@ -2,7 +2,14 @@ from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.users.models import User
-from .models import HvacLog, HvacSupervisorLog
+from .models import (
+    CUSTOM_PUMP_RATINGS,
+    HvacLog,
+    HvacPumpRating,
+    HvacSupervisorLog,
+    PUMP_RATED_LIMITS,
+    get_active_pump_ratings,
+)
 
 
 def make_user(role):
@@ -239,3 +246,88 @@ class HvacImportAndUndoTests(APITestCase):
         self.assertEqual(batch.status, 'reverted')
 
 
+
+
+class HvacPumpRatingPersistenceTests(APITestCase):
+    def auth(self, user):
+        token = str(RefreshToken.for_user(user).access_token)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+
+    def tearDown(self):
+        CUSTOM_PUMP_RATINGS.clear()
+
+    def test_saved_rating_is_stored_in_the_database(self):
+        self.auth(make_user('hvac_supervisor'))
+        response = self.client.post(
+            '/api/hvac/pump-ratings/', {'pump_key': 'con1', 'max_a': 35.5, 'max_v': 410}, format='json')
+        self.assertEqual(response.status_code, 200)
+        row = HvacPumpRating.objects.get(pump_key='con1')
+        self.assertEqual((row.max_a, row.max_v), (35.5, 410.0))
+
+        # another gunicorn worker has none of this process's in-memory state: it must still see it
+        CUSTOM_PUMP_RATINGS.clear()
+        self.assertEqual(get_active_pump_ratings()['con1']['max_a'], 35.5)
+        listed = self.client.get('/api/hvac/pump-ratings/').data
+        self.assertEqual(listed['ratings']['con1']['max_a'], 35.5)
+        self.assertEqual(listed['frontendRatings']['con1']['maxA'], 35.5)
+        self.assertEqual(listed['defaults']['con1']['max_a'], PUMP_RATED_LIMITS['con1']['max_a'])
+
+    def test_batch_save_and_reset(self):
+        self.auth(make_user('hvac_supervisor'))
+        self.client.post('/api/hvac/pump-ratings/', {'ratings': {
+            'con1': {'maxA': 31, 'maxV': 405},
+            'con2': {'max_a': 32, 'max_v': 406},
+        }}, format='json')
+        self.assertEqual(HvacPumpRating.objects.count(), 2)
+
+        self.client.post('/api/hvac/pump-ratings/', {'action': 'reset', 'pump_key': 'con1'}, format='json')
+        self.assertFalse(HvacPumpRating.objects.filter(pump_key='con1').exists())
+        self.assertTrue(HvacPumpRating.objects.filter(pump_key='con2').exists())
+
+        self.client.post('/api/hvac/pump-ratings/', {'action': 'reset'}, format='json')
+        self.assertEqual(HvacPumpRating.objects.count(), 0)
+        CUSTOM_PUMP_RATINGS.clear()
+        self.assertEqual(get_active_pump_ratings()['con2']['max_a'], PUMP_RATED_LIMITS['con2']['max_a'])
+
+    def test_unknown_pump_is_ignored(self):
+        self.auth(make_user('hvac_supervisor'))
+        self.client.post('/api/hvac/pump-ratings/', {'pump_key': 'nope', 'max_a': 1, 'max_v': 1}, format='json')
+        self.assertEqual(HvacPumpRating.objects.count(), 0)
+
+    def test_operator_can_read_but_not_change_ratings(self):
+        self.auth(make_user('hvac_operator'))
+        self.assertEqual(self.client.get('/api/hvac/pump-ratings/').status_code, 200)
+        response = self.client.post(
+            '/api/hvac/pump-ratings/', {'pump_key': 'con1', 'max_a': 99, 'max_v': 999}, format='json')
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(HvacPumpRating.objects.count(), 0)
+
+
+class HvacWaterMeterPrecisionTests(APITestCase):
+    def post_log(self, values):
+        token = str(RefreshToken.for_user(make_user('hvac_supervisor')).access_token)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        return self.client.post('/api/hvac/logs/', {
+            'date': '2031-02-03', 'time': '09:30', 'operator': 'tester', 'v': values,
+        }, format='json')
+
+    def test_water_meters_keep_three_decimals_other_readings_two(self):
+        response = self.post_log({'wm1_kl': 15280.1259, 'wm2_kl': '8945.1254', 'c1_evapIn': 8.456, 'c1_evapOut': '6.789'})
+        self.assertEqual(response.status_code, 200, response.data)
+        values = HvacLog.objects.get(id='2031-02-03_0930').values
+        self.assertEqual(values['wm1_kl'], 15280.126)
+        self.assertEqual(values['wm2_kl'], 8945.125)
+        self.assertEqual(values['c1_evapIn'], 8.46)
+        self.assertEqual(values['c1_evapOut'], 6.79)
+
+    def test_nan_and_infinity_text_is_dropped_and_the_log_list_keeps_working(self):
+        # float('nan') / float('inf') parse fine, but they are not readings and are not valid JSON:
+        # saving them failed with a 500, and storing them as text broke every later read of the log
+        response = self.post_log({'wm1_kl': 'nan', 'c1_evapIn': '-Infinity', 'c1_evapOut': '7.5', 'c1_status': 'on'})
+        self.assertEqual(response.status_code, 200, response.data)
+        values = HvacLog.objects.get(id='2031-02-03_0930').values
+        self.assertNotIn('wm1_kl', values)
+        self.assertNotIn('c1_evapIn', values)
+        self.assertEqual(values['c1_evapOut'], 7.5)
+        self.assertEqual(values['c1_status'], 'on')
+        self.assertEqual(self.client.get('/api/hvac/logs/').status_code, 200)

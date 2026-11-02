@@ -1,5 +1,6 @@
 import csv
 import io
+import math
 import re
 import uuid
 from datetime import datetime, date, time as datetime_time, timedelta
@@ -233,9 +234,12 @@ class HvacLogsListView(APIView):
                 s = x.strip()
                 try:
                     num_val = float(s)
-                    cleaned_v[k_str] = round(num_val, decimals)
                 except ValueError:
                     cleaned_v[k_str] = s[:30]
+                    continue
+                # "nan"/"inf" parse as floats but are not readings, and cannot be stored or served as JSON
+                if math.isfinite(num_val):
+                    cleaned_v[k_str] = round(num_val, decimals)
 
         try:
             log_obj, _ = HvacLog.objects.update_or_create(
