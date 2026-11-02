@@ -366,7 +366,12 @@ class HKWorkerListView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = HKWorker.objects.select_related('area', 'supervisor').filter(is_active=True)
+        qs = (
+            HKWorker.objects
+            .select_related('area', 'supervisor')
+            .prefetch_related('area__assigned_users__user')
+            .filter(is_active=True)
+        )
         qs = _scope_workers_for_user(qs, self.request.user)
         area = self.request.query_params.get('area')
         if area:
@@ -390,9 +395,16 @@ class HKWorkerCreateView(APIView):
             data['is_reliever'] = True
             data['worker_type'] = 'reliever'
 
+        target_area_id = data.get('area')
+        if (data.get('supervisor') is None or data.get('supervisor') == '') and target_area_id:
+            link = HKUserArea.objects.filter(area_id=target_area_id, user__is_active=True).select_related('user').first()
+            if link and link.user:
+                data['supervisor'] = link.user_id
+
         serializer = HKWorkerSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         worker = serializer.save()
+        worker.refresh_from_db()
         return Response(HKWorkerSerializer(worker).data, status=201)
 
 
@@ -413,9 +425,16 @@ class HKWorkerDetailView(APIView):
             if not data.get('worker_type'):
                 data['worker_type'] = 'reliever'
 
+        target_area_id = data.get('area') or worker.area_id
+        if (data.get('supervisor') is None or data.get('supervisor') == '') and target_area_id:
+            link = HKUserArea.objects.filter(area_id=target_area_id, user__is_active=True).select_related('user').first()
+            if link and link.user:
+                data['supervisor'] = link.user_id
+
         serializer = HKWorkerSerializer(worker, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         worker = serializer.save()
+        worker.refresh_from_db()
         return Response(HKWorkerSerializer(worker).data, status=200)
 
     def delete(self, request, pk):

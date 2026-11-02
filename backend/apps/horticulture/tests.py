@@ -161,7 +161,7 @@ class HorticultureMobilePortalActionTests(TestCase):
 
         dummy_img = SimpleUploadedFile('test.jpg', b'file_content', content_type='image/jpeg')
 
-        # Test at 12:00 PM (outside 8:00 AM - 10:00 AM)
+        # Test at 12:00 PM (outside 8:00 AM - 11:30 AM)
         mock_noon = datetime.datetime.combine(timezone.localdate(), datetime.time(12, 0))
         with patch('django.utils.timezone.localtime', return_value=mock_noon):
             response = self.client.post(
@@ -174,9 +174,9 @@ class HorticultureMobilePortalActionTests(TestCase):
                 },
                 secure=True,
             )
-            self.assertContains(response, 'बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 10:00 AM के बीच ही ली जा सकती है।')
+            self.assertContains(response, 'बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 11:30 AM के बीच ही ली जा सकती है।')
 
-        # Test at 09:00 AM (inside 8:00 AM - 10:00 AM)
+        # Test at 09:00 AM (inside 8:00 AM - 11:30 AM)
         mock_9am = datetime.datetime.combine(timezone.localdate(), datetime.time(9, 0))
         dummy_img2 = SimpleUploadedFile('test2.jpg', b'file_content', content_type='image/jpeg')
         with patch('django.utils.timezone.localtime', return_value=mock_9am):
@@ -211,7 +211,7 @@ class HorticultureMobilePortalActionTests(TestCase):
 
         dummy_img = SimpleUploadedFile('after.jpg', b'file_content', content_type='image/jpeg')
 
-        # Test at 1:00 PM (outside 4:00 PM - 5:00 PM)
+        # Test at 1:00 PM (outside 3:30 PM - 5:00 PM)
         mock_1pm = datetime.datetime.combine(timezone.localdate(), datetime.time(13, 0))
         with patch('django.utils.timezone.localtime', return_value=mock_1pm):
             response = self.client.post(
@@ -224,9 +224,9 @@ class HorticultureMobilePortalActionTests(TestCase):
                 },
                 secure=True,
             )
-            self.assertContains(response, 'आफ्टर फोटो (After Photo) केवल शाम 4:00 PM से 5:00 PM के बीच ही ली जा सकती है।')
+            self.assertContains(response, 'आफ्टर फोटो (After Photo) केवल शाम 3:30 PM से 5:00 PM के बीच ही ली जा सकती है।')
 
-        # Test at 4:30 PM (inside 4:00 PM - 5:00 PM)
+        # Test at 4:30 PM (inside 3:30 PM - 5:00 PM)
         mock_430pm = datetime.datetime.combine(timezone.localdate(), datetime.time(16, 30))
         dummy_img2 = SimpleUploadedFile('after2.jpg', b'file_content', content_type='image/jpeg')
         with patch('django.utils.timezone.localtime', return_value=mock_430pm):

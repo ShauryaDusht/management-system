@@ -49,18 +49,18 @@
     <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
       <div style="font-size:13px;font-weight:700">Open a task, optionally attach before/after photos, and submit.</div>
       <div style="font-size:11px;opacity:.92;margin-top:5px;display:flex;gap:8px;flex-wrap:wrap">
-        <span>⏰ <b>बिफोर फोटो (Before Photo):</b> सुबह 8:00 AM – 10:00 AM</span>
+        <span>⏰ <b>बिफोर फोटो (Before Photo):</b> सुबह 8:00 AM – 11:30 AM</span>
         <span>•</span>
-        <span>⏰ <b>आफ्टर फोटो (After Photo):</b> शाम 4:00 PM – 5:00 PM</span>
+        <span>⏰ <b>आफ्टर फोटो (After Photo):</b> शाम 3:30 PM – 5:00 PM</span>
       </div>
     </div>
   {% else %}
     <div style="background:rgba(255,255,255,.15);border-radius:9px;padding:11px">
       <div style="font-size:13px;font-weight:700">All listed tasks are submitted for today.</div>
       <div style="font-size:11px;opacity:.92;margin-top:5px;display:flex;gap:8px;flex-wrap:wrap">
-        <span>⏰ <b>बिफोर फोटो (Before Photo):</b> सुबह 8:00 AM – 10:00 AM</span>
+        <span>⏰ <b>बिफोर फोटो (Before Photo):</b> सुबह 8:00 AM – 11:30 AM</span>
         <span>•</span>
-        <span>⏰ <b>आफ्टर फोटो (After Photo):</b> शाम 4:00 PM – 5:00 PM</span>
+        <span>⏰ <b>आफ्टर फोटो (After Photo):</b> शाम 3:30 PM – 5:00 PM</span>
       </div>
     </div>
   {% endif %}
@@ -171,7 +171,7 @@
         </div>
         <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
           <span style="font-size:10px;background:{% if is_before_window %}#dcfce7;color:#166534;border:1px solid #86efac{% else %}#fee2e2;color:#991b1b;border:1px solid #fca5a5{% endif %};padding:2px 7px;border-radius:4px;font-weight:800">
-            ⏰ सुबह 8:00 AM – 10:00 AM {% if is_before_window %}(चालू){% else %}(समय समाप्त / बंद){% endif %}
+            ⏰ सुबह 8:00 AM – 11:30 AM {% if is_before_window %}(चालू){% else %}(समय समाप्त / बंद){% endif %}
           </span>
         </div>
       </div>
@@ -187,7 +187,7 @@
       </div>
       {% if not is_before_window and not can_bypass_time %}
       <div style="margin-top:6px;font-size:11px;color:#991b1b;background:#fee2e2;border:1px solid #fca5a5;padding:6px 9px;border-radius:6px;font-weight:700">
-        ⚠️ बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 10:00 AM के बीच ही ली जा सकती है। (वर्तमान समय: {{ current_time_str }})
+        ⚠️ बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 11:30 AM के बीच ही ली जा सकती है। (वर्तमान समय: {{ current_time_str }})
       </div>
       {% endif %}
       <input type="file" name="photo_before" class="js-photo-before-file-input" accept="image/*" capture="environment" required style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
@@ -242,7 +242,7 @@
             </div>
             <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
               <span style="font-size:10px;background:{% if is_after_window %}#dcfce7;color:#166534;border:1px solid #86efac{% else %}#fee2e2;color:#991b1b;border:1px solid #fca5a5{% endif %};padding:2px 7px;border-radius:4px;font-weight:800">
-                ⏰ शाम 4:00 PM – 5:00 PM {% if is_after_window %}(चालू){% else %}(समय समाप्त / बंद){% endif %}
+                ⏰ शाम 3:30 PM – 5:00 PM {% if is_after_window %}(चालू){% else %}(समय समाप्त / बंद){% endif %}
               </span>
             </div>
           </div>
@@ -256,7 +256,7 @@
           </button>
           {% if not is_after_window and not can_bypass_time %}
           <div style="margin-top:6px;font-size:11px;color:#991b1b;background:#fee2e2;border:1px solid #fca5a5;padding:6px 9px;border-radius:6px;font-weight:700">
-            ⚠️ आफ्टर फोटो (After Photo) केवल शाम 4:00 PM से 5:00 PM के बीच ही ली जा सकती है। (वर्तमान समय: {{ current_time_str }})
+            ⚠️ आफ्टर फोटो (After Photo) केवल शाम 3:30 PM से 5:00 PM के बीच ही ली जा सकती है। (वर्तमान समय: {{ current_time_str }})
           </div>
           {% endif %}
           <input type="file" name="photo_after" class="js-photo-file-input" accept="image/*" capture="environment" required style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
@@ -503,7 +503,7 @@ document.addEventListener('submit', function(event) {
     var cameraBtn = form.querySelector('.js-horti-open-camera-before');
     if (cameraBtn && cameraBtn.getAttribute('data-window-open') === '0') {
       event.preventDefault();
-      showHortiBeforePhotoError(form, '⏰ बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 10:00 AM के बीच ही सबमिट की जा सकती है।');
+      showHortiBeforePhotoError(form, '⏰ बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 11:30 AM के बीच ही सबमिट की जा सकती है।');
       return;
     }
     var beforeInput = form.querySelector('.js-photo-before-file-input');
@@ -518,7 +518,7 @@ document.addEventListener('submit', function(event) {
     var cameraBtn = form.querySelector('.js-horti-open-camera');
     if (cameraBtn && cameraBtn.getAttribute('data-window-open') === '0') {
       event.preventDefault();
-      showHortiPhotoError(form, '⏰ आफ्टर फोटो (After Photo) केवल शाम 4:00 PM से 5:00 PM के बीच ही सबमिट की जा सकती है।');
+      showHortiPhotoError(form, '⏰ आफ्टर फोटो (After Photo) केवल शाम 3:30 PM से 5:00 PM के बीच ही सबमिट की जा सकती है।');
       return;
     }
     var afterInput = form.querySelector('.js-photo-file-input');
@@ -564,7 +564,7 @@ document.addEventListener('click', function(event) {
     var form = cameraBeforeButton.closest('.js-horti-task-start-form');
     if (!form) return;
     if (cameraBeforeButton.getAttribute('data-window-open') === '0') {
-      showHortiBeforePhotoError(form, '⏰ बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 10:00 AM के बीच ही ली जा सकती है।');
+      showHortiBeforePhotoError(form, '⏰ बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 11:30 AM के बीच ही ली जा सकती है।');
       return;
     }
     ensureHortiCamera();
@@ -599,7 +599,7 @@ document.addEventListener('click', function(event) {
     var form = cameraButton.closest('.js-horti-task-complete-form');
     if (!form) return;
     if (cameraButton.getAttribute('data-window-open') === '0') {
-      showHortiPhotoError(form, '⏰ आफ्टर फोटो (After Photo) केवल शाम 4:00 PM से 5:00 PM के बीच ही ली जा सकती है।');
+      showHortiPhotoError(form, '⏰ आफ्टर फोटो (After Photo) केवल शाम 3:30 PM से 5:00 PM के बीच ही ली जा सकती है।');
       return;
     }
     ensureHortiCamera();

@@ -208,18 +208,21 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
 
   const csvRows = useMemo(
     () =>
-      visibleWorkers.map((worker) => ({
-        Area: worker.area_name || '',
-        'Worker Name': worker.name || '',
-        Type: String(worker.worker_type || '').replace(/_/g, ' '),
-        Shift: worker.shift || '',
-        Supervisor: worker.supervisor_name || '',
-        Phone: worker.phone || '',
-        'Pay Code': worker.pay_code || '',
-        Reliever: worker.is_reliever ? 'Yes' : 'No',
-        Status: worker.is_active === false ? 'Inactive' : 'Active',
-      })),
-    [visibleWorkers]
+      visibleWorkers.map((worker) => {
+        const areaObj = areaById.get(Number(worker.area))
+        return {
+          Area: areaObj?.name || worker.area_name || '',
+          'Worker Name': worker.name || '',
+          Type: String(worker.worker_type || '').replace(/_/g, ' '),
+          Shift: worker.shift || '',
+          Supervisor: worker.supervisor_name || areaObj?.caretakers?.[0] || '',
+          Phone: worker.phone || '',
+          'Pay Code': worker.pay_code || '',
+          Reliever: worker.is_reliever ? 'Yes' : 'No',
+          Status: worker.is_active === false ? 'Inactive' : 'Active',
+        }
+      }),
+    [areaById, visibleWorkers]
   )
 
   const handleExportWorkers = async (format) => {
@@ -241,25 +244,32 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
         { label: 'Relievers', value: visibleWorkers.filter((w) => w.is_reliever).length },
       ],
       headers: ['Area', 'Worker Name', 'Type', 'Shift', 'Supervisor', 'Phone', 'Pay Code', 'Reliever', 'Status'],
-      rows: visibleWorkers.map((worker) => [
-        areaById.get(Number(worker.area))?.name || worker.area_name || '-',
-        worker.name || '-',
-        String(worker.worker_type || '').replace(/_/g, ' '),
-        worker.shift || '-',
-        worker.supervisor_name || '-',
-        worker.phone || '-',
-        worker.pay_code || '-',
-        worker.is_reliever ? 'Yes' : 'No',
-        worker.is_active === false ? 'Inactive' : 'Active',
-      ]),
+      rows: visibleWorkers.map((worker) => {
+        const areaObj = areaById.get(Number(worker.area))
+        return [
+          areaObj?.name || worker.area_name || '-',
+          worker.name || '-',
+          String(worker.worker_type || '').replace(/_/g, ' '),
+          worker.shift || '-',
+          worker.supervisor_name || areaObj?.caretakers?.[0] || '-',
+          worker.phone || '-',
+          worker.pay_code || '-',
+          worker.is_reliever ? 'Yes' : 'No',
+          worker.is_active === false ? 'Inactive' : 'Active',
+        ]
+      }),
     }
     await exportReport(format, exportData)
   }
 
   const openCreate = () => {
+    const defaultArea = selectedArea || ''
+    const areaObj = defaultArea ? areaById.get(Number(defaultArea)) : null
+    const defaultSupId = areaObj?.caretaker_ids?.[0] ? String(areaObj.caretaker_ids[0]) : ''
     setForm({
       ...EMPTY_FORM,
-      area: selectedArea || '',
+      area: defaultArea,
+      supervisor: defaultSupId,
     })
     setFormError('')
     setModal({ mode: 'create' })
@@ -267,13 +277,15 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
 
   const openEdit = (worker) => {
     const split = splitName(worker.name)
+    const areaObj = worker.area ? areaById.get(Number(worker.area)) : null
+    const defaultSupId = areaObj?.caretaker_ids?.[0] ? String(areaObj.caretaker_ids[0]) : ''
     setForm({
       first_name: split.first_name,
       last_name: split.last_name,
       phone: worker.phone || '',
       pay_code: worker.pay_code || '',
       area: worker.area ? String(worker.area) : '',
-      supervisor: worker.supervisor ? String(worker.supervisor) : '',
+      supervisor: worker.supervisor ? String(worker.supervisor) : defaultSupId,
       worker_type: worker.worker_type || 'general',
       shift: worker.shift || 'day',
       is_reliever: Boolean(worker.is_reliever),
@@ -288,16 +300,25 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
     const last = String(form.last_name || '').trim()
     const name = `${first} ${last}`.trim()
     if (!name) return { error: 'First name is required.' }
-    if (!form.area) return { error: 'Area is required.' }
 
     const isReliever = Boolean(form.is_reliever)
+    if (!form.area && !isReliever) return { error: 'Area is required.' }
+
+    let supervisorId = form.supervisor ? Number(form.supervisor) : null
+    if (!supervisorId && form.area) {
+      const areaObj = areaById.get(Number(form.area))
+      if (areaObj?.caretaker_ids?.[0]) {
+        supervisorId = Number(areaObj.caretaker_ids[0])
+      }
+    }
+
     return {
       payload: {
         name,
         phone: String(form.phone || '').trim(),
         pay_code: String(form.pay_code || '').trim(),
-        area: Number(form.area),
-        supervisor: form.supervisor ? Number(form.supervisor) : null,
+        area: form.area ? Number(form.area) : null,
+        supervisor: supervisorId,
         worker_type: isReliever ? 'reliever' : form.worker_type,
         shift: form.shift || 'day',
         is_reliever: isReliever,
@@ -317,9 +338,17 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
       setFormError('')
       try {
         if (modal.mode === 'create') {
-          await hkAPI.createWorker(payload)
+          const res = await hkAPI.createWorker(payload)
+          if (res?.data) {
+            setWorkers((prev) => [...prev, res.data])
+          }
         } else {
-          await hkAPI.updateWorker(modal.worker.id, payload)
+          const res = await hkAPI.updateWorker(modal.worker.id, payload)
+          if (res?.data) {
+            setWorkers((prev) =>
+              prev.map((w) => (w.id === modal.worker.id ? { ...w, ...res.data } : w))
+            )
+          }
         }
         setModal(null)
         await reload()
@@ -410,18 +439,23 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
               'Edit',
               'Report',
             ]}
-            rows={visibleWorkers.map((w) => [
-              w.area_name || '-',
-              w.name,
-              <span key={`t-${w.id}`} style={{ textTransform: 'capitalize' }}>{String(w.worker_type || '').replace(/_/g, ' ')}</span>,
-              <span key={`sh-${w.id}`} style={{ textTransform: 'capitalize' }}>{w.shift || '-'}</span>,
-              w.supervisor_name || '-',
-              w.phone || '-',
-              w.pay_code || '-',
-              w.is_reliever ? <span key={`r-${w.id}`} style={{ display: 'inline-block', background: '#fff7ed', color: '#c2410c', padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700 }}>Reliever</span> : '-',
-              <Btn key={`a-${w.id}`} size="sm" variant="ghost" disabled={readOnly} title={readOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !readOnly && openEdit(w)}>Edit</Btn>,
-              <Btn key={`report-${w.id}`} size="sm" variant="secondary" onClick={() => setReportWorker(w)}>Report</Btn>,
-            ])}
+            rows={visibleWorkers.map((w) => {
+              const areaObj = areaById.get(Number(w.area))
+              const displayArea = areaObj?.name || w.area_name || '-'
+              const displaySupervisor = w.supervisor_name || areaObj?.caretakers?.[0] || '-'
+              return [
+                displayArea,
+                w.name,
+                <span key={`t-${w.id}`} style={{ textTransform: 'capitalize' }}>{String(w.worker_type || '').replace(/_/g, ' ')}</span>,
+                <span key={`sh-${w.id}`} style={{ textTransform: 'capitalize' }}>{w.shift || '-'}</span>,
+                displaySupervisor,
+                w.phone || '-',
+                w.pay_code || '-',
+                w.is_reliever ? <span key={`r-${w.id}`} style={{ display: 'inline-block', background: '#fff7ed', color: '#c2410c', padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700 }}>Reliever</span> : '-',
+                <Btn key={`a-${w.id}`} size="sm" variant="ghost" disabled={readOnly} title={readOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !readOnly && openEdit(w)}>Edit</Btn>,
+                <Btn key={`report-${w.id}`} size="sm" variant="secondary" onClick={() => setReportWorker(w)}>Report</Btn>,
+              ]
+            })}
             emptyMsg="No workers found for selected segment/filter."
           />
         )}
@@ -450,16 +484,44 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
           <Field label="Last Name"><Input value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} /></Field>
           <Field label="Phone"><Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} /></Field>
           <Field label="Pay Code"><Input value={form.pay_code} onChange={(e) => setForm((p) => ({ ...p, pay_code: e.target.value }))} /></Field>
-          <Field label="Area / Section" required>
-            <SelectField value={form.area} onChange={(e) => setForm((p) => ({ ...p, area: e.target.value }))}>
-              <option value="">Select area</option>
+          <Field label="Area / Section" required={!form.is_reliever}>
+            <SelectField
+              value={form.area}
+              onChange={(e) => {
+                const newAreaId = e.target.value
+                const areaObj = areaById.get(Number(newAreaId))
+                const defaultSupId = areaObj?.caretaker_ids?.[0] ? String(areaObj.caretaker_ids[0]) : ''
+                setForm((p) => ({
+                  ...p,
+                  area: newAreaId,
+                  supervisor: defaultSupId || p.supervisor,
+                }))
+              }}
+            >
+              <option value="">{form.is_reliever ? 'No specific area (reliever pool)' : 'Select area'}</option>
               {areas.map((a) => (
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </SelectField>
           </Field>
           <Field label="Supervisor / Caretaker">
-            <SelectField value={form.supervisor} onChange={(e) => setForm((p) => ({ ...p, supervisor: e.target.value }))}>
+            <SelectField
+              value={form.supervisor}
+              onChange={(e) => {
+                const newSupId = e.target.value
+                setForm((p) => {
+                  let nextArea = p.area
+                  if (newSupId) {
+                    const supUser = supervisors.find((u) => String(u.id) === String(newSupId))
+                    const supAreas = supUser?.assigned_area_ids || []
+                    if (supAreas.length > 0 && (!p.area || !supAreas.includes(Number(p.area)))) {
+                      nextArea = String(supAreas[0])
+                    }
+                  }
+                  return { ...p, supervisor: newSupId, area: nextArea }
+                })
+              }}
+            >
               <option value="">Not assigned</option>
               {supervisors.map((u) => (
                 <option key={u.id} value={u.id}>{fullName(u)} ({u.username})</option>

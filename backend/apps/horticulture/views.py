@@ -5,8 +5,8 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from urllib.parse import urlencode
 
 BEFORE_PHOTO_START_TIME = time(8, 0)
-BEFORE_PHOTO_END_TIME = time(10, 0, 59)
-AFTER_PHOTO_START_TIME = time(16, 0)
+BEFORE_PHOTO_END_TIME = time(11, 30, 59)
+AFTER_PHOTO_START_TIME = time(15, 30)
 AFTER_PHOTO_END_TIME = time(17, 0, 59)
 
 from django.contrib import messages
@@ -2503,7 +2503,7 @@ def horticulture_mark_task(request):
                     error_message = 'Only pending tasks can be started.'
                 elif not is_before_window and not can_bypass:
                     error_message = (
-                        f"बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 10:00 AM के बीच ही ली जा सकती है। "
+                        f"बिफोर फोटो (Before Photo) केवल सुबह 8:00 AM से 11:30 AM के बीच ही ली जा सकती है। "
                         f"(वर्तमान समय: {timezone.localtime().strftime('%I:%M %p')})"
                     )
                 elif not request.FILES.get('photo_before') and not assignment.photo_before:
@@ -2548,7 +2548,7 @@ def horticulture_mark_task(request):
                     error_message = 'Start work before marking completed.'
                 elif not is_after_window and not can_bypass:
                     error_message = (
-                        f"आफ्टर फोटो (After Photo) केवल शाम 4:00 PM से 5:00 PM के बीच ही ली जा सकती है। "
+                        f"आफ्टर फोटो (After Photo) केवल शाम 3:30 PM से 5:00 PM के बीच ही ली जा सकती है। "
                         f"(वर्तमान समय: {timezone.localtime().strftime('%I:%M %p')})"
                     )
                 elif not request.FILES.get('photo_after') and not request.FILES.get('photo') and not assignment.photo_after and not assignment.photo:
@@ -2668,8 +2668,8 @@ def horticulture_mark_task(request):
             'is_after_window': is_after_window,
             'can_bypass_time': can_bypass_time,
             'current_time_str': now_dt.strftime('%I:%M %p'),
-            'before_window_str': '8:00 AM – 10:00 AM',
-            'after_window_str': '4:00 PM – 5:00 PM',
+            'before_window_str': '8:00 AM – 11:30 AM',
+            'after_window_str': '3:30 PM – 5:00 PM',
         },
     )
 

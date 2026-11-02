@@ -69,6 +69,11 @@ class HKWorkerSerializer(serializers.ModelSerializer):
     def get_supervisor_name(self, obj):
         if obj.supervisor:
             return obj.supervisor.get_full_name() or obj.supervisor.username
+        if getattr(obj, 'area_id', None) and getattr(obj, 'area', None):
+            assigned = obj.area.assigned_users.all()
+            for link in assigned:
+                if getattr(link, 'user', None) and getattr(link.user, 'is_active', True):
+                    return link.user.get_full_name() or link.user.username
         return ''
 
     def validate_supervisor(self, value):
