@@ -157,6 +157,7 @@ class UserSerializer(serializers.ModelSerializer):
     def _apply_area_assignments(self, user, area_ids):
         from apps.housekeeping.models import HKArea, HKUserArea, HKWorker
         from apps.housekeeping.api_views import _is_old_academic_area, _is_new_academic_area
+        from apps.housekeeping.supervision import release_workers_from_supervisor
 
         if area_ids is None:
             return
@@ -186,10 +187,14 @@ class UserSerializer(serializers.ModelSerializer):
                 requested_ids.add(new_reliever.id)
                 HKWorker.objects.filter(area=new_reliever, is_active=True).update(supervisor=user)
 
-        HKUserArea.objects.filter(user=user).exclude(area_id__in=requested_ids).delete()
+        removed_links = HKUserArea.objects.filter(user=user).exclude(area_id__in=requested_ids)
+        removed_area_ids = list(removed_links.values_list('area_id', flat=True))
+        removed_links.delete()
         for area_id in requested_ids:
             HKUserArea.objects.get_or_create(user=user, area_id=area_id)
         HKWorker.objects.filter(area_id__in=requested_ids, is_active=True).update(supervisor=user)
+        # Workers of an area this user just left must not keep pointing at them as their supervisor.
+        release_workers_from_supervisor(user, removed_area_ids)
 
     def update(self, instance, validated_data):
         _validate_removed_role(validated_data)
