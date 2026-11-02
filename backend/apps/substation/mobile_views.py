@@ -128,6 +128,7 @@ def mobile_dashboard(request):
 
     user_role = getattr(request.user, 'role', '')
     is_supervisor = (user_role in ['plant_engineer', 'electrical_supervisor', 'supervisor', 'admin', 'wtp_supervisor'] or request.user.is_superuser)
+    is_engineer_or_admin = (user_role in ['plant_engineer', 'admin'] or request.user.is_superuser or getattr(request.user, 'is_plant_engineer', False) or getattr(request.user, 'is_admin', False))
     is_operator = not is_supervisor
 
     context = {
@@ -145,6 +146,7 @@ def mobile_dashboard(request):
         'pending_count': pending_count,
         'completion_pct': completion_pct,
         'is_supervisor': is_supervisor,
+        'is_engineer_or_admin': is_engineer_or_admin,
         'is_operator': is_operator,
         'active_nav': 'dashboard',
     }

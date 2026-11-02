@@ -1,6 +1,6 @@
 from django.contrib import admin
 from config.admin import admin_site
-from .models import HvacLog, HvacSupervisorLog
+from .models import HvacLog, HvacSupervisorLog, HvacPumpRating
 
 
 class HvacLogAdmin(admin.ModelAdmin):
@@ -17,6 +17,12 @@ class HvacSupervisorLogAdmin(admin.ModelAdmin):
     date_hierarchy = 'date'
 
 
+class HvacPumpRatingAdmin(admin.ModelAdmin):
+    list_display = ('pump_key', 'name', 'max_a', 'max_v', 'range_a', 'range_v', 'updated_at')
+    search_fields = ('pump_key', 'name')
+
+
 for site in (admin.site, admin_site):
     site.register(HvacLog, HvacLogAdmin)
     site.register(HvacSupervisorLog, HvacSupervisorLogAdmin)
+    site.register(HvacPumpRating, HvacPumpRatingAdmin)

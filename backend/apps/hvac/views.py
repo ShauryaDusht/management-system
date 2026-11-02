@@ -17,6 +17,7 @@ from .models import (
     HvacLog,
     HvacSupervisorLog,
     HvacImportBatch,
+    HvacPumpRating,
     CHILLERS,
     derive_values,
     check_alerts,
@@ -218,16 +219,23 @@ class HvacLogsListView(APIView):
         if existing and not can_edit_hvac_log(request.user, existing):
             return Response({'error': 'The 10-minute edit window has expired. Only supervisors and engineers can edit logs.'}, status=status.HTTP_403_FORBIDDEN)
 
-        # Clean readings values
+        # Clean readings values (water meters preserve 3 decimal places for exact litre precision)
         cleaned_v = {}
         for k, x in v_val.items():
             k_str = str(k).strip()
             if not re.match(r'^[a-zA-Z0-9_]+$', k_str):
                 continue
+            is_wm = k_str.startswith('wm') or 'water' in k_str
+            decimals = 3 if is_wm else 2
             if isinstance(x, (int, float)):
-                cleaned_v[k_str] = round(float(x), 2)
+                cleaned_v[k_str] = round(float(x), decimals)
             elif isinstance(x, str):
-                cleaned_v[k_str] = x.strip()[:30]
+                s = x.strip()
+                try:
+                    num_val = float(s)
+                    cleaned_v[k_str] = round(num_val, decimals)
+                except ValueError:
+                    cleaned_v[k_str] = s[:30]
 
         try:
             log_obj, _ = HvacLog.objects.update_or_create(
@@ -427,23 +435,53 @@ class HvacPumpRatingsView(APIView):
         return [IsHvacStaff()]
 
     def get(self, request):
+        ratings = get_active_pump_ratings()
+        frontend_ratings = {}
+        for k, v in ratings.items():
+            frontend_ratings[k] = {
+                'name': v.get('name', k),
+                'maxA': v.get('max_a', v.get('maxA', 0)),
+                'maxV': v.get('max_v', v.get('maxV', 0)),
+                'ratedA': v.get('range_a', v.get('ratedA', '')),
+                'ratedV': v.get('range_v', v.get('ratedV', '')),
+                'max_a': v.get('max_a', v.get('maxA', 0)),
+                'max_v': v.get('max_v', v.get('maxV', 0)),
+                'range_a': v.get('range_a', v.get('range_a', '')),
+                'range_v': v.get('range_v', v.get('range_v', '')),
+            }
+
+        custom_overrides = {}
+        try:
+            for r in HvacPumpRating.objects.all():
+                custom_overrides[r.pump_key] = r.to_dict()
+        except Exception:
+            custom_overrides = CUSTOM_PUMP_RATINGS
+
         return Response({
             'ok': True,
-            'ratings': get_active_pump_ratings(),
+            'ratings': ratings,
+            'frontendRatings': frontend_ratings,
             'defaults': PUMP_RATED_LIMITS,
-            'customOverrides': CUSTOM_PUMP_RATINGS,
+            'customOverrides': custom_overrides,
         })
 
     def post(self, request):
-
         data = request.data or {}
         action = data.get('action', 'save')
 
         if action == 'reset':
             pump_key = data.get('pump_key')
             if pump_key:
+                try:
+                    HvacPumpRating.objects.filter(pump_key=pump_key).delete()
+                except Exception:
+                    pass
                 CUSTOM_PUMP_RATINGS.pop(pump_key, None)
             else:
+                try:
+                    HvacPumpRating.objects.all().delete()
+                except Exception:
+                    pass
                 CUSTOM_PUMP_RATINGS.clear()
             return Response({
                 'ok': True,
@@ -451,40 +489,92 @@ class HvacPumpRatingsView(APIView):
                 'message': 'Ratings reset to defaults',
             })
 
-        # Save single or batch ratings
-        ratings = data.get('ratings', {})
-        # If single rating payload provided: { pump_key: 'pri1', max_a: 22, ... }
+        # Save single pump rating
         if 'pump_key' in data:
             pk = data['pump_key']
             if pk in PUMP_RATED_LIMITS:
-                curr = CUSTOM_PUMP_RATINGS.get(pk, dict(PUMP_RATED_LIMITS[pk]))
-                if 'max_a' in data and data['max_a'] is not None:
-                    curr['max_a'] = float(data['max_a'])
-                if 'max_v' in data and data['max_v'] is not None:
-                    curr['max_v'] = float(data['max_v'])
-                if 'range_a' in data:
-                    curr['range_a'] = str(data['range_a'])
-                if 'range_v' in data:
-                    curr['range_v'] = str(data['range_v'])
-                CUSTOM_PUMP_RATINGS[pk] = curr
+                default_info = PUMP_RATED_LIMITS[pk]
+                max_a = data.get('max_a') if data.get('max_a') is not None else data.get('maxA')
+                max_v = data.get('max_v') if data.get('max_v') is not None else data.get('maxV')
+                range_a = data.get('range_a') if data.get('range_a') is not None else data.get('ratedA')
+                range_v = data.get('range_v') if data.get('range_v') is not None else data.get('ratedV')
 
-        for pk, vals in ratings.items():
-            if pk in PUMP_RATED_LIMITS and isinstance(vals, dict):
-                curr = CUSTOM_PUMP_RATINGS.get(pk, dict(PUMP_RATED_LIMITS[pk]))
-                if 'max_a' in vals and vals['max_a'] is not None:
-                    curr['max_a'] = float(vals['max_a'])
-                if 'max_v' in vals and vals['max_v'] is not None:
-                    curr['max_v'] = float(vals['max_v'])
-                if 'range_a' in vals:
-                    curr['range_a'] = str(vals['range_a'])
-                if 'range_v' in vals:
-                    curr['range_v'] = str(vals['range_v'])
-                CUSTOM_PUMP_RATINGS[pk] = curr
+                num_a = float(max_a) if max_a is not None else default_info['max_a']
+                num_v = float(max_v) if max_v is not None else default_info['max_v']
+                str_range_a = str(range_a).strip() if range_a else f"{num_a}A"
+                str_range_v = str(range_v).strip() if range_v else f"{num_v}V"
+
+                try:
+                    HvacPumpRating.objects.update_or_create(
+                        pump_key=pk,
+                        defaults={
+                            'name': default_info.get('name', pk),
+                            'max_a': num_a,
+                            'max_v': num_v,
+                            'range_a': str_range_a,
+                            'range_v': str_range_v,
+                        }
+                    )
+                except Exception:
+                    pass
+
+                CUSTOM_PUMP_RATINGS[pk] = {
+                    'max_a': num_a,
+                    'max_v': num_v,
+                    'range_a': str_range_a,
+                    'range_v': str_range_v,
+                    'maxA': num_a,
+                    'maxV': num_v,
+                    'ratedA': str_range_a,
+                    'ratedV': str_range_v,
+                }
+
+        # Save batch ratings
+        ratings = data.get('ratings', {})
+        if isinstance(ratings, dict):
+            for pk, vals in ratings.items():
+                if pk in PUMP_RATED_LIMITS and isinstance(vals, dict):
+                    default_info = PUMP_RATED_LIMITS[pk]
+                    max_a = vals.get('max_a') if vals.get('max_a') is not None else vals.get('maxA')
+                    max_v = vals.get('max_v') if vals.get('max_v') is not None else vals.get('maxV')
+                    range_a = vals.get('range_a') if vals.get('range_a') is not None else vals.get('ratedA')
+                    range_v = vals.get('range_v') if vals.get('range_v') is not None else vals.get('ratedV')
+
+                    if max_a is not None or max_v is not None:
+                        num_a = float(max_a) if max_a is not None else default_info['max_a']
+                        num_v = float(max_v) if max_v is not None else default_info['max_v']
+                        str_range_a = str(range_a).strip() if range_a else f"{num_a}A"
+                        str_range_v = str(range_v).strip() if range_v else f"{num_v}V"
+
+                        try:
+                            HvacPumpRating.objects.update_or_create(
+                                pump_key=pk,
+                                defaults={
+                                    'name': default_info.get('name', pk),
+                                    'max_a': num_a,
+                                    'max_v': num_v,
+                                    'range_a': str_range_a,
+                                    'range_v': str_range_v,
+                                }
+                            )
+                        except Exception:
+                            pass
+
+                        CUSTOM_PUMP_RATINGS[pk] = {
+                            'max_a': num_a,
+                            'max_v': num_v,
+                            'range_a': str_range_a,
+                            'range_v': str_range_v,
+                            'maxA': num_a,
+                            'maxV': num_v,
+                            'ratedA': str_range_a,
+                            'ratedV': str_range_v,
+                        }
 
         return Response({
             'ok': True,
             'ratings': get_active_pump_ratings(),
-            'message': 'Pump ratings updated successfully',
+            'message': 'Pump ratings updated and saved to database successfully',
         })
 
 
@@ -770,16 +860,17 @@ def parse_iitgn_matrix_sheet(lines_or_rows):
     if current_block:
         daily_blocks.append(current_block)
 
-    def clean_matrix_val(v):
+    def clean_matrix_val(v, is_water=False):
         if v is None:
             return None
+        decimals = 3 if is_water else 2
         if isinstance(v, (int, float)) and not isinstance(v, bool):
-            return round(float(v), 2)
+            return round(float(v), decimals)
         s = str(v).strip()
         if s in ("", "-", "--", "NA", "N/A", "nil", "null"):
             return None
         try:
-            return round(float(s), 2)
+            return round(float(s), decimals)
         except ValueError:
             return s[:30]
 
@@ -957,7 +1048,7 @@ def parse_iitgn_matrix_sheet(lines_or_rows):
             if "water meter" in combined:
                 wm_k = "wm_chilled_kl" if ("chiled" in combined or "chilled" in combined) else ("wm1_kl" if ("1" in combined or "old" in combined) else ("wm2_kl" if ("2" in combined or "new" in combined) else "wm3_kl"))
                 for s in range(24):
-                    v = clean_matrix_val(r[s + 2] if len(r) > s + 2 else "")
+                    v = clean_matrix_val(r[s + 2] if len(r) > s + 2 else "", is_water=True)
                     if v is not None:
                         day_dict[s][wm_k] = v
                 continue
@@ -1192,15 +1283,17 @@ class HvacImportCsvView(APIView):
                 if raw_val is None or str(raw_val).strip() == '':
                     continue
 
+                is_wm = norm_k.startswith('wm') or 'water' in norm_k
+                decimals = 3 if is_wm else 2
                 if isinstance(raw_val, bool):
                     cleaned_v[norm_k] = 'on' if raw_val else 'off'
                 elif isinstance(raw_val, (int, float)):
-                    cleaned_v[norm_k] = round(float(raw_val), 2)
+                    cleaned_v[norm_k] = round(float(raw_val), decimals)
                 else:
                     val_str = str(raw_val).strip()
                     try:
                         num_val = float(val_str)
-                        cleaned_v[norm_k] = round(num_val, 2)
+                        cleaned_v[norm_k] = round(num_val, decimals)
                     except ValueError:
                         cleaned_v[norm_k] = val_str[:30]
 

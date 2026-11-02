@@ -118,10 +118,10 @@ export default function MonthlyReport({ defaultMonth, isHvacEngineer = false, on
         count: arr.length,
         ...panelVals,
         totalEnergy: hasE ? Number(totE.toFixed(2)) : null,
-        w1,
-        w2,
-        w3,
-        totalWater: sm(sm(w1, w2), w3),
+        w1: w1 != null ? Number(w1.toFixed(3)) : null,
+        w2: w2 != null ? Number(w2.toFixed(3)) : null,
+        w3: w3 != null ? Number(w3.toFixed(3)) : null,
+        totalWater: sm(sm(w1, w2), w3) != null ? Number(sm(sm(w1, w2), w3).toFixed(3)) : null,
       };
     });
 
@@ -149,10 +149,10 @@ export default function MonthlyReport({ defaultMonth, isHvacEngineer = false, on
         count: totCount,
         ...panelTotals,
         totalEnergy: Number(totEnergy.toFixed(2)),
-        w1: Number(totW1.toFixed(2)),
-        w2: Number(totW2.toFixed(2)),
-        w3: Number(totW3.toFixed(2)),
-        totalWater: Number(totWater.toFixed(2)),
+        w1: Number(totW1.toFixed(3)),
+        w2: Number(totW2.toFixed(3)),
+        w3: Number(totW3.toFixed(3)),
+        totalWater: Number(totWater.toFixed(3)),
       },
       chillerHours,
     };

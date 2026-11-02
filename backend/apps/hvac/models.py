@@ -55,12 +55,60 @@ PUMP_RATED_LIMITS = {
 CUSTOM_PUMP_RATINGS = {}
 
 
+class HvacPumpRating(models.Model):
+    pump_key = models.CharField(max_length=20, primary_key=True)
+    name = models.CharField(max_length=100, blank=True)
+    max_a = models.FloatField()
+    max_v = models.FloatField()
+    range_a = models.CharField(max_length=50, blank=True)
+    range_v = models.CharField(max_length=50, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['pump_key']
+        verbose_name = 'HVAC Pump Rating'
+        verbose_name_plural = 'HVAC Pump Ratings'
+
+    def __str__(self):
+        return f"{self.pump_key}: {self.max_a}A / {self.max_v}V"
+
+    def to_dict(self):
+        return {
+            'pump_key': self.pump_key,
+            'name': self.name,
+            'max_a': self.max_a,
+            'max_v': self.max_v,
+            'range_a': self.range_a,
+            'range_v': self.range_v,
+            'maxA': self.max_a,
+            'maxV': self.max_v,
+            'ratedA': self.range_a,
+            'ratedV': self.range_v,
+        }
+
+
 def get_active_pump_ratings():
     ratings = {}
     for k, v in PUMP_RATED_LIMITS.items():
         ratings[k] = dict(v)
-        if k in CUSTOM_PUMP_RATINGS:
-            ratings[k].update(CUSTOM_PUMP_RATINGS[k])
+    try:
+        for row in HvacPumpRating.objects.all():
+            if row.pump_key in ratings:
+                ratings[row.pump_key].update({
+                    'name': row.name or ratings[row.pump_key].get('name', row.pump_key),
+                    'max_a': row.max_a,
+                    'max_v': row.max_v,
+                    'range_a': row.range_a or f"{row.max_a}A",
+                    'range_v': row.range_v or f"{row.max_v}V",
+                    'maxA': row.max_a,
+                    'maxV': row.max_v,
+                    'ratedA': row.range_a or f"{row.max_a}A",
+                    'ratedV': row.range_v or f"{row.max_v}V",
+                })
+    except Exception:
+        for k, v in CUSTOM_PUMP_RATINGS.items():
+            if k in ratings:
+                ratings[k].update(v)
     return ratings
 
 

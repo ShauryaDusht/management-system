@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   TIME_SLOTS,
   CHILLERS,
@@ -28,6 +28,14 @@ export default function DailyPlantStatus({
   const [shiftFilter, setShiftFilter] = useState('');
   const [metricKey, setMetricKey] = useState('c5_dt');
   const [modalLog, setModalLog] = useState(null);
+  const [limitsVersion, setLimitsVersion] = useState(0);
+
+  // Listen for rating changes to instantly update alerts
+  useEffect(() => {
+    const handleRatingsChanged = () => setLimitsVersion((v) => v + 1);
+    window.addEventListener('hvac_pump_ratings_changed', handleRatingsChanged);
+    return () => window.removeEventListener('hvac_pump_ratings_changed', handleRatingsChanged);
+  }, []);
 
   // Derived filtered logs
   const dayLogs = useMemo(() => {
@@ -49,7 +57,7 @@ export default function DailyPlantStatus({
     return dayLogs.flatMap((l) =>
       evaluateAlerts(l.v, isSupervisorOrEngineer).map((msg) => ({ time: l.time, slot: l.slot, msg }))
     );
-  }, [dayLogs, isSupervisorOrEngineer]);
+  }, [dayLogs, isSupervisorOrEngineer, limitsVersion]);
 
   // Available metrics for the chart
   const availableMetrics = useMemo(() => {
@@ -127,9 +135,10 @@ export default function DailyPlantStatus({
     return { panels: panelsData, totalCons: f2(totalCons), shifts: shiftData };
   }, [dayLogs]);
 
-  // Calculations: Water Report
+  // Calculations: Water Report (3 decimal places for litre-level precision: 1 Litre = 0.001 kL)
   const waterReport = useMemo(() => {
-    const f2 = (x) => (x == null || isNaN(x) ? '–' : Number(x).toFixed(2));
+    const f3 = (x) => (x == null || isNaN(x) ? '–' : Number(x).toFixed(3));
+    const fmtKl = (x) => (x == null || isNaN(x) || x === '' ? '–' : Number(x).toFixed(3));
     const getVal = (v, k) => v[`${k}_kl`] ?? (k === 'wm3' ? v.wm_chilled_kl : undefined);
 
     const metersData = WATER_METERS.map(([k, nm]) => {
@@ -147,11 +156,11 @@ export default function DailyPlantStatus({
         key: k,
         name: nm,
         openTime: records[0].time,
-        openKl: open,
+        openKl: fmtKl(open),
         closeTime: records[records.length - 1].time,
-        closeKl: close,
+        closeKl: fmtKl(close),
         consumption: cons,
-        avgRate: f2(avgRate),
+        avgRate: f3(avgRate),
       };
     });
 
@@ -166,10 +175,10 @@ export default function DailyPlantStatus({
           : null;
         if (cons != null) sTot += cons;
       });
-      return { shift: `Shift ${s}`, total: f2(sTot) };
+      return { shift: `Shift ${s}`, total: f3(sTot) };
     });
 
-    return { meters: metersData, totalWater: f2(totalWater), shifts: shiftData };
+    return { meters: metersData, totalWater: f3(totalWater), shifts: shiftData };
   }, [dayLogs]);
 
   // Export handlers
@@ -630,18 +639,18 @@ export default function DailyPlantStatus({
               {waterReport.meters.map((m) => (
                 <tr key={m.name} style={{ borderBottom: '1px solid var(--hvac-line)' }}>
                   <td style={{ padding: '6px 8px', fontWeight: 700 }}>{m.name}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>{m.openKl ?? '–'}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>{m.closeKl ?? '–'}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 800, color: '#0c2535' }}>
-                    {m.consumption != null ? m.consumption.toFixed(2) : '–'}
+                  <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'monospace' }}>{m.openKl ?? '–'}</td>
+                  <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'monospace' }}>{m.closeKl ?? '–'}</td>
+                  <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 800, color: '#0c2535', fontFamily: 'monospace' }}>
+                    {m.consumption != null ? m.consumption.toFixed(3) : '–'}
                   </td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>{m.avgRate}</td>
+                  <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'monospace' }}>{m.avgRate}</td>
                 </tr>
               ))}
               <tr style={{ background: '#f1f5f9', fontWeight: 800 }}>
                 <td style={{ padding: '6px 8px' }}>Total Water</td>
                 <td colSpan="2"></td>
-                <td style={{ padding: '6px 8px', textAlign: 'right', color: '#0284c7', fontSize: 13 }}>
+                <td style={{ padding: '6px 8px', textAlign: 'right', color: '#0284c7', fontSize: 13, fontFamily: 'monospace' }}>
                   {waterReport.totalWater} kL
                 </td>
                 <td></td>

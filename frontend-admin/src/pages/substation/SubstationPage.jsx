@@ -28,6 +28,7 @@ export default function SubstationPage() {
   const isOperator = authUser?.role === 'electrical_operator' || authUser?.role === 'operator'
   const isSupervisor = authUser?.role === 'electrical_supervisor' || authUser?.role === 'plant_engineer'
   const isAdmin = !isOperator && !isSupervisor
+  const isEngineerOrAdmin = authUser?.role === 'plant_engineer' || authUser?.role === 'admin' || authUser?.is_superuser
 
   const user = useMemo(() => ({
     role: isOperator ? 'operator' : isSupervisor ? 'supervisor' : 'admin',
@@ -255,6 +256,80 @@ export default function SubstationPage() {
             active={activeTab}
             onChange={handleTabChange}
           />
+          {isEngineerOrAdmin && (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '4px 6px 4px 10px',
+                borderRadius: 10,
+                background: 'rgba(6, 78, 59, 0.08)',
+                border: '1.5px solid rgba(4, 120, 87, 0.25)',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    background: '#10b981',
+                    boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.3)',
+                    display: 'inline-block',
+                  }}
+                />
+                <span style={{ fontSize: 11.5, fontWeight: 800, color: '#064e3b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Live Monitoring:
+                </span>
+              </div>
+              <a
+                href="https://operator.energrid.gettruepower.net/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '6px 12px',
+                  borderRadius: 7,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #064e3b, #047857)',
+                  color: '#fff',
+                  textDecoration: 'none',
+                  boxShadow: '0 1px 4px rgba(4,120,87,0.25)',
+                }}
+                title="Open TruePower EnerGrid Operation Portal"
+              >
+                <span>⚡ EnerGrid Operation</span>
+                <span style={{ fontSize: 10.5, opacity: 0.85 }}>↗</span>
+              </a>
+              <a
+                href="https://monitor.energrid.gettruepower.net/dashboards"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '6px 12px',
+                  borderRadius: 7,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #0f766e, #0e7490)',
+                  color: '#fff',
+                  textDecoration: 'none',
+                  boxShadow: '0 1px 4px rgba(14,116,144,0.25)',
+                }}
+                title="Open TruePower EnerGrid Live Dashboards"
+              >
+                <span>📊 Live Dashboards</span>
+                <span style={{ fontSize: 10.5, opacity: 0.85 }}>↗</span>
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Tab Content Body */}

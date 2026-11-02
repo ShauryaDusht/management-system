@@ -1250,7 +1250,7 @@ export default function EditReadingTab({
                       step="any"
                       value={values[`${wmKey}_kl`] ?? (wmKey === 'wm3' ? (values.wm_chilled_kl ?? '') : '')}
                       onChange={(e) => handleValChange(`${wmKey}_kl`, e.target.value)}
-                      placeholder="e.g. 8945.0"
+                      placeholder="e.g. 8945.125"
                       style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--hvac-line)', fontSize: 12.5 }}
                     />
                   </div>
