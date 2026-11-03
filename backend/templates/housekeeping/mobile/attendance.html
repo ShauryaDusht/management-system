@@ -49,7 +49,7 @@
   <div style="font-size:12px;font-weight:600;
     color:{% if cur_half == 'first' %}#c2622a{% else %}#2d4a3e{% endif %}">
     🕐 Active: {{ cur_half|title }} Half
-    ({% if cur_half == 'first' %}8AM–1PM{% else %}1PM–5PM{% endif %})
+    ({% if active_half_time_range %}{{ active_half_time_range }}{% elif cur_half == 'first' %}8AM–1PM{% else %}1PM–5PM{% endif %})
   </div>
   {% if attendance_error %}
   <div style="font-size:11px;color:#991b1b;background:#fee2e2;border:1px solid #fecaca;border-radius:8px;padding:7px 8px;margin-top:8px">

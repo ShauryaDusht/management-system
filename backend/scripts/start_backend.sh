@@ -47,6 +47,7 @@ chmod +x /app/scripts/cron_cleanup.sh
 chmod +x /app/scripts/cron_seed_update.sh
 chmod +x /app/scripts/cron_usage_reminders.sh
 chmod +x /app/scripts/cron_lift_alerts.sh
+chmod +x /app/scripts/cron_common_area_absent.sh
 chmod +x /app/scripts/backup_database.sh
 chmod +x /app/scripts/restore_sql_backup.sh
 
@@ -60,10 +61,13 @@ echo "30 11 * * * root /app/scripts/cron_usage_reminders.sh >> /app/backups/logs
     > /etc/cron.d/usage-reminders
 echo "0 8 * * * root /app/scripts/cron_lift_alerts.sh >> /app/backups/logs/lift_alerts.log 2>&1" \
     > /etc/cron.d/lift-alerts
+# 22:05 IST corresponds to 16:35 UTC. Hostel Common Area second shift ends at 10 PM: mark the rest absent.
+echo "35 16 * * * root /app/scripts/cron_common_area_absent.sh >> /app/backups/logs/common_area_absent.log 2>&1" \
+    > /etc/cron.d/common-area-absent
 
-chmod 0644 /etc/cron.d/photo-cleanup /etc/cron.d/seed-update /etc/cron.d/usage-reminders /etc/cron.d/lift-alerts
+chmod 0644 /etc/cron.d/photo-cleanup /etc/cron.d/seed-update /etc/cron.d/usage-reminders /etc/cron.d/lift-alerts /etc/cron.d/common-area-absent
 cron
-printf '%s\n' "Cron started (daily cleanup @ 2 AM, weekly seed @ Sun 3 AM, usage reminders @ 5 PM IST, daily lift alerts @ 8 AM)."
+printf '%s\n' "Cron started (daily cleanup @ 2 AM, weekly seed @ Sun 3 AM, usage reminders @ 5 PM IST, daily lift alerts @ 8 AM, common-area absent @ 10:05 PM IST)."
 
 printf '%s\n' "Starting Gunicorn..."
 exec gunicorn config.wsgi:application \

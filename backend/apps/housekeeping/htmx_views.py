@@ -535,8 +535,9 @@ def _attendance_relievers_for_area(area, user=None):
     if not area:
         return qs.none()
 
-    # 1. Ganesh Jayesh exclusion: no reliever option for his account or Deep Cleaning
-    if is_ganesh_jayesh_user(user) or area.name == "Deep Cleaning":
+    # 1. No reliever option for Ganesh Jayesh's or Vishwajeet Mishra's account, or for Deep Cleaning.
+    # (Vishwajeet marks his six designated staff directly in his attendance list instead.)
+    if is_ganesh_jayesh_user(user) or is_vishwajeet_user(user) or area.name == "Deep Cleaning":
         return qs.none()
 
     # 2. Excluded areas: reject 6 areas explicitly
@@ -1727,11 +1728,46 @@ def _has_extended_second_half_access(sel_date, user=None, area=None, workers=Non
     )
 
 
+VISHWAJEET_USERNAME = "vishwajeet.mishra"
+HOSTEL_COMMON_AREA_NAME = "Hostel Common Area"
+# Hostel Common Area runs two overlapping shifts: first 8AM-5PM, second 1PM-10PM. Anyone not marked by the
+# end of the second shift is recorded Absent (see auto_absent_unmarked_workers).
+COMMON_AREA_FIRST_HALF = (datetime.time(8, 0), datetime.time(17, 0))
+COMMON_AREA_SECOND_HALF = (datetime.time(13, 0), datetime.time(22, 0))
+
+
+def is_vishwajeet_user(user):
+    return bool(user and (getattr(user, "username", "") or "").lower() == VISHWAJEET_USERNAME)
+
+
+def _is_vishwajeet_section(user=None, area=None):
+    """The Hostel Common Area section: Vishwajeet's own account, or anyone looking at that area."""
+    return is_vishwajeet_user(user) or bool(area and getattr(area, "name", "") == HOSTEL_COMMON_AREA_NAME)
+
+
+def attendance_half_labels(user=None, area=None, cur_half=None):
+    if _is_vishwajeet_section(user=user, area=area):
+        return (
+            "First Half (8AM–5PM)",
+            "Second Half (1PM–10PM)",
+            "8AM–5PM" if cur_half == "first" else "1PM–10PM",
+        )
+    return "First Half (8AM–1PM)", "Second Half (1PM–5PM)", ("8AM–1PM" if cur_half == "first" else "1PM–5PM")
+
+
+def attendance_halves_are_independent(user=None, area=None):
+    """In this section each shift is marked on its own, with no copying of the first half into the second."""
+    return _is_vishwajeet_section(user=user, area=area)
+
+
 def attendance_half_is_open(sel_date, half, user=None, area=None, workers=None):
     """Today attendance is editable only during the matching half window."""
     if sel_date != timezone.localdate():
         return True
     now_time = timezone.localtime(timezone.now()).time()
+    if _is_vishwajeet_section(user=user, area=area):
+        window = COMMON_AREA_FIRST_HALF if half == "first" else COMMON_AREA_SECOND_HALF if half == "second" else None
+        return bool(window and window[0] <= now_time < window[1])
     if half == "first":
         return datetime.time(8, 0) <= now_time < datetime.time(13, 0)
     if half == "second":
@@ -1739,6 +1775,64 @@ def attendance_half_is_open(sel_date, half, user=None, area=None, workers=None):
             return now_time >= datetime.time(13, 0)
         return datetime.time(13, 0) <= now_time < datetime.time(17, 0)
     return False
+
+
+def attendance_workers_for_area(area, date=None, include_designated=False):
+    """Who appears on an area's attendance page.
+
+    Normally that is the area's own staff. For Vishwajeet Mishra (include_designated) Hostel Common Area also
+    lists its six designated staff (HOSTEL_COMMON_AREA_RELIEVER_PAYCODES, two of them registered under Block-D
+    JRHA) so he marks them directly instead of picking relievers. This is for attendance only: it does not give
+    them the area's tasks. A pay code registered twice shows once, preferring the row that belongs to the area.
+    """
+    workers = list(effective_workers_for_area(area, date))
+    if not include_designated or not area or area.name != HOSTEL_COMMON_AREA_NAME:
+        return workers
+
+    codes = {(w.pay_code or "").strip() for w in workers if (w.pay_code or "").strip()}
+    designated = (
+        HKWorker.objects
+        .filter(is_active=True, pay_code__in=HOSTEL_COMMON_AREA_RELIEVER_PAYCODES)
+        .exclude(id__in=[w.id for w in workers])
+    )
+    for worker in sorted(designated, key=lambda w: (w.area_id != area.id, w.id)):
+        code = (worker.pay_code or "").strip()
+        if code in codes:
+            continue
+        codes.add(code)
+        workers.append(worker)
+    return sorted(workers, key=lambda w: (w.worker_type or "", worker_paycode_sort_key(w)))
+
+
+AUTO_ABSENT_NOTE = "Auto absent: not marked by 10PM"
+
+
+def auto_absent_cutoff_passed(date, now=None):
+    """True once the second shift of `date` is over (10PM that day, or any later day)."""
+    now = now or timezone.localtime(timezone.now())
+    today = now.date()
+    return date < today or (date == today and now.time() >= COMMON_AREA_SECOND_HALF[1])
+
+
+def auto_absent_unmarked_workers(area, date):
+    """Record Absent, for each half, for every worker of the area nobody marked. Safe to repeat: anything
+    already marked (present, late, leave or absent) is left alone. Returns how many records were created."""
+    worker_ids = [worker.id for worker in attendance_workers_for_area(area, date, include_designated=True)]
+    if not worker_ids:
+        return 0
+    already = set(
+        HKAttendanceRecord.objects.filter(worker_id__in=worker_ids, date=date).values_list("worker_id", "half")
+    )
+    missing = [
+        HKAttendanceRecord(
+            worker_id=worker_id, date=date, half=half, status="absent", marked_by=None, note=AUTO_ABSENT_NOTE,
+        )
+        for worker_id in worker_ids
+        for half in ("first", "second")
+        if (worker_id, half) not in already
+    ]
+    HKAttendanceRecord.objects.bulk_create(missing, ignore_conflicts=True)
+    return len(missing)
 
 
 def busy_worker_ids_for_tasks(area, date, exclude_record_id=None):
@@ -3372,7 +3466,7 @@ def hk_attendance(request):
         allowed_dates.add(yesterday)
     sel_date = requested_date if requested_date in allowed_dates else today
 
-    workers = effective_workers_for_area(sel_area, sel_date)
+    workers = attendance_workers_for_area(sel_area, sel_date, include_designated=is_vishwajeet_user(user))
 
     cur_half = current_half()
     is_today = sel_date == today
@@ -3388,8 +3482,13 @@ def hk_attendance(request):
         can_mark_previous_sunday_attendance and sel_date == previous_sunday
     ) or is_night_catchup_date
     area_param = f"&area={sel_area.id}" if sel_area else ""
+    independent_halves = attendance_halves_are_independent(user=user, area=sel_area)
 
-    if workers and (not is_today or cur_half == "second") and can_submit_selected_attendance:
+    if independent_halves and workers and auto_absent_cutoff_passed(sel_date):
+        # Catch-up for the 10PM cutoff, in case the scheduled job has not run yet.
+        auto_absent_unmarked_workers(sel_area, sel_date)
+
+    if workers and (not is_today or cur_half == "second") and can_submit_selected_attendance and not independent_halves:
         _auto_create_second_half_from_first(workers, sel_date, user)
 
     if request.method == "POST":
@@ -3403,7 +3502,7 @@ def hk_attendance(request):
                 or not attendance_half_is_open(sel_date, half, user=user, area=sel_area, workers=workers)
             ):
                 return redirect(f"/housekeeping/attendance/?date={sel_date}{area_param}&att_err=half_closed")
-            if half == "second":
+            if half == "second" and not independent_halves:
                 _auto_create_second_half_from_first(workers, sel_date, user)
             HKAttendanceRecord.objects.filter(
                 worker__in=workers, date=sel_date, half=half, is_submitted=False
@@ -3431,7 +3530,10 @@ def hk_attendance(request):
                 return redirect(f"/housekeeping/attendance/?date={sel_date}{area_param}&att_err=half_closed")
             worker_id = request.POST.get("worker_id")
             status = request.POST.get("status", "present")
-            if status != "clear" and half == "second" and status not in {"absent", "leave"}:
+            if (
+                status != "clear" and half == "second" and not independent_halves
+                and status not in {"absent", "leave"}
+            ):
                 return HttpResponseBadRequest("Second half attendance is only for absent or leave exceptions.")
             worker = get_object_or_404(HKWorker, pk=worker_id)
             if worker.id not in {w.id for w in workers}:
@@ -3455,11 +3557,11 @@ def hk_attendance(request):
                     defaults={"marked_by": user}
                 )
                 att.status = status
-                if half == "second":
+                if half == "second" and not independent_halves:
                     att.note = "Second half exception"
                 att.marked_by = user
                 update_fields = ["status", "marked_by"]
-                if half == "second":
+                if half == "second" and not independent_halves:
                     update_fields.append("note")
                 att.save(update_fields=update_fields)
 
@@ -3471,6 +3573,7 @@ def hk_attendance(request):
                     sub = _substitution_for_reliever(worker, sel_area, sel_date)
                 raw_rel = _attendance_relievers_for_area(sel_area, user=user)
                 all_rel = _format_reliever_options(raw_rel, user=user, target_worker=worker, date=sel_date, area=sel_area)
+                first_label, second_label, _ = attendance_half_labels(user=user, area=sel_area, cur_half=cur_half)
                 return render(request, "housekeeping/mobile/partials/attendance_worker_card.html", {
                     "row": {
                         "worker": worker,
@@ -3486,8 +3589,10 @@ def hk_attendance(request):
                     "is_today": is_today,
                     "first_half_open": first_half_open,
                     "second_half_open": second_half_open,
+                    "first_half_label": first_label,
+                    "second_half_label": second_label,
                     "attn_choices": ATTENDANCE_CHOICES,
-                    "second_attn_choices": SECOND_HALF_EXCEPTION_CHOICES,
+                    "second_attn_choices": ATTENDANCE_CHOICES if independent_halves else SECOND_HALF_EXCEPTION_CHOICES,
                     "all_relievers": all_rel,
                 })
             return redirect(f"/housekeeping/attendance/?date={sel_date}{area_param}")
@@ -3539,6 +3644,7 @@ def hk_attendance(request):
             for w in workers
         )
 
+    first_label, second_label, active_half_range = attendance_half_labels(user=user, area=sel_area, cur_half=cur_half)
     return render(request, "housekeeping/mobile/attendance.html", {
         "worker_rows": worker_rows,
         "type_groups": type_groups,
@@ -3555,6 +3661,9 @@ def hk_attendance(request):
         "cur_half": cur_half,
         "first_half_open": first_half_open,
         "second_half_open": second_half_open,
+        "first_half_label": first_label,
+        "second_half_label": second_label,
+        "active_half_time_range": active_half_range,
         "attendance_error": "Attendance can be marked only during the selected half time." if request.GET.get("att_err") == "half_closed" else "",
         "present_first": sum(1 for r in worker_rows if r["first_att"] and r["first_att"].status in ["present", "late"]),
         "present_second": sum(1 for r in worker_rows if r["second_att"] and r["second_att"].status in ["present", "late"]),
@@ -3562,7 +3671,7 @@ def hk_attendance(request):
         "first_submitted": all_submitted("first"),
         "second_submitted": all_submitted("second"),
         "attn_choices": ATTENDANCE_CHOICES,
-        "second_attn_choices": SECOND_HALF_EXCEPTION_CHOICES,
+        "second_attn_choices": ATTENDANCE_CHOICES if independent_halves else SECOND_HALF_EXCEPTION_CHOICES,
         "all_relievers": all_relievers,
         "subs_today": subs_today,
     })
@@ -3575,7 +3684,7 @@ def hk_assign_reliever(request):
         return HttpResponseForbidden()
 
     user = request.user
-    if is_ganesh_jayesh_user(user):
+    if is_ganesh_jayesh_user(user) or is_vishwajeet_user(user):
         return HttpResponseBadRequest("Reliever functionality is not available for this supervisor.")
 
     user_areas = get_user_areas(user)
@@ -3659,21 +3768,28 @@ def hk_assign_reliever(request):
             date=today,
             area=area or original.area,
         )
+        target_area = area or original.area
+        independent_halves = attendance_halves_are_independent(user=user, area=target_area)
+        first_label, second_label, _ = attendance_half_labels(user=user, area=target_area, cur_half=current_half())
         return render(request, "housekeeping/mobile/partials/attendance_worker_card.html", {
             "row": {
                 "worker": original,
                 "first_att": first_att,
                 "second_att": second_att,
                 "substitution": sub,
-                "can_assign_reliever": _is_jrha_area(area or original.area) or not original.is_reliever,
+                "can_assign_reliever": _is_jrha_area(target_area) or not original.is_reliever,
                 "reliever_options": all_relievers,
             },
             "sel_date": today,
             "sel_area": area,
             "cur_half": current_half(),
             "is_today": True,
+            "first_half_open": attendance_half_is_open(today, "first", user=user, area=target_area, workers=[original]),
+            "second_half_open": attendance_half_is_open(today, "second", user=user, area=target_area, workers=[original]),
+            "first_half_label": first_label,
+            "second_half_label": second_label,
             "attn_choices": ATTENDANCE_CHOICES,
-            "second_attn_choices": SECOND_HALF_EXCEPTION_CHOICES,
+            "second_attn_choices": ATTENDANCE_CHOICES if independent_halves else SECOND_HALF_EXCEPTION_CHOICES,
             "all_relievers": all_relievers,
         })
 
