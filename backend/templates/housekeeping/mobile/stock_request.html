@@ -174,8 +174,23 @@ function beforeSubmit() {
     return false;
   }
   syncPayload();
+  // lock the button so a second tap (or a retry on a slow connection) cannot send the request twice
+  const submitButton = document.querySelector('.stock-form button[type="submit"]');
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = 'Submitting...';
+  }
   return true;
 }
+
+// coming back to the form with the Back button must not leave the button locked
+window.addEventListener('pageshow', () => {
+  const submitButton = document.querySelector('.stock-form button[type="submit"]');
+  if (submitButton) {
+    submitButton.disabled = false;
+    submitButton.textContent = 'Submit Request';
+  }
+});
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (char) => ({

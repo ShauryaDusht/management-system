@@ -4047,6 +4047,27 @@ def hk_log_usage(request, pk):
     })
 
 
+DUPLICATE_SUBMISSION_WINDOW = datetime.timedelta(minutes=2)
+
+
+def _is_duplicate_stock_submission(user, area, reason, item_quantities):
+    """True when this exact request (same area, wording, items and quantities) was already sent a moment ago.
+
+    A second tap or a retry on a slow connection used to create the request twice. Called while the requested
+    items are row-locked, so two submissions arriving together cannot both get past it.
+    """
+    if not item_quantities:
+        return False
+    recent = (
+        HKStockRequest.objects
+        .filter(requested_by=user, area=area, reason=reason,
+                created_at__gte=timezone.now() - DUPLICATE_SUBMISSION_WINDOW)
+        .exclude(status__in=["rejected", "cancelled"])
+    )
+    already_sent = {(row.item_id, row.quantity) for row in recent}
+    return all((item_id, quantity) in already_sent for item_id, quantity in item_quantities.items())
+
+
 @hk_required
 def hk_stock_request(request):
     from apps.inventory.models import Item, ItemRequest as InvItemRequest, ItemRequestBatch, RequisitionItem
@@ -4141,6 +4162,10 @@ def hk_stock_request(request):
                             if needed_from_wh > item.available_quantity:
                                 error = EXCESSIVE_QUANTITY_MESSAGE
                                 break
+
+                    if not error and _is_duplicate_stock_submission(user, area, reason, item_quantities):
+                        # the same request sent again (a second tap, a retry on a slow connection): it is already in
+                        return redirect(f"/housekeeping/stock/?requested=1&area={area.id if area else ''}")
 
                     if not error:
                         is_urgent = request.POST.get("is_urgent") == "on"
