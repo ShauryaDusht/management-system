@@ -411,6 +411,21 @@ class ItemStockEntriesView(generics.ListAPIView):
 # ITEM REQUEST VIEWS
 # ─────────────────────────────────────────────────
 
+def _horticulture_side_q(category_name, prefix=''):
+    """Rows that belong on the horticulture side of the inventory (used to hide them from the housekeeping pages).
+
+    A request raised by housekeeping staff ("[HK - <area>] ...") is never horticulture-side, even when the item
+    it asks for sits in a horticulture category: housekeeping caretakers are allowed to request those items, and
+    filtering by category alone made their requests disappear from the housekeeping manager's and admin's pages.
+    `prefix` reaches the request from a related model, e.g. 'request__' for an issue.
+    """
+    return (
+        dm.Q(**{f'{prefix}item__category__name__iexact': category_name})
+        | dm.Q(**{f'{prefix}item__category__name__icontains': 'Horticulture'})
+        | dm.Q(**{f'{prefix}purpose__icontains': '[Horticulture'})
+    ) & ~dm.Q(**{f'{prefix}purpose__startswith': '[HK'})
+
+
 class ItemRequestListCreateView(generics.ListCreateAPIView):
     serializer_class = ItemRequestSerializer
     pagination_class = StandardPagination
@@ -434,11 +449,12 @@ class ItemRequestListCreateView(generics.ListCreateAPIView):
             if str(exclude_category).isdigit():
                 qs = qs.exclude(item__category_id=exclude_category)
             else:
-                qs = qs.exclude(
-                    dm.Q(item__category__name__iexact=exclude_category)
-                    | dm.Q(item__category__name__icontains='Horticulture')
-                    | dm.Q(purpose__icontains='[Horticulture')
-                )
+                qs = qs.exclude(_horticulture_side_q(exclude_category))
+        # The pages ask for ?status=pending. Without this the parameter was ignored, so the "pending" badges
+        # counted requests of every status and the Pending list only saw the newest page of all requests.
+        status_filter = (params.get('status') or '').strip().lower()
+        if status_filter in ItemRequest.Status.values:
+            qs = qs.filter(status=status_filter)
         if getattr(user, 'role', '') in ['supervisor', 'caretaker']:
             return qs.filter(requested_by=user)
         if _is_hostel_office(user):
@@ -763,11 +779,7 @@ class ItemIssueListView(generics.ListAPIView):
             if str(exclude_category).isdigit():
                 qs = qs.exclude(request__item__category_id=exclude_category)
             else:
-                qs = qs.exclude(
-                    dm.Q(request__item__category__name__iexact=exclude_category)
-                    | dm.Q(request__item__category__name__icontains='Horticulture')
-                    | dm.Q(request__purpose__icontains='[Horticulture')
-                )
+                qs = qs.exclude(_horticulture_side_q(exclude_category, 'request__'))
         include_reversed = params.get('include_reversed')
         if not (include_reversed and str(include_reversed).lower() in ['true', '1']):
             qs = qs.filter(is_reversed=False).exclude(request__status=ItemRequest.Status.REJECTED)
@@ -1449,11 +1461,7 @@ class ItemUsageReportView(APIView):
             if str(exclude_category).isdigit():
                 qs = qs.exclude(issue__request__item__category_id=exclude_category)
             else:
-                qs = qs.exclude(
-                    dm.Q(issue__request__item__category__name__iexact=exclude_category)
-                    | dm.Q(issue__request__item__category__name__icontains='Horticulture')
-                    | dm.Q(issue__request__purpose__icontains='[Horticulture')
-                )
+                qs = qs.exclude(_horticulture_side_q(exclude_category, 'issue__request__'))
 
         # Collect all available filter options across the category scope before applying specific query filters
         from apps.horticulture.models import HorticultureStockRequest, HorticultureArea

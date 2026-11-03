@@ -207,6 +207,8 @@ export default function IssuesTab({ userRole, categoryScope = null, excludeCateg
     if (excludeCategoryScope) {
       list = list.filter((issue) => {
         const cat = issue.category_name || issue.item_category || ''
+        // Issues for requests raised by housekeeping staff ("[HK - area]") stay here whatever the item category.
+        if (String(issue.purpose || '').startsWith('[HK')) return true
         const isExcluded = String(cat).trim().toLowerCase() === String(excludeCategoryScope).trim().toLowerCase()
           || String(cat).toLowerCase().includes('horticulture')
           || String(issue.purpose || '').toLowerCase().includes('[horticulture')

@@ -69,12 +69,17 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
     const params = {}
     if (categoryScope) params.category = categoryScope
     if (excludeCategoryScope) params.exclude_category = excludeCategoryScope
-    const [reqRes, itemsRes, catRes] = await Promise.all([
+    const [reqRes, pendingRes, itemsRes, catRes] = await Promise.all([
       inventoryAPI.getRequests(params),
+      // The newest page of all requests is capped, so older requests still waiting for approval would never
+      // reach the Pending tab. Always fetch every pending request as well and merge them in.
+      inventoryAPI.getRequests({ ...params, status: 'pending' }),
       inventoryAPI.getItems(),
       inventoryAPI.getCategories(),
     ])
-    setRequests(asList(reqRes.data))
+    const merged = new Map()
+    ;[...asList(reqRes.data), ...asList(pendingRes.data)].forEach((r) => merged.set(r.id, r))
+    setRequests([...merged.values()].sort((a, b) => Number(b.id) - Number(a.id)))
     setItems(asList(itemsRes.data))
     setCategories(asList(catRes.data))
     return null
@@ -108,6 +113,9 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
       list = list.filter((r) => {
         const itemObj = items.find((it) => Number(it.id) === Number(r.item?.id || r.item))
         const cat = r.category_name || r.item_category || itemObj?.category_name || ''
+        // A request raised by housekeeping staff ("[HK - area]") stays here even when the item it asks for is in
+        // the excluded category; only the horticulture side's own requests are hidden.
+        if (String(r.purpose || '').startsWith('[HK')) return true
         const isExcluded = String(cat).trim().toLowerCase() === String(excludeCategoryScope).trim().toLowerCase()
           || String(cat).toLowerCase().includes('horticulture')
           || String(r.purpose || '').toLowerCase().includes('[horticulture')

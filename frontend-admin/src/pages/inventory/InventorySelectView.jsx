@@ -2,28 +2,41 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { inventoryAPI } from '../../api/inventory'
 import { horticultureAPI } from '../../api/horticulture'
-import { useNotifications } from '../../context/NotificationContext'
 import AdminLayout from '../../layout/AdminLayout'
 import { IconMark } from '../../components/ui'
 import { asList } from '../../shared/utils'
 
+const GARDEN_CATEGORY = 'Garden & Horticulture Equipment'
+
+// Total matches of a paginated list (we only ask for one row), falling back to the rows we got.
+function pendingTotal(result) {
+  if (result?.status !== 'fulfilled') return null
+  const data = result.value?.data
+  return typeof data?.count === 'number' ? data.count : asList(data).length
+}
+
 export default function InventorySelectView() {
   const navigate = useNavigate()
-  const { badges } = useNotifications()
 
   const [hkSummary, setHkSummary] = useState(null)
   const [hortSummary, setHortSummary] = useState(null)
   const [hortPending, setHortPending] = useState(null)
+  const [hkPending, setHkPending] = useState(null)
+  const [totalPending, setTotalPending] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let alive = true
     const loadData = async () => {
       try {
-        const [hkRes, hortRes, hortReqRes] = await Promise.allSettled([
+        // "Pending" here is the real number of requests waiting for approval, counted by the same filters as the
+        // Requests tab of each department (not the sidebar's "new since you last looked" badge).
+        const [hkRes, hortRes, hortReqRes, hkReqRes, allReqRes] = await Promise.allSettled([
           inventoryAPI.getDashboard(),
           horticultureAPI.getAreaStocks(),
-          inventoryAPI.getRequests({ category: 'Garden & Horticulture Equipment', status: 'pending', page_size: 200 }),
+          inventoryAPI.getRequests({ category: GARDEN_CATEGORY, status: 'pending', page_size: 1 }),
+          inventoryAPI.getRequests({ exclude_category: GARDEN_CATEGORY, status: 'pending', page_size: 1 }),
+          inventoryAPI.getRequests({ status: 'pending', page_size: 1 }),
         ])
 
         if (!alive) return
@@ -34,11 +47,9 @@ export default function InventorySelectView() {
         if (hortRes.status === 'fulfilled') {
           setHortSummary(hortRes.value?.data?.items_summary || null)
         }
-        if (hortReqRes.status === 'fulfilled') {
-          const list = asList(hortReqRes.value?.data)
-          const pCount = list.filter((r) => r.status === 'pending').length
-          setHortPending(pCount)
-        }
+        setHortPending(pendingTotal(hortReqRes))
+        setHkPending(pendingTotal(hkReqRes))
+        setTotalPending(pendingTotal(allReqRes))
       } finally {
         if (alive) setLoading(false)
       }
@@ -48,8 +59,11 @@ export default function InventorySelectView() {
     return () => { alive = false }
   }, [])
 
-  const hkPendingCount = badges.inventory || hkSummary?.pending_requests || 0
-  const hortPendingCount = badges.horticultureInventory || hortPending || 0
+  const hkPendingCount = hkPending ?? 0
+  const hortPendingCount = hortPending ?? 0
+  // A request raised by housekeeping staff for a garden item shows in both departments, so the sum of the two
+  // would count it twice: the headline uses the distinct total.
+  const allPendingCount = totalPending ?? (hkPendingCount + hortPendingCount)
 
   return (
     <AdminLayout
@@ -113,8 +127,8 @@ export default function InventorySelectView() {
             </div>
             <div style={{ width: 1, background: 'rgba(255,255,255,0.15)' }} />
             <div style={{ textAlign: 'center', padding: '0 8px' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: (hkPendingCount + hortPendingCount) > 0 ? '#fca5a5' : '#ffffff' }}>
-                {hkPendingCount + hortPendingCount}
+              <div style={{ fontSize: 20, fontWeight: 800, color: allPendingCount > 0 ? '#fca5a5' : '#ffffff' }}>
+                {allPendingCount}
               </div>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Pending Reqs</div>
             </div>
