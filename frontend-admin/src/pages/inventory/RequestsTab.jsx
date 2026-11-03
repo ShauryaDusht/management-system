@@ -462,6 +462,7 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
             tabs={[
               { key: 'all', label: 'All' },
               { key: 'pending', label: 'Pending' },
+              { key: 'approved', label: 'Approved' },
               { key: 'rejected', label: 'Rejected' },
               { key: 'issued', label: 'Issued' },
             ]}
@@ -492,7 +493,8 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
             </span>,
             <Badge key={`st-${r.id}`} value={r.status} />,
             new Date(r.requested_at || r.created_at).toLocaleString('en-IN'),
-            canReview && r.status === 'pending' ? (
+            // An approved request was approved but never issued: it can be issued (or rejected) from here too.
+            canReview && (r.status === 'pending' || r.status === 'approved') ? (
               <div key={`act-p-${r.id}`} style={{ display: 'flex', gap: 6 }}>
                 <Btn
                   size="sm"

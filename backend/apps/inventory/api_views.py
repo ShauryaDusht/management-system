@@ -1,6 +1,7 @@
 from datetime import timedelta
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Value
+from django.db.models.functions import Greatest
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status, viewsets
@@ -116,8 +117,14 @@ class RejectRequestView(APIView):
         except ItemRequest.DoesNotExist:
             return Response({'error': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        if item_request.status != ItemRequest.Status.PENDING:
+        # An approved request (approved but never issued) can be rejected too; its approval held stock back
+        # (reserved), which goes back to the shelf.
+        if item_request.status not in (ItemRequest.Status.PENDING, ItemRequest.Status.APPROVED):
             return Response({'error': 'Request is not pending'}, status=status.HTTP_400_BAD_REQUEST)
+        if item_request.status == ItemRequest.Status.APPROVED:
+            for line in item_request.requisition_lines():
+                Item.objects.filter(pk=line.inventory_item_id).update(
+                    reserved_quantity=Greatest(F('reserved_quantity') - line.quantity, Value(0)))
 
         item_request.status = ItemRequest.Status.REJECTED
         item_request.approved_by = user
