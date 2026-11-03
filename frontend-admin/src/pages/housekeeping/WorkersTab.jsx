@@ -507,20 +507,8 @@ export default function WorkersTab({ readOnly = false, hostelOnly = false }) {
           <Field label="Supervisor / Caretaker">
             <SelectField
               value={form.supervisor}
-              onChange={(e) => {
-                const newSupId = e.target.value
-                setForm((p) => {
-                  let nextArea = p.area
-                  if (newSupId) {
-                    const supUser = supervisors.find((u) => String(u.id) === String(newSupId))
-                    const supAreas = supUser?.assigned_area_ids || []
-                    if (supAreas.length > 0 && (!p.area || !supAreas.includes(Number(p.area)))) {
-                      nextArea = String(supAreas[0])
-                    }
-                  }
-                  return { ...p, supervisor: newSupId, area: nextArea }
-                })
-              }}
+              // Picking a supervisor must never move the worker: the worker stays in the area chosen above.
+              onChange={(e) => setForm((p) => ({ ...p, supervisor: e.target.value }))}
             >
               <option value="">Not assigned</option>
               {supervisors.map((u) => (

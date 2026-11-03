@@ -66,15 +66,23 @@ class HKWorkerSerializer(serializers.ModelSerializer):
             'is_reliever',
         ]
 
-    def get_supervisor_name(self, obj):
-        if obj.supervisor:
-            return obj.supervisor.get_full_name() or obj.supervisor.username
+    def _area_supervisor_name(self, obj):
         if getattr(obj, 'area_id', None) and getattr(obj, 'area', None):
-            assigned = obj.area.assigned_users.all()
-            for link in assigned:
+            for link in obj.area.assigned_users.all():
                 if getattr(link, 'user', None) and getattr(link.user, 'is_active', True):
                     return link.user.get_full_name() or link.user.username
         return ''
+
+    def get_supervisor_name(self, obj):
+        # A worker belongs to their area, so their supervisor is whoever is assigned to that area now. The stored
+        # `supervisor` label can lag behind after a supervisor is moved; relievers (pool workers) keep their own.
+        if not obj.is_reliever:
+            area_supervisor = self._area_supervisor_name(obj)
+            if area_supervisor:
+                return area_supervisor
+        if obj.supervisor:
+            return obj.supervisor.get_full_name() or obj.supervisor.username
+        return self._area_supervisor_name(obj)
 
     def validate_supervisor(self, value):
         if value and value.role not in ['supervisor', 'caretaker']:

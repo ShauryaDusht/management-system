@@ -724,7 +724,9 @@ def generate_supervisor_report(supervisor_id: int, month: int, year: int) -> dic
         .filter(user=supervisor)
         .values_list('area_id', flat=True)
     )
-    workers_under = HKWorker.objects.filter(supervisor=supervisor, is_active=True).count()
+    # A supervisor's workers are the workers of the areas they are assigned to (as the app shows). The worker's own
+    # `supervisor` label can lag behind after a supervisor is moved, which made this count follow the old areas.
+    workers_under = HKWorker.objects.filter(area_id__in=supervisor_area_ids, is_active=True).count()
 
     area_tasks_qs = _exclude_break_tasks(HKDailyRecord.objects.filter(
         area_id__in=supervisor_area_ids,

@@ -2591,12 +2591,14 @@ class HKProfileView(APIView):
             if ta.area
         ]
 
-        # Worker supervision counts
+        # Worker supervision counts: the workers of the areas they cover. The worker's own `supervisor` label is
+        # only trusted for relievers (pool workers whose area is shared); for everyone else it can lag behind
+        # after a supervisor is moved to another area and would pull in the old area's workers.
         area_ids = [a['id'] for a in areas_data] + [a['id'] for a in temp_areas_data]
         supervised_workers = HKWorker.objects.filter(
             is_active=True
         ).filter(
-            Q(supervisor=user) | Q(area_id__in=area_ids)
+            Q(area_id__in=area_ids) | Q(supervisor=user, is_reliever=True)
         ).distinct()
 
         worker_stats = {
