@@ -76,7 +76,7 @@
   <div class="prog-wrap">
     <div class="prog-bar" style="width: {{ completion_pct }}%;"></div>
   </div>
-  <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:12px; color:#64748b;">
+  <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:12px; color:#334155; font-weight:700;">
     <span>{{ completion_pct }}% Logged</span>
     <span>{{ pending_count }} Pending</span>
   </div>
@@ -152,7 +152,7 @@
 {% endif %}
 
 <!-- HT Substations Section -->
-<div style="margin: 16px 4px 8px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#475569; display:flex; align-items:center; gap:6px;">
+<div style="margin: 16px 4px 8px; font-size:12.5px; font-weight:900; text-transform:uppercase; letter-spacing:.05em; color:#0f172a; display:flex; align-items:center; gap:6px;">
   <span style="width:8px; height:8px; border-radius:50%; background:#ef4444; display:inline-block;"></span>
   High Tension (HT) Panels (11 kV)
 </div>
@@ -167,10 +167,10 @@
           <span class="pill pill-purple" style="font-size:10px; padding:2px 8px; background:rgba(124,58,237,.12); color:#7c3aed; border:1px solid rgba(124,58,237,.25);">Hourly (24h)</span>
         {% endif %}
       </div>
-      <div style="font-size:12px; color:#64748b; margin-top:3px; display:flex; align-items:center; gap:8px;">
+      <div style="font-size:12px; color:#334155; font-weight:600; margin-top:3px; display:flex; align-items:center; gap:8px;">
         <span>{{ p.subtitle }}</span>
         {% if p.logged %}
-          <span style="color:#059669; font-weight:600;">• by {{ p.reading.operator|default:"Operator" }} ({{ p.reading.time|default:"Logged" }})</span>
+          <span style="color:#047857; font-weight:700;">• by {{ p.reading.operator|default:"Operator" }} ({{ p.reading.time|default:"Logged" }})</span>
         {% endif %}
       </div>
     </div>
@@ -189,7 +189,7 @@
 {% endfor %}
 
 <!-- LT Substations Section -->
-<div style="margin: 20px 4px 8px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#475569; display:flex; align-items:center; gap:6px;">
+<div style="margin: 20px 4px 8px; font-size:12.5px; font-weight:900; text-transform:uppercase; letter-spacing:.05em; color:#0f172a; display:flex; align-items:center; gap:6px;">
   <span style="width:8px; height:8px; border-radius:50%; background:#0284c7; display:inline-block;"></span>
   Low Tension (LT) Panels (415 V)
 </div>
@@ -201,10 +201,10 @@
       <div style="display:flex; align-items:center; gap:8px;">
         <span style="font-size:14px; font-weight:800; color:#0f172a;">{{ p.display_name }}</span>
       </div>
-      <div style="font-size:12px; color:#64748b; margin-top:3px; display:flex; align-items:center; gap:8px;">
+      <div style="font-size:12px; color:#334155; font-weight:600; margin-top:3px; display:flex; align-items:center; gap:8px;">
         <span>{{ p.subtitle }}</span>
         {% if p.logged %}
-          <span style="color:#059669; font-weight:600;">• by {{ p.reading.operator|default:"Operator" }} ({{ p.reading.time|default:"Logged" }})</span>
+          <span style="color:#047857; font-weight:700;">• by {{ p.reading.operator|default:"Operator" }} ({{ p.reading.time|default:"Logged" }})</span>
         {% endif %}
       </div>
     </div>
