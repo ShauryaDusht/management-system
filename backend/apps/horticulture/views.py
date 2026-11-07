@@ -1146,8 +1146,8 @@ class AdminHorticultureWorkerDetailAPIView(APIView):
 
     def delete(self, request, worker_id):
         worker = self.get_object(worker_id)
-        worker.is_active = False
-        worker.save(update_fields=['is_active', 'updated_at'])
+        worker.area_assignments.all().delete()
+        worker.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

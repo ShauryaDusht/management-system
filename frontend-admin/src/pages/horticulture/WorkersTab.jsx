@@ -6,6 +6,7 @@ import { Alert, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal, Selec
 import { asList, getErrorMessage, triggerDownload } from '../../shared/utils'
 import { exportHorticultureReport } from './exportHelper'
 import WorkerReportModal from './WorkerReportModal'
+import ConfirmModal from '../../shared/components/ConfirmModal'
 
 const EMPTY_FORM = {
   name: '',
@@ -44,6 +45,8 @@ export default function WorkersTab() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [formError, setFormError] = useState('')
   const [reportWorker, setReportWorker] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -189,6 +192,22 @@ export default function WorkersTab() {
     }
   }
 
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setError('')
+    try {
+      await horticultureAPI.deleteWorker(deleteTarget.id)
+      setDeleteTarget(null)
+      setModal(null)
+      await load()
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to delete worker.'))
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const handleExportWorkers = async (format) => {
     const exportData = {
       filename: 'horticulture_workers',
@@ -290,7 +309,7 @@ export default function WorkersTab() {
           </div>
         ) : (
           <DataTable
-            headers={['Worker Name', 'Areas', 'Zone', 'Supervisor', 'Phone', 'Pay Code', 'Status', 'Edit', 'Report']}
+            headers={['Worker Name', 'Areas', 'Zone', 'Supervisor', 'Phone', 'Pay Code', 'Status', 'Actions', 'Report']}
             rows={visibleWorkers.map((worker) => [
               worker.name,
               areaNames(worker),
@@ -299,7 +318,10 @@ export default function WorkersTab() {
               worker.phone || '-',
               worker.pay_code || '-',
               worker.is_active ? 'Active' : 'Inactive',
-              <Btn key={`edit-${worker.id}`} size="sm" variant="ghost" disabled={isReadOnly} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !isReadOnly && openEdit(worker)}>Edit</Btn>,
+              <div key={`act-${worker.id}`} style={{ display: 'flex', gap: 6 }}>
+                <Btn size="sm" variant="ghost" disabled={isReadOnly} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !isReadOnly && openEdit(worker)}>Edit</Btn>
+                <Btn size="sm" variant="danger" disabled={isReadOnly} title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""} onClick={() => !isReadOnly && setDeleteTarget(worker)}>Delete</Btn>
+              </div>,
               <Btn key={`report-${worker.id}`} size="sm" variant="secondary" onClick={() => setReportWorker(worker)}>Report</Btn>,
             ])}
             emptyMsg="No horticulture workers found for selected filters."
@@ -314,8 +336,19 @@ export default function WorkersTab() {
         width={620}
         footer={(
           <>
-            <Btn variant="ghost" onClick={() => setModal(null)} disabled={saving}>Cancel</Btn>
-            <Btn onClick={saveWorker} disabled={saving}>
+            {modal?.worker && (
+              <Btn
+                variant="danger"
+                onClick={() => setDeleteTarget(modal.worker)}
+                disabled={saving || deleting || isReadOnly}
+                title={isReadOnly ? "Read-only mode: requires edit permission from admin" : ""}
+                style={{ marginRight: 'auto' }}
+              >
+                Delete Worker
+              </Btn>
+            )}
+            <Btn variant="ghost" onClick={() => setModal(null)} disabled={saving || deleting}>Cancel</Btn>
+            <Btn onClick={saveWorker} disabled={saving || deleting}>
               {saving ? 'Saving...' : isSwapping ? '🔄 Save & Swap Area' : modal?.mode === 'create' ? 'Add Worker' : 'Save Changes'}
             </Btn>
           </>
@@ -455,6 +488,17 @@ export default function WorkersTab() {
           )}
         </Field>
       </Modal>
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete Worker"
+        message={`Are you sure you want to delete worker "${deleteTarget?.name || ''}"? This will permanently remove the worker from the database.`}
+        confirmLabel={deleting ? 'Deleting...' : 'Delete Worker'}
+        onConfirm={confirmDelete}
+        onCancel={() => !deleting && setDeleteTarget(null)}
+        confirmDisabled={deleting}
+        cancelDisabled={deleting}
+      />
 
       <WorkerReportModal
         open={!!reportWorker}

@@ -17,9 +17,18 @@ import * as XLSX from 'xlsx-js-style'
 
 import { triggerDownload } from './utils'
 
+export function stripEmojis(value) {
+  if (value === null || value === undefined) return ''
+  return String(value)
+    .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '')
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u200D\uFE0E]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
 function cleanText(value) {
   if (value === null || value === undefined) return ''
-  return String(value).trim()
+  return stripEmojis(String(value)).trim()
 }
 
 function csvEscape(value) {
@@ -45,15 +54,15 @@ function csvEscape(value) {
  */
 export function normalizeExportConfig(config) {
   const filename = config.filename || 'report'
-  const moduleName = config.module || 'Campus Operations'
-  const title = config.title || 'Report'
-  const subtitle = config.subtitle || ''
+  const moduleName = stripEmojis(config.module || 'Campus Operations')
+  const title = stripEmojis(config.title || 'Report')
+  const subtitle = stripEmojis(config.subtitle || '')
 
   let metadata = []
   if (Array.isArray(config.metadata)) {
-    metadata = config.metadata
+    metadata = config.metadata.map((item) => ({ label: stripEmojis(item.label), value: stripEmojis(item.value) }))
   } else if (config.metadata && typeof config.metadata === 'object') {
-    metadata = Object.entries(config.metadata).map(([label, value]) => ({ label, value }))
+    metadata = Object.entries(config.metadata).map(([label, value]) => ({ label: stripEmojis(label), value: stripEmojis(value) }))
   }
 
   let stats = []
