@@ -6,6 +6,7 @@ from apps.core.models import Notification
 class NotificationSerializer(serializers.ModelSerializer):
     time_ago = serializers.SerializerMethodField()
     created_at_formatted = serializers.SerializerMethodField()
+    is_important = serializers.SerializerMethodField()
 
     class Meta:
         model = Notification
@@ -14,14 +15,23 @@ class NotificationSerializer(serializers.ModelSerializer):
             'title',
             'message',
             'notification_type',
+            'category',
+            'is_important',
             'status_label',
             'is_read',
             'read_at',
+            'expires_at',
+            'is_expired',
+            'requires_action',
+            'action_completed',
             'link',
             'created_at',
             'created_at_formatted',
             'time_ago',
         ]
+
+    def get_is_important(self, obj):
+        return obj.category == Notification.Category.IMPORTANT
 
     def get_time_ago(self, obj):
         now = timezone.now()
@@ -56,4 +66,3 @@ class NotificationSerializer(serializers.ModelSerializer):
             if data.get('message'):
                 data['message'] = data['message'].replace('has been approved by the manager', 'has been issued by the manager').replace('has been approved', 'has been issued')
         return data
-

@@ -469,7 +469,12 @@ class ItemRequestListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         if getattr(self.request.user, 'role', '') not in ['supervisor', 'caretaker']:
             raise PermissionDenied('Only supervisors/caretakers can create item requests.')
-        serializer.save(requested_by=self.request.user)
+        item_request = serializer.save(requested_by=self.request.user)
+        try:
+            from apps.core.notifications import notify_new_inventory_request
+            notify_new_inventory_request(item_request)
+        except Exception as e:
+            logger.debug("Failed sending new inventory request notification: %s", e)
 
 
 class ItemRequestBatchCreateView(generics.CreateAPIView):
@@ -479,7 +484,12 @@ class ItemRequestBatchCreateView(generics.CreateAPIView):
     def perform_create(self, serializer):
         if getattr(self.request.user, 'role', '') not in ['supervisor', 'caretaker']:
             raise PermissionDenied('Only supervisors/caretakers can create item requests.')
-        serializer.save(requested_by=self.request.user)
+        item_request = serializer.save(requested_by=self.request.user)
+        try:
+            from apps.core.notifications import notify_new_inventory_request
+            notify_new_inventory_request(item_request)
+        except Exception as e:
+            logger.debug("Failed sending new inventory request notification: %s", e)
 
 
 class ItemRequestDetailView(generics.RetrieveAPIView):
@@ -611,7 +621,8 @@ class ReviewRequestView(APIView):
 
         item_request.save()
         _sync_horticulture_request_status(item_request, item_request.status)
-        from apps.core.notifications import notify_inventory_approved, notify_inventory_rejected
+        from apps.core.notifications import notify_inventory_approved, notify_inventory_rejected, resolve_inventory_request_notifications
+        resolve_inventory_request_notifications(item_request)
         if item_request.status == ItemRequest.Status.APPROVED:
             notify_inventory_approved(item_request)
         elif item_request.status == ItemRequest.Status.REJECTED:
@@ -731,7 +742,8 @@ class IssueItemView(APIView):
         except Exception:
             pass
 
-        from apps.core.notifications import notify_inventory_approved
+        from apps.core.notifications import notify_inventory_approved, resolve_inventory_request_notifications
+        resolve_inventory_request_notifications(item_request)
         notify_inventory_approved(item_request)
 
         return Response(ItemIssueSerializer(issue).data, status=201)

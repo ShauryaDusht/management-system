@@ -1,4 +1,4 @@
-<!-- Notification Drawer Component for Mobile Staff Portal -->
+<!-- Notification Drawer Component for Mobile Staff Portal with Classification & Expiry -->
 <style>
   .notif-bell-btn {
     position: relative;
@@ -140,6 +140,60 @@
     background: rgba(255, 255, 255, 0.2);
   }
 
+  /* Category Filter Bar */
+  .notif-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #e2ded8;
+    border-bottom: 1px solid #d5d0c7;
+    flex-shrink: 0;
+  }
+  .notif-filter-pill {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 6px 6px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #4b5563;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .notif-filter-pill:hover {
+    background: #f8fafc;
+  }
+  .notif-filter-pill.active {
+    background: #2d4a3e;
+    color: #fff;
+    border-color: #2d4a3e;
+    box-shadow: 0 1px 4px rgba(45, 74, 62, 0.25);
+  }
+  .notif-filter-pill.active .notif-filter-cnt {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+  }
+  .notif-filter-cnt {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #334155;
+    font-size: 9.5px;
+    font-weight: 800;
+  }
+
   .notif-body {
     flex: 1;
     overflow-y: auto;
@@ -161,9 +215,16 @@
     transition: all 0.2s ease;
     cursor: pointer;
   }
+  .notif-card.is-important {
+    border-left: 4.5px solid #dc2626;
+    background: #fffdfd;
+  }
+  .notif-card.is-routine {
+    border-left: 4.5px solid #2d4a3e;
+  }
   .notif-card.is-read {
     background: rgba(255, 255, 255, 0.65);
-    border-left: 4.5px solid #cbd5e1;
+    border-left-color: #cbd5e1 !important;
     opacity: 0.88;
   }
   .notif-card:active {
@@ -183,6 +244,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-wrap: wrap;
   }
   .notif-card.is-read .notif-card-title {
     font-weight: 700;
@@ -194,6 +256,9 @@
     border-radius: 50%;
     background: #22c55e;
     flex-shrink: 0;
+  }
+  .notif-dot.dot-important {
+    background: #dc2626;
   }
   .notif-card.is-read .notif-dot {
     display: none;
@@ -215,6 +280,30 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* Category Badges */
+  .notif-cat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1.5px 6px;
+    border-radius: 4px;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+  }
+  .notif-cat-badge.important {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+  }
+  .notif-cat-badge.routine {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
   }
 
   /* Status Badges */
@@ -292,6 +381,20 @@
       <button type="button" class="notif-close-btn" aria-label="Close" onclick="closeNotificationDrawer()">&times;</button>
     </div>
   </div>
+
+  <!-- Filter Pills Bar -->
+  <div class="notif-filter-bar">
+    <button type="button" id="notif-tab-all" class="notif-filter-pill active" onclick="setNotifFilter('all')">
+      All <span id="notif-cnt-all" class="notif-filter-cnt">0</span>
+    </button>
+    <button type="button" id="notif-tab-important" class="notif-filter-pill" onclick="setNotifFilter('important')">
+      ⚠️ Important <span id="notif-cnt-important" class="notif-filter-cnt">0</span>
+    </button>
+    <button type="button" id="notif-tab-routine" class="notif-filter-pill" onclick="setNotifFilter('routine')">
+      📋 Routine <span id="notif-cnt-routine" class="notif-filter-cnt">0</span>
+    </button>
+  </div>
+
   <div id="notif-body" class="notif-body">
     <div class="notif-empty">
       <div class="notif-empty-icon">🔔</div>
@@ -304,6 +407,7 @@
   (function() {
     var notifCache = [];
     var unreadCount = 0;
+    var currentFilter = 'all';
     var pollTimer = null;
 
     function getCookie(name) {
@@ -345,29 +449,94 @@
       }
     }
 
+    function updateFilterCounts() {
+      var activeList = notifCache.filter(function(n) { return !n.is_expired; });
+      var importantList = activeList.filter(function(n) {
+        return (n.category || '').toUpperCase() === 'IMPORTANT' || n.is_important;
+      });
+      var routineList = activeList.filter(function(n) {
+        return (n.category || '').toUpperCase() === 'ROUTINE' && !n.is_important;
+      });
+
+      var cntAll = document.getElementById('notif-cnt-all');
+      var cntImp = document.getElementById('notif-cnt-important');
+      var cntRtn = document.getElementById('notif-cnt-routine');
+
+      if (cntAll) cntAll.textContent = activeList.length;
+      if (cntImp) cntImp.textContent = importantList.length;
+      if (cntRtn) cntRtn.textContent = routineList.length;
+    }
+
+    window.setNotifFilter = function(filter) {
+      currentFilter = filter || 'all';
+
+      ['all', 'important', 'routine'].forEach(function(f) {
+        var tab = document.getElementById('notif-tab-' + f);
+        if (tab) {
+          if (f === currentFilter) {
+            tab.classList.add('active');
+          } else {
+            tab.classList.remove('active');
+          }
+        }
+      });
+
+      renderNotifications(notifCache);
+    };
+
     function renderNotifications(notifications) {
       var body = document.getElementById('notif-body');
       if (!body) return;
 
-      if (!notifications || notifications.length === 0) {
+      var activeList = (notifications || []).filter(function(item) {
+        return !item.is_expired;
+      });
+
+      var displayList = activeList;
+      if (currentFilter === 'important') {
+        displayList = activeList.filter(function(n) {
+          return (n.category || '').toUpperCase() === 'IMPORTANT' || n.is_important;
+        });
+      } else if (currentFilter === 'routine') {
+        displayList = activeList.filter(function(n) {
+          return (n.category || '').toUpperCase() === 'ROUTINE' && !n.is_important;
+        });
+      }
+
+      updateFilterCounts();
+
+      if (!displayList || displayList.length === 0) {
+        var emptyMsg = 'No notifications yet';
+        var emptySub = 'You are completely caught up!';
+        if (currentFilter === 'important') {
+          emptyMsg = 'No Important Notifications';
+          emptySub = 'No urgent or actionable alerts pending.';
+        } else if (currentFilter === 'routine') {
+          emptyMsg = 'No Routine Notifications';
+          emptySub = 'No reminders or general updates.';
+        }
+
         body.innerHTML = [
           '<div class="notif-empty">',
-          '  <div class="notif-empty-icon">🔔</div>',
-          '  <div class="notif-empty-text">No notifications yet</div>',
-          '  <div class="notif-empty-sub">You are completely caught up!</div>',
+          '  <div class="notif-empty-icon">' + (currentFilter === 'important' ? '🛡️' : '🔔') + '</div>',
+          '  <div class="notif-empty-text">' + emptyMsg + '</div>',
+          '  <div class="notif-empty-sub">' + emptySub + '</div>',
           '</div>'
         ].join('');
         return;
       }
 
-      var html = notifications.map(function(item) {
+      var html = displayList.map(function(item) {
+        var isImportant = (item.category || '').toUpperCase() === 'IMPORTANT' || Boolean(item.is_important);
+        var categoryClass = isImportant ? 'is-important' : 'is-routine';
+
         var pillClass = 'pill-default';
         var status = (item.status_label || '').toLowerCase();
         if (status.indexOf('approved') !== -1 || status.indexOf('issued') !== -1) {
           pillClass = 'pill-issued';
         } else if (status.indexOf('rejected') !== -1) {
           pillClass = 'pill-rejected';
-        } else if (status.indexOf('usage') !== -1 || status.indexOf('pending') !== -1) {
+        } else if (status.indexOf('usage') !== -1 || status.indexOf('pending') !== -1 || status.indexOf('action') !== -1) {
           pillClass = 'pill-pending';
         }
 
@@ -388,12 +557,17 @@
         var linkAttr = item.link ? 'data-link="' + item.link + '"' : '';
         var isReadClass = item.is_read ? 'is-read' : '';
 
+        var catBadge = isImportant
+          ? '<span class="notif-cat-badge important">⚠️ Important</span>'
+          : '<span class="notif-cat-badge routine">Routine</span>';
+
         return [
-          '<div class="notif-card ' + isReadClass + '" data-id="' + item.id + '" ' + linkAttr + ' onclick="handleNotificationClick(' + item.id + ', \'' + (item.link || '') + '\')">',
+          '<div class="notif-card ' + categoryClass + ' ' + isReadClass + '" data-id="' + item.id + '" ' + linkAttr + ' onclick="handleNotificationClick(' + item.id + ', \'' + (item.link || '') + '\')">',
           '  <div class="notif-card-top">',
           '    <div class="notif-card-title">',
-          '      <span class="notif-dot"></span>',
+          '      <span class="notif-dot ' + (isImportant ? 'dot-important' : '') + '"></span>',
           '      <span>' + escapeHtml(displayTitle) + '</span>',
+          '      ' + catBadge,
           '    </div>',
           '    <span class="notif-time">' + escapeHtml(item.time_ago || '') + '</span>',
           '  </div>',
@@ -436,6 +610,7 @@
         if (data) {
           notifCache = data.notifications || [];
           updateBadgeUI(data.unread_count || 0);
+          updateFilterCounts();
           if (document.getElementById('notif-drawer').classList.contains('open')) {
             renderNotifications(notifCache);
           }
@@ -482,10 +657,12 @@
         if (data && typeof data.unread_count === 'number') {
           updateBadgeUI(data.unread_count);
         }
-        // Update item in cache and DOM
         for (var i = 0; i < notifCache.length; i++) {
           if (notifCache[i].id === id) {
             notifCache[i].is_read = true;
+            if (data && data.expires_at) {
+              notifCache[i].expires_at = data.expires_at;
+            }
             break;
           }
         }
