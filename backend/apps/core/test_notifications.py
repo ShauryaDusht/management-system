@@ -14,6 +14,8 @@ from apps.core.notifications import (
     notify_inventory_rejected,
     notify_leave_decision,
     check_and_send_usage_reminders,
+    notify_new_inventory_request,
+    resolve_inventory_request_notifications,
 )
 from apps.inventory.models import Category, Item, ItemRequest, ItemIssue, ItemUsageLog
 from apps.housekeeping.models import HKArea, HKUserArea, HKStockRequest, HKLeaveRequest, HKInchargeAssignment
@@ -438,3 +440,456 @@ class InAppNotificationSystemTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, 'Test Page Notif')
         self.assertContains(res, 'Message on page')
+
+
+class NotificationClassificationAndExpiryTests(TestCase):
+    """
+    Comprehensive test coverage for notification classification (IMPORTANT vs ROUTINE),
+    automatic soft-expiry, retention calculation, edge cases, and UI filtering.
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.supervisor = User.objects.create_user(
+            username='sup.rajesh',
+            password='password123',
+            first_name='Rajesh',
+            last_name='Kumar',
+            role='supervisor',
+        )
+        self.manager = User.objects.create_user(
+            username='inv.manager',
+            password='password123',
+            first_name='Anil',
+            last_name='Mehta',
+            role='inventory_manager',
+        )
+        self.category = Category.objects.create(name='Cleaning Gear')
+        self.item = Item.objects.create(
+            name='Bleach 5L',
+            category=self.category,
+            item_type=Item.ItemType.CONSUMABLE,
+            unit=Item.Unit.LITRES,
+            total_quantity=50,
+            available_quantity=50,
+            threshold_quantity=5,
+        )
+
+    def test_1_important_notification_creation_and_classification(self):
+        """Verify important notifications receive Category.IMPORTANT and proper defaults."""
+        req = ItemRequest.objects.create(
+            requested_by=self.supervisor,
+            item=self.item,
+            quantity_requested=5,
+            purpose='Deep cleaning',
+            status=ItemRequest.Status.PENDING,
+        )
+
+        # 1. New request notification for manager
+        notifs = notify_new_inventory_request(req)
+        self.assertTrue(len(notifs) >= 1)
+        mgr_notif = notifs[0]
+        self.assertEqual(mgr_notif.category, Notification.Category.IMPORTANT)
+        self.assertTrue(mgr_notif.requires_action)
+        self.assertFalse(mgr_notif.action_completed)
+        self.assertIsNone(mgr_notif.expires_at)
+
+        # 2. Approved notification
+        notif_app = notify_inventory_approved(req)
+        self.assertEqual(notif_app.category, Notification.Category.IMPORTANT)
+        self.assertIsNone(notif_app.expires_at)  # unread important never auto-expires
+
+        # 3. Rejected notification
+        req_rej = ItemRequest.objects.create(
+            requested_by=self.supervisor,
+            item=self.item,
+            quantity_requested=2,
+            purpose='Hostel cleaning',
+            status=ItemRequest.Status.PENDING,
+        )
+        notif_rej = notify_inventory_rejected(req_rej, 'Out of stock')
+        self.assertEqual(notif_rej.category, Notification.Category.IMPORTANT)
+
+        # 4. Leave decision notification
+        notif_leave = notify_leave_decision(self.supervisor, date(2026, 11, 15), 'approved')
+        self.assertEqual(notif_leave.category, Notification.Category.IMPORTANT)
+
+    def test_2_routine_notification_creation_and_classification(self):
+        """Verify routine notifications receive Category.ROUTINE and standard 7-day unread expiry."""
+        now = timezone.now()
+        notif = create_notification(
+            user=self.supervisor,
+            title='Daily Shift Briefing',
+            message='Please review today routine task list.',
+            notification_type='general',
+        )
+        self.assertEqual(notif.category, Notification.Category.ROUTINE)
+        self.assertFalse(notif.is_read)
+        self.assertIsNotNone(notif.expires_at)
+        # Should expire approximately 7 days from creation
+        expected_expiry = now + timedelta(days=7)
+        self.assertAlmostEqual(
+            notif.expires_at.timestamp(),
+            expected_expiry.timestamp(),
+            delta=5,
+        )
+
+    def test_3_expiry_of_read_routine_notifications_after_3_days(self):
+        """Verify read routine notifications are permanently deleted 3 days after being read."""
+        t0 = timezone.now() - timedelta(days=10)
+        notif = Notification.objects.create(
+            user=self.supervisor,
+            title='Watering Schedule Routine',
+            message='Routine update',
+            category=Notification.Category.ROUTINE,
+            is_read=False,
+        )
+        Notification.objects.filter(id=notif.id).update(created_at=t0)
+        notif.refresh_from_db()
+
+        read_time = t0 + timedelta(days=1)
+        notif.mark_read(now=read_time, save=True)
+
+        # Expiry should be read_time + 3 days = t0 + 4 days
+        expected_expiry = read_time + timedelta(days=3)
+        self.assertAlmostEqual(notif.expires_at.timestamp(), expected_expiry.timestamp(), delta=2)
+
+        # Check at 2 days after read: NOT expired
+        self.assertFalse(notif.is_currently_expired(now=read_time + timedelta(days=2)))
+
+        # Check at 3 days + 1 hour after read: IS expired
+        check_time = read_time + timedelta(days=3, hours=1)
+        self.assertTrue(notif.is_currently_expired(now=check_time))
+
+        # Run permanent deletion cleanup at check_time
+        deleted_count = Notification.delete_expired_notifications(now=check_time)
+        self.assertGreaterEqual(deleted_count, 1)
+        self.assertFalse(Notification.objects.filter(id=notif.id).exists())
+
+    def test_4_expiry_of_unread_routine_notifications_after_7_days(self):
+        """Verify unread routine notifications are permanently deleted 7 days after creation."""
+        t0 = timezone.now() - timedelta(days=8)
+        notif = Notification.objects.create(
+            user=self.supervisor,
+            title='Routine Usage Reminder',
+            message='Outstanding soap quantity',
+            category=Notification.Category.ROUTINE,
+            is_read=False,
+        )
+        Notification.objects.filter(id=notif.id).update(
+            created_at=t0,
+            expires_at=t0 + timedelta(days=7),
+        )
+        notif.refresh_from_db()
+
+        # At 5 days: not expired
+        self.assertFalse(notif.is_currently_expired(now=t0 + timedelta(days=5)))
+
+        # At 7 days + 1 minute: expired
+        future_time = t0 + timedelta(days=7, minutes=1)
+        self.assertTrue(notif.is_currently_expired(now=future_time))
+
+        deleted_count = Notification.delete_expired_notifications(now=future_time)
+        self.assertGreaterEqual(deleted_count, 1)
+        self.assertFalse(Notification.objects.filter(id=notif.id).exists())
+
+    def test_5_unread_important_notifications_never_automatically_expire(self):
+        """Verify unread important notifications NEVER expire or delete automatically, even after 100 days."""
+        t0 = timezone.now() - timedelta(days=100)
+        notif = Notification.objects.create(
+            user=self.supervisor,
+            title='Critical Safety Audit',
+            message='Urgent action required on chemical storage.',
+            category=Notification.Category.IMPORTANT,
+            is_read=False,
+        )
+        Notification.objects.filter(id=notif.id).update(created_at=t0)
+        notif.refresh_from_db()
+
+        self.assertIsNone(notif.expires_at)
+        self.assertFalse(notif.is_expired)
+
+        # Attempt batch deletion 100 days in future
+        now_future = timezone.now() + timedelta(days=100)
+        self.assertFalse(notif.is_currently_expired(now=now_future))
+
+        deleted_count = Notification.delete_expired_notifications(now=now_future)
+        self.assertEqual(deleted_count, 0)
+        notif.refresh_from_db()
+        self.assertFalse(notif.is_expired)
+        self.assertIsNone(notif.expires_at)
+        self.assertTrue(Notification.objects.filter(id=notif.id).exists())
+
+    def test_6_read_important_notifications_expire_after_30_days(self):
+        """Verify read important notifications are permanently deleted 30 days after being read."""
+        t0 = timezone.now() - timedelta(days=40)
+        notif = Notification.objects.create(
+            user=self.supervisor,
+            title='Inventory Request Issued',
+            message='Item issued by manager',
+            category=Notification.Category.IMPORTANT,
+            is_read=False,
+        )
+        Notification.objects.filter(id=notif.id).update(created_at=t0)
+        notif.refresh_from_db()
+
+        read_time = t0 + timedelta(days=2)
+        notif.mark_read(now=read_time, save=True)
+
+        expected_expiry = read_time + timedelta(days=30)
+        self.assertAlmostEqual(notif.expires_at.timestamp(), expected_expiry.timestamp(), delta=2)
+
+        # At 25 days after read: not expired
+        self.assertFalse(notif.is_currently_expired(now=read_time + timedelta(days=25)))
+
+        # At 31 days after read: expired
+        check_time = read_time + timedelta(days=31)
+        self.assertTrue(notif.is_currently_expired(now=check_time))
+
+        deleted_count = Notification.delete_expired_notifications(now=check_time)
+        self.assertGreaterEqual(deleted_count, 1)
+        self.assertFalse(Notification.objects.filter(id=notif.id).exists())
+
+    def test_7_unresolved_operational_notifications_remain_active(self):
+        """Verify notifications tied to unresolved operational actions are protected from deletion."""
+        t0 = timezone.now() - timedelta(days=45)
+        notif = Notification.objects.create(
+            user=self.manager,
+            title='Approval Required: Stock Requisition',
+            message='Supervisor requested 10 items.',
+            category=Notification.Category.IMPORTANT,
+            requires_action=True,
+            action_completed=False,
+            is_read=True,
+            read_at=t0,
+        )
+        Notification.objects.filter(id=notif.id).update(
+            created_at=t0,
+            expires_at=t0 + timedelta(days=30),
+        )
+        notif.refresh_from_db()
+
+        now = timezone.now()
+        # Even though expires_at has passed, unresolved action prevents deletion!
+        self.assertTrue(notif.has_unresolved_action())
+        self.assertFalse(notif.is_currently_expired(now=now))
+
+        deleted_count = Notification.delete_expired_notifications(now=now)
+        self.assertEqual(deleted_count, 0)
+        notif.refresh_from_db()
+        self.assertTrue(Notification.objects.filter(id=notif.id).exists())
+
+        # Now mark action completed (e.g. manager reviews request)
+        notif.mark_action_completed(now=now, save=True)
+        self.assertFalse(notif.has_unresolved_action())
+        # Now expiry timestamp is recalculated to now + 30 days
+        self.assertFalse(notif.is_currently_expired(now=now))
+        # 31 days later, it will properly expire and be permanently deleted
+        check_time = now + timedelta(days=31)
+        self.assertTrue(notif.is_currently_expired(now=check_time))
+        deleted_after_action = Notification.delete_expired_notifications(now=check_time)
+        self.assertGreaterEqual(deleted_after_action, 1)
+        self.assertFalse(Notification.objects.filter(id=notif.id).exists())
+
+    def test_8_expired_notifications_excluded_from_unread_counts(self):
+        """Verify unread counts exclude expired notifications and expired records are purged."""
+        now = timezone.now()
+        # 1 active unread important notification
+        active_notif = create_notification(
+            user=self.supervisor,
+            title='Active Important Alert',
+            message='Action required',
+            category=Notification.Category.IMPORTANT,
+        )
+
+        # 1 expired unread routine notification
+        exp_notif = Notification.objects.create(
+            user=self.supervisor,
+            title='Old Routine Alert',
+            message='Routine text',
+            category=Notification.Category.ROUTINE,
+            is_read=False,
+            created_at=now - timedelta(days=10),
+            expires_at=now - timedelta(days=3),
+            is_expired=True,
+        )
+
+        self.client.force_login(self.supervisor)
+        res = self.client.get('/api/notifications/')
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        # Only the 1 active unread notification should be counted
+        self.assertEqual(data['unread_count'], 1)
+        self.assertEqual(data['important_unread_count'], 1)
+        self.assertEqual(data['routine_unread_count'], 0)
+        # Verify the expired record was permanently deleted from DB
+        self.assertFalse(Notification.objects.filter(id=exp_notif.id).exists())
+        self.assertTrue(Notification.objects.filter(id=active_notif.id).exists())
+
+    def test_9_expired_notifications_hidden_from_active_notification_list(self):
+        """Verify active notification endpoints hide and permanently delete expired notifications."""
+        now = timezone.now()
+        active_notif = create_notification(
+            user=self.supervisor,
+            title='Visible Active Notification',
+            message='Hello active world',
+            category=Notification.Category.IMPORTANT,
+        )
+        expired_notif = Notification.objects.create(
+            user=self.supervisor,
+            title='Hidden Expired Notification',
+            message='I am expired',
+            category=Notification.Category.ROUTINE,
+            is_read=True,
+            created_at=now - timedelta(days=20),
+            expires_at=now - timedelta(days=10),
+            is_expired=True,
+        )
+
+        self.client.force_login(self.supervisor)
+
+        # 1. API endpoint
+        res = self.client.get('/api/notifications/')
+        self.assertEqual(res.status_code, 200)
+        items = res.json()['notifications']
+        titles = [i['title'] for i in items]
+        self.assertIn('Visible Active Notification', titles)
+        self.assertNotIn('Hidden Expired Notification', titles)
+        # Permanently deleted from DB
+        self.assertFalse(Notification.objects.filter(id=expired_notif.id).exists())
+        self.assertTrue(Notification.objects.filter(id=active_notif.id).exists())
+
+        # 2. Portal HTML view
+        res_html = self.client.get('/portal/notifications/')
+        self.assertEqual(res_html.status_code, 200)
+        self.assertContains(res_html, 'Visible Active Notification')
+        self.assertNotContains(res_html, 'Hidden Expired Notification')
+
+    def test_10_category_filtering_in_api_and_portal(self):
+        """Verify filtering by All, Important, and Routine returns distinct subsets."""
+        n_imp = create_notification(
+            user=self.supervisor,
+            title='Important Item Approved',
+            message='Your request was approved',
+            category=Notification.Category.IMPORTANT,
+        )
+        n_rtn = create_notification(
+            user=self.supervisor,
+            title='Routine Usage Reminder',
+            message='Please submit report',
+            category=Notification.Category.ROUTINE,
+        )
+
+        self.client.force_login(self.supervisor)
+
+        # API: Filter Important
+        res_imp = self.client.get('/api/notifications/?category=IMPORTANT')
+        titles_imp = [i['title'] for i in res_imp.json()['notifications']]
+        self.assertIn('Important Item Approved', titles_imp)
+        self.assertNotIn('Routine Usage Reminder', titles_imp)
+
+        # API: Filter Routine
+        res_rtn = self.client.get('/api/notifications/?category=ROUTINE')
+        titles_rtn = [i['title'] for i in res_rtn.json()['notifications']]
+        self.assertNotIn('Important Item Approved', titles_rtn)
+        self.assertIn('Routine Usage Reminder', titles_rtn)
+
+        # Portal: Filter Important
+        p_imp = self.client.get('/portal/notifications/?category=important')
+        self.assertContains(p_imp, 'Important Item Approved')
+        self.assertNotContains(p_imp, 'Routine Usage Reminder')
+
+    def test_11_legacy_notifications_default_categories(self):
+        """Verify legacy notifications receive appropriate classifications."""
+        from apps.core.notifications import determine_category
+
+        self.assertEqual(determine_category('inventory_approved'), Notification.Category.IMPORTANT)
+        self.assertEqual(determine_category('inventory_rejected'), Notification.Category.IMPORTANT)
+        self.assertEqual(determine_category('leave_approved'), Notification.Category.IMPORTANT)
+        self.assertEqual(determine_category('leave_rejected'), Notification.Category.IMPORTANT)
+        self.assertEqual(determine_category('usage_reminder'), Notification.Category.ROUTINE)
+        self.assertEqual(determine_category('general', title='Routine Update'), Notification.Category.ROUTINE)
+        self.assertEqual(determine_category('general', title='Emergency Alert'), Notification.Category.IMPORTANT)
+
+    def test_12_repeated_expiry_job_execution_idempotency(self):
+        """Verify running the expire_notifications management command repeatedly is idempotent and error-free."""
+        from django.core.management import call_command
+        from io import StringIO
+
+        now = timezone.now()
+        # Create an expired notification
+        notif = Notification.objects.create(
+            user=self.supervisor,
+            title='Old Routine Notification',
+            message='Old text',
+            category=Notification.Category.ROUTINE,
+            is_read=True,
+            created_at=now - timedelta(days=20),
+            expires_at=now - timedelta(days=5),
+            is_expired=False,
+        )
+
+        out1 = StringIO()
+        call_command('expire_notifications', stdout=out1)
+        self.assertIn('Successfully purged expired notifications from database', out1.getvalue())
+        self.assertIn('Permanently deleted: 1 record(s)', out1.getvalue())
+        self.assertFalse(Notification.objects.filter(id=notif.id).exists())
+
+        # Second run: should safely report 0 deleted
+        out2 = StringIO()
+        call_command('expire_notifications', stdout=out2)
+        self.assertIn('Successfully purged expired notifications from database', out2.getvalue())
+        self.assertIn('Permanently deleted: 0 record(s)', out2.getvalue())
+
+    def test_13_related_business_records_remain_intact_after_deletion(self):
+        """Verify permanent deletion of notifications does not delete or alter underlying business models."""
+        # Create underlying business records
+        req = ItemRequest.objects.create(
+            requested_by=self.supervisor,
+            item=self.item,
+            quantity_requested=5,
+            purpose='Hostel cleaning supply',
+            status=ItemRequest.Status.ISSUED,
+        )
+        issue = ItemIssue.objects.create(
+            request=req,
+            issued_by=self.manager,
+            issued_quantity=5,
+        )
+
+        # Create an expired notification referencing these business entities
+        now = timezone.now()
+        notif = Notification.objects.create(
+            user=self.supervisor,
+            title='Item Issued Notification',
+            message='Your item request #123 has been issued',
+            category=Notification.Category.ROUTINE,
+            link=f'/inventory/issues/{issue.id}/',
+            is_read=True,
+            created_at=now - timedelta(days=20),
+            expires_at=now - timedelta(days=5),
+        )
+
+        notif_id = notif.id
+        req_id = req.id
+        issue_id = issue.id
+        user_id = self.supervisor.id
+
+        # Permanently delete expired notifications
+        deleted = Notification.delete_expired_notifications(now=now)
+        self.assertGreaterEqual(deleted, 1)
+
+        # 1. Notification MUST be permanently deleted
+        self.assertFalse(Notification.objects.filter(id=notif_id).exists())
+
+        # 2. Business records MUST remain completely intact
+        self.assertTrue(ItemRequest.objects.filter(id=req_id).exists())
+        self.assertTrue(ItemIssue.objects.filter(id=issue_id).exists())
+        self.assertTrue(User.objects.filter(id=user_id).exists())
+
+        # Verify request and issue data integrity
+        req.refresh_from_db()
+        issue.refresh_from_db()
+        self.assertEqual(req.status, ItemRequest.Status.ISSUED)
+        self.assertEqual(issue.issued_quantity, Decimal('5'))
+
