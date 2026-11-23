@@ -274,6 +274,21 @@ def get_cycle_first_contractor_note_no(cycle_month):
     return settings.first_contractor_note_no
 
 
+def _note_number_suffix(note_no):
+    match = re.search(r'(\d+)\s*$', note_no or '')
+    return int(match.group(1)) if match else None
+
+
+def apply_typed_note_no(note, value):
+    """Keep a note number typed by hand: it is marked so the automatic numbering never overwrites it (it used to
+    be renumbered back on the next page load). Clearing the field hands the note back to the automatic numbering."""
+    new_no = str('' if value is None else value).strip()
+    if new_no == (note.note_no or ''):
+        return
+    note.note_no = new_no
+    note.note_no_locked = bool(new_no) and new_no != 'CANCELLED'
+
+
 def resequence_shop_note_numbers(cycle_month):
     """
     Re-assigns note_no (e.g. IWD/26-27/230, 231...) sequentially to all active,
@@ -286,7 +301,7 @@ def resequence_shop_note_numbers(cycle_month):
     prefix = settings.get_effective_prefix(cycle_month)
     first_no = get_cycle_first_shop_note_no(cycle_month)
 
-    active_notes = (
+    active_notes = list(
         ShopDemandNote.objects.filter(cycle_month=cycle_month, shop__is_active=True, is_cancelled=False)
         .select_related('shop')
         .order_by('shop__sl', 'id')
@@ -294,14 +309,20 @@ def resequence_shop_note_numbers(cycle_month):
 
     from .billing_master_data import BASELINE_SHOP_NOTE_NOS
     is_full_baseline = (
-        cycle_month == '2026-10' and active_notes.count() == len(BASELINE_SHOP_NOTE_NOS)
+        cycle_month == '2026-10' and len(active_notes) == len(BASELINE_SHOP_NOTE_NOS)
     )
 
+    # numbers typed by hand are left alone, and the automatic numbers skip the ones they use
+    locked_numbers = {_note_number_suffix(n.note_no) for n in active_notes if n.note_no_locked} - {None}
     curr_no = first_no
     for n in active_notes:
+        if n.note_no_locked:
+            continue
         if is_full_baseline and n.shop.sl in BASELINE_SHOP_NOTE_NOS:
             expected_no = f"{prefix}{BASELINE_SHOP_NOTE_NOS[n.shop.sl]}"
         else:
+            while curr_no in locked_numbers:
+                curr_no += 1
             expected_no = f"{prefix}{curr_no}"
             curr_no += 1
 
@@ -313,9 +334,10 @@ def resequence_shop_note_numbers(cycle_month):
         cycle_month=cycle_month, shop__is_active=True, is_cancelled=True
     )
     for cn in cancelled_notes:
-        if cn.note_no != 'CANCELLED':
+        if cn.note_no != 'CANCELLED' or cn.note_no_locked:
             cn.note_no = 'CANCELLED'
-            cn.save(update_fields=['note_no'])
+            cn.note_no_locked = False
+            cn.save(update_fields=['note_no', 'note_no_locked'])
 
 
 def resequence_contractor_note_numbers(cycle_month):
@@ -329,7 +351,7 @@ def resequence_contractor_note_numbers(cycle_month):
     prefix = settings.get_effective_prefix(cycle_month)
     c_first_no = get_cycle_first_contractor_note_no(cycle_month)
 
-    active_notes = (
+    active_notes = list(
         ContractorDemandNote.objects.filter(cycle_month=cycle_month, contractor__is_active=True)
         .select_related('contractor')
         .order_by('contractor__sl', 'id')
@@ -337,14 +359,20 @@ def resequence_contractor_note_numbers(cycle_month):
 
     from .billing_master_data import BASELINE_CONTRACTOR_NOTE_NOS
     is_full_baseline = (
-        cycle_month == '2026-10' and active_notes.count() == len(BASELINE_CONTRACTOR_NOTE_NOS)
+        cycle_month == '2026-10' and len(active_notes) == len(BASELINE_CONTRACTOR_NOTE_NOS)
     )
 
+    # numbers typed by hand are left alone, and the automatic numbers skip the ones they use
+    locked_numbers = {_note_number_suffix(n.note_no) for n in active_notes if n.note_no_locked} - {None}
     curr_no = c_first_no
     for n in active_notes:
+        if n.note_no_locked:
+            continue
         if is_full_baseline and n.contractor.sl in BASELINE_CONTRACTOR_NOTE_NOS:
             expected_no = f"{prefix}{BASELINE_CONTRACTOR_NOTE_NOS[n.contractor.sl]}"
         else:
+            while curr_no in locked_numbers:
+                curr_no += 1
             expected_no = f"{prefix}{curr_no}"
             curr_no += 1
 
@@ -418,7 +446,7 @@ def ensure_cycle_notes(cycle_month):
             if not n.note_no and is_full_shop_baseline and shop.sl in BASELINE_SHOP_NOTE_NOS:
                 n.note_no = f"{prefix}{BASELINE_SHOP_NOTE_NOS[shop.sl]}"
                 n.save(update_fields=['note_no'])
-            elif settings.auto_financial_year:
+            elif settings.auto_financial_year and not n.note_no_locked:
                 m = re.match(r'^IWD/\d{2}-\d{2}/(\d+)$', n.note_no or '')
                 if m:
                     expected_note_no = f"{prefix}{m.group(1)}"
@@ -426,7 +454,13 @@ def ensure_cycle_notes(cycle_month):
                         n.note_no = expected_note_no
                         n.save(update_fields=['note_no'])
 
-    resequence_shop_note_numbers(cycle_month)
+    # Renumber only when this call created notes (a new cycle or shop) or found one without a number. A plain page
+    # load must never renumber: it used to, which overwrote numbers typed by hand and shifted the others.
+    if (
+        ShopDemandNote.objects.filter(cycle_month=cycle_month).count() != len(existing_shop_notes)
+        or ShopDemandNote.objects.filter(cycle_month=cycle_month, shop__is_active=True, is_cancelled=False, note_no='').exists()
+    ):
+        resequence_shop_note_numbers(cycle_month)
 
     # 2. Contractors
     contractors = list(Contractor.objects.filter(is_active=True).order_by('sl', 'id'))
@@ -474,7 +508,7 @@ def ensure_cycle_notes(cycle_month):
             if not n.note_no and is_full_contractor_baseline and contractor.sl in BASELINE_CONTRACTOR_NOTE_NOS:
                 n.note_no = f"{prefix}{BASELINE_CONTRACTOR_NOTE_NOS[contractor.sl]}"
                 n.save(update_fields=['note_no'])
-            elif settings.auto_financial_year:
+            elif settings.auto_financial_year and not n.note_no_locked:
                 m = re.match(r'^IWD/\d{2}-\d{2}/(\d+)$', n.note_no or '')
                 if m:
                     expected_note_no = f"{prefix}{m.group(1)}"
@@ -482,7 +516,11 @@ def ensure_cycle_notes(cycle_month):
                         n.note_no = expected_note_no
                         n.save(update_fields=['note_no'])
 
-    resequence_contractor_note_numbers(cycle_month)
+    if (
+        ContractorDemandNote.objects.filter(cycle_month=cycle_month).count() != len(existing_contractor_notes)
+        or ContractorDemandNote.objects.filter(cycle_month=cycle_month, contractor__is_active=True, note_no='').exists()
+    ):
+        resequence_contractor_note_numbers(cycle_month)
 
 
 def get_current_cycle(request):
@@ -639,7 +677,7 @@ class ShopDetailView(APIView):
         if 'water' in data:
             note.water = Decimal(str(data['water'] or 0))
         if 'noteNo' in data:
-            note.note_no = str(data['noteNo'])
+            apply_typed_note_no(note, data['noteNo'])
         if 'date' in data:
             note.date = str(data['date'])
         if 'month' in data:
@@ -659,12 +697,13 @@ class ShopDetailView(APIView):
             note.is_cancelled = c_val
             if c_val:
                 note.note_no = 'CANCELLED'
+                note.note_no_locked = False
                 note.total_amount = Decimal('0.00')
             else:
                 note.total_amount = calculate_shop_total(
                     note.units, note.rate, note.water, note.fixed, note.extras
                 )
-            note.save(update_fields=['is_cancelled', 'note_no', 'total_amount'])
+            note.save(update_fields=['is_cancelled', 'note_no', 'note_no_locked', 'total_amount'])
             resequence_all_cycles_from(note.cycle_month)
             note.refresh_from_db()
 
@@ -825,7 +864,7 @@ class ContractorDetailView(APIView):
             note.contractor.save(update_fields=['intro'])
 
         if 'noteNo' in data:
-            note.note_no = str(data['noteNo'])
+            apply_typed_note_no(note, data['noteNo'])
         if 'date' in data:
             note.date = str(data['date'])
         if 'periodType' in data:

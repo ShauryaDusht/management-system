@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import NoteNoField from './NoteNoField'
 import { Btn, Card, Modal, Spinner } from '../../components/ui'
 import DemandNoteTemplate from './DemandNoteTemplate'
 import { buildNote, inr, pdfFileName, getExpiryStatus } from './utils'
@@ -203,12 +204,11 @@ export default function ShopEditorModal({
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
                   Note No.
                 </label>
-                <input
-                  type="text"
-                  disabled={isReadOnly}
+                <NoteNoField
                   value={rec.noteNo}
-                  onChange={(e) => handleFieldChange('noteNo', e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, opacity: isReadOnly ? 0.8 : 1 }}
+                  disabled={isReadOnly}
+                  onSave={(noteNo) => onPatch(rec.id, { noteNo })}
+                  inputStyle={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, opacity: isReadOnly ? 0.8 : 1 }}
                 />
               </div>
               <div>

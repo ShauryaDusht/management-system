@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import NoteNoField from './NoteNoField'
 import { Btn, Card, Modal, Spinner } from '../../components/ui'
 import ElectricityTemplate from './ElectricityTemplate'
 import { buildElectricityNote, inr0, pdfFileName } from './utils'
@@ -227,12 +228,11 @@ export default function ElectricityEditorModal({
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)', display: 'block', marginBottom: 4 }}>
                   Note No.
                 </label>
-                <input
-                  type="text"
-                  disabled={isReadOnly}
+                <NoteNoField
                   value={rec.noteNo}
-                  onChange={(e) => handleFieldChange('noteNo', e.target.value)}
-                  style={inputStyle}
+                  disabled={isReadOnly}
+                  onSave={(noteNo) => onPatch(rec.id, { noteNo })}
+                  inputStyle={inputStyle}
                 />
               </div>
               <div>

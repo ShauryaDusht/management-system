@@ -179,6 +179,10 @@ class ShopDemandNote(models.Model):
     month_to = models.CharField(max_length=7, blank=True, default='')
     expiry_date = models.CharField(max_length=10, blank=True, default='', help_text="Bill expiry / payment due date in YYYY-MM-DD")
     note_no = models.CharField(max_length=100, blank=True, default='')
+    note_no_locked = models.BooleanField(
+        default=False,
+        help_text='The note number was typed by hand: the automatic numbering never changes it.',
+    )
     units = models.CharField(max_length=40, blank=True, default='')
     rate = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('9.55'))
     water = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('320.00'))
@@ -256,6 +260,10 @@ class ContractorDemandNote(models.Model):
     from_date = models.CharField(max_length=10, blank=True, default='')
     to_date = models.CharField(max_length=10, blank=True, default='')
     note_no = models.CharField(max_length=100, blank=True, default='')
+    note_no_locked = models.BooleanField(
+        default=False,
+        help_text='The note number was typed by hand: the automatic numbering never changes it.',
+    )
     meters = models.JSONField(default=list)  # list of {"label": str, "current": str, "previous": str, "rate": float}
     payments = models.JSONField(default=list, blank=True)  # list of {"id": str, "amount": str, "date": str, "mode": str, "receipt_no": str, "remarks": str}
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))

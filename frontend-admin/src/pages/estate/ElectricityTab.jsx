@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import NoteNoField from './NoteNoField'
 import { Btn, Card, Modal, Spinner } from '../../components/ui'
 import { inr0, calcMeters, formatDMY, billingLabel, todayISO, prevMonthOf } from './utils'
 import { exportExcel } from '../../shared/utils'
@@ -348,12 +349,11 @@ export default function ElectricityTab({
                         {r.noteNo || '—'}
                       </span>
                     ) : (
-                      <input
-                        type="text"
-                        placeholder="e.g. IWD/26-27/228"
-                        value={r.noteNo || ''}
-                        onChange={(e) => onPatch(r.id, { noteNo: e.target.value })}
-                        style={{
+                      <NoteNoField
+                        compact
+                        value={r.noteNo}
+                        onSave={(noteNo) => onPatch(r.id, { noteNo })}
+                        inputStyle={{
                           width: 140,
                           padding: '5px 8px',
                           borderRadius: 6,

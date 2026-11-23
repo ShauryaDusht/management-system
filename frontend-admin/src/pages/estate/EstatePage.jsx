@@ -98,9 +98,11 @@ export default function EstatePage() {
       if (data.isCancelled !== undefined || data.is_cancelled !== undefined) {
         loadCycleData(selectedCycle)
       }
+      return true
     } catch (err) {
       console.error('Failed to patch shop:', err)
       loadCycleData(selectedCycle)
+      return false
     }
   }
 
@@ -149,9 +151,11 @@ export default function EstatePage() {
     try {
       const res = await estateApi.patchContractor(id, data)
       setContractors((prev) => prev.map((c) => (c.id === id ? res.data : c)))
+      return true
     } catch (err) {
       console.error('Failed to patch contractor:', err)
       loadCycleData(selectedCycle)
+      return false
     }
   }
 
