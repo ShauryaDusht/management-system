@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { inventoryAPI, reportsAPI } from '../../api/inventory'
 import { Alert, Badge, Btn, Card, DataTable, ExportDropdown, Field, Input, Modal, SelectField } from '../../components/ui'
@@ -107,9 +107,20 @@ function isWithin24Hours(timestamp) {
   return diffHours >= 0 && diffHours <= 24
 }
 
+// The server sends at most this many issued items per page (newest first).
+const ISSUE_PAGE_SIZE = 200
+
 export default function IssuesTab({ userRole, categoryScope = null, excludeCategoryScope = null }) {
   const isHorticulture = Boolean(categoryScope)
   const [issues, setIssues] = useState([])
+  // Only the newest page is loaded at first. A busy day fills it, so older issues (or even part of a busy day) were
+  // missing from this list. Older pages are loaded on demand, and automatically when the chosen dates reach back.
+  const pagesWantedRef = useRef(1)
+  const loadingOlderRef = useRef(false)
+  const [pagesLoaded, setPagesLoaded] = useState(1)
+  const [totalIssues, setTotalIssues] = useState(0)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [olderError, setOlderError] = useState('')
   const [undoModalIssue, setUndoModalIssue] = useState(null)
 
   const [actionModal, setActionModal] = useState(null)
@@ -145,12 +156,70 @@ export default function IssuesTab({ userRole, categoryScope = null, excludeCateg
     const params = {}
     if (categoryScope) params.category = categoryScope
     if (excludeCategoryScope) params.exclude_category = excludeCategoryScope
-    const { data } = await inventoryAPI.getIssues(params)
-    setIssues(asList(data))
+    const pagesWanted = pagesWantedRef.current
+    const results = await Promise.all(
+      Array.from({ length: pagesWanted }, (_, i) =>
+        inventoryAPI.getIssues({ ...params, page: i + 1 }).catch((err) => {
+          if (i === 0) throw err
+          return null
+        })
+      )
+    )
+    const rows = results.filter(Boolean).flatMap((res) => asList(res.data))
+    setIssues(rows)
+    setTotalIssues(Number(results[0]?.data?.count ?? rows.length))
+    setPagesLoaded(pagesWanted)
     return null
   }, [categoryScope, excludeCategoryScope], 'Failed to load issued items.')
 
   const error = actionError || loadError
+
+  const hasOlderIssues = pagesLoaded * ISSUE_PAGE_SIZE < totalIssues
+  const loadOlderIssues = async () => {
+    if (loadingOlderRef.current) return
+    loadingOlderRef.current = true
+    setLoadingOlder(true)
+    setOlderError('')
+    try {
+      const params = {}
+      if (categoryScope) params.category = categoryScope
+      if (excludeCategoryScope) params.exclude_category = excludeCategoryScope
+      const nextPage = pagesWantedRef.current + 1
+      const { data } = await inventoryAPI.getIssues({ ...params, page: nextPage })
+      pagesWantedRef.current = nextPage
+      setPagesLoaded(nextPage)
+      setIssues((prev) => {
+        const seen = new Set(prev.map((issue) => issue.id))
+        return [...prev, ...asList(data).filter((issue) => !seen.has(issue.id))]
+      })
+    } catch {
+      setOlderError('Could not load older issued items. Please try again.')
+    } finally {
+      loadingOlderRef.current = false
+      setLoadingOlder(false)
+    }
+  }
+
+  // The oldest issue loaded so far, and how far back the chosen dates (or month) need us to look.
+  const oldestLoadedAt = useMemo(() => {
+    let oldest = null
+    issues.forEach((issue) => {
+      if (!issue.issued_at) return
+      const t = new Date(issue.issued_at).getTime()
+      if (!Number.isNaN(t) && (oldest === null || t < oldest)) oldest = t
+    })
+    return oldest
+  }, [issues])
+  const coverageStart = dateFrom
+    ? new Date(`${dateFrom}T00:00:00`).getTime()
+    : dateTo
+      ? 0
+      : new Date(reportYear, reportMonth - 1, 1).getTime()
+
+  useEffect(() => {
+    if (loading || loadingOlder || olderError || !hasOlderIssues || oldestLoadedAt === null) return
+    if (oldestLoadedAt > coverageStart) loadOlderIssues()
+  }, [loading, loadingOlder, olderError, hasOlderIssues, oldestLoadedAt, coverageStart])
 
   const allAreas = useMemo(() => {
     const seen = new Map()
@@ -783,6 +852,28 @@ export default function IssuesTab({ userRole, categoryScope = null, excludeCateg
           })}
           emptyMsg="No issued items for selected filters."
         />
+        {totalIssues > 0 && (
+          <div
+            style={{
+              padding: '10px 16px',
+              borderTop: '1px solid var(--border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 8,
+              flexWrap: 'wrap',
+            }}
+          >
+            <span style={{ fontSize: 12, color: olderError ? '#b91c1c' : 'var(--text-3)' }}>
+              {olderError || `Loaded the newest ${Math.min(totalIssues, pagesLoaded * ISSUE_PAGE_SIZE)} of ${totalIssues} issued items`}
+            </span>
+            {hasOlderIssues && (
+              <Btn size="sm" variant="ghost" onClick={loadOlderIssues} disabled={loading || loadingOlder}>
+                {loadingOlder ? 'Loading...' : 'Load older issued items'}
+              </Btn>
+            )}
+          </div>
+        )}
       </Card>
 
       <Modal
