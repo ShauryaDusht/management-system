@@ -1127,6 +1127,17 @@ class AdminHorticultureWorkersAPIView(APIView):
         return Response(AdminWorkerSerializer(worker, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
 
+def _horticulture_worker_has_history(worker):
+    """True when anything other than the worker's area assignments points at them (attendance, task records...)."""
+    for relation in worker._meta.related_objects:
+        accessor = relation.get_accessor_name()
+        if accessor == 'area_assignments' or not relation.one_to_many:
+            continue
+        if getattr(worker, accessor).exists():
+            return True
+    return False
+
+
 class AdminHorticultureWorkerDetailAPIView(APIView):
     permission_classes = [IsAdminOrHorticultureStaff]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -1146,6 +1157,14 @@ class AdminHorticultureWorkerDetailAPIView(APIView):
 
     def delete(self, request, worker_id):
         worker = self.get_object(worker_id)
+        # Deleting a worker also deletes (or, for some records, is blocked by) their attendance and task history,
+        # so only a worker with no history is removed; otherwise the manager is told to set them inactive instead.
+        if _horticulture_worker_has_history(worker):
+            return Response(
+                {'detail': 'This worker has attendance or task history, so it cannot be deleted. '
+                           'Set the worker to inactive instead.'},
+                status=status.HTTP_409_CONFLICT,
+            )
         worker.area_assignments.all().delete()
         worker.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -610,7 +610,7 @@ export default function InsightsPage({ embedded = false, defaultDepartment = nul
   const handleExportInsights = async (format) => {
     const day = todayISO()
     const rawViewLabel = activeViewOptions.find((v) => v.key === activeView)?.label || activeView
-    const viewLabel = rawViewLabel.replace(/^[\uD800-\uDBFF][\uDC00-\uDFFF]|\p{Extended_Pictographic}|\p{Emoji}/gu, '').trim()
+    const viewLabel = rawViewLabel.replace(/^[\uD800-\uDBFF][\uDC00-\uDFFF]|\p{Extended_Pictographic}/gu, '').trim()
     const filterDesc = isHorti ? `Zone: ${selectedZone.toUpperCase()}` : `Area: ${areaClass.toUpperCase()}`
 
     const exportData = {
