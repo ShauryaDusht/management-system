@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 
 import { asList, todayISO } from '../../shared/utils'
 import { inventoryAPI } from '../../api/inventory'
@@ -20,6 +20,9 @@ import {
 } from '../../components/ui'
 import UndoAdjustIssueModal from './UndoAdjustIssueModal'
 
+// The server sends at most this many requests per page (newest first).
+const REQUEST_PAGE_SIZE = 200
+
 export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, isCaretaker: isCaretakerProp, categoryScope = null, excludeCategoryScope = null }) {
   const { isSupervisor: authSupervisor, isCaretaker: authCaretaker, isReadOnly } = useAuth()
   const isSupervisor = isSupervisorProp !== undefined ? isSupervisorProp : authSupervisor
@@ -30,6 +33,12 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
   const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
   const [filter, setFilter] = useState('all')
+  // Only the newest page of requests is loaded at first. On a busy day it is full within a day or two, so older
+  // requests used to be missing from this list with no way to reach them. "Load older requests" fetches more pages.
+  const pagesWantedRef = useRef(1)
+  const [pagesLoaded, setPagesLoaded] = useState(1)
+  const [totalRequests, setTotalRequests] = useState(0)
+  const [loadingOlder, setLoadingOlder] = useState(false)
   const today = todayISO()
 
   const [newModal, setNewModal] = useState(false)
@@ -69,9 +78,16 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
     const params = {}
     if (categoryScope) params.category = categoryScope
     if (excludeCategoryScope) params.exclude_category = excludeCategoryScope
-    const [reqRes, pendingRes, approvedRes, itemsRes, catRes] = await Promise.all([
-      inventoryAPI.getRequests(params),
-      // The newest page of all requests is capped, so older requests still waiting for a decision (pending) or
+    const pagesWanted = pagesWantedRef.current
+    const pageCalls = Array.from({ length: pagesWanted }, (_, i) =>
+      inventoryAPI.getRequests({ ...params, page: i + 1 }).catch((err) => {
+        if (i === 0) throw err
+        return null
+      })
+    )
+    const [pageResults, pendingRes, approvedRes, itemsRes, catRes] = await Promise.all([
+      Promise.all(pageCalls),
+      // The newest pages of all requests are capped, so older requests still waiting for a decision (pending) or
       // for issue (approved) would never reach their lists. Always fetch both sets in full and merge them in.
       inventoryAPI.getRequests({ ...params, status: 'pending' }),
       inventoryAPI.getRequests({ ...params, status: 'approved' }),
@@ -79,14 +95,31 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
       inventoryAPI.getCategories(),
     ])
     const merged = new Map()
-    ;[...asList(reqRes.data), ...asList(pendingRes.data), ...asList(approvedRes.data)].forEach((r) => merged.set(r.id, r))
+    ;[
+      ...pageResults.filter(Boolean).flatMap((res) => asList(res.data)),
+      ...asList(pendingRes.data),
+      ...asList(approvedRes.data),
+    ].forEach((r) => merged.set(r.id, r))
     setRequests([...merged.values()].sort((a, b) => Number(b.id) - Number(a.id)))
+    setTotalRequests(Number(pageResults[0]?.data?.count ?? merged.size))
+    setPagesLoaded(pagesWanted)
     setItems(asList(itemsRes.data))
     setCategories(asList(catRes.data))
     return null
   }, [categoryScope, excludeCategoryScope], 'Failed to load requests.')
 
   const error = actionError || loadError
+
+  const hasOlderRequests = pagesLoaded * REQUEST_PAGE_SIZE < totalRequests
+  const loadOlderRequests = async () => {
+    setLoadingOlder(true)
+    pagesWantedRef.current = pagesLoaded + 1
+    try {
+      await reload()
+    } finally {
+      setLoadingOlder(false)
+    }
+  }
 
   const requestableItems = useMemo(() => {
     let list = items
@@ -565,6 +598,28 @@ export default function RequestsTab({ userRole, isSupervisor: isSupervisorProp, 
             ),
           ])}
         />
+        {totalRequests > 0 && (
+          <div
+            style={{
+              padding: '10px 16px',
+              borderTop: '1px solid var(--border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 8,
+              flexWrap: 'wrap',
+            }}
+          >
+            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+              Showing the newest {Math.min(totalRequests, pagesLoaded * REQUEST_PAGE_SIZE)} of {totalRequests} requests
+            </span>
+            {hasOlderRequests && (
+              <Btn size="sm" variant="ghost" onClick={loadOlderRequests} disabled={loading || loadingOlder}>
+                {loadingOlder ? 'Loading...' : 'Load older requests'}
+              </Btn>
+            )}
+          </div>
+        )}
       </Card>
 
       <Modal
