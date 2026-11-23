@@ -133,7 +133,8 @@ class RejectRequestView(APIView):
         item_request.units_remaining = item_request.item.available_quantity
         item_request.save(update_fields=['status', 'approved_by', 'reviewed_at', 'rejection_reason', 'units_remaining'])
         _sync_horticulture_request_status(item_request, ItemRequest.Status.REJECTED)
-        from apps.core.notifications import notify_inventory_rejected
+        from apps.core.notifications import notify_inventory_rejected, resolve_inventory_request_notifications
+        resolve_inventory_request_notifications(item_request)
         notify_inventory_rejected(item_request, item_request.rejection_reason)
 
         return Response(ItemRequestSerializer(item_request).data, status=status.HTTP_200_OK)

@@ -9,9 +9,75 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
-def create_notification(user, title, message, notification_type='general', status_label='', link='', dedup_key=None):
+def determine_category(notification_type='general', title='', message='', category=None):
     """
-    Creates a user-isolated in-app notification with optional deduplication.
+    Classifies a notification into IMPORTANT or ROUTINE.
+    - IMPORTANT: Requires attention or action (approvals, rejections, assignments, emergencies, alerts).
+    - ROUTINE: Reminders, general updates, non-critical status reports.
+    """
+    from apps.core.models import Notification
+
+    # Explicit category override
+    if category:
+        cat_str = str(category).strip().upper()
+        if cat_str in (Notification.Category.IMPORTANT, Notification.Category.ROUTINE):
+            return cat_str
+
+    # Type string passed as category
+    if str(notification_type).strip().upper() in (Notification.Category.IMPORTANT, Notification.Category.ROUTINE):
+        return str(notification_type).strip().upper()
+
+    important_types = {
+        Notification.NotificationType.INVENTORY_APPROVED,
+        Notification.NotificationType.INVENTORY_REJECTED,
+        Notification.NotificationType.LEAVE_APPROVED,
+        Notification.NotificationType.LEAVE_REJECTED,
+        'inventory_approved',
+        'inventory_rejected',
+        'leave_approved',
+        'leave_rejected',
+    }
+    if str(notification_type).lower() in important_types:
+        return Notification.Category.IMPORTANT
+
+    if str(notification_type).lower() in (Notification.NotificationType.USAGE_REMINDER, 'usage_reminder'):
+        return Notification.Category.ROUTINE
+
+    text = f"{title} {message}".lower()
+    important_keywords = (
+        'approval',
+        'approved',
+        'rejected',
+        'emergency',
+        'urgent',
+        'alert',
+        'failure',
+        'security',
+        'critical',
+        'assigned',
+        'action required',
+    )
+    if any(kw in text for kw in important_keywords):
+        return Notification.Category.IMPORTANT
+
+    return Notification.Category.ROUTINE
+
+
+def create_notification(
+    user,
+    title,
+    message,
+    notification_type='general',
+    status_label='',
+    link='',
+    dedup_key=None,
+    category=None,
+    requires_action=False,
+    action_completed=False,
+    expires_at=None,
+):
+    """
+    Creates a user-isolated in-app notification with classification, expiry, and optional deduplication.
     If dedup_key is provided and a notification with that key already exists,
     returns the existing notification without creating a duplicate.
     """
@@ -20,34 +86,45 @@ def create_notification(user, title, message, notification_type='general', statu
 
     from apps.core.models import Notification
 
+    cat = determine_category(
+        notification_type=notification_type,
+        title=title,
+        message=message,
+        category=category,
+    )
+
+    clean_type = notification_type
+    if str(notification_type).upper() in (Notification.Category.IMPORTANT, Notification.Category.ROUTINE):
+        clean_type = Notification.NotificationType.GENERAL
+
+    defaults = {
+        'user': user,
+        'title': title,
+        'message': message,
+        'notification_type': clean_type,
+        'category': cat,
+        'status_label': status_label,
+        'link': link,
+        'requires_action': requires_action,
+        'action_completed': action_completed,
+    }
+    if expires_at is not None:
+        defaults['expires_at'] = expires_at
+
     if dedup_key:
         notification, created = Notification.objects.get_or_create(
             dedup_key=dedup_key,
-            defaults={
-                'user': user,
-                'title': title,
-                'message': message,
-                'notification_type': notification_type,
-                'status_label': status_label,
-                'link': link,
-            },
+            defaults=defaults,
         )
         return notification
 
-    return Notification.objects.create(
-        user=user,
-        title=title,
-        message=message,
-        notification_type=notification_type,
-        status_label=status_label,
-        link=link,
-    )
+    return Notification.objects.create(**defaults)
 
 
 def notify_inventory_approved(item_request):
     """
     Notifies supervisor or caretaker when their inventory request is approved.
-    Includes item name, quantity, and status.
+    Category: IMPORTANT.
     """
     if not item_request or not item_request.requested_by:
         return None
@@ -86,6 +163,7 @@ def notify_inventory_approved(item_request):
         title=title,
         message=message,
         notification_type=Notification.NotificationType.INVENTORY_APPROVED,
+        category=Notification.Category.IMPORTANT,
         status_label=status_label,
         link=link,
         dedup_key=dedup_key,
@@ -98,6 +176,7 @@ notify_inventory_issued = notify_inventory_approved
 def notify_inventory_rejected(item_request, rejection_reason=''):
     """
     Notifies supervisor or caretaker when their inventory request is rejected.
+    Category: IMPORTANT.
     """
     if not item_request or not item_request.requested_by:
         return None
@@ -129,6 +208,7 @@ def notify_inventory_rejected(item_request, rejection_reason=''):
         title=title,
         message=message,
         notification_type=Notification.NotificationType.INVENTORY_REJECTED,
+        category=Notification.Category.IMPORTANT,
         status_label=status_label,
         link=link,
         dedup_key=dedup_key,
@@ -139,6 +219,7 @@ def notify_inventory_approval_undone(item_request, reason='', manager=None):
     """
     Notifies supervisor or caretaker when their inventory approval is undone
     and the request is restored to Pending status.
+    Category: IMPORTANT.
     """
     if not item_request or not item_request.requested_by:
         return None
@@ -175,6 +256,7 @@ def notify_inventory_approval_undone(item_request, reason='', manager=None):
         title=title,
         message=message,
         notification_type=Notification.NotificationType.INVENTORY_REJECTED,
+        category=Notification.Category.IMPORTANT,
         status_label=status_label,
         link=link,
         dedup_key=dedup_key,
@@ -184,6 +266,7 @@ def notify_inventory_approval_undone(item_request, reason='', manager=None):
 def notify_inventory_quantity_adjusted(item_request, old_qty, new_qty, reason='', manager=None, orig_requested_qty=None):
     """
     Notifies supervisor or caretaker when the issued quantity of their request is adjusted.
+    Category: IMPORTANT.
     """
     if not item_request or not item_request.requested_by:
         return None
@@ -215,7 +298,6 @@ def notify_inventory_quantity_adjusted(item_request, old_qty, new_qty, reason=''
 
     base_qty = orig_requested_qty if orig_requested_qty is not None else old_qty
     try:
-        from decimal import Decimal
         diff = Decimal(str(new_qty)) - Decimal(str(base_qty))
         if diff > 0:
             diff_str = f"+{diff}"
@@ -240,6 +322,7 @@ def notify_inventory_quantity_adjusted(item_request, old_qty, new_qty, reason=''
         title=title,
         message=message,
         notification_type=Notification.NotificationType.INVENTORY_APPROVED,
+        category=Notification.Category.IMPORTANT,
         status_label=status_label,
         link=link,
         dedup_key=dedup_key,
@@ -250,6 +333,7 @@ def notify_leave_decision(user, leave_date, decision, area_name='', note='', lea
     """
     Notifies requester when manager approves or rejects their leave request.
     decision: 'approved' or 'rejected'
+    Category: IMPORTANT.
     """
     if not user:
         return None
@@ -283,17 +367,87 @@ def notify_leave_decision(user, leave_date, decision, area_name='', note='', lea
         title=title,
         message=message,
         notification_type=notif_type,
+        category=Notification.Category.IMPORTANT,
         status_label=status_label,
         link=link,
         dedup_key=dedup_key,
     )
 
 
+def notify_new_inventory_request(item_request):
+    """
+    Notifies inventory managers when a supervisor or caretaker submits an item request
+    requiring review and approval.
+    Category: IMPORTANT.
+    requires_action: True (unresolved until reviewed).
+    """
+    if not item_request or not item_request.requested_by:
+        return []
+
+    from django.contrib.auth import get_user_model
+    from apps.core.models import Notification
+
+    User = get_user_model()
+    requester = item_request.requested_by
+    item = item_request.item
+    item_name = item.name if item else 'Requested Item'
+    unit = item.unit if item else 'units'
+    qty = item_request.quantity_requested
+    requester_name = requester.get_full_name() or requester.username
+
+    # Find managers responsible for inventory approval
+    managers_qs = User.objects.filter(
+        role__in=['inventory_manager', 'admin', 'hk_inventory_manager', 'horticulture_manager'],
+        is_active=True,
+    ).distinct()
+
+    title = "New Inventory Request Requiring Approval"
+    message = f"{requester_name} has requested {qty} {unit} of {item_name} requiring manager approval."
+    status_label = "Action Required"
+    link = '/inventory'
+
+    notifications = []
+    for manager in managers_qs:
+        dedup_key = f"user:{manager.id}:inv_req_pending:{item_request.id}"
+        notif = create_notification(
+            user=manager,
+            title=title,
+            message=message,
+            notification_type=Notification.NotificationType.GENERAL,
+            category=Notification.Category.IMPORTANT,
+            status_label=status_label,
+            link=link,
+            dedup_key=dedup_key,
+            requires_action=True,
+            action_completed=False,
+        )
+        if notif:
+            notifications.append(notif)
+    return notifications
+
+
+def resolve_inventory_request_notifications(item_request):
+    """
+    Marks actionable notifications for an inventory request as resolved.
+    """
+    if not item_request:
+        return 0
+    from apps.core.models import Notification
+    now = timezone.now()
+    prefix = f":inv_req_pending:{item_request.id}"
+    count = 0
+    for notif in Notification.objects.filter(dedup_key__contains=prefix, action_completed=False):
+        notif.mark_action_completed(now=now, save=True)
+        count += 1
+    return count
+
+
 def check_and_send_usage_reminders(force_time=False, target_date=None):
     """
     Checks for issued items whose required usage reports remain incomplete after 5:00 PM.
-    Notifies only the responsible supervisor or caretaker with item name and outstanding quantity.
+    Notifies responsible supervisor or caretaker with item name and outstanding quantity.
     Avoids duplicate reminders on the same day for the same outstanding item.
+    Category: ROUTINE.
     """
     now_local = timezone.localtime(timezone.now())
 
@@ -346,7 +500,6 @@ def check_and_send_usage_reminders(force_time=False, target_date=None):
         # Determine outstanding quantity and completion status
         if item.item_type == Item.ItemType.ASSET:
             if issue.returned_at is not None:
-                # Asset return is already complete
                 continue
             ret_qty = Decimal(issue.returned_quantity or 0)
             outstanding = issued_qty - ret_qty
@@ -354,7 +507,6 @@ def check_and_send_usage_reminders(force_time=False, target_date=None):
                 continue
             prompt_type = "usage / return report"
         else:
-            # Consumable
             if issue.usage_finalized:
                 continue
             remaining = issued_qty - total_used
@@ -399,6 +551,7 @@ def check_and_send_usage_reminders(force_time=False, target_date=None):
             title=title,
             message=message,
             notification_type=Notification.NotificationType.USAGE_REMINDER,
+            category=Notification.Category.ROUTINE,
             status_label="Pending Usage",
             link=link,
             dedup_key=dedup_key,

@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block content %}
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
   <div>
     <h2 style="font-size:18px;font-weight:800;color:#2d4a3e">All Notifications</h2>
     <div style="font-size:12px;color:#6b7280;margin-top:2px">
@@ -19,23 +19,45 @@
   {% endif %}
 </div>
 
+<!-- Category Filter Tabs -->
+<div style="display:flex;gap:6px;margin-bottom:14px;background:#e2ded8;padding:6px;border-radius:10px">
+  <a href="?category=all" style="flex:1;text-align:center;text-decoration:none;padding:6px 4px;font-size:11.5px;font-weight:700;border-radius:999px;transition:all 0.15s;{% if category_filter == 'all' %}background:#2d4a3e;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.15){% else %}background:#fff;color:#4b5563;border:1px solid #cbd5e1{% endif %}">
+    All ({{ all_count }})
+  </a>
+  <a href="?category=important" style="flex:1;text-align:center;text-decoration:none;padding:6px 4px;font-size:11.5px;font-weight:700;border-radius:999px;transition:all 0.15s;{% if category_filter == 'important' %}background:#dc2626;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.15){% else %}background:#fff;color:#4b5563;border:1px solid #cbd5e1{% endif %}">
+    ⚠️ Important ({{ important_count }})
+  </a>
+  <a href="?category=routine" style="flex:1;text-align:center;text-decoration:none;padding:6px 4px;font-size:11.5px;font-weight:700;border-radius:999px;transition:all 0.15s;{% if category_filter == 'routine' %}background:#2d4a3e;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.15){% else %}background:#fff;color:#4b5563;border:1px solid #cbd5e1{% endif %}">
+    📋 Routine ({{ routine_count }})
+  </a>
+</div>
+
 {% if notifications %}
 <div style="display:flex;flex-direction:column;gap:10px">
   {% for notif in notifications %}
   <div class="card notif-card {% if notif.is_read %}is-read{% endif %}"
-       style="margin-bottom:0;border-left:4.5px solid {% if not notif.is_read %}#2d4a3e{% else %}#cbd5e1{% endif %};background:{% if not notif.is_read %}#ffffff{% else %}rgba(255,255,255,0.7){% endif %};cursor:pointer"
+       style="margin-bottom:0;border-left:4.5px solid {% if notif.is_read %}#cbd5e1{% elif notif.category == 'IMPORTANT' %}#dc2626{% else %}#2d4a3e{% endif %};background:{% if not notif.is_read %}{% if notif.category == 'IMPORTANT' %}#fffdfd{% else %}#ffffff{% endif %}{% else %}rgba(255,255,255,0.7){% endif %};cursor:pointer"
        onclick="handleNotificationClick({{ notif.id }}, '{{ notif.link|default:'' }}')">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">
-      <div style="display:flex;align-items:center;gap:6px">
-        {% if not notif.is_read %}<span style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block"></span>{% endif %}
-        <span style="font-weight:{% if not notif.is_read %}800{% else %}700{% endif %};font-size:14px;color:#111827">{% if notif.title == 'Inventory Request Approved' %}Inventory Request Issued{% else %}{{ notif.title }}{% endif %}</span>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        {% if not notif.is_read %}
+          <span style="width:7px;height:7px;border-radius:50%;background:{% if notif.category == 'IMPORTANT' %}#dc2626{% else %}#22c55e{% endif %};display:inline-block"></span>
+        {% endif %}
+        <span style="font-weight:{% if not notif.is_read %}800{% else %}700{% endif %};font-size:14px;color:#111827">
+          {% if notif.title == 'Inventory Request Approved' %}Inventory Request Issued{% else %}{{ notif.title }}{% endif %}
+        </span>
+        {% if notif.category == 'IMPORTANT' %}
+          <span style="display:inline-flex;align-items:center;padding:1.5px 6px;border-radius:4px;font-size:9.5px;font-weight:800;background:#fee2e2;color:#991b1b;border:1px solid #fecaca">⚠️ Important</span>
+        {% else %}
+          <span style="display:inline-flex;align-items:center;padding:1.5px 6px;border-radius:4px;font-size:9.5px;font-weight:800;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0">Routine</span>
+        {% endif %}
       </div>
       <span style="font-size:11px;color:#6b7280;white-space:nowrap">{{ notif.created_at|date:"d M, H:i" }}</span>
     </div>
     <div style="font-size:13px;color:#374151;line-height:1.4;margin:6px 0 10px 0">{{ notif.message }}</div>
-    <div style="display:flex;justify-content:space-between;align-items:center">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
       {% if notif.status_label %}
-      <span class="bdg {% if 'approved' in notif.status_label|lower or 'issued' in notif.status_label|lower %}g{% elif 'rejected' in notif.status_label|lower %}r{% elif 'pending' in notif.status_label|lower or 'usage' in notif.status_label|lower %}y{% else %}gr{% endif %}">
+      <span class="bdg {% if 'approved' in notif.status_label|lower or 'issued' in notif.status_label|lower %}g{% elif 'rejected' in notif.status_label|lower %}r{% elif 'pending' in notif.status_label|lower or 'usage' in notif.status_label|lower or 'action' in notif.status_label|lower %}y{% else %}gr{% endif %}">
         {% if notif.status_label|lower == 'approved' %}Issued{% else %}{{ notif.status_label }}{% endif %}
       </span>
       {% else %}
@@ -50,9 +72,60 @@
 </div>
 {% else %}
 <div class="card" style="text-align:center;padding:40px 20px;color:#6b7280">
-  <div style="font-size:40px;margin-bottom:10px">🔔</div>
-  <div style="font-weight:800;font-size:15px;color:#374151">No Notifications Yet</div>
-  <div style="font-size:12px;margin-top:4px">You will receive updates here for inventory approvals, leave requests, and usage report reminders.</div>
+  <div style="font-size:40px;margin-bottom:10px">{% if category_filter == 'important' %}🛡️{% else %}🔔{% endif %}</div>
+  <div style="font-weight:800;font-size:15px;color:#374151">
+    {% if category_filter == 'important' %}No Important Notifications{% elif category_filter == 'routine' %}No Routine Notifications{% else %}No Notifications Yet{% endif %}
+  </div>
+  <div style="font-size:12px;margin-top:4px">
+    {% if category_filter == 'important' %}You have no urgent or actionable alerts pending.{% elif category_filter == 'routine' %}No reminders or general activity updates.{% else %}You will receive updates here for inventory approvals, leave requests, and usage report reminders.{% endif %}
+  </div>
 </div>
 {% endif %}
+
+<script>
+function handleNotificationClick(id, link) {
+  fetch('/api/notifications/' + id + '/read/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}',
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    credentials: 'include'
+  })
+  .then(function() {
+    if (link && link.trim() !== '') {
+      window.location.assign(link);
+    } else {
+      window.location.reload();
+    }
+  })
+  .catch(function() {
+    if (link && link.trim() !== '') {
+      window.location.assign(link);
+    }
+  });
+}
+
+function markAllNotificationsRead() {
+  fetch('/api/notifications/mark-all-read/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}',
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    credentials: 'include'
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data && data.success) {
+      window.location.reload();
+    }
+  })
+  .catch(function(err) {
+    console.error('Failed to mark all read:', err);
+  });
+}
+</script>
 {% endblock %}

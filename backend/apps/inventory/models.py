@@ -155,7 +155,7 @@ class ItemRequestBatch(models.Model):
     requested_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-requested_at']
+        ordering = ['-requested_at', '-id']
 
     def __str__(self):
         if not self.pk:
@@ -214,7 +214,7 @@ class ItemRequest(models.Model):
     reviewed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        ordering = ['-requested_at']
+        ordering = ['-requested_at', '-id']
 
     def __str__(self):
         return f"{self.requested_by} → {self.item.name} x{self.quantity_requested} [{self.status}]"
