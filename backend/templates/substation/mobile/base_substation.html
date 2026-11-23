@@ -15,8 +15,10 @@
 <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 <script src="{% static 'shared/authService.js' %}" defer></script>
 <style>
+:root{color-scheme:light}
+html{color-scheme:light;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#f0f4f2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;min-height:100vh}
+body{background:#f0f4f2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;min-height:100vh;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .hdr{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#2d4a3e,#1a332a);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 3px 12px rgba(0,0,0,.25)}
 .hdr-l{display:flex;align-items:center;gap:10px}
 .brand-logo{width:36px;height:36px;border-radius:10px;background:#fff;padding:2px;box-shadow:0 4px 12px rgba(0,0,0,.15);flex-shrink:0}
@@ -27,10 +29,10 @@ body{background:#f0f4f2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
 .user-badge{font-size:11px;font-weight:700;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);padding:4px 10px;border-radius:20px;color:#fff}
 .logout-btn{background:none;border:none;color:rgba(255,255,255,.8);cursor:pointer;padding:4px;display:flex;align-items:center}
 .page{padding:12px 12px calc(80px + env(safe-area-inset-bottom));max-width:540px;margin:0 auto}
-.card{background:#ffffff;border-radius:14px;padding:16px;margin-bottom:12px;border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+.card{background:#ffffff;border-radius:14px;padding:16px;margin-bottom:12px;border:1px solid #cbd5e1;box-shadow:0 2px 8px rgba(15,23,42,.06)}
 .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .card-title{font-size:14px;font-weight:800;color:#0f172a;display:flex;align-items:center;gap:6px}
-.card-sub{font-size:12px;color:#64748b;margin-top:2px}
+.card-sub{font-size:12px;color:#334155;font-weight:600;margin-top:2px}
 .btn-primary{background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;border:none;border-radius:10px;padding:12px 16px;font-size:14px;font-weight:700;width:100%;cursor:pointer;display:block;text-align:center;text-decoration:none;box-shadow:0 4px 12px rgba(2,132,199,.25)}
 .btn-primary:active{transform:scale(0.98)}
 .btn-secondary{background:#2d4a3e;color:#fff;border:none;border-radius:10px;padding:12px 16px;font-size:14px;font-weight:700;width:100%;cursor:pointer;display:block;text-align:center;text-decoration:none}
@@ -40,12 +42,12 @@ body{background:#f0f4f2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
 .pill-orange{background:#ffedd5;color:#c2410c}
 .pill-blue{background:#e0f2fe;color:#0369a1}
 .pill-purple{background:#f3e8ff;color:#7e22ce}
-.pill-gray{background:#f1f5f9;color:#475569}
+.pill-gray{background:#f1f5f9;color:#334155;font-weight:700;border:1px solid #cbd5e1}
 .prog-wrap{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:8px}
 .prog-bar{height:100%;border-radius:999px;background:linear-gradient(90deg,#0284c7,#10b981);transition:width .4s}
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(255,255,255,.98);backdrop-filter:blur(12px);border-top:1px solid #e2e8f0;padding:8px 12px calc(8px + env(safe-area-inset-bottom));display:flex;gap:6px;max-width:540px;margin:0 auto}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(255,255,255,.98);backdrop-filter:blur(12px);border-top:1px solid #cbd5e1;padding:8px 12px calc(8px + env(safe-area-inset-bottom));display:flex;gap:6px;max-width:540px;margin:0 auto}
 .bottom-nav a{flex:1;text-decoration:none}
-.nav-item{width:100%;border:none;border-radius:10px;padding:7px 2px;font-size:11px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;color:#64748b;line-height:1.2;transition:all .15s}
+.nav-item{width:100%;border:none;border-radius:10px;padding:7px 2px;font-size:11px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;color:#334155;font-weight:700;line-height:1.2;transition:all .15s}
 .nav-item svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
 .nav-item.active{background:#2d4a3e;color:#fff}
 .nav-item.active svg{stroke:#fff}
@@ -72,7 +74,7 @@ label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;lett
 @keyframes pulse-green{0%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(16,185,129,.7)}70%{transform:scale(1);box-shadow:0 0 0 6px rgba(16,185,129,0)}100%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(16,185,129,0)}}
 .live-cal-sync-btn{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.35);padding:5px 10px;border-radius:8px;font-size:12px;font-weight:800;text-decoration:none;cursor:pointer;white-space:nowrap;transition:all .15s ease}
 .live-cal-sync-btn:active{transform:scale(0.96);background:rgba(255,255,255,.3)}
-.cal-date-input{background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.35);font-weight:800;font-size:13.5px;padding:6px 10px;border-radius:8px;width:auto;color-scheme:dark;cursor:pointer}
+.cal-date-input{background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.45);font-weight:800;font-size:13.5px;padding:6px 10px;border-radius:8px;width:auto;color-scheme:dark;cursor:pointer}
 </style>
 {% block extra_head %}{% endblock %}
 </head>
