@@ -247,6 +247,10 @@ def _format_standalone_issue_tx(issue):
             'logged_by': log.logged_by.get_full_name() or log.logged_by.username if log.logged_by else '',
         })
 
+    # What is still unused. Only the rejected branch below used to set this, so an ordinary issued item with no
+    # staff-request record crashed the whole History page (UnboundLocalError).
+    outstanding_qty = max(Decimal('0.00'), issued_qty - total_used)
+
     if issue.is_reversed or inv_req.status == 'rejected':
         status_category = 'rejected'
         status_label = 'Rejected'
@@ -364,12 +368,20 @@ def get_user_history_transactions(
         if hk_req.inventory_request_id:
             seen_inv_req_ids.add(hk_req.inventory_request_id)
 
+    # Requests that already have a staff-request record in ANY area are not "standalone". When the list is filtered
+    # to one area, only that area's records are in seen_inv_req_ids, so the user's other areas' issued items used to
+    # be treated as standalone here (and one of those code paths crashed the page for people with several areas).
+    linked_inv_req_ids = set(
+        HKStockRequest.objects.filter(requested_by=user, inventory_request__isnull=False)
+        .values_list('inventory_request_id', flat=True)
+    )
+
     # Check for any standalone ItemIssues for this user that were not created via HKStockRequest
     standalone_issues = (
         ItemIssue.objects.filter(
             request__requested_by=user
         )
-        .exclude(request_id__in=seen_inv_req_ids)
+        .exclude(request_id__in=seen_inv_req_ids | linked_inv_req_ids)
         .select_related(
             'request',
             'request__item',

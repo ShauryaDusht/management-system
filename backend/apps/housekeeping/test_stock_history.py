@@ -347,6 +347,67 @@ class StockHistoryTests(TestCase):
         detail_resp = self.client.get(f'/housekeeping/stock/history/{other_req.id}/')
         self.assertEqual(detail_resp.status_code, 404)
 
+    def test_history_of_one_area_opens_for_a_person_with_several_areas(self):
+        """Opening History for one area of a person who works in several areas crashed the page (it did so for
+        the supervisor of the Guest House, Director Bungalow and Canteen)."""
+        self.client.force_login(self.supervisor)
+
+        for item, area, purpose, qty in (
+            (self.cleaner_item, self.area_arcade, 'Central Arcade', 5),
+            (self.disinfectant_item, self.area_sports, 'Sports Complex', 3),
+        ):
+            inv_req = ItemRequest.objects.create(
+                item=item, requested_by=self.supervisor, quantity_requested=qty,
+                purpose=f'[HK - {purpose}] cleaning', status=ItemRequest.Status.ISSUED,
+                approved_by=self.manager, reviewed_at=timezone.now(),
+            )
+            HKStockRequest.objects.create(
+                requested_by=self.supervisor, area=area, item_name=item.name, item=item, quantity=qty,
+                unit=item.unit, reason='cleaning', status='issued', inventory_request=inv_req,
+            )
+            ItemIssue.objects.create(request=inv_req, issued_by=self.manager, issued_quantity=qty)
+
+        resp = self.client.get(f'/housekeeping/stock/history/?area={self.area_arcade.id}')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual([tx['item_name'] for tx in resp.context['transactions']], ['Floor Cleaner'])
+
+        resp = self.client.get(f'/housekeeping/stock/history/?area={self.area_sports.id}')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual([tx['item_name'] for tx in resp.context['transactions']], ['Disinfectant'])
+
+        resp = self.client.get('/housekeeping/stock/history/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.context['transactions']), 2)
+
+    def test_history_opens_for_issued_item_without_staff_request_record(self):
+        """An issued item that has no staff-request record (e.g. raised from the admin side) used to crash the
+        whole History page with an error, so that person could not open their History at all."""
+        self.client.force_login(self.supervisor)
+
+        used_req = ItemRequest.objects.create(
+            item=self.cleaner_item, requested_by=self.supervisor, quantity_requested=4,
+            purpose='[HK - Central Arcade] Admin raised', status=ItemRequest.Status.ISSUED,
+            approved_by=self.manager, reviewed_at=timezone.now(),
+        )
+        used_issue = ItemIssue.objects.create(request=used_req, issued_by=self.manager, issued_quantity=4)
+        ItemUsageLog.objects.create(
+            issue=used_issue, quantity_used=Decimal('1.50'), purpose='Mopping', logged_by=self.supervisor)
+
+        unused_req = ItemRequest.objects.create(
+            item=self.disinfectant_item, requested_by=self.supervisor, quantity_requested=3,
+            purpose='[HK - Sports Complex] Admin raised', status=ItemRequest.Status.ISSUED,
+            approved_by=self.manager, reviewed_at=timezone.now(),
+        )
+        ItemIssue.objects.create(request=unused_req, issued_by=self.manager, issued_quantity=3)
+
+        resp = self.client.get('/housekeeping/stock/history/')
+        self.assertEqual(resp.status_code, 200)
+        by_item = {tx['item_name']: tx for tx in resp.context['transactions']}
+        self.assertEqual(by_item['Floor Cleaner']['outstanding_quantity'], 2.5)
+        self.assertEqual(by_item['Floor Cleaner']['status_label'], 'Usage Submitted')
+        self.assertEqual(by_item['Disinfectant']['outstanding_quantity'], 3.0)
+        self.assertEqual(by_item['Disinfectant']['status_label'], 'Usage Pending')
+
     def test_transaction_detail_endpoint_and_lifecycle(self):
         self.client.force_login(self.supervisor)
 
