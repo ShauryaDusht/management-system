@@ -8,6 +8,7 @@ cd /app
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Recording unmarked Hostel Common Area staff as absent..."
 
-python manage.py auto_absent_common_area
+# (cron has no "python" on its PATH and no app settings: run_manage.sh sets both up)
+bash /app/scripts/run_manage.sh auto_absent_common_area
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Done."
